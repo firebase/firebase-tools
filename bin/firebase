@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+var optimist = require('optimist'),
+        argv = optimist.usage('Usage: firebase (auth|app)').argv,
+         app = require('../lib/app')
+        auth = require('../lib/auth');
+
+if (argv._.length === 0) {
+
+  // Require at least one non-hyphenated option
+  optimist.showHelp();
+
+} else {
+  // Router
+  switch (argv._[0]) {
+    case 'app':
+      app(argv);
+      break;
+    case 'auth':
+      auth(argv);
+      break;
+    default:
+      optimist.showHelp();
+  }
+}

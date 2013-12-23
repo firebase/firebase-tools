@@ -1,0 +1,22 @@
+{
+  "name": "firebase-cli",
+  "preferGlobal": true,
+  "version": "0.0.1",
+  "description": "The Firebase command line interface",
+  "keywords": [
+    "firebase"
+  ],
+  "author": "Firebase <support@firebase.com>",
+  "contributors": [{
+    "name": "Chris Raynor",
+    "email": "chris@firebase.com"
+  }],
+  "repository": "https://github.com/firebase/firebase-cli.git",
+  "homepage": "https://github.com/firebase/firebase-cli",
+  "dependencies": {
+    "optimist": "0.6.x"
+  },
+  "bin": {
+    "firebase": "./bin/firebase"
+  }
+}
