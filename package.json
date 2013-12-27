@@ -14,7 +14,8 @@
   "repository": "https://github.com/firebase/firebase-cli.git",
   "homepage": "https://github.com/firebase/firebase-cli",
   "dependencies": {
-    "optimist": "0.6.x"
+    "optimist": "0.6.x",
+    "prompt": "0.2.x"
   },
   "bin": {
     "firebase": "./bin/firebase"

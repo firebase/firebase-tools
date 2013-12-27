@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 var optimist = require('optimist'),
-        argv = optimist.usage('Usage: firebase (auth|app)').argv,
-         app = require('../lib/app')
-        auth = require('../lib/auth');
+    argv = optimist.usage('Usage: firebase').argv,
+    Auth = require('../lib/auth'),
+    auth = new Auth(argv),
+    App = require('../lib/app');
 
 if (argv._.length === 0) {
 
@@ -11,15 +12,24 @@ if (argv._.length === 0) {
   optimist.showHelp();
 
 } else {
-  // Router
+  // Top-level router
   switch (argv._[0]) {
-    case 'app':
-      app(argv);
+    case 'refreshtoken':
+      auth.login(
+        function(email, token) {
+          console.log('New token saved for ' + email + ': ' + token);
+        },
+        function() {
+          console.log("Sorry, we couldn't refresh the token");
+        },
+        this
+      );
       break;
-    case 'auth':
-      auth(argv);
+    case 'app':
+      new App(auth, argv);
       break;
     default:
+      // No route found
       optimist.showHelp();
   }
 }
