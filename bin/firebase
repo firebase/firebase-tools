@@ -14,15 +14,13 @@ if (argv._.length === 0) {
   // Top-level router
   switch (argv._[0]) {
     case 'refreshtoken':
-      Auth.login(
-        function(email, token) {
-          console.log('New token saved for ' + email + ': ' + token);
-        },
-        function() {
+      Auth.login(function(err, email, token) {
+        if (err) {
           console.log("Sorry, we couldn't refresh the token");
-        },
-        this
-      );
+        } else {
+          console.log('New token saved for ' + email + ': ' + token);
+        }
+      });
       break;
     case 'app':
       new App();
