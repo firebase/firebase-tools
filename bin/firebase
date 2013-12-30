@@ -2,8 +2,14 @@
 
 var optimist = require('optimist'),
     argv = optimist.usage('Usage: firebase').argv,
+    prompt = require('prompt'),
     Auth = require('../lib/auth'),
-    App = require('../lib/app');
+    App = require('../lib/app'),
+    Firebase = require('../lib/firebase');
+
+prompt.override = argv;
+prompt.message = '';
+prompt.delimiter = '';
 
 if (argv._.length === 0) {
 
@@ -24,6 +30,12 @@ if (argv._.length === 0) {
       break;
     case 'app':
       new App();
+      break;
+    case 'list':
+      Firebase.list();
+      break;
+    case 'create':
+      Firebase.create();
       break;
     default:
       // No route found
