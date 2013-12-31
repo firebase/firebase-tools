@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 var optimist = require('optimist'),
-    argv = optimist.usage('Usage: firebase').argv,
+    argv = optimist
+              .usage('Usage: firebase')
+              .alias('f', 'firebase')
+              .alias('t', 'template')
+              .argv,
     prompt = require('prompt'),
     Firebase = require('../lib/firebase');
 
