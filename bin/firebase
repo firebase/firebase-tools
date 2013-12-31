@@ -3,8 +3,6 @@
 var optimist = require('optimist'),
     argv = optimist.usage('Usage: firebase').argv,
     prompt = require('prompt'),
-    Auth = require('../lib/auth'),
-    App = require('../lib/app'),
     Firebase = require('../lib/firebase');
 
 prompt.override = argv;
@@ -19,26 +17,28 @@ if (argv._.length === 0) {
 } else {
   // Top-level router
   switch (argv._[0]) {
-    case 'refreshtoken':
-      Auth.login(function(err, email, token) {
-        if (err) {
-          console.log("Sorry, we couldn't refresh the token");
-        } else {
-          console.log('New token saved for ' + email + ': ' + token);
-        }
-      });
+
+    // Top-level functionality
+
+    case 'login':
+      Firebase.login();
       break;
-    case 'app':
-      new App();
+    case 'logout':
+      Firebase.logout();
       break;
     case 'list':
       Firebase.list();
       break;
-    case 'create':
-      Firebase.create();
+
+    // Submodules
+
+    case 'app':
+      // Defer to submodule router
+      new Firebase.App();
       break;
+
     default:
-      // No route found
+      // TODO: Print useful help information
       optimist.showHelp();
   }
 }
