@@ -17,7 +17,8 @@
     "optimist": "0.6.x",
     "prompt": "0.2.x",
     "bitballoon": "0.1.x",
-    "easy-table": "0.2.x"
+    "easy-table": "0.2.x",
+    "tar": "0.1.x"
   },
   "bin": {
     "firebase": "./bin/firebase"
