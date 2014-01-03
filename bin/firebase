@@ -13,7 +13,11 @@ prompt.override = argv;
 prompt.message = '';
 prompt.delimiter = '';
 
-if (argv._.length === 0) {
+if (argv.version) {
+
+  console.log('\nFirebase CLI version: ' + Firebase.version + '\n');
+
+} else if (argv._.length === 0) {
 
   // Require at least one non-hyphenated option
   optimist.showHelp();
