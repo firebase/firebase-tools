@@ -1,4 +1,4 @@
-firebase-cli
+firebase-tools
 ============
 
-The Firebase command line tool
+The Firebase Command Line Tools
