@@ -20,7 +20,7 @@ if (argv.version) {
 } else if (argv._.length === 0) {
 
   // Require at least one non-hyphenated option
-  optimist.showHelp();
+  Firebase.showHelp();
 
 } else {
   // Top-level router
@@ -47,6 +47,6 @@ if (argv.version) {
 
     default:
       // TODO: Print useful help information
-      optimist.showHelp();
+      Firebase.showHelp();
   }
 }
