@@ -2,12 +2,14 @@
 
 var optimist = require('optimist'),
     argv = optimist
-              .usage('Usage: firebase')
               .alias('f', 'firebase')
+              .alias('p', 'public')
+              .alias('r', 'rules')
               .alias('t', 'template')
+              .alias('v', 'version')
               .argv,
     prompt = require('prompt'),
-    Firebase = require('../lib/firebase');
+    firebase = require('../lib/firebase');
 
 prompt.override = argv;
 prompt.message = '';
@@ -15,12 +17,12 @@ prompt.delimiter = '';
 
 if (argv.version) {
 
-  console.log('\nFirebase CLI version: ' + Firebase.version + '\n');
+  firebase.showVersion();
 
 } else if (argv._.length === 0) {
 
   // Require at least one non-hyphenated option
-  Firebase.showHelp();
+  firebase.showHelp();
 
 } else {
   // Top-level router
@@ -29,24 +31,24 @@ if (argv.version) {
     // Top-level functionality
 
     case 'login':
-      Firebase.login();
+      firebase.login();
       break;
     case 'logout':
-      Firebase.logout();
+      firebase.logout();
       break;
     case 'list':
-      Firebase.list();
+      firebase.list();
       break;
 
     // Submodules
 
     case 'app':
       // Defer to submodule router
-      new Firebase.App();
+      new firebase.App();
       break;
 
     default:
       // TODO: Print useful help information
-      Firebase.showHelp();
+      firebase.showHelp();
   }
 }
