@@ -1,5 +1,5 @@
 {
-  "name": "firebase-cli",
+  "name": "firebase-tools",
   "preferGlobal": true,
   "version": "0.0.1",
   "description": "The Firebase command line interface",
