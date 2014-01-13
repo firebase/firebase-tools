@@ -3,6 +3,7 @@
 var optimist = require('optimist'),
     argv = optimist
               .alias('f', 'firebase')
+              .alias('h', 'help')
               .alias('p', 'public')
               .alias('r', 'rules')
               .alias('t', 'template')
@@ -16,7 +17,11 @@ prompt.message = '';
 prompt.delimiter = '';
 prompt.colors = false;
 
-if (argv.version) {
+if (argv.help) {
+
+  firebase.showHelp();
+
+} else if (argv.version) {
 
   firebase.showVersion();
 
