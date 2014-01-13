@@ -55,3 +55,5 @@ Usage: firebase <command>
     containing the security rules has been provided, these are uploaded to the
     server.
 ```
+## Credit
+Inspired by [Luke Vivier](https://github.com/lvivier)'s Firebase command line tools.
