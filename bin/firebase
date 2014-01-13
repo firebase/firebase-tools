@@ -49,7 +49,6 @@ if (argv.version) {
       break;
 
     default:
-      // TODO: Print useful help information
       firebase.showHelp();
   }
 }
