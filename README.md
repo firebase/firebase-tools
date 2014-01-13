@@ -8,8 +8,9 @@ To install, first you'll need to [sign up](https://www.firebase.com/signup/) for
 ```shell
 npm install -g firebase-tools
 ```
+This will install the globally accessible command `firebase`
 ## Commands
-The `--help` or `-h` options list the available commands and their optional parameters:
+The command `firebase --help` lists the available commands and their optional parameters:
 
 ```shell
 Firebase Command Line Tools
@@ -18,7 +19,7 @@ https://www.firebase.com
 
 Usage: firebase <command>
 
-  Possible commands are:
+  Available commands are:
 
   login
     Authenticates with the Firebase servers and stores an access token locally.
