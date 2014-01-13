@@ -14,6 +14,7 @@ var optimist = require('optimist'),
 prompt.override = argv;
 prompt.message = '';
 prompt.delimiter = '';
+prompt.colors = false;
 
 if (argv.version) {
 
