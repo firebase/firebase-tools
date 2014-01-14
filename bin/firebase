@@ -10,25 +10,21 @@ var optimist = require('optimist'),
               .alias('v', 'version')
               .argv,
     prompt = require('prompt'),
-    firebase = require('../lib/firebase');
+    firebase = require('../lib/firebase'),
+    app = require('../lib/app');
 
 prompt.override = argv;
 prompt.message = '';
 prompt.delimiter = '';
 prompt.colors = false;
 
-if (argv.help) {
+if (argv._.length === 0) {
 
-  firebase.showHelp();
-
-} else if (argv.version) {
-
-  firebase.showVersion();
-
-} else if (argv._.length === 0) {
-
-  // Require at least one non-hyphenated option
-  firebase.showHelp();
+  if (argv.version) {
+    firebase.showVersion();
+  } else {
+    firebase.showHelp();
+  }
 
 } else {
   // Top-level router
@@ -42,18 +38,33 @@ if (argv.help) {
     case 'logout':
       firebase.logout();
       break;
+    case 'ls':
     case 'list':
       firebase.list();
       break;
 
     // Submodules
 
-    case 'app':
-      // Defer to submodule router
-      new firebase.App();
+    case 'init':
+    case 'initialise':
+    case 'initialize':
+      app.init(argv);
+      break;
+    case 'bootstrap':
+      app.bootstrap(argv);
+      break;
+    case 'deploy':
+      app.deploy(argv);
+      break;
+
+    case 'h':
+    case 'hel':
+    case 'hepl':
+    case 'help':
+      firebase.showHelp();
       break;
 
     default:
-      firebase.showHelp();
+      firebase.showCommandError();
   }
 }
