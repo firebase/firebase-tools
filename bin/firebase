@@ -54,7 +54,7 @@ if (argv._.length === 0) {
       app.bootstrap(argv);
       break;
     case 'deploy':
-      app.deploy(argv);
+      app.deploy();
       break;
 
     case 'h':
