@@ -2,7 +2,7 @@
   "name": "firebase-tools",
   "preferGlobal": true,
   "version": "0.0.1",
-  "description": "The Firebase command line interface",
+  "description": "The Firebase Command Line Tools",
   "keywords": [
     "firebase"
   ],
@@ -11,8 +11,8 @@
     "name": "Chris Raynor",
     "email": "chris@firebase.com"
   }],
-  "repository": "https://github.com/firebase/firebase-cli.git",
-  "homepage": "https://github.com/firebase/firebase-cli",
+  "repository": "https://github.com/firebase/firebase-tools.git",
+  "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
     "optimist": "0.6.x",
     "prompt": "0.2.x",

@@ -59,6 +59,7 @@ if (argv._.length === 0) {
 
     case 'h':
     case 'hel':
+    case 'hep':
     case 'hepl':
     case 'help':
       firebase.showHelp();
