@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-var optimist = require('optimist'),
-    argv = optimist
+var argv = require('optimist')
               .alias('f', 'firebase')
               .alias('h', 'help')
               .alias('p', 'public')
               .alias('r', 'rules')
               .alias('t', 'template')
               .alias('v', 'version')
+              .boolean('d')
               .argv,
     prompt = require('prompt'),
     firebase = require('../lib/firebase'),
@@ -36,7 +36,7 @@ if (argv._.length === 0) {
       firebase.login();
       break;
     case 'logout':
-      firebase.logout();
+      firebase.logout(argv.d);
       break;
     case 'ls':
     case 'list':
