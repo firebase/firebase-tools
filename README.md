@@ -17,10 +17,6 @@ The command `firebase --help` lists the available commands and
 `firebase <command> --help` shows more details.
 
 ```shell
-Firebase Command Line Tools
-Version 0.0.5
-https://www.firebase.com
-
 Usage: firebase <command>
 
   Available commands are:
