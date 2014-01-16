@@ -1,7 +1,7 @@
 {
   "name": "firebase-tools",
   "preferGlobal": true,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "The Firebase Command Line Tools",
   "keywords": [
     "firebase"
@@ -17,7 +17,8 @@
     "optimist": "0.6.x",
     "prompt": "0.2.x",
     "bitballoon": "0.1.x",
-    "tar": "0.1.x"
+    "tar": "0.1.x",
+    "open": "0.0.x"
   },
   "bin": {
     "firebase": "./bin/firebase"
