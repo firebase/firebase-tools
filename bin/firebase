@@ -11,7 +11,8 @@ var argv = require('optimist')
               .argv,
     prompt = require('prompt'),
     firebase = require('../lib/firebase'),
-    app = require('../lib/app');
+    app = require('../lib/app'),
+    help = require('../lib/help');
 
 prompt.override = argv;
 prompt.message = '';
@@ -21,51 +22,59 @@ prompt.colors = false;
 if (argv._.length === 0) {
 
   if (argv.version) {
-    firebase.showVersion();
+    help.showVersion();
   } else {
-    firebase.showHelp();
+    help.showHelp();
   }
 
 } else {
-  // Top-level router
-  switch (argv._[0]) {
+  if (argv.help) {
 
-    // Top-level functionality
+    help.showHelp(argv._[0]);
 
-    case 'login':
-      firebase.login();
-      break;
-    case 'logout':
-      firebase.logout(argv.d);
-      break;
-    case 'ls':
-    case 'list':
-      firebase.list();
-      break;
+  } else {
+    // Top-level router
+    switch (argv._[0]) {
 
-    // Submodules
+      // Top-level functionality
 
-    case 'init':
-    case 'initialise':
-    case 'initialize':
-      app.init(argv);
-      break;
-    case 'bootstrap':
-      app.bootstrap(argv);
-      break;
-    case 'deploy':
-      app.deploy();
-      break;
+      case 'login':
+        firebase.login();
+        break;
+      case 'logout':
+        firebase.logout(argv.d);
+        break;
+      case 'ls':
+      case 'list':
+        firebase.list();
+        break;
 
-    case 'h':
-    case 'hel':
-    case 'hep':
-    case 'hepl':
-    case 'help':
-      firebase.showHelp();
-      break;
+      // Submodules
 
-    default:
-      firebase.showCommandError();
+      case 'init':
+      case 'initialise':
+      case 'initialize':
+        app.init(argv);
+        break;
+      case 'bootstrap':
+        app.bootstrap(argv);
+        break;
+      case 'deploy':
+        app.deploy();
+        break;
+
+      case 'h':
+      case 'hel':
+      case 'hep':
+      case 'hepl':
+      case 'help':
+        help.showHelp();
+        break;
+
+      default:
+        console.log('\n' +
+          'Command not found. Use `firebase --help` for a list of commands or\n' +
+          '`firebase <command> --help` for more details\n');
+    }
   }
 }
