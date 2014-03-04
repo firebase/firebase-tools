@@ -16,9 +16,11 @@
   "dependencies": {
     "optimist": "0.6.x",
     "prompt": "0.2.x",
-    "bitballoon": "0.1.x",
     "tar": "0.1.x",
-    "open": "0.0.x"
+    "open": "0.0.x",
+    "request": "2.34.x",
+    "fstream": "0.1.x",
+    "temp": "0.6.x"
   },
   "bin": {
     "firebase": "./bin/firebase"
