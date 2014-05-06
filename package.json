@@ -22,7 +22,9 @@
     "fstream": "0.1.x",
     "temp": "0.6.x",
     "firebase": "~1.0.11",
-    "progress": "~1.1.5"
+    "progress": "~1.1.5",
+    "when": "3.1.0",
+    "chalk": "~0.4.0"
   },
   "bin": {
     "firebase": "./bin/firebase"
