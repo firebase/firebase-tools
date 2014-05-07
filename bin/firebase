@@ -3,6 +3,7 @@
 var argv = require('optimist')
               .alias('f', 'firebase')
               .alias('h', 'help')
+              .alias('m', 'message')
               .alias('p', 'public')
               .alias('r', 'rules')
               .alias('t', 'template')
