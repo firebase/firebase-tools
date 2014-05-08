@@ -34,6 +34,9 @@ Usage: firebase <command>
     Initializes an existing Firebase app in the current directory and prompts
     you through configuring it for firebaseapp.com.
 
+  open
+    Opens the URL of the current Firebase app in a browser.
+
   list
     Lists the Firebases available to the currently logged in user.
 
@@ -44,11 +47,11 @@ Usage: firebase <command>
   logout
     Logs the user out of Firebase.
 
-  --help
+  -h, --help
     Shows this help screen. Use `firebase <command> --help` for more detailed
     help instructions.
 
-  --version
+  -v, --version
     Displays the current version.
 ```
 
