@@ -22,8 +22,8 @@ Usage: firebase <command>
   Available commands are:
 
   bootstrap
-    Creates a new Firebase powered app from a number of prebuild templates to
-    quickly get a project up and running. This creates a new folder and prompts
+    Creates a new Firebase powered app from a prebuilt template to quickly
+    get a project up and running. This creates a new folder and prompts
     you through all the required settings.
 
   deploy
