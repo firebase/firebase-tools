@@ -7,10 +7,12 @@
     "firebase"
   ],
   "author": "Firebase <support@firebase.com>",
-  "contributors": [{
-    "name": "Chris Raynor",
-    "email": "chris@firebase.com"
-  }],
+  "contributors": [
+    {
+      "name": "Chris Raynor",
+      "email": "chris@firebase.com"
+    }
+  ],
   "repository": "https://github.com/firebase/firebase-tools.git",
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
