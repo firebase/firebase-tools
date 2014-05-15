@@ -29,7 +29,13 @@ if (argv._.length === 0) {
   }
 
 } else {
-  if (argv.help) {
+  if (
+    argv.h ||
+    argv.hel ||
+    argv.hep ||
+    argv.hepl ||
+    argv.help
+  ) {
 
     help.showHelp(argv._[0]);
 
