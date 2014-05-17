@@ -46,14 +46,14 @@ if (argv._.length === 0) {
       // Top-level functionality
 
       case 'login':
-        firebase.login();
+        firebase.login(argv);
         break;
       case 'logout':
-        firebase.logout(argv.d);
+        firebase.logout(argv);
         break;
       case 'ls':
       case 'list':
-        firebase.list();
+        firebase.list(argv);
         break;
 
       // Submodules
