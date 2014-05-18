@@ -2,7 +2,7 @@ firebase-tools
 ============
 
 These are the Firebase Command Line Tools for administering your account and
-interacting with the Firebase Hosting beta.
+interacting with Firebase Hosting.
 
 ## Installation
 To install, first you'll need to [sign up](https://www.firebase.com/signup/) for
