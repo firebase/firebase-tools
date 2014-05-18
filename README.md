@@ -1,8 +1,9 @@
 firebase-tools
 ============
 
-These are the Firebase Command Line Tools. They can be used to administer your Firebase account and to
-interact with [Firebase Hosting](https://www.firebase.com/hosting.html), our product to host your HTML, JS, images, etc. 
+These are the Firebase Command Line Tools. They can be used to: 
+* Administer your Firebase account and to
+* Interact with [Firebase Hosting](https://www.firebase.com/hosting.html), our product to host your HTML, JS, images, etc. 
 
 For a quick start guide, see https://www.firebase.com/docs/hosting.html
 
