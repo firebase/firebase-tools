@@ -4,7 +4,15 @@
   "version": "1.0.2",
   "description": "The Firebase Command Line Tools",
   "keywords": [
-    "firebase"
+    "firebase",
+    "hosting",
+    "ssl",
+    "cdn",
+    "cli",
+    "synchronization",
+    "real-time",
+    "websockets",
+    "cloud"
   ],
   "author": "Firebase <support@firebase.com>",
   "contributors": [
