@@ -1,7 +1,7 @@
 {
   "name": "firebase-tools",
   "preferGlobal": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "The Firebase Command Line Tools",
   "keywords": [
     "firebase"
@@ -38,5 +38,9 @@
   },
   "bin": {
     "firebase": "./bin/firebase"
-  }
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "engineStrict": true
 }
