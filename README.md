@@ -61,3 +61,7 @@ Usage: firebase <command>
 
 ## Credit
 Inspired by [Luke Vivier](https://github.com/lvivier)'s Firebase command line tools.
+
+License
+-------
+[MIT](http://firebase.mit-license.org)
