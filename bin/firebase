@@ -69,6 +69,9 @@ if (argv._.length === 0) {
       case 'deploy':
         app.deploy(argv);
         break;
+      case 'delete-site':
+        app.deleteSite(argv);
+        break;
       case 'open':
         app.open(argv);
         break;
