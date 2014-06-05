@@ -43,6 +43,10 @@ Usage: firebase <command>
 
   list
     Lists the Firebases available to the currently logged in user.
+    
+  delete-site
+    Deletes the current app from Firebase Hosting and displays a
+    'Site not Found' page as if the site had never been deployed to.
 
   login
     Logs the user into Firebase. All commands that require login will prompt
@@ -52,11 +56,15 @@ Usage: firebase <command>
     Logs the user out of Firebase.
 
   -h, --help
-    Shows this help screen. Use `firebase <command> --help` for more detailed
-    help instructions.
+    Shows this help screen. Use `firebase <command> --help` for more
+    detailed help instructions.
 
   -v, --version
     Displays the current version.
+
+  -s, --silent
+    Silent mode for scripting - commands will error with non-zero status code
+    instead of waiting for prompt if not enough information supplied.
 ```
 
 ## Credit
