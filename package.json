@@ -1,7 +1,7 @@
 {
   "name": "firebase-tools",
   "preferGlobal": true,
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "The Firebase Command Line Tools",
   "keywords": [
     "firebase",
