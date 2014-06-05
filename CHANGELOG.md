@@ -2,6 +2,8 @@
 - Supports new "redirects", "rewrites", and "headers" parameters in the `firebase.json` to allow greater customization of hosting parameters
 - improves default "ignore" rules to specify any dot file, regardless of whether in a sub-directory
 
+- - -
+
 ## v1.0.6
 - Adds `-s` functionality to all commands for silent mode while scripting - commands will error with non-zero status code instead of waiting for prompt if not enough information supplied
 - `delete-site` command as a convenience method for removing a site from hosting. Site shows up as 'Site Not Found' as if never deployed to
