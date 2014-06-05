@@ -6,9 +6,11 @@ var argv = require('optimist')
               .alias('m', 'message')
               .alias('p', 'public')
               .alias('r', 'rules')
+              .alias('s', 'silent')
               .alias('t', 'template')
               .alias('v', 'version')
               .boolean('d')
+              .boolean('s')
               .argv,
     prompt = require('prompt'),
     firebase = require('../lib/firebase'),
