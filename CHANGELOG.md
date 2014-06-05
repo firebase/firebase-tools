@@ -3,7 +3,7 @@
 - `delete-site` command as a convenience method for removing a site from hosting. Site shows up as 'Site Not Found' as if never deployed to
 
 ## v1.0.5
-- Gracefully handles error caused by symlinks in public directory until isaacs/fstream#16 fix
+- Gracefully handles error caused by symlinks in public directory until [isaacs/fstream#16](https://github.com/isaacs/fstream/pull/16) fix
 
 ## v1.0.4
 - NPM artifact fix
