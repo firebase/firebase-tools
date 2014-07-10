@@ -21,7 +21,21 @@ if [[ $VERSION != $NPM_VERSION ]]; then
   exit 1
 fi
 
-# Create a new git tag if they have not already done so
+# Ensure the checked out branch is master
+CHECKED_OUT_BRANCH="$(git branch | grep "*" | awk -F ' ' '{print $2}')"
+if [[ $CHECKED_OUT_BRANCH != "master" ]]; then
+  echo "Error: Your firebase-tools repo is not on the master branch."
+  exit 1
+fi
+
+# Pull any changes to the firebase-tools repo
+git pull origin master
+if [[ $? -ne 0 ]]; then
+  echo "Error: Failed to do git pull from firebase-tools repo."
+  exit 1
+fi
+
+# Create a git tag for the new version
 LAST_GIT_TAG="$(git tag --list | tail -1 | awk -F 'v' '{print $2}')"
 if [[ $VERSION != $LAST_GIT_TAG ]]; then
   git tag v$VERSION
@@ -30,8 +44,8 @@ if [[ $VERSION != $LAST_GIT_TAG ]]; then
   echo "*** Last commit tagged as v${VERSION} ***"
   echo
 else
-  echo "*** Git tag v${VERSION} already created ***"
-  echo
+  echo "Error: git tag v${VERSION} already exists. Make sure you are not releasing an already-released version."
+  exit 1
 fi
 
 # Publish the new version to npm
