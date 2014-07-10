@@ -1,24 +1,34 @@
-firebase-tools
-============
+# firebase-tools
 
-These are the Firebase Command Line Tools. They can be used to: 
+[![NPM version](https://badge.fury.io/js/firebase-tools.svg)](http://badge.fury.io/js/firebase-tools)
+
+These are the Firebase Command Line (CLI) Tools. They can be used to:
+
 * Administer your Firebase account
-* Interact with [Firebase Hosting](https://www.firebase.com/hosting.html), our product to host your HTML, JS, images, etc.
+* Interact with [Firebase Hosting](https://www.firebase.com/hosting.html), our product to host your HTML, JS, CSS, images, etc.
 
-For a quick start guide, see https://www.firebase.com/docs/hosting.html
-
+To get started with the Firebase CLI, [read through our hosting quickstart guide](https://www.firebase.com/docs/hosting.html).
 
 ## Installation
-To install, first you'll need to [sign up](https://www.firebase.com/signup/) for
-a Firebase account and have installed [Node.js](http://nodejs.org/) and
-[npm](https://npmjs.org/). Then run
+
+To install the Firebase CLI, you first need to [sign up for a Firebase account](https://www.firebase.com/signup/).
+Then you need to install [Node.js](http://nodejs.org/) and [npm](https://npmjs.org/).
+Note that installing Node.js should install npm as well.
+
+Once npm is installed, get the Firebase CLI by running the following shell command:
+
 ```shell
 npm install -g firebase-tools
 ```
-This will install the globally accessible command `firebase`
+
+This will provide you with the globally accessible `firebase` command.
+
 ## Commands
+
 The command `firebase --help` lists the available commands and
-`firebase <command> --help` shows more details.
+`firebase <command> --help` shows more details for an individual command.
+
+Here is the output of running `firebase --help`:
 
 ```shell
 Usage: firebase <command>
@@ -43,7 +53,7 @@ Usage: firebase <command>
 
   list
     Lists the Firebases available to the currently logged in user.
-    
+
   delete-site
     Deletes the current app from Firebase Hosting and displays a
     'Site not Found' page as if the site had never been deployed to.
@@ -68,8 +78,8 @@ Usage: firebase <command>
 ```
 
 ## Credit
-Inspired by [Luke Vivier](https://github.com/lvivier)'s Firebase command line tools.
 
-License
--------
+Inspired by [Luke Vivier](https://github.com/lvivier/)'s Firebase command line tools.
+
+## License
 [MIT](http://firebase.mit-license.org)
