@@ -1,5 +1,5 @@
 ## v1.1.0
-- Supports new "redirects", "rewrites", and "headers" parameters in the `firebase.json` to allow greater customization of hosting parameters
+- Supports new advanced features parameters in the `firebase.json` to allow greater customization of hosting parameters
 - improves default "ignore" rules to specify any dot file, regardless of whether in a sub-directory
 
 - - -
