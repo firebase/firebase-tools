@@ -1,10 +1,18 @@
 {
   "name": "firebase-tools",
   "preferGlobal": true,
-  "version": "1.0.6",
+  "version": "1.1.0",
   "description": "The Firebase Command Line Tools",
   "keywords": [
-    "firebase"
+    "firebase",
+    "hosting",
+    "ssl",
+    "cdn",
+    "cli",
+    "synchronization",
+    "real-time",
+    "websockets",
+    "cloud"
   ],
   "author": "Firebase <support@firebase.com>",
   "contributors": [
