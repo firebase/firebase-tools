@@ -54,9 +54,28 @@ if [[ $? -ne 0 ]]; then
   echo "!!! Error publishing to npm! You must do this manually by running 'npm publish'. !!!"
   exit 1
 else
-  echo "*** v${VERSION} published to npm ***"
+  echo "*** v${VERSION} published to npm as firebase-tools ***"
   echo
 fi
+
+sed -i.bak s/\"firebase-tools\"/\"firebase-cli\"/g package.json
+if [[ $? -ne 0 ]]; then
+  echo "Error: Failed to replace firebase-tools with firebase-cli in the package.json."
+  exit 1
+fi
+rm package.json.bak
+
+# Publish the alternative version to npm
+npm publish
+if [[ $? -ne 0 ]]; then
+  echo "!!! Error publishing to npm! You must do this manually by running 'npm publish'. !!!"
+  exit 1
+else
+  echo "*** v${VERSION} published to npm as firebase-cli ***"
+  echo
+fi
+
+git checkout -- package.json
 
 echo "Manual steps remaining:"
 echo "  1) Update the release notes for firebase-tools version ${VERSION} on GitHub"
