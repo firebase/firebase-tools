@@ -1,3 +1,6 @@
+## v1.1.1
+- Adds a brief description of each template inline when running `firebase bootstrap`
+
 ## v1.1.0
 - Supports new advanced features parameters in the `firebase.json` to allow greater customization of hosting parameters
 - improves default "ignore" rules to specify any dot file, regardless of whether in a sub-directory
