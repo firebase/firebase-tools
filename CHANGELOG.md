@@ -1,3 +1,6 @@
+## v1.1.2
+- Adds client-side validation of new advanced features and better error messaging
+
 ## v1.1.1
 - Adds a brief description of each template inline when running `firebase bootstrap`
 
