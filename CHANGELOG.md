@@ -1,3 +1,6 @@
+## v1.1.4
+- Fixing wrong error message when incorrect password entered
+
 ## v1.1.3
 - Fixes progress bar so it doesn't stick at 100% at the end of long uploads
 - Improves error messaging on login / token validation if the CLI version is out of date
