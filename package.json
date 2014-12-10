@@ -39,7 +39,7 @@
     "request": "2.34.x",
     "fstream-ignore": "0.0.x",
     "temp": "0.6.x",
-    "firebase": "~1.0.11",
+    "firebase": "2.x",
     "progress": "~1.1.5",
     "when": "3.1.0",
     "chalk": "~0.4.0"
