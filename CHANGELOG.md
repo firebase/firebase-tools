@@ -1,3 +1,8 @@
+## v1.1.5
+- Updating Firebase dependency to latest 2.0.x
+- `firebase bootstrap` and `firebase deploy` no longer rely on temporary files / folders
+- Updated node module dependencies
+
 ## v1.1.4
 - Fixing wrong error message when incorrect password entered
 
