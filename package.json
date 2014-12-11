@@ -38,7 +38,7 @@
     "open": "0.0.x",
     "request": "2.50.x",
     "fstream-ignore": "1.0.x",
-    "firebase": "2.x",
+    "firebase": "2.0.x",
     "progress": "1.1.x",
     "when": "3.6.x",
     "chalk": "0.5.x"
