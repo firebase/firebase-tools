@@ -38,7 +38,7 @@
     "open": "0.0.x",
     "request": "2.34.x",
     "fstream-ignore": "0.0.x",
-    "temp": "0.6.x",
+    "temp": "0.8.x",
     "firebase": "~1.0.11",
     "progress": "~1.1.5",
     "when": "3.1.0",
