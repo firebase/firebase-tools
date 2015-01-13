@@ -36,7 +36,7 @@
     "prompt": "0.2.x",
     "tar": "1.0.x",
     "open": "0.0.x",
-    "request": "2.50.x",
+    "request": "2.51.x",
     "fstream-ignore": "1.0.x",
     "firebase": "2.0.x",
     "progress": "1.1.x",
