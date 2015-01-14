@@ -32,16 +32,16 @@
   "repository": "https://github.com/firebase/firebase-tools.git",
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
-    "optimist": "0.6.x",
-    "prompt": "0.2.x",
-    "tar": "1.0.x",
-    "open": "0.0.x",
-    "request": "2.51.x",
+    "chalk": "0.5.x",
+    "firebase": "2.1.x",
     "fstream-ignore": "1.0.x",
-    "firebase": "2.0.x",
+    "open": "0.0.x",
+    "optimist": "0.6.x",
     "progress": "1.1.x",
-    "when": "3.6.x",
-    "chalk": "0.5.x"
+    "prompt": "0.2.x",
+    "request": "2.51.x",
+    "tar": "1.0.x",
+    "when": "3.6.x"
   },
   "bin": {
     "firebase": "./bin/firebase"
