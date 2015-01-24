@@ -1,0 +1,9 @@
+language: node_js
+node_js:
+- '0.10'
+install:
+- npm install
+script:
+- npm run travis
+after_script:
+- cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js

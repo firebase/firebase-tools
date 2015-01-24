@@ -1,36 +1,48 @@
 {
   "name": "firebase-tools",
-  "preferGlobal": true,
-  "version": "1.1.5",
-  "description": "The Firebase Command Line Tools",
-  "keywords": [
-    "firebase",
-    "hosting",
-    "ssl",
-    "cdn",
-    "cli",
-    "synchronization",
-    "real-time",
-    "websockets",
-    "cloud"
-  ],
-  "author": "Firebase <support@firebase.com>",
-  "contributors": [
+  "description": "Firebase command line tools",
+  "version": "0.0.0",
+  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
+  "homepage": "https://github.com/firebase/firebase-tools/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firebase/firebase-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/firebase/firebase-tools/issues"
+  },
+  "licenses": [
     {
-      "name": "Chris Raynor",
-      "email": "chris@firebase.com"
-    },
-    {
-      "name": "Jacob Wenger",
-      "email": "jacob@firebase.com"
-    },
-    {
-      "name": "Rob DiMarco",
-      "email": "rob@firebase.com"
+      "type": "MIT",
+      "url": "http://firebase.mit-license.org/"
     }
   ],
-  "repository": "https://github.com/firebase/firebase-tools.git",
-  "homepage": "https://github.com/firebase/firebase-tools",
+  "keywords": [
+    "cdn",
+    "cli",
+    "ssl",
+    "cloud",
+    "hosting",
+    "firebase",
+    "realtime",
+    "websockets",
+    "synchronization"
+  ],
+  "preferGlobal": true,
+  "bin": {
+    "firebase": "./bin/firebase"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "engineStrict": true,
+  "files": [
+    "bin/**",
+    "lib/**",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "dependencies": {
     "chalk": "0.5.x",
     "firebase": "2.1.x",
@@ -43,11 +55,18 @@
     "tar": "1.0.x",
     "when": "3.6.x"
   },
-  "bin": {
-    "firebase": "./bin/firebase"
+  "devDependencies": {
+    "chai": "^1.10.0",
+    "coveralls": "2.11.2",
+    "gulp": "3.8.10",
+    "gulp-exit": "0.0.2",
+    "gulp-istanbul": "0.5.0",
+    "gulp-jshint": "1.9.0",
+    "gulp-mocha": "2.0.0",
+    "jshint-stylish": "1.0.0"
   },
-  "engines": {
-    "node": ">=0.10.0"
-  },
-  "engineStrict": true
+  "scripts": {
+    "test": "gulp test",
+    "travis": "gulp"
+  }
 }
