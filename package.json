@@ -44,17 +44,16 @@
     "package.json"
   ],
   "dependencies": {
-    "optimist": "0.6.x",
-    "prompt": "0.2.x",
-    "tar": "0.1.x",
+    "chalk": "0.5.x",
+    "firebase": "2.1.x",
+    "fstream-ignore": "1.0.x",
     "open": "0.0.x",
-    "request": "2.34.x",
-    "fstream-ignore": "0.0.x",
-    "temp": "0.6.x",
-    "firebase": "~1.0.11",
-    "progress": "~1.1.5",
-    "when": "3.1.0",
-    "chalk": "~0.4.0"
+    "optimist": "0.6.x",
+    "progress": "1.1.x",
+    "prompt": "0.2.x",
+    "request": "2.51.x",
+    "tar": "1.0.x",
+    "when": "3.6.x"
   },
   "devDependencies": {
     "chai": "^1.10.0",
