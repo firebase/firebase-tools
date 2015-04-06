@@ -1,7 +1,7 @@
 {
   "name": "firebase-tools",
   "description": "Firebase command line tools",
-  "version": "0.0.0",
+  "version": "1.1.6",
   "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
   "homepage": "https://github.com/firebase/firebase-tools/",
   "repository": {
