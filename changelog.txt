@@ -1,0 +1,1 @@
+feature - Added ability to set `X-UA-Compatible`, `X-Content-Type-Options`, `X-Frame-Options`, and `X-XSS-Protection` headers to requests.
