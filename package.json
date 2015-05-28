@@ -53,7 +53,7 @@
     "prompt": "0.2.x",
     "request": "2.51.x",
     "source-map-support": "0.2.7",
-    "source-processor": "0.0.6",
+    "source-processor": "0.0.7",
     "tar": "1.0.x",
     "when": "3.6.x"
   },
