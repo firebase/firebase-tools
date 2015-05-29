@@ -41,3 +41,5 @@ You can get more information about the available commands in our
 ## Credit
 
 Inspired by [Luke Vivier](https://github.com/lvivier/)'s Firebase command line tools.
+
+test
