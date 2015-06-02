@@ -1,7 +1,7 @@
 {
   "name": "firebase-tools",
   "description": "Firebase command line tools",
-  "version": "0.0.0",
+  "version": "1.1.7",
   "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
   "homepage": "https://github.com/firebase/firebase-tools/",
   "repository": {
@@ -45,8 +45,10 @@
   ],
   "dependencies": {
     "chalk": "0.5.x",
+    "filesize": "^3.1.2",
     "firebase": "2.2.x",
     "fstream-ignore": "1.0.x",
+    "minimatch": "^2.0.8",
     "open": "0.0.x",
     "optimist": "0.6.x",
     "progress": "1.1.x",
