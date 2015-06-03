@@ -1,0 +1,3 @@
+feature - `firebase deploy` can be run from any directory inside firebase app.
+fixed - Deploying large sites using `firebase deploy` will not block event queue.
+changed - Reports error location if firebase.json file can't be parsed.
