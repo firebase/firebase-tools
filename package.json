@@ -45,6 +45,7 @@
   ],
   "dependencies": {
     "chalk": "0.5.x",
+    "filesize": "3.1.2",
     "firebase": "2.2.x",
     "fstream-ignore": "1.0.x",
     "open": "0.0.x",
