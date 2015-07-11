@@ -6,7 +6,7 @@ module.exports = function(client) {
     .description('check that your firebase.json is valid');
 
   var validate = function(options) {
-    var config = require('../lib/config');
+    var config = require('../lib/loadConfig')();
     validator.validate(config).then(function() {
       client.logger.info("Your firebase.json is looking good!");
     }, client.errorOut);
