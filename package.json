@@ -1,0 +1,44 @@
+{
+  "name": "firebase-cli",
+  "version": "2.0.0",
+  "description": "Command-Line Interface for Firebase",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firebase/firebase-cli.git"
+  },
+  "keywords": [
+    "cli",
+    "firebase"
+  ],
+  "author": "Firebase Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/firebase/firebase-cli/issues"
+  },
+  "homepage": "https://github.com/firebase/firebase-cli",
+  "dependencies": {
+    "chalk": "^1.1.0",
+    "commander": "^2.8.1",
+    "inquirer": "^0.8.5",
+    "jsck": "^0.2.5",
+    "request": "^2.58.0",
+    "rsvp": "^3.0.18",
+    "superstatic": "^2.2.1",
+    "update-notifier": "^0.5.0",
+    "winston": "^1.0.1"
+  },
+  "devDependencies": {
+    "chai": "^3.0.0",
+    "coveralls": "2.11.2",
+    "gulp": "^3.9.0",
+    "gulp-exit": "0.0.2",
+    "gulp-istanbul": "^0.10.0",
+    "gulp-jshint": "^1.11.2",
+    "gulp-mocha": "^2.1.2",
+    "jshint-stylish": "^2.0.1"
+  }
+}
