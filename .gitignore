@@ -1,3 +1,8 @@
 /node_modules
+/coverage
 firebase-debug.log
 npm-debug.log
+
+.DS_Store
+.idea
+*.iml

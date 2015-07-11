@@ -15,8 +15,8 @@ module.exports = function(client) {
     }).listen();
 
     client.logger.info("Listening at",chalk.underline(chalk.bold("http://" + options.host + ":" + options.port)));
-  }
+  };
 
   command.action(serve);
   return serve;
-}
+};
