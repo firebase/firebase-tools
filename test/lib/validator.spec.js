@@ -1,7 +1,7 @@
-var chai = require('chai'),
-    expect = chai.expect;
+'use strict';
 
-var api = require('../../lib/validator');
+var chai = require('chai');
+var expect = chai.expect;
 
 describe('Validator', function() {
   it('should have a test suite', function() {

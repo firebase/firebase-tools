@@ -5,6 +5,21 @@ var pkg = require('../package.json');
 var client = require('..');
 var FirebaseError = require('../lib/error');
 var errorOut = require('../lib/errorOut');
+var winston = require('winston');
+var logger = require('../lib/logger');
+var fs = require('fs');
+
+var logFilename = process.cwd() + "/firebase-debug.log";
+
+logger.add(winston.transports.Console, {
+  level: process.env.DEBUG ? 'debug' : 'info',
+  showLevel: true,
+  colorize: true
+}).add(winston.transports.File, {
+  level: 'debug',
+  filename: logFilename,
+  json: false
+});
 
 updateNotifier({pkg: pkg}).notify();
 
@@ -24,3 +39,10 @@ try {
 if (!process.argv.slice(2).length) {
   client.cli.help();
 }
+
+process.on('exit', function(code) {
+  if ((process.exitCode || code) === 0 && fs.existsSync(logFilename)) {
+    fs.unlinkSync(logFilename);
+  }
+});
+require('exit-code');

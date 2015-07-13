@@ -5,12 +5,13 @@ var gulp = require('gulp');
 
 // File I/O
 var exit = require('gulp-exit');
-var jshint = require('gulp-jshint');
+var eslint = require('gulp-eslint');
 
 // Testing
 var mocha = require('gulp-mocha');
 var istanbul = require('gulp-istanbul');
 
+var _ = require('lodash');
 
 /****************/
 /*  FILE PATHS  */
@@ -33,13 +34,11 @@ var paths = {
 /***********/
 // Lints the JavaScript files
 gulp.task('lint', function() {
-  return gulp.src(paths.js)
-    .pipe(jshint())
-    .pipe(jshint.reporter('jshint-stylish'))
-    .pipe(jshint.reporter('fail'))
-    .on('error', function(error) {
-      throw error;
-    });
+  var filesToLint = _.union(paths.js, paths.tests);
+  return gulp.src(filesToLint)
+    .pipe(eslint())
+    .pipe(eslint.format())
+    .pipe(eslint.failAfterError());
 });
 
 // Runs the Mocha test suite
