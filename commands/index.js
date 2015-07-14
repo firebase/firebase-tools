@@ -7,6 +7,7 @@ module.exports = function(client) {
     return cmd.getAction();
   };
 
+  client.init = loadCommand('init');
   client.login = loadCommand('login');
   client.logout = loadCommand('logout');
   client.serve = loadCommand('serve');

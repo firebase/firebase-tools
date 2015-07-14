@@ -6,7 +6,7 @@ var logger = require('../lib/logger');
 var chalk = require('chalk');
 
 module.exports = new Command('logout')
-  .description('delete local authentication information')
+  .description('delete local authentication data')
   .action(function(options, resolve) {
     var user = configstore.get('user');
     if (user) {

@@ -7,6 +7,7 @@ var logger = require('./lib/logger');
 
 program.version(pkg.version);
 program.option('-t, --token <token>', 'supply an auth token for this command');
+program.option('-s, --silent', 'non-interactive mode: error instead of waiting for prompts');
 
 var client = {};
 client.cli = program;
