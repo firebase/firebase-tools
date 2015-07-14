@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+'use strict';
 
 var updateNotifier = require('update-notifier');
 var pkg = require('../package.json');
@@ -8,8 +9,9 @@ var errorOut = require('../lib/errorOut');
 var winston = require('winston');
 var logger = require('../lib/logger');
 var fs = require('fs');
+var path = require('path');
 
-var logFilename = process.cwd() + "/firebase-debug.log";
+var logFilename = path.join(process.cwd(), '/firebase-debug.log');
 
 logger.add(winston.transports.Console, {
   level: process.env.DEBUG ? 'debug' : 'info',
@@ -28,7 +30,7 @@ try {
 } catch (e) {
   var err = e;
   if (err.name !== 'FirebaseError') {
-    err = new FirebaseError("An unexpected error has occurred. Please contact support", {
+    err = new FirebaseError('An unexpected error has occurred. Please contact support', {
       status: 500,
       original: e
     });
@@ -41,7 +43,8 @@ if (!process.argv.slice(2).length) {
 }
 
 process.on('exit', function(code) {
-  if ((process.exitCode || code) === 0 && fs.existsSync(logFilename)) {
+  code = process.exitCode || code;
+  if (code < 2 && fs.existsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }
 });

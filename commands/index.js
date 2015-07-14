@@ -8,6 +8,7 @@ module.exports = function(client) {
   };
 
   client.login = loadCommand('login');
+  client.logout = loadCommand('logout');
   client.serve = loadCommand('serve');
   client.validate = loadCommand('validate');
 

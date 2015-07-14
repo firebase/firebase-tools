@@ -14,5 +14,6 @@ module.exports = new Command('validate')
       resolve(true);
     }, function(err) {
       logError(err);
+      process.exitCode = 2;
     });
   });
