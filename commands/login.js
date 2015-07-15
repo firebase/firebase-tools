@@ -13,7 +13,7 @@ var ticketsRef = new Firebase('https://gauth.firebaseio.com/tickets');
 
 module.exports = new Command('login')
   .description('sign in to your Google account')
-  .action(function(options, resolve) {
+  .action(function(options, resolve, reject) {
     var user = configstore.get('user');
     if (user) {
       logger.info('Already logged in as', chalk.bold(user.google.email));
@@ -21,9 +21,8 @@ module.exports = new Command('login')
     } else {
       var ticket = uuid.v4();
       var url = 'https://gauth.firebaseapp.com/?ticket=' + ticket;
-      // allow 5 minutes to consume the ticket
-
       var ticketRef = ticketsRef.child(ticket);
+
       ticketRef.set({
         createdAt: Firebase.ServerValue.TIMESTAMP
       }, function(err) {

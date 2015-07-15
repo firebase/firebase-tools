@@ -13,6 +13,14 @@ var path = require('path');
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
 
+process.on('exit', function(code) {
+  code = process.exitCode || code;
+  if (code < 2 && fs.existsSync(logFilename)) {
+    fs.unlinkSync(logFilename);
+  }
+});
+require('exit-code');
+
 logger.add(winston.transports.Console, {
   level: process.env.DEBUG ? 'debug' : 'info',
   showLevel: true,
@@ -32,7 +40,8 @@ try {
   if (err.name !== 'FirebaseError') {
     err = new FirebaseError('An unexpected error has occurred. Please contact support', {
       status: 500,
-      original: e
+      original: err,
+      exit: 2
     });
   }
   errorOut(client, err);
@@ -41,11 +50,3 @@ try {
 if (!process.argv.slice(2).length) {
   client.cli.help();
 }
-
-process.on('exit', function(code) {
-  code = process.exitCode || code;
-  if (code < 2 && fs.existsSync(logFilename)) {
-    fs.unlinkSync(logFilename);
-  }
-});
-require('exit-code');

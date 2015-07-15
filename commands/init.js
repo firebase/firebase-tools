@@ -6,12 +6,29 @@ var path = require('path');
 var defaultConfig = require('../templates/firebase.json');
 var _ = require('lodash');
 var logger = require('../lib/logger');
+var homeDir = require('user-home');
 
 module.exports = new Command('init')
   .description('setup a Firebase app in the current directory')
   .option('-f, --firebase <firebase>', 'the name of the firebase to use')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .action(function(options, resolve) {
+    var cwd = process.cwd();
+
+    if (path.relative(homeDir, cwd).match(/^\.\./)) {
+      logger.warn('Initializing outside your home directory');
+    }
+    if (cwd === homeDir) {
+      logger.warn('Initializing directly at your home directory');
+    }
+    var emptyDir = fs.readdirSync(cwd).length === 0;
+    if (!emptyDir) {
+      logger.warn('Initializing in a non-empty directory');
+    }
+    if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
+      logger.warn('firebase.json already present, will be overwritten by this command');
+    }
+
     prompt(options, [
       {
         type: 'input',
@@ -30,13 +47,13 @@ module.exports = new Command('init')
         message: 'What directory should be your public dir?',
         'default': '.',
         validate: function(answer) {
-          if (!fs.existsSync(path.resolve(process.cwd(), answer))) {
+          if (!fs.existsSync(path.resolve(cwd, answer))) {
             return 'Public directory must already exist';
           }
           return true;
         },
         filter: function(input) {
-          input = path.relative(process.cwd(), input);
+          input = path.relative(cwd, input);
           if (input === '') { input = '.'; }
           return input;
         }
@@ -46,7 +63,7 @@ module.exports = new Command('init')
         firebase: options.firebase,
         'public': options.public
       }), undefined, 2);
-      fs.writeFileSync(path.join(process.cwd(), 'firebase.json'), config);
+      fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
       logger.info('Firebase initialized, configuration written to firebase.json');
       resolve();
     });
