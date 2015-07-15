@@ -7,7 +7,7 @@ chai.use(require('chai-as-promised'));
 var command = require('../../commands/validate');
 var path = require('path');
 var FirebaseError = require('../../lib/error');
-var validate = command.getAction();
+var validate = command.runner();
 
 
 describe('command: validate', function() {

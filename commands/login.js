@@ -27,7 +27,7 @@ module.exports = new Command('login')
         createdAt: Firebase.ServerValue.TIMESTAMP
       }, function(err) {
         if (err) {
-          throw new FirebaseError('There was a problem logging in', {original: err});
+          reject(new FirebaseError('There was a problem logging in', {original: err}));
         }
         logger.info('Visit this URL to log in:');
         logger.info(chalk.bold.underline(url));
