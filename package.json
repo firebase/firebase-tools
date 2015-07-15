@@ -24,6 +24,7 @@
     "chalk": "^1.1.0",
     "commander": "^2.8.1",
     "configstore": "^1.2.0",
+    "didyoumean": "^1.2.1",
     "exit-code": "^1.0.2",
     "firebase": "^2.2.7",
     "inquirer": "^0.8.5",

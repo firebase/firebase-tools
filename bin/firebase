@@ -10,6 +10,8 @@ var winston = require('winston');
 var logger = require('../lib/logger');
 var fs = require('fs');
 var path = require('path');
+var chalk = require('chalk');
+var configstore = require('../lib/configstore');
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
 
@@ -18,12 +20,22 @@ process.on('exit', function(code) {
   if (code < 2 && fs.existsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }
+
+  if (code > 0) {
+    var lastError = configstore.get('lastError');
+    var timestamp = new Date().getTime();
+    if (lastError && lastError > timestamp - 120000) {
+      console.log();
+      console.log('Having trouble? Don\'t hesitate to contact', chalk.underline.yellow('support@firebase.com'));
+    }
+    configstore.set('lastError', timestamp);
+  }
 });
 require('exit-code');
 
 logger.add(winston.transports.Console, {
   level: process.env.DEBUG ? 'debug' : 'info',
-  showLevel: true,
+  showLevel: false,
   colorize: true
 }).add(winston.transports.File, {
   level: 'debug',
