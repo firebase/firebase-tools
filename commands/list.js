@@ -4,7 +4,6 @@ var Command = require('../lib/command');
 var api = require('../lib/api');
 var requireAuth = require('../lib/requireAuth');
 var logList = require('../lib/logList');
-var FirebaseError = require('../lib/error');
 var chalk = require('chalk');
 
 module.exports = new Command('list')
