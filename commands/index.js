@@ -11,6 +11,7 @@ module.exports = function(client) {
   client.list = loadCommand('list');
   client.login = loadCommand('login');
   client.logout = loadCommand('logout');
+  client.open = loadCommand('open');
   client.serve = loadCommand('serve');
   client.validate = loadCommand('validate');
 

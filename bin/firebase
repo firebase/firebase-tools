@@ -12,8 +12,33 @@ var fs = require('fs');
 var path = require('path');
 var chalk = require('chalk');
 var configstore = require('../lib/configstore');
+var _ = require('lodash');
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
+logger.add(winston.transports.Console, {
+  level: process.env.DEBUG ? 'debug' : 'info',
+  showLevel: false,
+  colorize: true
+}).add(winston.transports.File, {
+  level: 'debug',
+  filename: logFilename,
+  json: false,
+  formatter: function(input) {
+    input.message = chalk.stripColor(input.message);
+    return [
+      '[' + input.level + ']',
+      input.message
+    ].join(' ');
+  }
+});
+
+logger.debug(_.repeat('-', 70));
+logger.debug('Command:     ', process.argv.join(' '));
+logger.debug('Platform:    ', process.platform);
+logger.debug('Node Version:', process.version);
+logger.debug('Time:        ', new Date().toString());
+logger.debug(_.repeat('-', 70));
+logger.debug();
 
 process.on('exit', function(code) {
   code = process.exitCode || code;
@@ -33,31 +58,20 @@ process.on('exit', function(code) {
 });
 require('exit-code');
 
-logger.add(winston.transports.Console, {
-  level: process.env.DEBUG ? 'debug' : 'info',
-  showLevel: false,
-  colorize: true
-}).add(winston.transports.File, {
-  level: 'debug',
-  filename: logFilename,
-  json: false
-});
-
-updateNotifier({pkg: pkg}).notify();
-
-try {
-  client.cli.parse(process.argv);
-} catch (e) {
-  var err = e;
-  if (err.name !== 'FirebaseError') {
+process.on('uncaughtException', function(e) {
+  var err;
+  if (e.name !== 'FirebaseError') {
     err = new FirebaseError('An unexpected error has occurred. Please contact support', {
-      status: 500,
-      original: err,
+      original: e,
       exit: 2
     });
   }
   errorOut(client, err);
-}
+});
+
+updateNotifier({pkg: pkg}).notify();
+
+client.cli.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
   client.cli.help();
