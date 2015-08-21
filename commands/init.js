@@ -16,7 +16,7 @@ module.exports = new Command('init')
   .option('-f, --firebase <firebase>', 'the name of the firebase to use')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .before(requireAuth)
-  .action(function(options, resolve) {
+  .action(function(options) {
     var cwd = process.cwd();
 
     if (path.relative(homeDir, cwd).match(/^\.\./)) {
@@ -33,7 +33,7 @@ module.exports = new Command('init')
       logger.warn(chalk.yellow('⚠  firebase.json already present, will be overwritten by this command'));
     }
 
-    api.getFirebases().then(function(firebases) {
+    return api.getFirebases().then(function(firebases) {
       var firebaseNames = Object.keys(firebases).sort();
       return prompt(options, [
         {
@@ -72,7 +72,6 @@ module.exports = new Command('init')
         }), undefined, 2);
         fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
         logger.info('Firebase initialized, configuration written to firebase.json');
-        resolve();
       });
     });
   });
