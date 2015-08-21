@@ -7,6 +7,8 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.blank = loadCommand('blank');
+  client.bootstrap = loadCommand('bootstrap');
   client.deploy = loadCommand('deploy');
   client.init = loadCommand('init');
   client.list = loadCommand('list');

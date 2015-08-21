@@ -29,10 +29,15 @@ program.action(function(cmd) {
     chalk.bold(cmd), 'is not a Firebase command'
   );
 
-  var suggestion = didYouMean(cmd, commandNames);
-  if (suggestion) {
+  if (cmd === 'delete-site') {
     logger.error();
-    logger.error('Did you mean', chalk.bold(suggestion) + '?');
+    logger.error('Command has been renamed, please run', chalk.bold('firebase blank'), 'instead');
+  } else {
+    var suggestion = didYouMean(cmd, commandNames);
+    if (suggestion) {
+      logger.error();
+      logger.error('Did you mean', chalk.bold(suggestion) + '?');
+    }
   }
 
   process.exit(1);
