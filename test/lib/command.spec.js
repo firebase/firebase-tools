@@ -4,6 +4,8 @@ var chai = require('chai');
 var expect = chai.expect;
 chai.use(require('chai-as-promised'));
 
+var RSVP = require('rsvp');
+
 var Command = require('../../lib/command');
 
 describe('Command', function() {
@@ -44,21 +46,21 @@ describe('Command', function() {
 
   describe('.runner()', function() {
     it('should work when no arguments are passed and options', function() {
-      var run = command.action(function(options, resolve) {
+      var run = command.action(function(options) {
         options.foo = 'bar';
-        resolve(options);
+        return RSVP.resolve(options);
       }).runner();
 
       return expect(run()).to.eventually.have.property('foo');
     });
 
     it('should execute befores before the action', function() {
-      var run = command.before(function(options, resolve) {
+      var run = command.before(function(options) {
         options.foo = true;
-        resolve();
-      }).action(function(options, resolve) {
+        return RSVP.resolve();
+      }).action(function(options) {
         if (options.foo) { options.bar = 'baz'; }
-        resolve(options);
+        return options;
       }).runner();
 
       return expect(run()).to.eventually.have.property('bar');

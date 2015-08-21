@@ -20,5 +20,4 @@ module.exports = new Command('serve')
     }).listen();
 
     logger.info('Listening at', chalk.underline(chalk.bold('http://' + options.host + ':' + options.port)));
-    resolve();
   });

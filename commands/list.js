@@ -9,10 +9,10 @@ var chalk = require('chalk');
 module.exports = new Command('list')
   .description('list the Firebases to which you have access')
   .before(requireAuth)
-  .action(function(options, resolve, reject) {
-    api.getFirebases().then(function(firebases) {
+  .action(function() {
+    return api.getFirebases().then(function(firebases) {
       var list = Object.keys(firebases).sort();
       logList('info', 'Firebases for your account', list, chalk.yellow);
-      resolve(firebases);
-    }, reject);
+      return firebases;
+    });
   });

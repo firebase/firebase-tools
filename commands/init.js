@@ -35,7 +35,7 @@ module.exports = new Command('init')
 
     api.getFirebases().then(function(firebases) {
       var firebaseNames = Object.keys(firebases).sort();
-      prompt(options, [
+      return prompt(options, [
         {
           type: 'list',
           name: 'firebase',
@@ -65,7 +65,7 @@ module.exports = new Command('init')
             return input;
           }
         }
-      ], function() {
+      ]).then(function() {
         var config = JSON.stringify(_.extend(defaultConfig, {
           firebase: options.firebase,
           'public': options.public

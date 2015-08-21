@@ -20,4 +20,10 @@ describe('command: validate', function() {
       cwd: path.join(__dirname, '/../fixtures/valid-config')
     })).to.be.fulfilled;
   });
+
+  it('should reject if firebase.json is present but invalid', function() {
+    return expect(validate({
+      cwd: path.join(__dirname, '/../fixtures/invalid-config')
+    })).to.be.rejectedWith('Your document has validation errors');
+  });
 });
