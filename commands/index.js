@@ -11,6 +11,7 @@ module.exports = function(client) {
   client.bootstrap = loadCommand('bootstrap');
   client.collab = loadCommand('collab');
   client.collab.invite = loadCommand('collab-invite');
+  client.collab.remove = loadCommand('collab-remove');
   client.deploy = loadCommand('deploy');
   client.help = loadCommand('help');
   client.init = loadCommand('init');
