@@ -1,7 +1,7 @@
 'use strict';
 var Command = require('../lib/command');
 var prompt = require('../lib/prompt');
-var fs = require('fs');
+var fs = require('fs-extra');
 var path = require('path');
 var defaultConfig = require('../templates/firebase.json');
 var _ = require('lodash');
@@ -10,6 +10,14 @@ var homeDir = require('user-home');
 var chalk = require('chalk');
 var api = require('../lib/api');
 var requireAuth = require('../lib/requireAuth');
+var RSVP = require('rsvp');
+var FirebaseError = require('../lib/error');
+
+var NEW_FIREBASE = '[create a new firebase]';
+
+var _isOutside = function(from, to) {
+  return path.relative(from, to).match(/^\.\./);
+};
 
 module.exports = new Command('init')
   .description('setup a Firebase app in the current directory')
@@ -17,36 +25,47 @@ module.exports = new Command('init')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .before(requireAuth)
   .action(function(options) {
-    var cwd = process.cwd();
+    var cwd = options.cwd || process.cwd();
 
-    if (path.relative(homeDir, cwd).match(/^\.\./)) {
+    if (_isOutside(homeDir, cwd)) {
       logger.warn(chalk.yellow('⚠  Initializing outside your home directory'));
     }
     if (cwd === homeDir) {
       logger.warn(chalk.yellow('⚠  Initializing directly at your home directory'));
     }
+    if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
+      return RSVP.reject(new FirebaseError('Cannot run init, firebase.json already present'));
+    }
     var emptyDir = fs.readdirSync(cwd).length === 0;
     if (!emptyDir) {
       logger.warn(chalk.yellow('⚠  Initializing in a non-empty directory'));
     }
-    if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
-      logger.warn(chalk.yellow('⚠  firebase.json already present, will be overwritten by this command'));
-    }
 
     return api.getFirebases().then(function(firebases) {
       var firebaseNames = Object.keys(firebases).sort();
+      var nameOptions = [NEW_FIREBASE].concat(firebaseNames);
+
       return prompt(options, [
         {
           type: 'list',
           name: 'firebase',
           message: 'What Firebase do you want to use?',
           validate: function(answer) {
-            if (!firebaseNames.indexOf(answer) >= 0) {
+            if (!nameOptions.indexOf(answer) >= 0) {
               return 'Must specify a Firebase to which you have access';
             }
             return true;
           },
-          choices: firebaseNames
+          choices: nameOptions
+        },
+        {
+          type: 'input',
+          name: 'firebase',
+          message: 'Name your new Firebase:',
+          'default': path.basename(cwd),
+          when: function(answers) {
+            return answers.firebase === NEW_FIREBASE;
+          }
         },
         {
           type: 'input',
@@ -54,8 +73,8 @@ module.exports = new Command('init')
           message: 'What directory should be the public root?',
           'default': '.',
           validate: function(answer) {
-            if (!fs.existsSync(path.resolve(cwd, answer))) {
-              return 'Public directory must already exist';
+            if (_isOutside(cwd, answer)) {
+              return 'Must be within the current directory';
             }
             return true;
           },
@@ -66,10 +85,23 @@ module.exports = new Command('init')
           }
         }
       ]).then(function() {
-        var config = JSON.stringify(_.extend(defaultConfig, {
+        if (!_.contains(firebaseNames, options.firebase)) {
+          return api.request('POST', '/firebase/' + options.firebase, {}, true).then(function(res) {
+            console.log(res.status, res.body);
+          });
+        }
+      }).then(function() {
+        var absPath = path.resolve(cwd, options.public || '.');
+        if (!fs.existsSync(absPath)) {
+          logger.info('Creating directory', chalk.bold(options.public));
+          fs.mkdirsSync(absPath);
+        }
+
+        var config = JSON.stringify(_.extend({}, defaultConfig, {
           firebase: options.firebase,
-          'public': options.public
+          'public': path.relative(cwd, options.public)
         }), undefined, 2);
+
         fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
         logger.info('Firebase initialized, configuration written to firebase.json');
       });
