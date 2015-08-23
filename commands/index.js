@@ -9,6 +9,8 @@ module.exports = function(client) {
 
   client.blank = loadCommand('blank');
   client.bootstrap = loadCommand('bootstrap');
+  client.collab = loadCommand('collab');
+  client.collab.add = loadCommand('collab-add');
   client.deploy = loadCommand('deploy');
   client.init = loadCommand('init');
   client.list = loadCommand('list');

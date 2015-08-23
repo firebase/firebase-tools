@@ -59,12 +59,6 @@ process.on('exit', function(code) {
 require('exit-code');
 
 process.on('uncaughtException', function(err) {
-  if (err.name !== 'FirebaseError') {
-    err = new FirebaseError('An unexpected error has occurred. Please contact support', {
-      original: err,
-      exit: 2
-    });
-  }
   errorOut(client, err);
 });
 
