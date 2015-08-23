@@ -31,12 +31,8 @@ module.exports = new Command('collab:remove [email]')
     }).then(function() {
       return api.request('DELETE', '/firebase/' + firebase + '/users', {
         id: options.email
-      }, true).then(function(res) {
-        if (res.body.error) {
-          return RSVP.reject(new FirebaseError(res.body.error, {exit: 1}));
-        }
+      }, true).then(function() {
         logger.info(chalk.bold(options.email), 'has been removed from', firebase);
-        return RSVP.resolve();
       });
     });
   });
