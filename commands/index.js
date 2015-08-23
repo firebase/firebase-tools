@@ -12,6 +12,7 @@ module.exports = function(client) {
   client.collab = loadCommand('collab');
   client.collab.add = loadCommand('collab-add');
   client.deploy = loadCommand('deploy');
+  client.help = loadCommand('help');
   client.init = loadCommand('init');
   client.list = loadCommand('list');
   client.login = loadCommand('login');

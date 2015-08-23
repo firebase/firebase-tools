@@ -16,6 +16,14 @@ client.logger = require('./lib/logger');
 client.errorOut = function(error, status) {
   require('./lib/errorOut')(client, error, status);
 };
+client.getCommand = function(name) {
+  for (var i = 0; i < client.cli.commands.length; i++) {
+    if (client.cli.commands[i]._name === name) {
+      return client.cli.commands[i];
+    }
+  }
+  return null;
+};
 
 require('./commands')(client);
 
