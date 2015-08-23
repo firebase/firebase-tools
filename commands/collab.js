@@ -6,8 +6,6 @@ var getFirebaseName = require('../lib/getFirebaseName');
 var logger = require('../lib/logger');
 var _ = require('lodash');
 var Table = require('cli-table');
-var RSVP = require('rsvp');
-var FirebaseError = require('../lib/error');
 var api = require('../lib/api');
 
 module.exports = new Command('collab')
