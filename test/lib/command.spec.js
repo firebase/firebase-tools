@@ -51,7 +51,7 @@ describe('Command', function() {
         return RSVP.resolve(options);
       }).runner();
 
-      return expect(run()).to.eventually.have.property('foo');
+      return expect(run({foo: 'baz'})).to.eventually.have.property('foo', 'bar');
     });
 
     it('should execute befores before the action', function() {
@@ -63,7 +63,7 @@ describe('Command', function() {
         return options;
       }).runner();
 
-      return expect(run()).to.eventually.have.property('bar');
+      return expect(run({})).to.eventually.have.property('bar');
     });
 
     it('should terminate execution if a before errors', function() {

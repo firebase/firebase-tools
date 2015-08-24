@@ -3,11 +3,9 @@
 var Command = require('../lib/command');
 var requireAuth = require('../lib/requireAuth');
 var logger = require('../lib/logger');
-var RSVP = require('rsvp');
 var api = require('../lib/api');
 var getFirebaseName = require('../lib/getFirebaseName');
 var chalk = require('chalk');
-var FirebaseError = require('../lib/error');
 var prompt = require('../lib/prompt');
 var _ = require('lodash');
 
