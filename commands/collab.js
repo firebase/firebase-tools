@@ -7,6 +7,7 @@ var logger = require('../lib/logger');
 var _ = require('lodash');
 var Table = require('cli-table');
 var api = require('../lib/api');
+var chalk = require('chalk');
 
 module.exports = new Command('collab')
   .description('list collaborators for the current app')
@@ -16,12 +17,17 @@ module.exports = new Command('collab')
     var firebase = getFirebaseName(options);
 
     return api.request('GET', '/firebase/' + firebase + '/users', {}, true).then(function(res) {
+      console.log(res.body);
       var table = new Table({
         head: ['Email', 'Role'],
         style: {head: ['yellow']}
       });
       var users = _.values(res.body).map(function(collab) {
-        table.push([collab.email, collab.role]);
+        var role = collab.role;
+        if (collab.isPending) {
+          role = role + ' (pending)';
+        }
+        table.push([collab.email, role]);
         return {
           email: collab.email,
           role: collab.role

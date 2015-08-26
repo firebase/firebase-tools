@@ -31,6 +31,7 @@ module.exports = new Command('collab:remove [email]')
         id: options.email
       }, true).then(function() {
         logger.info(chalk.bold(options.email), 'has been removed from', firebase);
+        return true;
       });
     });
   });

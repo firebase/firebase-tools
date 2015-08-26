@@ -9,6 +9,8 @@ var didYouMean = require('didyoumean');
 program.version(pkg.version);
 program.option('-t, --token <token>', 'supply an auth token for this command');
 program.option('-s, --silent', 'non-interactive mode: error instead of waiting for prompts');
+program.option('-j, --json', 'output JSON instead of text, also triggers non-interactive mode');
+program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
 var client = {};
 client.cli = program;

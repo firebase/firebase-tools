@@ -104,6 +104,7 @@ module.exports = new Command('init')
 
         fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
         logger.info('Firebase initialized, configuration written to firebase.json');
+        return path.resolve(path.join(cwd, 'firebase.json'));
       });
     });
   });
