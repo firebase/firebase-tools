@@ -7,7 +7,6 @@ var logger = require('../lib/logger');
 var _ = require('lodash');
 var Table = require('cli-table');
 var api = require('../lib/api');
-var chalk = require('chalk');
 
 module.exports = new Command('collab')
   .description('list collaborators for the current app')
@@ -17,7 +16,6 @@ module.exports = new Command('collab')
     var firebase = getFirebaseName(options);
 
     return api.request('GET', '/firebase/' + firebase + '/users', {}, true).then(function(res) {
-      console.log(res.body);
       var table = new Table({
         head: ['Email', 'Role'],
         style: {head: ['yellow']}

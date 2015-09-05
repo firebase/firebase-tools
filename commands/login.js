@@ -9,10 +9,10 @@ var open = require('open');
 var chalk = require('chalk');
 var Firebase = require('firebase');
 
-var ticketsRef = new Firebase('https://gauth.firebaseio.com/tickets');
+var ticketsRef = new Firebase('https://firebase.firebaseio.com/sessionTickets');
 
 module.exports = new Command('login')
-  .description('sign in to your Google account')
+  .description('sign in with your Google account')
   .action(function(options, resolve, reject) {
     var user = configstore.get('user');
     if (user) {
