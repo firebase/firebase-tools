@@ -15,7 +15,9 @@ module.exports = new Command('collab')
   .action(function(options) {
     var firebase = getFirebaseName(options);
 
-    return api.request('GET', '/firebase/' + firebase + '/users', {}, true).then(function(res) {
+    return api.request('GET', '/firebase/' + firebase + '/users', {
+      auth: true
+    }).then(function(res) {
       var table = new Table({
         head: ['Email', 'Role'],
         style: {head: ['yellow']}

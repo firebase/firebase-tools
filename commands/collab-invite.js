@@ -15,8 +15,9 @@ module.exports = new Command('collab:invite <email>')
     var firebase = getFirebaseName(options);
 
     return api.request('POST', '/firebase/' + firebase + '/invites', {
-      email: email
-    }, true).then(function() {
+      body: {email: email},
+      auth: true
+    }).then(function() {
       logger.info(chalk.bold(email), 'has been invited to join', firebase);
       return true;
     });

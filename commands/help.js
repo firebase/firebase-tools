@@ -17,6 +17,9 @@ module.exports = new Command('help [command]')
       this.client.cli.outputHelp();
     } else {
       this.client.cli.outputHelp();
+      logger.info();
+      logger.info('  To get help with a specific command, type', chalk.bold('firebase help [command_name]'));
+      logger.info();
     }
 
     RSVP.resolve();

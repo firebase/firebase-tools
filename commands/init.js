@@ -86,7 +86,7 @@ module.exports = new Command('init')
         }
       ]).then(function() {
         if (!_.contains(firebaseNames, options.firebase)) {
-          return api.request('POST', '/firebase/' + options.firebase, {}, true).then(function(res) {
+          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function(res) {
             console.log(res.status, res.body);
           });
         }

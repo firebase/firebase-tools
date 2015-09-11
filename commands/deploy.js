@@ -9,6 +9,9 @@ var loadRules = require('../lib/loadRules');
 var getFirebaseName = require('../lib/getFirebaseName');
 var validator = require('../lib/validator').firebase;
 var chalk = require('chalk');
+var createUploadStream = require('../lib/createUploadStream');
+var fs = require('fs');
+var RSVP = require('rsvp');
 
 var _logSuccess = function(message) {
   logger.info(chalk.green('✔ '), message);
@@ -23,6 +26,8 @@ module.exports = new Command('deploy')
     var payload = {};
 
     var config = loadConfig(options);
+    config.firebase = firebase;
+
     return validator.validate(config).then(function() {
       _logSuccess('firebase.json is valid');
       payload.config = config;
@@ -33,7 +38,23 @@ module.exports = new Command('deploy')
         payload.rules = rules;
       }
     }).then(function() {
-      return api.request('PUT', '/firebase/' + firebase + '/releases/abcdef', payload, true);
+      logger.info();
+      logger.info('Preparing public directory for upload...');
+
+      return new RSVP.Promise(function(resolve, reject) {
+        var stream = createUploadStream(options, config);
+        stream.pipe(fs.createWriteStream('test.tar.gz'));
+        stream.on('end', function() {
+          logger.info(stream.manifest);
+          logger.info(stream.foundIndex);
+          reject(new Error('explodeeee'));
+        });
+      });
+    }).then(function() {
+      return api.request('PUT', '/firebase/' + firebase + '/releases/abcdef', {
+        data: payload,
+        auth: true
+      });
     }).then(function(res) {
       return res.body;
     });
