@@ -2,6 +2,7 @@
 
 var Command = require('../lib/command');
 var requireAuth = require('../lib/requireAuth');
+var acquireRefs = require('../lib/acquireRefs');
 var logger = require('../lib/logger');
 var api = require('../lib/api');
 var loadConfig = require('../lib/loadConfig');
@@ -9,9 +10,7 @@ var loadRules = require('../lib/loadRules');
 var getFirebaseName = require('../lib/getFirebaseName');
 var validator = require('../lib/validator').firebase;
 var chalk = require('chalk');
-var createUploadStream = require('../lib/createUploadStream');
-var fs = require('fs');
-var RSVP = require('rsvp');
+var prepareUpload = require('../lib/prepareUpload');
 
 var _logSuccess = function(message) {
   logger.info(chalk.green('✔ '), message);
@@ -20,10 +19,13 @@ var _logSuccess = function(message) {
 module.exports = new Command('deploy')
   .description('deploy the current app')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
+  .option('-m, --message <message>', 'an optional message describing this deploy')
   .before(requireAuth)
+  .before(acquireRefs)
   .action(function(options) {
     var firebase = getFirebaseName(options);
     var payload = {};
+    var versionId = options.firebaseRef.push().key();
 
     var config = loadConfig(options);
     config.firebase = firebase;
@@ -41,19 +43,30 @@ module.exports = new Command('deploy')
       logger.info();
       logger.info('Preparing public directory for upload...');
 
-      return new RSVP.Promise(function(resolve, reject) {
-        var stream = createUploadStream(options, config);
-        stream.pipe(fs.createWriteStream('test.tar.gz'));
-        stream.on('end', function() {
-          logger.info(stream.manifest);
-          logger.info(stream.foundIndex);
-          reject(new Error('explodeeee'));
-        });
+      return prepareUpload(options, config);
+    }).then(function(upload) {
+      return api.request('PUT', '/upload/' + firebase, {
+        auth: true,
+        query: {
+          id: versionId,
+          fileCount: upload.manifest.length,
+          message: options.message
+        },
+        files: {
+          site: {
+            filename: 'site.tar.gz',
+            stream: upload.stream,
+            contentType: 'application/x-gzip',
+            knownLength: upload.size
+          }
+        },
+        origin: api.uploadOrigin
       });
     }).then(function() {
-      return api.request('PUT', '/firebase/' + firebase + '/releases/abcdef', {
+      return api.request('POST', '/release/' + firebase, {
         data: payload,
-        auth: true
+        auth: true,
+        origin: api.uploadOrigin
       });
     }).then(function(res) {
       return res.body;

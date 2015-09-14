@@ -12,7 +12,7 @@ module.exports = new Command('serve')
   .option('-p, --port <port>', 'the port on which to listen', 5000)
   .option('-o, --host <host>', 'the host on which to listen', 'localhost')
   .action(function(options) {
-    console.log(loadConfig());
+    loadConfig();
 
     superstatic({
       debug: true,

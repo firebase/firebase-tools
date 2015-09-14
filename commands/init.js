@@ -86,15 +86,15 @@ module.exports = new Command('init')
         }
       ]).then(function() {
         if (!_.contains(firebaseNames, options.firebase)) {
-          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function(res) {
-            console.log(res.status, res.body);
+          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function() {
+            logger.info(chalk.green('✔ '), 'Firebase', chalk.bold(options.firebase), 'has been created');
           });
         }
       }).then(function() {
         var absPath = path.resolve(cwd, options.public || '.');
         if (!fs.existsSync(absPath)) {
-          logger.info('Creating directory', chalk.bold(options.public));
           fs.mkdirsSync(absPath);
+          logger.info(chalk.green('✔ '), 'Public directory', chalk.bold(options.public), 'has been created');
         }
 
         var config = JSON.stringify(_.extend({}, defaultConfig, {
