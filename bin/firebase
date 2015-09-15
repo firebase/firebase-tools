@@ -4,7 +4,6 @@
 var updateNotifier = require('update-notifier');
 var pkg = require('../package.json');
 var client = require('..');
-var FirebaseError = require('../lib/error');
 var errorOut = require('../lib/errorOut');
 var winston = require('winston');
 var logger = require('../lib/logger');

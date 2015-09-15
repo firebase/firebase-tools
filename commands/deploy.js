@@ -11,6 +11,7 @@ var getFirebaseName = require('../lib/getFirebaseName');
 var validator = require('../lib/validator').firebase;
 var chalk = require('chalk');
 var prepareUpload = require('../lib/prepareUpload');
+var ProgressBar = require('progress');
 
 var _logSuccess = function(message) {
   logger.info(chalk.green('✔ '), message);
@@ -25,8 +26,9 @@ module.exports = new Command('deploy')
   .action(function(options) {
     var firebase = getFirebaseName(options);
     var payload = {};
-    var versionId = options.firebaseRef.push().key();
-
+    var versionRef = options.firebaseRef.child('hosting/versions').child(firebase).push();
+    var versionId = versionRef.key();
+    var bar;
     var config = loadConfig(options);
     config.firebase = firebase;
 
@@ -45,10 +47,32 @@ module.exports = new Command('deploy')
 
       return prepareUpload(options, config);
     }).then(function(upload) {
-      return api.request('PUT', '/upload/' + firebase, {
+      payload.hosting = {
+        version: versionId,
+        prefix: versionId + '/',
+        manifest: upload.manifest.map(function(file) {
+          return {path: file, object: file};
+        })
+      };
+
+      bar = new ProgressBar(chalk.bold('Uploading:') + ' [:bar] :percent', {
+        total: upload.manifest.length,
+        width: 40,
+        complete: chalk.green('='),
+        incomplete: ' ',
+        clear: true
+      });
+
+      var lastCount = 0;
+      versionRef.on('value', function(snap) {
+        var uc = snap.child('uploadedCount').val() || 0;
+        bar.tick(uc - lastCount);
+        lastCount = uc;
+      });
+
+      return api.request('PUT', '/firebase/' + firebase + '/uploads/' + versionId, {
         auth: true,
         query: {
-          id: versionId,
           fileCount: upload.manifest.length,
           message: options.message
         },
@@ -63,12 +87,16 @@ module.exports = new Command('deploy')
         origin: api.uploadOrigin
       });
     }).then(function() {
-      return api.request('POST', '/release/' + firebase, {
+      versionRef.off('value');
+      bar.terminate();
+
+      return api.request('PUT', '/firebase/' + firebase + '/release', {
         data: payload,
         auth: true,
         origin: api.uploadOrigin
       });
     }).then(function(res) {
+      logger.info(res.body);
       return res.body;
     });
     // Step 1: Validate the config and rules.json
