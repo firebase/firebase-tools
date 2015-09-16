@@ -12,6 +12,9 @@ var validator = require('../lib/validator').firebase;
 var chalk = require('chalk');
 var prepareUpload = require('../lib/prepareUpload');
 var ProgressBar = require('progress');
+var RSVP = require('rsvp');
+var FirebaseError = require('../lib/error');
+var utils = require('../lib/utils');
 
 var _logSuccess = function(message) {
   logger.info(chalk.green('✔ '), message);
@@ -32,6 +35,9 @@ module.exports = new Command('deploy')
     var config = loadConfig(options);
     config.firebase = firebase;
 
+    logger.info('Validating local configuration...');
+    logger.info();
+
     return validator.validate(config).then(function() {
       _logSuccess('firebase.json is valid');
       payload.config = config;
@@ -44,6 +50,7 @@ module.exports = new Command('deploy')
     }).then(function() {
       logger.info();
       logger.info('Preparing public directory for upload...');
+      logger.info();
 
       return prepareUpload(options, config);
     }).then(function(upload) {
@@ -55,36 +62,66 @@ module.exports = new Command('deploy')
         })
       };
 
-      bar = new ProgressBar(chalk.bold('Uploading:') + ' [:bar] :percent', {
-        total: upload.manifest.length,
-        width: 40,
-        complete: chalk.green('='),
-        incomplete: ' ',
-        clear: true
-      });
+      return new RSVP.Promise(function(resolve, reject) {
+        var lastCount = 0;
 
-      var lastCount = 0;
-      versionRef.on('value', function(snap) {
-        var uc = snap.child('uploadedCount').val() || 0;
-        bar.tick(uc - lastCount);
-        lastCount = uc;
-      });
+        bar = new ProgressBar(chalk.bold('Uploading:') + ' [:bar] :percent', {
+          total: upload.manifest.length,
+          width: 40,
+          complete: chalk.green('='),
+          incomplete: ' ',
+          clear: true
+        });
 
-      return api.request('PUT', '/firebase/' + firebase + '/uploads/' + versionId, {
-        auth: true,
-        query: {
-          fileCount: upload.manifest.length,
-          message: options.message
-        },
-        files: {
-          site: {
-            filename: 'site.tar.gz',
-            stream: upload.stream,
-            contentType: 'application/x-gzip',
-            knownLength: upload.size
+        versionRef.on('value', function(snap) {
+          var status = snap.child('status').val();
+          switch (status) {
+          case 'deploying':
+            var uc = snap.child('uploadedCount').val() || 0;
+            bar.tick(uc - lastCount);
+            lastCount = uc;
+            break;
+          case 'deployed':
+            _logSuccess('Files uploaded successfully');
+            resolve();
+            break;
+          case 'removed':
+            reject(new FirebaseError('Not Implemented', {
+              exit: 2,
+              context: snap.val()
+            }));
+            break;
+          case null:
+            break;
+          default:
+            var msg = 'File upload failed';
+            if (snap.hasChild('statusMessage')) {
+              msg += ': ' + snap.child('statusMessage').val();
+            }
+
+            reject(new FirebaseError(msg, {
+              exit: 2,
+              context: snap.val()
+            }));
           }
-        },
-        origin: api.uploadOrigin
+        });
+
+        api.request('PUT', '/firebase/' + firebase + '/uploads/' + versionId, {
+          auth: true,
+          query: {
+            fileCount: upload.manifest.length,
+            message: options.message
+          },
+          files: {
+            site: {
+              filename: 'site.tar.gz',
+              stream: upload.stream,
+              contentType: 'application/x-gzip',
+              knownLength: upload.size
+            }
+          },
+          origin: api.uploadOrigin
+        });
       });
     }).then(function() {
       versionRef.off('value');
@@ -96,7 +133,12 @@ module.exports = new Command('deploy')
         origin: api.uploadOrigin
       });
     }).then(function(res) {
-      logger.info(res.body);
+      _logSuccess('Deploy complete!');
+      logger.info();
+      logger.info(chalk.bold('URL:'), utils.addSubdomain(api.hostingOrigin, firebase));
+      logger.info(chalk.bold('Dashboard:'), utils.addSubdomain(api.realtimeOrigin, firebase) + '/?page=Hosting');
+      logger.info();
+      logger.info('Visit the URL above or run', chalk.bold('firebase open'));
       return res.body;
     });
     // Step 1: Validate the config and rules.json
