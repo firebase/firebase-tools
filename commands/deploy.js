@@ -121,7 +121,7 @@ module.exports = new Command('deploy')
             }
           },
           origin: api.uploadOrigin
-        });
+        }).catch(reject);
       });
     }).then(function() {
       versionRef.off('value');
