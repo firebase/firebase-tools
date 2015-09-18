@@ -5,7 +5,7 @@ var Command = require('../lib/command');
 var logger = require('../lib/logger');
 var chalk = require('chalk');
 var loadConfig = require('../lib/loadConfig');
-var RSVP = require('rsvp');
+var loadRules = require('../lib/loadRules');
 
 module.exports = new Command('validate')
   .description('check that your firebase.json is valid')
@@ -13,6 +13,11 @@ module.exports = new Command('validate')
     var config = loadConfig(options);
     return validator.validate(config).then(function() {
       logger.info(chalk.green('✔ '), 'Your firebase.json is valid');
-      return RSVP.resolve();
+    }).then(function() {
+      var rules = loadRules(options);
+      if (rules) {
+        logger.info(chalk.green('✔ '), 'Your rules.json is valid');
+      }
+      return true;
     });
   });
