@@ -11,7 +11,8 @@ module.exports = function(client) {
   client.collab.invite = loadCommand('collab-invite');
   client.collab.remove = loadCommand('collab-remove');
   client.data = {
-    get: loadCommand('data-get')
+    get: loadCommand('data-get'),
+    set: loadCommand('data-set')
   };
   client.deploy = loadCommand('deploy');
   client.deploy.empty = loadCommand('deploy-empty');

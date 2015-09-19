@@ -16,10 +16,6 @@ var RSVP = require('rsvp');
 var FirebaseError = require('../lib/error');
 var utils = require('../lib/utils');
 
-var _logSuccess = function(message) {
-  logger.info(chalk.green('✔ '), message);
-};
-
 module.exports = new Command('deploy')
   .description('deploy the current app')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
@@ -39,12 +35,12 @@ module.exports = new Command('deploy')
     logger.info();
 
     return validator.validate(config).then(function() {
-      _logSuccess('firebase.json is valid');
+      utils.logSuccess('firebase.json is valid');
       payload.config = config;
     }).then(function() {
       var rules = loadRules(options);
       if (rules) {
-        _logSuccess('rules.json is valid');
+        utils.logSuccess('rules.json is valid');
         payload.rules = rules;
       }
     }).then(function() {
@@ -82,7 +78,7 @@ module.exports = new Command('deploy')
             lastCount = uc;
             break;
           case 'deployed':
-            _logSuccess('Files uploaded successfully');
+            utils.logSuccess('Files uploaded successfully');
             resolve();
             break;
           case 'removed':
@@ -133,7 +129,7 @@ module.exports = new Command('deploy')
         origin: api.uploadOrigin
       });
     }).then(function(res) {
-      _logSuccess('Deploy complete!');
+      utils.logSuccess('Deploy complete!');
       logger.info();
       logger.info(chalk.bold('URL:'), utils.addSubdomain(api.hostingOrigin, firebase));
       logger.info(chalk.bold('Dashboard:'), utils.addSubdomain(api.realtimeOrigin, firebase) + '/?page=Hosting');

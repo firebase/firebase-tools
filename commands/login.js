@@ -63,7 +63,6 @@ module.exports = new Command('login')
                 }
 
                 ticketRef.child('result').off('value');
-                console.log(auth);
                 configstore.set('user', auth.user);
                 configstore.set('session', auth.session);
                 configstore.set('usage', _.get('auth.prefs.usage', false));
