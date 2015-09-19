@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireAuth = require('../lib/requireAuth');
+var requireAccess = require('../lib/requireAccess');
 var logger = require('../lib/logger');
 var api = require('../lib/api');
 var FirebaseError = require('../lib/error');
@@ -14,7 +14,7 @@ var _ = require('lodash');
 module.exports = new Command('collab:remove [email]')
   .description('remove a collaborator from the current app')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
-  .before(requireAuth)
+  .before(requireAccess)
   .action(function(email, options) {
     var firebase = getFirebaseName(options);
     options.email = email;

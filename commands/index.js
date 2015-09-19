@@ -7,12 +7,14 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-  client.blank = loadCommand('blank');
-  client.bootstrap = loadCommand('bootstrap');
   client.collab = loadCommand('collab');
   client.collab.invite = loadCommand('collab-invite');
   client.collab.remove = loadCommand('collab-remove');
+  client.data = {
+    get: loadCommand('data-get')
+  };
   client.deploy = loadCommand('deploy');
+  client.deploy.empty = loadCommand('deploy-empty');
   client.help = loadCommand('help');
   client.init = loadCommand('init');
   client.list = loadCommand('list');

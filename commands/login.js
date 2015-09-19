@@ -11,6 +11,7 @@ var Firebase = require('firebase');
 var api = require('../lib/api');
 var utils = require('../lib/utils');
 var RSVP = require('rsvp');
+var _ = require('lodash');
 
 var ticketsRef = new Firebase(utils.addSubdomain(api.realtimeOrigin, 'firebase')).child('sessionTickets');
 
@@ -19,8 +20,10 @@ module.exports = new Command('login')
   .action(function() {
     return new RSVP.Promise(function(resolve, reject) {
       var user = configstore.get('user');
-      if (user) {
-        logger.info('Already logged in as', chalk.bold(user.google.email));
+      var session = configstore.get('session');
+
+      if (user && session) {
+        logger.info('Already logged in as', chalk.bold(user.email));
         resolve(user);
       } else {
         var ticket = uuid.v4();
@@ -60,8 +63,10 @@ module.exports = new Command('login')
                 }
 
                 ticketRef.child('result').off('value');
+                console.log(auth);
                 configstore.set('user', auth.user);
                 configstore.set('session', auth.session);
+                configstore.set('usage', _.get('auth.prefs.usage', false));
                 logger.info('Success! Logged in as', chalk.bold(auth.user.email));
                 resolve(auth);
               });

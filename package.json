@@ -36,6 +36,7 @@
     "inquirer": "^0.8.5",
     "jsonschema": "^1.0.2",
     "lodash": "^3.10.0",
+    "node-uuid": "^1.4.3",
     "open": "0.0.5",
     "progress": "^1.1.8",
     "request": "^2.58.0",

@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireAuth = require('../lib/requireAuth');
+var requireAccess = require('../lib/requireAccess');
 var getFirebaseName = require('../lib/getFirebaseName');
 var logger = require('../lib/logger');
 var _ = require('lodash');
@@ -11,7 +11,7 @@ var api = require('../lib/api');
 module.exports = new Command('collab')
   .description('list collaborators for the current app')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
-  .before(requireAuth)
+  .before(requireAccess)
   .action(function(options) {
     var firebase = getFirebaseName(options);
 
