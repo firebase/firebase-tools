@@ -40,6 +40,7 @@ module.exports = new Command('login')
           logger.info(chalk.bold.underline(url));
           logger.info();
           logger.info('Waiting for authentication...');
+          logger.info();
 
           // tickets expire after 5 min, so timeout at that point
           setTimeout(function() {
@@ -66,7 +67,7 @@ module.exports = new Command('login')
                 configstore.set('user', auth.user);
                 configstore.set('session', auth.session);
                 configstore.set('usage', _.get('auth.prefs.usage', false));
-                logger.info('Success! Logged in as', chalk.bold(auth.user.email));
+                utils.logSuccess('Success! Logged in as ' + chalk.bold(auth.user.email));
                 resolve(auth);
               });
             }

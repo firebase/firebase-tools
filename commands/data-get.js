@@ -62,7 +62,6 @@ module.exports = new Command('data:get <path>')
       _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
 
       url += querystring.stringify(query);
-      console.log(url);
 
       request.get(url)
         .on('response', function(res) {

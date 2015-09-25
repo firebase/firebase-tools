@@ -5,6 +5,7 @@ var configstore = require('../lib/configstore');
 var logger = require('../lib/logger');
 var chalk = require('chalk');
 var RSVP = require('rsvp');
+var utils = require('../lib/utils');
 
 module.exports = new Command('logout')
   .description('delete local authentication data')
@@ -14,7 +15,7 @@ module.exports = new Command('logout')
     if (user || session) {
       configstore.del('user');
       configstore.del('session');
-      logger.info('Logged out from', chalk.bold(user.email));
+      utils.logSuccess('Logged out from ' + chalk.bold(user.email));
     } else {
       logger.info('No need to logout, not logged in');
     }

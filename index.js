@@ -41,7 +41,7 @@ program.action(function(cmd) {
 
   if (cmd === 'delete-site') {
     logger.error();
-    logger.error('Command has been renamed, please run', chalk.bold('firebase blank'), 'instead');
+    logger.error(chalk.bold('delete-site') + ' has been renamed, please run', chalk.bold('firebase disable:hosting'), 'instead');
   } else {
     var suggestion = didYouMean(cmd, commandNames);
     if (suggestion) {

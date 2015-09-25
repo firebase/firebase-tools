@@ -39,7 +39,7 @@ module.exports = new Command('disable:hosting')
       });
     }).then(function() {
       if (options.confirm) {
-        utils.logSuccess('Hosting has been disabled. Deploy a new version to re-enable.');
+        utils.logSuccess('Hosting has been disabled for ' + chalk.bold(firebase) + '. Deploy a new version to re-enable.');
       }
     });
   });
