@@ -12,7 +12,10 @@ module.exports = function(client) {
   // client.collab.remove = loadCommand('collab-remove');
   client.data = {
     get: loadCommand('data-get'),
-    set: loadCommand('data-set')
+    push: loadCommand('data-push'),
+    set: loadCommand('data-set'),
+    remove: loadCommand('data-remove'),
+    update: loadCommand('data-update')
   };
   client.deploy = loadCommand('deploy');
   client.disable = {

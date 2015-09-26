@@ -13,9 +13,10 @@ var querystring = require('querystring');
 var chalk = require('chalk');
 var logger = require('../lib/logger');
 var fs = require('fs');
+var Firebase = require('firebase');
 
-module.exports = new Command('data:set <path>')
-  .description('store JSON data in your Firebase at the specified path')
+module.exports = new Command('data:push <path>')
+  .description('add a new JSON object to a list of data in your Firebase')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-i, --input <filename>', 'read data from the specified file')
@@ -32,18 +33,20 @@ module.exports = new Command('data:set <path>')
 
       url += querystring.stringify(query);
 
-      inStream.pipe(request.put(url, {json: true}, function(err, res, body) {
+      inStream.pipe(request.post(url, {json: true}, function(err, res, body) {
         logger.info();
         if (err) {
-          return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
+          return reject(new FirebaseError('Unexpected error while pushing data', {exit: 2}));
         } else if (res.statusCode >= 400) {
           return reject(responseToError(res, body));
         }
 
-        utils.logSuccess('Data persisted successfully');
+        var refurl = utils.addSubdomain(api.realtimeOrigin, firebase) + path + '/' + body.name;
+
+        utils.logSuccess('Data pushed successfully');
         logger.info();
-        logger.info(chalk.bold('View data at:'), utils.addSubdomain(api.realtimeOrigin, firebase) + path);
-        return resolve();
+        logger.info(chalk.bold('View data at:'), refurl);
+        return resolve(new Firebase(refurl));
       }));
     });
   });
