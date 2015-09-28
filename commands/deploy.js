@@ -50,6 +50,10 @@ module.exports = new Command('deploy')
 
       return prepareUpload(options, config);
     }).then(function(upload) {
+      if (!upload.manifest.length) {
+        return utils.reject('Must have at least one file in public directory to deploy.', {exit: 1});
+      }
+
       payload.hosting = {
         version: versionId,
         prefix: versionId + '/',
