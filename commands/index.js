@@ -18,6 +18,8 @@ module.exports = function(client) {
     update: loadCommand('data-update')
   };
   client.deploy = loadCommand('deploy');
+  client.deploy.hosting = loadCommand('deploy-hosting');
+  client.deploy.rules = loadCommand('deploy-rules');
   client.disable = {
     hosting: loadCommand('disable-hosting')
   };
@@ -27,6 +29,9 @@ module.exports = function(client) {
   client.login = loadCommand('login');
   client.logout = loadCommand('logout');
   client.open = loadCommand('open');
+  client.prefs = {
+    token: loadCommand('prefs-token')
+  };
   client.serve = loadCommand('serve');
   client.validate = loadCommand('validate');
 
