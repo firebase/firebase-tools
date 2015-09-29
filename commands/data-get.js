@@ -11,6 +11,7 @@ var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 var querystring = require('querystring');
 var _ = require('lodash');
+var fs = require('fs');
 
 var _applyStringOpts = function(dest, src, keys, jsonKeys) {
   _.forEach(keys, function(key) {
