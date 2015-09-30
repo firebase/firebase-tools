@@ -17,21 +17,21 @@ module.exports = function(client) {
     remove: loadCommand('data-remove'),
     update: loadCommand('data-update')
   };
-  client.deploy = loadCommand('deploy');
-  client.deploy.hosting = loadCommand('deploy-hosting');
-  client.deploy.rules = loadCommand('deploy-rules');
-  client.disable = {
-    hosting: loadCommand('disable-hosting')
-  };
+  // client.deploy = loadCommand('deploy');
+  // client.deploy.hosting = loadCommand('deploy-hosting');
+  // client.deploy.rules = loadCommand('deploy-rules');
+  // client.disable = {
+  //   hosting: loadCommand('disable-hosting')
+  // };
   client.help = loadCommand('help');
   client.init = loadCommand('init');
   client.list = loadCommand('list');
   client.login = loadCommand('login');
   client.logout = loadCommand('logout');
   client.open = loadCommand('open');
-  client.prefs = {
-    token: loadCommand('prefs-token')
-  };
+  client.prefs = {};
+  // client.prefs = loadCommand('prefs');
+  client.prefs.token = loadCommand('prefs-token');
   client.serve = loadCommand('serve');
   client.validate = loadCommand('validate');
 

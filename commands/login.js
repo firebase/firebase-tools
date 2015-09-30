@@ -66,7 +66,7 @@ module.exports = new Command('login')
                 ticketRef.child('result').off('value');
                 configstore.set('user', auth.user);
                 configstore.set('session', auth.session);
-                configstore.set('usage', _.get('auth.prefs.usage', false));
+                configstore.set('usage', _.get(auth, 'prefs.usage', false));
                 utils.logSuccess('Success! Logged in as ' + chalk.bold(auth.user.email));
                 resolve(auth);
               });
