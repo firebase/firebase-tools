@@ -3,7 +3,7 @@
 var superstatic = require('superstatic').server;
 var chalk = require('chalk');
 var RSVP = require('rsvp');
-var loadConfig = require('../lib/loadConfig');
+var Config = require('../lib/config');
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
 
@@ -12,12 +12,13 @@ module.exports = new Command('serve')
   .option('-p, --port <port>', 'the port on which to listen', 5000)
   .option('-o, --host <host>', 'the host on which to listen', 'localhost')
   .action(function(options) {
-    loadConfig();
+    var config = Config.load(options);
 
     superstatic({
       debug: true,
       port: options.port,
-      host: options.host
+      host: options.host,
+      config: config.data.hosting
     }).listen();
 
     logger.info('Listening at', chalk.underline(chalk.bold('http://' + options.host + ':' + options.port)));

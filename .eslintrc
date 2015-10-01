@@ -18,6 +18,7 @@
       "vars": "local",
       "args": "after-used"
     }],
+    "no-undef": 2,
 
     /**
      * Node.js
