@@ -16,7 +16,7 @@ module.exports = new Command('deploy:rules')
   .before(acquireRefs)
   .action(function(options) {
     var config = Config.load(options);
-    if (!config.rules) {
+    if (!config.data.rules) {
       utils.logSuccess('Nothing to deploy (no "rules" specified in firebase.json)');
       return RSVP.resolve();
     }
