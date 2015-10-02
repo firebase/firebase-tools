@@ -2,7 +2,6 @@
 
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
-var getFirebaseName = require('../lib/getFirebaseName');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -45,8 +44,6 @@ module.exports = new Command('data:get <path>')
   .option('--equal-to <val>', 'use with --order-by to restrict to specific value')
   .before(requireAccess)
   .action(function(path, options) {
-    var firebase = getFirebaseName(options);
-
     return new RSVP.Promise(function(resolve, reject) {
       var fileOut = !!options.output;
       var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
@@ -54,7 +51,7 @@ module.exports = new Command('data:get <path>')
       var errorResponse = '';
       var response;
 
-      var url = utils.addSubdomain(api.realtimeOrigin, firebase) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
       var query = {auth: options.auth || options.dataToken};
       if (options.shallow) { query.shallow = 'true'; }
       if (options.pretty) { query.print = 'pretty'; }

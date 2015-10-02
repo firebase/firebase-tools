@@ -63,8 +63,13 @@ process.on('uncaughtException', function(err) {
 
 updateNotifier({pkg: pkg}).notify();
 
-client.cli.parse(process.argv);
-
-if (!process.argv.slice(2).length) {
+// determine if there are any non-option arguments. if not, display help
+var args = process.argv.slice(2);
+args = args.filter(function(arg) {
+  return arg.indexOf('-') < 0;
+});
+if (!args.length) {
   client.cli.help();
+} else {
+  client.cli.parse(process.argv);
 }

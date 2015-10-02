@@ -2,7 +2,6 @@
 
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
-var getFirebaseName = require('../lib/getFirebaseName');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -22,13 +21,11 @@ module.exports = new Command('data:push <path>')
   .option('-i, --input <filename>', 'read data from the specified file')
   .before(requireAccess)
   .action(function(path, options) {
-    var firebase = getFirebaseName(options);
-
     return new RSVP.Promise(function(resolve, reject) {
       var fileIn = !!options.input;
       var inStream = fileIn ? fs.createReadStream(options.input) : process.stdin;
 
-      var url = utils.addSubdomain(api.realtimeOrigin, firebase) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
       var query = {auth: options.auth || options.dataToken};
 
       url += querystring.stringify(query);
@@ -41,7 +38,7 @@ module.exports = new Command('data:push <path>')
           return reject(responseToError(res, body));
         }
 
-        var refurl = utils.addSubdomain(api.realtimeOrigin, firebase) + path + '/' + body.name;
+        var refurl = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '/' + body.name;
 
         utils.logSuccess('Data pushed successfully');
         logger.info();

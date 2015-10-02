@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireAuth = require('../lib/requireAuth');
+var requireAccess = require('../lib/requireAccess');
 var api = require('../lib/api');
 var utils = require('../lib/utils');
 var getFirebaseName = require('../lib/getFirebaseName');
@@ -13,7 +13,7 @@ module.exports = new Command('disable:hosting')
   .description('stop serving web traffic to your Firebase Hosting site')
   .option('-f, --firebase <firebase>', 'the name of the firebase to deploy empty')
   .option('-y, --confirm', 'skip confirmation')
-  .before(requireAuth)
+  .before(requireAccess)
   .action(function(options) {
     var firebase = getFirebaseName(options);
 

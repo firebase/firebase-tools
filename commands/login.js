@@ -17,7 +17,11 @@ var ticketsRef = new Firebase(utils.addSubdomain(api.realtimeOrigin, 'firebase')
 
 module.exports = new Command('login')
   .description('sign into Firebase')
-  .action(function() {
+  .action(function(options) {
+    if (utils.getInheritedOption(options, 'nonInteractive')) {
+      return utils.reject('Cannot run login in non-interactive mode. Use ' + chalk.bold('login') + ' instead.', {exit: 1});
+    }
+
     return new RSVP.Promise(function(resolve, reject) {
       var user = configstore.get('user');
       var session = configstore.get('session');

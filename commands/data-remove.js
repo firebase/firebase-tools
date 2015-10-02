@@ -2,7 +2,6 @@
 
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
-var getFirebaseName = require('../lib/getFirebaseName');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -17,10 +16,8 @@ module.exports = new Command('data:remove <path>')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .before(requireAccess)
   .action(function(path, options) {
-    var firebase = getFirebaseName(options);
-
     return new RSVP.Promise(function(resolve, reject) {
-      var url = utils.addSubdomain(api.realtimeOrigin, firebase) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
       var query = {auth: options.auth || options.dataToken};
 
       url += querystring.stringify(query);
