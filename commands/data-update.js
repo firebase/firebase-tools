@@ -14,14 +14,14 @@ var logger = require('../lib/logger');
 var fs = require('fs');
 var prompt = require('../lib/prompt');
 
-module.exports = new Command('data:update <path>')
+module.exports = new Command('data:update <path> [data]')
   .description('update some of the keys for the defined path in your Firebase')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-i, --input <filename>', 'read data from the specified file')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireAccess)
-  .action(function(path, options) {
+  .action(function(path, data, options) {
     return prompt(options, [{
       type: 'confirm',
       name: 'confirm',
@@ -34,7 +34,7 @@ module.exports = new Command('data:update <path>')
 
       return new RSVP.Promise(function(resolve, reject) {
         var fileIn = !!options.input;
-        var inStream = fileIn ? fs.createReadStream(options.input) : process.stdin;
+        var inStream = utils.stringToStream(data) || (fileIn ? fs.createReadStream(options.input) : process.stdin);
 
         var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
         var query = {auth: options.auth || options.dataToken};
