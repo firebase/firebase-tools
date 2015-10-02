@@ -40,9 +40,9 @@ module.exports = new Command('data:get <path>')
   .option('--order-by-value', 'order by primitive value')
   .option('--limit-to-first <num>', 'limit to the first <num> results')
   .option('--limit-to-last <num>', 'limit to the last <num> results')
-  .option('--start-at <val>', 'limit to the first <num> results')
-  .option('--end-at <val>', 'limit to the last <num> results')
-  .option('--equal-to <val>', 'use with --order-by to restrict to specific value')
+  .option('--start-at <val>', 'start results at <val> (based on specified ordering)')
+  .option('--end-at <val>', 'end results at <val> (based on specified ordering)')
+  .option('--equal-to <val>', 'restrict results to <val> (based on specified ordering)')
   .before(requireAccess)
   .action(function(path, options) {
     return new RSVP.Promise(function(resolve, reject) {

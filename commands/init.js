@@ -20,7 +20,7 @@ var _isOutside = function(from, to) {
 };
 
 module.exports = new Command('init')
-  .description('setup a Firebase app in the current directory')
+  .description('set up a Firebase app in the current directory')
   .option('-f, --firebase <firebase>', 'the name of the firebase to use')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .before(requireAuth)
