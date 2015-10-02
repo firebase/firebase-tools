@@ -37,6 +37,7 @@ module.exports = new Command('data:get <path>')
   .option('--export', 'include priorities in the output response')
   .option('--order-by <key>', 'select a child key by which to order results')
   .option('--order-by-key', 'order by key name')
+  .option('--order-by-value', 'order by primitive value')
   .option('--limit-to-first <num>', 'limit to the first <num> results')
   .option('--limit-to-last <num>', 'limit to the last <num> results')
   .option('--start-at <val>', 'limit to the first <num> results')
@@ -57,6 +58,7 @@ module.exports = new Command('data:get <path>')
       if (options.pretty) { query.print = 'pretty'; }
       if (options.export) { query.format = 'export'; }
       if (options.orderByKey) { options.orderBy = '$key'; }
+      if (options.orderByValue) { options.orderBy = '$value'; }
       _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
 
       url += querystring.stringify(query);

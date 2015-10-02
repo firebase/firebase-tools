@@ -19,7 +19,7 @@ module.exports = new Command('login')
   .description('sign into Firebase')
   .action(function(options) {
     if (utils.getInheritedOption(options, 'nonInteractive')) {
-      return utils.reject('Cannot run login in non-interactive mode. Use ' + chalk.bold('login') + ' instead.', {exit: 1});
+      return utils.reject('Cannot run login in non-interactive mode. Pass ' + chalk.bold('--token') + ' instead.', {exit: 1});
     }
 
     return new RSVP.Promise(function(resolve, reject) {
