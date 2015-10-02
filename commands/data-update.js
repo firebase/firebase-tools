@@ -12,35 +12,50 @@ var querystring = require('querystring');
 var chalk = require('chalk');
 var logger = require('../lib/logger');
 var fs = require('fs');
+var prompt = require('../lib/prompt');
 
 module.exports = new Command('data:update <path>')
   .description('update some of the keys for the defined path in your Firebase')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-i, --input <filename>', 'read data from the specified file')
+  .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireAccess)
   .action(function(path, options) {
-    return new RSVP.Promise(function(resolve, reject) {
-      var fileIn = !!options.input;
-      var inStream = fileIn ? fs.createReadStream(options.input) : process.stdin;
+    return prompt(options, [{
+      type: 'confirm',
+      name: 'confirm',
+      default: false,
+      message: 'You are about to modify data at ' + chalk.cyan(path) + ' on ' + chalk.cyan(options.firebase) + '. Are you sure?'
+    }]).then(function() {
+      if (!options.confirm) {
+        return utils.reject('Command aborted.', {exit: 1});
+      }
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-      var query = {auth: options.auth || options.dataToken};
+      return new RSVP.Promise(function(resolve, reject) {
+        var fileIn = !!options.input;
+        var inStream = fileIn ? fs.createReadStream(options.input) : process.stdin;
 
-      url += querystring.stringify(query);
+        var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
+        var query = {auth: options.auth || options.dataToken};
 
-      inStream.pipe(request.patch(url, {json: true}, function(err, res, body) {
-        logger.info();
-        if (err) {
-          return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
-        } else if (res.statusCode >= 400) {
-          return reject(responseToError(res, body));
-        }
+        url += querystring.stringify(query);
 
-        utils.logSuccess('Data updated successfully');
-        logger.info();
-        logger.info(chalk.bold('View data at:'), utils.addSubdomain(api.realtimeOrigin, options.firebase) + path);
-        return resolve();
-      }));
+        utils.explainStdin();
+
+        inStream.pipe(request.patch(url, {json: true}, function(err, res, body) {
+          logger.info();
+          if (err) {
+            return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
+          } else if (res.statusCode >= 400) {
+            return reject(responseToError(res, body));
+          }
+
+          utils.logSuccess('Data updated successfully');
+          logger.info();
+          logger.info(chalk.bold('View data at:'), utils.addSubdomain(api.realtimeOrigin, options.firebase) + path);
+          return resolve();
+        }));
+      });
     });
   });

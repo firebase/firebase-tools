@@ -30,6 +30,8 @@ module.exports = new Command('data:push <path>')
 
       url += querystring.stringify(query);
 
+      utils.explainStdin();
+
       inStream.pipe(request.post(url, {json: true}, function(err, res, body) {
         logger.info();
         if (err) {
