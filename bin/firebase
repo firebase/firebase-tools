@@ -12,6 +12,7 @@ var path = require('path');
 var chalk = require('chalk');
 var configstore = require('../lib/configstore');
 var _ = require('lodash');
+var args = process.argv.slice(2);
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
 logger.add(winston.transports.Console, {
@@ -31,6 +32,12 @@ logger.add(winston.transports.Console, {
   }
 });
 
+var debugging = false;
+if (_.contains(args, '--debug')) {
+  logger.transports.console.level = 'debug';
+  debugging = true;
+}
+
 logger.debug(_.repeat('-', 70));
 logger.debug('Command:     ', process.argv.join(' '));
 logger.debug('Platform:    ', process.platform);
@@ -41,7 +48,7 @@ logger.debug();
 
 process.on('exit', function(code) {
   code = process.exitCode || code;
-  if (code < 2 && fs.existsSync(logFilename)) {
+  if (!debugging && code < 2 && fs.existsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }
 
@@ -66,7 +73,6 @@ updateNotifier({pkg: pkg}).notify();
 client.cli.parse(process.argv);
 
 // determine if there are any non-option arguments. if not, display help
-var args = process.argv.slice(2);
 args = args.filter(function(arg) {
   return arg.indexOf('-') < 0;
 });
