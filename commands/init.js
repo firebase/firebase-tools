@@ -36,7 +36,8 @@ module.exports = new Command('init')
     if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
       return RSVP.reject(new FirebaseError('Cannot run init, firebase.json already present'));
     }
-    var emptyDir = fs.readdirSync(cwd).length === 0;
+
+    var emptyDir = _.difference(fs.readdirSync(cwd), ['firebase-debug.log']).length === 0;
     if (!emptyDir) {
       logger.warn(chalk.yellow('⚠  Initializing in a non-empty directory'));
     }
