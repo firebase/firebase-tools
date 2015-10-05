@@ -1,6 +1,6 @@
 {
   "name": "firebase-cli",
-  "version": "2.0.0-preview",
+  "version": "2.0.0",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
