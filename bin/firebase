@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 
-var updateNotifier = require('update-notifier');
 var pkg = require('../package.json');
+var updateNotifier = require('update-notifier')({pkg: pkg});
+updateNotifier.notify({defer: true});
+
 var client = require('..');
 var errorOut = require('../lib/errorOut');
 var winston = require('winston');
@@ -67,8 +69,6 @@ require('exit-code');
 process.on('uncaughtException', function(err) {
   errorOut(client, err);
 });
-
-updateNotifier({pkg: pkg}).notify();
 
 client.cli.parse(process.argv);
 

@@ -15,20 +15,19 @@ var fs = require('fs');
 var Firebase = require('firebase');
 var _ = require('lodash');
 
-module.exports = new Command('data:push <path> [data]')
+module.exports = new Command('data:push <path> [infile]')
   .description('add a new JSON object to a list of data in your Firebase')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
-  .option('-i, --input <filename>', 'read data from the specified file')
+  .option('-d, --data <data>', 'specify escaped JSON directly')
   .before(requireAccess)
-  .action(function(path, data, options) {
+  .action(function(path, file, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
     }
 
     return new RSVP.Promise(function(resolve, reject) {
-      var fileIn = !!options.input;
-      var inStream = utils.stringToStream(data) || (fileIn ? fs.createReadStream(options.input) : process.stdin);
+      var inStream = utils.stringToStream(options.data) || (!!file ? fs.createReadStream(file) : process.stdin);
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
       var query = {auth: options.auth || options.dataToken};
