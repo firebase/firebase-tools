@@ -15,6 +15,8 @@ module.exports = new Command('disable:hosting')
   .option('-y, --confirm', 'skip confirmation')
   .before(requireAccess)
   .action(function(options) {
+    console.log('⚠️⚠️⚠️⚠️⚠️⚠️⚠️ UNDER CONSTRUCTION ⚠️⚠️⚠️⚠️⚠️⚠️⚠️\nSorry, this command is not quite fully baked.');
+    return;
     var firebase = getFirebaseName(options);
 
     return prompt(options, [

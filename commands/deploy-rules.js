@@ -17,6 +17,8 @@ module.exports = new Command('deploy:rules')
   .before(requireConfig)
   .before(acquireRefs)
   .action(function(options) {
+    console.log('⚠️⚠️⚠️⚠️⚠️⚠️⚠️ UNDER CONSTRUCTION ⚠️⚠️⚠️⚠️⚠️⚠️⚠️\nSorry, this command is not quite fully baked.');
+    return;
     var config = Config.load(options);
     if (!config.has('rules')) {
       utils.logSuccess('Nothing to deploy (no "rules" specified in firebase.json)');

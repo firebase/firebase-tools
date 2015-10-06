@@ -14,5 +14,7 @@ module.exports = new Command('deploy:hosting')
   .before(requireConfig)
   .before(acquireRefs)
   .action(function(options) {
+    console.log('⚠️⚠️⚠️⚠️⚠️⚠️⚠️ UNDER CONSTRUCTION ⚠️⚠️⚠️⚠️⚠️⚠️⚠️\nSorry, this command is not quite fully baked.');
+    return;
     return deploy(['hosting'], options);
   });
