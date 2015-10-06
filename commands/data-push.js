@@ -13,6 +13,7 @@ var chalk = require('chalk');
 var logger = require('../lib/logger');
 var fs = require('fs');
 var Firebase = require('firebase');
+var _ = require('lodash');
 
 module.exports = new Command('data:push <path> [data]')
   .description('add a new JSON object to a list of data in your Firebase')
@@ -21,6 +22,10 @@ module.exports = new Command('data:push <path> [data]')
   .option('-i, --input <filename>', 'read data from the specified file')
   .before(requireAccess)
   .action(function(path, data, options) {
+    if (!_.startsWith(path, '/')) {
+      return utils.reject('Path must begin with /', {exit: 1});
+    }
+
     return new RSVP.Promise(function(resolve, reject) {
       var fileIn = !!options.input;
       var inStream = utils.stringToStream(data) || (fileIn ? fs.createReadStream(options.input) : process.stdin);

@@ -45,6 +45,10 @@ module.exports = new Command('data:get <path>')
   .option('--equal-to <val>', 'restrict results to <val> (based on specified ordering)')
   .before(requireAccess)
   .action(function(path, options) {
+    if (!_.startsWith(path, '/')) {
+      return utils.reject('Path must begin with /', {exit: 1});
+    }
+
     return new RSVP.Promise(function(resolve, reject) {
       var fileOut = !!options.output;
       var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;

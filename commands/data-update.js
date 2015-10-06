@@ -13,6 +13,7 @@ var chalk = require('chalk');
 var logger = require('../lib/logger');
 var fs = require('fs');
 var prompt = require('../lib/prompt');
+var _ = require('lodash');
 
 module.exports = new Command('data:update <path> [data]')
   .description('update some of the keys for the defined path in your Firebase')
@@ -22,6 +23,10 @@ module.exports = new Command('data:update <path> [data]')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireAccess)
   .action(function(path, data, options) {
+    if (!_.startsWith(path, '/')) {
+      return utils.reject('Path must begin with /', {exit: 1});
+    }
+
     return prompt(options, [{
       type: 'confirm',
       name: 'confirm',
