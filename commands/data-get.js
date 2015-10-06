@@ -21,8 +21,15 @@ var _applyStringOpts = function(dest, src, keys, jsonKeys) {
 
   // some keys need JSON encoding of the querystring value
   _.forEach(jsonKeys, function(key) {
+    var jsonVal;
+    try {
+      jsonVal = JSON.parse(src[key]);
+    } catch (e) {
+      jsonVal = src[key];
+    }
+
     if (src[key]) {
-      dest[key] = JSON.stringify(src[key]);
+      dest[key] = JSON.stringify(jsonVal);
     }
   });
 };
