@@ -63,7 +63,7 @@ module.exports = new Command('init')
           type: 'input',
           name: 'firebase',
           message: 'Name your new Firebase:',
-          'default': path.basename(cwd),
+          default: path.basename(cwd),
           when: function(answers) {
             return answers.firebase === NEW_FIREBASE;
           }
@@ -72,7 +72,7 @@ module.exports = new Command('init')
           type: 'input',
           name: 'public',
           message: 'What directory should be the public root?',
-          'default': '.',
+          default: '.',
           validate: function(answer) {
             if (_isOutside(cwd, answer)) {
               return 'Must be within the current directory';
@@ -98,9 +98,13 @@ module.exports = new Command('init')
           logger.info(chalk.green('✔ '), 'Public directory', chalk.bold(options.public), 'has been created');
         }
 
+        var publicPath = path.relative(cwd, options.public);
+        if (publicPath === '') {
+          publicPath = '.';
+        }
         var config = JSON.stringify(_.extend({}, defaultConfig, {
           firebase: options.firebase,
-          'public': path.relative(cwd, options.public)
+          public: publicPath
         }), undefined, 2);
 
         fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
