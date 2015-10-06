@@ -34,7 +34,7 @@ var commandNames = program.commands.map(function(cmd) {
   return cmd._name;
 });
 
-program.action(function(cmd) {
+program.action(function(cmd, cmd2) {
   logger.error(
     chalk.bold.red('Error:'),
     chalk.bold(cmd), 'is not a Firebase command'
@@ -45,6 +45,7 @@ program.action(function(cmd) {
     logger.error(chalk.bold('delete-site') + ' has been renamed, please run', chalk.bold('firebase disable:hosting'), 'instead');
   } else {
     var suggestion = didYouMean(cmd, commandNames);
+    suggestion = suggestion || didYouMean([cmd, cmd2].join(':'), commandNames);
     if (suggestion) {
       logger.error();
       logger.error('Did you mean', chalk.bold(suggestion) + '?');
