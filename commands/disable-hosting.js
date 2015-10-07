@@ -4,7 +4,6 @@ var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
 var api = require('../lib/api');
 var utils = require('../lib/utils');
-var getFirebaseName = require('../lib/getFirebaseName');
 var prompt = require('../lib/prompt');
 var chalk = require('chalk');
 var RSVP = require('rsvp');
@@ -15,10 +14,6 @@ module.exports = new Command('disable:hosting')
   .option('-y, --confirm', 'skip confirmation')
   .before(requireAccess)
   .action(function(options) {
-    console.log('⚠️⚠️⚠️⚠️⚠️⚠️⚠️ UNDER CONSTRUCTION ⚠️⚠️⚠️⚠️⚠️⚠️⚠️\nSorry, this command is not quite fully baked.');
-    return;
-    var firebase = getFirebaseName(options);
-
     return prompt(options, [
       {
         type: 'confirm',
@@ -30,7 +25,7 @@ module.exports = new Command('disable:hosting')
         return RSVP.resolve();
       }
 
-      return api.request('PUT', '/firebase/' + firebase + '/release', {
+      return api.request('POST', '/firebase/' + options.firebase + '/releases', {
         auth: true,
         data: {
           hosting: {
@@ -41,7 +36,7 @@ module.exports = new Command('disable:hosting')
       });
     }).then(function() {
       if (options.confirm) {
-        utils.logSuccess('Hosting has been disabled for ' + chalk.bold(firebase) + '. Deploy a new version to re-enable.');
+        utils.logSuccess('Hosting has been disabled for ' + chalk.bold(options.firebase) + '. Deploy a new version to re-enable.');
       }
     });
   });

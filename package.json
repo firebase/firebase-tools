@@ -4,7 +4,7 @@
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
-    "firebase-cli": "./bin/firebase"
+    "firebase": "./bin/firebase"
   },
   "scripts": {
     "test": "gulp"
