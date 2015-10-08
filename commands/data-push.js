@@ -21,20 +21,22 @@ module.exports = new Command('data:push <path> [infile]')
   .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .before(requireAccess)
-  .action(function(path, file, options) {
+  .action(function(path, infile, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
     }
 
     return new RSVP.Promise(function(resolve, reject) {
-      var inStream = utils.stringToStream(options.data) || (!!file ? fs.createReadStream(file) : process.stdin);
+      var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
       var query = {auth: options.auth || options.dataToken};
 
       url += querystring.stringify(query);
 
-      utils.explainStdin();
+      if (options.data) {
+        utils.explainStdin();
+      }
 
       inStream.pipe(request.post(url, {json: true}, function(err, res, body) {
         logger.info();
