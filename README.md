@@ -42,8 +42,8 @@ Below is a brief list of the available commands and their function:
 
 ### Administrative Commands
 
-Command Name | Description
------------- | -----------
+Command | Description
+------- | -----------
 **login** | Authenticate to your Firebase account. Requires access to a web browser.
 **logout** | Remove locally stored Firebase authentication information.
 **list** | List out all Firebase projects to which you have access.
@@ -56,8 +56,8 @@ Command Name | Description
 
 These commands let you deploy and interact with your Firebase Hosting site.
 
-Command Name | Description
------------- | -----------
+Command | Description
+------- | -----------
 **deploy** | Deploys all components (both hosting and security rules) of your Firebase project. Relies on [firebase.json][1] configuration.
 **deploy:hosting** | Deploy only the Firebase Hosting site assets to your Firebase project. Relies on [firebase.json][1] configuration.
 **deploy:rules** | Deploy only the Firebase Security Rules to your Firebase project. Relies on [firebase.json][1] configuration.
@@ -66,8 +66,8 @@ Command Name | Description
 
 ### Data Commands
 
-Command Name | Description
------------- | -----------
+Command | Description
+------- | -----------
 **data:get** | Fetch data from the current project's database and display it as JSON. Supports querying on indexed data.
 **data:set** | Replace all data at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
 **data:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
