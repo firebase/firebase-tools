@@ -17,7 +17,7 @@ var PANELS = {
   analytics: '/?page=Analytics',
   auth: '/?page=Auth',
   hosting: '/?page=Hosting'
-}
+};
 
 module.exports = new Command('open [panel]')
   .description('open Firebase Hosting URL in browser or jump to a dashboard panel')

@@ -44,20 +44,20 @@ describe('Config', function() {
   describe('#_parseFile', function() {
     it('should load a cjson file', function() {
       var config = new Config({}, {cwd: _fixtureDir('config-imports')});
-      expect(config._parseFile('hosting.json').public).to.equal('.');
+      expect(config._parseFile('hosting', 'hosting.json').public).to.equal('.');
     });
 
     it('should error out for an unknown file', function() {
       var config = new Config({}, {cwd: _fixtureDir('config-imports')});
       expect(function() {
-        config._parseFile('i-dont-exist.json');
+        config._parseFile('hosting', 'i-dont-exist.json');
       }).to.throw('Imported file i-dont-exist.json does not exist');
     });
 
     it('should error out for an unrecognized extension', function() {
       var config = new Config({}, {cwd: _fixtureDir('config-imports')});
       expect(function() {
-        config._parseFile('unsupported.txt');
+        config._parseFile('hosting', 'unsupported.txt');
       }).to.throw('unsupported.txt is not of a supported config file type');
     });
   });
