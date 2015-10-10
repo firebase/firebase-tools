@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireAccess = require('../lib/requireAccess');
+var requireDataAccess = require('../lib/requireDataAccess');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -16,9 +16,8 @@ var _ = require('lodash');
 module.exports = new Command('data:remove <path>')
   .description('remove data from your Firebase at the specified path')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
-  .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
-  .before(requireAccess)
+  .before(requireDataAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
@@ -36,7 +35,7 @@ module.exports = new Command('data:remove <path>')
 
       return new RSVP.Promise(function(resolve, reject) {
         var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-        var query = {auth: options.auth || options.dataToken};
+        var query = {auth: options.dataToken};
 
         url += querystring.stringify(query);
 

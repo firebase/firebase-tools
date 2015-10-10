@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireAccess = require('../lib/requireAccess');
+var requireDataAccess = require('../lib/requireDataAccess');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -37,7 +37,6 @@ var _applyStringOpts = function(dest, src, keys, jsonKeys) {
 module.exports = new Command('data:get <path>')
   .description('fetch and print JSON data at the specified path')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
-  .option('-a, --auth <token>', 'authorization token to use (defaults to admin token)')
   .option('-o, --output <filename>', 'save output to the specified file')
   .option('--pretty', 'pretty print response')
   .option('--shallow', 'return shallow response')
@@ -50,7 +49,7 @@ module.exports = new Command('data:get <path>')
   .option('--start-at <val>', 'start results at <val> (based on specified ordering)')
   .option('--end-at <val>', 'end results at <val> (based on specified ordering)')
   .option('--equal-to <val>', 'restrict results to <val> (based on specified ordering)')
-  .before(requireAccess)
+  .before(requireDataAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
@@ -64,7 +63,8 @@ module.exports = new Command('data:get <path>')
       var response;
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-      var query = {auth: options.auth || options.dataToken};
+      console.log(options.dataToken);
+      var query = {auth: options.dataToken};
       if (options.shallow) { query.shallow = 'true'; }
       if (options.pretty) { query.print = 'pretty'; }
       if (options.export) { query.format = 'export'; }
