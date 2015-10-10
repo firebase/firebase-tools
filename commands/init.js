@@ -12,6 +12,7 @@ var api = require('../lib/api');
 var requireAuth = require('../lib/requireAuth');
 var RSVP = require('rsvp');
 var FirebaseError = require('../lib/error');
+var utils = require('../lib/utils');
 
 var NEW_FIREBASE = '[create a new firebase]';
 
@@ -28,18 +29,19 @@ module.exports = new Command('init')
     var cwd = options.cwd || process.cwd();
 
     if (_isOutside(homeDir, cwd)) {
-      logger.warn(chalk.yellow('⚠  Initializing outside your home directory'));
+      utils.logWarning(chalk.bold.yellow('Caution!') + ' Initializing outside your home directory');
     }
     if (cwd === homeDir) {
-      logger.warn(chalk.yellow('⚠  Initializing directly at your home directory'));
+      utils.logWarning(chalk.bold.yellow('Caution!') + ' Initializing directly at your home directory');
     }
     if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
       return RSVP.reject(new FirebaseError('Cannot run init, firebase.json already present'));
     }
 
-    var emptyDir = _.difference(fs.readdirSync(cwd), ['firebase-debug.log']).length === 0;
-    if (!emptyDir) {
-      logger.warn(chalk.yellow('⚠  Initializing in a non-empty directory'));
+    var fileCount = _.difference(fs.readdirSync(cwd), ['firebase-debug.log']).length;
+    if (fileCount !== 0) {
+      utils.logWarning('Initializing in a directory with ' + chalk.bold(fileCount) + ' files');
+      logger.warn();
     }
 
     return api.getFirebases().then(function(firebases) {
