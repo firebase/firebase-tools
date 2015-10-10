@@ -15,6 +15,7 @@ var chalk = require('chalk');
 var configstore = require('../lib/configstore');
 var _ = require('lodash');
 var args = process.argv.slice(2);
+var cmd;
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
 logger.add(winston.transports.Console, {
@@ -54,14 +55,23 @@ process.on('exit', function(code) {
     fs.unlinkSync(logFilename);
   }
 
-  if (code > 0) {
-    var lastError = configstore.get('lastError');
-    var timestamp = new Date().getTime();
-    if (lastError && lastError > timestamp - 120000) {
+  if (code > 0 && process.stdout.isTTY) {
+    var lastError = configstore.get('lastError') || 0;
+    var timestamp = Date.now();
+    if (lastError > timestamp - 120000) {
+      var help;
+      if (code === 1) {
+        var commandName = _.get(_.last(cmd.args), '_name', '[command]');
+        help = 'Having trouble? Try ' + chalk.bold('firebase ' + commandName + ' --help');
+      } else {
+        help = 'Having trouble? Try again or contact support with contents of firebase-debug.log';
+      }
       console.log();
-      console.log('Having trouble? Don\'t hesitate to contact', chalk.underline.yellow('support@firebase.com'));
+      console.log(help);
     }
     configstore.set('lastError', timestamp);
+  } else {
+    configstore.del('lastError');
   }
 });
 require('exit-code');
@@ -70,7 +80,7 @@ process.on('uncaughtException', function(err) {
   errorOut(client, err);
 });
 
-client.cli.parse(process.argv);
+cmd = client.cli.parse(process.argv);
 
 // determine if there are any non-option arguments. if not, display help
 args = args.filter(function(arg) {

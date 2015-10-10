@@ -28,7 +28,23 @@ module.exports = new Command('list')
         style: {head: ['yellow']}
       });
 
+      var out = [];
       _.forEach(firebases, function(data, name) {
+        var project = {
+          id: name,
+          plan: data.plan.id,
+          collaborators: []
+        };
+
+        _.forEach(data.users, function(info, email) {
+          project.collaborators.push({
+            email: email,
+            uid: info.uid,
+            role: info.role
+          });
+        });
+
+        out.push(project);
         table.push([
           name,
           coloredPlan(data.plan),
@@ -37,6 +53,6 @@ module.exports = new Command('list')
       });
 
       logger.info(table.toString());
-      return firebases;
+      return out;
     });
   });
