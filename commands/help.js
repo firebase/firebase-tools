@@ -4,6 +4,7 @@ var Command = require('../lib/command');
 var RSVP = require('rsvp');
 var chalk = require('chalk');
 var logger = require('../lib/logger');
+var utils = require('../lib/utils');
 
 module.exports = new Command('help [command]')
   .description('display help information')
@@ -13,7 +14,7 @@ module.exports = new Command('help [command]')
       cmd.outputHelp();
     } else if (commandName) {
       logger.warn();
-      logger.warn(' ', chalk.yellow('⚠ '), chalk.bold(commandName), 'is not a valid command. See below for valid commands');
+      utils.logWarning(chalk.bold(commandName) + ' is not a valid command. See below for valid commands');
       this.client.cli.outputHelp();
     } else {
       this.client.cli.outputHelp();

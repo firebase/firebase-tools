@@ -33,7 +33,7 @@ module.exports = new Command('data:push <path> [infile]')
 
       url += querystring.stringify(query);
 
-      if (options.data) {
+      if (!infile && !options.data) {
         utils.explainStdin();
       }
 

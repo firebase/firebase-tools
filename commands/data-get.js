@@ -63,7 +63,7 @@ module.exports = new Command('data:get <path>')
       var response;
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-      console.log(options.dataToken);
+
       var query = {auth: options.dataToken};
       if (options.shallow) { query.shallow = 'true'; }
       if (options.pretty) { query.print = 'pretty'; }

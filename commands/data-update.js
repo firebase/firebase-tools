@@ -44,7 +44,7 @@ module.exports = new Command('data:update <path> [infile]')
 
         url += querystring.stringify(query);
 
-        if (options.data) {
+        if (!infile && !options.data) {
           utils.explainStdin();
         }
 
