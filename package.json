@@ -7,7 +7,7 @@
     "firebase": "./bin/firebase"
   },
   "scripts": {
-    "test": "gulp"
+    "test": "./node_modules/.bin/gulp"
   },
   "repository": {
     "type": "git",
