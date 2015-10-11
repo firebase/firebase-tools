@@ -1,5 +1,5 @@
 {
-  "name": "firebase-cli",
+  "name": "firebase-tools",
   "version": "2.0.0",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
@@ -65,8 +65,7 @@
     "gulp-exit": "0.0.2",
     "gulp-istanbul": "^0.10.0",
     "gulp-mocha": "^2.1.2",
-    "jshint-stylish": "^2.0.1",
-    "lodash": "^3.10.0",
+    "jshint-stylish": "^2.0.1", 
     "nock": "^2.10.0"
   }
 }
