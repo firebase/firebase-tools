@@ -49,6 +49,8 @@ logger.debug('Time:        ', new Date().toString());
 logger.debug(_.repeat('-', 70));
 logger.debug();
 
+require('../lib/fetchMOTD')();
+
 process.on('exit', function(code) {
   code = process.exitCode || code;
   if (!debugging && code < 2 && fs.existsSync(logFilename)) {
