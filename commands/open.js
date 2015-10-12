@@ -30,7 +30,7 @@ module.exports = new Command('open [panel]')
       var dashOrigin = utils.addSubdomain(api.realtimeOrigin, firebase);
       url = dashOrigin + PANELS[panel];
     } else if (!panel || panel === 'site') {
-      url = 'https://' + firebase + '.firebaseapp.com/';
+      url = utils.addSubdomain(api.hostingOrigin, firebase);
     } else {
       return utils.reject('Unrecognized panel, must be one of: ' + Object.keys(PANELS).join(', '), {exit: 1});
     }
