@@ -77,7 +77,7 @@ module.exports = new Command('init')
           type: 'input',
           name: 'public',
           message: 'What directory should be the public root?',
-          default: '.',
+          default: 'public',
           validate: function(answer) {
             if (_isOutside(cwd, answer)) {
               return 'Must be within the current directory';
