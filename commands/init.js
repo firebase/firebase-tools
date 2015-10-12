@@ -1,5 +1,6 @@
 'use strict';
 var Command = require('../lib/command');
+var Config = require('../lib/config');
 var prompt = require('../lib/prompt');
 var fs = require('fs-extra');
 var path = require('path');
@@ -34,8 +35,10 @@ module.exports = new Command('init')
     if (cwd === homeDir) {
       utils.logWarning(chalk.bold.yellow('Caution!') + ' Initializing directly at your home directory');
     }
-    if (fs.existsSync(path.join(cwd, 'firebase.json'))) {
-      return RSVP.reject(new FirebaseError('Cannot run init, firebase.json already present'));
+
+    var config = Config.load(options, true);
+    if (config) {
+      return RSVP.reject(new FirebaseError('Cannot run init, already inside a project directory:\n\n' + chalk.bold(config.projectDir)));
     }
 
     var fileCount = _.difference(fs.readdirSync(cwd), ['firebase-debug.log']).length;
@@ -104,12 +107,12 @@ module.exports = new Command('init')
         if (publicPath === '') {
           publicPath = '.';
         }
-        var config = JSON.stringify(_.extend({}, defaultConfig, {
+        var out = JSON.stringify(_.extend({}, defaultConfig, {
           firebase: options.firebase,
           public: publicPath
         }), undefined, 2);
 
-        fs.writeFileSync(path.join(cwd, 'firebase.json'), config);
+        fs.writeFileSync(path.join(cwd, 'firebase.json'), out);
         logger.info('Firebase initialized, configuration written to firebase.json');
         return path.resolve(path.join(cwd, 'firebase.json'));
       });
