@@ -40,7 +40,7 @@ module.exports = new Command('login')
           if (err) {
             reject(new FirebaseError('There was a problem logging in', {original: err}));
           }
-          logger.info('Visit this URL to log in:');
+          logger.info('Visit this URL on any device to log in:');
           logger.info(chalk.bold.underline(url));
           logger.info();
           logger.info('Waiting for authentication...');
