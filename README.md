@@ -8,10 +8,11 @@ These are the Firebase Command Line (CLI) Tools. They can be used to:
 
 * Administer your Firebase account
 * Run a local web server for your Firebase Hosting site
-* Interact with data in your Firebase databases
-* Deploy Hosting and Security Rules to Firebase
+* Interact with data in your Firebase database
+* Deploy your site to Firebase Hosting
+* Deploy Security Rules for your database
 
-To get started with the Firebase CLI, [read through our command line documentation]((https://www.firebase.com/docs/hosting/command-line-tool.html).
+To get started with the Firebase CLI, read the full list of commands below or check out the [hosting-specific CLI documentation](https://www.firebase.com/docs/hosting/command-line-tool.html).
 
 
 ## Installation
@@ -34,9 +35,8 @@ This will provide you with the globally accessible `firebase` command.
 
 **The command `firebase --help` lists the available commands and `firebase <command> --help` shows more details for an individual command.**
 
-If a command is project-specific, you must either be in a directory with a
-`firebase.json` configuration file in its parent tree or specify the Firebase
-project name with the `-f <project>` flag.
+If a command is project-specific, you must either be inside a project directory with a
+`firebase.json` configuration file or specify the Firebase project name with the `-f <project>` flag.
 
 Below is a brief list of the available commands and their function:
 
@@ -45,12 +45,12 @@ Below is a brief list of the available commands and their function:
 Command | Description
 ------- | -----------
 **login** | Authenticate to your Firebase account. Requires access to a web browser.
-**logout** | Remove locally stored Firebase authentication information.
-**list** | List out all Firebase projects to which you have access.
+**logout** | Sign out of the Firebase CLI.
+**list** | Print a list of all of your Firebase projects.
 **open** | Open the deployed Firebase Hosting site or various dashboard panels for the current Firebase project.
-**init** | Setup a new Firebase project in your local system. This command will create a [firebase.json][1] configuration file for you in the current directory.
+**init** | Setup a new Firebase project in the current directory. This command will create a [firebase.json][1] configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
-**prefs:token** | Print out the current user's access token for use in CI/headless systems.
+**prefs:token** | Print out your authenticated access token for use in CI/headless systems.
 
 ### Deploy and Hosting Commands
 
@@ -61,7 +61,7 @@ Command | Description
 **deploy** | Deploys all components (both hosting and security rules) of your Firebase project. Relies on [firebase.json][1] configuration.
 **deploy:hosting** | Deploy only the Firebase Hosting site assets to your Firebase project. Relies on [firebase.json][1] configuration.
 **deploy:rules** | Deploy only the Firebase Security Rules to your Firebase project. Relies on [firebase.json][1] configuration.
-**disable:hosting** | Stop serving Firebase Hosting traffic for the current project. Instead, a "Site Not Found" message will be displayed.
+**disable:hosting** | Stop serving Firebase Hosting traffic for the current project. A "Site Not Found" message will be displayed at your URL after running this command.
 **serve** | Start a local web server with your Firebase Hosting configuration. Relies on [firebase.json][1].
 
 ### Data Commands
@@ -76,7 +76,7 @@ Command | Description
 
 [1]:https://www.firebase.com/docs/hosting/guide/full-config.html
 
-## Using the Firebase CLI with CI Systems
+## Using with CI Systems
 
 The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
@@ -87,3 +87,26 @@ compatible with CI and other headless environments.
 4. Run all commands with the `--token <token>` parameter in your CI system. For
    example, if I had my token stored as the environment variable `FIREBASE_TOKEN`
    I could run `firebase deploy --token $FIREBASE_TOKEN`
+
+## Using as a Module
+
+The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+
+```js
+var client = require('firebase-tools');
+client.list().then(function(data) {
+  console.log(data);
+}).catch(function(err) {
+  // handle error
+});
+
+client.deploy.rules({
+  firebase: 'myfirebase',
+  token: process.env.FIREBASE_TOKEN,
+  cwd: '/path/to/project/folder'
+}).then(function() {
+  console.log('Rules have been deployed!')
+}).catch(function(err) {
+  // handle error
+});
+```
