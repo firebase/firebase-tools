@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/firebase/firebase-cli.git"
+    "url": "https://github.com/firebase/firebase-tools.git"
   },
   "keywords": [
     "cdn",
@@ -29,12 +29,23 @@
     "node": ">=0.10.0"
   },
   "engineStrict": true,
-  "author": "Firebase Team",
-  "license": "MIT",
+  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://firebase.mit-license.org/"
+    }
+  ],
   "bugs": {
-    "url": "https://github.com/firebase/firebase-cli/issues"
+    "url": "https://github.com/firebase/firebase-tools/issues"
   },
-  "homepage": "https://github.com/firebase/firebase-cli",
+  "files": [
+    "bin/**",
+    "lib/**",
+    "commands/**",
+    "templates/**"
+  ],
+  "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
     "chalk": "^1.1.0",
     "cjson": "^0.3.1",
@@ -57,7 +68,7 @@
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
-    "superstatic": "git+ssh://git@github.com:firebase/superstatic.git#3.0",
+    "superstatic": "^3.0.0",
     "tar": "^2.2.0",
     "through": "^2.3.8",
     "tmp": "0.0.27",
