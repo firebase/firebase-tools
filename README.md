@@ -1,4 +1,4 @@
-# firebase-cli
+# firebase-tools
 
 [![Build Status](https://travis-ci.org/firebase/firebase-tools.svg?branch=master)](https://travis-ci.org/firebase/firebase-tools)
 [![Coverage Status](https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat)](https://coveralls.io/r/firebase/firebase-tools)
@@ -25,7 +25,7 @@ installing Node.js should install npm as well.
 Once npm is installed, get the Firebase CLI by running the following command:
 
 ```bash
-npm install -g firebase-cli
+npm install -g firebase-tools
 ```
 
 This will provide you with the globally accessible `firebase` command.
