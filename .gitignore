@@ -1,5 +1,7 @@
-coverage/
-node_modules/
+/node_modules
+/coverage
+firebase-debug.log
+npm-debug.log
 
 .DS_Store
 .idea

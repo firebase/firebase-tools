@@ -1,22 +1,18 @@
 {
   "name": "firebase-tools",
-  "description": "Firebase command line tools",
   "version": "0.0.0",
-  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
-  "homepage": "https://github.com/firebase/firebase-tools/",
+  "description": "Command-Line Interface for Firebase",
+  "main": "index.js",
+  "bin": {
+    "firebase": "./bin/firebase"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/gulp"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/firebase/firebase-tools.git"
   },
-  "bugs": {
-    "url": "https://github.com/firebase/firebase-tools/issues"
-  },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://firebase.mit-license.org/"
-    }
-  ],
   "keywords": [
     "cdn",
     "cli",
@@ -29,47 +25,71 @@
     "synchronization"
   ],
   "preferGlobal": true,
-  "bin": {
-    "firebase": "./bin/firebase"
-  },
   "engines": {
     "node": ">=0.10.0"
   },
   "engineStrict": true,
+  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://firebase.mit-license.org/"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/firebase/firebase-tools/issues"
+  },
   "files": [
     "bin/**",
     "lib/**",
-    "LICENSE",
-    "README.md",
-    "package.json"
+    "commands/**",
+    "templates/**",
+    "index.js"
   ],
+  "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
-    "chalk": "0.5.x",
-    "filesize": "3.1.2",
-    "firebase": "2.2.x",
-    "fstream-ignore": "1.0.x",
-    "open": "0.0.x",
-    "optimist": "0.6.x",
-    "progress": "1.1.x",
-    "prompt": "0.2.x",
-    "request": "2.51.x",
-    "source-map-support": "0.2.7",
-    "source-processor": "0.0.7",
-    "tar": "1.0.x",
-    "when": "3.6.x"
+    "chalk": "^1.1.0",
+    "cjson": "^0.3.1",
+    "cli-table": "^0.3.1",
+    "commander": "^2.8.1",
+    "concat-stream": "^1.5.0",
+    "configstore": "^1.2.0",
+    "didyoumean": "^1.2.1",
+    "exit-code": "^1.0.2",
+    "filesize": "^3.1.3",
+    "firebase": "2.x.x",
+    "fs-extra": "^0.23.1",
+    "fstream-ignore": "^1.0.2",
+    "inquirer": "^0.8.5",
+    "jsonschema": "^1.0.2",
+    "lodash": "^3.10.0",
+    "node-uuid": "^1.4.3",
+    "open": "0.0.5",
+    "progress": "^1.1.8",
+    "request": "^2.58.0",
+    "rsvp": "^3.0.18",
+    "semver": "^5.0.3",
+    "superstatic": "^3.0.0",
+    "tar": "^2.2.0",
+    "through": "^2.3.8",
+    "tmp": "0.0.27",
+    "universal-analytics": "^0.3.9",
+    "update-notifier": "^0.5.0",
+    "user-home": "^2.0.0",
+    "uuid": "^2.0.1",
+    "winston": "^1.0.1"
   },
   "devDependencies": {
-    "chai": "^1.10.0",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
     "coveralls": "2.11.2",
-    "gulp": "3.8.10",
+    "eslint": "^1.4.1",
+    "gulp": "^3.9.0",
+    "gulp-eslint": "^1.0.0",
     "gulp-exit": "0.0.2",
-    "gulp-istanbul": "0.5.0",
-    "gulp-jshint": "1.9.0",
-    "gulp-mocha": "2.0.0",
-    "jshint-stylish": "1.0.0"
-  },
-  "scripts": {
-    "test": "gulp test",
-    "travis": "gulp"
+    "gulp-istanbul": "^0.10.0",
+    "gulp-mocha": "^2.1.2",
+    "jshint-stylish": "^2.0.1",
+    "nock": "^2.10.0"
   }
 }

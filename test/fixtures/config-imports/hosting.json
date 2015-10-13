@@ -1,0 +1,6 @@
+{
+  // this is a comment, deal with it
+  "public": ".",
+  "ignore": ["**/.*"],
+  "extra": true
+}

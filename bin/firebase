@@ -1,95 +1,93 @@
 #!/usr/bin/env node
+'use strict';
 
-var argv = require('optimist')
-              .alias('f', 'firebase')
-              .alias('h', 'help')
-              .alias('m', 'message')
-              .alias('p', 'public')
-              .alias('r', 'rules')
-              .alias('s', 'silent')
-              .alias('t', 'template')
-              .alias('v', 'version')
-              .boolean('d')
-              .boolean('s')
-              .argv,
-    prompt = require('prompt'),
-    firebase = require('../lib/firebase'),
-    app = require('../lib/app'),
-    help = require('../lib/help');
+var pkg = require('../package.json');
+var updateNotifier = require('update-notifier')({pkg: pkg});
+updateNotifier.notify({defer: true});
 
-prompt.override = argv;
-prompt.message = '';
-prompt.delimiter = '';
-prompt.colors = false;
+var client = require('..');
+var errorOut = require('../lib/errorOut');
+var winston = require('winston');
+var logger = require('../lib/logger');
+var fs = require('fs');
+var path = require('path');
+var chalk = require('chalk');
+var configstore = require('../lib/configstore');
+var _ = require('lodash');
+var args = process.argv.slice(2);
+var cmd;
 
-if (argv._.length === 0) {
+var logFilename = path.join(process.cwd(), '/firebase-debug.log');
+logger.add(winston.transports.Console, {
+  level: process.env.DEBUG ? 'debug' : 'info',
+  showLevel: false,
+  colorize: true
+}).add(winston.transports.File, {
+  level: 'debug',
+  filename: logFilename,
+  json: false,
+  formatter: function(input) {
+    input.message = chalk.stripColor(input.message);
+    return [
+      '[' + input.level + ']',
+      input.message
+    ].join(' ');
+  }
+});
 
-  if (argv.version) {
-    help.showVersion();
-  } else {
-    help.showHelp();
+var debugging = false;
+if (_.contains(args, '--debug')) {
+  logger.transports.console.level = 'debug';
+  debugging = true;
+}
+
+logger.debug(_.repeat('-', 70));
+logger.debug('Command:     ', process.argv.join(' '));
+logger.debug('Platform:    ', process.platform);
+logger.debug('Node Version:', process.version);
+logger.debug('Time:        ', new Date().toString());
+logger.debug(_.repeat('-', 70));
+logger.debug();
+
+require('../lib/fetchMOTD')();
+
+process.on('exit', function(code) {
+  code = process.exitCode || code;
+  if (!debugging && code < 2 && fs.existsSync(logFilename)) {
+    fs.unlinkSync(logFilename);
   }
 
-} else {
-  if (
-    argv.h ||
-    argv.hel ||
-    argv.hep ||
-    argv.hepl ||
-    argv.help
-  ) {
-
-    help.showHelp(argv._[0]);
-
-  } else {
-    // Top-level router
-    switch (argv._[0]) {
-
-      // Top-level functionality
-
-      case 'login':
-        firebase.login(argv);
-        break;
-      case 'logout':
-        firebase.logout(argv);
-        break;
-      case 'ls':
-      case 'list':
-        firebase.list(argv);
-        break;
-
-      // Submodules
-
-      case 'init':
-      case 'initialise':
-      case 'initialize':
-        app.init(argv);
-        break;
-      case 'bootstrap':
-        app.bootstrap(argv);
-        break;
-      case 'deploy':
-        app.deploy(argv);
-        break;
-      case 'delete-site':
-        app.deleteSite(argv);
-        break;
-      case 'open':
-        app.open(argv);
-        break;
-
-      case 'h':
-      case 'hel':
-      case 'hep':
-      case 'hepl':
-      case 'help':
-        help.showHelp();
-        break;
-
-      default:
-        console.log('\n' +
-          'Command not found. Use `firebase --help` for a list of commands or\n' +
-          '`firebase <command> --help` for more details\n');
+  if (code > 0 && process.stdout.isTTY) {
+    var lastError = configstore.get('lastError') || 0;
+    var timestamp = Date.now();
+    if (lastError > timestamp - 120000) {
+      var help;
+      if (code === 1) {
+        var commandName = _.get(_.last(cmd.args), '_name', '[command]');
+        help = 'Having trouble? Try ' + chalk.bold('firebase ' + commandName + ' --help');
+      } else {
+        help = 'Having trouble? Try again or contact support with contents of firebase-debug.log';
+      }
+      console.log();
+      console.log(help);
     }
+    configstore.set('lastError', timestamp);
+  } else {
+    configstore.del('lastError');
   }
+});
+require('exit-code');
+
+process.on('uncaughtException', function(err) {
+  errorOut(client, err);
+});
+
+cmd = client.cli.parse(process.argv);
+
+// determine if there are any non-option arguments. if not, display help
+args = args.filter(function(arg) {
+  return arg.indexOf('-') < 0;
+});
+if (!args.length) {
+  client.cli.help();
 }
