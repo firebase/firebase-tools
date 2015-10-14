@@ -14,7 +14,8 @@ module.exports = new Command('logout')
   .action(function(options) {
     var user = configstore.get('user');
     var session = configstore.get('session');
-    var token = utils.getInheritedOption(options, 'token') || _.get(session, 'token');
+    var currentToken = _.get(session, 'token');
+    var token = utils.getInheritedOption(options, 'token') || currentToken;
     api.setToken(token);
     var next;
     if (token) {
@@ -27,11 +28,15 @@ module.exports = new Command('logout')
 
     var cleanup = function() {
       if (token || user || session) {
-        configstore.del('user');
-        configstore.del('session');
         var msg = 'Logged out';
-        if (user) {
-          msg += ' from ' + chalk.bold(user.email);
+        if (token === currentToken) {
+          configstore.del('user');
+          configstore.del('session');
+          if (user) {
+            msg += ' from ' + chalk.bold(user.email);
+          }
+        } else {
+          msg += ' token "' + chalk.bold(token) + '"';
         }
         utils.logSuccess(msg);
       } else {
