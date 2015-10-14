@@ -24,6 +24,7 @@ module.exports = function(client) {
   client.init = loadCommand('init');
   client.list = loadCommand('list');
   client.login = loadCommand('login');
+  client.login.ci = loadCommand('login-ci');
   client.logout = loadCommand('logout');
   client.open = loadCommand('open');
   client.prefs = {};
