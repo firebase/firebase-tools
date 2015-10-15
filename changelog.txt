@@ -1,2 +1,0 @@
-fixed - Added back in the `--public` flag for `firebase deploy` which was accidentally dropped in the `2.0.0` release.
-fixed - Fixed an issue with the deploy progress bar that caused crashes for some users when run in non-interactive mode.
