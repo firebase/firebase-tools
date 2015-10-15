@@ -18,7 +18,7 @@ var ticketsRef = new Firebase(utils.addSubdomain(api.realtimeOrigin, 'firebase')
 module.exports = new Command('login')
   .description('sign into Firebase')
   .action(function(options) {
-    if (utils.getInheritedOption(options, 'nonInteractive')) {
+    if (options.nonInteractive) {
       return utils.reject('Cannot run login in non-interactive mode. Pass ' + chalk.bold('--token') + ' instead.', {exit: 1});
     }
 
