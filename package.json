@@ -30,12 +30,7 @@
   },
   "engine-strict": true,
   "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://firebase.mit-license.org/"
-    }
-  ],
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/firebase/firebase-tools/issues"
   },
