@@ -81,12 +81,16 @@ Command | Description
 The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
 
-1. On a machine with a browser, install the Firebase CLI and login.
-2. Run `firebase prefs:token` to print out the access token once you've logged in.
+1. On a machine with a browser, install the Firebase CLI.
+2. Run `firebase login:ci` to log in and print out a new access token
+   (the current CLI session will not be affected).
 3. Store the output token in a secure but accessible way in your CI system.
 4. Run all commands with the `--token <token>` parameter in your CI system. For
    example, if I had my token stored as the environment variable `FIREBASE_TOKEN`
-   I could run `firebase deploy --token $FIREBASE_TOKEN`
+   I could run `firebase deploy --token "$FIREBASE_TOKEN"`
+
+On any machine with firebase-tools, running `firebase logout --token <token>`
+will immediately revoke access to the specified token.
 
 ## Using as a Module
 
