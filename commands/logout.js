@@ -10,7 +10,7 @@ var api = require('../lib/api');
 var _ = require('lodash');
 
 module.exports = new Command('logout')
-  .description('delete local authentication data')
+  .description('log the CLI out of Firebase')
   .action(function(options) {
     var user = configstore.get('user');
     var session = configstore.get('session');

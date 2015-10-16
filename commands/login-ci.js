@@ -6,14 +6,15 @@ var utils = require('../lib/utils');
 var login = require('../lib/login');
 
 module.exports = new Command('login:ci')
-  .description('sign into Firebase ')
+  .description('generate an access token for use in non-interactive environments')
   .action(function(options) {
     if (utils.getInheritedOption(options, 'nonInteractive')) {
-      return utils.reject('Cannot run login in non-interactive mode. Pass ' + chalk.bold('--token') + ' instead.', {exit: 1});
+      return utils.reject('Cannot run login:ci in non-interactive mode.', {exit: 1});
     }
 
     return login().then(function(auth) {
-      utils.logSuccess('Success! Use this token to login on a CI server: "' + chalk.bold(auth.session.token) + '"');
+      utils.logSuccess('Success! Use this token to login on a CI server:\n\n' +
+        chalk.bold(auth.session.token) + '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n');
       return auth;
     });
   });

@@ -10,10 +10,11 @@ var login = require('../lib/login');
 var _ = require('lodash');
 
 module.exports = new Command('login')
-  .description('sign into Firebase')
+  .description('log the CLI into Firebase')
   .action(function(options) {
     if (utils.getInheritedOption(options, 'nonInteractive')) {
-      return utils.reject('Cannot run login in non-interactive mode. Pass ' + chalk.bold('--token') + ' instead.', {exit: 1});
+      return utils.reject('Cannot run login in non-interactive mode. See ' +
+        chalk.bold('login:ci') + ' to generate a token for use in non-interactive environments.', {exit: 1});
     }
 
     var user = configstore.get('user');
