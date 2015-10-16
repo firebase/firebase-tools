@@ -8,7 +8,7 @@ var login = require('../lib/login');
 module.exports = new Command('login:ci')
   .description('generate an access token for use in non-interactive environments')
   .action(function(options) {
-    if (utils.getInheritedOption(options, 'nonInteractive')) {
+    if (options.nonInteractive) {
       return utils.reject('Cannot run login:ci in non-interactive mode.', {exit: 1});
     }
 

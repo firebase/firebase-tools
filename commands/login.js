@@ -12,7 +12,7 @@ var _ = require('lodash');
 module.exports = new Command('login')
   .description('log the CLI into Firebase')
   .action(function(options) {
-    if (utils.getInheritedOption(options, 'nonInteractive')) {
+    if (options.nonInteractive) {
       return utils.reject('Cannot run login in non-interactive mode. See ' +
         chalk.bold('login:ci') + ' to generate a token for use in non-interactive environments.', {exit: 1});
     }
