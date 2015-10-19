@@ -41,6 +41,23 @@ describe('Config', function() {
     });
   });
 
+  describe('#importLegacyKeys', function() {
+    it('should respect non-overlapping keys in hosting', function() {
+      var redirects = [{source: '/foo', destination: '/bar.html', type: 301}];
+      var rewrites = [{source: '**', destination: '/index.html'}];
+      var config = new Config({
+        rewrites: rewrites,
+        hosting: {
+          redirects: redirects
+        }
+      }, {});
+
+      config.importLegacyKeys();
+      expect(config.get('hosting.redirects')).to.eq(redirects);
+      expect(config.get('hosting.rewrites')).to.eq(rewrites);
+    });
+  });
+
   describe('#_parseFile', function() {
     it('should load a cjson file', function() {
       var config = new Config({}, {cwd: _fixtureDir('config-imports')});
