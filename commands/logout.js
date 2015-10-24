@@ -7,31 +7,30 @@ var chalk = require('chalk');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 var api = require('../lib/api');
+var auth = require('../lib/auth');
 var _ = require('lodash');
 
 module.exports = new Command('logout')
   .description('log the CLI out of Firebase')
   .action(function(options) {
     var user = configstore.get('user');
-    var session = configstore.get('session');
-    var currentToken = _.get(session, 'token');
+    var tokens = configstore.get('tokens');
+    var currentToken = _.get(tokens, 'refresh_token');
     var token = utils.getInheritedOption(options, 'token') || currentToken;
     api.setToken(token);
     var next;
     if (token) {
-      next = api.request('DELETE', '/account/token', {
-        auth: true
-      });
+      next = auth.logout(token);
     } else {
       next = RSVP.resolve();
     }
 
     var cleanup = function() {
-      if (token || user || session) {
+      if (token || user || tokens) {
         var msg = 'Logged out';
         if (token === currentToken) {
           configstore.del('user');
-          configstore.del('session');
+          configstore.del('tokens');
           if (user) {
             msg += ' from ' + chalk.bold(user.email);
           }
@@ -45,7 +44,7 @@ module.exports = new Command('logout')
     };
 
     return next.then(cleanup, function() {
-      utils.logWarning('Invalid session token, did not need to deauthorize');
+      utils.logWarning('Invalid refresh token, did not need to deauthorize');
       cleanup();
     });
   });

@@ -9,7 +9,7 @@ module.exports = new Command('prefs:token')
   .description('print the currently logged in user\'s access token')
   .before(requireAuth)
   .action(function() {
-    var token = configstore.get('session').token;
+    var token = configstore.get('tokens').refresh_token;
     logger.info(token);
     return token;
   });
