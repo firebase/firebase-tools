@@ -5,6 +5,7 @@ var logger = require('../lib/logger');
 var configstore = require('../lib/configstore');
 var chalk = require('chalk');
 var utils = require('../lib/utils');
+var prompt = require('../lib/prompt');
 var RSVP = require('rsvp');
 var auth = require('../lib/auth');
 var _ = require('lodash');
@@ -25,12 +26,16 @@ module.exports = new Command('login')
       logger.info('Already logged in as', chalk.bold(user.email));
       return RSVP.resolve(user);
     }
-    return auth.login(options.localhost).then(function(result) {
+    return prompt(options, [{
+      type: 'confirm',
+      name: 'collectUsage',
+      message: 'Allow Firebase to collect anonymous CLI usage information?'
+    }]).then(function() {
+      configstore.set('usage', options.collectUsage);
+      return auth.login(options.localhost);
+    }).then(function(result) {
       configstore.set('user', result.user);
       configstore.set('tokens', result.tokens);
-
-      // TODO: set this in the login flow
-      configstore.set('usage', _.get(result, 'prefs.usage', false));
 
       utils.logSuccess('Success! Logged in as ' + chalk.bold(result.user.email));
 
