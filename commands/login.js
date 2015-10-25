@@ -6,10 +6,8 @@ var configstore = require('../lib/configstore');
 var chalk = require('chalk');
 var utils = require('../lib/utils');
 var prompt = require('../lib/prompt');
-var logger = require('../lib/logger');
 var RSVP = require('rsvp');
 var auth = require('../lib/auth');
-var _ = require('lodash');
 
 module.exports = new Command('login')
   .description('log the CLI into Firebase')
