@@ -25,7 +25,7 @@ module.exports = new Command('disable:hosting')
         return RSVP.resolve();
       }
 
-      return api.request('POST', '/apps/' + options.firebase + '/releases', {
+      return api.request('POST', '/projects/' + options.firebase + '/releases', {
         auth: true,
         data: {
           hosting: {
