@@ -6,6 +6,7 @@ var configstore = require('../lib/configstore');
 var chalk = require('chalk');
 var utils = require('../lib/utils');
 var prompt = require('../lib/prompt');
+var logger = require('../lib/logger');
 var RSVP = require('rsvp');
 var auth = require('../lib/auth');
 var _ = require('lodash');
@@ -37,6 +38,7 @@ module.exports = new Command('login')
       configstore.set('user', result.user);
       configstore.set('tokens', result.tokens);
 
+      logger.info();
       utils.logSuccess('Success! Logged in as ' + chalk.bold(result.user.email));
 
       return auth;

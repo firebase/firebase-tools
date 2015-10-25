@@ -3,6 +3,7 @@
 var Command = require('../lib/command');
 var chalk = require('chalk');
 var utils = require('../lib/utils');
+var logger = require('../lib/logger');
 var auth = require('../lib/auth');
 
 module.exports = new Command('login:ci')
@@ -14,6 +15,7 @@ module.exports = new Command('login:ci')
     }
 
     return auth.login(options.localhost).then(function(result) {
+      logger.info();
       utils.logSuccess('Success! Use this token to login on a CI server:\n\n' +
         chalk.bold(result.tokens.refresh_token) + '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n');
       return result;
