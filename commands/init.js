@@ -15,8 +15,6 @@ var RSVP = require('rsvp');
 var FirebaseError = require('../lib/error');
 var utils = require('../lib/utils');
 
-var NEW_FIREBASE = '[create a new firebase]';
-
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
@@ -47,9 +45,8 @@ module.exports = new Command('init')
       logger.warn();
     }
 
-    return api.getFirebases().then(function(firebases) {
-      var firebaseNames = Object.keys(firebases).sort();
-      var nameOptions = [NEW_FIREBASE].concat(firebaseNames);
+    return api.getProjects().then(function(projects) {
+      var projectNames = Object.keys(projects).sort();
 
       return prompt(options, [
         {
@@ -57,21 +54,12 @@ module.exports = new Command('init')
           name: 'firebase',
           message: 'What Firebase do you want to use?',
           validate: function(answer) {
-            if (!nameOptions.indexOf(answer) >= 0) {
+            if (!projectNames.indexOf(answer) >= 0) {
               return 'Must specify a Firebase to which you have access';
             }
             return true;
           },
-          choices: nameOptions
-        },
-        {
-          type: 'input',
-          name: 'firebase',
-          message: 'Name your new Firebase:',
-          default: path.basename(cwd),
-          when: function(answers) {
-            return answers.firebase === NEW_FIREBASE;
-          }
+          choices: projectNames
         },
         {
           type: 'input',
@@ -91,12 +79,6 @@ module.exports = new Command('init')
           }
         }
       ]).then(function() {
-        if (!_.contains(firebaseNames, options.firebase)) {
-          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function() {
-            logger.info(chalk.green('✔ '), 'Firebase', chalk.bold(options.firebase), 'has been created');
-          });
-        }
-      }).then(function() {
         var absPath = path.resolve(cwd, options.public || '.');
         if (!fs.existsSync(absPath)) {
           fs.mkdirsSync(absPath);
