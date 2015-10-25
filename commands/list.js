@@ -17,14 +17,15 @@ module.exports = new Command('list')
 
     return api.getProjects().then(function(projects) {
       var table = new Table({
-        head: ['Name', 'Permissions'],
+        head: ['Name', 'ID', 'Permissions'],
         style: {head: ['yellow']}
       });
 
       var out = [];
-      _.forEach(projects, function(data, name) {
+      _.forEach(projects, function(data, id) {
         var project = {
-          id: name,
+          name: data.name,
+          id: id,
           permission: data.permission
         };
 
@@ -41,13 +42,14 @@ module.exports = new Command('list')
           displayPermission = 'Can view';
         }
 
-        var displayName = name;
-        if (_.get(config, 'defaults.project') === name) {
+        var displayName = data.name;
+        if (_.get(config, 'defaults.project') === id) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
         out.push(project);
         table.push([
           displayName,
+          id,
           displayPermission
         ]);
       });
