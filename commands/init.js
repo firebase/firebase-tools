@@ -21,7 +21,7 @@ var _isOutside = function(from, to) {
 
 module.exports = new Command('init')
   .description('set up a Firebase app in the current directory')
-  .option('-f, --firebase <firebase>', 'the name of the firebase to use')
+  .option('-P, --project <project_id>', 'the ID of the project to use')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .before(requireAuth)
   .action(function(options) {
@@ -90,7 +90,7 @@ module.exports = new Command('init')
           publicPath = '.';
         }
         var out = JSON.stringify(_.extend({}, defaultConfig, {
-          firebase: options.firebase,
+          firebase: options.project,
           public: publicPath
         }), undefined, 2);
 

@@ -36,7 +36,7 @@ This will provide you with the globally accessible `firebase` command.
 **The command `firebase --help` lists the available commands and `firebase <command> --help` shows more details for an individual command.**
 
 If a command is project-specific, you must either be inside a project directory with a
-`firebase.json` configuration file or specify the Firebase project name with the `-f <project>` flag.
+`firebase.json` configuration file or specify the Firebase project name with the `-P <project_id>` flag.
 
 Below is a brief list of the available commands and their function:
 
