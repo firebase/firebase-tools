@@ -29,10 +29,6 @@ module.exports = new Command('logout')
       if (token || user || tokens) {
         var msg = 'Logged out';
         if (token === currentToken) {
-          configstore.del('user');
-          configstore.del('tokens');
-          configstore.del('usage');
-          configstore.del('analytics-uuid');
           if (user) {
             msg += ' from ' + chalk.bold(user.email);
           }

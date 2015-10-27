@@ -35,7 +35,7 @@ module.exports = new Command('data:remove <path>')
 
       return new RSVP.Promise(function(resolve, reject) {
         var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
-        var query = {auth: options.dataToken};
+        var query = {auth: options.projectToken};
 
         url += querystring.stringify(query);
 

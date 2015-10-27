@@ -64,7 +64,7 @@ module.exports = new Command('data:get <path>')
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
 
-      var query = {auth: options.dataToken};
+      var query = {auth: options.projectToken};
       if (options.shallow) { query.shallow = 'true'; }
       if (options.pretty) { query.print = 'pretty'; }
       if (options.export) { query.format = 'export'; }

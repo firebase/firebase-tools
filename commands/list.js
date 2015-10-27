@@ -32,14 +32,14 @@ module.exports = new Command('list')
         var displayPermission;
         switch (data.permission) {
         case 'own':
-          displayPermission = chalk.bold('Is owner');
+          displayPermission = chalk.cyan.bold('Owner');
           break;
         case 'edit':
-          displayPermission = chalk.bold('Can edit');
+          displayPermission = chalk.bold('Editor');
           break;
         case 'view':
         default:
-          displayPermission = 'Can view';
+          displayPermission = 'Viewer';
         }
 
         var displayName = data.name;

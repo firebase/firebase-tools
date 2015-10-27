@@ -15,6 +15,8 @@ var RSVP = require('rsvp');
 var FirebaseError = require('../lib/error');
 var utils = require('../lib/utils');
 
+var NEW_PROJECT = '[create a new project]';
+
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
@@ -46,20 +48,21 @@ module.exports = new Command('init')
     }
 
     return api.getProjects().then(function(projects) {
-      var projectNames = Object.keys(projects).sort();
+      var projectIds = Object.keys(projects).sort();
+      var nameOptions = [NEW_PROJECT].concat(projectIds);
 
       return prompt(options, [
         {
           type: 'list',
-          name: 'firebase',
+          name: 'project',
           message: 'What Firebase do you want to use?',
           validate: function(answer) {
-            if (!projectNames.indexOf(answer) >= 0) {
+            if (!_.contains(nameOptions, answer)) {
               return 'Must specify a Firebase to which you have access';
             }
             return true;
           },
-          choices: projectNames
+          choices: projectIds
         },
         {
           type: 'input',
@@ -76,9 +79,16 @@ module.exports = new Command('init')
             input = path.relative(cwd, input);
             if (input === '') { input = '.'; }
             return input;
+          },
+          when: function(answers) {
+            return answers.project !== NEW_PROJECT;
           }
         }
       ]).then(function() {
+        if (options.project === NEW_PROJECT) {
+          logger.info('Please visit', chalk.underline('https://firebase.google.com'), 'to create a new project, then run', chalk.bold('firebase init'), 'again.');
+          return RSVP.resolve();
+        }
         var absPath = path.resolve(cwd, options.public || '.');
         if (!fs.existsSync(absPath)) {
           fs.mkdirsSync(absPath);
