@@ -29,7 +29,7 @@ module.exports = new Command('data:push <path> [infile]')
       var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
 
       var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
-      var query = {auth: options.projectToken};
+      var query = {auth: options.databaseAdminToken};
 
       url += querystring.stringify(query);
 
