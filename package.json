@@ -79,6 +79,7 @@
     "chai-as-promised": "^5.1.0",
     "coveralls": "2.11.2",
     "eslint": "^1.4.1",
+    "firebase-bolt": "^0.3.0",
     "gulp": "^3.9.0",
     "gulp-eslint": "^1.0.0",
     "gulp-exit": "0.0.2",

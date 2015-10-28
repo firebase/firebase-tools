@@ -43,6 +43,9 @@ gulp.task('lint', function() {
 
 // Runs the Mocha test suite
 gulp.task('test', function() {
+  // Set PATH to run installed command-line tools used in test.
+  process.env.PATH = process.cwd() + '/node_modules/.bin:' + process.env.PATH;
+
   return gulp.src(paths.js)
     .pipe(istanbul())
     .pipe(istanbul.hookRequire())

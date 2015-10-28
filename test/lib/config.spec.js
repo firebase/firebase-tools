@@ -77,6 +77,16 @@ describe('Config', function() {
         config._parseFile('hosting', 'unsupported.txt');
       }).to.throw('unsupported.txt is not of a supported config file type');
     });
+
+    it('should load a bolt file', function() {
+      var config = new Config({}, {cwd: _fixtureDir('config-imports')});
+      expect(config._parseFile(undefined, 'rules.bolt'))
+        .to.deep.equal({
+          rules: {
+            '.validate': 'newData.isString()'
+          }
+        });
+    });
   });
 
   describe('#_materialize', function() {
