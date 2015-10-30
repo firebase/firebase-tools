@@ -15,5 +15,5 @@ module.exports = new Command('deploy')
   .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
-    return deploy(['hosting', 'rules'], options);
+    return deploy(['hosting', 'rules', 'functions'], options);
   });
