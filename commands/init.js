@@ -62,7 +62,7 @@ module.exports = new Command('init')
             }
             return true;
           },
-          choices: projectIds
+          choices: nameOptions
         },
         {
           type: 'input',
