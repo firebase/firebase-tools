@@ -16,8 +16,16 @@ module.exports = new Command('list')
     var config = Config.load(options, true);
 
     return api.getProjects().then(function(projects) {
+      var needExtraCol = _.some(projects, function(data) {
+        return data.id !== data.firebase;
+      });
+
+      var tableHead = ['Name', 'Project ID', 'Permissions'];
+      if (needExtraCol) {
+        tableHead.push('Legacy ID');
+      }
       var table = new Table({
-        head: ['Name', 'ID', 'Permissions'],
+        head: tableHead,
         style: {head: ['yellow']}
       });
 
@@ -47,11 +55,19 @@ module.exports = new Command('list')
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
         out.push(project);
-        table.push([
+        var row = [
           displayName,
           id,
           displayPermission
-        ]);
+        ];
+        if (needExtraCol) {
+          if (data.firebase === id) {
+            row.push('');
+          } else {
+            row.push(data.firebase);
+          }
+        }
+        table.push(row);
       });
 
       logger.info(table.toString());
