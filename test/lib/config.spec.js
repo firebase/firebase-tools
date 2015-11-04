@@ -39,6 +39,18 @@ describe('Config', function() {
       expect(config.data.hosting).to.have.property('public', '.');
       expect(config.data.hosting).not.to.have.property('rewrites');
     });
+
+    it('should generate trigger rules for functions', function() {
+      var config = new Config({
+        functions: {myfunc: {triggers: {database: {path: '/abc'}}}},
+        rules: {abc: {'.read': true}}
+      }, {});
+
+      expect(config.data.rules.abc).to.deep.eq({
+        '.function': {name: '"myfunc"', condition: 'true'},
+        '.read': true
+      });
+    });
   });
 
   describe('#importLegacyKeys', function() {
