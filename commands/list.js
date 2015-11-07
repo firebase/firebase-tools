@@ -9,54 +9,65 @@ var _ = require('lodash');
 var logger = require('../lib/logger');
 var Config = require('../lib/config');
 
-var coloredPlan = function(plan) {
-  var color;
-  if (plan.id === 'free') {
-    color = chalk.grey;
-  } else {
-    color = chalk.green;
-  }
-  return color(plan.name || '');
-};
-
 module.exports = new Command('list')
   .description('list the Firebases to which you have access')
   .before(requireAuth)
   .action(function(options) {
     var config = Config.load(options, true);
 
-    return api.getFirebases().then(function(firebases) {
+    return api.getProjects().then(function(projects) {
+      var needExtraCol = _.some(projects, function(data) {
+        return data.id !== data.firebase;
+      });
+
+      var tableHead = ['Name', 'Project ID', 'Permissions'];
+      if (needExtraCol) {
+        tableHead.push('Legacy ID');
+      }
       var table = new Table({
-        head: ['Name', 'Plan', 'Collaborators'],
+        head: tableHead,
         style: {head: ['yellow']}
       });
 
       var out = [];
-      _.forEach(firebases, function(data, name) {
+      _.forEach(projects, function(data, id) {
         var project = {
-          id: name,
-          plan: data.plan.id,
-          collaborators: []
+          name: data.name,
+          id: id,
+          permission: data.permission
         };
 
-        _.forEach(data.users, function(info, email) {
-          project.collaborators.push({
-            email: email,
-            uid: info.uid,
-            role: info.role
-          });
-        });
+        var displayPermission;
+        switch (data.permission) {
+        case 'own':
+          displayPermission = chalk.cyan.bold('Owner');
+          break;
+        case 'edit':
+          displayPermission = chalk.bold('Editor');
+          break;
+        case 'view':
+        default:
+          displayPermission = 'Viewer';
+        }
 
-        var displayName = name;
-        if (_.get(config, 'defaults.project') === name) {
+        var displayName = data.name;
+        if (_.get(config, 'defaults.project') === id) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
         out.push(project);
-        table.push([
+        var row = [
           displayName,
-          coloredPlan(data.plan),
-          _.keys(data.users).join('\n')
-        ]);
+          id,
+          displayPermission
+        ];
+        if (needExtraCol) {
+          if (data.firebase === id) {
+            row.push('');
+          } else {
+            row.push(data.firebase);
+          }
+        }
+        table.push(row);
       });
 
       logger.info(table.toString());

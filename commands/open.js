@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var getFirebaseName = require('../lib/getFirebaseName');
+var getProjectId = require('../lib/getProjectId');
 var logger = require('../lib/logger');
 var open = require('open');
 var chalk = require('chalk');
@@ -21,16 +21,18 @@ var PANELS = {
 
 module.exports = new Command('open [panel]')
   .description('open Firebase Hosting URL in browser or jump to a dashboard panel')
-  .option('-f, --firebase <app>', 'override the app specified in firebase.json')
+  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .action(function(panel, options) {
-    var firebase = getFirebaseName(options);
+    var projectId = getProjectId(options);
     var url;
 
     if (panel && PANELS[panel]) {
-      var dashOrigin = utils.addSubdomain(api.realtimeOrigin, firebase);
+      // TODO: Get Firebase subdomain - not always the same as the projectId
+      var dashOrigin = utils.addSubdomain(api.realtimeOrigin, projectId);
       url = dashOrigin + PANELS[panel];
     } else if (!panel || panel === 'site') {
-      url = utils.addSubdomain(api.hostingOrigin, firebase);
+      // TODO: Get Firebase subdomain - not always the same as the projectId
+      url = utils.addSubdomain(api.hostingOrigin, projectId);
     } else {
       return utils.reject('Unrecognized panel, must be one of: ' + Object.keys(PANELS).join(', '), {exit: 1});
     }

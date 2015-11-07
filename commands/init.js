@@ -15,7 +15,7 @@ var RSVP = require('rsvp');
 var FirebaseError = require('../lib/error');
 var utils = require('../lib/utils');
 
-var NEW_FIREBASE = '[create a new firebase]';
+var NEW_PROJECT = '[create a new project]';
 
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
@@ -23,7 +23,7 @@ var _isOutside = function(from, to) {
 
 module.exports = new Command('init')
   .description('set up a Firebase app in the current directory')
-  .option('-f, --firebase <firebase>', 'the name of the firebase to use')
+  .option('-P, --project <project_id>', 'the ID of the project to use')
   .option('-p, --public <dir>', 'the name of your app\'s public directory')
   .before(requireAuth)
   .action(function(options) {
@@ -47,31 +47,22 @@ module.exports = new Command('init')
       logger.warn();
     }
 
-    return api.getFirebases().then(function(firebases) {
-      var firebaseNames = Object.keys(firebases).sort();
-      var nameOptions = [NEW_FIREBASE].concat(firebaseNames);
+    return api.getProjects().then(function(projects) {
+      var projectIds = Object.keys(projects).sort();
+      var nameOptions = [NEW_PROJECT].concat(projectIds);
 
       return prompt(options, [
         {
           type: 'list',
-          name: 'firebase',
+          name: 'project',
           message: 'What Firebase do you want to use?',
           validate: function(answer) {
-            if (!nameOptions.indexOf(answer) >= 0) {
+            if (!_.contains(nameOptions, answer)) {
               return 'Must specify a Firebase to which you have access';
             }
             return true;
           },
           choices: nameOptions
-        },
-        {
-          type: 'input',
-          name: 'firebase',
-          message: 'Name your new Firebase:',
-          default: path.basename(cwd),
-          when: function(answers) {
-            return answers.firebase === NEW_FIREBASE;
-          }
         },
         {
           type: 'input',
@@ -88,15 +79,16 @@ module.exports = new Command('init')
             input = path.relative(cwd, input);
             if (input === '') { input = '.'; }
             return input;
+          },
+          when: function(answers) {
+            return answers.project !== NEW_PROJECT;
           }
         }
       ]).then(function() {
-        if (!_.contains(firebaseNames, options.firebase)) {
-          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function() {
-            logger.info(chalk.green('✔ '), 'Firebase', chalk.bold(options.firebase), 'has been created');
-          });
+        if (options.project === NEW_PROJECT) {
+          logger.info('Please visit', chalk.underline('https://firebase.google.com'), 'to create a new project, then run', chalk.bold('firebase init'), 'again.');
+          return RSVP.resolve();
         }
-      }).then(function() {
         var absPath = path.resolve(cwd, options.public || '.');
         if (!fs.existsSync(absPath)) {
           fs.mkdirsSync(absPath);
@@ -108,7 +100,7 @@ module.exports = new Command('init')
           publicPath = '.';
         }
         var out = JSON.stringify(_.extend({}, defaultConfig, {
-          firebase: options.firebase,
+          firebase: options.project,
           public: publicPath
         }), undefined, 2);
 
