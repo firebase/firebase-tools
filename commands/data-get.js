@@ -36,7 +36,7 @@ var _applyStringOpts = function(dest, src, keys, jsonKeys) {
 
 module.exports = new Command('data:get <path>')
   .description('fetch and print JSON data at the specified path')
-  .option('-f, --firebase <app>', 'override the app specified in firebase.json')
+  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-o, --output <filename>', 'save output to the specified file')
   .option('--pretty', 'pretty print response')
   .option('--shallow', 'return shallow response')
@@ -62,9 +62,9 @@ module.exports = new Command('data:get <path>')
       var errorResponse = '';
       var response;
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
 
-      var query = {auth: options.dataToken};
+      var query = {auth: options.databaseAdminToken};
       if (options.shallow) { query.shallow = 'true'; }
       if (options.pretty) { query.print = 'pretty'; }
       if (options.export) { query.format = 'export'; }

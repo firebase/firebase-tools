@@ -17,7 +17,7 @@ var _ = require('lodash');
 
 module.exports = new Command('data:push <path> [infile]')
   .description('add a new JSON object to a list of data in your Firebase')
-  .option('-f, --firebase <app>', 'override the app specified in firebase.json')
+  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .before(requireDataAccess)
   .action(function(path, infile, options) {
@@ -28,8 +28,8 @@ module.exports = new Command('data:push <path> [infile]')
     return new RSVP.Promise(function(resolve, reject) {
       var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-      var query = {auth: options.dataToken};
+      var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
+      var query = {auth: options.databaseAdminToken};
 
       url += querystring.stringify(query);
 
@@ -45,7 +45,7 @@ module.exports = new Command('data:push <path> [infile]')
           return reject(responseToError(res, body));
         }
 
-        var refurl = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '/' + body.name;
+        var refurl = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '/' + body.name;
 
         utils.logSuccess('Data pushed successfully');
         logger.info();
