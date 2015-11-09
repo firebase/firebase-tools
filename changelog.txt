@@ -1,0 +1,2 @@
+feature - Added `login:ci` command for generating token for Continuous Integration systems.
+feature - Added support for `FIREBASE_TOKEN` environment variable in addition to `--token`.
