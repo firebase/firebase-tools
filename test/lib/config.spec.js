@@ -47,7 +47,7 @@ describe('Config', function() {
       }, {});
 
       expect(config.data.rules.abc).to.deep.eq({
-        '.function': {name: '"myfunc"', condition: 'true'},
+        '.function': {name: '\'myfunc\'', condition: 'true'},
         '.read': true
       });
     });

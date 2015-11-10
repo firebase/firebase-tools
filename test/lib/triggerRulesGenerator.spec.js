@@ -17,7 +17,7 @@ describe('triggerRulesGenerator', function() {
     });
 
     expect(result.path.to.$mydata['.function']).to.deep.eq({
-      name: '"myfunction"',
+      name: '\'myfunction\'',
       condition: 'newData.exists()'
     });
   });
@@ -30,7 +30,7 @@ describe('triggerRulesGenerator', function() {
     expect(result.foo.$bar).to.deep.eq({
       '.read': true,
       '.function': {
-        name: '"myfn"',
+        name: '\'myfn\'',
         condition: 'true'
       }
     });
