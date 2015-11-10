@@ -53,6 +53,16 @@ describe('Config', function() {
       });
     });
 
+    it('should generate trigger rules even when rules is undefined', function() {
+      var config = new Config({
+        functions: {myfunc: {triggers: {database: {path: '/abc'}}}}
+      }, {});
+
+      expect(config.data.rules.abc).to.deep.eq({
+        '.function': {name: '\'myfunc\'', condition: 'true'}
+      });
+    });
+
     it('should error out if .function is defined in rules', function() {
       expect(function() {
         _.noop(new Config({rules: {
