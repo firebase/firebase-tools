@@ -11,8 +11,8 @@ module.exports = new Command('deploy:hosting')
   .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-p, --public <path>', 'override the public directory specified in firebase.json')
   .option('-m, --message <message>', 'an optional message describing this deploy')
-  .before(requireAccess)
   .before(requireConfig)
+  .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
     return deploy(['hosting'], options);
