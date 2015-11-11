@@ -11,6 +11,7 @@ module.exports = new Command('deploy:functions')
   // .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .before(requireConfig)
   .before(requireAccess)
+  .before(acquireRefs)
   .action(function(options) {
     return deploy(['functions'], options);
   });
