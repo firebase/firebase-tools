@@ -1,0 +1,1 @@
+fixed - Improved error messaging for parse errors in the `firebase.json`
