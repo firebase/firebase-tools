@@ -33,5 +33,8 @@ module.exports = function(client) {
   client.prefs.token = loadCommand('prefs-token');
   client.serve = loadCommand('serve');
 
+  client.functions = {};
+  client.functions.log = loadCommand('functions-log');
+
   return client;
 };
