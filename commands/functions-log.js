@@ -12,14 +12,14 @@ var requireConfig = require('../lib/requireConfig');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 
-module.exports = new Command('functions:log')
+module.exports = new Command('functions:log [function_name]')
   .description('read logs from GCF Kubernetes cluster')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-f, --follow', 'tail logs from GCF Kubernetes cluster')
-  .option('-F, --function <function_name>', 'name of function for which to display logs')
+  // .option('-F, --function <function_name>', 'name of function for which to display logs')
   .before(requireConfig)
   .before(requireAccess)
-  .action(function(options) {
+  .action(function(function_name, options) {
     if (!which('gcloud')) {
       logger.info('Sorry, this command requires gcloud');
       exit(1);
@@ -65,11 +65,11 @@ module.exports = new Command('functions:log')
     if (_.isEmpty(pods)) {
       logger.info('Sorry, no running pod found.');
       exit(1);
-    } else if (options.function) {
-      if (pods[options.function]) {
-        cmd += ' ' + pods[options.function] + ' worker';
+    } else if (function_name) {
+      if (pods[function_name]) {
+        cmd += ' ' + pods[function_name] + ' worker';
       } else {
-        logger.warn('Sorry, no running pod found for given function name ' + chalk.bold(options.function));
+        logger.warn('Sorry, no running pod found for given function name ' + chalk.bold(function_name));
         exit(1);
       }
     } else {
@@ -81,6 +81,7 @@ module.exports = new Command('functions:log')
       }
     }
     utils.logSuccess(cmd);
+    logger.info();
     if (_.has(options, 'follow')) {
       exec(cmd, {silent:false});
     } else {
