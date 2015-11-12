@@ -5,6 +5,7 @@ var expect = chai.expect;
 
 var Config = require('../../lib/config');
 var path = require('path');
+var _ = require('lodash');
 
 var _fixtureDir = function(name) {
   return path.resolve(__dirname, '../fixtures/' + name);
@@ -38,6 +39,36 @@ describe('Config', function() {
 
       expect(config.data.hosting).to.have.property('public', '.');
       expect(config.data.hosting).not.to.have.property('rewrites');
+    });
+
+    it('should generate trigger rules for functions', function() {
+      var config = new Config({
+        functions: {myfunc: {triggers: {database: {path: '/abc'}}}},
+        rules: {abc: {'.read': true}}
+      }, {});
+
+      expect(config.data.rules.abc).to.deep.eq({
+        '.function': {name: '\'myfunc\'', condition: 'true'},
+        '.read': true
+      });
+    });
+
+    it('should generate trigger rules even when rules is undefined', function() {
+      var config = new Config({
+        functions: {myfunc: {triggers: {database: {path: '/abc'}}}}
+      }, {});
+
+      expect(config.data.rules.abc).to.deep.eq({
+        '.function': {name: '\'myfunc\'', condition: 'true'}
+      });
+    });
+
+    it('should error out if .function is defined in rules', function() {
+      expect(function() {
+        _.noop(new Config({rules: {
+          abc: {'.function': {name: '"myfunc"', condition: 'true'}}
+        }}, {}));
+      }).to.throw('Cannot define .function in rules, please use functions config instead');
     });
   });
 

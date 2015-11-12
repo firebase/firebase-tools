@@ -17,6 +17,7 @@ module.exports = function(client) {
   client.deploy = loadCommand('deploy');
   client.deploy.hosting = loadCommand('deploy-hosting');
   client.deploy.rules = loadCommand('deploy-rules');
+  client.deploy.functions = loadCommand('deploy-functions');
   client.disable = {
     hosting: loadCommand('disable-hosting')
   };
