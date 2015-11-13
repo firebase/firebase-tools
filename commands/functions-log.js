@@ -16,7 +16,6 @@ module.exports = new Command('functions:log [function_name]')
   .description('read logs from GCF Kubernetes cluster')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-f, --follow', 'tail logs from GCF Kubernetes cluster')
-  // .option('-F, --function <function_name>', 'name of function for which to display logs')
   .before(requireConfig)
   .before(requireAccess)
   .action(function(function_name, options) {
@@ -46,7 +45,11 @@ module.exports = new Command('functions:log [function_name]')
 
     cmd = 'gcloud container clusters get-credentials gcf-cluster-us-central1-f';
     utils.logBullet(cmd);
-    exec(cmd, {silent:true});
+    var out = exec(cmd, {silent:true}).output;
+    if (out.toLowerCase().indexOf('error: ') > -1) {
+      echo(out);
+      exit(1);
+    }
 
     cmd = 'kubectl get pods -o json';
     utils.logBullet(cmd);
