@@ -67,6 +67,7 @@
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
+    "shelljs": "^0.5.3",
     "superstatic": "^3.0.0",
     "tar": "^2.2.0",
     "through": "^2.3.8",
