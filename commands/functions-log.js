@@ -36,23 +36,16 @@ module.exports = new Command('functions:log [name]')
     logger.info(chalk.bold(chalk.gray('===') + ' Connecting to \'' + projectId +  '\' GCF Kubernetes cluster...'));
     logger.info();
 
-    var cmd = 'gcloud config set project ' + projectId;
-    utils.logBullet(cmd);
-    sh.exec(cmd, {silent:true});
-
-    cmd = 'gcloud config set container/cluster gcf-cluster-us-central1-f';
-    utils.logBullet(cmd);
-    sh.exec(cmd, {silent:true});
-
-    cmd = 'gcloud container clusters get-credentials gcf-cluster-us-central1-f';
+    var cmd = 'gcloud container clusters get-credentials gcf-cluster-us-central1-f --project ' + projectId;
     utils.logBullet(cmd);
     var out = sh.exec(cmd, {silent:true}).output;
     if (out.toLowerCase().indexOf('error: ') > -1) {
-      echo(out);
-      exit(1);
+      return RSVP.reject(new FirebaseError(out, {exit: 1}));
     }
 
-    cmd = 'kubectl get pods -o json';
+    var kubeContext = 'gke_' + projectId + '_us-central1-f_gcf-cluster-us-central1-f';
+
+    cmd = 'kubectl get pods -o json --context=' + kubeContext;
     utils.logBullet(cmd);
     var out = sh.exec(cmd, {silent:true}).output;
     var pods = _.chain(JSON.parse(out).items)
@@ -62,7 +55,7 @@ module.exports = new Command('functions:log [name]')
       })
       .value();
 
-    cmd = 'kubectl logs';
+    cmd = 'kubectl logs --context=' + kubeContext;
     if (options.follow) {
       cmd += ' -f';
     }
