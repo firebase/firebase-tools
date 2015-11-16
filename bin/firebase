@@ -10,6 +10,7 @@ var errorOut = require('../lib/errorOut');
 var winston = require('winston');
 var logger = require('../lib/logger');
 var fs = require('fs');
+var fsutils = require('../lib/fsutils');
 var path = require('path');
 var chalk = require('chalk');
 var configstore = require('../lib/configstore');
@@ -53,7 +54,7 @@ require('../lib/fetchMOTD')();
 
 process.on('exit', function(code) {
   code = process.exitCode || code;
-  if (!debugging && code < 2 && fs.existsSync(logFilename)) {
+  if (!debugging && code < 2 && fsutils.fileExistsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }
 
