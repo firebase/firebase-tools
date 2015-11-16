@@ -1,7 +1,6 @@
 'use strict';
 
 var _ = require('lodash');
-var acquireRefs = require('../lib/acquireRefs');
 var chalk = require('chalk');
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
@@ -38,7 +37,7 @@ module.exports = new Command('functions:log [name]')
 
     var cmd = 'gcloud container clusters get-credentials gcf-cluster-us-central1-f --project ' + projectId;
     utils.logBullet(cmd);
-    var out = sh.exec(cmd, {silent:true}).output;
+    var out = sh.exec(cmd, { silent: true }).output;
     if (out.toLowerCase().indexOf('error: ') > -1) {
       return RSVP.reject(new FirebaseError(out, {exit: 1}));
     }
@@ -47,11 +46,11 @@ module.exports = new Command('functions:log [name]')
 
     cmd = 'kubectl get pods -o json --context=' + kubeContext;
     utils.logBullet(cmd);
-    var out = sh.exec(cmd, {silent:true}).output;
+    out = sh.exec(cmd, { silent: true }).output;
     var pods = _.chain(JSON.parse(out).items)
       .pluck('metadata.name')
-      .indexBy(function(name) {
-          return name.substring(0, name.lastIndexOf('.'));
+      .indexBy(function(podName) {
+        return podName.substring(0, podName.lastIndexOf('.'));
       })
       .value();
 
@@ -70,7 +69,7 @@ module.exports = new Command('functions:log [name]')
           'No running function named (' + chalk.bold(name) + ') found. Please try deploying your functions.', {exit: 1}));
       }
     } else {
-      if (_.size(pods) == 1) {
+      if (_.size(pods) === 1) {
         cmd += ' ' + _.values(pods)[0] + ' worker';
       } else {
         return RSVP.reject(new FirebaseError(
@@ -80,9 +79,9 @@ module.exports = new Command('functions:log [name]')
     utils.logSuccess(cmd);
     logger.info();
     if (options.follow) {
-      sh.exec(cmd, {silent:false});
+      sh.exec(cmd, { silent: false });
     } else {
-      var out = sh.exec(cmd, {silent:true}).output;
+      out = sh.exec(cmd, { silent: true }).output;
       sh.echo(out);
     }
 
