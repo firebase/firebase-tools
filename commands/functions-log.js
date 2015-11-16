@@ -61,13 +61,13 @@ module.exports = new Command('functions:log [name]')
     }
     if (_.isEmpty(pods)) {
       return RSVP.reject(new FirebaseError(
-        'Sorry, no running pod found.', {exit: 1}));
+        'No running functions found. Please try deploying your functions.', {exit: 1}));
     } else if (name) {
       if (pods[name]) {
         cmd += ' ' + pods[name] + ' worker';
       } else {
         return RSVP.reject(new FirebaseError(
-          'Sorry, no running pod found for given function name ' + chalk.bold(name), {exit: 1}));
+          'No running function named (' + chalk.bold(name) + ') found. Please try deploying your functions.', {exit: 1}));
       }
     } else {
       if (_.size(pods) == 1) {
