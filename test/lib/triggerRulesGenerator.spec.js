@@ -44,6 +44,14 @@ describe('triggerRulesGenerator', function() {
     }).to.throw('Trigger for "wrong" must start with a /');
   });
 
+  it('should error out if a path ends with /', function() {
+    expect(function() {
+      triggerRulesGenerator({
+        wrong: {triggers: {database: {path: '/path/with/trailing/slash/'}}}
+      });
+    }).to.throw('Trigger for "wrong" must not end with a /');
+  });
+
   it('should error out if functions is not an object', function() {
     expect(function() {
       triggerRulesGenerator(true);
