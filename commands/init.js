@@ -3,6 +3,7 @@ var Command = require('../lib/command');
 var Config = require('../lib/config');
 var prompt = require('../lib/prompt');
 var fs = require('fs-extra');
+var fsutils = require('../lib/fsutils');
 var path = require('path');
 var defaultConfig = require('../templates/firebase.json');
 var _ = require('lodash');
@@ -90,7 +91,7 @@ module.exports = new Command('init')
           return RSVP.resolve();
         }
         var absPath = path.resolve(cwd, options.public || '.');
-        if (!fs.existsSync(absPath)) {
+        if (!fsutils.dirExistsSync(absPath)) {
           fs.mkdirsSync(absPath);
           logger.info(chalk.green('✔ '), 'Public directory', chalk.bold(options.public), 'has been created');
         }
