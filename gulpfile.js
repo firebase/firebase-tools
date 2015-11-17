@@ -19,8 +19,8 @@ var _ = require('lodash');
 var paths = {
   js: [
     'index.js',
-    'lib/*.js',
-    'commands/*.js'
+    'lib/**/*.js',
+    'commands/**/*.js'
   ],
 
   tests: [
