@@ -84,5 +84,10 @@ describe('Config', function() {
       var config = new Config({example: {foo: 'bar'}}, {});
       expect(config._materialize('example').foo).to.equal('bar');
     });
+
+    it('should prevent top-level key duplication', function() {
+      var config = new Config({rules: 'rules.json'}, {cwd: _fixtureDir('dup-top-level')});
+      expect(config._materialize('rules')).to.deep.equal({'.read': true});
+    });
   });
 });
