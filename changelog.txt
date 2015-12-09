@@ -1,0 +1,3 @@
+fixed - Improved error messaging for parse errors in the `firebase.json`
+fixed - Allow `firebase deploy` to work if only `"rules"` is specified
+fixed - Fix double-nested `"rules"` issue when compiling with Bolt
