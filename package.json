@@ -64,7 +64,7 @@
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
-    "superstatic": "^3.0.0",
+    "superstatic": "git://github.com/firebase/superstatic.git#4.0",
     "tar": "^2.2.0",
     "through": "^2.3.8",
     "tmp": "0.0.27",
