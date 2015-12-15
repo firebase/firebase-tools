@@ -19,7 +19,8 @@ module.exports = new Command('serve')
       debug: true,
       port: options.port,
       host: options.host,
-      config: config.data.hosting
+      config: config.get('hosting'),
+      stack: 'strict'
     }).listen();
 
     logger.info('Listening at', chalk.underline(chalk.bold('http://' + options.host + ':' + options.port)));
