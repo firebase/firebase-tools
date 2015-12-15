@@ -1,2 +1,2 @@
-feature - May now deploy `cleanUrls` and `trailingSlash` features to Firebase Hosting
-changed - Now running [Superstatic 4.0](https://github.com/firebase/superstatic/releases/tag/4.0.0) for `firebase serve`
+feature - May now deploy `cleanUrls` and `trailingSlash` features to Firebase Hosting.
+changed - Now running [Superstatic 4.0](https://github.com/firebase/superstatic/releases/tag/4.0.0) for `firebase serve`.
