@@ -3,7 +3,7 @@
 var env = {/* ENV */};
 var hasOwnProperty = Object.prototype.hasOwnProperty;
 
-exports.get = function(path) {
+exports.get = function(path, fallback) {
   path = path.toString();
   var segments = path.split('.');
   var cur = env;
@@ -11,6 +11,10 @@ exports.get = function(path) {
     if (hasOwnProperty.call(cur, segments[i])) {
       cur = cur[segments[i]];
     } else {
+      if (typeof fallback !== 'undefined') {
+        console.error('Using fallback for "' + path + '" environment value');
+        return fallback;
+      }
       throw new Error('Environment value "' + path + '" is not configured.');
     }
   }
