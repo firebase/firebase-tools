@@ -17,7 +17,7 @@ var utils = require('../lib/utils');
 module.exports = new Command('functions:log [name]')
   .description('read logs from GCF Kubernetes cluster')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
-  .option('-S, --pageSize <page_size>', 'specify page size')
+  .option('-n, --pageSize <page_size>', 'specify page size')
   .before(requireConfig)
   .before(requireAccess)
   .action(function(name, options) {
