@@ -12,7 +12,7 @@ exports.get = function(path, fallback) {
       cur = cur[segments[i]];
     } else {
       if (typeof fallback !== 'undefined') {
-        console.error('Using fallback for "' + path + '" environment value');
+        console.warn('Using fallback for "' + path + '" environment value');
         return fallback;
       }
       throw new Error('Environment value "' + path + '" is not configured.');
