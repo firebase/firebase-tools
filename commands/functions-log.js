@@ -39,7 +39,7 @@ module.exports = new Command('functions:log [name]')
           var __ = ' '
           logger.info(
             entry.severity.substring(0,1), __,
-            entry.labels.execution_id ? entry.labels.execution_id : '              -', __,
+            entry.labels.execution_id || '              -', __,
             entry.timestamp, __,
             entry.resource.labels.function_name, __,
             entry.textPayload);
