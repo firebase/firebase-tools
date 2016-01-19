@@ -26,6 +26,7 @@ module.exports = new Command('functions:log [name]')
       return gcp.createClient(result.access_token);
     }).then(function(client) {
       authClient = client;
+      // Filter taken from: https://cs.corp.google.com/#piper///depot/google3/third_party/py/googlecloudsdk/surface/functions/get_logs.py&rcl=112434906&l=98
       var filter = 'resource.type="cloud_function" labels."cloudfunctions.googleapis.com/region"="us-central1"'
       if (name) {
         filter += ' labels."cloudfunctions.googleapis.com/function_name"="'+ name +'"'
