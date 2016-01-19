@@ -17,6 +17,7 @@ var utils = require('../lib/utils');
 module.exports = new Command('functions:log [name]')
   .description('read logs from GCF Kubernetes cluster')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
+  .option('-S, --pageSize <page_size>', 'specify page size')
   .before(requireConfig)
   .before(requireAccess)
   .action(function(name, options) {
@@ -31,7 +32,7 @@ module.exports = new Command('functions:log [name]')
       if (name) {
         filter += ' labels."cloudfunctions.googleapis.com/function_name"="'+ name +'"'
       }
-      return gcp.cloudlogging.entries(authClient, projectId, filter);
+      return gcp.cloudlogging.entries(authClient, projectId, filter, options.pageSize || 35);
     }).then(function(entries) {
       if ( _.isEmpty(entries)) {
         logger.info('No log entries found.')
