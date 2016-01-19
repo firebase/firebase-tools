@@ -26,11 +26,25 @@ module.exports = new Command('functions:log [name]')
       return gcp.createClient(result.access_token);
     }).then(function(client) {
       authClient = client;
-      return gcp.cloudlogging.entries(authClient, projectId);
+      var filter = 'resource.type="cloud_function" labels."cloudfunctions.googleapis.com/region"="us-central1"'
+      if (name) {
+        filter += ' labels."cloudfunctions.googleapis.com/function_name"="'+ name +'"'
+      }
+      return gcp.cloudlogging.entries(authClient, projectId, filter);
     }).then(function(entries) {
-      _.forEach(entries, function(entry, id) {
-        logger.info(entry.textPayload);
-      });
+      if ( _.isEmpty(entries)) {
+        logger.info('No log entries found.')
+      } else {
+        _.forEach(entries, function(entry, id) {
+          var __ = ' '
+          logger.info(
+            entry.severity.substring(0,1), __,
+            entry.labels.execution_id ? entry.labels.execution_id : '              -', __,
+            entry.timestamp, __,
+            entry.resource.labels.function_name, __,
+            entry.textPayload);
+        });
+      }
       return RSVP.resolve();
     }).catch(function(err) {
       return RSVP.reject(new FirebaseError(
