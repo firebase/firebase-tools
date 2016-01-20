@@ -14,7 +14,7 @@ var RSVP = require('rsvp');
 module.exports = new Command('functions:log')
   .description('read logs from GCF Kubernetes cluster')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
-  .option('-f, --function <function_name>', 'specify function name whose logs will be fetched')
+  .option('-F, --function <function_name>', 'specify function name whose logs will be fetched')
   .option('-n, --lines <num_lines>', 'specify number of log lines to fetch')
   .before(requireConfig)
   .before(requireAccess)
