@@ -34,13 +34,14 @@ module.exports = new Command('functions:log')
       if ( _.isEmpty(entries)) {
         logger.info('No log entries found.');
       } else {
-        _.forEach(entries, function(entry) {
+        for (var i = _.size(entries); i-- > 0;) {
+          var entry = entries[i];
           logger.info(
             entry.timestamp,
             entry.severity.substring(0, 1),
             entry.resource.labels.function_name + ':',
             entry.textPayload);
-        });
+        }
       }
       return RSVP.resolve(entries);
     }).catch(function(err) {
