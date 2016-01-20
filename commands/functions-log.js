@@ -38,11 +38,10 @@ module.exports = new Command('functions:log')
         logger.info('No log entries found.')
       } else {
         _.forEach(entries, function(entry, id) {
-          var __ = ' '
           logger.info(
-            entry.timestamp, __,
-            entry.severity.substring(0,1), __,
-            entry.resource.labels.function_name + ':', __,
+            entry.timestamp,
+            entry.severity.substring(0,1),
+            entry.resource.labels.function_name + ':',
             entry.textPayload);
         });
       }
