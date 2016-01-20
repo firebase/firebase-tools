@@ -2,7 +2,6 @@
 
 var _ = require('lodash');
 var api = require('../lib/api');
-var chalk = require('chalk');
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
 var gcp = require('../lib/gcp');
@@ -11,8 +10,6 @@ var logger = require('../lib/logger');
 var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var RSVP = require('rsvp');
-var sh = require('shelljs');
-var utils = require('../lib/utils');
 
 module.exports = new Command('functions:log')
   .description('read logs from GCF Kubernetes cluster')
@@ -28,19 +25,19 @@ module.exports = new Command('functions:log')
       return gcp.createClient(result.access_token);
     }).then(function(client) {
       authClient = client;
-      var filter = 'resource.type="cloud_function" labels."cloudfunctions.googleapis.com/region"="us-central1"'
+      var filter = 'resource.type="cloud_function" labels."cloudfunctions.googleapis.com/region"="us-central1"';
       if (options.function) {
-        filter += ' labels."cloudfunctions.googleapis.com/function_name"="'+ options.function +'"'
+        filter += ' labels."cloudfunctions.googleapis.com/function_name"="' + options.function + '"';
       }
       return gcp.cloudlogging.entries(authClient, projectId, filter, options.lines || 35);
     }).then(function(entries) {
       if ( _.isEmpty(entries)) {
-        logger.info('No log entries found.')
+        logger.info('No log entries found.');
       } else {
-        _.forEach(entries, function(entry, id) {
+        _.forEach(entries, function(entry) {
           logger.info(
             entry.timestamp,
-            entry.severity.substring(0,1),
+            entry.severity.substring(0, 1),
             entry.resource.labels.function_name + ':',
             entry.textPayload);
         });
@@ -48,6 +45,6 @@ module.exports = new Command('functions:log')
       return RSVP.resolve(entries);
     }).catch(function(err) {
       return RSVP.reject(new FirebaseError(
-        'Failed to list log entries ' + err.message , {exit: 1}));
+        'Failed to list log entries ' + err.message, {exit: 1}));
     });
   });
