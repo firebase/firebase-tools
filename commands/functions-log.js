@@ -24,7 +24,7 @@ function _pollLogs(authClient, projectId, filter, pos) {
          nf += ' insertId>"' + pos.insertId + '" '
       }
 
-      var promisedEntries = gcp.cloudlogging.entries(authClient, projectId, nf, 35, 'asc');
+      var promisedEntries = gcp.cloudlogging.entries(authClient, projectId, nf, 100, 'asc');
       RSVP.all([promisedEntries]).then(function(entries) {
         for (var i = 0; i < _.size(entries[0]); i++) {
           var entry = entries[0][i];
