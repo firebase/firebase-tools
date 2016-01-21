@@ -50,7 +50,7 @@ module.exports = new Command('functions:log')
   .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-F, --function <function_name>', 'specify function name whose logs will be fetched')
   .option('-n, --lines <num_lines>', 'specify number of log lines to fetch')
-  .option('-f, --follow', 'tail logs from GCF cluster')
+  .option('-f, --follow', 'stream logs from GCF cluster')
   .before(requireConfig)
   .before(requireAccess)
   .action(function(options) {
