@@ -11,17 +11,19 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var RSVP = require('rsvp');
 
-var POLL_INTERVAL = 2000; // 5 sec
+var POLL_INTERVAL = 1000; // 1 sec
 
-
-function _pollLogs(authClient, projectId, filter, insertId) {
+function _pollLogs(authClient, projectId, filter, pos) {
   return new RSVP.Promise(function(resolve, reject) {
     function poll() {
       var nf = filter;
-      if (insertId !== '') {
-         nf += ' insertId>"' + insertId + '" '
+      if (pos.timestamp) {
+        nf += ' timestamp>"' + pos.timestamp + '" '
       }
-      // logger.info('>>> ---', nf)
+      if (pos.insertId) {
+         nf += ' insertId>"' + pos.insertId + '" '
+      }
+
       var promisedEntries = gcp.cloudlogging.entries(authClient, projectId, nf, 35, 'asc');
       RSVP.all([promisedEntries]).then(function(entries) {
         for (var i = 0; i < _.size(entries[0]); i++) {
@@ -31,12 +33,13 @@ function _pollLogs(authClient, projectId, filter, insertId) {
             entry.severity.substring(0, 1),
             entry.resource.labels.function_name + ':',
             entry.textPayload);
-          insertId = entry.insertId
+          pos.timestamp = entry.timestamp
+          pos.insertId = entry.insertId
         }
+        setTimeout(poll, POLL_INTERVAL);
       }).catch(function(err) {
         return reject(err);
       });
-      setTimeout(poll, POLL_INTERVAL);
     }
     poll();
   });
@@ -73,7 +76,15 @@ module.exports = new Command('functions:log')
           entry.textPayload);
       }
       if (options.follow) {
-        return _pollLogs(authClient, projectId, filter, _.isEmpty(entries) ? '' : _.last(entries).insertId)
+        var pos = {}
+        if (!_.isEmpty(entries)) {
+          var lastEntry = _.last(entries)
+          pos = {
+            timestamp: lastEntry.timestamp,
+            insertId: lastEntry.insertId
+          }
+        }
+        return _pollLogs(authClient, projectId, filter, pos)
       } else if (_.isEmpty(entries)) {
         logger.info('No log entries found.');
       }
