@@ -11,17 +11,17 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var RSVP = require('rsvp');
 
-var POLL_INTERVAL = 1000; // 1 sec
+var POLL_INTERVAL = 3000; // 3 sec
 
 function _pollLogs(authClient, projectId, filter, pos) {
   return new RSVP.Promise(function(resolve, reject) {
     function poll() {
       var nf = filter;
       if (pos.timestamp) {
-        nf += ' timestamp>"' + pos.timestamp + '" '
+        nf += ' timestamp>"' + pos.timestamp + '" ';
       }
       if (pos.insertId) {
-         nf += ' insertId>"' + pos.insertId + '" '
+        nf += ' insertId>"' + pos.insertId + '" ';
       }
 
       var promisedEntries = gcp.cloudlogging.entries(authClient, projectId, nf, 100, 'asc');
@@ -33,8 +33,8 @@ function _pollLogs(authClient, projectId, filter, pos) {
             entry.severity.substring(0, 1),
             entry.resource.labels.function_name + ':',
             entry.textPayload);
-          pos.timestamp = entry.timestamp
-          pos.insertId = entry.insertId
+          pos.timestamp = entry.timestamp;
+          pos.insertId = entry.insertId;
         }
         setTimeout(poll, POLL_INTERVAL);
       }).catch(function(err) {
@@ -76,15 +76,15 @@ module.exports = new Command('functions:log')
           entry.textPayload);
       }
       if (options.follow) {
-        var pos = {}
+        var pos = {};
         if (!_.isEmpty(entries)) {
-          var lastEntry = _.last(entries)
+          var lastEntry = _.first(entries);
           pos = {
             timestamp: lastEntry.timestamp,
             insertId: lastEntry.insertId
-          }
+          };
         }
-        return _pollLogs(authClient, projectId, filter, pos)
+        return _pollLogs(authClient, projectId, filter, pos);
       } else if (_.isEmpty(entries)) {
         logger.info('No log entries found.');
       }
