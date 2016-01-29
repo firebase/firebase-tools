@@ -1,1 +1,0 @@
-fixed - Normalized app name handling to address capitalization inconsistencies on deploy.
