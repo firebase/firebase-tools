@@ -1,0 +1,1 @@
+fixed - Fixed handling of `"firebase"` entry in the firebase.json and `-f` argument with uppercase characters that caused deploys to fail.
