@@ -8,7 +8,7 @@ var deploy = require('../lib/deploy');
 
 module.exports = new Command('deploy:functions')
   .description('deploy functions of the current app')
-  // .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
+  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .before(requireConfig)
   .before(requireAccess)
   .before(acquireRefs)
