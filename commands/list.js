@@ -51,7 +51,7 @@ module.exports = new Command('list')
         }
 
         var displayName = data.name;
-        if (_.get(config, 'defaults.project') === id) {
+        if (options.project === id) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
         out.push(project);

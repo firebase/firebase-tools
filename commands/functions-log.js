@@ -46,7 +46,6 @@ function _pollLogs(authClient, projectId, filter, pos) {
 
 module.exports = new Command('functions:log')
   .description('read logs from GCF Kubernetes cluster')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-F, --function <function_name>', 'specify function name whose logs will be fetched')
   .option('-n, --lines <num_lines>', 'specify number of log lines to fetch')
   .option('-f, --follow', 'stream logs from GCF cluster')

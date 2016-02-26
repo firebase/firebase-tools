@@ -21,7 +21,6 @@ var PANELS = {
 
 module.exports = new Command('open [panel]')
   .description('open Firebase Hosting URL in browser or jump to a dashboard panel')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .action(function(panel, options) {
     var projectId = getProjectId(options);
     var url;

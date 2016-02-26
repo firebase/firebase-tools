@@ -10,7 +10,6 @@ var utils = require('../lib/utils');
 
 module.exports = new Command('deploy:rules')
   .description('deploy security rules for the current app')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-m, --message <message>', 'an optional message describing this deploy')
   .before(requireConfig)
   .before(requireAccess)

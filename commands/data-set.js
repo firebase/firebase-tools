@@ -17,7 +17,6 @@ var _ = require('lodash');
 
 module.exports = new Command('data:set <path> [infile]')
   .description('store JSON data at the specified path via STDIN, arg, or file')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireDataAccess)

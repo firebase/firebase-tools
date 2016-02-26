@@ -17,7 +17,6 @@ var _ = require('lodash');
 
 module.exports = new Command('data:push <path> [infile]')
   .description('add a new JSON object to a list of data in your Firebase')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .before(requireDataAccess)
   .action(function(path, infile, options) {

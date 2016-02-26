@@ -36,7 +36,6 @@ var _applyStringOpts = function(dest, src, keys, jsonKeys) {
 
 module.exports = new Command('data:get <path>')
   .description('fetch and print JSON data at the specified path')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-o, --output <filename>', 'save output to the specified file')
   .option('--pretty', 'pretty print response')
   .option('--shallow', 'return shallow response')
