@@ -10,7 +10,6 @@ var RSVP = require('rsvp');
 
 module.exports = new Command('disable:hosting')
   .description('stop serving web traffic to your Firebase Hosting site')
-  .option('-P, --project <project_id>', 'the project on which to disable hosting')
   .option('-y, --confirm', 'skip confirmation')
   .before(requireAccess)
   .action(function(options) {

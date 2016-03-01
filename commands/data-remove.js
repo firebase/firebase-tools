@@ -15,7 +15,6 @@ var _ = require('lodash');
 
 module.exports = new Command('data:remove <path>')
   .description('remove data from your Firebase at the specified path')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireDataAccess)
   .action(function(path, options) {

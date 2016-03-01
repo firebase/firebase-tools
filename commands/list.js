@@ -7,14 +7,11 @@ var chalk = require('chalk');
 var Table = require('cli-table');
 var _ = require('lodash');
 var logger = require('../lib/logger');
-var Config = require('../lib/config');
 
 module.exports = new Command('list')
   .description('list the Firebases to which you have access')
   .before(requireAuth)
   .action(function(options) {
-    var config = Config.load(options, true);
-
     return api.getProjects().then(function(projects) {
       var needExtraCol = _.some(projects, function(data) {
         return data.id !== data.firebase;
@@ -51,7 +48,7 @@ module.exports = new Command('list')
         }
 
         var displayName = data.name;
-        if (_.get(config, 'defaults.project') === id) {
+        if (options.project === id) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
         out.push(project);

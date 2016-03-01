@@ -17,7 +17,6 @@ var _ = require('lodash');
 
 module.exports = new Command('data:update <path> [infile]')
   .description('update some of the keys for the defined path in your Firebase')
-  .option('-P, --project <project_id>', 'override the project ID specified in firebase.json')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireDataAccess)
