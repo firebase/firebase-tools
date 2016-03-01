@@ -17,6 +17,6 @@ describe('loadRCFiles', function() {
 
   it('should not crash when encountering malformed files', function() {
     var result = loadRCFiles(path.resolve(fixturesDir, 'fbrc/invalid'));
-    return expect(result.length).to.be.object;
+    return expect(result.project.other).to.eq('top');
   });
 });
