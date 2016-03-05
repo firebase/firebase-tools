@@ -14,5 +14,6 @@ module.exports = new Command('deploy')
   .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
-    return deploy(['functions', 'hosting', 'rules'], options);
+    // deploy in order of least time-consuming to most time-consuming
+    return deploy(['rules', 'storage', 'functions', 'hosting'], options);
   });
