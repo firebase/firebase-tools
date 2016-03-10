@@ -8,17 +8,17 @@ var deploy = require('../lib/deploy');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 
-module.exports = new Command('deploy:rules')
-  .description('deploy security rules for the current app')
+module.exports = new Command('deploy:database')
+  .description('deploy security rules for your Firebase Database')
   .option('-m, --message <message>', 'an optional message describing this deploy')
   .before(requireConfig)
   .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
     var config = options.config;
-    if (!config.has('rules')) {
-      utils.logSuccess('Nothing to deploy (no "rules" specified in firebase.json)');
+    if (!config.has('database.rules')) {
+      utils.logSuccess('Nothing to deploy (no "database.rules" specified in firebase.json)');
       return RSVP.resolve();
     }
-    return deploy(['rules'], options);
+    return deploy(['database'], options);
   });

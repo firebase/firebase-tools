@@ -17,7 +17,7 @@ module.exports = function(client) {
 
   client.deploy = loadCommand('deploy');
   client.deploy.hosting = loadCommand('deploy-hosting');
-  client.deploy.rules = loadCommand('deploy-rules');
+  client.deploy.database = loadCommand('deploy-database');
   client.deploy.functions = loadCommand('deploy-functions');
   client.deploy.storage = loadCommand('deploy-storage');
 
