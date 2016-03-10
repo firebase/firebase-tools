@@ -31,6 +31,7 @@ module.exports = function(client) {
   // client.prefs = loadCommand('prefs');
   client.prefs.token = loadCommand('prefs-token');
   client.serve = loadCommand('serve');
+  client.users = loadCommand('users');
 
   return client;
 };
