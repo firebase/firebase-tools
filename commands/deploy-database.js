@@ -5,15 +5,20 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var acquireRefs = require('../lib/acquireRefs');
 var deploy = require('../lib/deploy');
+var RSVP = require('rsvp');
+var utils = require('../lib/utils');
 
-module.exports = new Command('deploy')
-  .description('deploy code and assets to your Firebase project')
-  .option('-p, --public <path>', 'override the Hosting public directory specified in firebase.json')
+module.exports = new Command('deploy:database')
+  .description('deploy security rules for your Firebase Database')
   .option('-m, --message <message>', 'an optional message describing this deploy')
   .before(requireConfig)
   .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
-    // deploy in order of least time-consuming to most time-consuming
-    return deploy(['database', 'storage', 'functions', 'hosting'], options);
+    var config = options.config;
+    if (!config.has('database.rules')) {
+      utils.logSuccess('Nothing to deploy (no "database.rules" specified in firebase.json)');
+      return RSVP.resolve();
+    }
+    return deploy(['database'], options);
   });

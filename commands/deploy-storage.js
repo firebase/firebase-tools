@@ -8,17 +8,15 @@ var deploy = require('../lib/deploy');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 
-module.exports = new Command('deploy:rules')
-  .description('deploy security rules for the current app')
-  .option('-m, --message <message>', 'an optional message describing this deploy')
+module.exports = new Command('deploy:storage')
+  .description('deploy authorization rules for Firebase Storage')
   .before(requireConfig)
   .before(requireAccess)
   .before(acquireRefs)
   .action(function(options) {
-    var config = options.config;
-    if (!config.has('rules')) {
-      utils.logSuccess('Nothing to deploy (no "rules" specified in firebase.json)');
+    if (!options.config.get('storage.rules')) {
+      utils.logSuccess('Nothing to deploy (no "storage.rules" specified in firebase.json)');
       return RSVP.resolve();
     }
-    return deploy(['rules'], options);
+    return deploy(['storage'], options);
   });
