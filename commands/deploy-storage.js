@@ -10,7 +10,6 @@ var utils = require('../lib/utils');
 
 module.exports = new Command('deploy:storage')
   .description('deploy authorization rules for Firebase Storage')
-  // .option('-m, --message <message>', 'an optional message describing this deploy')
   .before(requireConfig)
   .before(requireAccess)
   .before(acquireRefs)
