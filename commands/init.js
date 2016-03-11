@@ -55,9 +55,9 @@ module.exports = new Command('init')
         {
           type: 'list',
           name: 'project',
-          message: 'What Firebase do you want to use?',
+          message: 'What Firebase project do you want to use?',
           validate: function(answer) {
-            if (!_.contains(nameOptions, answer)) {
+            if (!_.includes(nameOptions, answer)) {
               return 'Must specify a Firebase to which you have access';
             }
             return true;

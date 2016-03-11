@@ -5,8 +5,6 @@ var expect = chai.expect;
 chai.use(require('chai-as-promised'));
 
 var RSVP = require('rsvp');
-var path = require('path');
-var fixturesDir = path.resolve(__dirname, '../fixtures');
 var Command = require('../../lib/command');
 
 describe('Command', function() {
@@ -43,37 +41,6 @@ describe('Command', function() {
   it('should set the action with a command', function() {
     var action = function() { };
     expect(command.action(action)._action).to.equal(action);
-  });
-
-  describe('.applyPrefs()', function() {
-    var run;
-    var rcdir = path.resolve(fixturesDir, 'fbrc');
-
-    beforeEach(function() {
-      run = command.action(function(options) {
-        return RSVP.resolve(options.project);
-      }).runner();
-    });
-
-    it('should use the specified project if no alias is found', function() {
-      return expect(run({
-        project: 'my-specific-project',
-        cwd: rcdir
-      })).to.eventually.eq('my-specific-project');
-    });
-
-    it('should use the provided alias if one is found in .firebaserc', function() {
-      return expect(run({
-        project: 'other',
-        cwd: rcdir
-      })).to.eventually.eq('top');
-    });
-
-    it('should use the default alias if no project is specified and one is found in .firebaserc', function() {
-      return expect(run({
-        cwd: rcdir
-      })).to.eventually.eq('top');
-    });
   });
 
   describe('.runner()', function() {
