@@ -36,5 +36,7 @@ module.exports = function(client) {
   client.functions = {};
   client.functions.log = loadCommand('functions-log');
 
+  client.use = loadCommand('use');
+
   return client;
 };

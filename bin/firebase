@@ -37,7 +37,7 @@ logger.add(winston.transports.Console, {
 });
 
 var debugging = false;
-if (_.contains(args, '--debug')) {
+if (_.includes(args, '--debug')) {
   logger.transports.console.level = 'debug';
   debugging = true;
 }
