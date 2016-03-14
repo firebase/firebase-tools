@@ -13,25 +13,19 @@ module.exports = new Command('list')
   .before(requireAuth)
   .action(function(options) {
     return api.getProjects().then(function(projects) {
-      var needExtraCol = _.some(projects, function(data) {
-        return data.id !== data.firebase;
-      });
-
-      var tableHead = ['Name', 'Project ID', 'Permissions'];
-      if (needExtraCol) {
-        tableHead.push('Legacy ID');
-      }
+      var tableHead = ['Name', 'Project ID', 'Permissions', 'Instance'];
       var table = new Table({
         head: tableHead,
         style: {head: ['yellow']}
       });
 
       var out = [];
-      _.forEach(projects, function(data, id) {
+      _.forEach(projects, function(data) {
         var project = {
           name: data.name,
-          id: id,
-          permission: data.permission
+          id: data.id,
+          permission: data.permission,
+          instance: data.instances.database[0]
         };
 
         var displayPermission;
@@ -48,22 +42,17 @@ module.exports = new Command('list')
         }
 
         var displayName = data.name;
-        if (options.project === id) {
+        if (options.project === data.id) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
+
         out.push(project);
         var row = [
           displayName,
-          id,
-          displayPermission
+          data.id,
+          displayPermission,
+          data.instances.database[0]
         ];
-        if (needExtraCol) {
-          if (data.firebase === id) {
-            row.push('');
-          } else {
-            row.push(data.firebase);
-          }
-        }
         table.push(row);
       });
 

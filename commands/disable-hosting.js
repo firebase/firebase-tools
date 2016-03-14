@@ -24,7 +24,7 @@ module.exports = new Command('disable:hosting')
         return RSVP.resolve();
       }
 
-      return api.request('POST', '/projects/' + options.project + '/releases', {
+      return api.request('POST', '/v1/projects/' + encodeURIComponent(options.project) + '/releases', {
         auth: true,
         data: {
           hosting: {

@@ -26,14 +26,14 @@ module.exports = new Command('data:remove <path>')
       type: 'confirm',
       name: 'confirm',
       default: false,
-      message: 'You are about to remove all data at ' + chalk.cyan(path) + ' on ' + chalk.cyan(options.project) + '. Are you sure?'
+      message: 'You are about to remove all data at ' + chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) + '. Are you sure?'
     }]).then(function() {
       if (!options.confirm) {
         return utils.reject('Command aborted.', {exit: 1});
       }
 
       return new RSVP.Promise(function(resolve, reject) {
-        var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
+        var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
         var query = {auth: options.databaseAdminToken};
 
         url += querystring.stringify(query);
