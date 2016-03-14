@@ -51,7 +51,7 @@ module.exports = new Command('list')
           displayName,
           data.id,
           displayPermission,
-          data.instances.database[0]
+          project.instance
         ];
         table.push(row);
       });
