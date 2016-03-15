@@ -20,10 +20,10 @@ module.exports = new Command('list')
       });
 
       var out = [];
-      _.forEach(projects, function(data) {
+      _.forEach(projects, function(data, projectId) {
         var project = {
           name: data.name,
-          id: data.id,
+          id: projectId,
           permission: data.permission,
           instance: data.instances.database[0]
         };
@@ -49,7 +49,7 @@ module.exports = new Command('list')
         out.push(project);
         var row = [
           displayName,
-          data.id,
+          projectId,
           displayPermission,
           project.instance
         ];
