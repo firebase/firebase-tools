@@ -42,7 +42,7 @@ module.exports = new Command('list')
         }
 
         var displayName = data.name;
-        if (options.project === data.id) {
+        if (options.project === projectId) {
           displayName = chalk.cyan.bold(displayName + ' (current)');
         }
 
