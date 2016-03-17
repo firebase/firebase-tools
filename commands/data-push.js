@@ -27,7 +27,7 @@ module.exports = new Command('data:push <path> [infile]')
     return new RSVP.Promise(function(resolve, reject) {
       var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
       var query = {auth: options.databaseAdminToken};
 
       url += querystring.stringify(query);
@@ -44,7 +44,11 @@ module.exports = new Command('data:push <path> [infile]')
           return reject(responseToError(res, body));
         }
 
-        var refurl = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '/' + body.name;
+        if (!_.endsWith(path, '/')) {
+          path += '/';
+        }
+
+        var refurl = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + body.name;
 
         utils.logSuccess('Data pushed successfully');
         logger.info();

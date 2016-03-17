@@ -61,7 +61,7 @@ module.exports = new Command('data:get <path>')
       var errorResponse = '';
       var response;
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.project) + path + '.json?';
+      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
 
       var query = {auth: options.databaseAdminToken};
       if (options.shallow) { query.shallow = 'true'; }
