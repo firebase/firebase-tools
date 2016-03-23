@@ -61,6 +61,7 @@ Command | Description
 ------- | -----------
 **deploy** | Deploys your Firebase project. Relies on [firebase.json][1] configuration and your local project folder.
 **serve** | Start a local web server with your Firebase Hosting configuration. Relies on [firebase.json][1].
+**disable:hosting** | Stop serving Firebase Hosting traffic for the current project. A "Site Not Found" message will be displayed at your URL after running this command.
 
 ### Data Commands
 
