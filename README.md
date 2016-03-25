@@ -47,6 +47,7 @@ Command | Description
 **login** | Authenticate to your Firebase account. Requires access to a web browser.
 **logout** | Sign out of the Firebase CLI.
 **list** | Print a list of all of your Firebase projects.
+**use** | Set active Firebase project, manage project aliases.
 **open** | Open the deployed Firebase Hosting site or various dashboard panels for the current Firebase project.
 **init** | Setup a new Firebase project in the current directory. This command will create a [firebase.json][1] configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
@@ -58,11 +59,9 @@ These commands let you deploy and interact with your Firebase Hosting site.
 
 Command | Description
 ------- | -----------
-**deploy** | Deploys all components (both hosting and security rules) of your Firebase project. Relies on [firebase.json][1] configuration.
-**deploy:hosting** | Deploy only the Firebase Hosting site assets to your Firebase project. Relies on [firebase.json][1] configuration.
-**deploy:rules** | Deploy only the Firebase Security Rules to your Firebase project. Relies on [firebase.json][1] configuration.
-**disable:hosting** | Stop serving Firebase Hosting traffic for the current project. A "Site Not Found" message will be displayed at your URL after running this command.
+**deploy** | Deploys your Firebase project. Relies on [firebase.json][1] configuration and your local project folder.
 **serve** | Start a local web server with your Firebase Hosting configuration. Relies on [firebase.json][1].
+**disable:hosting** | Stop serving Firebase Hosting traffic for the current project. A "Site Not Found" message will be displayed at your URL after running this command.
 
 ### Data Commands
 
