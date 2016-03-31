@@ -139,6 +139,14 @@ module.exports = new Command('use [alias_or_project_id]')
       logger.info();
       listAliases(options);
     } else { // fireabase use
+      if (!process.stdout.isTTY) {
+        if (options.project) {
+          logger.info(options.project);
+          return options.project;
+        }
+        return utils.reject('No active project', {exit: 1});
+      }
+
       if (options.projectAlias) {
         logger.info('Active Project:', chalk.bold.cyan(options.projectAlias + ' (' + options.project + ')'));
       } else if (options.project) {
