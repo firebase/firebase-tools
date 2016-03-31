@@ -138,7 +138,7 @@ module.exports = new Command('use [alias_or_project_id]')
       logger.info('Cleared active project.');
       logger.info();
       listAliases(options);
-    } else { // fireabase use
+    } else { // firebase use
       if (!process.stdout.isTTY) {
         if (options.project) {
           logger.info(options.project);
