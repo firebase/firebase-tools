@@ -2,14 +2,14 @@
 
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
-var configstore = require('../lib/configstore');
 var requireAuth = require('../lib/requireAuth');
 
 module.exports = new Command('prefs:token')
   .description('print the currently logged in user\'s access token')
   .before(requireAuth)
-  .action(function() {
-    var token = configstore.get('tokens').refresh_token;
+  .option('--temporary', 'only provide a temporary access token that will expire in an hour')
+  .action(function(options) {
+    var token = options.temporary ? options.tokens.access_token : options.tokens.refresh_token;
     logger.info(token);
     return token;
   });

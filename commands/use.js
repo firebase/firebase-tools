@@ -2,7 +2,6 @@
 
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
-var configstore = require('../lib/configstore');
 var requireAuth = require('../lib/requireAuth');
 var api = require('../lib/api');
 var chalk = require('chalk');
@@ -11,17 +10,6 @@ var _ = require('lodash');
 var fs = require('fs');
 var path = require('path');
 var prompt = require('../lib/prompt');
-
-var makeActive = function(projectDir, newActive) {
-  var activeProjects = configstore.get('activeProjects') || {};
-  if (newActive) {
-    activeProjects[projectDir] = newActive;
-  } else {
-    _.unset(activeProjects, projectDir);
-  }
-
-  configstore.set('activeProjects', activeProjects);
-};
 
 var writeAlias = function(projectDir, rc, alias, projectId) {
   if (projectId) {
@@ -89,10 +77,10 @@ module.exports = new Command('use [alias_or_project_id]')
             return utils.reject('Unable to use alias ' + chalk.bold(newActive) + ', ' + verifyMessage(aliasedProject));
           }
 
-          makeActive(options.projectRoot, newActive);
+          utils.makeActiveProject(options.projectRoot, newActive);
           logger.info('Now using alias', chalk.bold(newActive), '(' + aliasedProject + ')');
         } else if (projects[newActive]) { // exact project id specified
-          makeActive(options.projectRoot, newActive);
+          utils.makeActiveProject(options.projectRoot, newActive);
           logger.info('Now using project', chalk.bold(newActive));
         } else { // no alias or project recognized
           return utils.reject('Invalid project selection, ' + verifyMessage(newActive));
@@ -125,14 +113,14 @@ module.exports = new Command('use [alias_or_project_id]')
           }
         ]).then(function() {
           writeAlias(options.projectRoot, options.rc, results.alias, results.project);
-          makeActive(options.projectRoot, results.alias);
+          utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();
           logger.info('Created alias', chalk.bold(results.alias), 'for', results.project + '.');
           logger.info('Now using alias', chalk.bold(results.alias) + ' (' + results.project + ')');
         });
       });
     } else if (options.clear) { // firebase use --clear
-      makeActive(options.projectRoot, null);
+      utils.makeActiveProject(options.projectRoot, null);
       options.projectAlias = null;
       options.project = null;
       logger.info('Cleared active project.');
