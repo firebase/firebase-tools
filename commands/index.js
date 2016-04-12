@@ -20,20 +20,30 @@ module.exports = function(client) {
   client.disable = {
     hosting: loadCommand('disable-hosting')
   };
+
+  client.functions = {
+    log: loadCommand('functions-log')
+  };
+
   client.help = loadCommand('help');
   client.init = loadCommand('init');
   client.list = loadCommand('list');
+
   client.login = loadCommand('login');
   client.login.ci = loadCommand('login-ci');
+
   client.logout = loadCommand('logout');
   client.open = loadCommand('open');
-  client.prefs = {};
-  // client.prefs = loadCommand('prefs');
-  client.prefs.token = loadCommand('prefs-token');
+
+  client.prefs = {
+    token: loadCommand('prefs-token')
+  };
+
   client.serve = loadCommand('serve');
 
-  client.functions = {};
-  client.functions.log = loadCommand('functions-log');
+  client.tools = {
+    migrate: loadCommand('tools-migrate')
+  };
 
   client.use = loadCommand('use');
 
