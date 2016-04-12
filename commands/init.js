@@ -88,7 +88,6 @@ module.exports = new Command('init [feature]')
       setup.features = setup.features.map(function(feat) {
         return prompt.listLabelToValue(feat, choices);
       });
-      console.log(setup.features);
       setup.features.push('project');
       return init(setup, config, options);
     }).then(function() {
@@ -99,5 +98,11 @@ module.exports = new Command('init [feature]')
       config.writeProjectFile('.firebaserc', setup.rcfile);
       logger.info();
       utils.logSuccess('Firebase initialization complete!');
+
+      if (setup.createProject) {
+        logger.info();
+        logger.info(chalk.bold.cyan('Project creation is only available from the Firebase Console'));
+        logger.info('Please visit', chalk.underline('https://console.firebase.google.com'), 'to create a new project, then run', chalk.bold('firebase use --add'));
+      }
     });
   });
