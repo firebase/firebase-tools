@@ -1,5 +1,7 @@
 'use strict';
 
+var previews = require('../lib/previews');
+
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require('./' + name);
@@ -21,9 +23,11 @@ module.exports = function(client) {
     hosting: loadCommand('disable-hosting')
   };
 
-  client.functions = {
-    log: loadCommand('functions-log')
-  };
+  if (previews.functions) {
+    client.functions = {
+      log: loadCommand('functions-log')
+    };
+  }
 
   client.help = loadCommand('help');
   client.init = loadCommand('init');

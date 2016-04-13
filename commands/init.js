@@ -10,6 +10,7 @@ var Command = require('../lib/command');
 var Config = require('../lib/config');
 var init = require('../lib/init');
 var logger = require('../lib/logger');
+var previews = require('../lib/previews');
 var prompt = require('../lib/prompt');
 var requireAuth = require('../lib/requireAuth');
 var utils = require('../lib/utils');
@@ -66,11 +67,13 @@ module.exports = new Command('init [feature]')
     var chooseFeatures;
     var choices = [
       {name: 'database', label: 'Database: Deploy rules for your Firebase Realtime Database', checked: true},
-      {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true},
       {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true},
       {name: 'storage', label: 'Storage: Deploy rules for Firebase Storage', checked: true}
     ];
-    // TODO: Splice out functions when no preview enabled.
+    if (previews.functions) {
+      choices.splice(1, 0, {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true});
+    }
+
     if (feature) {
       setup.features = [feature];
       chooseFeatures = RSVP.resolve();
