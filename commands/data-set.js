@@ -57,7 +57,7 @@ module.exports = new Command('data:set <path> [infile]')
 
           utils.logSuccess('Data persisted successfully');
           logger.info();
-          logger.info(chalk.bold('View data at:'), utils.addSubdomain(api.realtimeOrigin, options.instance) + path);
+          logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
           return resolve();
         }));
       });
