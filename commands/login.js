@@ -35,6 +35,8 @@ module.exports = new Command('login')
     }).then(function(result) {
       configstore.set('user', result.user);
       configstore.set('tokens', result.tokens);
+      // remove old session token, if it exists
+      configstore.del('session');
 
       logger.info();
       utils.logSuccess('Success! Logged in as ' + chalk.bold(result.user.email));

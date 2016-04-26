@@ -45,6 +45,7 @@ if (_.includes(args, '--debug')) {
 
 logger.debug(_.repeat('-', 70));
 logger.debug('Command:     ', process.argv.join(' '));
+logger.debug('CLI Version: ', pkg.version);
 logger.debug('Platform:    ', process.platform);
 logger.debug('Node Version:', process.version);
 logger.debug('Time:        ', new Date().toString());
