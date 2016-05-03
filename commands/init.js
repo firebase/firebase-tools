@@ -66,9 +66,9 @@ module.exports = new Command('init [feature]')
 
     var chooseFeatures;
     var choices = [
-      {name: 'database', label: 'Database: Deploy rules for your Firebase Realtime Database', checked: true},
+      {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: true},
       {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true},
-      {name: 'storage', label: 'Storage: Deploy rules for Firebase Storage', checked: true}
+      {name: 'storage', label: 'Storage: Deploy Firebase Storage Security Rules', checked: true}
     ];
     if (previews.functions) {
       choices.splice(1, 0, {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true});
