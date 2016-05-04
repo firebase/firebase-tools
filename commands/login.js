@@ -35,6 +35,8 @@ module.exports = new Command('login')
     }).then(function(result) {
       configstore.set('user', result.user);
       configstore.set('tokens', result.tokens);
+      // store login scopes in case mandatory scopes grow over time
+      configstore.set('loginScopes', result.scopes);
       // remove old session token, if it exists
       configstore.del('session');
 

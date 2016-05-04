@@ -1,6 +1,8 @@
 'use strict';
 
 var _ = require('lodash');
+var RSVP = require('rsvp');
+
 var api = require('../lib/api');
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
@@ -8,8 +10,7 @@ var gcp = require('../lib/gcp');
 var getProjectId = require('../lib/getProjectId');
 var logger = require('../lib/logger');
 var requireAccess = require('../lib/requireAccess');
-var requireConfig = require('../lib/requireConfig');
-var RSVP = require('rsvp');
+var scopes = require('../lib/scopes');
 
 var POLL_INTERVAL = 3000; // 3 sec
 
@@ -49,8 +50,7 @@ module.exports = new Command('functions:log')
   .option('-F, --function <function_name>', 'specify function name whose logs will be fetched')
   .option('-n, --lines <num_lines>', 'specify number of log lines to fetch')
   .option('-f, --follow', 'stream logs from GCF cluster')
-  .before(requireConfig)
-  .before(requireAccess)
+  .before(requireAccess, [scopes.OPENID, scopes.CLOUD_PLATFORM])
   .action(function(options) {
     var filter = 'resource.type="cloud_function" ' +
                  'labels."cloudfunctions.googleapis.com/region"="us-central1" ';
