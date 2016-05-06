@@ -38,11 +38,6 @@ module.exports = function(client) {
 
   client.logout = loadCommand('logout');
   client.open = loadCommand('open');
-
-  client.prefs = {
-    token: loadCommand('prefs-token')
-  };
-
   client.serve = loadCommand('serve');
 
   client.tools = {

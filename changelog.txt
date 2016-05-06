@@ -4,9 +4,9 @@ changed - The `-f`/`--firebase` option has been renamed to `-P`/`--project` and 
 changed - The `firebase deploy:*` commands have been replaced with `firebase deploy --only *` with a list of features.
 changed - `firebase init` now initializes multiple features and can be re-run in an existing project directory.
 changed - `firebase open` no longer just opens Hosting site, now provides a selection of useful project URLs.
+changed - `firebase prefs:token` is removed in favor of `firebase login:ci`
 feature - `firebase tools:migrate` is available to update `firebase.json` to current schema.
 feature - `firebase use` is now available for managing project environment aliases in a project directory.
 feature - The Firebase CLI can now deploy rules for Firebase Storage.
 fixed - Improved port-finding behavior of `firebase serve`.
 deprecated - The `firebase` key in `firebase.json` is now deprecated in favor of `firebase use`.
-deprecated - `firebase prefs:token` is deprecated in favor of `firebase login:ci`
