@@ -1,120 +1,111 @@
 'use strict';
+
+var chalk = require('chalk');
+var fs = require('fs');
+var homeDir = require('user-home');
+var path = require('path');
+var RSVP = require('rsvp');
+
 var Command = require('../lib/command');
 var Config = require('../lib/config');
-var prompt = require('../lib/prompt');
-var fs = require('fs-extra');
-var path = require('path');
-var defaultConfig = require('../templates/firebase.json');
-var _ = require('lodash');
+var init = require('../lib/init');
 var logger = require('../lib/logger');
-var homeDir = require('user-home');
-var chalk = require('chalk');
-var api = require('../lib/api');
+var previews = require('../lib/previews');
+var prompt = require('../lib/prompt');
 var requireAuth = require('../lib/requireAuth');
-var RSVP = require('rsvp');
-var FirebaseError = require('../lib/error');
 var utils = require('../lib/utils');
 
-var NEW_FIREBASE = '[create a new firebase]';
+var BANNER_TEXT = fs.readFileSync(__dirname + '/../templates/banner.txt', 'utf8');
 
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
-module.exports = new Command('init')
-  .description('set up a Firebase app in the current directory')
-  .option('-f, --firebase <firebase>', 'the name of the firebase to use')
-  .option('-p, --public <dir>', 'the name of your app\'s public directory')
+module.exports = new Command('init [feature]')
+  .description('setup a Firebase project in the current directory')
   .before(requireAuth)
-  .action(function(options) {
+  .action(function(feature, options) {
     var cwd = options.cwd || process.cwd();
 
+    var warnings = [];
+    var warningText = '';
     if (_isOutside(homeDir, cwd)) {
-      utils.logWarning(chalk.bold.yellow('Caution!') + ' Initializing outside your home directory');
+      warnings.push('You are currently outside your home directory');
     }
     if (cwd === homeDir) {
-      utils.logWarning(chalk.bold.yellow('Caution!') + ' Initializing directly at your home directory');
+      warnings.push('You are initializing your home directory as a Firebase project');
     }
 
     var config = Config.load(options, true);
-    if (config) {
-      return RSVP.reject(new FirebaseError('Cannot run init, already inside a project directory:\n\n' + chalk.bold(config.projectDir)));
+    var existingConfig = !!config;
+    if (!existingConfig) {
+      config = new Config({}, {projectDir: cwd, cwd: cwd});
+    } else {
+      warnings.push('You are initializing in an existing Firebase project directory');
     }
 
-    var fileCount = _.difference(fs.readdirSync(cwd), ['firebase-debug.log']).length;
-    if (fileCount !== 0) {
-      utils.logWarning('Initializing in a directory with ' + chalk.bold(fileCount) + ' files');
-      logger.warn();
+    if (warnings.length) {
+      warningText = '\nBefore we get started, keep in mind:\n\n  ' + chalk.yellow.bold('* ') + warnings.join('\n  ' + chalk.yellow.bold('* ')) + '\n';
     }
 
-    return api.getFirebases().then(function(firebases) {
-      var firebaseNames = Object.keys(firebases).sort();
-      var nameOptions = [NEW_FIREBASE].concat(firebaseNames);
+    if (process.platform === 'darwin') {
+      BANNER_TEXT = BANNER_TEXT.replace(/#/g, '🔥');
+    }
+    logger.info(chalk.yellow.bold(BANNER_TEXT) +
+      '\nYou\'re about to initialize a Firebase project in this directory:\n\n  ' + chalk.bold(config.projectDir) + '\n' +
+      warningText
+    );
 
-      return prompt(options, [
-        {
-          type: 'list',
-          name: 'firebase',
-          message: 'What Firebase do you want to use?',
-          validate: function(answer) {
-            if (!nameOptions.indexOf(answer) >= 0) {
-              return 'Must specify a Firebase to which you have access';
-            }
-            return true;
-          },
-          choices: nameOptions
-        },
-        {
-          type: 'input',
-          name: 'firebase',
-          message: 'Name your new Firebase:',
-          default: path.basename(cwd),
-          when: function(answers) {
-            return answers.firebase === NEW_FIREBASE;
-          }
-        },
-        {
-          type: 'input',
-          name: 'public',
-          message: 'What directory should be the public root?',
-          default: 'public',
-          validate: function(answer) {
-            if (_isOutside(cwd, answer)) {
-              return 'Must be within the current directory';
-            }
-            return true;
-          },
-          filter: function(input) {
-            input = path.relative(cwd, input);
-            if (input === '') { input = '.'; }
-            return input;
-          }
-        }
-      ]).then(function() {
-        if (!_.contains(firebaseNames, options.firebase)) {
-          return api.request('POST', '/firebase/' + options.firebase, {auth: true}).then(function() {
-            logger.info(chalk.green('✔ '), 'Firebase', chalk.bold(options.firebase), 'has been created');
-          });
-        }
-      }).then(function() {
-        var absPath = path.resolve(cwd, options.public || '.');
-        if (!fs.existsSync(absPath)) {
-          fs.mkdirsSync(absPath);
-          logger.info(chalk.green('✔ '), 'Public directory', chalk.bold(options.public), 'has been created');
-        }
+    var setup = {
+      config: config._src,
+      rcfile: config.readProjectFile('.firebaserc', {
+        json: true,
+        fallback: {}
+      })
+    };
 
-        var publicPath = path.relative(cwd, options.public);
-        if (publicPath === '') {
-          publicPath = '.';
-        }
-        var out = JSON.stringify(_.extend({}, defaultConfig, {
-          firebase: options.firebase,
-          public: publicPath
-        }), undefined, 2);
+    var chooseFeatures;
+    var choices = [
+      {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: true},
+      {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true}
+      // {name: 'storage', label: 'Storage: Deploy Firebase Storage Security Rules', checked: true}
+    ];
+    if (previews.functions) {
+      choices.splice(1, 0, {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true});
+    }
 
-        fs.writeFileSync(path.join(cwd, 'firebase.json'), out);
-        logger.info('Firebase initialized, configuration written to firebase.json');
-        return path.resolve(path.join(cwd, 'firebase.json'));
+    if (feature) {
+      setup.features = [feature];
+      chooseFeatures = RSVP.resolve();
+    } else {
+      chooseFeatures = prompt(setup, [
+        {
+          type: 'checkbox',
+          name: 'features',
+          message: 'What Firebase CLI features do you want to setup for this folder?',
+          choices: prompt.convertLabeledListChoices(choices)
+        }
+      ]);
+    }
+    return chooseFeatures.then(function() {
+      setup.features = setup.features.map(function(feat) {
+        return prompt.listLabelToValue(feat, choices);
       });
+      setup.features.push('project');
+      return init(setup, config, options);
+    }).then(function() {
+      logger.info();
+      utils.logBullet('Writing configuration info to ' + chalk.bold('firebase.json') + '...');
+      config.writeProjectFile('firebase.json', setup.config);
+      utils.logBullet('Writing project information to ' + chalk.bold('.firebaserc') + '...');
+      config.writeProjectFile('.firebaserc', setup.rcfile);
+      logger.info();
+      utils.logSuccess('Firebase initialization complete!');
+
+      if (setup.createProject) {
+        logger.info();
+        logger.info(chalk.bold.cyan('Project creation is only available from the Firebase Console'));
+        logger.info('Please visit', chalk.underline('https://console.firebase.google.com'), 'to create a new project, then run', chalk.bold('firebase use --add'));
+      }
     });
   });

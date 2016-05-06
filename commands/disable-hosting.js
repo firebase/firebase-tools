@@ -10,7 +10,6 @@ var RSVP = require('rsvp');
 
 module.exports = new Command('disable:hosting')
   .description('stop serving web traffic to your Firebase Hosting site')
-  .option('-f, --firebase <firebase>', 'the project on which to disable hosting')
   .option('-y, --confirm', 'skip confirmation')
   .before(requireAccess)
   .action(function(options) {
@@ -25,18 +24,18 @@ module.exports = new Command('disable:hosting')
         return RSVP.resolve();
       }
 
-      return api.request('POST', '/firebase/' + options.firebase + '/releases', {
+      return api.request('POST', '/v1/projects/' + encodeURIComponent(options.project) + '/releases', {
         auth: true,
         data: {
           hosting: {
             disabled: true
           }
         },
-        origin: api.uploadOrigin
+        origin: api.deployOrigin
       });
     }).then(function() {
       if (options.confirm) {
-        utils.logSuccess('Hosting has been disabled for ' + chalk.bold(options.firebase) + '. Deploy a new version to re-enable.');
+        utils.logSuccess('Hosting has been disabled for ' + chalk.bold(options.project) + '. Deploy a new version to re-enable.');
       }
     });
   });

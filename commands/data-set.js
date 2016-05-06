@@ -17,7 +17,6 @@ var _ = require('lodash');
 
 module.exports = new Command('data:set <path> [infile]')
   .description('store JSON data at the specified path via STDIN, arg, or file')
-  .option('-f, --firebase <app>', 'override the app specified in firebase.json')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .before(requireDataAccess)
@@ -30,7 +29,7 @@ module.exports = new Command('data:set <path> [infile]')
       type: 'confirm',
       name: 'confirm',
       default: false,
-      message: 'You are about to overwrite all data at ' + chalk.cyan(path) + ' on ' + chalk.cyan(options.firebase) + '. Are you sure?'
+      message: 'You are about to overwrite all data at ' + chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) + '. Are you sure?'
     }]).then(function() {
       if (!options.confirm) {
         return utils.reject('Command aborted.', {exit: 1});
@@ -39,8 +38,8 @@ module.exports = new Command('data:set <path> [infile]')
       return new RSVP.Promise(function(resolve, reject) {
         var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
 
-        var url = utils.addSubdomain(api.realtimeOrigin, options.firebase) + path + '.json?';
-        var query = {auth: options.dataToken};
+        var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
+        var query = {auth: options.databaseAdminToken};
 
         url += querystring.stringify(query);
 
@@ -58,7 +57,7 @@ module.exports = new Command('data:set <path> [infile]')
 
           utils.logSuccess('Data persisted successfully');
           logger.info();
-          logger.info(chalk.bold('View data at:'), utils.addSubdomain(api.realtimeOrigin, options.firebase) + path);
+          logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
           return resolve();
         }));
       });

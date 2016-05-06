@@ -5,7 +5,6 @@ var expect = chai.expect;
 chai.use(require('chai-as-promised'));
 
 var RSVP = require('rsvp');
-
 var Command = require('../../lib/command');
 
 describe('Command', function() {

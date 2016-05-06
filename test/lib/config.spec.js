@@ -41,7 +41,7 @@ describe('Config', function() {
     });
   });
 
-  describe('#importLegacyKeys', function() {
+  describe('#importLegacyHostingKeys', function() {
     it('should respect non-overlapping keys in hosting', function() {
       var redirects = [{source: '/foo', destination: '/bar.html', type: 301}];
       var rewrites = [{source: '**', destination: '/index.html'}];
@@ -52,7 +52,7 @@ describe('Config', function() {
         }
       }, {});
 
-      config.importLegacyKeys();
+      config.importLegacyHostingKeys();
       expect(config.get('hosting.redirects')).to.eq(redirects);
       expect(config.get('hosting.rewrites')).to.eq(rewrites);
     });
