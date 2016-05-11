@@ -7,20 +7,23 @@ var superstatic = require('superstatic').server;
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
 var logger = require('../lib/logger');
-var requireConfig = require('../lib/requireConfig');
 var utils = require('../lib/utils');
 
 var MAX_PORT_ATTEMPTS = 10;
 
 var _attempts = 0;
 var startServer = function(options) {
+  var config = options.config ? options.config.get('hosting') : {public: '.'};
   var server = superstatic({
     debug: true,
     port: options.port,
     host: options.host,
-    config: options.config.get('hosting'),
+    config: config,
     stack: 'strict'
   }).listen(function() {
+    if (config.public && config.public !== '.') {
+      logger.info(chalk.bold('Public Directory:'), config.public);
+    }
     logger.info();
     logger.info('Server listening at: ' + chalk.underline(chalk.bold('http://' + options.host + ':' + options.port)));
   });
@@ -45,9 +48,16 @@ module.exports = new Command('serve')
   .description('start a local server for your static assets')
   .option('-p, --port <port>', 'the port on which to listen (default: 5000)', 5000)
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
-  .before(requireConfig)
   .action(function(options) {
     logger.info('Starting Firebase development server...');
+    logger.info();
+
+    if (options.config) {
+      logger.info(chalk.bold('Project Directory:'), options.config.projectDir);
+    } else {
+      utils.logWarning('No Firebase project directory detected. Serving static content from ' + chalk.bold(options.cwd || process.cwd()));
+    }
+
     startServer(options);
 
     return new RSVP.Promise(function(resolve) {
