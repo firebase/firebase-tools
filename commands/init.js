@@ -64,7 +64,6 @@ module.exports = new Command('init [feature]')
       })
     };
 
-    var chooseFeatures;
     var choices = [
       {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: true},
       {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true}
@@ -74,20 +73,35 @@ module.exports = new Command('init [feature]')
       choices.splice(1, 0, {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true});
     }
 
-    if (feature) {
-      setup.features = [feature];
-      chooseFeatures = RSVP.resolve();
+    var next;
+    // HACK: Windows Node has issues with selectables as the first prompt, so we
+    // add an extra confirmation prompt that fixes the problem
+    if (process.platform === 'win32') {
+      next = prompt.once({
+        type: 'confirm',
+        message: 'Are you ready to proceed?'
+      });
     } else {
-      chooseFeatures = prompt(setup, [
-        {
-          type: 'checkbox',
-          name: 'features',
-          message: 'What Firebase CLI features do you want to setup for this folder?',
-          choices: prompt.convertLabeledListChoices(choices)
-        }
-      ]);
+      next = RSVP.resolve(true);
     }
-    return chooseFeatures.then(function() {
+
+    return next.then(function(proceed) {
+      if (!proceed) {
+        return utils.reject('Aborted by user.', {exit: 1});
+      }
+
+      if (feature) {
+        setup.features = [feature];
+        return undefined;
+      }
+
+      return prompt(setup, [{
+        type: 'checkbox',
+        name: 'features',
+        message: 'What Firebase CLI features do you want to setup for this folder?',
+        choices: prompt.convertLabeledListChoices(choices)
+      }]);
+    }).then(function() {
       setup.features = setup.features.map(function(feat) {
         return prompt.listLabelToValue(feat, choices);
       });
