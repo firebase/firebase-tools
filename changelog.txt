@@ -2,6 +2,8 @@ important - Version 3.0+ is only compatible with projects created in or imported
 changed - The Firebase CLI now uses direct Google OAuth2 login. All users must re-authenticate.
 changed - The `-f`/`--firebase` option has been renamed to `-P`/`--project` and refers to project id, not instance name.
 changed - The `firebase deploy:*` commands have been replaced with `firebase deploy --only *` with a list of features.
+changed - The `firebase data:*` commands have been renamed to `firebase database:*` commands.
+changed - The `firebase disable:hosting` command has been renamed to `firebase hosting:disable`.
 changed - `firebase init` now initializes multiple features and can be re-run in an existing project directory.
 changed - `firebase open` no longer just opens Hosting site, now provides a selection of useful project URLs.
 changed - `firebase prefs:token` is removed in favor of `firebase login:ci`

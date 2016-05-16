@@ -59,17 +59,22 @@ Command | Description
 ------- | -----------
 **deploy** | Deploys your Firebase project. Relies on `firebase.json` configuration and your local project folder.
 **serve** | Start a local web server with your Firebase Hosting configuration. Relies on `firebase.json`.
-**disable:hosting** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command.
 
-### Data Commands
+### Database Commands
 
 Command | Description
 ------- | -----------
-**data:get** | Fetch data from the current project's database and display it as JSON. Supports querying on indexed data.
-**data:set** | Replace all data at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**data:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**data:push** | Push new data to a list at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**data:remove** | Delete all data at a specified location in the current project's database.
+**database:get** | Fetch data from the current project's database and display it as JSON. Supports querying on indexed data.
+**database:set** | Replace all data at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:push** | Push new data to a list at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:remove** | Delete all data at a specified location in the current project's database.
+
+### Hosting Commands
+
+Command | Description
+------- | -----------
+**hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command.
 
 ## Using with CI Systems
 

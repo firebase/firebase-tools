@@ -8,7 +8,7 @@ var prompt = require('../lib/prompt');
 var chalk = require('chalk');
 var RSVP = require('rsvp');
 
-module.exports = new Command('disable:hosting')
+module.exports = new Command('hosting:disable')
   .description('stop serving web traffic to your Firebase Hosting site')
   .option('-y, --confirm', 'skip confirmation')
   .before(requireAccess)

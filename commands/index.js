@@ -9,18 +9,18 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-  client.data = {
-    get: loadCommand('data-get'),
-    push: loadCommand('data-push'),
-    set: loadCommand('data-set'),
-    remove: loadCommand('data-remove'),
-    update: loadCommand('data-update')
+  client.database = {
+    get: loadCommand('database-get'),
+    push: loadCommand('database-push'),
+    set: loadCommand('database-set'),
+    remove: loadCommand('database-remove'),
+    update: loadCommand('database-update')
   };
 
   client.deploy = loadCommand('deploy');
 
-  client.disable = {
-    hosting: loadCommand('disable-hosting')
+  client.hosting = {
+    disable: loadCommand('hosting-disable')
   };
 
   if (previews.functions) {

@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireDataAccess = require('../lib/requireDataAccess');
+var requireDatabaseAccess = require('../lib/requireDatabaseAccess');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -15,11 +15,11 @@ var fs = require('fs');
 var prompt = require('../lib/prompt');
 var _ = require('lodash');
 
-module.exports = new Command('data:set <path> [infile]')
-  .description('store JSON data at the specified path via STDIN, arg, or file')
+module.exports = new Command('database:update <path> [infile]')
+  .description('update some of the keys for the defined path in your Firebase')
   .option('-d, --data <data>', 'specify escaped JSON directly')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
-  .before(requireDataAccess)
+  .before(requireDatabaseAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
@@ -29,7 +29,7 @@ module.exports = new Command('data:set <path> [infile]')
       type: 'confirm',
       name: 'confirm',
       default: false,
-      message: 'You are about to overwrite all data at ' + chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) + '. Are you sure?'
+      message: 'You are about to modify data at ' + chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) + '. Are you sure?'
     }]).then(function() {
       if (!options.confirm) {
         return utils.reject('Command aborted.', {exit: 1});
@@ -47,7 +47,7 @@ module.exports = new Command('data:set <path> [infile]')
           utils.explainStdin();
         }
 
-        inStream.pipe(request.put(url, {json: true}, function(err, res, body) {
+        inStream.pipe(request.patch(url, {json: true}, function(err, res, body) {
           logger.info();
           if (err) {
             return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
@@ -55,9 +55,9 @@ module.exports = new Command('data:set <path> [infile]')
             return reject(responseToError(res, body));
           }
 
-          utils.logSuccess('Data persisted successfully');
+          utils.logSuccess('Data updated successfully');
           logger.info();
-          logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
+          logger.info(chalk.bold('View data at:'), utils.consolUrl(options.project, '/database/data' + path));
           return resolve();
         }));
       });

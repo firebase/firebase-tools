@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireDataAccess = require('../lib/requireDataAccess');
+var requireDatabaseAccess = require('../lib/requireDatabaseAccess');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -15,10 +15,10 @@ var fs = require('fs');
 var Firebase = require('firebase');
 var _ = require('lodash');
 
-module.exports = new Command('data:push <path> [infile]')
+module.exports = new Command('database:push <path> [infile]')
   .description('add a new JSON object to a list of data in your Firebase')
   .option('-d, --data <data>', 'specify escaped JSON directly')
-  .before(requireDataAccess)
+  .before(requireDatabaseAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
