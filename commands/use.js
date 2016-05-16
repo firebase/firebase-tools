@@ -109,7 +109,10 @@ module.exports = new Command('use [alias_or_project_id]')
           {
             type: 'input',
             name: 'alias',
-            message: 'What alias do you want to use for this project? (e.g. staging)'
+            message: 'What alias do you want to use for this project? (e.g. staging)',
+            validate: function(input) {
+              return input && input.length > 0;
+            }
           }
         ]).then(function() {
           writeAlias(options.projectRoot, options.rc, results.alias, results.project);
