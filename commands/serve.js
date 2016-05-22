@@ -40,6 +40,8 @@ var startServer = function(options) {
         utils.logWarning(message);
         throw new FirebaseError('Could not find an open port for development server.', {exit: 1});
       }
+    } else {
+      logger.info(err);
     }
   });
 };
