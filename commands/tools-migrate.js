@@ -21,6 +21,10 @@ module.exports = new Command('tools:migrate')
   .description('ensure your firebase.json format is up to date')
   .option('-y, --confirm', 'pass this option to bypass confirmation prompt')
   .action(function(options) {
+    if (!options.config) {
+      return utils.reject('Must run ' + chalk.bold('tools:migrate') + ' from a directory with a firebase.json');
+    }
+
     utils.logBullet('Checking feature configuration...');
     var out = _.cloneDeep(options.config._src);
     var changed = false;
