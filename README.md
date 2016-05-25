@@ -109,8 +109,8 @@ client.list().then(function(data) {
   // handle error
 });
 
-client.deploy.rules({
-  firebase: 'myfirebase',
+client.deploy({
+  project: 'myfirebase',
   token: process.env.FIREBASE_TOKEN,
   cwd: '/path/to/project/folder'
 }).then(function() {
