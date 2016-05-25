@@ -32,9 +32,9 @@ var listAliases = function(options) {
         logger.info('  ' + listing);
       }
     });
-  } else {
-    logger.info('Run', chalk.bold('firebase use --add'), 'to define a new project alias.');
+    logger.info();
   }
+  logger.info('Run', chalk.bold('firebase use --add'), 'to define a new project alias.');
 };
 
 var verifyMessage = function(name) {
