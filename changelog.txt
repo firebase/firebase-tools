@@ -1,0 +1,3 @@
+fixed - `firebase serve` now displays more helpful error messages.
+fixed - `firebase tools:migrate` displays helpful message when run outside project directory.
+changed - The CLI will automatically use an alias from `.firebaserc` if only one is defined.
