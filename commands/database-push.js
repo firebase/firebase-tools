@@ -48,11 +48,12 @@ module.exports = new Command('database:push <path> [infile]')
           path += '/';
         }
 
-        var refurl = utils.consoleUrl(options.project, '/database/data' + path + body.name);
+        var consoleUrl = utils.consoleUrl(options.project, '/database/data' + path + body.name);
+        var refurl = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + body.name;
 
         utils.logSuccess('Data pushed successfully');
         logger.info();
-        logger.info(chalk.bold('View data at:'), refurl);
+        logger.info(chalk.bold('View data at:'), consoleUrl);
         return resolve(new Firebase(refurl));
       }));
     });
