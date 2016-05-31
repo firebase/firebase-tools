@@ -1,0 +1,2 @@
+fixed - Fixed small URL issues in `firebase database:*` commands.
+fixed - Migrating with `firebase tools:migrate` now works for projects with different project id/instance names.
