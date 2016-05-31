@@ -57,7 +57,7 @@ module.exports = new Command('database:update <path> [infile]')
 
           utils.logSuccess('Data updated successfully');
           logger.info();
-          logger.info(chalk.bold('View data at:'), utils.consolUrl(options.project, '/database/data' + path));
+          logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
           return resolve();
         }));
       });
