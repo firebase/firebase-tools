@@ -13,7 +13,7 @@
     "type" : 301
   }, {
     "source" : "/firebase/*",
-    "destination" : "https://www.firebase.com",
+    "destination" : "https://firebase.google.com",
     "type" : 302
   } ],
   "rewrites": [ {
