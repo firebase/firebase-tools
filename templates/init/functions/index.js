@@ -5,7 +5,7 @@ var functions = require('firebase-functions');
 //   // prevent infinite loops
 //   if (event.data.child('uppercased').val()) { return; }
 //
-//   return event.ref().update({
+//   return event.data.ref.update({
 //     text: event.data.child('text').val().toUpperCase(),
 //     uppercased: true
 //   });
