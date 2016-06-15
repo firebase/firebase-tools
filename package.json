@@ -29,7 +29,7 @@
     "node": ">=0.10.0"
   },
   "engine-strict": true,
-  "author": "Firebase <support@firebase.com> (https://www.firebase.com/)",
+  "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/firebase/firebase-tools/issues"
