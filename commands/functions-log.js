@@ -47,15 +47,19 @@ function _pollLogs(authClient, projectId, filter, pos) {
 
 module.exports = new Command('functions:log')
   .description('read logs from GCF Kubernetes cluster')
-  .option('-F, --function <function_name>', 'specify function name whose logs will be fetched')
+  .option('--only <function_names>', 'only show logs of specified, comma-seperated functions (e.g. "funcA,funcB")')
   .option('-n, --lines <num_lines>', 'specify number of log lines to fetch')
   .option('-f, --follow', 'stream logs from GCF cluster')
   .before(requireAccess, [scopes.OPENID, scopes.CLOUD_PLATFORM])
   .action(function(options) {
     var filter = 'resource.type="cloud_function" ' +
                  'labels."cloudfunctions.googleapis.com/region"="us-central1" ';
-    if (options.function) {
-      filter += 'labels."cloudfunctions.googleapis.com/function_name"="' + options.function + '" ';
+    if (options.only) {
+      var funcNames = options.only.split(',');
+      var funcFilters = _.map(funcNames, function(funcName) {
+        return 'labels."cloudfunctions.googleapis.com/function_name"="' + funcName + '" ';
+      });
+      filter += funcFilters.join('OR ');
     }
     var projectId = getProjectId(options);
     var authClient;
