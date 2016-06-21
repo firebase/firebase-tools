@@ -1,0 +1,2 @@
+fixed - `firebase init` now pulls latest DB rules from selected project.
+fixed - Improved deploy logging for Database rules.
