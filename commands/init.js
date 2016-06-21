@@ -105,7 +105,7 @@ module.exports = new Command('init [feature]')
       setup.features = setup.features.map(function(feat) {
         return prompt.listLabelToValue(feat, choices);
       });
-      setup.features.push('project');
+      setup.features.unshift('project');
       return init(setup, config, options);
     }).then(function() {
       logger.info();
