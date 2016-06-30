@@ -1,0 +1,2 @@
+fixed - `firebase init [feature]` now works as expected.
+fixed - `firebase use <project_id>` and `--project <project_id>` now work
