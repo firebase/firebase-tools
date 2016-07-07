@@ -1,60 +1,55 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireDatabaseAccess = require('../lib/requireDatabaseAccess');
-var request = require('request');
+var requireAccess = require('../lib/requireAccess');
 var api = require('../lib/api');
-var responseToError = require('../lib/responseToError');
 var FirebaseError = require('../lib/error');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
-var querystring = require('querystring');
 var chalk = require('chalk');
 var logger = require('../lib/logger');
 var fs = require('fs');
 var Firebase = require('firebase');
 var _ = require('lodash');
+var readJSONInput = require('../lib/readJSONInput');
 
 module.exports = new Command('database:push <path> [infile]')
   .description('add a new JSON object to a list of data in your Firebase')
   .option('-d, --data <data>', 'specify escaped JSON directly')
-  .before(requireDatabaseAccess)
+  .before(requireAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
     }
 
-    return new RSVP.Promise(function(resolve, reject) {
-      var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
+    var inStream = utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
+    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
-      var query = {auth: options.databaseAdminToken};
+    if (!infile && !options.data) {
+      utils.explainStdin();
+    }
 
-      url += querystring.stringify(query);
-
-      if (!infile && !options.data) {
-        utils.explainStdin();
+    return readJSONInput(inStream)
+    .then(function(input) {
+      return api.request('POST', url, {
+        auth: true,
+        data: input,
+        origin: ''
+      });
+    }).then(function(resp) {
+      if (!_.endsWith(path, '/')) {
+        path += '/';
       }
 
-      inStream.pipe(request.post(url, {json: true}, function(err, res, body) {
-        logger.info();
-        if (err) {
-          return reject(new FirebaseError('Unexpected error while pushing data', {exit: 2}));
-        } else if (res.statusCode >= 400) {
-          return reject(responseToError(res, body));
-        }
+      var consoleUrl = utils.consoleUrl(options.project, '/database/data' + path + resp.body.name);
+      var refurl = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + resp.body.name;
 
-        if (!_.endsWith(path, '/')) {
-          path += '/';
-        }
-
-        var consoleUrl = utils.consoleUrl(options.project, '/database/data' + path + body.name);
-        var refurl = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + body.name;
-
-        utils.logSuccess('Data pushed successfully');
-        logger.info();
-        logger.info(chalk.bold('View data at:'), consoleUrl);
-        return resolve(new Firebase(refurl));
-      }));
+      utils.logSuccess('Data pushed successfully');
+      logger.info();
+      logger.info(chalk.bold('View data at:'), consoleUrl);
+      return RSVP.resolve(new Firebase(refurl));
+    }).catch(function(err) {
+      return RSVP.reject(new FirebaseError('Error while pushing data. ' + err.message, {exit: 2}));
     });
   });
+
