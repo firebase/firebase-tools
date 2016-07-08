@@ -2,13 +2,15 @@
 
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
+var request = require('request');
 var api = require('../lib/api');
+var responseToError = require('../lib/responseToError');
+var FirebaseError = require('../lib/error');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
 var querystring = require('querystring');
 var _ = require('lodash');
-var logger = require('../lib/logger');
-var FirebaseError = require('../lib/error');
+var fs = require('fs');
 
 var _applyStringOpts = function(dest, src, keys, jsonKeys) {
   _.forEach(keys, function(key) {
@@ -51,26 +53,60 @@ module.exports = new Command('database:get <path>')
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
     }
-    return new RSVP.Promise(function(resolve, reject) {
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
-      var query = {};
-      if (options.shallow) { query.shallow = 'true'; }
-      if (options.pretty) { query.print = 'pretty'; }
-      if (options.export) { query.format = 'export'; }
-      if (options.orderByKey) { options.orderBy = '$key'; }
-      if (options.orderByValue) { options.orderBy = '$value'; }
-      _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
 
-      url += querystring.stringify(query);
+    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
+    var query = {};
+    if (options.shallow) { query.shallow = 'true'; }
+    if (options.pretty) { query.print = 'pretty'; }
+    if (options.export) { query.format = 'export'; }
+    if (options.orderByKey) { options.orderBy = '$key'; }
+    if (options.orderByValue) { options.orderBy = '$value'; }
+    _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
 
-      api.request('GET', url, {
-        auth: true,
-        origin: ''
-      }).then(function(resp) {
-        logger.info(JSON.stringify(resp.body, null, 4));
-        resolve();
-      }).catch(function(err) {
-        return reject(new FirebaseError('Error while getting data. ' + err.message, {exit: 2}));
+    url += querystring.stringify(query);
+
+    var reqOptions = {
+      url: url
+    };
+
+    return api.addAccessTokenToHeader(reqOptions).then(function() {
+      return new RSVP.Promise(function(resolve, reject) {
+        var fileOut = !!options.output;
+        var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+        var erroring;
+        var errorResponse = '';
+        var response;
+
+        request.get(reqOptions)
+          .on('response', function(res) {
+            response = res;
+            if (response.statusCode >= 400) {
+              erroring = true;
+            }
+          })
+          .on('data', function(chunk) {
+            if (erroring) {
+              errorResponse += chunk;
+            } else {
+              outStream.write(chunk);
+            }
+          })
+          .on('end', function() {
+            outStream.write('\n');
+            if (erroring) {
+              try {
+                var data = JSON.parse(errorResponse);
+                return reject(responseToError(response, data));
+              } catch (e) {
+                return reject(new FirebaseError('Malformed JSON response', {
+                  exit: 2,
+                  original: e
+                }));
+              }
+            }
+            return resolve();
+          })
+          .on('error', reject);
       });
     });
   });

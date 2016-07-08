@@ -2,7 +2,9 @@
 
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
+var request = require('request');
 var api = require('../lib/api');
+var responseToError = require('../lib/responseToError');
 var FirebaseError = require('../lib/error');
 var RSVP = require('rsvp');
 var utils = require('../lib/utils');
@@ -11,7 +13,6 @@ var logger = require('../lib/logger');
 var fs = require('fs');
 var prompt = require('../lib/prompt');
 var _ = require('lodash');
-var readJSONInput = require('../lib/readJSONInput');
 
 module.exports = new Command('database:set <path> [infile]')
   .description('store JSON data at the specified path via STDIN, arg, or file')
@@ -40,21 +41,27 @@ module.exports = new Command('database:set <path> [infile]')
         utils.explainStdin();
       }
 
-      return readJSONInput(inStream)
-      .then(function(input) {
-        return api.request('PUT', url, {
-          auth: true,
-          data: input,
-          origin: ''
+      var reqOptions = {
+        url: url,
+        json: true
+      };
+
+      return api.addAccessTokenToHeader(reqOptions).then(function() {
+        return new RSVP.Promise(function(resolve, reject) {
+          inStream.pipe(request.put(reqOptions, function(err, res, body) {
+            logger.info();
+            if (err) {
+              return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
+            } else if (res.statusCode >= 400) {
+              return reject(responseToError(res, body));
+            }
+
+            utils.logSuccess('Data persisted successfully');
+            logger.info();
+            logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
+            return resolve();
+          }));
         });
-      }).then(function() {
-        logger.info();
-        utils.logSuccess('Data persisted successfully');
-        logger.info();
-        logger.info(chalk.bold('View data at:'), utils.consoleUrl(options.project, '/database/data' + path));
-        return RSVP.resolve();
-      }).catch(function(err) {
-        return RSVP.reject(new FirebaseError('Error while setting data. ' + err.message, {exit: 2}));
       });
     });
   });
