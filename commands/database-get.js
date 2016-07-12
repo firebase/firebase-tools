@@ -69,7 +69,7 @@ module.exports = new Command('database:get <path>')
       url: url
     };
 
-    return api.addAccessTokenToHeader(reqOptions).then(function() {
+    return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
       return new RSVP.Promise(function(resolve, reject) {
         var fileOut = !!options.output;
         var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
@@ -77,7 +77,7 @@ module.exports = new Command('database:get <path>')
         var errorResponse = '';
         var response;
 
-        request.get(reqOptions)
+        request.get(reqOptionsWithToken)
           .on('response', function(res) {
             response = res;
             if (response.statusCode >= 400) {

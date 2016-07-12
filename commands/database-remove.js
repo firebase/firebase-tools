@@ -36,9 +36,9 @@ module.exports = new Command('database:remove <path>')
         json: true
       };
 
-      return api.addAccessTokenToHeader(reqOptions).then(function() {
+      return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
         return new RSVP.Promise(function(resolve, reject) {
-          request.del(reqOptions, function(err, res, body) {
+          request.del(reqOptionsWithToken, function(err, res, body) {
             if (err) {
               return reject(new FirebaseError('Unexpected error while removing data', {exit: 2}));
             } else if (res.statusCode >= 400) {

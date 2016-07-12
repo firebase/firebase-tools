@@ -46,9 +46,9 @@ module.exports = new Command('database:update <path> [infile]')
         json: true
       };
 
-      return api.addAccessTokenToHeader(reqOptions).then(function() {
+      return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
         return new RSVP.Promise(function(resolve, reject) {
-          inStream.pipe(request.patch(reqOptions, function(err, res, body) {
+          inStream.pipe(request.patch(reqOptionsWithToken, function(err, res, body) {
             logger.info();
             if (err) {
               return reject(new FirebaseError('Unexpected error while setting data', {exit: 2}));
