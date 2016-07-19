@@ -1,7 +1,7 @@
 'use strict';
 
 var Command = require('../lib/command');
-var requireDatabaseAccess = require('../lib/requireDatabaseAccess');
+var requireAccess = require('../lib/requireAccess');
 var request = require('request');
 var api = require('../lib/api');
 var responseToError = require('../lib/responseToError');
@@ -48,59 +48,65 @@ module.exports = new Command('database:get <path>')
   .option('--start-at <val>', 'start results at <val> (based on specified ordering)')
   .option('--end-at <val>', 'end results at <val> (based on specified ordering)')
   .option('--equal-to <val>', 'restrict results to <val> (based on specified ordering)')
-  .before(requireDatabaseAccess)
+  .before(requireAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, '/')) {
       return utils.reject('Path must begin with /', {exit: 1});
     }
 
-    return new RSVP.Promise(function(resolve, reject) {
-      var fileOut = !!options.output;
-      var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
-      var erroring;
-      var errorResponse = '';
-      var response;
+    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
+    var query = {};
+    if (options.shallow) { query.shallow = 'true'; }
+    if (options.pretty) { query.print = 'pretty'; }
+    if (options.export) { query.format = 'export'; }
+    if (options.orderByKey) { options.orderBy = '$key'; }
+    if (options.orderByValue) { options.orderBy = '$value'; }
+    _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
 
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + '.json?';
+    url += querystring.stringify(query);
 
-      var query = {auth: options.databaseAdminToken};
-      if (options.shallow) { query.shallow = 'true'; }
-      if (options.pretty) { query.print = 'pretty'; }
-      if (options.export) { query.format = 'export'; }
-      if (options.orderByKey) { options.orderBy = '$key'; }
-      if (options.orderByValue) { options.orderBy = '$value'; }
-      _applyStringOpts(query, options, ['limitToFirst', 'limitToLast'], ['orderBy', 'startAt', 'endAt', 'equalTo']);
+    var reqOptions = {
+      url: url
+    };
 
-      url += querystring.stringify(query);
+    return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
+      return new RSVP.Promise(function(resolve, reject) {
+        var fileOut = !!options.output;
+        var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+        var erroring;
+        var errorResponse = '';
+        var response;
 
-      request.get(url)
-        .on('response', function(res) {
-          response = res;
-          if (response.statusCode >= 400) {
-            erroring = true;
-          }
-        })
-        .on('data', function(chunk) {
-          if (erroring) {
-            errorResponse += chunk;
-          } else {
-            outStream.write(chunk);
-          }
-        })
-        .on('end', function() {
-          if (erroring) {
-            try {
-              var data = JSON.parse(errorResponse);
-              return reject(responseToError(response, data));
-            } catch (e) {
-              return reject(new FirebaseError('Malformed JSON response', {
-                exit: 2,
-                original: e
-              }));
+        request.get(reqOptionsWithToken)
+          .on('response', function(res) {
+            response = res;
+            if (response.statusCode >= 400) {
+              erroring = true;
             }
-          }
-          return resolve();
-        })
-        .on('error', reject);
+          })
+          .on('data', function(chunk) {
+            if (erroring) {
+              errorResponse += chunk;
+            } else {
+              outStream.write(chunk);
+            }
+          })
+          .on('end', function() {
+            outStream.write('\n');
+            if (erroring) {
+              try {
+                var data = JSON.parse(errorResponse);
+                return reject(responseToError(response, data));
+              } catch (e) {
+                return reject(new FirebaseError('Malformed JSON response', {
+                  exit: 2,
+                  original: e
+                }));
+              }
+            }
+            return resolve();
+          })
+          .on('error', reject);
+      });
     });
   });

@@ -91,6 +91,7 @@ module.exports = new Command('init [feature]')
       }
 
       if (feature) {
+        setup.featureArg = true;
         setup.features = [feature];
         return undefined;
       }
@@ -102,9 +103,11 @@ module.exports = new Command('init [feature]')
         choices: prompt.convertLabeledListChoices(choices)
       }]);
     }).then(function() {
-      setup.features = setup.features.map(function(feat) {
-        return prompt.listLabelToValue(feat, choices);
-      });
+      if (!setup.featureArg) {
+        setup.features = setup.features.map(function(feat) {
+          return prompt.listLabelToValue(feat, choices);
+        });
+      }
       setup.features.unshift('project');
       return init(setup, config, options);
     }).then(function() {
