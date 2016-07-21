@@ -8,6 +8,7 @@ var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
 var logger = require('../lib/logger');
 var utils = require('../lib/utils');
+var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 
 var MAX_PORT_ATTEMPTS = 10;
 
@@ -50,6 +51,7 @@ module.exports = new Command('serve')
   .description('start a local server for your static assets')
   .option('-p, --port <port>', 'the port on which to listen (default: 5000)', 5000)
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
+  .before(checkDupHostingKeys)
   .action(function(options) {
     logger.info('Starting Firebase development server...');
     logger.info();
