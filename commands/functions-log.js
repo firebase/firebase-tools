@@ -2,8 +2,6 @@
 
 var _ = require('lodash');
 var RSVP = require('rsvp');
-
-var api = require('../lib/api');
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
 var gcp = require('../lib/gcp');
@@ -14,7 +12,7 @@ var scopes = require('../lib/scopes');
 
 var POLL_INTERVAL = 3000; // 3 sec
 
-function _pollLogs(authClient, projectId, filter, pos) {
+function _pollLogs(projectId, filter, pos) {
   return new RSVP.Promise(function(resolve, reject) {
     function poll() {
       var nf = filter;
@@ -25,7 +23,7 @@ function _pollLogs(authClient, projectId, filter, pos) {
         nf += ' insertId>"' + pos.insertId + '" ';
       }
 
-      gcp.cloudlogging.entries(authClient, projectId, nf, 1000, 'asc').then(function(entries) {
+      gcp.cloudlogging.listEntries(projectId, nf, 1000, 'asc').then(function(entries) {
         for (var i = 0; i < _.size(entries); i++) {
           var entry = entries[i];
           logger.info(
@@ -52,8 +50,7 @@ module.exports = new Command('functions:log')
   .option('-f, --follow', 'stream logs from GCF cluster')
   .before(requireAccess, [scopes.OPENID, scopes.CLOUD_PLATFORM])
   .action(function(options) {
-    var filter = 'resource.type="cloud_function" ' +
-                 'labels."cloudfunctions.googleapis.com/region"="us-central1" ';
+    var filter = 'resource.type="cloud_function"';
     if (options.only) {
       var funcNames = options.only.split(',');
       var funcFilters = _.map(funcNames, function(funcName) {
@@ -62,13 +59,8 @@ module.exports = new Command('functions:log')
       filter += funcFilters.join('OR ');
     }
     var projectId = getProjectId(options);
-    var authClient;
-    return api.getAccessToken().then(function(result) {
-      return gcp.createClient(result.access_token);
-    }).then(function(client) {
-      authClient = client;
-      return gcp.cloudlogging.entries(authClient, projectId, filter, options.lines || 35, 'desc');
-    }).then(function(entries) {
+    return gcp.cloudlogging.listEntries(projectId, filter, options.lines || 35, 'desc')
+    .then(function(entries) {
       for (var i = _.size(entries); i-- > 0;) {
         var entry = entries[i];
         logger.info(
@@ -86,7 +78,7 @@ module.exports = new Command('functions:log')
             insertId: lastEntry.insertId
           };
         }
-        return _pollLogs(authClient, projectId, filter, pos);
+        return _pollLogs(projectId, filter, pos);
       } else if (_.isEmpty(entries)) {
         logger.info('No log entries found.');
       }
