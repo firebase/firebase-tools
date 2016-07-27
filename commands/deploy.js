@@ -8,6 +8,7 @@ var deploy = require('../lib/deploy');
 var previews = require('../lib/previews');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
+var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ['database', 'storage', 'functions', 'hosting'];
@@ -24,6 +25,7 @@ module.exports = new Command('deploy')
   .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage")')
   .before(requireConfig)
   .before(acquireRefs, deployScopes)
+  .before(checkDupHostingKeys)
   .action(function(options) {
     var targets = VALID_TARGETS;
     if (options.only) {
