@@ -3,6 +3,7 @@
 var _ = require('lodash');
 
 var acquireRefs = require('../lib/acquireRefs');
+var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
 var previews = require('../lib/previews');
@@ -26,6 +27,7 @@ module.exports = new Command('deploy')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before(acquireRefs, deployScopes)
+  .before(checkDupHostingKeys)
   .action(function(options) {
     var targets = VALID_TARGETS;
     if (options.only && options.except) {
