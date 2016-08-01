@@ -1,3 +1,0 @@
-fixed - Database Rules now have format preserved on deploy.
-fixed - Warn when `firebase.json` has mixed old/new formats.
-fixed - Hosting deployment will no longer error with large file counts.
