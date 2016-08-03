@@ -1,0 +1,4 @@
+fixed - Bolt rules now deploy correctly after regression in `3.0.5`.
+fixed - Provide proper warning when Database Rules has no top-level `rules` key.
+fixed - `firebase init` for Database now works when no project is selected as default.
+fixed - Removed Hosting deploy race condition causing some deploys to fail with 400 error.
