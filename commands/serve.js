@@ -17,7 +17,7 @@ var _attempts = 0;
 var startServer = function(options) {
   var config = options.config ? options.config.get('hosting') : {public: '.'};
   var server = superstatic({
-    debug: true,
+    debug: options.debug,
     port: options.port,
     host: options.host,
     config: config,
@@ -52,6 +52,7 @@ module.exports = new Command('serve')
   .description('start a local server for your static assets')
   .option('-p, --port <port>', 'the port on which to listen (default: 5000)', 5000)
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
+  .option('-d, --debug', 'toggle logging network activity (default: true)', true)
   .before(requireConfig)
   .before(checkDupHostingKeys)
   .action(function(options) {
