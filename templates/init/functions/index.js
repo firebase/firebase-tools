@@ -2,6 +2,8 @@ var functions = require('firebase-functions');
 
 // // Uppercases the value of the data when a write event occurs for
 // // child nodes of '/uppercase' in the Firebase Realtime Database.
+// //
+// // Documentation: https://firebase.google.com/preview/functions
 //
 // exports.makeUpperCase = functions.database().path('/uppercase/{childId}')
 //   .on('write', function(event) {
