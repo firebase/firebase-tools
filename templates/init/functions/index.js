@@ -1,12 +1,19 @@
 var functions = require('firebase-functions');
 
-// // converts the "text" key of messages pushed to /messages to uppercase
-// exports.upperCaser = functions.database().path('/messages/{id}').on('write', function(event) {
-//   // prevent infinite loops
-//   if (event.data.child('uppercased').val()) { return; }
+// // Uppercases the value of the data when a write event occurs for
+// // child nodes of '/uppercase' in the Firebase Realtime Database.
+// //
+// // Documentation: https://firebase.google.com/preview/functions
 //
-//   return event.data.ref.update({
-//     text: event.data.child('text').val().toUpperCase(),
-//     uppercased: true
-//   });
+// exports.makeUpperCase = functions.database().path('/uppercase/{childId}')
+//   .on('write', function(event) {
+//   // For an explanation of this code, see "Handle Database Events"
+//   var old = event.data.val();
+//   console.log("Uppercasing", event.params.childId, old);
+//   var uppercase = old.toUpperCase()
+//   // Don't do anything if val() was already upper cased.
+//   if (old == uppercase) {
+//     return null;
+//   }
+//   return event.data.ref.set(uppercase);
 // });
