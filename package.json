@@ -50,6 +50,7 @@
     "commander": "^2.8.1",
     "concat-stream": "^1.5.0",
     "configstore": "^1.2.0",
+    "cross-spawn": "^4.0.0",
     "didyoumean": "^1.2.1",
     "exit-code": "^1.0.2",
     "filesize": "^3.1.3",
