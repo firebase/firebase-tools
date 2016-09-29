@@ -6,13 +6,13 @@ var functions = require('firebase-functions');
 // // Documentation: https://firebase.google.com/preview/functions
 //
 // exports.makeUpperCase = functions.database().path('/uppercase/{childId}')
-//   .on('write', function(event) {
+//     .onWrite(event => {
 //   // For an explanation of this code, see "Handle Database Events"
-//   var old = event.data.val();
-//   console.log("Uppercasing", event.params.childId, old);
-//   var uppercase = old.toUpperCase()
+//   var written = event.data.val();
+//   console.log("Uppercasing", event.params.childId, written);
+//   var uppercase = written.toUpperCase()
 //   // Don't do anything if val() was already upper cased.
-//   if (old == uppercase) {
+//   if (written == uppercase) {
 //     return null;
 //   }
 //   return event.data.ref.set(uppercase);
