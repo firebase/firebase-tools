@@ -24,6 +24,13 @@ module.exports = function(client) {
   };
 
   if (previews.functions) {
+    client.env = {
+      clone: loadCommand('env-clone'),
+      get: loadCommand('env-get'),
+      set: loadCommand('env-set'),
+      unset: loadCommand('env-unset')
+    };
+
     client.functions = {
       log: loadCommand('functions-log')
     };
