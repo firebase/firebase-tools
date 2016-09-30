@@ -1,0 +1,2 @@
+fixed - Deploying bolt rules in Windows should now work.
+fixed - Temp files are now deleted after deploy completes.
