@@ -115,3 +115,7 @@ client.deploy({
   // handle error
 });
 ```
+
+## Contributions
+
+We welcome your help in improving the CLI. Please assign new issues to @brendanlim, and new pull requests to @mbleigh.
