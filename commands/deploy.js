@@ -12,8 +12,12 @@ var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
 
 // in order of least time-consuming to most time-consuming
-var VALID_TARGETS = ['database', 'storage', 'functions', 'hosting'];
-if (!previews.functions) {
+var VALID_TARGETS = ['database', 'storage', 'firestore', 'functions', 'hosting'];
+if (!previews.functions && !previews.firestore) {
+  VALID_TARGETS.splice(2, 2);
+} else if (!previews.functions) {
+  VALID_TARGETS.splice(3, 1);
+} else if (!previews.firestore) {
   VALID_TARGETS.splice(2, 1);
 }
 

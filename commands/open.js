@@ -8,6 +8,7 @@ var RSVP = require('rsvp');
 var api = require('../lib/api');
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
+var previews = require('../lib/previews');
 var prompt = require('../lib/prompt');
 var requireAccess = require('../lib/requireAccess');
 var utils = require('../lib/utils');
@@ -30,10 +31,17 @@ var LINKS = [
   {name: 'Notifications', arg: 'notifications', consoleUrl: '/notification'},
   {name: 'Dynamic Links', arg: 'links', consoleUrl: '/durablelinks'},
   {name: 'Project Settings', arg: 'settings', consoleUrl: '/settings/general'},
-  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'},
-  {name: 'Functions Log', arg: 'functions:log'},
-  {name: 'Functions Dashboard', arg: 'functions'}
+  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'}
 ];
+// Add preview-guarded links for Functions and Firestore
+if (previews.functions) {
+  LINKS.push(
+      {name: 'Functions Log', arg: 'functions:log'},
+      {name: 'Functions Dashboard', arg: 'functions'});
+}
+if (previews.firestore) {
+  LINKS.push({name: 'Firestore Rules', arg: 'firestore:rules'});
+}
 
 var CHOICES = _.map(LINKS, 'name');
 
