@@ -69,7 +69,7 @@ module.exports = new Command('database:get <path>')
       url: url
     };
 
-    return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
+    return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
       return new RSVP.Promise(function(resolve, reject) {
         var fileOut = !!options.output;
         var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
