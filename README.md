@@ -76,9 +76,9 @@ Command | Description
 
 Command | Description
 ------- | -----------
-**auth:import** | Batch importing accounts into Firebase.
+**auth:import** | Batch importing accounts into Firebase from data file.
 
-The supported file format are [csv](#auth_csv_format) and [json](#auth_json_format).
+The supported file format are [csv](#auth_csv_format) and [json](#auth_json_format). Supported hash algorithms are `HMAC_SHA256`, `HMAC_SHA1`, `HMAC_MD5`, `MD5`, `PBKDF_SHA1`, `SCRYPT`. Hash algorithm and related parameters should be specified in command.
 
 #### <a name="auth_csv_format"></a>CSV format
 Every line represents an user account. There must be at least 23 columns each line. The definition of each column is as followed. `UID` is required. If there's no value in other field, just leave that position empty. Quotation marks can also be added for all string fields.
@@ -88,8 +88,8 @@ Pos. | Name | Type
 1 | UID | String
 2 | Email | String
 3 | Email Verified | Boolean
-4 | Password Hash | String
-5 | Password Salt | String
+4 | Password Hash | String(Base64 encoded)
+5 | Password Salt | String(Base64 encoded)
 6 | Display Name | String
 7 | Photo URL | String
 8 | Google:ID  | String
@@ -112,9 +112,9 @@ Pos. | Name | Type
 **<a name="example_account"></a>Example:**
 
 ```
-111, test@test.org, false, XXXX, YYYY, Test User, http://photo.com/123, , , , , 123, test@test.org, Test FB User, http://photo.com/456, , , , , , , , ,
+111, test@test.org, false, Jlf7onfLbzqPNFP/1pqhx6fQF/w=, c2FsdC0x, Test User, http://photo.com/123, , , , , 123, test@test.org, Test FB User, http://photo.com/456, , , , , , , , ,
 ```
-Note: Spaces between commas can be eliminated automatically.
+Note: Spaces between commas can be eliminated automatically. `Jlf7onfLbzqPNFP/1pqhx6fQF/w=` is base64 encoded string of HMAC_SHA1 hashed password and salt('salt-1' in this example. 'c2FsdC0x' is base64 encoded of 'salt-1').
 
 #### <a name="auth_json_format"></a>JSON format
 The JSON file should looks like this:
@@ -125,8 +125,8 @@ The JSON file should looks like this:
       "localId": "111",
       "email": "test@test.org"
       "emailVerified": false,
-      "passwordHash": "XXXX",
-      "salt": "YYYY",
+      "passwordHash": "Jlf7onfLbzqPNFP/1pqhx6fQF/w=",
+      "salt": "c2FsdC0x",
       "displayName": "Test User",
       "photoUrl": "http://photo.com/123",
       "providerUserInfo": [ {

@@ -65,7 +65,7 @@ describe('accountImporter', function() {
     var batches = [];
     var hashOptions = {
       hashAlgo: 'HMAC_SHA1',
-      hashKey: 'key123'
+      hashKey: 'a2V5MTIz'
     };
     var expectedResponse = [];
 
