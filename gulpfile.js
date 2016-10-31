@@ -25,6 +25,10 @@ var paths = {
 
   tests: [
     'test/**/*.spec.js'
+  ], 
+
+  scripts: [
+    'scripts/*.js'
   ]
 };
 
@@ -34,7 +38,7 @@ var paths = {
 /***********/
 // Lints the JavaScript files
 gulp.task('lint', function() {
-  var filesToLint = _.union(paths.js, paths.tests);
+  var filesToLint = _.union(paths.js, paths.tests, paths.scripts);
   return gulp.src(filesToLint)
     .pipe(eslint())
     .pipe(eslint.format())
