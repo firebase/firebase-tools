@@ -104,7 +104,7 @@ Pos. | Name | Type
 17 | Twitter:Email | String
 18 | Twitter:Display Name | String
 19 | Twitter:Photo URL | String
-20 | Github:Id | String
+20 | Github:ID | String
 21 | Github:Email | String
 22 | Github:Display Name | String
 23 | Github:Photo URL | String
@@ -130,8 +130,8 @@ The JSON file should looks like this:
       "displayName": "Test User",
       "photoUrl": "http://photo.com/123",
       "providerUserInfo": [ {
-        "providerId": “facebook.com”
-        "rawId": “123”,
+        "providerId": "facebook.com",
+        "rawId": "123",
         "email":  "test@test.org",
         "displayName": "Test FB User",
         "photoUrl": "http://photo.com/456"
