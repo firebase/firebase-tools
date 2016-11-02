@@ -1,3 +1,0 @@
-feature - `auth:import` command allows importing users to Firebase Auth from CSV or JSON.
-fixed - Removed unused dependencies.
-fixed - Deploys are more reliable for organization-owned projects.
