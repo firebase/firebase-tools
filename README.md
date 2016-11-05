@@ -78,7 +78,7 @@ Command | Description
 ------- | -----------
 **auth:import** | Batch importing accounts into Firebase from data file.
 
-The supported file format are [csv](#auth_csv_format) and [json](#auth_json_format). Supported hash algorithms are `HMAC_SHA256`, `HMAC_SHA1`, `HMAC_MD5`, `MD5`, `PBKDF_SHA1`, `SCRYPT`. Hash algorithm and related parameters should be specified in command.
+The supported file format are [csv](#auth_csv_format) and [json](#auth_json_format). Supported hash algorithms are `HMAC_SHA512`, `HMAC_SHA256`, `HMAC_SHA1`, `HMAC_MD5`, `MD5`, `PBKDF_SHA1`, `SCRYPT`, `BCRYPT`. Hash algorithm and related parameters should be specified in command.
 
 #### <a name="auth_csv_format"></a>CSV format
 Every line represents an user account. There must be at least 23 columns each line. The definition of each column is as followed. `UID` is required. If there's no value in other field, just leave that position empty. Quotation marks can also be added for all string fields.
