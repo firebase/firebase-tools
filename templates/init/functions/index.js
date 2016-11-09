@@ -12,7 +12,7 @@ var functions = require('firebase-functions');
 //   console.log("Uppercasing", event.params.childId, written);
 //   var uppercase = written.toUpperCase()
 //   // Don't do anything if val() was already upper cased.
-//   if (written == uppercase) {
+//   if (written === uppercase) {
 //     return null;
 //   }
 //   return event.data.ref.set(uppercase);

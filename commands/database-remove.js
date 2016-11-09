@@ -36,7 +36,7 @@ module.exports = new Command('database:remove <path>')
         json: true
       };
 
-      return api.addAccessTokenToHeader(reqOptions).then(function(reqOptionsWithToken) {
+      return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
         return new RSVP.Promise(function(resolve, reject) {
           request.del(reqOptionsWithToken, function(err, res, body) {
             if (err) {
