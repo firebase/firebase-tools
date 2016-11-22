@@ -1,2 +1,0 @@
-feature - `auth:import` now supports BCRYPT and SHA_512 algorithms
-fixed - Removed unused dependencies
