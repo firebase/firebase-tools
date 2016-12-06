@@ -62,7 +62,6 @@
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^5.4.0",
     "lodash": "^4.6.1",
-    "node-uuid": "^1.4.3",
     "open": "^0.0.5",
     "portfinder": "^0.4.0",
     "progress": "^1.1.8",
@@ -75,7 +74,7 @@
     "universal-analytics": "^0.3.9",
     "update-notifier": "^0.5.0",
     "user-home": "^2.0.0",
-    "uuid": "^2.0.1",
+    "uuid": "^3.0.0",
     "winston": "^1.0.1"
   },
   "devDependencies": {
