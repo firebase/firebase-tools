@@ -9,6 +9,10 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.auth = {
+    upload: loadCommand('auth-import')
+  };
+
   client.database = {
     get: loadCommand('database-get'),
     push: loadCommand('database-push'),
