@@ -19,7 +19,7 @@ module.exports = new Command('env:set [values...]')
     var projectId = getProjectId(options);
     var changed;
     var data;
-    return env.get(projectId).then(function(latest) {
+    return env.getLatestCustomVariables(projectId).then(function(latest) {
       data = latest.data;
       changed = env.applyArgs(data, args);
       return env.set(projectId, data, env.nextVersion(latest.version));
