@@ -1,0 +1,2 @@
+fixed - Update uuid package to avoid deprecation issues
+fixed - Help text language improved
