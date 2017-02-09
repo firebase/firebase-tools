@@ -11,7 +11,7 @@ var Command = require('../lib/command');
 var accountImporter = require('../lib/accountImporter');
 var getProjectId = require('../lib/getProjectId');
 var logger = require('../lib/logger');
-var requireAuth = require('../lib/requireAuth');
+var requireAccess = require('../lib/requireAccess');
 var utils = require('../lib/utils');
 
 var MAX_BATCH_SIZE = 1000;
@@ -24,13 +24,15 @@ module.exports = new Command('auth:import [dataFile]')
   .description('import users into your Firebase project from a data file(.csv or .json)')
   .option('--hash-algo <hashAlgo>', 'specify the hash algorithm used in password for these accounts')
   .option('--hash-key <hashKey>', 'specify the key used in hash algorithm')
+  .option('--salt-separator <saltSeparator>',
+      'specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now.')
   .option('--rounds <rounds>', 'specify how many rounds for hash calculation.')
   .option('--mem-cost <memCost>', 'specify the memory cost for hash calculation.')
-  .before(requireAuth)
+  .before(requireAccess)
   .action(function(dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options);
-    if (!checkRes.hashAlgo) {
+    if (!checkRes.valid) {
       return checkRes;
     }
     var hashOptions = checkRes;
@@ -52,12 +54,11 @@ module.exports = new Command('auth:import [dataFile]')
         parser = csv({objectMode: true});
         parser.on('data', function(line) {
           counter++;
-          if (line.length < 23) {
-            return reject('Line ' + counter  + ' must have 23 columns.');
-          }
           var user = transArrayToUser(line.map(
             function(str) {
-              return str.trim().replace(/^["|'](.*)["|']$/, '$1');
+              // Ignore starting '|'' and trailing '|''
+              var newStr = str.trim().replace(/^["|'](.*)["|']$/, '$1');
+              return newStr === '' ? undefined : newStr;
             }));
           currentBatch.push(user);
           if (currentBatch.length === MAX_BATCH_SIZE) {
