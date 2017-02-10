@@ -1,1 +1,3 @@
 changed - Added createdAt and lastSignedInAt fields to auth:import and allow not specifying hash algorithm for non password users.
+feature - Added PBKDF2_SHA256 support 
+fixed - Resolved issues with SCRYPT.
