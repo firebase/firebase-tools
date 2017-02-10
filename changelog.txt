@@ -1,1 +1,1 @@
-fixed - Fixed issue that would occasionally cause deploys to fail.
+changed - added createdAt and lastLoginAt fields to auth:import and allow not specifying hash algorithm for non password users
