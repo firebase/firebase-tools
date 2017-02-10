@@ -1,1 +1,1 @@
-fixed - Fixed issue that would occasionally cause deploys to fail.
+fixed - Improvements to `auth:import`: support for `lastSignedInAt` and `createdAt` fields, no hash algorithm required for non-password users, support for `PBKDF2_SHA256` algorithm.
