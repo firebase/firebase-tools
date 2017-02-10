@@ -13,10 +13,6 @@ describe('accountImporter', function() {
   var serialImportUsers = accountImporter.serialImportUsers;
 
   describe('validateOptions', function() {
-    it('should reject when no hash algorithm provided', function() {
-      return expect(validateOptions({})).to.be.rejected;
-    });
-
     it('should reject when unsupported hash algorithm provided', function() {
       return expect(validateOptions({hashAlgo: 'MD2'})).to.be.rejected;
     });

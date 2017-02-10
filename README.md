@@ -5,6 +5,7 @@ These are the Firebase Command Line Interface (CLI) Tools. They can be used to:
 * Deploy code and assets to your Firebase projects
 * Run a local web server for your Firebase Hosting site
 * Interact with data in your Firebase database
+* Import users into Firebase Auth
 
 To get started with the Firebase CLI, read the full list of commands below or check out the [hosting-specific CLI documentation](https://firebase.google.com/docs/hosting/quickstart).
 
@@ -76,76 +77,7 @@ Command | Description
 
 Command | Description
 ------- | -----------
-**auth:import** | Batch importing accounts into Firebase from data file.
-
-The supported file format are [csv](#auth_csv_format) and [json](#auth_json_format). Supported hash algorithms are `HMAC_SHA512`, `HMAC_SHA256`, `HMAC_SHA1`, `HMAC_MD5`, `MD5`, `PBKDF_SHA1`, `SCRYPT`, `BCRYPT`. Hash algorithm and related parameters should be specified in command.
-
-#### <a name="auth_csv_format"></a>CSV format
-Every line represents an user account. There must be at least 23 columns each line. The definition of each column is as followed. `UID` is required. If there's no value in other field, just leave that position empty. Quotation marks can also be added for all string fields.
-
-Pos. | Name | Type
--------- | ---- | ----
-1 | UID | String
-2 | Email | String
-3 | Email Verified | Boolean
-4 | Password Hash | String(Base64 encoded)
-5 | Password Salt | String(Base64 encoded)
-6 | Display Name | String
-7 | Photo URL | String
-8 | Google:ID  | String
-9 | Google:Email | String
-10 | Google:Display Name | String
-11 | Google:Photo URL | String
-12 | Facebook:ID | String
-13 | Facebook:Email | String
-14 | Facebook:Display Name  | String
-15 | Facebook:Photo URL | String
-16 | Twitter:ID | String
-17 | Twitter:Email | String
-18 | Twitter:Display Name | String
-19 | Twitter:Photo URL | String
-20 | Github:ID | String
-21 | Github:Email | String
-22 | Github:Display Name | String
-23 | Github:Photo URL | String
-
-**<a name="example_account"></a>Example:**
-
-```
-111, test@test.org, false, Jlf7onfLbzqPNFP/1pqhx6fQF/w=, c2FsdC0x, Test User, http://photo.com/123, , , , , 123, test@test.org, Test FB User, http://photo.com/456, , , , , , , , ,
-```
-Note: Spaces between commas can be eliminated automatically. `Jlf7onfLbzqPNFP/1pqhx6fQF/w=` is base64 encoded string of HMAC_SHA1 hashed password and salt('salt-1' in this example. 'c2FsdC0x' is base64 encoded of 'salt-1').
-
-#### <a name="auth_json_format"></a>JSON format
-The JSON file should looks like this:
-```js
-{
-  “users”: [
-    {
-      "localId": "111",
-      "email": "test@test.org"
-      "emailVerified": false,
-      "passwordHash": "Jlf7onfLbzqPNFP/1pqhx6fQF/w=",
-      "salt": "c2FsdC0x",
-      "displayName": "Test User",
-      "photoUrl": "http://photo.com/123",
-      "providerUserInfo": [ {
-        "providerId": "facebook.com",
-        "rawId": "123",
-        "email":  "test@test.org",
-        "displayName": "Test FB User",
-        "photoUrl": "http://photo.com/456"
-      } ]
-    }, {
-      ...
-    },
-    ...
-  ]
-}
-
-```
-
-The first element of `users` in above JSON object represents the [example user account](#example_account) in previous section. All user accounts should be put in `users`. `localId` is actually `UID` and is required. `providerId` must be one of "google.com", "facebook.com", "github.com", and "twitter.com".
+**auth:import** | Batch importing accounts into Firebase from data file. Detailed doc is [here](https://firebase.google.com/docs/cli/auth-import).
 
 ## Using with CI Systems
 
