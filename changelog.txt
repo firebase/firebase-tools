@@ -1,1 +1,1 @@
-feature - `auth:export` command enables exporting Firebase Auth users to JSON or CSV.
+feature - Adds `auth:export` command for exporting Firebase Auth users to JSON or CSV.
