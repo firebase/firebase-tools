@@ -10,7 +10,8 @@ module.exports = function(client) {
   };
 
   client.auth = {
-    upload: loadCommand('auth-import')
+    upload: loadCommand('auth-import'),
+    export: loadCommand('auth-export')
   };
 
   client.database = {

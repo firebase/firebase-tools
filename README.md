@@ -5,7 +5,7 @@ These are the Firebase Command Line Interface (CLI) Tools. They can be used to:
 * Deploy code and assets to your Firebase projects
 * Run a local web server for your Firebase Hosting site
 * Interact with data in your Firebase database
-* Import users into Firebase Auth
+* Import/Export users into/from Firebase Auth
 
 To get started with the Firebase CLI, read the full list of commands below or check out the [hosting-specific CLI documentation](https://firebase.google.com/docs/hosting/quickstart).
 
@@ -77,7 +77,10 @@ Command | Description
 
 Command | Description
 ------- | -----------
-**auth:import** | Batch importing accounts into Firebase from data file. Detailed doc is [here](https://firebase.google.com/docs/cli/auth-import).
+**auth:import** | Batch importing accounts into Firebase from data file.
+**auth:export** | Batch exporting accounts from Firebase into data file.
+
+Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ## Using with CI Systems
 
