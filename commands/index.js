@@ -29,15 +29,15 @@ module.exports = function(client) {
   };
 
   if (previews.functions) {
-    client.env = {
-      clone: loadCommand('env-clone'),
-      get: loadCommand('env-get'),
-      set: loadCommand('env-set'),
-      unset: loadCommand('env-unset')
-    };
-
     client.functions = {
-      log: loadCommand('functions-log')
+      log: loadCommand('functions-log'),
+      config: {
+        clone: loadCommand('functions-config-clone'),
+        get: loadCommand('functions-config-get'),
+        set: loadCommand('functions-config-set'),
+        unset: loadCommand('functions-config-unset'),
+        legacy: loadCommand('functions-config-legacy')
+      }
     };
   }
 
