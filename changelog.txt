@@ -1,0 +1,1 @@
+feature - `auth:import` now supports `SHA1` and `SHA256` hash algorithms
