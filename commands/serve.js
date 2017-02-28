@@ -1,8 +1,12 @@
 'use strict';
 
+var path = require('path');
+
 var chalk = require('chalk');
 var RSVP = require('rsvp');
 var superstatic = require('superstatic').server;
+var FunctionsController = require('@google-cloud/functions-emulator/src/cli/controller');
+var functions = require(path.join(process.cwd(), 'functions'));
 
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
@@ -10,6 +14,7 @@ var logger = require('../lib/logger');
 var utils = require('../lib/utils');
 var requireConfig = require('../lib/requireConfig');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
+var Promise = require('bluebird');
 
 var MAX_PORT_ATTEMPTS = 10;
 
@@ -66,10 +71,58 @@ module.exports = new Command('serve')
 
     startServer(options);
 
+    var functionsController = new FunctionsController({verbose: true});
+
+    exports = Object.keys(functions);
+
+    // TODO
+    // don't hard code "functions"
+    // handle port in use
+    // allow port and other config
+    // break into own function
+    // work on logger ordering
+    // pipe the logs
+    // don't start up if there aren't functions
+    // make sure this works without functions initialized
+    // handle deploy fail, etc.
+    // double check with jdobry@ that this is an ok flow
+    logger.info(`Starting ${functionsController.name}...`);
+    logger.info(chalk.bold('Functions Directory:'), 'functions');
+    functionsController.start().then(() => {
+      return functionsController.clear();
+    }).then(() => {
+      return Promise.map(exports, functionName => {
+        if (functions[functionName].__trigger.httpsTrigger) {
+          return functionsController.deploy(functionName, {
+            localPath: path.join(process.cwd(), 'functions'),
+            triggerHttp: true
+          });
+        } else {
+          return null;
+        };
+      });
+    }).then(() => {
+      return functionsController.list();
+    }).then(cloudFunctions => {
+      cloudFunctions.forEach(cloudFunction => {
+        logger.info(`${cloudFunction.shortName}: ${chalk.bold(cloudFunction.httpsTrigger.url)}`);
+      });
+    }).catch(e => {
+      logger.error(e);
+    });
+
     return new RSVP.Promise(function(resolve) {
       process.on('SIGINT', function() {
         logger.info('Shutting down...');
-        resolve();
+        // doIfRunning()?
+        functionsController.then(() => {
+          return functionsController.stop();
+        }).then(() => {
+          resolve();
+        }).catch(e => {
+          logger.error(e);
+          resolve();
+        });
       });
     });
   });
