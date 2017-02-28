@@ -12,6 +12,7 @@ var auth = require('../lib/auth');
 module.exports = new Command('login')
   .description('log the CLI into Firebase')
   .option('--no-localhost', 'copy and paste a code instead of starting a local server for authentication')
+  .option('--reauth', 'force reauthentication even if already logged in')
   .action(function(options) {
     if (options.nonInteractive) {
       return utils.reject('Cannot run login in non-interactive mode. See ' +
@@ -21,10 +22,11 @@ module.exports = new Command('login')
     var user = configstore.get('user');
     var tokens = configstore.get('tokens');
 
-    if (user && tokens) {
+    if (user && tokens && !options.reauth) {
       logger.info('Already logged in as', chalk.bold(user.email));
       return RSVP.resolve(user);
     }
+
     return prompt(options, [{
       type: 'confirm',
       name: 'collectUsage',

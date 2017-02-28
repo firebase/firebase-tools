@@ -1,7 +1,5 @@
 'use strict';
 
-var previews = require('../lib/previews');
-
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require('./' + name);
@@ -29,18 +27,15 @@ module.exports = function(client) {
     disable: loadCommand('hosting-disable')
   };
 
-  if (previews.functions) {
-    client.functions = {
-      log: loadCommand('functions-log'),
-      config: {
-        clone: loadCommand('functions-config-clone'),
-        get: loadCommand('functions-config-get'),
-        set: loadCommand('functions-config-set'),
-        unset: loadCommand('functions-config-unset'),
-        legacy: loadCommand('functions-config-legacy')
-      }
-    };
-  }
+  client.functions = {
+    log: loadCommand('functions-log'),
+    config: {
+      clone: loadCommand('functions-config-clone'),
+      get: loadCommand('functions-config-get'),
+      set: loadCommand('functions-config-set'),
+      unset: loadCommand('functions-config-unset')
+    }
+  };
 
   client.help = loadCommand('help');
   client.init = loadCommand('init');
