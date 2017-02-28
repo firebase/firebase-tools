@@ -14,7 +14,7 @@ describe('config.parseSetArgs', function() {
 
   it('should throw if a malformed arg is used', function() {
     expect(function() {
-      functionsConfig.parseSetArgs(['foo=bar,baz']);
+      functionsConfig.parseSetArgs(['foo.bar=baz', 'qux']);
     }).to.throw('must be in key=val format');
   });
 
