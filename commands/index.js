@@ -19,7 +19,8 @@ module.exports = function(client) {
     push: loadCommand('database-push'),
     set: loadCommand('database-set'),
     remove: loadCommand('database-remove'),
-    update: loadCommand('database-update')
+    update: loadCommand('database-update'),
+    profile: loadCommand('database-profile')
   };
 
   client.deploy = loadCommand('deploy');
