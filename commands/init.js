@@ -5,6 +5,7 @@ var fs = require('fs');
 var homeDir = require('user-home');
 var path = require('path');
 var RSVP = require('rsvp');
+var _ = require('lodash');
 
 var Command = require('../lib/command');
 var Config = require('../lib/config');
@@ -13,6 +14,9 @@ var logger = require('../lib/logger');
 var prompt = require('../lib/prompt');
 var requireAuth = require('../lib/requireAuth');
 var utils = require('../lib/utils');
+var enableApi = require('../lib/ensureApiEnabled').enable;
+var requireAccess = require('../lib/requireAccess');
+var scopes = require('../lib/scopes');
 
 var BANNER_TEXT = fs.readFileSync(__dirname + '/../templates/banner.txt', 'utf8');
 
@@ -106,6 +110,9 @@ module.exports = new Command('init [feature]')
         });
       }
       setup.features.unshift('project');
+      if (_.includes(setup.features, 'functions')) {
+        setup.initFunctions = true;
+      }
       return init(setup, config, options);
     }).then(function() {
       logger.info();
@@ -120,6 +127,16 @@ module.exports = new Command('init [feature]')
         logger.info();
         logger.info(chalk.bold.cyan('Project creation is only available from the Firebase Console'));
         logger.info('Please visit', chalk.underline('https://console.firebase.google.com'), 'to create a new project, then run', chalk.bold('firebase use --add'));
+      } else {
+        var projectId = setup.rcfile.projects.default;
+        if (projectId && setup.initFunctions) {
+          return requireAccess({project: projectId}, [scopes.CLOUD_PLATFORM]).then(function() {
+            return RSVP.all([
+              enableApi(projectId, 'cloudfunctions.googleapis.com'),
+              enableApi(projectId, 'runtimeconfig.googleapis.com')
+            ]);
+          });
+        }
       }
     });
   });
