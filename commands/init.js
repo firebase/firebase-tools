@@ -10,7 +10,6 @@ var Command = require('../lib/command');
 var Config = require('../lib/config');
 var init = require('../lib/init');
 var logger = require('../lib/logger');
-var previews = require('../lib/previews');
 var prompt = require('../lib/prompt');
 var requireAuth = require('../lib/requireAuth');
 var utils = require('../lib/utils');
@@ -66,12 +65,10 @@ module.exports = new Command('init [feature]')
 
     var choices = [
       {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: true},
+      {name: 'functions', label: 'Functions: Configure and deploy Cloud Functions', checked: true},
       {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true}
       // {name: 'storage', label: 'Storage: Deploy Firebase Storage Security Rules', checked: true}
     ];
-    if (previews.functions) {
-      choices.splice(1, 0, {name: 'functions', label: 'Functions: Configure and deploy Firebase Functions', checked: true});
-    }
 
     var next;
     // HACK: Windows Node has issues with selectables as the first prompt, so we
