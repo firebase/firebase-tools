@@ -28,7 +28,9 @@ module.exports = new Command('deploy')
   })
   .before(checkDupHostingKeys)
   .action(function(options) {
-    var targets = VALID_TARGETS;
+    var targets = VALID_TARGETS.filter(function(t) {
+      return options.config.has(t);
+    });
     if (options.only && options.except) {
       return utils.reject('Cannot specify both --only and --except', {exit: 1});
     }
