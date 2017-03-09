@@ -6,6 +6,7 @@ var chalk = require('chalk');
 var Command = require('../lib/command');
 var functionsConfig = require('../lib/functionsConfig');
 var getProjectId = require('../lib/getProjectId');
+var logger = require('../lib/logger');
 var requireAccess = require('../lib/requireAccess');
 var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
@@ -28,5 +29,7 @@ module.exports = new Command('functions:config:unset [keys...]')
       return runtimeconfig.variables.delete(projectId, item.configId, item.varId);
     })).then(function() {
       utils.logSuccess('Environment updated.');
+      logger.info('\nPlease deploy your functions for the change to take effect by running '
+        + chalk.bold('firebase deploy --only functions') + '\n');
     });
   });
