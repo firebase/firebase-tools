@@ -1,3 +1,0 @@
-feature - Adds Cloud Functions for Firebase support, including function deployment and `functions:*` commands.
-feature - `database:profile` command provides performance profiling insights for the Realtime Database.
-changed - Some new features of the CLI require additional authorization scopes. You may be asked to sign in again with `firebase login --reauth`.
