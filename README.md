@@ -43,6 +43,7 @@ Command | Description
 **logout** | Sign out of the Firebase CLI.
 **login:ci** | Generate an authentication token for use in non-interactive environments.
 **list** | Print a list of all of your Firebase projects.
+**setup:web** | Print out SDK setup information for the Firebase JS SDK.
 **use** | Set active Firebase project, manage project aliases.
 **open** | Quickly open a browser to relevant project resources.
 **init** | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory.
