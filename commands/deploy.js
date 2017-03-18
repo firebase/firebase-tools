@@ -20,12 +20,7 @@ module.exports = new Command('deploy')
   .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage")')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(acquireRefs, function(options) {
-    if (options.config.has('functions')) {
-      return [scopes.CLOUD_PLATFORM];
-    }
-    return [];
-  })
+  .before(acquireRefs, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
   .action(function(options) {
     var targets = VALID_TARGETS.filter(function(t) {
