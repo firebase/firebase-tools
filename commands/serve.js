@@ -1,11 +1,11 @@
 'use strict';
 
-var path = require('path');
-
 var chalk = require('chalk');
 var RSVP = require('rsvp');
 var superstatic = require('superstatic').server;
 var FunctionsController = require('@google-cloud/functions-emulator/src/cli/controller');
+var _ = require('lodash');
+var path = require('path');
 
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
@@ -13,9 +13,10 @@ var logger = require('../lib/logger');
 var utils = require('../lib/utils');
 var requireConfig = require('../lib/requireConfig');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
+var getProjectId = require('../lib/getProjectId');
+var parseTriggers = require('../lib/parseTriggers');
 
 var MAX_PORT_ATTEMPTS = 10;
-
 var _attempts = 0;
 var startServer = function(options) {
   var config = options.config ? options.config.get('hosting') : {public: '.'};
@@ -51,7 +52,7 @@ var startServer = function(options) {
   });
 };
 
-module.export = new Command('serve')
+module.exports = new Command('serve')
   .description('start a local server for your static assets')
   .option('-p, --port <port>', 'the port on which to listen (default: 5000)', 5000)
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
@@ -70,8 +71,8 @@ module.export = new Command('serve')
     startServer(options);
 
     var functionsController = new FunctionsController({verbose: true});
+    var functionsDir = path.join(options.config.projectDir, options.config.get('functions.source'));
 
-    var functions = parseTriggers(getProjectId(options), options.instance, options.config.get('functions.source'));
 
     // TODO
     // don't hard code "functions"
@@ -84,30 +85,31 @@ module.export = new Command('serve')
     // make sure this works without functions initialized
     // handle deploy fail, etc.
     // double check with jdobry@ that this is an ok flow
-    logger.info(`Starting ${functionsController.name}...`);
+    logger.info('Starting ' + functionsController.name + '...');
     logger.info(chalk.bold('Functions Directory:'), 'functions');
-    functionsController.start().then(() => {
+
+    functionsController.start().then(function() {
       return functionsController.clear();
-    }).then(() => {
-      var promises = _.map(functions, functionName => {
-        if (functions[functionName].__trigger.httpsTrigger) {
-          return functionsController.deploy(functionName, {
-            localPath: options.config.get('functions.source'),
+    }).then(function() {
+      return parseTriggers(getProjectId(options), options.instance, functionsDir);
+    }).then(function(triggers) {
+      var promises = _.map(triggers, function(trigger) {
+        if (trigger.httpsTrigger) {
+          return functionsController.deploy(trigger.name, {
+            localPath: functionsDir,
             triggerHttp: true
           });
-        } else {
-          // TODO: add other trigger types
-          return null;
-        };
+        }
+        return null; // TODO: support other trigger types
       });
       return RSVP.all(promises);
-    }).then(() => {
+    }).then(function() {
       return functionsController.list();
-    }).then(cloudFunctions => {
-      cloudFunctions.forEach(cloudFunction => {
-        logger.info(`${cloudFunction.shortName}: ${chalk.bold(cloudFunction.httpsTrigger.url)}`);
+    }).then(function(cloudFunctions) {
+      cloudFunctions.forEach(function(cloudFunction) {
+        logger.info(cloudFunction.shortName + ': ' + chalk.bold(cloudFunction.httpsTrigger.url));
       });
-    }).catch(e => {
+    }).catch(function(e) {
       logger.error(e);
     });
 
@@ -115,11 +117,11 @@ module.export = new Command('serve')
       process.on('SIGINT', function() {
         logger.info('Shutting down...');
         // doIfRunning()?
-        functionsController.then(() => {
+        functionsController.then(function() { // TODO this line not right
           return functionsController.stop();
-        }).then(() => {
+        }).then(function() {
           resolve();
-        }).catch(e => {
+        }).catch(function(e) {
           logger.error(e);
           resolve();
         });
