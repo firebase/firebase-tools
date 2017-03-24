@@ -57,22 +57,6 @@ Command | Description
 **deploy** | Deploys your Firebase project. Relies on `firebase.json` configuration and your local project folder.
 **serve** | Start a local web server with your Firebase Hosting configuration. Relies on `firebase.json`.
 
-### Database Commands
-
-Command | Description
-------- | -----------
-**database:get** | Fetch data from the current project's database and display it as JSON. Supports querying on indexed data.
-**database:set** | Replace all data at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**database:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**database:push** | Push new data to a list at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
-**database:remove** | Delete all data at a specified location in the current project's database.
-
-### Hosting Commands
-
-Command | Description
-------- | -----------
-**hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command.
-
 ### Auth Commands
 
 Command | Description
@@ -81,6 +65,33 @@ Command | Description
 **auth:export** | Batch exporting accounts from Firebase into data file.
 
 Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
+
+### Database Commands
+
+Command | Description
+------- | -----------
+**database:get** | Fetch data from the current project's database and display it as JSON. Supports querying on indexed data.
+**database:set** | Replace all data at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:push** | Push new data to a list at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:remove** | Delete all data at a specified location in the current project's database.
+**database:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
+**database:profile** | Profile database usage and generate a report.
+
+### Cloud Functions Commands
+
+Command | Description
+------- | -----------
+**functions:log** | Read logs from deployed Cloud Functions.
+**functions:config:set** | Store runtime configuration values for the current project's Cloud Functions.
+**functions:config:get** | Retrieve existing configuration values for the current project's Cloud Functions.
+**functions:config:unset** | Remove values from the current project's runtime configuration.
+**functions:config:clone** | Copy runtime configuration from one project environment to another.
+
+### Hosting Commands
+
+Command | Description
+------- | -----------
+**hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command.
 
 ## Using with CI Systems
 

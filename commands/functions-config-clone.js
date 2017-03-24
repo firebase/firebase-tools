@@ -8,6 +8,7 @@ var getProjectId = require('../lib/getProjectId');
 var requireAccess = require('../lib/requireAccess');
 var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
+var logger = require('../lib/logger');
 
 module.exports = new Command('functions:config:clone')
   .description('clone environment config from another project')
@@ -36,5 +37,7 @@ module.exports = new Command('functions:config:clone')
 
     return functionsConfigClone(options.from, projectId, only, except).then(function() {
       utils.logSuccess('Cloned functions config from ' + chalk.bold(options.from) + ' into ' + chalk.bold(projectId));
+      logger.info('\nPlease deploy your functions for the change to take effect by running '
+        + chalk.bold('firebase deploy --only functions') + '\n');
     });
   });

@@ -6,18 +6,12 @@ var acquireRefs = require('../lib/acquireRefs');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
-var previews = require('../lib/previews');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ['database', 'storage', 'functions', 'hosting'];
-if (!previews.functions) {
-  VALID_TARGETS.splice(2, 1);
-}
-
-var deployScopes = previews.functions ? [scopes.CLOUD_PLATFORM] : [];
 
 module.exports = new Command('deploy')
   .description('deploy code and assets to your Firebase project')
@@ -26,10 +20,17 @@ module.exports = new Command('deploy')
   .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage")')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(acquireRefs, deployScopes)
+  .before(acquireRefs, function(options) {
+    if (options.config.has('functions')) {
+      return [scopes.CLOUD_PLATFORM];
+    }
+    return [];
+  })
   .before(checkDupHostingKeys)
   .action(function(options) {
-    var targets = VALID_TARGETS;
+    var targets = VALID_TARGETS.filter(function(t) {
+      return options.config.has(t);
+    });
     if (options.only && options.except) {
       return utils.reject('Cannot specify both --only and --except', {exit: 1});
     }
