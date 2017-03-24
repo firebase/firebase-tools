@@ -6,7 +6,6 @@ var chalk = require('chalk');
 var RSVP = require('rsvp');
 var superstatic = require('superstatic').server;
 var FunctionsController = require('@google-cloud/functions-emulator/src/cli/controller');
-var functions = require(path.join(process.cwd(), 'functions'));
 
 var Command = require('../lib/command');
 var FirebaseError = require('../lib/error');
@@ -14,7 +13,6 @@ var logger = require('../lib/logger');
 var utils = require('../lib/utils');
 var requireConfig = require('../lib/requireConfig');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
-var Promise = require('bluebird');
 
 var MAX_PORT_ATTEMPTS = 10;
 
@@ -53,7 +51,7 @@ var startServer = function(options) {
   });
 };
 
-module.exports = new Command('serve')
+module.export = new Command('serve')
   .description('start a local server for your static assets')
   .option('-p, --port <port>', 'the port on which to listen (default: 5000)', 5000)
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
@@ -73,7 +71,7 @@ module.exports = new Command('serve')
 
     var functionsController = new FunctionsController({verbose: true});
 
-    exports = Object.keys(functions);
+    var functions = parseTriggers(getProjectId(options), options.instance, options.config.get('functions.source'));
 
     // TODO
     // don't hard code "functions"
@@ -91,16 +89,18 @@ module.exports = new Command('serve')
     functionsController.start().then(() => {
       return functionsController.clear();
     }).then(() => {
-      return Promise.map(exports, functionName => {
+      var promises = _.map(functions, functionName => {
         if (functions[functionName].__trigger.httpsTrigger) {
           return functionsController.deploy(functionName, {
-            localPath: path.join(process.cwd(), 'functions'),
+            localPath: options.config.get('functions.source'),
             triggerHttp: true
           });
         } else {
+          // TODO: add other trigger types
           return null;
         };
       });
+      return RSVP.all(promises);
     }).then(() => {
       return functionsController.list();
     }).then(cloudFunctions => {

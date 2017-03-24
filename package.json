@@ -43,10 +43,9 @@
   ],
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-alpha.3",
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.15",
     "JSONStream": "^1.2.1",
     "archiver": "^0.16.0",
-    "bluebird": "^3.4.7",
     "chalk": "^1.1.0",
     "cjson": "^0.3.1",
     "cli-table": "^0.3.1",
