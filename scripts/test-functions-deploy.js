@@ -15,6 +15,9 @@ var extractTriggers = require('../lib/extractTriggers');
 var RSVP = require('rsvp');
 var chalk = require('chalk');
 var firebase = require('firebase');
+var functions = require('firebase-functions');
+var admin = require('firebase-admin');
+var sinon = require('sinon');
 
 var functionsSource = __dirname + '/assets/functions_to_test.js';
 var projectDir = __dirname + '/test-project';
@@ -27,8 +30,17 @@ var tmpDir;
 var app;
 
 var parseFunctionsList = function() {
+  var configStub = sinon.stub(functions, 'config').returns({
+    firebase: {
+      databaseURL: 'https://not-a-project.firebaseio.com',
+      storageBucket: 'not-a-project.appspot.com'
+    }
+  });
+  var adminStub = sinon.stub(admin, 'initializeApp');
   var triggers = [];
-  extractTriggers(require(tmpDir + '/functions'), triggers);
+  extractTriggers(require(functionsSource), triggers);
+  configStub.restore();
+  adminStub.restore();
   return _.map(triggers, 'name');
 };
 

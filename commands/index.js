@@ -1,7 +1,5 @@
 'use strict';
 
-var previews = require('../lib/previews');
-
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require('./' + name);
@@ -10,7 +8,8 @@ module.exports = function(client) {
   };
 
   client.auth = {
-    upload: loadCommand('auth-import')
+    upload: loadCommand('auth-import'),
+    export: loadCommand('auth-export')
   };
 
   client.database = {
@@ -18,7 +17,8 @@ module.exports = function(client) {
     push: loadCommand('database-push'),
     set: loadCommand('database-set'),
     remove: loadCommand('database-remove'),
-    update: loadCommand('database-update')
+    update: loadCommand('database-update'),
+    profile: loadCommand('database-profile')
   };
 
   client.deploy = loadCommand('deploy');
@@ -27,18 +27,15 @@ module.exports = function(client) {
     disable: loadCommand('hosting-disable')
   };
 
-  if (previews.functions) {
-    client.env = {
-      clone: loadCommand('env-clone'),
-      get: loadCommand('env-get'),
-      set: loadCommand('env-set'),
-      unset: loadCommand('env-unset')
-    };
-
-    client.functions = {
-      log: loadCommand('functions-log')
-    };
-  }
+  client.functions = {
+    log: loadCommand('functions-log'),
+    config: {
+      clone: loadCommand('functions-config-clone'),
+      get: loadCommand('functions-config-get'),
+      set: loadCommand('functions-config-set'),
+      unset: loadCommand('functions-config-unset')
+    }
+  };
 
   client.help = loadCommand('help');
   client.init = loadCommand('init');

@@ -13,15 +13,9 @@ var utils = require('../lib/utils');
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ['database', 'storage', 'firestore', 'functions', 'hosting'];
-if (!previews.functions && !previews.firestore) {
-  VALID_TARGETS.splice(2, 2);
-} else if (!previews.functions) {
-  VALID_TARGETS.splice(3, 1);
-} else if (!previews.firestore) {
+if (!previews.firestore) {
   VALID_TARGETS.splice(2, 1);
 }
-
-var deployScopes = previews.functions ? [scopes.CLOUD_PLATFORM] : [];
 
 module.exports = new Command('deploy')
   .description('deploy code and assets to your Firebase project')
@@ -30,10 +24,17 @@ module.exports = new Command('deploy')
   .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage")')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(acquireRefs, deployScopes)
+  .before(acquireRefs, function(options) {
+    if (options.config.has('functions')) {
+      return [scopes.CLOUD_PLATFORM];
+    }
+    return [];
+  })
   .before(checkDupHostingKeys)
   .action(function(options) {
-    var targets = VALID_TARGETS;
+    var targets = VALID_TARGETS.filter(function(t) {
+      return options.config.has(t);
+    });
     if (options.only && options.except) {
       return utils.reject('Cannot specify both --only and --except', {exit: 1});
     }
