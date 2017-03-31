@@ -5,6 +5,7 @@ var RSVP = require('rsvp');
 var superstatic = require('superstatic').server;
 
 var Command = require('../lib/command');
+var detectProjectRoot = require('../lib/detectProjectRoot');
 var FirebaseError = require('../lib/error');
 var logger = require('../lib/logger');
 var utils = require('../lib/utils');
@@ -21,6 +22,7 @@ var startServer = function(options) {
     port: options.port,
     host: options.host,
     config: config,
+    cwd: detectProjectRoot(options.cwd),
     stack: 'strict'
   }).listen(function() {
     if (config.public && config.public !== '.') {
