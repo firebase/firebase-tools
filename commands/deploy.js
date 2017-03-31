@@ -41,5 +41,9 @@ module.exports = new Command('deploy')
       targets = _.difference(targets, options.except.split(','));
     }
 
+    if (targets.length === 0) {
+      return utils.reject('No deploy targets found. Valid targets: ' + VALID_TARGETS.join(','), {exit: 1});
+    }
+
     return deploy(targets, options);
   });
