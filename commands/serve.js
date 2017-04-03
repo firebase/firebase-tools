@@ -5,6 +5,7 @@ var RSVP = require('rsvp');
 var superstatic = require('superstatic').server;
 
 var Command = require('../lib/command');
+var detectProjectRoot = require('../lib/detectProjectRoot');
 var FirebaseError = require('../lib/error');
 var hostingImplicitInit = require('../lib/hostingImplicitInit');
 var hostingInitMiddleware = require('../lib/hostingInitMiddleware');
