@@ -28,6 +28,7 @@ var startServer = function(options) {
       port: options.port,
       host: options.host,
       config: config,
+      cwd: detectProjectRoot(options.cwd),
       stack: 'strict',
       before: {
         files: hostingInitMiddleware(init)
