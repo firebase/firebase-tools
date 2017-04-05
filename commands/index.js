@@ -48,6 +48,10 @@ module.exports = function(client) {
   client.open = loadCommand('open');
   client.serve = loadCommand('serve');
 
+  client.setup = {
+    web: loadCommand('setup-web')
+  };
+
   client.tools = {
     migrate: loadCommand('tools-migrate')
   };
