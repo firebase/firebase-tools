@@ -1,0 +1,9 @@
+important - You may need to re-authorize with `firebase login --reauth` to take advantage of the new Hosting SDK auto-configuration. You will see a prompt when running `firebase deploy` if this is the case.
+feature - Adds `setup:web` command to print out JS SDK initialization information.
+feature - Adds Hosting support for SDK auto-configuration in `serve` command.
+feature - Adds Hosting support for SDK auto-configuration when deploying.
+fixed - Corrected typo in docs URL for Cloud Functions default template.
+fixed - Deploy now fails if no valid deploy targets are found (including `--only` with typos).
+fixed - Can now run `firebase serve` from subdirectories of a project.
+fixed - Can call commands with empty arguments when using programmatically (e.g. `fbcli.list()`).
+fixed - Improved error messages when authentication issues occur.
