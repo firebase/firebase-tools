@@ -49,6 +49,8 @@ Command | Description
 **init** | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
 
+Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste a code instead of starting a local server for authentication. A use case might be if you ssh into an instance somewhere and you need to authenticate to firebase on that machine. 
+
 ### Deployment and Local Development
 
 These commands let you deploy and interact with your Firebase Hosting site.
