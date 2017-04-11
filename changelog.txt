@@ -1,3 +1,4 @@
 fixed - Tweaks wording of certain prompts to be easier to understand, and fixes out-of-date instructions.
 fixed - Fixes broken 'firebase init' workflow where the firebase-admin module that was installed does not fulfill firebase-function's peer dependency.
 fixed - Fixes bug where deploying functions overrides custom timeout and memory allocation with default values.
+feature - Improve UX by hiding tip when exact command was entered, and adding instruction to readme on how to use firebase login --no-localhost.
