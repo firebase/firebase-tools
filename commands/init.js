@@ -96,7 +96,9 @@ module.exports = new Command('init [feature]')
       return prompt(setup, [{
         type: 'checkbox',
         name: 'features',
-        message: 'What Firebase CLI features do you want to setup for this folder?',
+        message: 'What Firebase CLI features do you want to setup for this ' + 
+            'folder? Press Space to disable features, then Enter to confirm ' +
+            'your choices.',
         choices: prompt.convertLabeledListChoices(choices)
       }]);
     }).then(function() {
