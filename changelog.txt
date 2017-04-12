@@ -1,0 +1,2 @@
+fixed - Fixes broken 'firebase init' workflow where the firebase-admin module that was installed does not fulfill firebase-function's peer dependency.
+fixed - Fixes bug where deploying functions overrides custom timeout and memory allocation with default values.
