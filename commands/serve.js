@@ -22,7 +22,7 @@ module.exports = new Command('serve')
   .before(checkDupHostingKeys)
   .action(function(options) {
     if (options.config) {
-      logger.info(chalk.bold('Project Directory:'), options.config.projectDir);
+      logger.info(chalk.bold('Project Directory:'), options.config.projectDir, '\n');
     } else {
       utils.logWarning('No Firebase project directory detected. Serving static content from ' + chalk.bold(options.cwd || process.cwd()));
     }

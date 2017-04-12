@@ -43,7 +43,6 @@
   ],
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-alpha.15",
     "JSONStream": "^1.2.1",
     "archiver": "^0.16.0",
     "chalk": "^1.1.0",
@@ -95,5 +94,8 @@
     "sinon": "^1.17.4",
     "sinon-as-promised": "^4.0.0",
     "sinon-chai": "^2.8.0"
+  },
+  "optionalDependencies": {
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.15"
   }
 }
