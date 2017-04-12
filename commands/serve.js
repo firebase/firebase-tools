@@ -6,11 +6,12 @@ var chalk = require('chalk');
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
 var utils = require('../lib/utils');
+var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var serve = require('../lib/serve/index');
-
 var VALID_TARGETS = ['functions', 'hosting'];
+var scopes = require('../lib/scopes');
 
 module.exports = new Command('serve')
   .description('start a local server for your static assets')
@@ -19,6 +20,7 @@ module.exports = new Command('serve')
   .option('--only <targets>', 'only serve specified targets')
   .option('--except <targets>', 'serve all except specified targets')
   .before(requireConfig)
+  .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
   .action(function(options) {
     if (options.config) {
