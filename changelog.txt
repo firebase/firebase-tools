@@ -1,5 +1,3 @@
-important - Add ability to deploy functions individually or by export groups (e.g. firebase deploy --only functions:functionName). Run "firebase deploy --help" for details.
-changed - Initialize new projects with v4.2.1 of firebase-admin instead of v4.1.2 when functions is selected.
-changed - Users now opt-in instead of opt-out of features during "firebase init".
+feature - Add ability to deploy functions individually or by export groups (e.g. firebase deploy --only functions:functionName). Run "firebase deploy --help" for details.
 fixed - Fixed bug where running "firebase functions:config:set" with JSON created extra quotes.
-fixed - Fixed bug in trigger parsing process that sometimes caused functions deploys to fail (especially when there are many functions).
+fixed - Fixed bug that caused intermittent failures in many-function deploys.
