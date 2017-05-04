@@ -1,3 +1,2 @@
-feature - Add ability to deploy functions individually or by export groups (e.g. firebase deploy --only functions:functionName). Run "firebase deploy --help" for details.
 fixed - Fixed bug where running "firebase functions:config:set" with JSON created extra quotes.
 fixed - Fixed bug that caused intermittent failures in many-function deploys.
