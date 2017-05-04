@@ -64,9 +64,9 @@ module.exports = new Command('init [feature]')
     };
 
     var choices = [
-      {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: true},
-      {name: 'functions', label: 'Functions: Configure and deploy Cloud Functions', checked: true},
-      {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: true}
+      {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: false},
+      {name: 'functions', label: 'Functions: Configure and deploy Cloud Functions', checked: false},
+      {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: false}
       // {name: 'storage', label: 'Storage: Deploy Firebase Storage Security Rules', checked: true}
     ];
 
@@ -96,7 +96,8 @@ module.exports = new Command('init [feature]')
       return prompt(setup, [{
         type: 'checkbox',
         name: 'features',
-        message: 'What Firebase CLI features do you want to setup for this directory?',
+        message: 'Which Firebase CLI features do you want to setup for this folder? ' +
+          'Press Space to select features, then Enter to confirm your choices.',
         choices: prompt.convertLabeledListChoices(choices)
       }]);
     }).then(function() {
@@ -104,6 +105,10 @@ module.exports = new Command('init [feature]')
         setup.features = setup.features.map(function(feat) {
           return prompt.listLabelToValue(feat, choices);
         });
+      }
+      if (setup.features.length === 0) {
+        utils.logWarning('You have have not selected any features. Continuing will simply associate this folder ' +
+          'with a Firebase project. Press Ctrl + C if you want to start over.');
       }
       setup.features.unshift('project');
       return init(setup, config, options);
