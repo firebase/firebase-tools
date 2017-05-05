@@ -43,6 +43,7 @@ module.exports = new Command('serve')
     } else if (options.except) {
       targets = _.difference(targets, options.except.split(','));
     }
+    options.targets = targets;
 
-    return serve(targets, options);
+    return serve(options);
   });
