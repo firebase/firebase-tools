@@ -11,9 +11,10 @@ var combinerFunc = function(obj1, obj2) {
   return {count: obj1.count + obj2.count};
 };
 
+var fixturesDir = path.resolve(__dirname, '../fixtures');
+
 var newReport = function() {
   var input = path.resolve(fixturesDir, 'profiler-data/sample.json');
-  var output = require(path.resolve(fixturesDir, 'profiler-data/sample-output.json'));
   var throwAwayStream = new stream.PassThrough();
   return new ProfileReport(input, throwAwayStream, {
     format: 'JSON',
@@ -22,11 +23,10 @@ var newReport = function() {
   });
 };
 
-var fixturesDir = path.resolve(__dirname, '../fixtures');
-
 describe('profilerReport', function() {
   it('should correctly generate a report', function() {
     var report = newReport();
+    var output = require(path.resolve(fixturesDir, 'profiler-data/sample-output.json'));
     expect(report.generate()).to.eventually.deep.equal(output);
   });
 
@@ -69,7 +69,7 @@ describe('profilerReport', function() {
 
   it('should not collapse paths with --no-collapse', function() {
     var report = newReport();
-    report.options.collapse = false
+    report.options.collapse = false;
     var data = {};
     for (var i = 0; i < 30; i++) {
       data['/path/num' + i] = {count: 1};
