@@ -10,8 +10,9 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var serve = require('../lib/serve/index');
-var VALID_TARGETS = ['functions', 'hosting'];
 var scopes = require('../lib/scopes');
+
+var VALID_TARGETS = ['functions', 'hosting'];
 
 module.exports = new Command('serve')
   .description('start a local server for your static assets')
