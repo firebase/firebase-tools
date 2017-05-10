@@ -1,7 +1,5 @@
 'use strict';
 
-var _ = require('lodash');
-
 var acquireRefs = require('../lib/acquireRefs');
 var chalk = require('chalk');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
@@ -12,6 +10,7 @@ var logger = require('../lib/logger');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
+var filterTargets = require('../lib/filterTargets');
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ['database', 'storage', 'functions', 'hosting'];
@@ -44,20 +43,6 @@ module.exports = new Command('deploy')
   .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
   .action(function(options) {
-    var targets = VALID_TARGETS.filter(function(t) {
-      return options.config.has(t);
-    });
-    if (options.only) {
-      targets = _.intersection(targets, options.only.split(',').map(function(opt) {
-        return opt.split(':')[0];
-      }));
-    } else if (options.except) {
-      targets = _.difference(targets, options.except.split(','));
-    }
-
-    if (targets.length === 0) {
-      return utils.reject('No deploy targets found. Valid targets: ' + VALID_TARGETS.join(','), {exit: 1});
-    }
-
+    var targets = filterTargets(options, VALID_TARGETS);
     return deploy(targets, options);
   });
