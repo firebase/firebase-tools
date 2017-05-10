@@ -5,6 +5,7 @@ var _ = require('lodash');
 var acquireRefs = require('../lib/acquireRefs');
 var chalk = require('chalk');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
+var checkValidTargetFilters = require('../lib/checkValidTargetFilters');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
 var logger = require('../lib/logger');
@@ -19,7 +20,10 @@ module.exports = new Command('deploy')
   .description('deploy code and assets to your Firebase project')
   .option('-p, --public <path>', 'override the Hosting public directory specified in firebase.json')
   .option('-m, --message <message>', 'an optional message describing this deploy')
-  .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage")')
+  .option('--only <targets>', 'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
+    'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
+    'When filtering based on export groups (the exported module object keys), use dots to specify group names ' +
+    '(e.g. "--only functions:group1.subgroup1,functions:group2)"')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before(function(options) {
@@ -38,16 +42,15 @@ module.exports = new Command('deploy')
       });
   })
   .before(checkDupHostingKeys)
+  .before(checkValidTargetFilters)
   .action(function(options) {
     var targets = VALID_TARGETS.filter(function(t) {
       return options.config.has(t);
     });
-    if (options.only && options.except) {
-      return utils.reject('Cannot specify both --only and --except', {exit: 1});
-    }
-
     if (options.only) {
-      targets = _.intersection(targets, options.only.split(','));
+      targets = _.intersection(targets, options.only.split(',').map(function(opt) {
+        return opt.split(':')[0];
+      }));
     } else if (options.except) {
       targets = _.difference(targets, options.except.split(','));
     }
