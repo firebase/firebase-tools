@@ -128,7 +128,7 @@ var testUnknownFilter = function() {
   return new RSVP.Promise(function(resolve) {
     exec('> functions/index.js &&' + localFirebase + ' deploy --only functions:unknownFilter', {'cwd': tmpDir}, function(err, stdout) {
       console.log(stdout);
-      expect(stdout).to.contain('the following filters were passed but don\'t match any functions in current project or currently being exported: unknownFilter');
+      expect(stdout).to.contain('the following filters were specified but do not match any functions in the project: unknownFilter');
       expect(err).to.be.null;
       resolve(checkFunctionsListMatch(['httpsAction']));
     });
