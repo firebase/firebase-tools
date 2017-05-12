@@ -94,5 +94,8 @@
     "sinon": "^1.17.4",
     "sinon-as-promised": "^4.0.0",
     "sinon-chai": "^2.8.0"
+  },
+  "optionalDependencies": {
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.19"
   }
 }
