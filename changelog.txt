@@ -1,2 +1,2 @@
-feature - Experimental: add ability to locally emulate HTTPS functions with "firebase serve --only functions". (Run "firebase serve --only functions,hosting" to emulate both functions and hosting.)
+feature - [Experimental] Add ability to locally emulate HTTPS functions with "firebase serve --only functions". Run "firebase serve --only functions,hosting" to serve both functions and hosting.
 feature - Add ability to target specific functions and export groups when deploying functions with "firebase deploy --only functions:function1,functions:groupA.function2".
