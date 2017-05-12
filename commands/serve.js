@@ -32,7 +32,12 @@ module.exports = new Command('serve')
       utils.logWarning('No Firebase project directory detected. Serving static content from ' + chalk.bold(options.cwd || process.cwd()));
     }
 
-    var targets = filterTargets(options, VALID_TARGETS);
+    var targets;
+    if (options.only || options.except) {
+      targets = filterTargets(options, VALID_TARGETS);
+    } else {
+      targets = ['hosting']; // default to only hosting while functions emulation is experimental
+    }
     options.targets = targets;
     return serve(options);
   });
