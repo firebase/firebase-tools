@@ -1,0 +1,1 @@
+feature - Adds support for Cloud Function rewrites in Firebase Hosting via deploy and `firebase serve`.
