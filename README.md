@@ -43,10 +43,13 @@ Command | Description
 **logout** | Sign out of the Firebase CLI.
 **login:ci** | Generate an authentication token for use in non-interactive environments.
 **list** | Print a list of all of your Firebase projects.
+**setup:web** | Print out SDK setup information for the Firebase JS SDK.
 **use** | Set active Firebase project, manage project aliases.
 **open** | Quickly open a browser to relevant project resources.
 **init** | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
+
+Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine. 
 
 ### Deployment and Local Development
 
