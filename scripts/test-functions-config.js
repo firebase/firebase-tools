@@ -74,6 +74,8 @@ var main = function() {
   .then(function() {
     return runTest('string value in quotes', 'foo.bar="faz"', 'foo', {foo: {bar: 'faz'}});
   }).then(function() {
+    return runTest('string value with quotes', 'foo.bar=\'"faz"\'', 'foo', {foo: {bar: '\"faz\"'}});
+  }).then(function() {
     return runTest('single-part key and JSON value', 'foo=\'{"bar":"faz"}\'', 'foo', {foo: {bar: 'faz'}});
   }).then(function() {
     return runTest('multi-part key and JSON value', 'foo.too=\'{"bar":"faz"}\'', 'foo', {foo: {too: {bar: 'faz'}}});
