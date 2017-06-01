@@ -1,0 +1,3 @@
+important - Running "firebase deploy" with database functions that have not been updated since February 2017 will result in an "provider change not allowed" error. To work around this, comment out the functions, run "firebase deploy" to delete them, uncomment the functions, then run "firebase deploy" to re-create them.
+fixed - Fixes bug where firebase functions:config:set does not work with numeric values.
+fixed - Fixes issues using firebase-admin SDK in locally emulated functions (e.g. writing to a database).
