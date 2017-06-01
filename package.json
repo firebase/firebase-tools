@@ -26,9 +26,9 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=0.10.0"
+    "node": ">=0.10.0 <8.0.0"
   },
-  "engine-strict": true,
+  "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
   "bugs": {
