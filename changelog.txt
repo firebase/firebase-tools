@@ -1,0 +1,2 @@
+fixed - Fixes bug where firebase functions:config:set does not work with numeric values.
+fixed - Fixes issues using firebase-admin SDK in locally emulated functions (e.g. writing to a database).
