@@ -67,7 +67,7 @@
     "open": "^0.0.5",
     "ora": "0.2.3",
     "portfinder": "^0.4.0",
-    "progress": "^1.1.8",
+    "progress": "^2.0.0",
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
