@@ -20,11 +20,13 @@ module.exports = new Command('serve')
   .option('-o, --host <host>', 'the host on which to listen (default: localhost)', 'localhost')
   .option('--only <targets>', 'only serve specified targets')
   .option('--except <targets>', 'serve all except specified targets')
+  .option('--hosting-public <targets>', 'override public directory')
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
   .action(function(options) {
-    if (options.config) {
+
+    if (options.public) {
       logger.info();
       logger.info(chalk.bold(chalk.gray('===') + ' Serving from \'' + options.config.projectDir +  '\'...'));
       logger.info();
