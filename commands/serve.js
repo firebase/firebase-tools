@@ -25,7 +25,6 @@ module.exports = new Command('serve')
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
   .action(function(options) {
-
     if (options.public) {
       logger.info();
       logger.info(chalk.bold(chalk.gray('===') + ' Serving from \'' + options.config.projectDir +  '\'...'));
