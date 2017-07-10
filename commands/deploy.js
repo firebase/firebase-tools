@@ -26,6 +26,13 @@ module.exports = new Command('deploy')
   .option('--except <targets>', 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before(function(options) {
+    if (options.verbose) {
+      logger.add(require('winston').transports.Console, {
+        level: process.env.DEBUG ? 'debug' : 'info',
+        showLevel: false,
+        colorize: true
+      });
+    }
     return acquireRefs(options, [scopes.CLOUD_PLATFORM])
       .catch(function(err) {
         if (options.config.has('functions')) {
