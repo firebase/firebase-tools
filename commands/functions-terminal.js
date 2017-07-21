@@ -20,11 +20,14 @@ module.exports = new Command('functions:terminal')
     var emulator = new FunctionsEmulator(options);
 
     return emulator.start().then(function() {
+      console.log('triggers: ', emulator.triggers)
       var replServer = repl.start({
         prompt: 'functions > '
       });
-      _.forEach(emulator.emulatedFunctions, function(funcName) {
-        replServer.context[funcName] = new CallableFunction(funcName, emulator.controller);
+      _.forEach(emulator.triggers, function(trigger) {
+        if (_.includes(emulator.emulatedFunctions, trigger.name)) {
+          replServer.context[trigger.name] = new CallableFunction(trigger, emulator.controller);
+        }
       });
       replServer.context.config = emulator.config;
     }).then(function() {
