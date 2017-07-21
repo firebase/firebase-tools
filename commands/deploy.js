@@ -6,11 +6,8 @@ var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var checkValidTargetFilters = require('../lib/checkValidTargetFilters');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
-<<<<<<< HEAD
 var previews = require('../lib/previews');
-=======
 var logger = require('../lib/logger');
->>>>>>> b7315fb35ab8ab1a3e5a0a06bc20691ac21d410a
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
 var utils = require('../lib/utils');
