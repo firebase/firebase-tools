@@ -16,7 +16,9 @@ module.exports = new Command('functions:terminal')
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
+    options.port = parseInt(options.port, 10);
     var emulator = new FunctionsEmulator(options);
+
     return emulator.start().then(function() {
       var replServer = repl.start({
         prompt: 'functions > '
@@ -25,6 +27,7 @@ module.exports = new Command('functions:terminal')
       _.forEach(emulator.emulatedFunctions, function(funcName) {
         replServer.context[funcName] = new callableFunction(funcName, emulator.controller);
       });
+      replServer.context.config = emulator.config;
 
     }).then(function() {
       return new RSVP.Promise(function(resolve) {
