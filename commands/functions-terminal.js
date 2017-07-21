@@ -4,7 +4,7 @@ var repl = require('repl');
 var _ = require('lodash');
 var RSVP = require('rsvp');
 var FunctionsEmulator = require('../lib/functionsEmulator');
-var callableFunction = require('../lib/callableFunction');
+var CallableFunction = require('../lib/callableFunction');
 var Command = require('../lib/command');
 var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
@@ -23,17 +23,15 @@ module.exports = new Command('functions:terminal')
       var replServer = repl.start({
         prompt: 'functions > '
       });
-
       _.forEach(emulator.emulatedFunctions, function(funcName) {
-        replServer.context[funcName] = new callableFunction(funcName, emulator.controller);
+        replServer.context[funcName] = new CallableFunction(funcName, emulator.controller);
       });
       replServer.context.config = emulator.config;
-
     }).then(function() {
       return new RSVP.Promise(function(resolve) {
         process.on('SIGINT', function() {
           return emulator.stop().then(resolve).catch(resolve);
         });
-      })
+      });
     });
-	});
+  });
