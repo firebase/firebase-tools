@@ -13,15 +13,20 @@ var combinerFunc = function(obj1, obj2) {
 
 var fixturesDir = path.resolve(__dirname, '../fixtures');
 
+var newReport = function() {
+  var input = path.resolve(fixturesDir, 'profiler-data/sample.json');
+  var throwAwayStream = new stream.PassThrough();
+  return new ProfileReport(input, throwAwayStream, {
+    format: 'JSON',
+    isFile: false,
+    collapse: true
+  });
+};
+
 describe('profilerReport', function() {
   it('should correctly generate a report', function() {
-    var input = path.resolve(fixturesDir, 'profiler-data/sample.json');
+    var report = newReport();
     var output = require(path.resolve(fixturesDir, 'profiler-data/sample-output.json'));
-    var throwAwayStream = new stream.PassThrough();
-    var report = new ProfileReport(input, throwAwayStream, {
-      format: 'JSON',
-      isFile: false
-    });
     expect(report.generate()).to.eventually.deep.equal(output);
   });
 
@@ -43,7 +48,7 @@ describe('profilerReport', function() {
   });
 
   it('should not collapse paths if not needed', function() {
-    var report = new ProfileReport();
+    var report = newReport();
     var data = {};
     for (var i = 0; i < 20; i++) {
       data['/path/num' + i] = {count: 1};
@@ -53,7 +58,7 @@ describe('profilerReport', function() {
   });
 
   it('should collapse paths to $wildcard', function() {
-    var report = new ProfileReport();
+    var report = newReport();
     var data = {};
     for (var i = 0; i < 30; i++) {
       data['/path/num' + i] = {count: 1};
@@ -62,8 +67,19 @@ describe('profilerReport', function() {
     expect(result).to.deep.eq({'/path/$wildcard': {count: 30}});
   });
 
+  it('should not collapse paths with --no-collapse', function() {
+    var report = newReport();
+    report.options.collapse = false;
+    var data = {};
+    for (var i = 0; i < 30; i++) {
+      data['/path/num' + i] = {count: 1};
+    }
+    var result = report.collapsePaths(data, combinerFunc);
+    expect(result).to.deep.eq(data);
+  });
+
   it('should collapse paths recursively', function() {
-    var report = new ProfileReport();
+    var report = newReport();
     var data = {};
     for (var i = 0; i < 30; i++) {
       data['/path/num' + i + '/next' + i] = {count: 1};

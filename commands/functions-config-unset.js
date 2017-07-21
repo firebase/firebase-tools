@@ -18,7 +18,7 @@ module.exports = new Command('functions:config:unset [keys...]')
   .before(functionsConfig.ensureApi)
   .action(function(args, options) {
     if (!args.length) {
-      return utils.reject('Must supply at least one key, e.g. ' + chalk.bold('app.name'));
+      return utils.reject('Must supply at least one key');
     }
     var projectId = getProjectId(options);
     var parsed = functionsConfig.parseUnsetArgs(args);
