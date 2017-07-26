@@ -20,7 +20,6 @@ module.exports = new Command('functions:terminal')
     var emulator = new FunctionsEmulator(options);
 
     return emulator.start().then(function() {
-      console.log('triggers: ', emulator.triggers)
       var replServer = repl.start({
         prompt: 'functions > '
       });
