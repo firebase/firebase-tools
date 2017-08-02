@@ -1,0 +1,4 @@
+feature - Added --no-collapse flag to "firebase database:profile" to prevent collapsing of similiar path names in report.
+fixed - __session cookie is now properly emulated for Hosting function calls.
+fixed - Fixed bug where hidden folders and files were ignored during functions deploy.
+fixed - Fixed bug where functions were emulated on 2 ports higher than was specified in the --port flag.
