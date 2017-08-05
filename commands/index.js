@@ -52,6 +52,9 @@ module.exports = function(client) {
     web: loadCommand('setup-web')
   };
 
+  client.target = loadCommand('target');
+  client.target.apply = loadCommand('target-apply');
+
   client.tools = {
     migrate: loadCommand('tools-migrate')
   };
