@@ -25,7 +25,8 @@ module.exports = new Command('functions:terminal')
       });
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-          replServer.context[trigger.name] = new CallableFunction(trigger, emulator.controller);
+          var callableFunction = new CallableFunction(trigger, emulator.controller)
+          replServer.context[trigger.name] = callableFunction.call;
         }
       });
       replServer.context.config = emulator.config;
