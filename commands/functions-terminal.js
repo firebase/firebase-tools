@@ -19,7 +19,7 @@ module.exports = new Command('functions:terminal')
     options.port = parseInt(options.port, 10);
     var emulator = new FunctionsEmulator(options);
 
-    return emulator.start().then(function() {
+    return emulator.start(true).then(function() {
       var replServer = repl.start({
         prompt: 'functions > '
       });
