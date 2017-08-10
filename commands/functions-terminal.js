@@ -6,6 +6,7 @@ var RSVP = require('rsvp');
 var FunctionsEmulator = require('../lib/functionsEmulator');
 var CallableFunction = require('../lib/callableFunction');
 var Command = require('../lib/command');
+var logger = require('../lib/logger');
 var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
@@ -20,6 +21,10 @@ module.exports = new Command('functions:terminal')
     var emulator = new FunctionsEmulator(options);
 
     return emulator.start(true).then(function() {
+      if (emulator.emulatedFunctions.length === 0) {
+        logger.info('No functions emulated.');
+        process.exit();
+      }
       var replServer = repl.start({
         prompt: 'functions > '
       });
