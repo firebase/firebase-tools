@@ -3,6 +3,9 @@
 var repl = require('repl');
 var _ = require('lodash');
 var RSVP = require('rsvp');
+var request = require('request');
+var util = require('util');
+
 var FunctionsEmulator = require('../lib/functionsEmulator');
 var CallableFunction = require('../lib/callableFunction');
 var Command = require('../lib/command');
@@ -25,9 +28,20 @@ module.exports = new Command('functions:terminal')
         logger.info('No functions emulated.');
         process.exit();
       }
+
+      var writer = function(output) {
+        if (output instanceof request.Request) {
+          return 'Sent request to function.';
+        }
+        return util.inspect(output);
+      };
+
       var replServer = repl.start({
-        prompt: 'functions > '
+        prompt: 'functions > ',
+        writer: writer,
+        useColors: true
       });
+
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
           var callableFunction = new CallableFunction(trigger, emulator.urls, emulator.controller);
