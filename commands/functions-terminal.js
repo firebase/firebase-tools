@@ -30,6 +30,7 @@ module.exports = new Command('functions:terminal')
       }
 
       var writer = function(output) {
+        // Prevent full print out of Request object when a request is made
         if (output instanceof request.Request) {
           return 'Sent request to function.';
         }
