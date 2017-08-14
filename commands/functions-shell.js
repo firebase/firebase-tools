@@ -14,8 +14,8 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
 
-module.exports = new Command('functions:terminal')
-  .description('launch terminal with emulated functions')
+module.exports = new Command('functions:shell')
+  .description('launch full Node shell with emulated functions')
   .option('-p, --port <port>', 'the port on which to emulate functions (default: 5000)', 5000)
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
