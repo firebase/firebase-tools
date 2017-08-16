@@ -17,7 +17,7 @@ module.exports = new Command('logout')
     var tokens = configstore.get('tokens');
     var currentToken = _.get(tokens, 'refresh_token');
     var token = utils.getInheritedOption(options, 'token') || currentToken;
-    api.setToken(token);
+    api.setRefreshToken(token);
     var next;
     if (token) {
       next = auth.logout(token);
