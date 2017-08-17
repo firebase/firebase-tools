@@ -7,7 +7,7 @@ var request = require('request');
 var util = require('util');
 
 var FunctionsEmulator = require('../lib/functionsEmulator');
-var CallableFunction = require('../lib/callableFunction');
+var LocalFunction = require('../lib/localFunction');
 var Command = require('../lib/command');
 var logger = require('../lib/logger');
 var requireAccess = require('../lib/requireAccess');
@@ -45,8 +45,8 @@ module.exports = new Command('functions:shell')
 
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-          var callableFunction = new CallableFunction(trigger, emulator.urls, emulator.controller);
-          replServer.context[trigger.name] = callableFunction.call;
+          var localFunction = new LocalFunction(trigger, emulator.urls, emulator.controller);
+          replServer.context[trigger.name] = localFunction.call;
         }
       });
       replServer.context.config = emulator.config;
