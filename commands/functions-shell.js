@@ -14,7 +14,7 @@ var requireAccess = require('../lib/requireAccess');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
 
-module.exports = new Command('functions:shell')
+module.exports = new Command('experimental:functions:shell')
   .description('launch full Node shell with emulated functions')
   .option('-p, --port <port>', 'the port on which to emulate functions (default: 5000)', 5000)
   .before(requireConfig)
@@ -37,8 +37,10 @@ module.exports = new Command('functions:shell')
         return util.inspect(output);
       };
 
+      var prompt = process.platform === 'darwin' ? '🔥 > ' : 'firebase > ';
+
       var replServer = repl.start({
-        prompt: 'functions > ',
+        prompt: prompt,
         writer: writer,
         useColors: true
       });
