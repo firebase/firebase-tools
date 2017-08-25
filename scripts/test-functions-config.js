@@ -20,7 +20,7 @@ var preTest = function() {
   var dir = tmp.dirSync({prefix: 'cfgtest_'});
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  api.setToken(configstore.get('tokens').refresh_token);
+  api.setRefreshToken(configstore.get('tokens').refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   console.log('Done pretest prep.');
 };

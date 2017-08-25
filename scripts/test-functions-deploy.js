@@ -53,7 +53,7 @@ var preTest = function() {
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
   execSync('npm install', {'cwd': tmpDir + '/functions'});
-  api.setToken(configstore.get('tokens').refresh_token);
+  api.setRefreshToken(configstore.get('tokens').refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   var config = {
     apiKey: 'AIzaSyCLgng7Qgzf-2UKRPLz--LtLLxUsMK8oco',
