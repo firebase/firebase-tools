@@ -1,3 +1,0 @@
-feature - The Firebase CLI now supports Google Application Default Credentials for authentication.
-fixed - The `--json` and `--non-interactive` behaviors of `firebase use` have been improved.
-fixed - An issue with functions `ignore` rules has been addressed.
