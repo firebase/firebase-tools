@@ -26,7 +26,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=4"
+    "node": ">=4.5"
   },
   "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
