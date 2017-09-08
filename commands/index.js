@@ -29,7 +29,6 @@ module.exports = function(client) {
 
   client.functions = {
     log: loadCommand('functions-log'),
-    shell: loadCommand('functions-shell'),
     config: {
       clone: loadCommand('functions-config-clone'),
       get: loadCommand('functions-config-get'),
