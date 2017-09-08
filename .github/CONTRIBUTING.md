@@ -22,3 +22,16 @@ use GitHub pull requests for this purpose. Consult [GitHub Help] for more
 information on using pull requests.
 
 [GitHub Help]: https://help.github.com/articles/about-pull-requests/
+
+## Development setup
+
+When working on the Firebase CLI, you will want to [fork the project](https://help.github.com/articles/fork-a-repo/), clone the forked repository, and then use `npm link` to globally link your working directory. This allows you to use the firebase command anywhere with your work-in-progress code.
+
+```
+git clone <your_forked_repo>
+cd firebase-tools # navigate to your local repository
+npm link
+npm test # runs linter and tests
+```
+
+Now, whenever you run the firebase command, it is executing against the code in your working directory. This is great for manual testing.

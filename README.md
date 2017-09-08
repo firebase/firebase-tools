@@ -89,6 +89,7 @@ Command | Description
 **functions:config:get** | Retrieve existing configuration values for the current project's Cloud Functions.
 **functions:config:unset** | Remove values from the current project's runtime configuration.
 **functions:config:clone** | Copy runtime configuration from one project environment to another.
+**experimental:functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
 
 ### Hosting Commands
 
