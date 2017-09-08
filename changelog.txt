@@ -1,2 +1,3 @@
+important - Firebase CLI is only compatible with Node.js v4.5 and greater. This has been true for some time, but is now properly reflected in the engines requirement.
 fixed - Fixed issue with project aliases not persisting correctly.
 fixed - Fixed issue with nested objects and `functions:config:set`.
