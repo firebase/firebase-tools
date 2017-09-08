@@ -1,2 +1,2 @@
 fixed - Fixed issue with project aliases not persisting correctly.
-fixed - Fixed issue with nested objects and `functions:config:set`
+fixed - Fixed issue with nested objects and `functions:config:set`.
