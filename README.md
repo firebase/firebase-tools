@@ -119,7 +119,7 @@ will immediately revoke access for the specified token.
 
 ## Using as a Module
 
-The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+The Firebase CLI can also be used programmatically as a standard Node module. This can only be done on your machine, and cannot be done within Cloud Functions. Each command is exposed as a function that takes an options object and returns a Promise. For example:
 
 ```js
 var client = require('firebase-tools');
