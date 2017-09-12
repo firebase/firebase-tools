@@ -1,0 +1,1 @@
+feature - Added "firebase experimental:functions:shell" for emulating and invoking functions. Instructions for usage at https://firebase.google.com/docs/functions/local-emulator.
