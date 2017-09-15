@@ -1,1 +1,0 @@
-feature - feature - Added `experimental:functions:shell` command for emulating and invoking functions via an interactive shell. Instructions for usage at https://goo.gl/arxNr5.
