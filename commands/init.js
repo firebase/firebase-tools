@@ -65,6 +65,7 @@ module.exports = new Command('init [feature]')
 
     var choices = [
       {name: 'database', label: 'Database: Deploy Firebase Realtime Database Rules', checked: false},
+      {name: 'firestore', label: 'Firestore: Deploy security rules for Firestore', checked: false},
       {name: 'functions', label: 'Functions: Configure and deploy Cloud Functions', checked: false},
       {name: 'hosting', label: 'Hosting: Configure and deploy Firebase Hosting sites', checked: false}
       // {name: 'storage', label: 'Storage: Deploy Firebase Storage Security Rules', checked: true}

@@ -6,7 +6,6 @@ var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var checkValidTargetFilters = require('../lib/checkValidTargetFilters');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
-var previews = require('../lib/previews');
 var logger = require('../lib/logger');
 var requireConfig = require('../lib/requireConfig');
 var scopes = require('../lib/scopes');
@@ -15,9 +14,6 @@ var filterTargets = require('../lib/filterTargets');
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ['database', 'storage', 'firestore', 'functions', 'hosting'];
-if (!previews.firestore) {
-  VALID_TARGETS.splice(2, 1);
-}
 
 module.exports = new Command('deploy')
   .description('deploy code and assets to your Firebase project')
