@@ -1,0 +1,2 @@
+feature - `auth:import` now supports standard SCrypt, SHA512, and importing phone numbers.
+fixed - Fixed regression causing Hosting + Functions emulation to respond with 500 errors.
