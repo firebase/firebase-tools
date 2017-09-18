@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "3.10.0-firestore.1",
+  "version": "3.12.0-firestore.1",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
@@ -26,7 +26,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=4.5"
+    "node": "^4.5 || >=5.10"
   },
   "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
