@@ -49,7 +49,7 @@ Command | Description
 **init** | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
 
-Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine. 
+Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine.
 
 ### Deployment and Local Development
 
@@ -79,6 +79,12 @@ Command | Description
 **database:remove** | Delete all data at a specified location in the current project's database.
 **database:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
 **database:profile** | Profile database usage and generate a report.
+
+### Cloud Firestore Commands
+
+Command | Description
+------- | -----------
+**firestore:delete** | Delete documents or collections from the current project's database. Supports recursive deletion of subcollections.
 
 ### Cloud Functions Commands
 
