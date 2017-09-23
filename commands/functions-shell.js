@@ -37,7 +37,7 @@ module.exports = new Command('experimental:functions:shell')
         return util.inspect(output);
       };
 
-      var prompt = process.platform === 'darwin' ? '🔥 > ' : 'firebase > ';
+      var prompt = 'firebase > ';
 
       var replServer = repl.start({
         prompt: prompt,
