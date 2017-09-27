@@ -27,7 +27,10 @@ module.exports = new Command('auth:import [dataFile]')
   .option('--salt-separator <saltSeparator>',
       'specify the salt separator which will be appended to salt when verifying password. only used by SCRYPT now.')
   .option('--rounds <rounds>', 'specify how many rounds for hash calculation.')
-  .option('--mem-cost <memCost>', 'specify the memory cost for hash calculation.')
+  .option('--mem-cost <memCost>', 'specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt')
+  .option('--parallelization <parallelization>', 'specify the parallelization for standard scrypt.')
+  .option('--block-size <blockSize>', 'specify the block size (normally is 8) for standard scrypt.')
+  .option('--dk-len <dkLen>', 'specify derived key length for standard scrypt.')
   .before(requireAccess)
   .action(function(dataFile, options) {
     var projectId = getProjectId(options);

@@ -119,7 +119,7 @@ module.exports = new Command('use [alias_or_project_id]')
       logger.info();
       listAliases(options);
     } else { // firebase use
-      if (!process.stdout.isTTY) {
+      if (options.nonInteractive || !process.stdout.isTTY) {
         if (options.project) {
           logger.info(options.project);
           return options.project;
@@ -140,5 +140,6 @@ module.exports = new Command('use [alias_or_project_id]')
       }
       logger.info();
       listAliases(options);
+      return options.project;
     }
   });

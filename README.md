@@ -1,4 +1,4 @@
-# Firebase CLI [![Build Status](https://travis-ci.org/firebase/firebase-tools.svg?branch=master)](https://travis-ci.org/firebase/firebase-tools) [![Coverage Status](https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat)](https://coveralls.io/r/firebase/firebase-tools) [![NPM version](https://badge.fury.io/js/firebase-tools.svg)](http://badge.fury.io/js/firebase-tools)
+# Firebase CLI [![Build Status](https://travis-ci.org/firebase/firebase-tools.svg?branch=master)](https://travis-ci.org/firebase/firebase-tools) [![Coverage Status](https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat)](https://coveralls.io/r/firebase/firebase-tools) [![Node Version](https://img.shields.io/node/v/firebase-tools.svg)](https://www.npmjs.com/package/firebase-tools) [![NPM version](https://badge.fury.io/js/firebase-tools.svg)](http://badge.fury.io/js/firebase-tools)
 
 These are the Firebase Command Line Interface (CLI) Tools. They can be used to:
 
@@ -49,7 +49,7 @@ Command | Description
 **init** | Setup a new Firebase project in the current directory. This command will create a `firebase.json` configuration file in your current directory.
 **help** | Display help information about the CLI or specific commands.
 
-Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine. 
+Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy and paste code instead of starting a local server for authentication. A use case might be if you SSH into an instance somewhere and you need to authenticate to Firebase on that machine.
 
 ### Deployment and Local Development
 
@@ -89,6 +89,7 @@ Command | Description
 **functions:config:get** | Retrieve existing configuration values for the current project's Cloud Functions.
 **functions:config:unset** | Remove values from the current project's runtime configuration.
 **functions:config:clone** | Copy runtime configuration from one project environment to another.
+**experimental:functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
 
 ### Hosting Commands
 
@@ -119,7 +120,7 @@ will immediately revoke access for the specified token.
 
 ## Using as a Module
 
-The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+The Firebase CLI can also be used programmatically as a standard Node module. This can only be done on your machine, and cannot be done within Cloud Functions. Each command is exposed as a function that takes an options object and returns a Promise. For example:
 
 ```js
 var client = require('firebase-tools');

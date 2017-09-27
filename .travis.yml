@@ -1,9 +1,8 @@
 language: node_js
 node_js:
-- '0.10'
-- '0.12'
-- '4'
-- '6'
+- '4.5'
+- '5.10'
+- stable
 sudo: false
 after_script:
 - cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
