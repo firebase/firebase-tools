@@ -12,22 +12,12 @@ module.exports = new Command('target:apply <type> <name> <resources...>')
   .description('apply a deploy target to a resource')
   .before(requireConfig)
   .action(function(type, name, resources, options) {
-    var changes = [];
-    console.log(options.project);
+    var changes = options.rc.applyTarget(options.project, type, name, resources);
 
-    _.forEach(resources, function(resource) {
-      var prev = options.findTarget(type, resource);
-      if (prev) {
-        changes.push({resource: resource, target: prev});
-      }
-    });
-
-    options.rc.applyTarget(options.project, type, name, resources);
-
-    utils.logSuccess('Applied target ' + chalk.bold(name) + ' to ' + chalk.bold(resources.join(', ')));
+    utils.logSuccess('Applied ' + type + ' target ' + chalk.bold(name) + ' to ' + chalk.bold(resources.join(', ')));
     _.forEach(changes, function(change) {
-      utils.logWarning('Previous target ' + chalk.bold(change.target) + ' removed from ' + change.resource);
+      utils.logWarning('Previous target ' + chalk.bold(change.target) + ' removed from ' + chalk.bold(change.resource));
     });
     logger.info();
-    logger.info('Updated: ' + name + ' (' + options.rc.targets+ ')')
+    logger.info('Updated: ' + name + ' (' + options.rc.target(options.project, type, name).join(',') + ')');
   });
