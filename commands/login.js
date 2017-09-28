@@ -30,7 +30,7 @@ module.exports = new Command('login')
     return prompt(options, [{
       type: 'confirm',
       name: 'collectUsage',
-      message: 'Allow Firebase to collect anonymous CLI usage information?'
+      message: 'Allow Firebase to collect anonymous CLI usage and error reporting information?'
     }]).then(function() {
       configstore.set('usage', options.collectUsage);
       return auth.login(options.localhost);
