@@ -30,7 +30,9 @@ var LINKS = [
   {name: 'Notifications', arg: 'notifications', consoleUrl: '/notification'},
   {name: 'Dynamic Links', arg: 'links', consoleUrl: '/durablelinks'},
   {name: 'Project Settings', arg: 'settings', consoleUrl: '/settings/general'},
-  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'}
+  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'},
+  {name: 'Functions Log', arg: 'functions:log'},
+  {name: 'Functions Dashboard', arg: 'functions'}
 ];
 
 var CHOICES = _.map(LINKS, 'name');

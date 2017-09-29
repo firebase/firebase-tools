@@ -80,12 +80,6 @@ Command | Description
 **database:update** | Perform a partial update at a specified location in the current project's database. Takes input from file, STDIN, or command-line argument.
 **database:profile** | Profile database usage and generate a report.
 
-### Cloud Firestore Commands
-
-Command | Description
-------- | -----------
-**firestore:delete** | Delete documents or collections from the current project's database. Supports recursive deletion of subcollections.
-
 ### Cloud Functions Commands
 
 Command | Description

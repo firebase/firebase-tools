@@ -21,10 +21,6 @@ module.exports = function(client) {
     profile: loadCommand('database-profile')
   };
 
-  client.firestore = {
-    delete: loadCommand('firestore-delete')
-  };
-
   client.deploy = loadCommand('deploy');
 
   client.hosting = {
