@@ -13,7 +13,7 @@ var utils = require('../lib/utils');
 var filterTargets = require('../lib/filterTargets');
 
 // in order of least time-consuming to most time-consuming
-var VALID_TARGETS = ['database', 'storage', 'functions', 'hosting'];
+var VALID_TARGETS = ['database', 'storage', 'firestore', 'functions', 'hosting'];
 
 module.exports = new Command('deploy')
   .description('deploy code and assets to your Firebase project')
