@@ -1,0 +1,6 @@
+important - Cloud Firestore is now available!
+feature - Added deployment of Cloud Firestore rules and indexes with `firebase deploy`.
+feature - Added `firestore:delete` command to manage Cloud Firestore data deletion.
+feature - Added `target:*` commands for grouping deployable resources.
+feature - Added multi-bucket Cloud Storage rules deployment via targets.
+feature - Realtime Database syntax errors are now caught earlier in deploy process.
