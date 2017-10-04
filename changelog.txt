@@ -1,0 +1,1 @@
+fixed - Fixed bug where local functions emulation does not print a friendly error message when there are syntax errors in the code.
