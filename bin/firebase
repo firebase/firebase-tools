@@ -17,6 +17,7 @@ var configstore = require('../lib/configstore');
 var _ = require('lodash');
 var args = process.argv.slice(2);
 var handlePreviewToggles = require('../lib/handlePreviewToggles');
+var utils = require('../lib/utils');
 var cmd;
 
 var logFilename = path.join(process.cwd(), '/firebase-debug.log');
@@ -44,11 +45,14 @@ if (_.includes(args, '--debug')) {
 }
 
 logger.debug(_.repeat('-', 70));
-logger.debug('Command:     ', process.argv.join(' '));
-logger.debug('CLI Version: ', pkg.version);
-logger.debug('Platform:    ', process.platform);
-logger.debug('Node Version:', process.version);
-logger.debug('Time:        ', new Date().toString());
+logger.debug('Command:      ', process.argv.join(' '));
+logger.debug('CLI Version:  ', pkg.version);
+logger.debug('Platform:     ', process.platform);
+logger.debug('Node Version: ', process.version);
+logger.debug('Time:         ', new Date().toString());
+if (utils.envOverrides.length) {
+  logger.debug('Env Overrides:', utils.envOverrides.join(', '));
+}
 logger.debug(_.repeat('-', 70));
 logger.debug();
 

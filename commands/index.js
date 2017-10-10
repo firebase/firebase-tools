@@ -21,6 +21,10 @@ module.exports = function(client) {
     profile: loadCommand('database-profile')
   };
 
+  client.firestore = {
+    delete: loadCommand('firestore-delete')
+  };
+
   client.deploy = loadCommand('deploy');
 
   client.hosting = {
@@ -29,6 +33,7 @@ module.exports = function(client) {
 
   client.functions = {
     log: loadCommand('functions-log'),
+    shell: loadCommand('functions-shell'),
     config: {
       clone: loadCommand('functions-config-clone'),
       get: loadCommand('functions-config-get'),
@@ -51,6 +56,11 @@ module.exports = function(client) {
   client.setup = {
     web: loadCommand('setup-web')
   };
+
+  client.target = loadCommand('target');
+  client.target.apply = loadCommand('target-apply');
+  client.target.clear = loadCommand('target-clear');
+  client.target.remove = loadCommand('target-remove');
 
   client.tools = {
     migrate: loadCommand('tools-migrate')

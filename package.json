@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "3.9.1",
+  "version": "3.13.1",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
@@ -26,7 +26,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=0.10.0 <8.0.0"
+    "node": "^4.5 || >=5.10"
   },
   "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
@@ -60,9 +60,10 @@
     "fs-extra": "^0.23.1",
     "fstream-ignore": "^1.0.5",
     "glob": "^7.1.2",
+    "google-auto-auth": "^0.7.2",
     "inquirer": "^0.12.0",
     "jsonschema": "^1.0.2",
-    "jsonwebtoken": "^5.4.0",
+    "jsonwebtoken": "^7.4.1",
     "lodash": "^4.6.1",
     "open": "^0.0.5",
     "ora": "0.2.3",
@@ -71,7 +72,7 @@
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
-    "superstatic": "^4.1",
+    "superstatic": "^5.0.1",
     "tar": "^3.1.5",
     "tmp": "0.0.27",
     "universal-analytics": "^0.3.9",
@@ -97,6 +98,6 @@
     "sinon-chai": "^2.8.0"
   },
   "optionalDependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-alpha.19"
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.23"
   }
 }

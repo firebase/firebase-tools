@@ -9,7 +9,7 @@ var _ = require('lodash');
 var logger = require('../lib/logger');
 
 module.exports = new Command('list')
-  .description('list the Firebases to which you have access')
+  .description('list the Firebase projects you have access to')
   .before(requireAuth)
   .action(function(options) {
     return api.getProjects().then(function(projects) {
