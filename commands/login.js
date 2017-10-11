@@ -13,6 +13,7 @@ module.exports = new Command('login')
   .description('log the CLI into Firebase')
   .option('--no-localhost', 'copy and paste a code instead of starting a local server for authentication')
   .option('--reauth', 'force reauthentication even if already logged in')
+  .option('--disableUsageCollection', 'do not prompt about usage collection')
   .action(function(options) {
     if (options.nonInteractive) {
       return utils.reject('Cannot run login in non-interactive mode. See ' +
@@ -27,12 +28,14 @@ module.exports = new Command('login')
       return RSVP.resolve(user);
     }
 
-    return prompt(options, [{
+    var collectUsagePrompt = options.disableUsageCollection ? Promise.resolve() : prompt(options, [{
       type: 'confirm',
       name: 'collectUsage',
       message: 'Allow Firebase to collect anonymous CLI usage and error reporting information?'
-    }]).then(function() {
-      configstore.set('usage', options.collectUsage);
+    }]);
+
+    return collectUsagePrompt.then(function() {
+      configstore.set('usage', options.disableUsageCollection ? false : options.collectUsage);
       return auth.login(options.localhost);
     }).then(function(result) {
       configstore.set('user', result.user);
