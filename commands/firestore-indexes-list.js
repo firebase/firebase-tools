@@ -4,26 +4,27 @@ var Command = require('../lib/command');
 var firestoreIndexes = require('../lib/firestore/indexes.js');
 var requireAccess = require('../lib/requireAccess');
 var scopes = require('../lib/scopes');
+var logger = require('../lib/logger');
 
 var _prettyPrint = function(indexes) {
   indexes.forEach(function(index) {
-    process.stdout.write(firestoreIndexes.toPrettyString(index) + '\n');
+    logger.info(firestoreIndexes.toPrettyString(index));
   });
 };
 
-var _jsonPrint = function(indexes) {
-  var jsonObj = {
+var _makeJsonSpec = function(indexes) {
+  var jsonSpec = {
     indexes: []
   };
 
   indexes.forEach(function(index) {
-    jsonObj.indexes.push({
+    jsonSpec.indexes.push({
       collectionId: index.collectionId,
       fields: index.fields
     });
   });
 
-  process.stdout.write(JSON.stringify(jsonObj, undefined, 2));
+  return jsonSpec;
 };
 
 module.exports = new Command('firestore:indexes')
@@ -34,10 +35,14 @@ module.exports = new Command('firestore:indexes')
   .action(function(options) {
     return firestoreIndexes.list(options.project)
       .then(function(indexes) {
+        var jsonSpec = _makeJsonSpec(indexes);
+
         if (options.pretty) {
           _prettyPrint(indexes);
         } else {
-          _jsonPrint(indexes);
+          logger.info(JSON.stringify(jsonSpec, undefined, 2));
         }
+
+        return jsonSpec;
       });
   });
