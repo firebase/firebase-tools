@@ -5,6 +5,7 @@ var firestoreIndexes = require('../lib/firestore/indexes.js');
 var requireAccess = require('../lib/requireAccess');
 var scopes = require('../lib/scopes');
 var logger = require('../lib/logger');
+var _ = require('lodash');
 
 var _prettyPrint = function(indexes) {
   indexes.forEach(function(index) {
@@ -13,24 +14,17 @@ var _prettyPrint = function(indexes) {
 };
 
 var _makeJsonSpec = function(indexes) {
-  var jsonSpec = {
-    indexes: []
+  return {
+    indexes: indexes.map(function(index) {
+      return _.pick(index, ['collectionId', 'fields']);
+    })
   };
-
-  indexes.forEach(function(index) {
-    jsonSpec.indexes.push({
-      collectionId: index.collectionId,
-      fields: index.fields
-    });
-  });
-
-  return jsonSpec;
 };
 
 module.exports = new Command('firestore:indexes')
-  .description('List indexes on a Cloud Firestore project.')
-  .option('--pretty', 'Pretty print. When not specified the indexes are printed in the same format '
-      + 'as the input deployment specification file.')
+  .description('List indexes in your project\'s CLoud Firestore database.')
+  .option('--pretty', 'Pretty print. When not specified the indexes are printed in the '
+      + 'JSON specification format.')
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
     return firestoreIndexes.list(options.project)
