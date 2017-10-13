@@ -85,6 +85,7 @@ Command | Description
 Command | Description
 ------- | -----------
 **firestore:delete** | Delete documents or collections from the current project's database. Supports recursive deletion of subcollections.
+**firestore:indexes** | List all deployed indexes from the current project.
 
 ### Cloud Functions Commands
 

@@ -22,7 +22,8 @@ module.exports = function(client) {
   };
 
   client.firestore = {
-    delete: loadCommand('firestore-delete')
+    delete: loadCommand('firestore-delete'),
+    indexes: loadCommand('firestore-indexes-list')
   };
 
   client.deploy = loadCommand('deploy');
