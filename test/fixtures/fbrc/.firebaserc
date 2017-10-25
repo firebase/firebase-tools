@@ -1,6 +1,6 @@
 {
   "top": true,
-  "project": {
+  "projects": {
     "default": "top",
     "other": "top"
   }

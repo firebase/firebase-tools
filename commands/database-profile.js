@@ -14,6 +14,7 @@ module.exports = new Command('database:profile')
   .option('-o, --output <filename>', 'save the output to the specified file')
   .option('-d, --duration <seconds>', 'collect database usage information for the specified number of seconds')
   .option('--raw', 'output the raw stats collected as newline delimited json')
+  .option('--no-collapse', 'prevent collapsing similar paths into $wildcard locations')
   .option('-i, --input <filename>', 'generate the report based on the specified file instead ' +
                                     'of streaming logs from the database')
   .before(requireAccess)

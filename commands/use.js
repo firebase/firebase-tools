@@ -7,21 +7,10 @@ var api = require('../lib/api');
 var chalk = require('chalk');
 var utils = require('../lib/utils');
 var _ = require('lodash');
-var fs = require('fs');
-var path = require('path');
 var prompt = require('../lib/prompt');
 
-var writeAlias = function(projectDir, rc, alias, projectId) {
-  if (projectId) {
-    _.set(rc, ['projects', alias], projectId);
-  } else {
-    _.unset(rc, ['projects', alias], projectId);
-  }
-  fs.writeFileSync(path.resolve(projectDir, './.firebaserc'), JSON.stringify(rc, null, 2));
-};
-
 var listAliases = function(options) {
-  if (_.size(options.rc, 'projects') > 0) {
+  if (options.rc.hasProjects) {
     logger.info('Project aliases for', chalk.bold(options.projectRoot) + ':');
     logger.info();
     _.forEach(options.rc.projects, function(projectId, alias) {
@@ -61,13 +50,13 @@ module.exports = new Command('use [alias_or_project_id]')
     }
 
     if (newActive) { // firebase use [alias_or_project]
-      var aliasedProject = _.get(options.rc, ['projects', newActive]);
+      var aliasedProject = options.rc.get(['projects', newActive]);
       return api.getProjects().then(function(projects) {
         if (aliasOpt) { // firebase use [project] --alias [alias]
           if (!projects[newActive]) {
             return utils.reject('Cannot create alias ' + chalk.bold(aliasOpt) + ', ' + verifyMessage(newActive));
           }
-          writeAlias(options.projectRoot, options.rc, aliasOpt, newActive);
+          options.rc.addProjectAlias(aliasOpt, newActive);
           aliasedProject = newActive;
           logger.info('Created alias', chalk.bold(aliasOpt), 'for', aliasedProject + '.');
         }
@@ -88,7 +77,7 @@ module.exports = new Command('use [alias_or_project_id]')
       });
     } else if (options.unalias) { // firebase use --unalias [alias]
       if (_.has(options.rc, ['projects', options.unalias])) {
-        writeAlias(options.projectRoot, options.rc, options.unalias, null);
+        options.rc.removeProjectAlias(options.unalias);
         logger.info('Removed alias', chalk.bold(options.unalias));
         logger.info();
         listAliases(options);
@@ -115,7 +104,7 @@ module.exports = new Command('use [alias_or_project_id]')
             }
           }
         ]).then(function() {
-          writeAlias(options.projectRoot, options.rc, results.alias, results.project);
+          options.rc.addProjectAlias(results.alias, results.project);
           utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();
           logger.info('Created alias', chalk.bold(results.alias), 'for', results.project + '.');
@@ -130,7 +119,7 @@ module.exports = new Command('use [alias_or_project_id]')
       logger.info();
       listAliases(options);
     } else { // firebase use
-      if (!process.stdout.isTTY) {
+      if (options.nonInteractive || !process.stdout.isTTY) {
         if (options.project) {
           logger.info(options.project);
           return options.project;
@@ -144,12 +133,13 @@ module.exports = new Command('use [alias_or_project_id]')
         logger.info('Active Project:', chalk.bold.cyan(options.project));
       } else {
         var msg = 'No project is currently active';
-        if (_.size(options.rc.projects === 0)) {
+        if (options.rc.hasProjects) {
           msg += ', and no aliases have been created.';
         }
         logger.info(msg + '.');
       }
       logger.info();
       listAliases(options);
+      return options.project;
     }
   });

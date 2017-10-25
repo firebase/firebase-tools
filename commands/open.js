@@ -30,9 +30,7 @@ var LINKS = [
   {name: 'Notifications', arg: 'notifications', consoleUrl: '/notification'},
   {name: 'Dynamic Links', arg: 'links', consoleUrl: '/durablelinks'},
   {name: 'Project Settings', arg: 'settings', consoleUrl: '/settings/general'},
-  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'},
-  {name: 'Functions Log', arg: 'functions:log'},
-  {name: 'Functions Dashboard', arg: 'functions'}
+  {name: 'Docs', arg: 'docs', url: 'https://firebase.google.com/docs'}
 ];
 
 var CHOICES = _.map(LINKS, 'name');
@@ -71,8 +69,10 @@ module.exports = new Command('open [link]')
         url = 'https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=' + options.project;
       }
 
-      logger.info(chalk.bold.cyan('Tip: ') + 'You can also run ' + chalk.bold.underline('firebase open ' + finalLink.arg));
-      logger.info();
+      if (finalLink.arg !== linkName) {
+        logger.info(chalk.bold.cyan('Tip: ') + 'You can also run ' + chalk.bold.underline('firebase open ' + finalLink.arg));
+        logger.info();
+      }
       logger.info('Opening ' + chalk.bold(finalLink.name) + ' link in your default browser:');
       logger.info(chalk.bold.underline(url));
 

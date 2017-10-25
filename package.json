@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "3.6.0",
+  "version": "3.13.1",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
@@ -26,9 +26,9 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">=0.10.0"
+    "node": "^4.5 || >=5.10"
   },
-  "engine-strict": true,
+  "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
   "bugs": {
@@ -70,11 +70,11 @@
     "request": "^2.58.0",
     "rsvp": "^3.0.18",
     "semver": "^5.0.3",
-    "superstatic": "^4.0",
-    "tar": "^2.2.0",
-    "tmp": "0.0.31",
-    "universal-analytics": "^0.4.13",
-    "update-notifier": "^2.1.0",
+    "superstatic": "^5.0.1",
+    "tar": "^3.1.5",
+    "tmp": "0.0.27",
+    "universal-analytics": "^0.3.9",
+    "update-notifier": "^0.5.0",
     "user-home": "^2.0.0",
     "uuid": "^3.0.0",
     "winston": "^2.3.1"
@@ -94,5 +94,8 @@
     "sinon": "^1.17.7",
     "sinon-as-promised": "^4.0.0",
     "sinon-chai": "^2.8.0"
+  },
+  "optionalDependencies": {
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.23"
   }
 }

@@ -53,7 +53,7 @@ var preTest = function() {
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
   execSync('npm install', {'cwd': tmpDir + '/functions'});
-  api.setToken(configstore.get('tokens').refresh_token);
+  api.setRefreshToken(configstore.get('tokens').refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   var config = {
     apiKey: 'AIzaSyCLgng7Qgzf-2UKRPLz--LtLLxUsMK8oco',
@@ -93,12 +93,44 @@ var testCreateUpdate = function() {
   });
 };
 
+var testCreateUpdateWithFilter = function() {
+  fs.copySync(functionsSource, tmpDir + '/functions/index.js');
+  return new RSVP.Promise(function(resolve) {
+    exec(localFirebase + ' deploy --only functions:dbAction,functions:httpsAction', {'cwd': tmpDir}, function(err, stdout) {
+      console.log(stdout);
+      expect(err).to.be.null;
+      resolve(checkFunctionsListMatch(['dbAction', 'httpsAction']));
+    });
+  });
+};
+
 var testDelete = function() {
   return new RSVP.Promise(function(resolve) {
     exec('> functions/index.js &&' + localFirebase + ' deploy', {'cwd': tmpDir}, function(err, stdout) {
       console.log(stdout);
       expect(err).to.be.null;
       resolve(checkFunctionsListMatch([]));
+    });
+  });
+};
+
+var testDeleteWithFilter = function() {
+  return new RSVP.Promise(function(resolve) {
+    exec('> functions/index.js &&' + localFirebase + ' deploy --only functions:dbAction', {'cwd': tmpDir}, function(err, stdout) {
+      console.log(stdout);
+      expect(err).to.be.null;
+      resolve(checkFunctionsListMatch(['httpsAction']));
+    });
+  });
+};
+
+var testUnknownFilter = function() {
+  return new RSVP.Promise(function(resolve) {
+    exec('> functions/index.js &&' + localFirebase + ' deploy --only functions:unknownFilter', {'cwd': tmpDir}, function(err, stdout) {
+      console.log(stdout);
+      expect(stdout).to.contain('the following filters were specified but do not match any functions in the project: unknownFilter');
+      expect(err).to.be.null;
+      resolve(checkFunctionsListMatch(['httpsAction']));
     });
   });
 };
@@ -204,6 +236,15 @@ var main = function() {
     return testDelete();
   }).then(function() {
     console.log(chalk.green('\u2713 Test passed: deleting functions'));
+    return testCreateUpdateWithFilter();
+  }).then(function() {
+    console.log(chalk.green('\u2713 Test passed: creating functions with filters'));
+    return testDeleteWithFilter();
+  }).then(function() {
+    console.log(chalk.green('\u2713 Test passed: deleting functions with filters'));
+    return testUnknownFilter();
+  }).then(function() {
+    console.log(chalk.green('\u2713 Test passed: threw warning when passing filter with unknown identifier'));
   }).catch(function(err) {
     console.log(chalk.red('Error while running tests: '), err);
     return RSVP.resolve();
