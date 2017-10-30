@@ -1,0 +1,5 @@
+feature - Adds `firestore:indexes` command to list Cloud Firestore indexes.
+fixed - Tolerate leading/trailing slashes in `firestore:delete` command.
+fixed - Cloud Function deploys will retry on failure in some circumstances.
+fixed - Cloud Firestore rules can be deployed without indexes.
+fixed - Fixed bug in `firestore:delete --all-collections`.
