@@ -1,0 +1,21 @@
+{
+  "name": "functions",
+  "scripts": {
+    "build": "./node_modules/.bin/tslint -p tslint.json && ./node_modules/.bin/tsc",
+    "serve": "npm run build && firebase serve --only functions",
+    "shell": "npm run build && firebase experimental:functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "main": "lib/index.js",
+  "dependencies": {
+    "firebase-admin": "~5.4.2",
+    "firebase-functions": "^0.7.1"
+  },
+  "devDependencies": {
+    "tslint": "^5.8.0",
+    "typescript": "^2.5.3"
+  },
+  "private": true
+}
