@@ -1,2 +1,0 @@
-feature - Adds support for rules deploys to multiple Realtime Database instances.
-fixed - Improved zip speed for functions deploys.
