@@ -1,0 +1,3 @@
+feature - Adds support for multiple Relatime Database instance rule deploys via the
+`target` commands.
+fixed - Improved zip speed for functions deploys.
