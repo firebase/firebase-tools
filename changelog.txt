@@ -1,0 +1,1 @@
+feature - Added support for emulation of Firestore functions with `firebase experimental:functions:shell`.
