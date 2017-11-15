@@ -1,0 +1,2 @@
+feature - Added support for emulation of Firestore functions with `firebase experimental:functions:shell`.
+changed - Updated functions deployment to use Google Cloud Functions v1 API.
