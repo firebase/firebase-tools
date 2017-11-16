@@ -1,1 +1,0 @@
-fixed - Fixed bugs with `firebase firestore:delete`.
