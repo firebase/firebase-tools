@@ -1,1 +1,0 @@
-fixed - Fixed bug where updating a function reset its timeout and memory allocation to defaults.
