@@ -1,0 +1,1 @@
+fixed - Improved functions deployment speed and reliability when not using custom configuration variables
