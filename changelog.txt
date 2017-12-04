@@ -1,0 +1,4 @@
+feature - Adds `predeploy` and `postdeploy` script runners
+feature - `firebase init` for Cloud Functions can now initialize the project as TypeScript
+fixed - Fixed issue where memory and timeout settings were reset on Cloud Function deploy
+fixed - Fixed issue where Cloud Function URL was sometimes not printed on deploy
