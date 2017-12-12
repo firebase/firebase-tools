@@ -1,0 +1,79 @@
+{
+  "parserOptions": {
+    // Required for certain syntax usages
+    "ecmaVersion": 6
+  },
+  "plugins": [
+    "promise"
+  ],
+  "rules": {
+    // Warn against comparing against -0
+    "no-compare-neg-zero": 1,
+
+    // Warn against assignment operators in conditional expressions
+    "no-cond-assign": 1,
+
+    // Warn against comma operators
+    "no-sequences": 1,
+
+    // Warn against constant expressions in conditions
+    "no-constant-condition": 1,
+
+    // Warn against control characters in regular expressions
+    "no-control-regex": 1,
+
+    // Warn against duplicate arguments in function definitions
+    "no-dupe-args": 1,
+
+    // Warn against duplicate keys in object literals
+    "no-dupe-keys": 1,
+
+    // Warn against duplicate case labels
+    "no-duplicate-case": 1,
+
+    // Warn against empty block statements
+    "no-empty": 1,
+
+    // Warn against empty character classes in regular expressions
+    "no-empty-character-class": 1,
+
+    // Warn against reassigning exceptions in catch clauses
+    "no-ex-assign": 1,
+
+    // Warn against unnecessary boolean casts
+    "no-extra-boolean-cast": 1,
+
+    // Warn against unnecessary semicolons
+    "no-extra-semi": 1,
+
+    // Warn against reassigning function declarations
+    "no-func-assign": 1,
+
+    // Warn against variable or function declarations in nested blocks
+    "no-inner-declarations": 1,
+
+    // Warn against invalid regular expression strings in RegExp constructors
+    "no-invalid-regexp": 1,
+
+    // Warn against irregular whitespace outside of strings and comments
+    "no-irregular-whitespace": 1,
+
+    // Warn against calling global object properties as functions
+    "no-obj-calls": 1,
+
+    // Warn against confusing multiline expressions
+    "no-unexpected-multiline": 1,
+
+    // Warn against unreachable code after return, throw, continue, and break statements
+    "no-unreachable": 1,
+
+    // Warn against reassigning function parameters
+    "no-param-reassign": 1,
+
+    // Return inside each then() to create readable and reusable Promise chains.
+    "promise/always-return": 2,
+
+    // Prefer async/await to the callback pattern
+    "promise/prefer-await-to-callbacks": 1
+  }
+}
