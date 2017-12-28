@@ -108,7 +108,7 @@ module.exports = new Command('init [feature]')
         });
       }
       if (setup.features.length === 0) {
-        utils.logWarning('You have have not selected any features. Continuing will simply associate this folder ' +
+        utils.logWarning('You have not selected any features. Continuing will simply associate this folder ' +
           'with a Firebase project. Press Ctrl + C if you want to start over.');
       }
       setup.features.unshift('project');
