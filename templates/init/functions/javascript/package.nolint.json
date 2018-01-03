@@ -9,7 +9,7 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
-    "firebase-admin": "~5.5.0",
+    "firebase-admin": "~5.6.0",
     "firebase-functions": "^0.8.0"
   },
   "private": true
