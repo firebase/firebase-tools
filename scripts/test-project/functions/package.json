@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "Firebase Functions",
   "dependencies": {
-    "firebase-admin": "~4.2.1",
-    "firebase-functions": "^0.5"
+    "firebase-admin": "~5.8",
+    "firebase-functions": "^0.8"
   }
 }
