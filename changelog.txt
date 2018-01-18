@@ -1,0 +1,1 @@
+fixed - Fix bug where deploying functions resulted in the error message "npm ERR! missing script: build" for functions written with JavaScript.
