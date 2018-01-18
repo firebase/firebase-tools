@@ -1,5 +1,5 @@
 important - If you are deploying functions, you must update the firebase-functions SDK to the latest by running "npm i --save firebase-functions@latest" inside your functions directory. This enables faster functions deployment.
-feature - Make the environment variables $RESOURCE_DIR (e.g. projectName/functions/), $GCLOUD_PROJECT (e.g. projectId), and $PROJECT_DIR (e.g. projectName/) available inside the predeploy and postdeploy hooks inside of firebase.json.
+feature - Make the environment variables $RESOURCE_DIR (e.g. projectFolder/functions/), $GCLOUD_PROJECT (e.g. projectId), and $PROJECT_DIR (e.g. projectFolder/) available inside the predeploy and postdeploy hooks inside of firebase.json.
 feature - Add "--host" flag to `firebase experimental:functions:shell` and `firebase serve --only functions` to allow specification of server host
 feature - Add eslint to the starter template for the functions folder to catch potential bugs in functions code prior to deployment.
 feature - Add support for hosting and functions source folders to be symbolic links.
