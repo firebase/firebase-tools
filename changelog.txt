@@ -1,0 +1,3 @@
+fixed - Functions init of JavaScript projects now writes `index.js` to the correct directory.
+fixed - Fixed error where `firebase serve --only functions` and `firebase experimental:functions:shell` resulted in `"Failed to load functions source code."`
+changed - Removed the --host flag for `firebase serve --only functions` and `firebase experimental:functions:shell` (this flag will be brought back in a future release)
