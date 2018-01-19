@@ -1,0 +1,1 @@
+fixed - Functions init of JavaScript projects now writes `index.js` to the correct directory.
