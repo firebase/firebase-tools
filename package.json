@@ -99,6 +99,6 @@
     "sinon-chai": "^2.8.0"
   },
   "optionalDependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-alpha.29"
+    "@google-cloud/functions-emulator": "^1.0.0-alpha.23"
   }
 }
