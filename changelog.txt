@@ -1,2 +1,2 @@
 fixed - Functions init of JavaScript projects now writes `index.js` to the correct directory.
-fixed - The `--host` option for functions emulation has been temporarily removed to address a regression.
+fixed - Fixed error where `firebase serve --only functions` and `firebase experimental:functions:shell` resulted in `"Failed to load functions source code."`
