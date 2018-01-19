@@ -1,1 +1,2 @@
 fixed - Functions init of JavaScript projects now writes `index.js` to the correct directory.
+fixed - The `--host` option for functions emulation has been temporarily removed to address a regression.
