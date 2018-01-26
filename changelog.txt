@@ -1,0 +1,1 @@
+fixed - Fixed bug where having a .runtimeconfig.json present in the functions folder causes issues during deployment and emulation.
