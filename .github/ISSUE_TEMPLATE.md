@@ -30,16 +30,17 @@ repro when opening the issue. If you know how to solve the issue, please create 
 
 <!-- Run "firebase --version", and ensure that you are using the latest version of firebase-tools. You can check what the latest version is at https://github.com/firebase/firebase-tools/releases. -->
 
+### Platform Information
+
+<!-- Windows, OS X, or Linux -->
 
 ### Steps to reproduce
 
 <!-- Provide the steps needed to reproduce the issue. Please include exact commands. -->
 
-
 ### Expected behavior
 
 <!-- What is the expected behavior? -->
-
 
 ### Actual behavior
 
