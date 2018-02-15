@@ -22,7 +22,7 @@ var _makeJsonSpec = function(indexes) {
 };
 
 module.exports = new Command('firestore:indexes')
-  .description('List indexes in your project\'s CLoud Firestore database.')
+  .description('List indexes in your project\'s Cloud Firestore database.')
   .option('--pretty', 'Pretty print. When not specified the indexes are printed in the '
       + 'JSON specification format.')
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
