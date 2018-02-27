@@ -45,8 +45,6 @@ module.exports = new Command('experimental:functions:shell')
         useColors: true
       });
 
-      // Issue: dashes in the function name are taken as subtraction by REPL server
-
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
           var localFunction = new LocalFunction(trigger, emulator.urls, emulator.controller);
