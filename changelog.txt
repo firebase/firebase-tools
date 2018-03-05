@@ -1,0 +1,7 @@
+important - If you are emulating functions using `firebase serve --only functions` or `firebase experimental:functions:shell`, you must update Node to v6.11.5 or higher.
+feature - Support the `--host` flag for `firebase serve --only functions` and `firebase experimental:functions:shell` (this flag was released in 3.17.0 and removed in 3.17.2 due to a bug).
+feature - Support emulation of nested functions, where a function is nested inside an object being exported by index.js.
+changed - Increased PBKDF2_SHA256 round limit to 120000 for `firebase auth:import`
+fixed - Fixed the template for functions/package.json for TypeScript projects to refer to the correct linter configuration.
+fixed - Fixed bug in function lifecycle hooks where environment variables with `$` caused issues on Windows.
+fixed - Fixed functions deployment errors due to outdated version of `tar`.
