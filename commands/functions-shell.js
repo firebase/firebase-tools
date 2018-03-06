@@ -51,7 +51,6 @@ module.exports = new Command('experimental:functions:shell')
           replServer.context[trigger.name] = localFunction.call;
         }
       });
-      replServer.context.config = emulator.config;
       replServer.context.help = 'Instructions for the Functions Shell can be found at: ' +
         'https://firebase.google.com/docs/functions/local-emulator';
     }).then(function() {
