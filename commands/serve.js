@@ -11,6 +11,7 @@ var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var serve = require('../lib/serve/index');
 var scopes = require('../lib/scopes');
 var filterTargets = require('../lib/filterTargets');
+var getProjectNumber = require('../lib/getProjectNumber');
 
 var VALID_TARGETS = ['functions', 'hosting'];
 
@@ -23,6 +24,7 @@ module.exports = new Command('serve')
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
+  .before(getProjectNumber)
   .action(function(options) {
     if (options.config) {
       logger.info();
