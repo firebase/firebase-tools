@@ -4,4 +4,5 @@ feature - Support emulation of nested functions, where a function is nested insi
 changed - Increased PBKDF2_SHA256 round limit to 120000 for `firebase auth:import`
 fixed - Fixed the template for functions/package.json for TypeScript projects to refer to the correct linter configuration.
 fixed - Fixed bugs in functions lifecycle hooks for Windows users, caused by environment variables with `$` and scripts with '.'.
+fixed - Fixed issue encountered in functions lifecycle hooks when the directory has a space.
 fixed - Fixed functions deployment errors due to outdated version of `tar`.
