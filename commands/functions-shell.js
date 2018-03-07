@@ -48,7 +48,8 @@ module.exports = new Command('experimental:functions:shell')
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
           var localFunction = new LocalFunction(trigger, emulator.urls, emulator.controller);
-          replServer.context[trigger.name] = localFunction.call;
+          var triggerNameDotNotation = trigger.name.replace(/\-/g, '.');
+          _.set(replServer.context, triggerNameDotNotation, localFunction.call);
         }
       });
       replServer.context.help = 'Instructions for the Functions Shell can be found at: ' +
