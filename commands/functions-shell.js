@@ -17,7 +17,7 @@ var scopes = require('../lib/scopes');
 module.exports = new Command('experimental:functions:shell')
   .description('launch full Node shell with emulated functions')
   .option('-p, --port <port>', 'the port on which to emulate functions (default: 5000)', 5000)
-  .option('-t, --timeout <timeout>', 'how long the function can be idle before being terminated, in seconds. (default: 60 seconds)', 60)
+  .option('-t, --timeout <timeout>', 'timeout for all emulated functions in seconds (default: 60)', 60)
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
