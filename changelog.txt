@@ -1,0 +1,2 @@
+fixed - Fixed bug where functions emulator could not find config values in v3.17.5.
+fixed - Fixed bug where functions lifecycle hooks failed to run when firebase-tools was used as a local module.
