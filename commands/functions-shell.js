@@ -17,11 +17,14 @@ var scopes = require('../lib/scopes');
 module.exports = new Command('experimental:functions:shell')
   .description('launch full Node shell with emulated functions')
   .option('-p, --port <port>', 'the port on which to emulate functions (default: 5000)', 5000)
-  .option('-t, --timeout <timeout>', 'how long the function can be idle before being terminated, in seconds. The default is 60 seconds.')
+  .option('-t, --timeout <timeout>', 'how long the function can be idle before being terminated, in seconds. (default: 60 seconds)', 60)
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
     options.port = parseInt(options.port, 10);
+    console.log('uno');
+    options.timeout = parseInt(options.timeout, 10);
+    console.log(options.timeout);
     var emulator = new FunctionsEmulator(options);
 
     return emulator.start(true).then(function() {
