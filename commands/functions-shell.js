@@ -22,9 +22,7 @@ module.exports = new Command('experimental:functions:shell')
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
     options.port = parseInt(options.port, 10);
-    console.log('uno');
     options.timeout = parseInt(options.timeout, 10);
-    console.log(options.timeout);
     var emulator = new FunctionsEmulator(options);
 
     return emulator.start(true).then(function() {
