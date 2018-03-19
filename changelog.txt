@@ -1,1 +1,1 @@
-feature - Use signed upload URL when uploading functions code.
+changed - Updated functions upload process to be more future-proof.
