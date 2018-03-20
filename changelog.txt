@@ -1,0 +1,2 @@
+changed - Changed timeout for all emulated functions to 9 minutes.
+changed - Updated functions upload process to be more future-proof.
