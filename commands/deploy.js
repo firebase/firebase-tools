@@ -4,6 +4,7 @@ var acquireRefs = require('../lib/acquireRefs');
 var chalk = require('chalk');
 var checkDupHostingKeys = require('../lib/checkDupHostingKeys');
 var checkValidTargetFilters = require('../lib/checkValidTargetFilters');
+var checkFirebaseSDKVersion = require('../lib/checkFirebaseSDKVersion');
 var Command = require('../lib/command');
 var deploy = require('../lib/deploy');
 var logger = require('../lib/logger');
@@ -42,6 +43,7 @@ module.exports = new Command('deploy')
   })
   .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
+  .before(checkFirebaseSDKVersion)
   .action(function(options) {
     var targets = filterTargets(options, VALID_TARGETS);
     return deploy(targets, options);
