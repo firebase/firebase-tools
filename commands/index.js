@@ -44,6 +44,12 @@ module.exports = function(client) {
   };
 
   client.help = loadCommand('help');
+
+  client.kits = {
+    install: loadCommand('kits-install'),
+    uninstall: loadCommand('kits-uninstall')
+  };
+
   client.init = loadCommand('init');
   client.list = loadCommand('list');
 
