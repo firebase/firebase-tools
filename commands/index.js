@@ -1,5 +1,6 @@
 'use strict';
 
+var previews = require('../lib/previews');
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require('./' + name);
@@ -45,10 +46,12 @@ module.exports = function(client) {
 
   client.help = loadCommand('help');
 
-  client.kits = {
-    install: loadCommand('kits-install'),
-    uninstall: loadCommand('kits-uninstall')
-  };
+  if (previews.kits) {
+    client.kits = {
+      install: loadCommand('kits-install'),
+      uninstall: loadCommand('kits-uninstall')
+    };
+  }
 
   client.init = loadCommand('init');
   client.list = loadCommand('list');
