@@ -44,6 +44,12 @@ module.exports = function(client) {
     }
   };
 
+  client.experimental = {
+    functions: {
+      shell: loadCommand('experimental-functions-shell')
+    }
+  };
+
   client.help = loadCommand('help');
 
   if (previews.kits) {
