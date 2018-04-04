@@ -1,0 +1,4 @@
+important - New syntax in functions shell for invoking database functions with different authentication priviledges. See https://firebase.google.com/docs/functions/beta-v1-diff
+changed - `firebase serve` now serves both HTTP functions and hosting by default.
+changed - `firebase experimental:functions:shell`, which emulates all functions, has been renamed to `firebase functions:shell`.
+feature - Debug logs from functions emulator are now saved in the current working directory.
