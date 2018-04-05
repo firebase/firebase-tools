@@ -1,1 +1,0 @@
-fixed - Fixed issues some users experienced during `firebase deploy` with error messages such as "TypeError: Invalid Version: undefined", "Error: spawn npm ENOENT", and "Error: Can't determine Firebase Database URL."
