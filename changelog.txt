@@ -1,0 +1,1 @@
+fixed - Fixed issue where some users encountered "Failed to parse app options file: Error: ENOENT: no such file or directory" during functions deployment.
