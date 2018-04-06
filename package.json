@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "3.18.1",
+  "version": "3.18.2",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
