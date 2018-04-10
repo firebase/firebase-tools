@@ -1,6 +1,7 @@
 /.vscode
 node_modules
 /coverage
+/.nyc_output
 firebase-debug.log
 npm-debug.log
 package-lock.json
