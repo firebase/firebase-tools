@@ -22,8 +22,7 @@ var sinon = require("sinon");
 var functionsSource = __dirname + "/assets/functions_to_test.js";
 var projectDir = __dirname + "/test-project";
 var projectId = "functions-integration-test";
-var httpsTrigger =
-  "https://us-central1-functions-integration-test.cloudfunctions.net/httpsAction";
+var httpsTrigger = "https://us-central1-functions-integration-test.cloudfunctions.net/httpsAction";
 var region = "us-central1";
 var localFirebase = __dirname + "/../bin/firebase";
 var TIMEOUT = 40000;
@@ -114,24 +113,21 @@ var testCreateUpdateWithFilter = function() {
 
 var testDelete = function() {
   return new RSVP.Promise(function(resolve) {
-    exec(
-      "> functions/index.js &&" + localFirebase + " deploy",
-      { cwd: tmpDir },
-      function(err, stdout) {
-        console.log(stdout);
-        expect(err).to.be.null;
-        resolve(checkFunctionsListMatch([]));
-      }
-    );
+    exec("> functions/index.js &&" + localFirebase + " deploy", { cwd: tmpDir }, function(
+      err,
+      stdout
+    ) {
+      console.log(stdout);
+      expect(err).to.be.null;
+      resolve(checkFunctionsListMatch([]));
+    });
   });
 };
 
 var testDeleteWithFilter = function() {
   return new RSVP.Promise(function(resolve) {
     exec(
-      "> functions/index.js &&" +
-        localFirebase +
-        " deploy --only functions:dbAction",
+      "> functions/index.js &&" + localFirebase + " deploy --only functions:dbAction",
       { cwd: tmpDir },
       function(err, stdout) {
         console.log(stdout);
@@ -145,9 +141,7 @@ var testDeleteWithFilter = function() {
 var testUnknownFilter = function() {
   return new RSVP.Promise(function(resolve) {
     exec(
-      "> functions/index.js &&" +
-        localFirebase +
-        " deploy --only functions:unknownFilter",
+      "> functions/index.js &&" + localFirebase + " deploy --only functions:unknownFilter",
       { cwd: tmpDir },
       function(err, stdout) {
         console.log(stdout);
@@ -211,17 +205,13 @@ var publishPubsub = function(topic) {
   var uuid = getUuid();
   var message = new Buffer(uuid).toString("base64");
   return api
-    .request(
-      "POST",
-      "/v1/projects/functions-integration-test/topics/" + topic + ":publish",
-      {
-        auth: true,
-        data: {
-          messages: [{ data: message }],
-        },
-        origin: "https://pubsub.googleapis.com",
-      }
-    )
+    .request("POST", "/v1/projects/functions-integration-test/topics/" + topic + ":publish", {
+      auth: true,
+      data: {
+        messages: [{ data: message }],
+      },
+      origin: "https://pubsub.googleapis.com",
+    })
     .then(function(resp) {
       expect(resp.status).to.equal(200);
       return RSVP.resolve(uuid);
@@ -232,8 +222,7 @@ var saveToStorage = function() {
   var uuid = getUuid();
   var contentLength = Buffer.byteLength(uuid, "utf8");
   var resource = ["b", projectId + ".appspot.com", "o"].join("/");
-  var endpoint =
-    "/upload/storage/v1/" + resource + "?uploadType=media&name=" + uuid;
+  var endpoint = "/upload/storage/v1/" + resource + "?uploadType=media&name=" + uuid;
   return api
     .request("POST", endpoint, {
       auth: true,
@@ -294,22 +283,16 @@ var main = function() {
       return testCreateUpdateWithFilter();
     })
     .then(function() {
-      console.log(
-        chalk.green("\u2713 Test passed: creating functions with filters")
-      );
+      console.log(chalk.green("\u2713 Test passed: creating functions with filters"));
       return testDeleteWithFilter();
     })
     .then(function() {
-      console.log(
-        chalk.green("\u2713 Test passed: deleting functions with filters")
-      );
+      console.log(chalk.green("\u2713 Test passed: deleting functions with filters"));
       return testUnknownFilter();
     })
     .then(function() {
       console.log(
-        chalk.green(
-          "\u2713 Test passed: threw warning when passing filter with unknown identifier"
-        )
+        chalk.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
       );
     })
     .catch(function(err) {

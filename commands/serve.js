@@ -17,16 +17,8 @@ var VALID_TARGETS = ["functions", "hosting"];
 
 module.exports = new Command("serve")
   .description("start a local server for your static assets")
-  .option(
-    "-p, --port <port>",
-    "the port on which to listen (default: 5000)",
-    5000
-  )
-  .option(
-    "-o, --host <host>",
-    "the host on which to listen (default: localhost)",
-    "localhost"
-  )
+  .option("-p, --port <port>", "the port on which to listen (default: 5000)", 5000)
+  .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
     "--only <targets>",
     "only serve specified targets (valid targets are: functions, hosting)"
@@ -43,12 +35,7 @@ module.exports = new Command("serve")
     if (options.config) {
       logger.info();
       logger.info(
-        chalk.bold(
-          chalk.gray("===") +
-            " Serving from '" +
-            options.config.projectDir +
-            "'..."
-        )
+        chalk.bold(chalk.gray("===") + " Serving from '" + options.config.projectDir + "'...")
       );
       logger.info();
     } else {

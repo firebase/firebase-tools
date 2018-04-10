@@ -38,8 +38,7 @@ module.exports = new Command("login")
       {
         type: "confirm",
         name: "collectUsage",
-        message:
-          "Allow Firebase to collect anonymous CLI usage and error reporting information?",
+        message: "Allow Firebase to collect anonymous CLI usage and error reporting information?",
       },
     ])
       .then(function() {
@@ -55,9 +54,7 @@ module.exports = new Command("login")
         configstore.del("session");
 
         logger.info();
-        utils.logSuccess(
-          "Success! Logged in as " + chalk.bold(result.user.email)
-        );
+        utils.logSuccess("Success! Logged in as " + chalk.bold(result.user.email));
 
         return auth;
       });

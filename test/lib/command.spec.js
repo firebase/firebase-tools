@@ -24,15 +24,12 @@ describe("Command", function() {
 
   it("should add an option with a command", function() {
     expect(
-      command.option("-f", "first option").option("-s", "second option")
-        ._options
+      command.option("-f", "first option").option("-s", "second option")._options
     ).to.have.length(2);
   });
 
   it("should add a before with a command", function() {
-    expect(
-      command.before(function() {}).before(function() {})._befores
-    ).to.have.length(2);
+    expect(command.before(function() {}).before(function() {})._befores).to.have.length(2);
   });
 
   it("should set the action with a command", function() {
@@ -49,10 +46,7 @@ describe("Command", function() {
         })
         .runner();
 
-      return expect(run({ foo: "baz" })).to.eventually.have.property(
-        "foo",
-        "bar"
-      );
+      return expect(run({ foo: "baz" })).to.eventually.have.property("foo", "bar");
     });
 
     it("should execute befores before the action", function() {

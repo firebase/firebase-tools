@@ -70,12 +70,9 @@ process.on("exit", function(code) {
       var help;
       if (code === 1 && cmd) {
         var commandName = _.get(_.last(cmd.args), "_name", "[command]");
-        help =
-          "Having trouble? Try " +
-          chalk.bold("firebase " + commandName + " --help");
+        help = "Having trouble? Try " + chalk.bold("firebase " + commandName + " --help");
       } else {
-        help =
-          "Having trouble? Try again or contact support with contents of firebase-debug.log";
+        help = "Having trouble? Try again or contact support with contents of firebase-debug.log";
       }
 
       if (cmd) {

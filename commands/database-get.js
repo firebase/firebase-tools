@@ -45,28 +45,16 @@ module.exports = new Command("database:get <path>")
   .option("--order-by-value", "order by primitive value")
   .option("--limit-to-first <num>", "limit to the first <num> results")
   .option("--limit-to-last <num>", "limit to the last <num> results")
-  .option(
-    "--start-at <val>",
-    "start results at <val> (based on specified ordering)"
-  )
-  .option(
-    "--end-at <val>",
-    "end results at <val> (based on specified ordering)"
-  )
-  .option(
-    "--equal-to <val>",
-    "restrict results to <val> (based on specified ordering)"
-  )
+  .option("--start-at <val>", "start results at <val> (based on specified ordering)")
+  .option("--end-at <val>", "end results at <val> (based on specified ordering)")
+  .option("--equal-to <val>", "restrict results to <val> (based on specified ordering)")
   .before(requireAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    var url =
-      utils.addSubdomain(api.realtimeOrigin, options.instance) +
-      path +
-      ".json?";
+    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
     var query = {};
     if (options.shallow) {
       query.shallow = "true";
@@ -96,51 +84,47 @@ module.exports = new Command("database:get <path>")
       url: url,
     };
 
-    return api
-      .addRequestHeaders(reqOptions)
-      .then(function(reqOptionsWithToken) {
-        return new RSVP.Promise(function(resolve, reject) {
-          var fileOut = !!options.output;
-          var outStream = fileOut
-            ? fs.createWriteStream(options.output)
-            : process.stdout;
-          var erroring;
-          var errorResponse = "";
-          var response;
+    return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
+      return new RSVP.Promise(function(resolve, reject) {
+        var fileOut = !!options.output;
+        var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+        var erroring;
+        var errorResponse = "";
+        var response;
 
-          request
-            .get(reqOptionsWithToken)
-            .on("response", function(res) {
-              response = res;
-              if (response.statusCode >= 400) {
-                erroring = true;
+        request
+          .get(reqOptionsWithToken)
+          .on("response", function(res) {
+            response = res;
+            if (response.statusCode >= 400) {
+              erroring = true;
+            }
+          })
+          .on("data", function(chunk) {
+            if (erroring) {
+              errorResponse += chunk;
+            } else {
+              outStream.write(chunk);
+            }
+          })
+          .on("end", function() {
+            outStream.write("\n");
+            if (erroring) {
+              try {
+                var data = JSON.parse(errorResponse);
+                return reject(responseToError(response, data));
+              } catch (e) {
+                return reject(
+                  new FirebaseError("Malformed JSON response", {
+                    exit: 2,
+                    original: e,
+                  })
+                );
               }
-            })
-            .on("data", function(chunk) {
-              if (erroring) {
-                errorResponse += chunk;
-              } else {
-                outStream.write(chunk);
-              }
-            })
-            .on("end", function() {
-              outStream.write("\n");
-              if (erroring) {
-                try {
-                  var data = JSON.parse(errorResponse);
-                  return reject(responseToError(response, data));
-                } catch (e) {
-                  return reject(
-                    new FirebaseError("Malformed JSON response", {
-                      exit: 2,
-                      original: e,
-                    })
-                  );
-                }
-              }
-              return resolve();
-            })
-            .on("error", reject);
-        });
+            }
+            return resolve();
+          })
+          .on("error", reject);
       });
+    });
   });

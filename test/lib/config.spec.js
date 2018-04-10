@@ -95,10 +95,7 @@ describe("Config", function() {
     });
 
     it("should prevent top-level key duplication", function() {
-      var config = new Config(
-        { rules: "rules.json" },
-        { cwd: _fixtureDir("dup-top-level") }
-      );
+      var config = new Config({ rules: "rules.json" }, { cwd: _fixtureDir("dup-top-level") });
       expect(config._materialize("rules")).to.deep.equal({ ".read": true });
     });
   });

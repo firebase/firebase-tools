@@ -14,10 +14,7 @@ var prompt = require("../lib/prompt");
 var requireAuth = require("../lib/requireAuth");
 var utils = require("../lib/utils");
 
-var BANNER_TEXT = fs.readFileSync(
-  __dirname + "/../templates/banner.txt",
-  "utf8"
-);
+var BANNER_TEXT = fs.readFileSync(__dirname + "/../templates/banner.txt", "utf8");
 
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
@@ -35,9 +32,7 @@ module.exports = new Command("init [feature]")
       warnings.push("You are currently outside your home directory");
     }
     if (cwd === homeDir) {
-      warnings.push(
-        "You are initializing your home directory as a Firebase project"
-      );
+      warnings.push("You are initializing your home directory as a Firebase project");
     }
 
     var config = Config.load(options, true);
@@ -45,9 +40,7 @@ module.exports = new Command("init [feature]")
     if (!existingConfig) {
       config = new Config({}, { projectDir: cwd, cwd: cwd });
     } else {
-      warnings.push(
-        "You are initializing in an existing Firebase project directory"
-      );
+      warnings.push("You are initializing in an existing Firebase project directory");
     }
 
     if (warnings.length) {
@@ -159,13 +152,9 @@ module.exports = new Command("init [feature]")
       })
       .then(function() {
         logger.info();
-        utils.logBullet(
-          "Writing configuration info to " + chalk.bold("firebase.json") + "..."
-        );
+        utils.logBullet("Writing configuration info to " + chalk.bold("firebase.json") + "...");
         config.writeProjectFile("firebase.json", setup.config);
-        utils.logBullet(
-          "Writing project information to " + chalk.bold(".firebaserc") + "..."
-        );
+        utils.logBullet("Writing project information to " + chalk.bold(".firebaserc") + "...");
         config.writeProjectFile(".firebaserc", setup.rcfile);
         logger.info();
         utils.logSuccess("Firebase initialization complete!");
@@ -173,9 +162,7 @@ module.exports = new Command("init [feature]")
         if (setup.createProject) {
           logger.info();
           logger.info(
-            chalk.bold.cyan(
-              "Project creation is only available from the Firebase Console"
-            )
+            chalk.bold.cyan("Project creation is only available from the Firebase Console")
           );
           logger.info(
             "Please visit",

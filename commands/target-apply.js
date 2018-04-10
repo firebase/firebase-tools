@@ -12,20 +12,10 @@ module.exports = new Command("target:apply <type> <name> <resources...>")
   .description("apply a deploy target to a resource")
   .before(requireConfig)
   .action(function(type, name, resources, options) {
-    var changes = options.rc.applyTarget(
-      options.project,
-      type,
-      name,
-      resources
-    );
+    var changes = options.rc.applyTarget(options.project, type, name, resources);
 
     utils.logSuccess(
-      "Applied " +
-        type +
-        " target " +
-        chalk.bold(name) +
-        " to " +
-        chalk.bold(resources.join(", "))
+      "Applied " + type + " target " + chalk.bold(name) + " to " + chalk.bold(resources.join(", "))
     );
     _.forEach(changes, function(change) {
       utils.logWarning(
@@ -37,10 +27,6 @@ module.exports = new Command("target:apply <type> <name> <resources...>")
     });
     logger.info();
     logger.info(
-      "Updated: " +
-        name +
-        " (" +
-        options.rc.target(options.project, type, name).join(",") +
-        ")"
+      "Updated: " + name + " (" + options.rc.target(options.project, type, name).join(",") + ")"
     );
   });

@@ -17,8 +17,7 @@ module.exports = new Command("functions:config:set [values...]")
   .action(function(args, options) {
     if (!args.length) {
       return utils.reject(
-        "Must supply at least one key/value pair, e.g. " +
-          chalk.bold('app.name="My App"')
+        "Must supply at least one key/value pair, e.g. " + chalk.bold('app.name="My App"')
       );
     }
     var projectId = getProjectId(options);
@@ -27,12 +26,7 @@ module.exports = new Command("functions:config:set [values...]")
 
     parsed.forEach(function(item) {
       promises.push(
-        functionsConfig.setVariablesRecursive(
-          projectId,
-          item.configId,
-          item.varId,
-          item.val
-        )
+        functionsConfig.setVariablesRecursive(projectId, item.configId, item.varId, item.val)
       );
     });
 

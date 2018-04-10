@@ -23,17 +23,11 @@ var listAliases = function(options) {
     });
     logger.info();
   }
-  logger.info(
-    "Run",
-    chalk.bold("firebase use --add"),
-    "to define a new project alias."
-  );
+  logger.info("Run", chalk.bold("firebase use --add"), "to define a new project alias.");
 };
 
 var verifyMessage = function(name) {
-  return (
-    "please verify project " + chalk.bold(name) + " exists and you have access."
-  );
+  return "please verify project " + chalk.bold(name) + " exists and you have access.";
 };
 
 module.exports = new Command("use [alias_or_project_id]")
@@ -69,20 +63,12 @@ module.exports = new Command("use [alias_or_project_id]")
           // firebase use [project] --alias [alias]
           if (!projects[newActive]) {
             return utils.reject(
-              "Cannot create alias " +
-                chalk.bold(aliasOpt) +
-                ", " +
-                verifyMessage(newActive)
+              "Cannot create alias " + chalk.bold(aliasOpt) + ", " + verifyMessage(newActive)
             );
           }
           options.rc.addProjectAlias(aliasOpt, newActive);
           aliasedProject = newActive;
-          logger.info(
-            "Created alias",
-            chalk.bold(aliasOpt),
-            "for",
-            aliasedProject + "."
-          );
+          logger.info("Created alias", chalk.bold(aliasOpt), "for", aliasedProject + ".");
         }
 
         if (aliasedProject) {
@@ -90,28 +76,19 @@ module.exports = new Command("use [alias_or_project_id]")
           if (!projects[aliasedProject]) {
             // found alias, but not in project list
             return utils.reject(
-              "Unable to use alias " +
-                chalk.bold(newActive) +
-                ", " +
-                verifyMessage(aliasedProject)
+              "Unable to use alias " + chalk.bold(newActive) + ", " + verifyMessage(aliasedProject)
             );
           }
 
           utils.makeActiveProject(options.projectRoot, newActive);
-          logger.info(
-            "Now using alias",
-            chalk.bold(newActive),
-            "(" + aliasedProject + ")"
-          );
+          logger.info("Now using alias", chalk.bold(newActive), "(" + aliasedProject + ")");
         } else if (projects[newActive]) {
           // exact project id specified
           utils.makeActiveProject(options.projectRoot, newActive);
           logger.info("Now using project", chalk.bold(newActive));
         } else {
           // no alias or project recognized
-          return utils.reject(
-            "Invalid project selection, " + verifyMessage(newActive)
-          );
+          return utils.reject("Invalid project selection, " + verifyMessage(newActive));
         }
       });
     } else if (options.unalias) {
@@ -145,8 +122,7 @@ module.exports = new Command("use [alias_or_project_id]")
           {
             type: "input",
             name: "alias",
-            message:
-              "What alias do you want to use for this project? (e.g. staging)",
+            message: "What alias do you want to use for this project? (e.g. staging)",
             validate: function(input) {
               return input && input.length > 0;
             },
@@ -155,16 +131,8 @@ module.exports = new Command("use [alias_or_project_id]")
           options.rc.addProjectAlias(results.alias, results.project);
           utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();
-          logger.info(
-            "Created alias",
-            chalk.bold(results.alias),
-            "for",
-            results.project + "."
-          );
-          logger.info(
-            "Now using alias",
-            chalk.bold(results.alias) + " (" + results.project + ")"
-          );
+          logger.info("Created alias", chalk.bold(results.alias), "for", results.project + ".");
+          logger.info("Now using alias", chalk.bold(results.alias) + " (" + results.project + ")");
         });
       });
     } else if (options.clear) {

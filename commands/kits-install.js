@@ -12,18 +12,9 @@ var kits = require("../lib/kits");
 
 // TODO: add option for urlPath to be inserted or parse urlPath for name if needed
 module.exports = new Command("kits:install <githubRepo>")
-  .option(
-    "-b, --branch <branch>",
-    "repository branch to download from. Defaults to master"
-  )
-  .option(
-    "-p, --path <path>",
-    "custom path to kit configuration file. Defaults to kits.json"
-  )
-  .option(
-    "--id <releaseId>",
-    "release version to be installed. Defaults to latest"
-  )
+  .option("-b, --branch <branch>", "repository branch to download from. Defaults to master")
+  .option("-p, --path <path>", "custom path to kit configuration file. Defaults to kits.json")
+  .option("--id <releaseId>", "release version to be installed. Defaults to latest")
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(githubRepo, options) {
     var projectId = getProjectId(options);
@@ -59,47 +50,26 @@ module.exports = new Command("kits:install <githubRepo>")
         kitFunctions = kitConfig.functions;
 
         utils.logSuccess(
-          chalk.green.bold("kits: ") +
-            "Fetched configuration file from " +
-            chalk.bold(gitRepo)
+          chalk.green.bold("kits: ") + "Fetched configuration file from " + chalk.bold(gitRepo)
         );
         utils.logBullet(
-          chalk.bold(
-            "We will now ask a series of questions to help set up your kit."
-          )
+          chalk.bold("We will now ask a series of questions to help set up your kit.")
         );
 
-        return kits.prepareKitsConfig.prompt(
-          githubConfig.repo,
-          kitConfig.config
-        );
+        return kits.prepareKitsConfig.prompt(githubConfig.repo, kitConfig.config);
       })
       .then(function(result) {
         runtimeConfig = result;
 
-        return kits.prepareKitsUpload.upload(
-          projectId,
-          githubConfig,
-          runtimeConfig
-        );
+        return kits.prepareKitsUpload.upload(projectId, githubConfig, runtimeConfig);
       })
       .then(function(sourceUploadUrl) {
-        utils.logSuccess(
-          chalk.green.bold("kits: ") + "Completed configuration setup."
-        );
+        utils.logSuccess(chalk.green.bold("kits: ") + "Completed configuration setup.");
         logger.debug(chalk.bold("kits: ") + "Source uploaded to GCS bucket");
         utils.logBullet(
-          "Deploying kit " +
-            gitRepo +
-            " as " +
-            chalk.bold(runtimeConfig.kitname + "...")
+          "Deploying kit " + gitRepo + " as " + chalk.bold(runtimeConfig.kitname + "...")
         );
 
-        return kits.deploy(
-          kitFunctions,
-          options,
-          runtimeConfig,
-          sourceUploadUrl
-        );
+        return kits.deploy(kitFunctions, options, runtimeConfig, sourceUploadUrl);
       });
   });

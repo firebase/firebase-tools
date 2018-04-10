@@ -24,11 +24,7 @@ module.exports = new Command("functions:config:legacy")
           logger.info("You do not have any legacy config variables.");
           return null;
         }
-        var latestVarPath = functionsConfig.idsToVarName(
-          projectId,
-          "firebase",
-          metaVal.version
-        );
+        var latestVarPath = functionsConfig.idsToVarName(projectId, "firebase", metaVal.version);
         return runtimeconfig.variables.get(latestVarPath);
       })
       .then(function(latest) {

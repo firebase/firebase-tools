@@ -66,8 +66,7 @@ module.exports = new Command("open [link]")
     var link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {
       return utils.reject(
-        "Unrecognized link name. Valid links are:\n\n" +
-          _.map(LINKS, "arg").join("\n")
+        "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
       );
     }
 
@@ -93,10 +92,7 @@ module.exports = new Command("open [link]")
       } else if (finalLink.arg === "hosting:site") {
         url = utils.addSubdomain(api.hostingOrigin, options.instance);
       } else if (finalLink.arg === "functions") {
-        url =
-          "https://console.firebase.google.com/project/" +
-          options.project +
-          "/functions/list";
+        url = "https://console.firebase.google.com/project/" + options.project + "/functions/list";
       } else if (finalLink.arg === "functions:log") {
         url =
           "https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=" +
@@ -111,11 +107,7 @@ module.exports = new Command("open [link]")
         );
         logger.info();
       }
-      logger.info(
-        "Opening " +
-          chalk.bold(finalLink.name) +
-          " link in your default browser:"
-      );
+      logger.info("Opening " + chalk.bold(finalLink.name) + " link in your default browser:");
       logger.info(chalk.bold.underline(url));
 
       open(url);

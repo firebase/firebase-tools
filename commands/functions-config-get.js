@@ -15,14 +15,12 @@ function _materialize(projectId, path) {
   var parts = path.split(".");
   var configId = parts[0];
   var configName = _.join(["projects", projectId, "configs", configId], "/");
-  return functionsConfig
-    .materializeConfig(configName, {})
-    .then(function(result) {
-      var query = _.chain(parts)
-        .join(".")
-        .value();
-      return query ? _.get(result, query) : result;
-    });
+  return functionsConfig.materializeConfig(configName, {}).then(function(result) {
+    var query = _.chain(parts)
+      .join(".")
+      .value();
+    return query ? _.get(result, query) : result;
+  });
 }
 
 module.exports = new Command("functions:config:get [path]")

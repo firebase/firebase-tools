@@ -11,23 +11,11 @@ program.option(
   "-P, --project <alias_or_project_id>",
   "the Firebase project to use for this command"
 );
-program.option(
-  "-j, --json",
-  "output JSON instead of text, also triggers non-interactive mode"
-);
+program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
-program.option(
-  "--non-interactive",
-  "error out of the command instead of waiting for prompts"
-);
-program.option(
-  "--interactive",
-  "force interactive shell treatment even when not detected"
-);
-program.option(
-  "--debug",
-  "print verbose debug output and keep a debug log file"
-);
+program.option("--non-interactive", "error out of the command instead of waiting for prompts");
+program.option("--interactive", "force interactive shell treatment even when not detected");
+program.option("--debug", "print verbose debug output and keep a debug log file");
 // program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
 var client = {};
@@ -65,11 +53,7 @@ var RENAMED_COMMANDS = {
 };
 
 program.action(function(cmd, cmd2) {
-  logger.error(
-    chalk.bold.red("Error:"),
-    chalk.bold(cmd),
-    "is not a Firebase command"
-  );
+  logger.error(chalk.bold.red("Error:"), chalk.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
     logger.error();

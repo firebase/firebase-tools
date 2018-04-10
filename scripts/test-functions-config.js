@@ -32,36 +32,25 @@ var postTest = function() {
 
 var set = function(expression) {
   return new RSVP.Promise(function(resolve) {
-    exec(
-      localFirebase + " functions:config:set " + expression,
-      { cwd: tmpDir },
-      function(err) {
-        expect(err).to.be.null;
-        resolve();
-      }
-    );
+    exec(localFirebase + " functions:config:set " + expression, { cwd: tmpDir }, function(err) {
+      expect(err).to.be.null;
+      resolve();
+    });
   });
 };
 
 var unset = function(key) {
   return new RSVP.Promise(function(resolve) {
-    exec(
-      localFirebase + " functions:config:unset " + key,
-      { cwd: tmpDir },
-      function(err) {
-        expect(err).to.be.null;
-        resolve();
-      }
-    );
+    exec(localFirebase + " functions:config:unset " + key, { cwd: tmpDir }, function(err) {
+      expect(err).to.be.null;
+      resolve();
+    });
   });
 };
 
 var getAndCompare = function(expected) {
   return new RSVP.Promise(function(resolve) {
-    exec(localFirebase + " functions:config:get", { cwd: tmpDir }, function(
-      err,
-      stdout
-    ) {
+    exec(localFirebase + " functions:config:get", { cwd: tmpDir }, function(err, stdout) {
       expect(JSON.parse(stdout)).to.deep.equal(expected);
       resolve();
     });
@@ -95,20 +84,14 @@ var main = function() {
       });
     })
     .then(function() {
-      return runTest(
-        "single-part key and JSON value",
-        'foo=\'{"bar":"faz"}\'',
-        "foo",
-        { foo: { bar: "faz" } }
-      );
+      return runTest("single-part key and JSON value", 'foo=\'{"bar":"faz"}\'', "foo", {
+        foo: { bar: "faz" },
+      });
     })
     .then(function() {
-      return runTest(
-        "multi-part key and JSON value",
-        'foo.too=\'{"bar":"faz"}\'',
-        "foo",
-        { foo: { too: { bar: "faz" } } }
-      );
+      return runTest("multi-part key and JSON value", 'foo.too=\'{"bar":"faz"}\'', "foo", {
+        foo: { too: { bar: "faz" } },
+      });
     })
     .then(function() {
       return runTest("numeric value", "foo.bar=123", "foo", {

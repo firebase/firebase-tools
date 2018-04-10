@@ -25,23 +25,21 @@ function _getFunctions(dict, kitName) {
 }
 
 function _listKits(projectId) {
-  return gcp.cloudfunctions
-    .list(projectId, DEFAULT_REGION)
-    .then(function(functions) {
-      return _.chain(functions)
-        .filter(function(func) {
-          return _.has(func, "labels.goog-kit-name");
-        })
-        .map(function(funcInfo) {
-          return {
-            kit: funcInfo.labels["goog-kit-name"],
-            source: funcInfo.labels["goog-kit-source"],
-            functions: funcInfo.functionName,
-          };
-        })
-        .groupBy("kit")
-        .value();
-    });
+  return gcp.cloudfunctions.list(projectId, DEFAULT_REGION).then(function(functions) {
+    return _.chain(functions)
+      .filter(function(func) {
+        return _.has(func, "labels.goog-kit-name");
+      })
+      .map(function(funcInfo) {
+        return {
+          kit: funcInfo.labels["goog-kit-name"],
+          source: funcInfo.labels["goog-kit-source"],
+          functions: funcInfo.functionName,
+        };
+      })
+      .groupBy("kit")
+      .value();
+  });
 }
 
 function _promptForKitsUninstall(choices, dict) {
@@ -91,18 +89,12 @@ module.exports = new Command("kits:uninstall [kitName]")
     return _listKits(projectId)
       .then(function(dict) {
         if (_.isEmpty(dict)) {
-          return utils.reject(
-            "There are no kits asssociated with your project.",
-            { exit: 1 }
-          );
+          return utils.reject("There are no kits asssociated with your project.", { exit: 1 });
         }
 
         if (kitName) {
           if (!dict[kitName]) {
-            return utils.reject(
-              "Could not find kit named " + chalk.bold(kitName),
-              { exit: 1 }
-            );
+            return utils.reject("Could not find kit named " + chalk.bold(kitName), { exit: 1 });
           }
           return _getFunctions(dict, kitName);
         }
@@ -121,8 +113,7 @@ module.exports = new Command("kits:uninstall [kitName]")
       })
       .then(function(operations) {
         utils.logBullet(
-          chalk.cyan.bold("kits: ") +
-            "Checking to make sure kits have been deleted safely..."
+          chalk.cyan.bold("kits: ") + "Checking to make sure kits have been deleted safely..."
         );
 
         var printSuccess = function(kits) {
@@ -135,9 +126,7 @@ module.exports = new Command("kits:uninstall [kitName]")
 
         var printFail = function(reason) {
           return utils.logWarning(
-            chalk.yellow.bold("kits: ") +
-              "Failed to delete the following kit: " +
-              reason
+            chalk.yellow.bold("kits: ") + "Failed to delete the following kit: " + reason
           );
         };
 

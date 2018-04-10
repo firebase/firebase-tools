@@ -21,9 +21,7 @@ var transArrayToUser = accountImporter.transArrayToUser;
 var serialImportUsers = accountImporter.serialImportUsers;
 
 module.exports = new Command("auth:import [dataFile]")
-  .description(
-    "import users into your Firebase project from a data file(.csv or .json)"
-  )
+  .description("import users into your Firebase project from a data file(.csv or .json)")
   .option(
     "--hash-algo <hashAlgo>",
     "specify the hash algorithm used in password for these accounts"
@@ -38,14 +36,8 @@ module.exports = new Command("auth:import [dataFile]")
     "--mem-cost <memCost>",
     "specify the memory cost for firebase scrypt, or cpu/memory cost for standard scrypt"
   )
-  .option(
-    "--parallelization <parallelization>",
-    "specify the parallelization for standard scrypt."
-  )
-  .option(
-    "--block-size <blockSize>",
-    "specify the block size (normally is 8) for standard scrypt."
-  )
+  .option("--parallelization <parallelization>", "specify the parallelization for standard scrypt.")
+  .option("--block-size <blockSize>", "specify the block size (normally is 8) for standard scrypt.")
   .option("--dk-len <dkLen>", "specify derived key length for standard scrypt.")
   .before(requireAccess)
   .action(function(dataFile, options) {
@@ -61,9 +53,7 @@ module.exports = new Command("auth:import [dataFile]")
     }
     var stats = fs.statSync(dataFile);
     var fileSizeInBytes = stats.size;
-    logger.info(
-      "Processing " + chalk.bold(dataFile) + " (" + fileSizeInBytes + " bytes)"
-    );
+    logger.info("Processing " + chalk.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
 
     var inStream = fs.createReadStream(dataFile);
     var batches = [];

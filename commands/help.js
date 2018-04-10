@@ -15,8 +15,7 @@ module.exports = new Command("help [command]")
     } else if (commandName) {
       logger.warn();
       utils.logWarning(
-        chalk.bold(commandName) +
-          " is not a valid command. See below for valid commands"
+        chalk.bold(commandName) + " is not a valid command. See below for valid commands"
       );
       this.client.cli.outputHelp();
     } else {

@@ -26,10 +26,7 @@ var newReport = function() {
 describe("profilerReport", function() {
   it("should correctly generate a report", function() {
     var report = newReport();
-    var output = require(path.resolve(
-      fixturesDir,
-      "profiler-data/sample-output.json"
-    ));
+    var output = require(path.resolve(fixturesDir, "profiler-data/sample-output.json"));
     expect(report.generate()).to.eventually.deep.equal(output);
   });
 

@@ -111,9 +111,7 @@ describe("accountImporter", function() {
               hashAlgorithm: "HMAC_SHA1",
               signerKey: "a2V5MTIz",
               targetProjectId: "test-project-id",
-              users: [
-                { email: "test" + i + "@test.org", localId: i.toString() },
-              ],
+              users: [{ email: "test" + i + "@test.org", localId: i.toString() }],
             },
             json: true,
             origin: "https://www.googleapis.com",
@@ -148,9 +146,7 @@ describe("accountImporter", function() {
               hashAlgorithm: "HMAC_SHA1",
               signerKey: "a2V5MTIz",
               targetProjectId: "test-project-id",
-              users: [
-                { email: "test" + i + "@test.org", localId: i.toString() },
-              ],
+              users: [{ email: "test" + i + "@test.org", localId: i.toString() }],
             },
             json: true,
             origin: "https://www.googleapis.com",

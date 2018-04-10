@@ -56,13 +56,11 @@ describe("fsAsync", function() {
   });
 
   it("can recurse directories", function() {
-    var foundFiles = fsAsync
-      .readdirRecursive({ path: baseDir })
-      .then(function(results) {
-        return _.map(results, function(result) {
-          return result.name;
-        }).sort();
-      });
+    var foundFiles = fsAsync.readdirRecursive({ path: baseDir }).then(function(results) {
+      return _.map(results, function(result) {
+        return result.name;
+      }).sort();
+    });
     var expectFiles = _.map(files, function(file) {
       return path.join(baseDir, file);
     }).sort();

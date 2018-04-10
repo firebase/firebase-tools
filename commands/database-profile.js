@@ -17,10 +17,7 @@ module.exports = new Command("database:profile")
     "collect database usage information for the specified number of seconds"
   )
   .option("--raw", "output the raw stats collected as newline delimited json")
-  .option(
-    "--no-collapse",
-    "prevent collapsing similar paths into $wildcard locations"
-  )
+  .option("--no-collapse", "prevent collapsing similar paths into $wildcard locations")
   .option(
     "-i, --input <filename>",
     "generate the report based on the specified file instead " +

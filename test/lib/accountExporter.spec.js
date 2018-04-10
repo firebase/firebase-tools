@@ -19,8 +19,7 @@ describe("accountExporter", function() {
     });
 
     it("should reject when format is not csv or json", function() {
-      return expect(validateOptions({ format: "txt" }, "output_file")).to.be
-        .rejected;
+      return expect(validateOptions({ format: "txt" }, "output_file")).to.be.rejected;
     });
 
     it("should ignore format param when implicitly specified in file name", function() {
@@ -106,9 +105,7 @@ describe("accountExporter", function() {
       });
       return result.then(function() {
         expect(spyWrite.callCount).to.eq(7);
-        expect(spyWrite.getCall(0).args[0]).to.eq(
-          JSON.stringify(userList[0], null, 2)
-        );
+        expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
         for (var j = 1; j < 7; j++) {
           expect(spyWrite.getCall(j).args[0]).to.eq(
             "," + os.EOL + JSON.stringify(userList[j], null, 2)

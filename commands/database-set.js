@@ -31,9 +31,7 @@ module.exports = new Command("database:set <path> [infile]")
         default: false,
         message:
           "You are about to overwrite all data at " +
-          chalk.cyan(
-            utils.addSubdomain(api.realtimeOrigin, options.instance) + path
-          ) +
+          chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
           ". Are you sure?",
       },
     ]).then(function() {
@@ -44,10 +42,7 @@ module.exports = new Command("database:set <path> [infile]")
       var inStream =
         utils.stringToStream(options.data) ||
         (infile ? fs.createReadStream(infile) : process.stdin);
-      var url =
-        utils.addSubdomain(api.realtimeOrigin, options.instance) +
-        path +
-        ".json?";
+      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
 
       if (!infile && !options.data) {
         utils.explainStdin();
@@ -58,33 +53,31 @@ module.exports = new Command("database:set <path> [infile]")
         json: true,
       };
 
-      return api
-        .addRequestHeaders(reqOptions)
-        .then(function(reqOptionsWithToken) {
-          return new RSVP.Promise(function(resolve, reject) {
-            inStream.pipe(
-              request.put(reqOptionsWithToken, function(err, res, body) {
-                logger.info();
-                if (err) {
-                  return reject(
-                    new FirebaseError("Unexpected error while setting data", {
-                      exit: 2,
-                    })
-                  );
-                } else if (res.statusCode >= 400) {
-                  return reject(responseToError(res, body));
-                }
-
-                utils.logSuccess("Data persisted successfully");
-                logger.info();
-                logger.info(
-                  chalk.bold("View data at:"),
-                  utils.consoleUrl(options.project, "/database/data" + path)
+      return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
+        return new RSVP.Promise(function(resolve, reject) {
+          inStream.pipe(
+            request.put(reqOptionsWithToken, function(err, res, body) {
+              logger.info();
+              if (err) {
+                return reject(
+                  new FirebaseError("Unexpected error while setting data", {
+                    exit: 2,
+                  })
                 );
-                return resolve();
-              })
-            );
-          });
+              } else if (res.statusCode >= 400) {
+                return reject(responseToError(res, body));
+              }
+
+              utils.logSuccess("Data persisted successfully");
+              logger.info();
+              logger.info(
+                chalk.bold("View data at:"),
+                utils.consoleUrl(options.project, "/database/data" + path)
+              );
+              return resolve();
+            })
+          );
         });
+      });
     });
   });

@@ -26,9 +26,7 @@ module.exports = new Command("tools:migrate")
   .action(function(options) {
     if (!options.config) {
       return utils.reject(
-        "Must run " +
-          chalk.bold("tools:migrate") +
-          " from a directory with a firebase.json"
+        "Must run " + chalk.bold("tools:migrate") + " from a directory with a firebase.json"
       );
     }
 
@@ -73,16 +71,12 @@ module.exports = new Command("tools:migrate")
     return next.then(function() {
       if (!changed) {
         logger.info();
-        utils.logSuccess(
-          "No action required, your firebase.json is all up to date!"
-        );
+        utils.logSuccess("No action required, your firebase.json is all up to date!");
         return true;
       }
 
       logger.info();
-      logger.info(
-        chalk.gray.bold("# preview: updated contents of firebase.json")
-      );
+      logger.info(chalk.gray.bold("# preview: updated contents of firebase.json"));
       logger.info();
       logger.info(JSON.stringify(out, null, 2));
       logger.info();
@@ -92,8 +86,7 @@ module.exports = new Command("tools:migrate")
       } else {
         next = prompt.once({
           type: "confirm",
-          message:
-            "Write new config to " + chalk.underline("firebase.json") + "?",
+          message: "Write new config to " + chalk.underline("firebase.json") + "?",
           default: true,
         });
       }
@@ -101,9 +94,7 @@ module.exports = new Command("tools:migrate")
       return next.then(function(confirmed) {
         if (confirmed) {
           options.config.writeProjectFile("firebase.json", out);
-          utils.logSuccess(
-            "Migrated " + chalk.bold("firebase.json") + " successfully"
-          );
+          utils.logSuccess("Migrated " + chalk.bold("firebase.json") + " successfully");
           if (projectId) {
             options.config.writeProjectFile(".firebaserc", rcfile);
             utils.makeActiveProject(options.projectRoot, projectId);

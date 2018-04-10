@@ -14,19 +14,11 @@ module.exports = new Command("target:remove <type> <resource>")
     var name = options.rc.removeTarget(options.project, type, resource);
     if (name) {
       utils.logSuccess(
-        "Removed " +
-          type +
-          " target " +
-          chalk.bold(name) +
-          " from " +
-          chalk.bold(resource)
+        "Removed " + type + " target " + chalk.bold(name) + " from " + chalk.bold(resource)
       );
     } else {
       utils.logWarning(
-        "No action taken. No target found for " +
-          type +
-          " resource " +
-          chalk.bold(resource)
+        "No action taken. No target found for " + type + " resource " + chalk.bold(resource)
       );
     }
     return RSVP.resolve(name);

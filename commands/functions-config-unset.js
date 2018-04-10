@@ -27,11 +27,7 @@ module.exports = new Command("functions:config:unset [keys...]")
         if (item.varId === "") {
           return runtimeconfig.configs.delete(projectId, item.configId);
         }
-        return runtimeconfig.variables.delete(
-          projectId,
-          item.configId,
-          item.varId
-        );
+        return runtimeconfig.variables.delete(projectId, item.configId, item.varId);
       })
     ).then(function() {
       utils.logSuccess("Environment updated.");

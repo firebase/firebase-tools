@@ -7,9 +7,7 @@ var logger = require("../lib/logger");
 var auth = require("../lib/auth");
 
 module.exports = new Command("login:ci")
-  .description(
-    "generate an access token for use in non-interactive environments"
-  )
+  .description("generate an access token for use in non-interactive environments")
   .option(
     "--no-localhost",
     "copy and paste a code instead of starting a local server for authentication"

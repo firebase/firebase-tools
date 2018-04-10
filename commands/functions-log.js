@@ -30,16 +30,10 @@ module.exports = new Command("functions:log")
         return 'resource.labels.function_name="' + funcName + '" ';
       });
       var consoleFuncFilters = _.map(funcNames, function(funcName) {
-        return (
-          'metadata.labels."cloudfunctions.googleapis.com/function_name":"' +
-          funcName +
-          '" '
-        );
+        return 'metadata.labels."cloudfunctions.googleapis.com/function_name":"' + funcName + '" ';
       });
       apiFilter += apiFuncFilters.join("OR ");
-      consoleFilter = [consoleFilter, consoleFuncFilters.join("%20OR%20")].join(
-        "%0A"
-      );
+      consoleFilter = [consoleFilter, consoleFuncFilters.join("%20OR%20")].join("%0A");
     }
     if (options.open) {
       var url =

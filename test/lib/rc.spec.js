@@ -73,10 +73,7 @@ describe("RC", function() {
         subject.set("targets", {
           myproject: { storage: { foo: ["bar", "baz"] } },
         });
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "bar",
-          "baz",
-        ]);
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["bar", "baz"]);
       });
 
       it("should return an empty array if nothing is found", function() {
@@ -90,10 +87,7 @@ describe("RC", function() {
           myproject: { storage: { foo: ["bar", "baz", "qux"] } },
         });
         subject.unsetTargetResource("myproject", "storage", "foo", "baz");
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "bar",
-          "qux",
-        ]);
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["bar", "qux"]);
       });
 
       it("should no-op if the resource is not in the target", function() {
@@ -101,11 +95,7 @@ describe("RC", function() {
           myproject: { storage: { foo: ["bar", "baz", "qux"] } },
         });
         subject.unsetTargetResource("myproject", "storage", "foo", "derp");
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "bar",
-          "baz",
-          "qux",
-        ]);
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["bar", "baz", "qux"]);
       });
     });
 
@@ -118,37 +108,25 @@ describe("RC", function() {
 
       it("should coerce a string argument into an array", function() {
         subject.applyTarget("myproject", "storage", "foo", "bar");
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "bar",
-        ]);
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["bar"]);
       });
 
       it("should add all resources to the specified target", function() {
         subject.set("targets", { myproject: { storage: { foo: ["bar"] } } });
         subject.applyTarget("myproject", "storage", "foo", ["baz", "qux"]);
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "bar",
-          "baz",
-          "qux",
-        ]);
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["bar", "baz", "qux"]);
       });
 
       it("should remove a resource from a different target", function() {
         subject.set("targets", { myproject: { storage: { foo: ["bar"] } } });
         subject.applyTarget("myproject", "storage", "baz", ["bar", "qux"]);
         expect(subject.target("myproject", "storage", "foo")).to.deep.eq([]);
-        expect(subject.target("myproject", "storage", "baz")).to.deep.eq([
-          "bar",
-          "qux",
-        ]);
+        expect(subject.target("myproject", "storage", "baz")).to.deep.eq(["bar", "qux"]);
       });
 
       it("should return a list of resources that changed targets", function() {
         subject.set("targets", { myproject: { storage: { foo: ["bar"] } } });
-        var result = subject.applyTarget("myproject", "storage", "baz", [
-          "bar",
-          "qux",
-        ]);
+        var result = subject.applyTarget("myproject", "storage", "baz", ["bar", "qux"]);
         expect(result).to.deep.eq([{ resource: "bar", target: "foo" }]);
       });
     });
@@ -158,12 +136,8 @@ describe("RC", function() {
         subject.set("targets", {
           myproject: { storage: { foo: ["bar", "baz"] } },
         });
-        expect(subject.removeTarget("myproject", "storage", "bar")).to.eq(
-          "foo"
-        );
-        expect(subject.target("myproject", "storage", "foo")).to.deep.eq([
-          "baz",
-        ]);
+        expect(subject.removeTarget("myproject", "storage", "bar")).to.eq("foo");
+        expect(subject.target("myproject", "storage", "foo")).to.deep.eq(["baz"]);
       });
 
       it("should return null if not present", function() {

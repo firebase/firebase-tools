@@ -19,9 +19,7 @@ module.exports = new Command("hosting:disable")
         name: "confirm",
         message:
           "Are you sure you want to disable Firebase Hosting?\n  " +
-          chalk.bold.underline(
-            "This will immediately make your site inaccessible!"
-          ),
+          chalk.bold.underline("This will immediately make your site inaccessible!"),
       },
     ])
       .then(function() {

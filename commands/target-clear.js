@@ -15,12 +15,7 @@ module.exports = new Command("target:clear <type> <target>")
     if (existed) {
       utils.logSuccess("Cleared " + type + " target " + chalk.bold(name));
     } else {
-      utils.logWarning(
-        "No action taken. No " +
-          type +
-          " target found named " +
-          chalk.bold(name)
-      );
+      utils.logWarning("No action taken. No " + type + " target found named " + chalk.bold(name));
     }
     return RSVP.resolve(existed);
   });

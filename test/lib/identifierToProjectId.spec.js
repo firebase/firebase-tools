@@ -25,9 +25,7 @@ describe("identifierToProjectId", function() {
 
   it("should return a project id if there is an exact match", function() {
     mockApi.expects("getProjects").resolves({ foobar: {} });
-    return expect(identifierToProjectId("foobar")).to.eventually.equal(
-      "foobar"
-    );
+    return expect(identifierToProjectId("foobar")).to.eventually.equal("foobar");
   });
 
   it("should return an instance if one is a match", function() {
