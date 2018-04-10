@@ -6,7 +6,6 @@ var exec = require("child_process").exec;
 var expect = require("chai").expect;
 var fs = require("fs-extra");
 var tmp = require("tmp");
-var RSVP = require("rsvp");
 
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
@@ -31,7 +30,7 @@ var postTest = function() {
 };
 
 var set = function(expression) {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(localFirebase + " functions:config:set " + expression, { cwd: tmpDir }, function(err) {
       expect(err).to.be.null;
       resolve();
@@ -40,7 +39,7 @@ var set = function(expression) {
 };
 
 var unset = function(key) {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(localFirebase + " functions:config:unset " + key, { cwd: tmpDir }, function(err) {
       expect(err).to.be.null;
       resolve();
@@ -49,7 +48,7 @@ var unset = function(key) {
 };
 
 var getAndCompare = function(expected) {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(localFirebase + " functions:config:get", { cwd: tmpDir }, function(err, stdout) {
       expect(JSON.parse(stdout)).to.deep.equal(expected);
       resolve();
@@ -110,7 +109,7 @@ var main = function() {
     })
     .catch(function(err) {
       console.log(chalk.red("Error while running tests: "), err);
-      return RSVP.resolve();
+      return Promise.resolve();
     })
     .then(postTest);
 };

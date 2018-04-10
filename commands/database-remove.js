@@ -6,7 +6,7 @@ var request = require("request");
 var api = require("../lib/api");
 var responseToError = require("../lib/responseToError");
 var FirebaseError = require("../lib/error");
-var RSVP = require("rsvp");
+
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
 var chalk = require("chalk");
@@ -42,7 +42,7 @@ module.exports = new Command("database:remove <path>")
       };
 
       return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-        return new RSVP.Promise(function(resolve, reject) {
+        return new Promise(function(resolve, reject) {
           request.del(reqOptionsWithToken, function(err, res, body) {
             if (err) {
               return reject(

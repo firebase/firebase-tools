@@ -12,7 +12,7 @@ var api = require("../lib/api");
 var scopes = require("../lib/scopes");
 var configstore = require("../lib/configstore");
 var extractTriggers = require("../lib/extractTriggers");
-var RSVP = require("rsvp");
+
 var chalk = require("chalk");
 var firebase = require("firebase");
 var functions = require("firebase-functions");
@@ -87,7 +87,7 @@ var checkFunctionsListMatch = function(expectedFunctions) {
 
 var testCreateUpdate = function() {
   fs.copySync(functionsSource, tmpDir + "/functions/index.js");
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(localFirebase + " deploy", { cwd: tmpDir }, function(err, stdout) {
       console.log(stdout);
       expect(err).to.be.null;
@@ -98,7 +98,7 @@ var testCreateUpdate = function() {
 
 var testCreateUpdateWithFilter = function() {
   fs.copySync(functionsSource, tmpDir + "/functions/index.js");
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(
       localFirebase + " deploy --only functions:dbAction,functions:httpsAction",
       { cwd: tmpDir },
@@ -112,7 +112,7 @@ var testCreateUpdateWithFilter = function() {
 };
 
 var testDelete = function() {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec("> functions/index.js &&" + localFirebase + " deploy", { cwd: tmpDir }, function(
       err,
       stdout
@@ -125,7 +125,7 @@ var testDelete = function() {
 };
 
 var testDeleteWithFilter = function() {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(
       "> functions/index.js &&" + localFirebase + " deploy --only functions:dbAction",
       { cwd: tmpDir },
@@ -139,7 +139,7 @@ var testDeleteWithFilter = function() {
 };
 
 var testUnknownFilter = function() {
-  return new RSVP.Promise(function(resolve) {
+  return new Promise(function(resolve) {
     exec(
       "> functions/index.js &&" + localFirebase + " deploy --only functions:unknownFilter",
       { cwd: tmpDir },
@@ -185,7 +185,7 @@ var writeToDB = function(path) {
     .child(uuid)
     .set({ foo: "bar" })
     .then(function() {
-      return RSVP.resolve(uuid);
+      return Promise.resolve(uuid);
     });
 };
 
@@ -214,7 +214,7 @@ var publishPubsub = function(topic) {
     })
     .then(function(resp) {
       expect(resp.status).to.equal(200);
-      return RSVP.resolve(uuid);
+      return Promise.resolve(uuid);
     });
 };
 
@@ -236,7 +236,7 @@ var saveToStorage = function() {
     })
     .then(function(resp) {
       expect(resp.status).to.equal(200);
-      return RSVP.resolve(uuid);
+      return Promise.resolve(uuid);
     });
 };
 
@@ -254,7 +254,7 @@ var testFunctionsTrigger = function() {
   var checkGcsAction = saveToStorage().then(function(uuid) {
     return waitForAck(uuid, "storage triggered function");
   });
-  return RSVP.all([
+  return Promise.all([
     checkDbAction,
     checkNestedDbAction,
     checkHttpsAction,
@@ -297,7 +297,7 @@ var main = function() {
     })
     .catch(function(err) {
       console.log(chalk.red("Error while running tests: "), err);
-      return RSVP.resolve();
+      return Promise.resolve();
     })
     .then(postTest);
 };

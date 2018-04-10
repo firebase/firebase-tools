@@ -1,7 +1,6 @@
 "use strict";
 var chalk = require("chalk");
 var _ = require("lodash");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var gcp = require("../lib/gcp");
@@ -70,7 +69,7 @@ function _promptForKitsUninstall(choices, dict) {
 }
 
 function _deleteKitFunctions(projectId, functions) {
-  return RSVP.all(
+  return Promise.all(
     _.map(functions, function(funcName) {
       return gcp.cloudfunctions.delete({
         projectId: projectId,

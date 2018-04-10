@@ -1,6 +1,5 @@
 "use strict";
 
-var RSVP = require("rsvp");
 var csv = require("csv-streamify");
 var chalk = require("chalk");
 var fs = require("fs");
@@ -58,7 +57,7 @@ module.exports = new Command("auth:import [dataFile]")
     var inStream = fs.createReadStream(dataFile);
     var batches = [];
     var currentBatch = [];
-    return new RSVP.Promise(function(resolve, reject) {
+    return new Promise(function(resolve, reject) {
       var parser;
       var counter = 0;
       if (dataFile.endsWith(".csv")) {

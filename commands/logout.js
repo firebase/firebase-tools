@@ -4,7 +4,7 @@ var Command = require("../lib/command");
 var configstore = require("../lib/configstore");
 var logger = require("../lib/logger");
 var chalk = require("chalk");
-var RSVP = require("rsvp");
+
 var utils = require("../lib/utils");
 var api = require("../lib/api");
 var auth = require("../lib/auth");
@@ -22,7 +22,7 @@ module.exports = new Command("logout")
     if (token) {
       next = auth.logout(token);
     } else {
-      next = RSVP.resolve();
+      next = Promise.resolve();
     }
 
     var cleanup = function() {

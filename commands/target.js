@@ -2,7 +2,6 @@
 
 var _ = require("lodash");
 var chalk = require("chalk");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
@@ -29,12 +28,12 @@ module.exports = new Command("target [type]")
     if (type) {
       var targets = options.rc.targets(options.project, type);
       _logTargets(type, targets);
-      return RSVP.resolve(targets);
+      return Promise.resolve(targets);
     }
 
     var allTargets = options.rc.get(["targets", options.project], {});
     _.forEach(allTargets, function(ts, tp) {
       _logTargets(tp, ts);
     });
-    return RSVP.resolve(allTargets);
+    return Promise.resolve(allTargets);
   });

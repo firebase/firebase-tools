@@ -1,7 +1,6 @@
 "use strict";
 
 var chalk = require("chalk");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var requireConfig = require("../lib/requireConfig");
@@ -17,5 +16,5 @@ module.exports = new Command("target:clear <type> <target>")
     } else {
       utils.logWarning("No action taken. No " + type + " target found named " + chalk.bold(name));
     }
-    return RSVP.resolve(existed);
+    return Promise.resolve(existed);
   });

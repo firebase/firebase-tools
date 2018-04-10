@@ -4,7 +4,6 @@ var chalk = require("chalk");
 var fs = require("fs");
 var homeDir = require("user-home");
 var path = require("path");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var Config = require("../lib/config");
@@ -107,7 +106,7 @@ module.exports = new Command("init [feature]")
         message: "Are you ready to proceed?",
       });
     } else {
-      next = RSVP.resolve(true);
+      next = Promise.resolve(true);
     }
 
     return next

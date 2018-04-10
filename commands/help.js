@@ -1,7 +1,7 @@
 "use strict";
 
 var Command = require("../lib/command");
-var RSVP = require("rsvp");
+
 var chalk = require("chalk");
 var logger = require("../lib/logger");
 var utils = require("../lib/utils");
@@ -28,5 +28,5 @@ module.exports = new Command("help [command]")
       logger.info();
     }
 
-    RSVP.resolve();
+    Promise.resolve();
   });

@@ -5,7 +5,7 @@ var Command = require("../lib/command");
 var FirestoreDelete = require("../lib/firestore/delete");
 var prompt = require("../lib/prompt");
 var requireAccess = require("../lib/requireAccess");
-var RSVP = require("rsvp");
+
 var scopes = require("../lib/scopes");
 var utils = require("../lib/utils");
 
@@ -88,7 +88,7 @@ module.exports = new Command("firestore:delete [path]")
 
     var checkPrompt;
     if (options.yes) {
-      checkPrompt = RSVP.resolve({ confirm: true });
+      checkPrompt = Promise.resolve({ confirm: true });
     } else {
       checkPrompt = prompt(options, [
         {

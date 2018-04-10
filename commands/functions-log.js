@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var RSVP = require("rsvp");
+
 var Command = require("../lib/command");
 var FirebaseError = require("../lib/error");
 var gcp = require("../lib/gcp");
@@ -42,7 +42,7 @@ module.exports = new Command("functions:log")
         "&project=" +
         projectId;
       open(url);
-      return RSVP.resolve();
+      return Promise.resolve();
     }
     return gcp.cloudlogging
       .listEntries(projectId, apiFilter, options.lines || 35, "desc")
@@ -59,10 +59,10 @@ module.exports = new Command("functions:log")
         if (_.isEmpty(entries)) {
           logger.info("No log entries found.");
         }
-        return RSVP.resolve(entries);
+        return Promise.resolve(entries);
       })
       .catch(function(err) {
-        return RSVP.reject(
+        return Promise.reject(
           new FirebaseError("Failed to list log entries " + err.message, {
             exit: 1,
           })

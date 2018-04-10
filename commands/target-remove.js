@@ -1,7 +1,6 @@
 "use strict";
 
 var chalk = require("chalk");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var requireConfig = require("../lib/requireConfig");
@@ -21,5 +20,5 @@ module.exports = new Command("target:remove <type> <resource>")
         "No action taken. No target found for " + type + " resource " + chalk.bold(resource)
       );
     }
-    return RSVP.resolve(name);
+    return Promise.resolve(name);
   });
