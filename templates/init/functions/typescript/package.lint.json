@@ -4,15 +4,15 @@
     "lint": "tslint --project tsconfig.json",
     "build": "tsc",
     "serve": "npm run build && firebase serve --only functions",
-    "shell": "npm run build && firebase experimental:functions:shell",
+    "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
   "main": "lib/index.js",
   "dependencies": {
-    "firebase-admin": "~5.11.0",
-    "firebase-functions": "^1.0.0"
+    "firebase-admin": "~5.12.0",
+    "firebase-functions": "^1.0.1"
   },
   "devDependencies": {
     "tslint": "^5.8.0",

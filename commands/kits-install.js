@@ -27,15 +27,14 @@ module.exports = new Command('kits:install <githubRepo>')
       kitOwner = kit[0];
       kitRepo = kit[1];
     } else {
-      kitOwner = 'kit-testing';
+      kitOwner = 'function-kits';
       kitRepo = kit[0];
     }
 
     var githubConfig = {
-      archive_format: 'tarball',
       id: options.releaseId || 'latest',
       owner: kitOwner,
-      path: options.path || 'kits.json',
+      manifestPath: options.path || 'kits.json',
       ref: options.branch || 'master',
       repo: kitRepo
     };
