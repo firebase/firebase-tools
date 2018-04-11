@@ -3,7 +3,6 @@
 var _ = require("lodash");
 var chalk = require("chalk");
 var open = require("open");
-var RSVP = require("rsvp");
 
 var api = require("../lib/api");
 var Command = require("../lib/command");
@@ -70,7 +69,7 @@ module.exports = new Command("open [link]")
       );
     }
 
-    var next = RSVP.resolve(link);
+    var next = Promise.resolve(link);
     if (!link) {
       next = prompt
         .once({
@@ -111,6 +110,6 @@ module.exports = new Command("open [link]")
       logger.info(chalk.bold.underline(url));
 
       open(url);
-      return RSVP.resolve(url);
+      return Promise.resolve(url);
     });
   });

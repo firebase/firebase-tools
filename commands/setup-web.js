@@ -1,7 +1,6 @@
 "use strict";
 
 var fs = require("fs");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var fetchWebSetup = require("../lib/fetchWebSetup");
@@ -17,6 +16,6 @@ module.exports = new Command("setup:web")
   .action(function(options) {
     return fetchWebSetup(options).then(function(config) {
       logger.info(JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(config, null, 2)));
-      return RSVP.resolve(config);
+      return Promise.resolve(config);
     });
   });

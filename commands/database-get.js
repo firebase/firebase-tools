@@ -6,7 +6,7 @@ var request = require("request");
 var api = require("../lib/api");
 var responseToError = require("../lib/responseToError");
 var FirebaseError = require("../lib/error");
-var RSVP = require("rsvp");
+
 var utils = require("../lib/utils");
 var querystring = require("querystring");
 var _ = require("lodash");
@@ -85,7 +85,7 @@ module.exports = new Command("database:get <path>")
     };
 
     return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-      return new RSVP.Promise(function(resolve, reject) {
+      return new Promise(function(resolve, reject) {
         var fileOut = !!options.output;
         var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
         var erroring;

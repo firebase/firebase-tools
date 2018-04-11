@@ -1,7 +1,7 @@
 "use strict";
 
 var chalk = require("chalk");
-var RSVP = require("rsvp");
+
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
 var requireAccess = require("../lib/requireAccess");
@@ -30,7 +30,7 @@ module.exports = new Command("functions:config:set [values...]")
       );
     });
 
-    return RSVP.all(promises).then(function() {
+    return Promise.all(promises).then(function() {
       utils.logSuccess("Functions config updated.");
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +

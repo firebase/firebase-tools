@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var RSVP = require("rsvp");
+
 var chalk = require("chalk");
 var Command = require("../lib/command");
 var functionsConfig = require("../lib/functionsConfig");
@@ -22,7 +22,7 @@ module.exports = new Command("functions:config:unset [keys...]")
     }
     var projectId = getProjectId(options);
     var parsed = functionsConfig.parseUnsetArgs(args);
-    return RSVP.all(
+    return Promise.all(
       _.map(parsed, function(item) {
         if (item.varId === "") {
           return runtimeconfig.configs.delete(projectId, item.configId);

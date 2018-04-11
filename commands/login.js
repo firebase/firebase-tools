@@ -6,7 +6,7 @@ var configstore = require("../lib/configstore");
 var chalk = require("chalk");
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
-var RSVP = require("rsvp");
+
 var auth = require("../lib/auth");
 
 module.exports = new Command("login")
@@ -31,7 +31,7 @@ module.exports = new Command("login")
 
     if (user && tokens && !options.reauth) {
       logger.info("Already logged in as", chalk.bold(user.email));
-      return RSVP.resolve(user);
+      return Promise.resolve(user);
     }
 
     return prompt(options, [

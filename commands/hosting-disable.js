@@ -6,7 +6,6 @@ var api = require("../lib/api");
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
 var chalk = require("chalk");
-var RSVP = require("rsvp");
 
 module.exports = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
@@ -24,7 +23,7 @@ module.exports = new Command("hosting:disable")
     ])
       .then(function() {
         if (!options.confirm) {
-          return RSVP.resolve();
+          return Promise.resolve();
         }
 
         return api.request(

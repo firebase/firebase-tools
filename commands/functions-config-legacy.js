@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var RSVP = require("rsvp");
+
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
 var requireAccess = require("../lib/requireAccess");
@@ -39,6 +39,6 @@ module.exports = new Command("functions:config:legacy")
           logger.info("You do not have any legacy config variables.");
           return null;
         }
-        return RSVP.reject(err);
+        return Promise.reject(err);
       });
   });

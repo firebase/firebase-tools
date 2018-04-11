@@ -4,7 +4,6 @@ var chai = require("chai");
 var expect = chai.expect;
 chai.use(require("chai-as-promised"));
 
-var RSVP = require("rsvp");
 var Command = require("../../lib/command");
 
 describe("Command", function() {
@@ -42,7 +41,7 @@ describe("Command", function() {
       var run = command
         .action(function(options) {
           options.foo = "bar";
-          return RSVP.resolve(options);
+          return Promise.resolve(options);
         })
         .runner();
 
@@ -53,7 +52,7 @@ describe("Command", function() {
       var run = command
         .before(function(options) {
           options.foo = true;
-          return RSVP.resolve();
+          return Promise.resolve();
         })
         .action(function(options) {
           if (options.foo) {

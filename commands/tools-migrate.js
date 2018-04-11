@@ -2,7 +2,6 @@
 
 var _ = require("lodash");
 var chalk = require("chalk");
-var RSVP = require("rsvp");
 
 var Command = require("../lib/command");
 var Config = require("../lib/config");
@@ -65,7 +64,7 @@ module.exports = new Command("tools:migrate")
 
       changed = true;
     } else {
-      next = RSVP.resolve();
+      next = Promise.resolve();
     }
 
     return next.then(function() {
@@ -82,7 +81,7 @@ module.exports = new Command("tools:migrate")
       logger.info();
 
       if (options.confirm) {
-        next = RSVP.resolve(true);
+        next = Promise.resolve(true);
       } else {
         next = prompt.once({
           type: "confirm",
