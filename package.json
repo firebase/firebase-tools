@@ -69,6 +69,7 @@
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^7.4.1",
     "lodash": "^4.6.1",
+    "minimatch": "^3.0.4",
     "open": "^0.0.5",
     "ora": "0.2.3",
     "portfinder": "^0.4.0",
