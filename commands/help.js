@@ -28,5 +28,5 @@ module.exports = new Command("help [command]")
       logger.info();
     }
 
-    Promise.resolve();
+    return Promise.resolve();
   });
