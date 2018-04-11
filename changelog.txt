@@ -1,0 +1,1 @@
+fixed - Fix regression where "functions.ignore" field of firebase.json stopped supporting glob patterns (e.g. **/folder/**).
