@@ -7,7 +7,10 @@
     "firebase": "./bin/firebase"
   },
   "scripts": {
-    "test": "./node_modules/.bin/gulp"
+    "format": "prettier --write '**/*.js' 'bin/*'",
+    "lint": "eslint '**/*.js'",
+    "mocha": "nyc mocha test/**/*.spec.js --timeout=1000",
+    "test": "npm run lint && npm run mocha"
   },
   "repository": {
     "type": "git",
@@ -87,14 +90,12 @@
     "chai": "^3.0.0",
     "chai-as-promised": "^5.1.0",
     "coveralls": "2.11.2",
-    "eslint": "^1.4.1",
-    "gulp": "^3.9.0",
-    "gulp-eslint": "^1.0.0",
-    "gulp-exit": "0.0.2",
-    "gulp-istanbul": "^0.10.0",
-    "gulp-mocha": "^2.1.2",
-    "jshint-stylish": "^2.0.1",
+    "eslint": "^4.19.1",
+    "eslint-plugin-prettier": "^2.6.0",
+    "mocha": "^5.0.5",
     "nock": "^2.10.0",
+    "nyc": "^11.6.0",
+    "prettier": "^1.11.1",
     "sinon": "^1.17.4",
     "sinon-as-promised": "^4.0.0",
     "sinon-chai": "^2.8.0"
