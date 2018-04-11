@@ -92,21 +92,27 @@ describe("fsAsync", function() {
     return expect(promise).to.eventually.deep.equal(expected);
   });
 
-  it('supports blob rules', function() {
-    var expected = _
-      .chain(files)
+  it("supports blob rules", function() {
+    var expected = _.chain(files)
       .reject(function(file) {
-        return file.indexOf('node_modules') !== -1;
-      }).map(function(file) {
+        return file.indexOf("node_modules") !== -1;
+      })
+      .map(function(file) {
         return path.join(baseDir, file);
-      }).value().sort();
+      })
+      .value()
+      .sort();
 
-    var promise = fsAsync.readdirRecursive({
-      path: baseDir,
-      ignore: ['**/node_modules/**']
-    }).then(function(results) {
-      return _.map(results, function(result) { return result.name; }).sort();
-    });
+    var promise = fsAsync
+      .readdirRecursive({
+        path: baseDir,
+        ignore: ["**/node_modules/**"],
+      })
+      .then(function(results) {
+        return _.map(results, function(result) {
+          return result.name;
+        }).sort();
+      });
 
     return expect(promise).to.eventually.deep.equal(expected);
   });
