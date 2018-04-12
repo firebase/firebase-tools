@@ -49,7 +49,7 @@ describe("localFunction._constructAuth", function() {
   describe("localFunction._makeFirestoreValue", function() {
     var makeFirestoreValue = lf._makeFirestoreValue;
 
-    it("returns {} for there is no data", function() {
+    it("returns {} when there is no data", function() {
       expect(makeFirestoreValue()).to.deep.equal({});
       expect(makeFirestoreValue(null)).to.deep.equal({});
       expect(makeFirestoreValue({})).to.deep.equal({});
