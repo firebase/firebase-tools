@@ -1,3 +1,0 @@
-fixed - Fix regression where "functions.ignore" field of firebase.json stopped supporting glob patterns (e.g. **/folder/**).
-fixed - Fix bug where asynchronous operations inside emulated functions resulted in 500 statuses and "socket hangup" errors.
-changed - Removed feature where debug logs from the functions emulator were written to the cwd. (This feature was introduced in v3.18.0, but is buggy.)
