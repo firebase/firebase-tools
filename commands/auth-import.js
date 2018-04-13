@@ -57,9 +57,9 @@ module.exports = new Command("auth:import [dataFile]")
     var inStream = fs.createReadStream(dataFile);
     var batches = [];
     var currentBatch = [];
+    var counter = 0;
     return new Promise(function(resolve, reject) {
       var parser;
-      var counter = 0;
       if (dataFile.endsWith(".csv")) {
         parser = csv({ objectMode: true });
         parser
@@ -109,6 +109,13 @@ module.exports = new Command("auth:import [dataFile]")
         inStream.pipe(parser);
       }
     }).then(function(userListArr) {
+      logger.debug(
+        "Preparing to import",
+        counter,
+        "user records in",
+        userListArr.length,
+        "batches."
+      );
       if (userListArr.length) {
         return serialImportUsers(projectId, hashOptions, userListArr, 0);
       }

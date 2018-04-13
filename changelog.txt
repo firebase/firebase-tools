@@ -1,0 +1,2 @@
+fixed - Fixed an issue that caused a module loading error.
+fixed - Fixed an issue with the functions emulator returning incorrect values for `before` and `after`.
