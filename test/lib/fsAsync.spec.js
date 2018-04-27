@@ -119,8 +119,8 @@ describe("fsAsync", function() {
 
   it("should support negation rules", function() {
     var expected = _.chain(files)
-      .reject(function(file) {
-        return file.indexOf("visible") == -1;
+      .filter(function(file) {
+        return file.indexOf("visible") !== -1;
       })
       .map(function(file) {
         return path.join(baseDir, file);
