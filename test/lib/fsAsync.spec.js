@@ -140,6 +140,5 @@ describe("fsAsync", function() {
       });
 
     return expect(promise).to.eventually.deep.equal(expected);
-
   });
 });
