@@ -37,7 +37,13 @@
   "bugs": {
     "url": "https://github.com/firebase/firebase-tools/issues"
   },
-  "files": ["bin/**", "lib/**", "commands/**", "templates/**", "index.js"],
+  "files": [
+    "bin/**",
+    "lib/**",
+    "commands/**",
+    "templates/**",
+    "index.js"
+  ],
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
     "JSONStream": "^1.2.1",
@@ -61,7 +67,7 @@
     "inquirer": "^0.12.0",
     "is": "^3.2.1",
     "jsonschema": "^1.0.2",
-    "jsonwebtoken": "^7.4.1",
+    "jsonwebtoken": "^8.2.1",
     "lodash": "^4.6.1",
     "minimatch": "^3.0.4",
     "open": "^0.0.5",
