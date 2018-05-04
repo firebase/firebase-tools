@@ -93,7 +93,7 @@ module.exports = new Command("use [alias_or_project_id]")
       });
     } else if (options.unalias) {
       // firebase use --unalias [alias]
-      if (_.has(options.rc, ["projects", options.unalias])) {
+      if (_.has(options.rc.data, ["projects", options.unalias])) {
         options.rc.removeProjectAlias(options.unalias);
         logger.info("Removed alias", chalk.bold(options.unalias));
         logger.info();
