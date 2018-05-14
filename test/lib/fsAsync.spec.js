@@ -116,4 +116,29 @@ describe("fsAsync", function() {
 
     return expect(promise).to.eventually.deep.equal(expected);
   });
+
+  it("should support negation rules", function() {
+    var expected = _.chain(files)
+      .filter(function(file) {
+        return file === "visible";
+      })
+      .map(function(file) {
+        return path.join(baseDir, file);
+      })
+      .value()
+      .sort();
+
+    var promise = fsAsync
+      .readdirRecursive({
+        path: baseDir,
+        ignore: ["!visible"],
+      })
+      .then(function(results) {
+        return _.map(results, function(result) {
+          return result.name;
+        }).sort();
+      });
+
+    return expect(promise).to.eventually.deep.equal(expected);
+  });
 });
