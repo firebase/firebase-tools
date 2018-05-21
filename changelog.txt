@@ -1,0 +1,2 @@
+feature - Support the `--host` flag for `firebase serve --only functions` and `firebase experimental:functions:shell` (this flag was released in 3.17.0 and removed in 3.17.2 due to a bug).
+fixed - Update vulnerable jsonwebtoken dependency to v8.2.1.
