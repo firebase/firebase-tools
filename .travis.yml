@@ -3,6 +3,7 @@ node_js:
 - '4.5'
 - '5.10'
 - '6'
+- '8'
 - stable
 sudo: false
 after_script:
