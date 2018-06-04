@@ -1,0 +1,2 @@
+fixed - Fixed bug where firestore:delete only worked for the first 20 collections.
+fixed - Fixed erroneous error message that the project did not have any HTTPS functions when running `firebase serve` when in fact there were.
