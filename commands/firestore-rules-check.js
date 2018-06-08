@@ -10,17 +10,4 @@ module.exports = new Command("firestore:rules:check")
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(options) {
     return PrepareRules({ firestoreRules: true, firestoreIndexes: false }, options);
-    /*
-    return firestoreIndexes.list(options.project).then(function(indexes) {
-      var jsonSpec = _makeJsonSpec(indexes);
-
-      if (options.pretty) {
-        _prettyPrint(indexes);
-      } else {
-        logger.info(JSON.stringify(jsonSpec, undefined, 2));
-      }
-
-      return jsonSpec;
-    });
-    */
   });
