@@ -24,8 +24,8 @@ module.exports = new Command("database:profile")
       "of streaming logs from the database"
   )
   .option(
-    "--instance <name>",
-    "use database <name>.firebaseio.com (otherwise, use the default instance)"
+    "--instance <instance>",
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requireAccess)
   .action(function(options) {

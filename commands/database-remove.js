@@ -16,8 +16,8 @@ module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
   .option(
-    "--instance <name>",
-    "use database <name>.firebaseio.com (otherwise, use the default instance)"
+    "--instance <instance>",
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requireAccess)
   .action(function(path, options) {
