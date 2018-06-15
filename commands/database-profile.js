@@ -23,6 +23,7 @@ module.exports = new Command("database:profile")
     "generate the report based on the specified file instead " +
       "of streaming logs from the database"
   )
+  .option("--instance <name>", "use database instance <name> (otherwise, use the default instance)")
   .before(requireAccess)
   .action(function(options) {
     // Validate options

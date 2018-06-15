@@ -15,6 +15,7 @@ var _ = require("lodash");
 module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
+  .option("--instance <name>", "use database instance <name> (otherwise, use the default instance)")
   .before(requireAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
