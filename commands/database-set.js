@@ -18,7 +18,7 @@ module.exports = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
-  .option("--instance <name>", "use database instance <name> (otherwise, use the default instance)")
+  .option("--instance <name>", "use database <name>.firebaseio.com (otherwise, use the default instance)")
   .before(requireAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
