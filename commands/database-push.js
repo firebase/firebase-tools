@@ -17,7 +17,10 @@ var _ = require("lodash");
 module.exports = new Command("database:push <path> [infile]")
   .description("add a new JSON object to a list of data in your Firebase")
   .option("-d, --data <data>", "specify escaped JSON directly")
-  .option("--instance <name>", "use database <name>.firebaseio.com (otherwise, use the default instance)")
+  .option(
+    "--instance <name>",
+    "use database <name>.firebaseio.com (otherwise, use the default instance)"
+  )
   .before(requireAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {

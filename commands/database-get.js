@@ -48,7 +48,10 @@ module.exports = new Command("database:get <path>")
   .option("--start-at <val>", "start results at <val> (based on specified ordering)")
   .option("--end-at <val>", "end results at <val> (based on specified ordering)")
   .option("--equal-to <val>", "restrict results to <val> (based on specified ordering)")
-  .option("--instance <name>", "use database <name>.firebaseio.com (otherwise, use the default instance)")
+  .option(
+    "--instance <name>",
+    "use database <name>.firebaseio.com (otherwise, use the default instance)"
+  )
   .before(requireAccess)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
