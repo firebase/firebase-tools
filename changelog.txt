@@ -1,0 +1,1 @@
+feature - Add `--instance` flag to `firebase database:*` commands to allow selection of non-default database instances.
