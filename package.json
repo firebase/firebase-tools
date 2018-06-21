@@ -37,13 +37,7 @@
   "bugs": {
     "url": "https://github.com/firebase/firebase-tools/issues"
   },
-  "files": [
-    "bin/**",
-    "lib/**",
-    "commands/**",
-    "templates/**",
-    "index.js"
-  ],
+  "files": ["bin/**", "lib/**", "commands/**", "templates/**", "index.js"],
   "homepage": "https://github.com/firebase/firebase-tools",
   "dependencies": {
     "JSONStream": "^1.2.1",
