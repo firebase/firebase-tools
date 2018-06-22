@@ -1,0 +1,3 @@
+feature - Add `--instance` flag to `firebase database:*` commands to allow selection of non-default database instances.
+feature - Add `--hash-input-order` flag to `firebase auth:import` to designate order of password and salt.
+feature - Cloud Firestore indexes now support `ARRAY_CONTAINS` indexing.
