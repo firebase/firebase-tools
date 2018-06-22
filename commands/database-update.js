@@ -18,6 +18,10 @@ module.exports = new Command("database:update <path> [infile]")
   .description("update some of the keys for the defined path in your Firebase")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
+  .option(
+    "--instance <instance>",
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+  )
   .before(requireAccess)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {

@@ -23,6 +23,10 @@ module.exports = new Command("database:profile")
     "generate the report based on the specified file instead " +
       "of streaming logs from the database"
   )
+  .option(
+    "--instance <instance>",
+    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+  )
   .before(requireAccess)
   .action(function(options) {
     // Validate options
