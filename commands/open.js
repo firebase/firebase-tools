@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 var chalk = require("chalk");
-var open = require("open");
+var open = require("opn");
 
 var api = require("../lib/api");
 var Command = require("../lib/command");
