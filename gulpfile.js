@@ -59,8 +59,8 @@ gulp.task("test", function() {
 
 // Reruns the linter every time a JavaScript file changes
 gulp.task("watch", function() {
-  gulp.watch(paths.js, ["lint"]);
+  gulp.watch(paths.js, gulp.series("lint"));
 });
 
 // Default task
-gulp.task("default", ["lint", "test"]);
+gulp.task("default", gulp.series("lint", "test"));
