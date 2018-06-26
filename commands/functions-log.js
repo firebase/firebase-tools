@@ -9,7 +9,7 @@ var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
 var requireAccess = require("../lib/requireAccess");
 var scopes = require("../lib/scopes");
-var open = require("open");
+var open = require("opn");
 
 module.exports = new Command("functions:log")
   .description("read logs from deployed functions")
