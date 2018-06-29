@@ -1,0 +1,2 @@
+fixed - Fixed bug where function emulator did not properly set timeout to 9 minutes.
+feature - Retry on 503 error when generating functions upload URL.
