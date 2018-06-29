@@ -3,6 +3,7 @@
 
 var chalk = require("chalk");
 var exec = require("child_process").exec;
+var execSync = require("child_process").execSync;
 var expect = require("chai").expect;
 var fs = require("fs-extra");
 var tmp = require("tmp");
@@ -21,6 +22,7 @@ var preTest = function() {
   fs.copySync(projectDir, tmpDir);
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
+  execSync(localFirebase + " functions:config:unset foo", { cwd: tmpDir });
   console.log("Done pretest prep.");
 };
 
