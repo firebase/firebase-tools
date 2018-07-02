@@ -1,0 +1,2 @@
+fixed - Fixed bug where function emulator did not properly set timeout to 9 minutes.
+fixed - Improved function deploy resilience to temporary errors during upload
