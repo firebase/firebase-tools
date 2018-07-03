@@ -1,0 +1,1 @@
+fixed - Fix bug where API error messages were swallowed up by "TypeError: Cannot create property 'error' on string".
