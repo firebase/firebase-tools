@@ -28,7 +28,7 @@ module.exports = new Command("deploy")
       '(e.g. "--only functions:group1.subgroup1,functions:group2)"'
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
-  .option("--region <region>", 'deploy to specified region (only works for functions)')
+  .option("--region <region>", "deploy to specified region (only works for functions)")
   .before(requireConfig)
   .before(function(options) {
     return acquireRefs(options, [scopes.CLOUD_PLATFORM]).catch(function(err) {
