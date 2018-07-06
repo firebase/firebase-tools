@@ -94,6 +94,7 @@ process.on("uncaughtException", function(err) {
 
 if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
+
   // determine if there are any non-option arguments. if not, display help
   args = args.filter(function(arg) {
     return arg.indexOf("-") < 0;

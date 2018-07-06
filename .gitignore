@@ -5,6 +5,7 @@ node_modules
 firebase-debug.log
 npm-debug.log
 package-lock.json
+yarn.lock
 .npmrc
 
 .DS_Store
