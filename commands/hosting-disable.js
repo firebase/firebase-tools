@@ -26,19 +26,13 @@ module.exports = new Command("hosting:disable")
           return Promise.resolve();
         }
 
-        return api.request(
-          "POST",
-          "/v1/projects/" + encodeURIComponent(options.project) + "/releases",
-          {
-            auth: true,
-            data: {
-              hosting: {
-                disabled: true,
-              },
-            },
-            origin: api.deployOrigin,
-          }
-        );
+        return api.request("POST", "/v1beta1/sites/" + options.instance + "/releases", {
+          auth: true,
+          data: {
+            type: "SITE_DISABLE",
+          },
+          origin: api.hostingApiOrigin,
+        });
       })
       .then(function() {
         if (options.confirm) {
