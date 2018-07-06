@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var exec = require("child_process").exec;
 var expect = require("chai").expect;
 var fs = require("fs-extra");
@@ -65,7 +65,7 @@ var runTest = function(description, expression, key, expected) {
       return unset(key);
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: ") + description);
+      console.log(clc.green("\u2713 Test passed: ") + description);
     });
 };
 
@@ -108,7 +108,7 @@ var main = function() {
       });
     })
     .catch(function(err) {
-      console.log(chalk.red("Error while running tests: "), err);
+      console.log(clc.red("Error while running tests: "), err);
       return Promise.resolve();
     })
     .then(postTest);

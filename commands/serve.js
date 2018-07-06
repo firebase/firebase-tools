@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
@@ -35,13 +35,13 @@ module.exports = new Command("serve")
     if (options.config) {
       logger.info();
       logger.info(
-        chalk.bold(chalk.gray("===") + " Serving from '" + options.config.projectDir + "'...")
+        clc.bold(clc.white("===") + " Serving from '" + options.config.projectDir + "'...")
       );
       logger.info();
     } else {
       utils.logWarning(
         "No Firebase project directory detected. Serving static content from " +
-          chalk.bold(options.cwd || process.cwd())
+          clc.bold(options.cwd || process.cwd())
       );
     }
     options.targets = filterTargets(options, VALID_TARGETS);

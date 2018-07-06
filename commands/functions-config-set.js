@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
@@ -17,7 +17,7 @@ module.exports = new Command("functions:config:set [values...]")
   .action(function(args, options) {
     if (!args.length) {
       return utils.reject(
-        "Must supply at least one key/value pair, e.g. " + chalk.bold('app.name="My App"')
+        "Must supply at least one key/value pair, e.g. " + clc.bold('app.name="My App"')
       );
     }
     var projectId = getProjectId(options);
@@ -34,7 +34,7 @@ module.exports = new Command("functions:config:set [values...]")
       utils.logSuccess("Functions config updated.");
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +
-          chalk.bold("firebase deploy --only functions") +
+          clc.bold("firebase deploy --only functions") +
           "\n"
       );
     });

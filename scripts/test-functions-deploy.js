@@ -13,7 +13,7 @@ var scopes = require("../lib/scopes");
 var configstore = require("../lib/configstore");
 var extractTriggers = require("../lib/extractTriggers");
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var firebase = require("firebase");
 var functions = require("firebase-functions");
 var admin = require("firebase-admin");
@@ -267,36 +267,36 @@ var main = function() {
   preTest();
   testCreateUpdate()
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: creating functions"));
+      console.log(clc.green("\u2713 Test passed: creating functions"));
       return testCreateUpdate();
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: updating functions"));
+      console.log(clc.green("\u2713 Test passed: updating functions"));
       return testFunctionsTrigger();
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: triggering functions"));
+      console.log(clc.green("\u2713 Test passed: triggering functions"));
       return testDelete();
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: deleting functions"));
+      console.log(clc.green("\u2713 Test passed: deleting functions"));
       return testCreateUpdateWithFilter();
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: creating functions with filters"));
+      console.log(clc.green("\u2713 Test passed: creating functions with filters"));
       return testDeleteWithFilter();
     })
     .then(function() {
-      console.log(chalk.green("\u2713 Test passed: deleting functions with filters"));
+      console.log(clc.green("\u2713 Test passed: deleting functions with filters"));
       return testUnknownFilter();
     })
     .then(function() {
       console.log(
-        chalk.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
+        clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
       );
     })
     .catch(function(err) {
-      console.log(chalk.red("Error while running tests: "), err);
+      console.log(clc.red("Error while running tests: "), err);
       return Promise.resolve();
     })
     .then(postTest);

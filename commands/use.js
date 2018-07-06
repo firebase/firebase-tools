@@ -4,30 +4,30 @@ var Command = require("../lib/command");
 var logger = require("../lib/logger");
 var requireAuth = require("../lib/requireAuth");
 var api = require("../lib/api");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var utils = require("../lib/utils");
 var _ = require("lodash");
 var prompt = require("../lib/prompt");
 
 var listAliases = function(options) {
   if (options.rc.hasProjects) {
-    logger.info("Project aliases for", chalk.bold(options.projectRoot) + ":");
+    logger.info("Project aliases for", clc.bold(options.projectRoot) + ":");
     logger.info();
     _.forEach(options.rc.projects, function(projectId, alias) {
       var listing = alias + " (" + projectId + ")";
       if (options.project === projectId || options.projectAlias === alias) {
-        logger.info(chalk.cyan.bold("* " + listing));
+        logger.info(clc.cyan.bold("* " + listing));
       } else {
         logger.info("  " + listing);
       }
     });
     logger.info();
   }
-  logger.info("Run", chalk.bold("firebase use --add"), "to define a new project alias.");
+  logger.info("Run", clc.bold("firebase use --add"), "to define a new project alias.");
 };
 
 var verifyMessage = function(name) {
-  return "please verify project " + chalk.bold(name) + " exists and you have access.";
+  return "please verify project " + clc.bold(name) + " exists and you have access.";
 };
 
 module.exports = new Command("use [alias_or_project_id]")
@@ -48,9 +48,9 @@ module.exports = new Command("use [alias_or_project_id]")
     if (!options.projectRoot) {
       // not in project directory
       return utils.reject(
-        chalk.bold("firebase use") +
+        clc.bold("firebase use") +
           " must be run from a Firebase project directory.\n\nRun " +
-          chalk.bold("firebase init") +
+          clc.bold("firebase init") +
           " to start a project directory in the current folder."
       );
     }
@@ -63,12 +63,12 @@ module.exports = new Command("use [alias_or_project_id]")
           // firebase use [project] --alias [alias]
           if (!projects[newActive]) {
             return utils.reject(
-              "Cannot create alias " + chalk.bold(aliasOpt) + ", " + verifyMessage(newActive)
+              "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive)
             );
           }
           options.rc.addProjectAlias(aliasOpt, newActive);
           aliasedProject = newActive;
-          logger.info("Created alias", chalk.bold(aliasOpt), "for", aliasedProject + ".");
+          logger.info("Created alias", clc.bold(aliasOpt), "for", aliasedProject + ".");
         }
 
         if (aliasedProject) {
@@ -76,16 +76,16 @@ module.exports = new Command("use [alias_or_project_id]")
           if (!projects[aliasedProject]) {
             // found alias, but not in project list
             return utils.reject(
-              "Unable to use alias " + chalk.bold(newActive) + ", " + verifyMessage(aliasedProject)
+              "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(aliasedProject)
             );
           }
 
           utils.makeActiveProject(options.projectRoot, newActive);
-          logger.info("Now using alias", chalk.bold(newActive), "(" + aliasedProject + ")");
+          logger.info("Now using alias", clc.bold(newActive), "(" + aliasedProject + ")");
         } else if (projects[newActive]) {
           // exact project id specified
           utils.makeActiveProject(options.projectRoot, newActive);
-          logger.info("Now using project", chalk.bold(newActive));
+          logger.info("Now using project", clc.bold(newActive));
         } else {
           // no alias or project recognized
           return utils.reject("Invalid project selection, " + verifyMessage(newActive));
@@ -95,7 +95,7 @@ module.exports = new Command("use [alias_or_project_id]")
       // firebase use --unalias [alias]
       if (_.has(options.rc.data, ["projects", options.unalias])) {
         options.rc.removeProjectAlias(options.unalias);
-        logger.info("Removed alias", chalk.bold(options.unalias));
+        logger.info("Removed alias", clc.bold(options.unalias));
         logger.info();
         listAliases(options);
       }
@@ -104,9 +104,9 @@ module.exports = new Command("use [alias_or_project_id]")
       if (options.nonInteractive) {
         return utils.reject(
           "Cannot run " +
-            chalk.bold("firebase use --add") +
+            clc.bold("firebase use --add") +
             " in non-interactive mode. Use " +
-            chalk.bold("firebase use <project_id> --alias <alias>") +
+            clc.bold("firebase use <project_id> --alias <alias>") +
             " instead."
         );
       }
@@ -131,8 +131,8 @@ module.exports = new Command("use [alias_or_project_id]")
           options.rc.addProjectAlias(results.alias, results.project);
           utils.makeActiveProject(options.projectRoot, results.alias);
           logger.info();
-          logger.info("Created alias", chalk.bold(results.alias), "for", results.project + ".");
-          logger.info("Now using alias", chalk.bold(results.alias) + " (" + results.project + ")");
+          logger.info("Created alias", clc.bold(results.alias), "for", results.project + ".");
+          logger.info("Now using alias", clc.bold(results.alias) + " (" + results.project + ")");
         });
       });
     } else if (options.clear) {
@@ -156,10 +156,10 @@ module.exports = new Command("use [alias_or_project_id]")
       if (options.projectAlias) {
         logger.info(
           "Active Project:",
-          chalk.bold.cyan(options.projectAlias + " (" + options.project + ")")
+          clc.bold.cyan(options.projectAlias + " (" + options.project + ")")
         );
       } else if (options.project) {
-        logger.info("Active Project:", chalk.bold.cyan(options.project));
+        logger.info("Active Project:", clc.bold.cyan(options.project));
       } else {
         var msg = "No project is currently active";
         if (options.rc.hasProjects) {

@@ -1,7 +1,7 @@
 "use strict";
 
 var Command = require("../lib/command");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var utils = require("../lib/utils");
 var logger = require("../lib/logger");
 var auth = require("../lib/auth");
@@ -23,7 +23,7 @@ module.exports = new Command("login:ci")
       logger.info();
       utils.logSuccess(
         "Success! Use this token to login on a CI server:\n\n" +
-          chalk.bold(result.tokens.refresh_token) +
+          clc.bold(result.tokens.refresh_token) +
           '\n\nExample: firebase deploy --token "$FIREBASE_TOKEN"\n'
       );
       return result;

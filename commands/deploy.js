@@ -1,7 +1,7 @@
 "use strict";
 
 var acquireRefs = require("../lib/acquireRefs");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var checkValidTargetFilters = require("../lib/checkValidTargetFilters");
 var checkFirebaseSDKVersion = require("../lib/checkFirebaseSDKVersion");
@@ -37,9 +37,9 @@ module.exports = new Command("deploy")
 
       logger.info();
       utils.logWarning(
-        chalk.bold("Your CLI authentication needs to be updated to take advantage of new features.")
+        clc.bold("Your CLI authentication needs to be updated to take advantage of new features.")
       );
-      utils.logWarning(chalk.bold("Please run " + chalk.underline("firebase login --reauth")));
+      utils.logWarning(clc.bold("Please run " + clc.underline("firebase login --reauth")));
       logger.info();
 
       return acquireRefs(options, []);

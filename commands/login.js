@@ -3,7 +3,7 @@
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
 var configstore = require("../lib/configstore");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
 
@@ -20,7 +20,7 @@ module.exports = new Command("login")
     if (options.nonInteractive) {
       return utils.reject(
         "Cannot run login in non-interactive mode. See " +
-          chalk.bold("login:ci") +
+          clc.bold("login:ci") +
           " to generate a token for use in non-interactive environments.",
         { exit: 1 }
       );
@@ -30,7 +30,7 @@ module.exports = new Command("login")
     var tokens = configstore.get("tokens");
 
     if (user && tokens && !options.reauth) {
-      logger.info("Already logged in as", chalk.bold(user.email));
+      logger.info("Already logged in as", clc.bold(user.email));
       return Promise.resolve(user);
     }
 
@@ -54,7 +54,7 @@ module.exports = new Command("login")
         configstore.del("session");
 
         logger.info();
-        utils.logSuccess("Success! Logged in as " + chalk.bold(result.user.email));
+        utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
 
         return auth;
       });

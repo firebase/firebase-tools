@@ -5,7 +5,7 @@ var requireAccess = require("../lib/requireAccess");
 var api = require("../lib/api");
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 module.exports = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
@@ -18,7 +18,7 @@ module.exports = new Command("hosting:disable")
         name: "confirm",
         message:
           "Are you sure you want to disable Firebase Hosting?\n  " +
-          chalk.bold.underline("This will immediately make your site inaccessible!"),
+          clc.bold.underline("This will immediately make your site inaccessible!"),
       },
     ])
       .then(function() {
@@ -44,7 +44,7 @@ module.exports = new Command("hosting:disable")
         if (options.confirm) {
           utils.logSuccess(
             "Hosting has been disabled for " +
-              chalk.bold(options.project) +
+              clc.bold(options.project) +
               ". Deploy a new version to re-enable."
           );
         }

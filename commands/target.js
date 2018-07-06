@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
@@ -9,7 +9,7 @@ var requireConfig = require("../lib/requireConfig");
 var utils = require("../lib/utils");
 
 function _logTargets(type, targets) {
-  logger.info(chalk.cyan("[ " + type + " ]"));
+  logger.info(clc.cyan("[ " + type + " ]"));
   _.forEach(targets, function(resources, name) {
     logger.info(name, "(" + (resources || []).join(",") + ")");
   });
@@ -23,7 +23,7 @@ module.exports = new Command("target [type]")
       return utils.error("No active project, cannot list deploy targets.");
     }
 
-    logger.info("Resource targets for", chalk.bold(options.project) + ":");
+    logger.info("Resource targets for", clc.bold(options.project) + ":");
     logger.info();
     if (type) {
       var targets = options.rc.targets(options.project, type);

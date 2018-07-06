@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var open = require("opn");
 
 var api = require("../lib/api");
@@ -100,14 +100,14 @@ module.exports = new Command("open [link]")
 
       if (finalLink.arg !== linkName) {
         logger.info(
-          chalk.bold.cyan("Tip: ") +
+          clc.bold.cyan("Tip: ") +
             "You can also run " +
-            chalk.bold.underline("firebase open " + finalLink.arg)
+            clc.bold.underline("firebase open " + finalLink.arg)
         );
         logger.info();
       }
-      logger.info("Opening " + chalk.bold(finalLink.name) + " link in your default browser:");
-      logger.info(chalk.bold.underline(url));
+      logger.info("Opening " + clc.bold(finalLink.name) + " link in your default browser:");
+      logger.info(clc.bold.underline(url));
 
       open(url);
       return Promise.resolve(url);

@@ -2,7 +2,7 @@
 
 var program = require("commander");
 var pkg = require("./package.json");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var logger = require("./lib/logger");
 var didYouMean = require("didyoumean");
 
@@ -53,13 +53,13 @@ var RENAMED_COMMANDS = {
 };
 
 program.action(function(cmd, cmd2) {
-  logger.error(chalk.bold.red("Error:"), chalk.bold(cmd), "is not a Firebase command");
+  logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
     logger.error();
     logger.error(
-      chalk.bold(cmd) + " has been renamed, please run",
-      chalk.bold("firebase " + RENAMED_COMMANDS[cmd]),
+      clc.bold(cmd) + " has been renamed, please run",
+      clc.bold("firebase " + RENAMED_COMMANDS[cmd]),
       "instead"
     );
   } else {
@@ -67,7 +67,7 @@ program.action(function(cmd, cmd2) {
     suggestion = suggestion || didYouMean([cmd, cmd2].join(":"), commandNames);
     if (suggestion) {
       logger.error();
-      logger.error("Did you mean", chalk.bold(suggestion) + "?");
+      logger.error("Did you mean", clc.bold(suggestion) + "?");
     }
   }
 

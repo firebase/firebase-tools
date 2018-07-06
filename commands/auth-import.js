@@ -1,7 +1,7 @@
 "use strict";
 
 var csv = require("csv-streamify");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var fs = require("fs");
 var jsonStream = require("JSONStream");
 var _ = require("lodash");
@@ -57,7 +57,7 @@ module.exports = new Command("auth:import [dataFile]")
     }
     var stats = fs.statSync(dataFile);
     var fileSizeInBytes = stats.size;
-    logger.info("Processing " + chalk.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
+    logger.info("Processing " + clc.bold(dataFile) + " (" + fileSizeInBytes + " bytes)");
 
     var inStream = fs.createReadStream(dataFile);
     var batches = [];

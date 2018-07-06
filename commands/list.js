@@ -3,7 +3,7 @@
 var Command = require("../lib/command");
 var api = require("../lib/api");
 var requireAuth = require("../lib/requireAuth");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var Table = require("cli-table");
 var _ = require("lodash");
 var logger = require("../lib/logger");
@@ -28,7 +28,7 @@ module.exports = new Command("list")
           instance: data.instances.database[0],
         };
 
-        var displayId = chalk.bold(projectId);
+        var displayId = clc.bold(projectId);
         if (data.instances.database[0] !== projectId) {
           displayId += "\n" + data.instances.database[0] + " (instance)";
         }
@@ -36,10 +36,10 @@ module.exports = new Command("list")
         var displayPermission;
         switch (data.permission) {
           case "own":
-            displayPermission = chalk.cyan.bold("Owner");
+            displayPermission = clc.cyan.bold("Owner");
             break;
           case "edit":
-            displayPermission = chalk.bold("Editor");
+            displayPermission = clc.bold("Editor");
             break;
           case "view":
           default:
@@ -48,7 +48,7 @@ module.exports = new Command("list")
 
         var displayName = data.name;
         if (options.project === projectId) {
-          displayName = chalk.cyan.bold(displayName + " (current)");
+          displayName = clc.cyan.bold(displayName + " (current)");
         }
 
         out.push(project);
@@ -57,14 +57,14 @@ module.exports = new Command("list")
       });
 
       if (_.size(projects) === 0) {
-        logger.info(chalk.bold("No projects found."));
+        logger.info(clc.bold("No projects found."));
         logger.info();
         logger.info(
-          chalk.bold.cyan("Projects missing?") +
+          clc.bold.cyan("Projects missing?") +
             " This version of the Firebase CLI is only compatible with\n" +
             "projects that have been upgraded to the new Firebase Console. To access your\n" +
             "firebase.com apps, use a previous version: " +
-            chalk.bold("npm install -g firebase-tools@^2.1")
+            clc.bold("npm install -g firebase-tools@^2.1")
         );
       } else {
         logger.info(table.toString());

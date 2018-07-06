@@ -1,5 +1,5 @@
 "use strict";
-var chalk = require("chalk");
+var clc = require("cli-color");
 var _ = require("lodash");
 
 var Command = require("../lib/command");
@@ -93,7 +93,7 @@ module.exports = new Command("kits:uninstall [kitName]")
 
         if (kitName) {
           if (!dict[kitName]) {
-            return utils.reject("Could not find kit named " + chalk.bold(kitName), { exit: 1 });
+            return utils.reject("Could not find kit named " + clc.bold(kitName), { exit: 1 });
           }
           return _getFunctions(dict, kitName);
         }
@@ -107,25 +107,25 @@ module.exports = new Command("kits:uninstall [kitName]")
         return _promptForKitsUninstall(choices, dict);
       })
       .then(function(funcsToDelete) {
-        utils.logBullet(chalk.cyan.bold("kits: ") + "Deleting kits now...");
+        utils.logBullet(clc.cyan.bold("kits: ") + "Deleting kits now...");
         return _deleteKitFunctions(projectId, _.flatten(funcsToDelete));
       })
       .then(function(operations) {
         utils.logBullet(
-          chalk.cyan.bold("kits: ") + "Checking to make sure kits have been deleted safely..."
+          clc.cyan.bold("kits: ") + "Checking to make sure kits have been deleted safely..."
         );
 
         var printSuccess = function(kits) {
           return utils.logSuccess(
-            chalk.green.bold("kits: ") +
+            clc.green.bold("kits: ") +
               "Successfully deleted the following kit(s): " +
-              chalk.bold(_.uniq(kits))
+              clc.bold(_.uniq(kits))
           );
         };
 
         var printFail = function(reason) {
           return utils.logWarning(
-            chalk.yellow.bold("kits: ") + "Failed to delete the following kit: " + reason
+            clc.yellow.bold("kits: ") + "Failed to delete the following kit: " + reason
           );
         };
 

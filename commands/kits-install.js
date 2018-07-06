@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
@@ -50,11 +50,9 @@ module.exports = new Command("kits:install <githubRepo>")
         kitFunctions = kitConfig.functions;
 
         utils.logSuccess(
-          chalk.green.bold("kits: ") + "Fetched configuration file from " + chalk.bold(gitRepo)
+          clc.green.bold("kits: ") + "Fetched configuration file from " + clc.bold(gitRepo)
         );
-        utils.logBullet(
-          chalk.bold("We will now ask a series of questions to help set up your kit.")
-        );
+        utils.logBullet(clc.bold("We will now ask a series of questions to help set up your kit."));
 
         return kits.prepareKitsConfig.prompt(githubConfig.repo, kitConfig.config);
       })
@@ -64,10 +62,10 @@ module.exports = new Command("kits:install <githubRepo>")
         return kits.prepareKitsUpload.upload(projectId, githubConfig, runtimeConfig);
       })
       .then(function(sourceUploadUrl) {
-        utils.logSuccess(chalk.green.bold("kits: ") + "Completed configuration setup.");
-        logger.debug(chalk.bold("kits: ") + "Source uploaded to GCS bucket");
+        utils.logSuccess(clc.green.bold("kits: ") + "Completed configuration setup.");
+        logger.debug(clc.bold("kits: ") + "Source uploaded to GCS bucket");
         utils.logBullet(
-          "Deploying kit " + gitRepo + " as " + chalk.bold(runtimeConfig.kitname + "...")
+          "Deploying kit " + gitRepo + " as " + clc.bold(runtimeConfig.kitname + "...")
         );
 
         return kits.deploy(kitFunctions, options, runtimeConfig, sourceUploadUrl);
