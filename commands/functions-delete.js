@@ -15,6 +15,11 @@ var utils = require("../lib/utils");
 
 module.exports = new Command("functions:delete [filters...]")
   .description("delete one or more Cloud Functions by name or group name.")
+  .option(
+    "--region <region>",
+    "Specify region of the function to be deleted. " +
+      "If omitted, functions from all regions whose names match the filters will be deleted. "
+  )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .action(function(filters, options) {
@@ -34,12 +39,14 @@ module.exports = new Command("functions:delete [filters...]")
       .listAll(projectId)
       .then(function(result) {
         var allFunctions = _.map(result, "name");
-        return _.filter(allFunctions, function(functionName) {
-          return _.some(
+        return _.filter(allFunctions, function(name) {
+          var regionMatches = options.region ? helper.getRegion(name) === options.region : true;
+          var nameMatches = _.some(
             _.map(filterChunks, function(chunk) {
-              return helper.functionMatchesGroup(functionName, chunk);
+              return helper.functionMatchesGroup(name, chunk);
             })
           );
+          return regionMatches && nameMatches;
         });
       })
       .then(function(result) {
