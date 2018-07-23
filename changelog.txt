@@ -1,0 +1,6 @@
+important - `firebase deploy` will now ask for confirmation before Cloud Functions deletion. Running the command with `--non-interactive` will fail if there are functions detected for deletion.
+feature - Support Node.js 8 runtime for functions. To deploy your functions to Node.js 8, add `"engines": {"node": "8"}` to `functions/package.json`. You will need `firebase-functions` SDK v2.0.0 or up. 
+feature - Support selection of regions for functions via the firebase-functions SDK (>= v2.0.0). Learn more in the [Firebase Documentation](https://firebase.google.com/docs/functions/locations)
+feature - Support configuration of function timeout and memory allocation via the firebase-functions SDK (>= v2.0.0). Learn more in the [Firebase Documentation](https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation)
+feature - Add `firebase functions:delete <functionName>` command for explicit deletion of functions.
+fixed - Fix bug where running `firebase init` over-wrote existing Firestore rules and indexes that were either specified through a local file or specfied in the Firebase Console.
