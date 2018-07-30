@@ -42,6 +42,7 @@ module.exports = function(client) {
       set: loadCommand("functions-config-set"),
       unset: loadCommand("functions-config-unset"),
     },
+    delete: loadCommand("functions-delete"),
   };
 
   client.experimental = {
