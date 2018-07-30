@@ -1,2 +1,0 @@
-fixed - Fixed bug where `firebase init firestore` uses storage rules for Firestore, if the project already has storage rules but not Firestore rules.
-fixed - Fixed ReferenceError when there are too many functions functions deployed at the same time.
