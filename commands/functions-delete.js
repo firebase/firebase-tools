@@ -3,7 +3,7 @@
 var _ = require("lodash");
 
 var Command = require("../lib/command");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var cloudfunctions = require("../lib/gcp/cloudfunctions");
 var functionsDelete = require("../lib/functionsDelete");
 var getProjectId = require("../lib/getProjectId");
@@ -54,7 +54,7 @@ module.exports = new Command("functions:delete [filters...]")
         if (functionsToDelete.length === 0) {
           return utils.reject(
             "The specified filters do not match any existing functions in project " +
-              chalk.bold(projectId) +
+              clc.bold(projectId) +
               ".",
             { exit: 1 }
           );
