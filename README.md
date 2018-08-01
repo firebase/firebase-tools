@@ -97,7 +97,7 @@ Command | Description
 **functions:config:unset** | Remove values from the current project's runtime configuration.
 **functions:config:clone** | Copy runtime configuration from one project environment to another.
 **functions:delete** | Delete one or more Cloud Functions by name or group name.
-**experimental:functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
+**functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
 
 ### Hosting Commands
 
