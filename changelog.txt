@@ -1,0 +1,1 @@
+fixed - Fixed issue where security rules compilation warnings would halt deployment.
