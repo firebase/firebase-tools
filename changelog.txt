@@ -1,0 +1,2 @@
+fixed - Improved error message for `firebase init` with a non-existent feature.
+fixed - Fixed `firebase init` erroring if initializing Firestore/Storage on a brand-new project.
