@@ -53,12 +53,12 @@ Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy
 
 ### Deployment and Local Development
 
-These commands let you deploy and interact with your Firebase Hosting site.
+These commands let you deploy and interact with your Firebase services.
 
 Command | Description
 ------- | -----------
 **deploy** | Deploys your Firebase project. Relies on `firebase.json` configuration and your local project folder.
-**serve** | Start a local web server with your Firebase Hosting configuration. Relies on `firebase.json`.
+**serve** | Start a local server with your Firebase Hosting configuration and HTTPS-triggered Cloud Functions. Relies on `firebase.json`.
 
 ### Auth Commands
 
