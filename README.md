@@ -53,12 +53,12 @@ Append `--no-localhost` to login (i.e., `firebase login --no-localhost`) to copy
 
 ### Deployment and Local Development
 
-These commands let you deploy and interact with your Firebase Hosting site.
+These commands let you deploy and interact with your Firebase services.
 
 Command | Description
 ------- | -----------
 **deploy** | Deploys your Firebase project. Relies on `firebase.json` configuration and your local project folder.
-**serve** | Start a local web server with your Firebase Hosting configuration. Relies on `firebase.json`.
+**serve** | Start a local server with your Firebase Hosting configuration and HTTPS-triggered Cloud Functions. Relies on `firebase.json`.
 
 ### Auth Commands
 
@@ -96,7 +96,8 @@ Command | Description
 **functions:config:get** | Retrieve existing configuration values for the current project's Cloud Functions.
 **functions:config:unset** | Remove values from the current project's runtime configuration.
 **functions:config:clone** | Copy runtime configuration from one project environment to another.
-**experimental:functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
+**functions:delete** | Delete one or more Cloud Functions by name or group name.
+**functions:shell** | Locally emulate functions and start Node.js shell where these local functions can be invoked with test data.
 
 ### Hosting Commands
 
