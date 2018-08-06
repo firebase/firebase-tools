@@ -99,7 +99,7 @@ var checkFunctionsListMatch = function(expectedFunctions) {
       return true;
     })
     .catch(function(err) {
-      console.log(chalk.red("Deployed functions do not match expected functions"));
+      console.log(clc.red("Deployed functions do not match expected functions"));
       console.log("Expected functions are: ", expectedFunctions);
       console.log("Deployed functions are: ", deployedFunctions);
       return Promise.reject(err);
