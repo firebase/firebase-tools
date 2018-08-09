@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var Command = require("../lib/command");
 var FirestoreDelete = require("../lib/firestore/delete");
 var prompt = require("../lib/prompt");
@@ -13,7 +13,7 @@ var _getConfirmationMessage = function(deleteOp, options) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
-      chalk.bold.yellow.underline("YOUR ENTIRE DATABASE") +
+      clc.bold.yellow.underline("YOUR ENTIRE DATABASE") +
       ". Are you sure?"
     );
   }
@@ -23,22 +23,20 @@ var _getConfirmationMessage = function(deleteOp, options) {
     if (options.recursive) {
       return (
         "You are about to delete the document at " +
-        chalk.cyan(deleteOp.path) +
+        clc.cyan(deleteOp.path) +
         " and all of its subcollections. Are you sure?"
       );
     }
 
     // Shallow document delete
-    return (
-      "You are about to delete the document at " + chalk.cyan(deleteOp.path) + ". Are you sure?"
-    );
+    return "You are about to delete the document at " + clc.cyan(deleteOp.path) + ". Are you sure?";
   }
 
   // Recursive collection delete
   if (options.recursive) {
     return (
       "You are about to delete all documents in the collection at " +
-      chalk.cyan(deleteOp.path) +
+      clc.cyan(deleteOp.path) +
       " and all of their subcollections. " +
       "Are you sure?"
     );
@@ -47,7 +45,7 @@ var _getConfirmationMessage = function(deleteOp, options) {
   // Shallow collection delete
   return (
     "You are about to delete all documents in the collection at " +
-    chalk.cyan(deleteOp.path) +
+    clc.cyan(deleteOp.path) +
     ". Are you sure?"
   );
 };

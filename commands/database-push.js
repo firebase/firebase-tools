@@ -8,7 +8,7 @@ var responseToError = require("../lib/responseToError");
 var FirebaseError = require("../lib/error");
 
 var utils = require("../lib/utils");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var logger = require("../lib/logger");
 var fs = require("fs");
 var Firebase = require("firebase");
@@ -65,7 +65,7 @@ module.exports = new Command("database:push <path> [infile]")
 
             utils.logSuccess("Data pushed successfully");
             logger.info();
-            logger.info(chalk.bold("View data at:"), consoleUrl);
+            logger.info(clc.bold("View data at:"), consoleUrl);
             return resolve(new Firebase(refurl));
           })
         );

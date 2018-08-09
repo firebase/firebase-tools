@@ -12,7 +12,8 @@ var logger = require("../lib/logger");
 var fs = require("fs");
 var fsutils = require("../lib/fsutils");
 var path = require("path");
-var chalk = require("chalk");
+var clc = require("cli-color");
+var ansiStrip = require("cli-color/strip");
 var configstore = require("../lib/configstore");
 var _ = require("lodash");
 var args = process.argv.slice(2);
@@ -32,7 +33,7 @@ logger
     filename: logFilename,
     json: false,
     formatter: function(input) {
-      input.message = chalk.stripColor(input.message);
+      input.message = ansiStrip(input.message);
       return ["[" + input.level + "]", input.message].join(" ");
     },
   });
@@ -70,7 +71,7 @@ process.on("exit", function(code) {
       var help;
       if (code === 1 && cmd) {
         var commandName = _.get(_.last(cmd.args), "_name", "[command]");
-        help = "Having trouble? Try " + chalk.bold("firebase " + commandName + " --help");
+        help = "Having trouble? Try " + clc.bold("firebase " + commandName + " --help");
       } else {
         help = "Having trouble? Try again or contact support with contents of firebase-debug.log";
       }
@@ -93,6 +94,7 @@ process.on("uncaughtException", function(err) {
 
 if (!handlePreviewToggles(args)) {
   cmd = client.cli.parse(process.argv);
+
   // determine if there are any non-option arguments. if not, display help
   args = args.filter(function(arg) {
     return arg.indexOf("-") < 0;

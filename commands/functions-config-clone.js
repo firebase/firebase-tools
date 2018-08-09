@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var Command = require("../lib/command");
 var functionsConfig = require("../lib/functionsConfig");
 var functionsConfigClone = require("../lib/functionsConfigClone");
@@ -21,7 +21,7 @@ module.exports = new Command("functions:config:clone")
     var projectId = getProjectId(options);
     if (!options.from) {
       return utils.reject(
-        "Must specify a source project in " + chalk.bold("--from <projectId>") + " option."
+        "Must specify a source project in " + clc.bold("--from <projectId>") + " option."
       );
     } else if (options.from === projectId) {
       return utils.reject("From project and destination can't be the same project.");
@@ -39,14 +39,11 @@ module.exports = new Command("functions:config:clone")
 
     return functionsConfigClone(options.from, projectId, only, except).then(function() {
       utils.logSuccess(
-        "Cloned functions config from " +
-          chalk.bold(options.from) +
-          " into " +
-          chalk.bold(projectId)
+        "Cloned functions config from " + clc.bold(options.from) + " into " + clc.bold(projectId)
       );
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +
-          chalk.bold("firebase deploy --only functions") +
+          clc.bold("firebase deploy --only functions") +
           "\n"
       );
     });

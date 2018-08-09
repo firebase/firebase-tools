@@ -3,5 +3,8 @@
   "rules": {
     "prettier/prettier": "error",
     "no-unused-vars": "error"
+  },
+  "parserOptions": {
+    "ecmaVersion": 6
   }
 }

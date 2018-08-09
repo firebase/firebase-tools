@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var Config = require("../lib/config");
@@ -25,7 +25,7 @@ module.exports = new Command("tools:migrate")
   .action(function(options) {
     if (!options.config) {
       return utils.reject(
-        "Must run " + chalk.bold("tools:migrate") + " from a directory with a firebase.json"
+        "Must run " + clc.bold("tools:migrate") + " from a directory with a firebase.json"
       );
     }
 
@@ -55,7 +55,7 @@ module.exports = new Command("tools:migrate")
         } else {
           return utils.reject(
             "Could not find Firebase project corresponding to " +
-              chalk.bold(instance) +
+              clc.bold(instance) +
               ".\nPlease ensure it has been migrated to the new console before proceeding."
           );
         }
@@ -75,7 +75,7 @@ module.exports = new Command("tools:migrate")
       }
 
       logger.info();
-      logger.info(chalk.gray.bold("# preview: updated contents of firebase.json"));
+      logger.info(clc.white.bold("# preview: updated contents of firebase.json"));
       logger.info();
       logger.info(JSON.stringify(out, null, 2));
       logger.info();
@@ -85,7 +85,7 @@ module.exports = new Command("tools:migrate")
       } else {
         next = prompt.once({
           type: "confirm",
-          message: "Write new config to " + chalk.underline("firebase.json") + "?",
+          message: "Write new config to " + clc.underline("firebase.json") + "?",
           default: true,
         });
       }
@@ -93,11 +93,11 @@ module.exports = new Command("tools:migrate")
       return next.then(function(confirmed) {
         if (confirmed) {
           options.config.writeProjectFile("firebase.json", out);
-          utils.logSuccess("Migrated " + chalk.bold("firebase.json") + " successfully");
+          utils.logSuccess("Migrated " + clc.bold("firebase.json") + " successfully");
           if (projectId) {
             options.config.writeProjectFile(".firebaserc", rcfile);
             utils.makeActiveProject(options.projectRoot, projectId);
-            utils.logSuccess("Set default project to " + chalk.bold(projectId));
+            utils.logSuccess("Set default project to " + clc.bold(projectId));
           }
         } else {
           return utils.reject("Migration aborted by user.", { exit: 1 });

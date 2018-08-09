@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var requireConfig = require("../lib/requireConfig");
@@ -13,11 +13,11 @@ module.exports = new Command("target:remove <type> <resource>")
     var name = options.rc.removeTarget(options.project, type, resource);
     if (name) {
       utils.logSuccess(
-        "Removed " + type + " target " + chalk.bold(name) + " from " + chalk.bold(resource)
+        "Removed " + type + " target " + clc.bold(name) + " from " + clc.bold(resource)
       );
     } else {
       utils.logWarning(
-        "No action taken. No target found for " + type + " resource " + chalk.bold(resource)
+        "No action taken. No target found for " + type + " resource " + clc.bold(resource)
       );
     }
     return Promise.resolve(name);

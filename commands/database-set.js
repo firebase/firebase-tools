@@ -8,7 +8,7 @@ var responseToError = require("../lib/responseToError");
 var FirebaseError = require("../lib/error");
 
 var utils = require("../lib/utils");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var logger = require("../lib/logger");
 var fs = require("fs");
 var prompt = require("../lib/prompt");
@@ -35,7 +35,7 @@ module.exports = new Command("database:set <path> [infile]")
         default: false,
         message:
           "You are about to overwrite all data at " +
-          chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
+          clc.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
           ". Are you sure?",
       },
     ]).then(function() {
@@ -75,7 +75,7 @@ module.exports = new Command("database:set <path> [infile]")
               utils.logSuccess("Data persisted successfully");
               logger.info();
               logger.info(
-                chalk.bold("View data at:"),
+                clc.bold("View data at:"),
                 utils.consoleUrl(options.project, "/database/data" + path)
               );
               return resolve();

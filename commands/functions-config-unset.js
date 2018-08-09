@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var Command = require("../lib/command");
 var functionsConfig = require("../lib/functionsConfig");
 var getProjectId = require("../lib/getProjectId");
@@ -33,7 +33,7 @@ module.exports = new Command("functions:config:unset [keys...]")
       utils.logSuccess("Environment updated.");
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +
-          chalk.bold("firebase deploy --only functions") +
+          clc.bold("firebase deploy --only functions") +
           "\n"
       );
     });

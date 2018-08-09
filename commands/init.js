@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var fs = require("fs");
 var homeDir = require("user-home");
 var path = require("path");
@@ -45,8 +45,8 @@ module.exports = new Command("init [feature]")
     if (warnings.length) {
       warningText =
         "\nBefore we get started, keep in mind:\n\n  " +
-        chalk.yellow.bold("* ") +
-        warnings.join("\n  " + chalk.yellow.bold("* ")) +
+        clc.yellow.bold("* ") +
+        warnings.join("\n  " + clc.yellow.bold("* ")) +
         "\n";
     }
 
@@ -54,9 +54,9 @@ module.exports = new Command("init [feature]")
       BANNER_TEXT = BANNER_TEXT.replace(/#/g, "🔥");
     }
     logger.info(
-      chalk.yellow.bold(BANNER_TEXT) +
+      clc.yellow.bold(BANNER_TEXT) +
         "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
-        chalk.bold(config.projectDir) +
+        clc.bold(config.projectDir) +
         "\n" +
         warningText
     );
@@ -141,9 +141,9 @@ module.exports = new Command("init [feature]")
         if (setup.features.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
-              chalk.bold.underline("SPACEBAR") +
+              clc.bold.underline("SPACEBAR") +
               " to select features, or provide a feature with " +
-              chalk.bold("firebase init [feature_name]")
+              clc.bold("firebase init [feature_name]")
           );
         }
         setup.features.unshift("project");
@@ -151,9 +151,9 @@ module.exports = new Command("init [feature]")
       })
       .then(function() {
         logger.info();
-        utils.logBullet("Writing configuration info to " + chalk.bold("firebase.json") + "...");
+        utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
         config.writeProjectFile("firebase.json", setup.config);
-        utils.logBullet("Writing project information to " + chalk.bold(".firebaserc") + "...");
+        utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
         config.writeProjectFile(".firebaserc", setup.rcfile);
         logger.info();
         utils.logSuccess("Firebase initialization complete!");
@@ -161,13 +161,13 @@ module.exports = new Command("init [feature]")
         if (setup.createProject) {
           logger.info();
           logger.info(
-            chalk.bold.cyan("Project creation is only available from the Firebase Console")
+            clc.bold.cyan("Project creation is only available from the Firebase Console")
           );
           logger.info(
             "Please visit",
-            chalk.underline("https://console.firebase.google.com"),
+            clc.underline("https://console.firebase.google.com"),
             "to create a new project, then run",
-            chalk.bold("firebase use --add")
+            clc.bold("firebase use --add")
           );
         }
       });

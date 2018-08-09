@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var fs = require("fs");
 var os = require("os");
 
@@ -35,7 +35,7 @@ module.exports = new Command("auth:export [dataFile]")
     }
     exportOptions.writeStream = writeStream;
     exportOptions.batchSize = MAX_BATCH_SIZE;
-    logger.info("Exporting accounts to " + chalk.bold(dataFile));
+    logger.info("Exporting accounts to " + clc.bold(dataFile));
     return serialExportUsers(projectId, exportOptions).then(function() {
       if (exportOptions.format === "json") {
         writeStream.write("]}");

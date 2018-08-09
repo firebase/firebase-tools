@@ -1,6 +1,6 @@
 "use strict";
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var requireConfig = require("../lib/requireConfig");
@@ -12,9 +12,9 @@ module.exports = new Command("target:clear <type> <target>")
   .action(function(type, name, options) {
     var existed = options.rc.clearTarget(options.project, type, name);
     if (existed) {
-      utils.logSuccess("Cleared " + type + " target " + chalk.bold(name));
+      utils.logSuccess("Cleared " + type + " target " + clc.bold(name));
     } else {
-      utils.logWarning("No action taken. No " + type + " target found named " + chalk.bold(name));
+      utils.logWarning("No action taken. No " + type + " target found named " + clc.bold(name));
     }
     return Promise.resolve(existed);
   });

@@ -9,7 +9,7 @@ var FirebaseError = require("../lib/error");
 
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
-var chalk = require("chalk");
+var clc = require("cli-color");
 var _ = require("lodash");
 
 module.exports = new Command("database:remove <path>")
@@ -32,7 +32,7 @@ module.exports = new Command("database:remove <path>")
         default: false,
         message:
           "You are about to remove all data at " +
-          chalk.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
+          clc.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
           ". Are you sure?",
       },
     ]).then(function() {

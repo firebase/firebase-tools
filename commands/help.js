@@ -2,7 +2,7 @@
 
 var Command = require("../lib/command");
 
-var chalk = require("chalk");
+var clc = require("cli-color");
 var logger = require("../lib/logger");
 var utils = require("../lib/utils");
 
@@ -15,7 +15,7 @@ module.exports = new Command("help [command]")
     } else if (commandName) {
       logger.warn();
       utils.logWarning(
-        chalk.bold(commandName) + " is not a valid command. See below for valid commands"
+        clc.bold(commandName) + " is not a valid command. See below for valid commands"
       );
       this.client.cli.outputHelp();
     } else {
@@ -23,7 +23,7 @@ module.exports = new Command("help [command]")
       logger.info();
       logger.info(
         "  To get help with a specific command, type",
-        chalk.bold("firebase help [command_name]")
+        clc.bold("firebase help [command_name]")
       );
       logger.info();
     }

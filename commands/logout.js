@@ -3,7 +3,7 @@
 var Command = require("../lib/command");
 var configstore = require("../lib/configstore");
 var logger = require("../lib/logger");
-var chalk = require("chalk");
+var clc = require("cli-color");
 
 var utils = require("../lib/utils");
 var api = require("../lib/api");
@@ -30,10 +30,10 @@ module.exports = new Command("logout")
         var msg = "Logged out";
         if (token === currentToken) {
           if (user) {
-            msg += " from " + chalk.bold(user.email);
+            msg += " from " + clc.bold(user.email);
           }
         } else {
-          msg += ' token "' + chalk.bold(token) + '"';
+          msg += ' token "' + clc.bold(token) + '"';
         }
         utils.logSuccess(msg);
       } else {
