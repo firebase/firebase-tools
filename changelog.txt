@@ -1,2 +1,0 @@
-fixed - Windows path separator should use a forward slash in Hosting deploys.
-fixed - Improved debug logging for authorization flow.
