@@ -1,16 +1,11 @@
 "use strict";
 
-var acquireRefs = require("../lib/acquireRefs");
-var clc = require("cli-color");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var checkValidTargetFilters = require("../lib/checkValidTargetFilters");
 var checkFirebaseSDKVersion = require("../lib/checkFirebaseSDKVersion");
 var Command = require("../lib/command");
 var deploy = require("../lib/deploy");
-var logger = require("../lib/logger");
 var requireConfig = require("../lib/requireConfig");
-var scopes = require("../lib/scopes");
-var utils = require("../lib/utils");
 var filterTargets = require("../lib/filterTargets");
 
 // in order of least time-consuming to most time-consuming
@@ -29,22 +24,6 @@ module.exports = new Command("deploy")
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(function(options) {
-    return acquireRefs(options, [scopes.CLOUD_PLATFORM]).catch(function(err) {
-      if (options.config.has("functions")) {
-        throw err;
-      }
-
-      logger.info();
-      utils.logWarning(
-        clc.bold("Your CLI authentication needs to be updated to take advantage of new features.")
-      );
-      utils.logWarning(clc.bold("Please run " + clc.underline("firebase login --reauth")));
-      logger.info();
-
-      return acquireRefs(options, []);
-    });
-  })
   .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
   .before(checkFirebaseSDKVersion)
