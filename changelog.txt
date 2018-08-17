@@ -1,3 +1,0 @@
-fixed - Cached Hosting file hashes should be located at the project root.
-fixed - Removed unnecessary websocket connection during command startup.
-fixed - Formats of `auth:export` and `auth:import` are now compatible.
