@@ -1,6 +1,6 @@
 "use strict";
 
-var acquireRefs = require("../lib/acquireRefs");
+var requireAccess = require("../lib/requireAccess");
 var clc = require("cli-color");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var checkValidTargetFilters = require("../lib/checkValidTargetFilters");
@@ -30,7 +30,7 @@ module.exports = new Command("deploy")
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before(function(options) {
-    return acquireRefs(options, [scopes.CLOUD_PLATFORM]).catch(function(err) {
+    return requireAccess(options, [scopes.CLOUD_PLATFORM]).catch(function(err) {
       if (options.config.has("functions")) {
         throw err;
       }
@@ -42,7 +42,7 @@ module.exports = new Command("deploy")
       utils.logWarning(clc.bold("Please run " + clc.underline("firebase login --reauth")));
       logger.info();
 
-      return acquireRefs(options, []);
+      return requireAccess(options, []);
     });
   })
   .before(checkDupHostingKeys)
