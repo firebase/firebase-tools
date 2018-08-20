@@ -105,6 +105,6 @@
     "sinon-chai": "^2.8.0"
   },
   "optionalDependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-beta.4"
+    "@google-cloud/functions-emulator": "^1.0.0-beta.5"
   }
 }
