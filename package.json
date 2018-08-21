@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "4.1.1",
+  "version": "4.1.2",
   "description": "Command-Line Interface for Firebase",
   "main": "index.js",
   "bin": {
@@ -106,6 +106,6 @@
     "sinon-chai": "^2.8.0"
   },
   "optionalDependencies": {
-    "@google-cloud/functions-emulator": "^1.0.0-beta.4"
+    "@google-cloud/functions-emulator": "^1.0.0-beta.5"
   }
 }
