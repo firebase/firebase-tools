@@ -12,6 +12,12 @@ module.exports = new Command("target:apply <type> <name> <resources...>")
   .description("apply a deploy target to a resource")
   .before(requireConfig)
   .action(function(type, name, resources, options) {
+    if (!options.project) {
+      return utils.reject(
+        "Must have an active project to set deploy targets. Try " + clc.bold("firebase use --add")
+      );
+    }
+
     var changes = options.rc.applyTarget(options.project, type, name, resources);
 
     utils.logSuccess(
