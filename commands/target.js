@@ -20,7 +20,7 @@ module.exports = new Command("target [type]")
   .before(requireConfig)
   .action(function(type, options) {
     if (!options.project) {
-      return utils.error("No active project, cannot list deploy targets.");
+      return utils.reject("No active project, cannot list deploy targets.");
     }
 
     logger.info("Resource targets for", clc.bold(options.project) + ":");
