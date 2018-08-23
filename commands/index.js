@@ -45,9 +45,11 @@ module.exports = function(client) {
     delete: loadCommand("functions-delete"),
   };
 
-  client.emulator = {
-    run: loadCommand("emulator-run"),
-  };
+  if (previews.emulators) {
+    client.emulator = {
+      run: loadCommand("emulator-run"),
+    };
+  }
 
   client.experimental = {
     functions: {
