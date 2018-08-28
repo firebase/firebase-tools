@@ -1,0 +1,1 @@
+fixed - Fixed issue where Firebase Hosting deploys would scan unexpected directories.
