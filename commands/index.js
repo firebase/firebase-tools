@@ -52,6 +52,12 @@ module.exports = function(client) {
   }
 
   client.experimental = {
+    database: {
+      emulate: loadCommand("experimental-database-emulate"),
+    },
+    firestore: {
+      emulate: loadCommand("experimental-firestore-emulate"),
+    },
     functions: {
       shell: loadCommand("experimental-functions-shell"),
     },

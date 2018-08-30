@@ -10,21 +10,10 @@ var requireConfig = require("../lib/requireConfig");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var emulator = require("../lib/emulator/run");
 var scopes = require("../lib/scopes");
-var filterTargets = require("../lib/filterTargets");
 var getProjectNumber = require("../lib/getProjectNumber");
 
-var VALID_TARGETS = ["database", "firestore"];
-
-module.exports = new Command("emulator:run")
-  .description("start a local Firebase environment")
-  .option(
-    "--only <targets>",
-    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(",") + ")"
-  )
-  .option(
-    "--except <targets>",
-    "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(",") + ")"
-  )
+module.exports = new Command("experimental:firestore:emulate")
+  .description("start a local firestore emulator")
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
@@ -42,6 +31,6 @@ module.exports = new Command("emulator:run")
           clc.bold(options.cwd || process.cwd())
       );
     }
-    options.targets = filterTargets(options, VALID_TARGETS);
+    options.targets = "firestore";
     return emulator(options);
   });
