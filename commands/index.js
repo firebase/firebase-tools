@@ -45,23 +45,20 @@ module.exports = function(client) {
     delete: loadCommand("functions-delete"),
   };
 
-  if (previews.emulators) {
-    client.emulator = {
-      run: loadCommand("emulator-run"),
-    };
-  }
-
   client.experimental = {
-    database: {
-      emulate: loadCommand("experimental-database-emulate"),
-    },
-    firestore: {
-      emulate: loadCommand("experimental-firestore-emulate"),
-    },
     functions: {
       shell: loadCommand("experimental-functions-shell"),
     },
   };
+
+  if (previews.emulators) {
+    client.experimental.database = {
+      emulate: loadCommand("experimental-database-emulate"),
+    };
+    client.experimental.firestore = {
+      emulate: loadCommand("experimental-firestore-emulate"),
+    };
+  }
 
   client.help = loadCommand("help");
 
