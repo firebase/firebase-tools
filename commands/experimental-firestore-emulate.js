@@ -31,6 +31,6 @@ module.exports = new Command("experimental:firestore:emulate")
           clc.bold(options.cwd || process.cwd())
       );
     }
-    options.targets = "firestore";
+    options.targets = ["firestore"];
     return emulator(options);
   });

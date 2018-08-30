@@ -31,6 +31,6 @@ module.exports = new Command("experimental:database:emulate")
           clc.bold(options.cwd || process.cwd())
       );
     }
-    options.targets = "database";
+    options.targets = ["database"];
     return emulator(options);
   });
