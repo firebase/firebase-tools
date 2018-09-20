@@ -14,6 +14,12 @@ var getProjectNumber = require("../lib/getProjectNumber");
 
 module.exports = new Command("experimental:firestore:emulate")
   .description("start a local firestore emulator")
+  .option(
+    "-y",
+    "--yes",
+    "Automatic yes to prompts; assume `yes` as answer to all prompts and run non-interactively. If an undesirable situation, such as insufficient permissions then abort. (default: false)",
+    true
+  )
   .before(requireConfig)
   .before(requireAccess, [scopes.CLOUD_PLATFORM])
   .before(checkDupHostingKeys)
