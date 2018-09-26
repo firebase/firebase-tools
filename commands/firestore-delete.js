@@ -80,7 +80,6 @@ module.exports = new Command("firestore:delete [path]")
     var deleteOp = new FirestoreDelete(options.project, path, {
       recursive: options.recursive,
       shallow: options.shallow,
-      batchSize: 50,
       allCollections: options.allCollections,
     });
 
