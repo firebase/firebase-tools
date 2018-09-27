@@ -28,7 +28,7 @@ module.exports = new Command("database:profile")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .before(requirePermissions, ["firebasedatabase.instances.get"])
+  .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
   .action(function(options) {
     // Validate options
