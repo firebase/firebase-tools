@@ -7,8 +7,7 @@ var gcp = require("../lib/gcp");
 var pollKits = require("../lib/kits/pollKits");
 var getProjectId = require("../lib/getProjectId");
 var prompt = require("../lib/prompt");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 
 var DEFAULT_REGION = gcp.cloudfunctions.DEFAULT_REGION;
@@ -82,7 +81,9 @@ function _deleteKitFunctions(projectId, functions) {
 
 module.exports = new Command("kits:uninstall [kitName]")
   .description("Command to uninstall function kit")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    /* TODO */
+  ])
   .action(function(kitName, options) {
     var projectId = getProjectId(options);
     return _listKits(projectId)

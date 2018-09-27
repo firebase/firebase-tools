@@ -7,8 +7,7 @@ var FirebaseError = require("../lib/error");
 var gcp = require("../lib/gcp");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var open = require("opn");
 
 module.exports = new Command("functions:log")
@@ -19,7 +18,7 @@ module.exports = new Command("functions:log")
   )
   .option("-n, --lines <num_lines>", "specify number of log lines to fetch")
   .option("--open", "open logs page in web browser")
-  .before(requireAccess, [scopes.OPENID, scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, ["logging.logEntries.list", "logging.logs.list"])
   .action(function(options) {
     var projectId = getProjectId(options);
     var apiFilter = 'resource.type="cloud_function" ';

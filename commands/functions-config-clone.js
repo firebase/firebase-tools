@@ -5,8 +5,7 @@ var Command = require("../lib/command");
 var functionsConfig = require("../lib/functionsConfig");
 var functionsConfigClone = require("../lib/functionsConfigClone");
 var getProjectId = require("../lib/getProjectId");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 var logger = require("../lib/logger");
 
@@ -15,7 +14,18 @@ module.exports = new Command("functions:config:clone")
   .option("--from <projectId>", "the project from which to clone configuration")
   .option("--only <keys>", "a comma-separated list of keys to clone")
   .option("--except <keys>", "a comma-separated list of keys to not clone")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    "runtimeconfig.configs.list",
+    "runtimeconfig.configs.create",
+    "runtimeconfig.configs.get",
+    "runtimeconfig.configs.update",
+    "runtimeconfig.configs.delete",
+    "runtimeconfig.variables.list",
+    "runtimeconfig.variables.create",
+    "runtimeconfig.variables.get",
+    "runtimeconfig.variables.update",
+    "runtimeconfig.variables.delete",
+  ])
   .before(functionsConfig.ensureApi)
   .action(function(options) {
     var projectId = getProjectId(options);
