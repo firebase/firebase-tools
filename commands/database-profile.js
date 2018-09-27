@@ -3,7 +3,8 @@
 var _ = require("lodash");
 
 var Command = require("../lib/command");
-var requireAccess = require("../lib/requireAccess");
+var requireInstance = require("../lib/requireInstance");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 var profiler = require("../lib/profiler");
 
@@ -27,7 +28,8 @@ module.exports = new Command("database:profile")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .before(requireAccess)
+  .before(requirePermissions, ["firebasedatabase.instances.update"])
+  .before(requireInstance)
   .action(function(options) {
     // Validate options
     if (options.raw && options.input) {

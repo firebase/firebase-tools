@@ -4,15 +4,19 @@ var _ = require("lodash");
 
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var runtimeconfig = require("../lib/gcp/runtimeconfig");
 var functionsConfig = require("../lib/functionsConfig");
 var logger = require("../lib/logger");
 
 module.exports = new Command("functions:config:legacy")
   .description("get legacy functions config variables")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    "runtimeconfig.configs.list",
+    "runtimeconfig.configs.get",
+    "runtimeconfig.variables.list",
+    "runtimeconfig.variables.get",
+  ])
   .action(function(options) {
     var projectId = getProjectId(options);
     var metaPath = "projects/" + projectId + "/configs/firebase/variables/meta";

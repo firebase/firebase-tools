@@ -10,7 +10,7 @@ var Command = require("../lib/command");
 var accountImporter = require("../lib/accountImporter");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 
 var MAX_BATCH_SIZE = 1000;
@@ -43,7 +43,7 @@ module.exports = new Command("auth:import [dataFile]")
     "specify the order of password and salt. Possible values are SALT_FIRST and PASSWORD_FIRST. " +
       "MD5, SHA1, SHA256, SHA512, HMAC_MD5, HMAC_SHA1, HMAC_SHA256, HMAC_SHA512 support this flag."
   )
-  .before(requireAccess)
+  .before(requirePermissions, ["firebaseauth.users.create", "firebaseauth.users.update"])
   .action(function(dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options);

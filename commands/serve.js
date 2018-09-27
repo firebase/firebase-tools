@@ -5,11 +5,10 @@ var clc = require("cli-color");
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
 var utils = require("../lib/utils");
-var requireAccess = require("../lib/requireAccess");
+var requirePermissions = require("../lib/requirePermissions");
 var requireConfig = require("../lib/requireConfig");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var serve = require("../lib/serve/index");
-var scopes = require("../lib/scopes");
 var filterTargets = require("../lib/filterTargets");
 var getProjectNumber = require("../lib/getProjectNumber");
 
@@ -28,7 +27,7 @@ module.exports = new Command("serve")
     "serve all except specified targets (valid targets are: functions, hosting)"
   )
   .before(requireConfig)
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions)
   .before(checkDupHostingKeys)
   .before(getProjectNumber)
   .action(function(options) {

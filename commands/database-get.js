@@ -1,7 +1,8 @@
 "use strict";
 
 var Command = require("../lib/command");
-var requireAccess = require("../lib/requireAccess");
+var requireInstance = require("../lib/requireInstance");
+var requirePermissions = require("../lib/requirePermissions");
 var request = require("request");
 var api = require("../lib/api");
 var responseToError = require("../lib/responseToError");
@@ -52,7 +53,8 @@ module.exports = new Command("database:get <path>")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .before(requireAccess)
+  .before(requirePermissions, ["firebasedatabase.instances.get"])
+  .before(requireInstance)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });

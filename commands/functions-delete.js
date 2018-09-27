@@ -9,8 +9,7 @@ var functionsDelete = require("../lib/functionsDelete");
 var getProjectId = require("../lib/getProjectId");
 var helper = require("../lib/functionsDeployHelper");
 var prompt = require("../lib/prompt");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 
 module.exports = new Command("functions:delete [filters...]")
@@ -21,7 +20,7 @@ module.exports = new Command("functions:delete [filters...]")
       "If omitted, functions from all regions whose names match the filters will be deleted. "
   )
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
   .action(function(filters, options) {
     if (!filters.length) {
       return utils.reject("Must supply at least function or group name.");

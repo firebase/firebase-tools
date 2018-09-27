@@ -8,7 +8,7 @@ var api = require("../lib/api");
 var Command = require("../lib/command");
 var logger = require("../lib/logger");
 var prompt = require("../lib/prompt");
-var requireAccess = require("../lib/requireAccess");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 
 var LINKS = [
@@ -60,7 +60,7 @@ var CHOICES = _.map(LINKS, "name");
 
 module.exports = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
-  .before(requireAccess)
+  .before(requirePermissions)
   .action(function(linkName, options) {
     var link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {

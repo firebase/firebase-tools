@@ -4,9 +4,7 @@ var clc = require("cli-color");
 var Command = require("../lib/command");
 var FirestoreDelete = require("../lib/firestore/delete");
 var prompt = require("../lib/prompt");
-var requireAccess = require("../lib/requireAccess");
-
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 
 var _getConfirmationMessage = function(deleteOp, options) {
@@ -70,7 +68,7 @@ module.exports = new Command("firestore:delete [path]")
       "including all collections and documents. Any other flags or arguments will be ignored."
   )
   .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
   .action(function(path, options) {
     // Guarantee path
     if (!path && !options.allCollections) {

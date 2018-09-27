@@ -4,8 +4,7 @@ var _ = require("lodash");
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var functionsConfig = require("../lib/functionsConfig");
 
 function _materialize(projectId, path) {
@@ -25,7 +24,12 @@ function _materialize(projectId, path) {
 
 module.exports = new Command("functions:config:get [path]")
   .description("fetch environment config stored at the given path")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    "runtimeconfig.configs.list",
+    "runtimeconfig.configs.get",
+    "runtimeconfig.variables.list",
+    "runtimeconfig.variables.get",
+  ])
   .before(functionsConfig.ensureApi)
   .action(function(path, options) {
     return _materialize(getProjectId(options), path).then(function(result) {

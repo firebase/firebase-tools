@@ -5,8 +5,7 @@ var clc = require("cli-color");
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 var kits = require("../lib/kits");
 
@@ -15,7 +14,9 @@ module.exports = new Command("kits:install <githubRepo>")
   .option("-b, --branch <branch>", "repository branch to download from. Defaults to master")
   .option("-p, --path <path>", "custom path to kit configuration file. Defaults to kits.json")
   .option("--id <releaseId>", "release version to be installed. Defaults to latest")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    /* TODO */
+  ])
   .action(function(githubRepo, options) {
     var projectId = getProjectId(options);
     var kit = githubRepo.split("/");

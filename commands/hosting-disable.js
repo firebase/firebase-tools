@@ -1,7 +1,8 @@
 "use strict";
 
 var Command = require("../lib/command");
-var requireAccess = require("../lib/requireAccess");
+var requireInstance = require("../lib/requireInstance");
+var requirePermissions = require("../lib/requirePermissions");
 var api = require("../lib/api");
 var utils = require("../lib/utils");
 var prompt = require("../lib/prompt");
@@ -10,7 +11,8 @@ var clc = require("cli-color");
 module.exports = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-y, --confirm", "skip confirmation")
-  .before(requireAccess)
+  .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before(requireInstance)
   .action(function(options) {
     return prompt(options, [
       {
