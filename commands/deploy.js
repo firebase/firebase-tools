@@ -55,7 +55,7 @@ module.exports = new Command("deploy")
     options.filteredTargets = filterTargets(options, VALID_TARGETS);
     const permissions = options.filteredTargets.reduce((perms, target) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
-    });
+    }, []);
     return requirePermissions(options, permissions);
   })
   .before(function(options) {
