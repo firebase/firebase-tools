@@ -51,6 +51,15 @@ module.exports = function(client) {
     },
   };
 
+  if (previews.emulators) {
+    client.experimental.database = {
+      emulate: loadCommand("experimental-database-emulate"),
+    };
+    client.experimental.firestore = {
+      emulate: loadCommand("experimental-firestore-emulate"),
+    };
+  }
+
   client.help = loadCommand("help");
 
   if (previews.kits) {
