@@ -1,7 +1,5 @@
 "use strict";
 
-require("sinon-as-promised");
-
 var auth = require("../../lib/auth");
 
 exports.mockAuth = function(sandbox) {

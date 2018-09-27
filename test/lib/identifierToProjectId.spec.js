@@ -14,7 +14,7 @@ describe("identifierToProjectId", function() {
   var mockApi;
 
   beforeEach(function() {
-    sandbox = sinon.sandbox.create();
+    sandbox = sinon.createSandbox();
     helpers.mockAuth(sandbox);
     mockApi = sandbox.mock(api);
   });

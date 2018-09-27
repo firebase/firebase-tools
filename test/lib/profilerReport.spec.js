@@ -1,11 +1,13 @@
 "use strict";
 
 var chai = require("chai");
-var expect = chai.expect;
 
 var path = require("path");
 var stream = require("stream");
 var ProfileReport = require("../../lib/profileReport");
+
+chai.use(require("chai-as-promised"));
+var expect = chai.expect;
 
 var combinerFunc = function(obj1, obj2) {
   return { count: obj1.count + obj2.count };
@@ -20,6 +22,7 @@ var newReport = function() {
     format: "JSON",
     isFile: false,
     collapse: true,
+    isInput: true,
   });
 };
 
@@ -27,7 +30,7 @@ describe("profilerReport", function() {
   it("should correctly generate a report", function() {
     var report = newReport();
     var output = require(path.resolve(fixturesDir, "profiler-data/sample-output.json"));
-    expect(report.generate()).to.eventually.deep.equal(output);
+    return expect(report.generate()).to.eventually.deep.equal(output);
   });
 
   it("should format numbers correctly", function() {
