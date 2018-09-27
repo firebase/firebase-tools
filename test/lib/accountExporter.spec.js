@@ -43,7 +43,7 @@ describe("accountExporter", function() {
     var spyWrite;
 
     beforeEach(function() {
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       helpers.mockAuth(sandbox);
       spyWrite = sandbox.spy(writeStream, "write");
       for (var i = 1; i <= 7; i++) {
