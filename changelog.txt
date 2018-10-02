@@ -1,1 +1,4 @@
-fixed - update dependencies
+important - Support emulation of HTTP callable functions in `firebase functions:shell`. To trigger the emulated function, type `myCallableFunction({sample: 'data'}, {instanceIdToken: 'fakeToken'})`. Emulating `context.auth` is not supported. Please note that this is a breaking change, since the emulated callable function will no longer behave like a HTTP onRequest function, and cannot be invoked with methods such as `myCallableFunction.post()`
+feature - Improve speed of `firebase firestore:delete [path]`
+feature - `--token` flag now accepts access tokens in addition to refresh tokens
+fixed - Fixes bug where deploying hosting sometimes results in `UnhandledPromiseRejectionWarning`
