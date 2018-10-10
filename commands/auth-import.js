@@ -77,6 +77,11 @@ module.exports = new Command("auth:import [dataFile]")
                 return newStr === "" ? undefined : newStr;
               })
             );
+            if (user.error) {
+              return reject(
+                "Line " + counter + " (" + line + ") has invalid data format: " + user.error
+              );
+            }
             currentBatch.push(user);
             if (currentBatch.length === MAX_BATCH_SIZE) {
               batches.push(currentBatch);
@@ -113,16 +118,21 @@ module.exports = new Command("auth:import [dataFile]")
           });
         inStream.pipe(parser);
       }
-    }).then(function(userListArr) {
-      logger.debug(
-        "Preparing to import",
-        counter,
-        "user records in",
-        userListArr.length,
-        "batches."
-      );
-      if (userListArr.length) {
-        return serialImportUsers(projectId, hashOptions, userListArr, 0);
+    }).then(
+      function(userListArr) {
+        logger.debug(
+          "Preparing to import",
+          counter,
+          "user records in",
+          userListArr.length,
+          "batches."
+        );
+        if (userListArr.length) {
+          return serialImportUsers(projectId, hashOptions, userListArr, 0);
+        }
+      },
+      function(error) {
+        return utils.reject(error, { exit: 1 });
       }
-    });
+    );
   });
