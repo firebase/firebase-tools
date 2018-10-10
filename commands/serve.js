@@ -11,8 +11,13 @@ var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var serve = require("../lib/serve/index");
 var filterTargets = require("../lib/filterTargets");
 var getProjectNumber = require("../lib/getProjectNumber");
+var previews = require("../lib/previews");
 
 var VALID_TARGETS = ["functions", "hosting"];
+
+if (previews.emulators) {
+  VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
+}
 
 module.exports = new Command("serve")
   .description("start a local server for your static assets")
@@ -20,11 +25,11 @@ module.exports = new Command("serve")
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: functions, hosting)"
+    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .option(
     "--except <targets>",
-    "serve all except specified targets (valid targets are: functions, hosting)"
+    "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .before(requireConfig)
   .before(requirePermissions)

@@ -51,15 +51,6 @@ module.exports = function(client) {
     },
   };
 
-  if (previews.emulators) {
-    client.experimental.database = {
-      emulate: loadCommand("experimental-database-emulate"),
-    };
-    client.experimental.firestore = {
-      emulate: loadCommand("experimental-firestore-emulate"),
-    };
-  }
-
   client.help = loadCommand("help");
 
   if (previews.kits) {
@@ -82,6 +73,13 @@ module.exports = function(client) {
   client.setup = {
     web: loadCommand("setup-web"),
   };
+
+  if (previews.emulators) {
+    client.setup.emulators = {
+      database: loadCommand("setup-emulators-database"),
+      firestore: loadCommand("setup-emulators-firestore"),
+    };
+  }
 
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
