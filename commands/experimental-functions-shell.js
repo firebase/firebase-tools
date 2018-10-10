@@ -1,9 +1,8 @@
 "use strict";
 
 var Command = require("../lib/command");
-var requireAccess = require("../lib/requireAccess");
+var requirePermissions = require("../lib/requirePermissions");
 var requireConfig = require("../lib/requireConfig");
-var scopes = require("../lib/scopes");
 var action = require("../lib/functionsShellCommandAction");
 
 module.exports = new Command("experimental:functions:shell")
@@ -12,5 +11,5 @@ module.exports = new Command("experimental:functions:shell")
   )
   .option("-p, --port <port>", "the port on which to emulate functions (default: 5000)", 5000)
   .before(requireConfig)
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions)
   .action(action);

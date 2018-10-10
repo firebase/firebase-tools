@@ -7,14 +7,24 @@ var Command = require("../lib/command");
 var functionsConfig = require("../lib/functionsConfig");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var utils = require("../lib/utils");
 var runtimeconfig = require("../lib/gcp/runtimeconfig");
 
 module.exports = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    "runtimeconfig.configs.list",
+    "runtimeconfig.configs.create",
+    "runtimeconfig.configs.get",
+    "runtimeconfig.configs.update",
+    "runtimeconfig.configs.delete",
+    "runtimeconfig.variables.list",
+    "runtimeconfig.variables.create",
+    "runtimeconfig.variables.get",
+    "runtimeconfig.variables.update",
+    "runtimeconfig.variables.delete",
+  ])
   .before(functionsConfig.ensureApi)
   .action(function(args, options) {
     if (!args.length) {

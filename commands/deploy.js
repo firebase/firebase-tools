@@ -1,20 +1,42 @@
 "use strict";
 
-var requireAccess = require("../lib/requireAccess");
-var clc = require("cli-color");
+var _ = require("lodash");
+
+var requireInstance = require("../lib/requireInstance");
+var requirePermissions = require("../lib/requirePermissions");
 var checkDupHostingKeys = require("../lib/checkDupHostingKeys");
 var checkValidTargetFilters = require("../lib/checkValidTargetFilters");
 var checkFirebaseSDKVersion = require("../lib/checkFirebaseSDKVersion");
 var Command = require("../lib/command");
 var deploy = require("../lib/deploy");
-var logger = require("../lib/logger");
 var requireConfig = require("../lib/requireConfig");
-var scopes = require("../lib/scopes");
-var utils = require("../lib/utils");
 var filterTargets = require("../lib/filterTargets");
 
 // in order of least time-consuming to most time-consuming
 var VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
+var TARGET_PERMISSIONS = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+};
 
 module.exports = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
@@ -30,25 +52,21 @@ module.exports = new Command("deploy")
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
   .before(function(options) {
-    return requireAccess(options, [scopes.CLOUD_PLATFORM]).catch(function(err) {
-      if (options.config.has("functions")) {
-        throw err;
-      }
-
-      logger.info();
-      utils.logWarning(
-        clc.bold("Your CLI authentication needs to be updated to take advantage of new features.")
-      );
-      utils.logWarning(clc.bold("Please run " + clc.underline("firebase login --reauth")));
-      logger.info();
-
-      return requireAccess(options, []);
-    });
+    options.filteredTargets = filterTargets(options, VALID_TARGETS);
+    const permissions = options.filteredTargets.reduce((perms, target) => {
+      return perms.concat(TARGET_PERMISSIONS[target]);
+    }, []);
+    return requirePermissions(options, permissions);
+  })
+  .before(function(options) {
+    // only fetch the default instance for hosting or database deploys
+    if (_.intersection(options.filteredTargets, ["hosting", "database"]).length > 0) {
+      return requireInstance(options);
+    }
   })
   .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
   .before(checkFirebaseSDKVersion)
   .action(function(options) {
-    var targets = filterTargets(options, VALID_TARGETS);
-    return deploy(targets, options);
+    return deploy(options.filteredTargets, options);
   });

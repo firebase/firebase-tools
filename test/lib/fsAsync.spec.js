@@ -51,7 +51,7 @@ describe("fsAsync", function() {
 
   after(function() {
     return fsAsync.rmdirRecursive(baseDir).then(function() {
-      return expect(fsAsync.stat(baseDir)).to.reject;
+      return expect(fsAsync.stat(baseDir)).to.be.rejected;
     });
   });
 

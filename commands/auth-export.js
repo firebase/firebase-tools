@@ -8,7 +8,7 @@ var Command = require("../lib/command");
 var accountExporter = require("../lib/accountExporter");
 var getProjectId = require("../lib/getProjectId");
 var logger = require("../lib/logger");
-var requireAccess = require("../lib/requireAccess");
+var requirePermissions = require("../lib/requirePermissions");
 
 var MAX_BATCH_SIZE = 1000;
 
@@ -21,7 +21,7 @@ module.exports = new Command("auth:export [dataFile]")
     "--format <format>",
     "Format of exported data (csv, json). Ignored if [dataFile] has format extension."
   )
-  .before(requireAccess)
+  .before(requirePermissions, ["firebaseauth.users.get"])
   .action(function(dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options, dataFile);

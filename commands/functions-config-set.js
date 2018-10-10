@@ -4,15 +4,25 @@ var clc = require("cli-color");
 
 var Command = require("../lib/command");
 var getProjectId = require("../lib/getProjectId");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var logger = require("../lib/logger");
 var utils = require("../lib/utils");
 var functionsConfig = require("../lib/functionsConfig");
 
 module.exports = new Command("functions:config:set [values...]")
   .description("set environment config with key=value syntax")
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, [
+    "runtimeconfig.configs.list",
+    "runtimeconfig.configs.create",
+    "runtimeconfig.configs.get",
+    "runtimeconfig.configs.update",
+    "runtimeconfig.configs.delete",
+    "runtimeconfig.variables.list",
+    "runtimeconfig.variables.create",
+    "runtimeconfig.variables.get",
+    "runtimeconfig.variables.update",
+    "runtimeconfig.variables.delete",
+  ])
   .before(functionsConfig.ensureApi)
   .action(function(args, options) {
     if (!args.length) {

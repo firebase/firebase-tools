@@ -2,8 +2,7 @@
 
 var Command = require("../lib/command");
 var firestoreIndexes = require("../lib/firestore/indexes.js");
-var requireAccess = require("../lib/requireAccess");
-var scopes = require("../lib/scopes");
+var requirePermissions = require("../lib/requirePermissions");
 var logger = require("../lib/logger");
 var _ = require("lodash");
 
@@ -28,7 +27,7 @@ module.exports = new Command("firestore:indexes")
     "Pretty print. When not specified the indexes are printed in the " +
       "JSON specification format."
   )
-  .before(requireAccess, [scopes.CLOUD_PLATFORM])
+  .before(requirePermissions, ["datastore.indexes.list"])
   .action(function(options) {
     return firestoreIndexes.list(options.project).then(function(indexes) {
       var jsonSpec = _makeJsonSpec(indexes);

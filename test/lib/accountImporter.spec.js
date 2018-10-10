@@ -76,7 +76,7 @@ describe("accountImporter", function() {
     var expectedResponse = [];
 
     beforeEach(function() {
-      sandbox = sinon.sandbox.create();
+      sandbox = sinon.createSandbox();
       helpers.mockAuth(sandbox);
       mockApi = sandbox.mock(api);
       for (var i = 0; i < 10; i++) {
