@@ -21,7 +21,7 @@ module.exports = new Command("auth:export [dataFile]")
     "--format <format>",
     "Format of exported data (csv, json). Ignored if [dataFile] has format extension."
   )
-  .before(requirePermissions, ["firebaseauth.users.list"])
+  .before(requirePermissions, ["firebaseauth.users.get"])
   .action(function(dataFile, options) {
     var projectId = getProjectId(options);
     var checkRes = validateOptions(options, dataFile);
