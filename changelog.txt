@@ -1,5 +1,5 @@
 feature - `firebase init` now respects a `--project <project_id>` flag for quick init on a specific project.
-feature - `firebase init` now creates a boilerplate `.gitignore file.
+feature - `firebase init` now creates a boilerplate `.gitignore` file.
 feature - `firebase deploy` now accepts a `--force` flag to automatically confirm deletion of missing functions.
 fixed - Removed dependency on coarse project permissions in more places.
 fixed - `firebase init` project selection prompt is now alphabetized.
