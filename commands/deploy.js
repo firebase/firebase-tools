@@ -43,6 +43,10 @@ module.exports = new Command("deploy")
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")
   .option(
+    "-f, --force",
+    "delete Cloud Functions missing from the current working directory without confirmation"
+  )
+  .option(
     "--only <targets>",
     'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
       'can specify filters with colons to scope function deploys to only those functions (e.g. "--only functions:func1,functions:func2"). ' +
