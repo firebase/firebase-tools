@@ -42,7 +42,10 @@ module.exports = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
   .option("-m, --message <message>", "an optional message describing this deploy")
-  .option("-f, --force", "delete Cloud Functions missing from the current working directory")
+  .option(
+    "-f, --force",
+    "delete Cloud Functions missing from the current working directory without confirmation"
+  )
   .option(
     "--only <targets>",
     'only deploy to specified, comma-separated targets (e.g. "hosting,storage"). For functions, ' +
