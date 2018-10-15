@@ -8,9 +8,24 @@ var helpers = require("../helpers");
 
 var expect = chai.expect;
 describe("accountImporter", function() {
+  var transArrayToUser = accountImporter.transArrayToUser;
   var validateOptions = accountImporter.validateOptions;
   var validateUserJson = accountImporter.validateUserJson;
   var serialImportUsers = accountImporter.serialImportUsers;
+
+  describe("transArrayToUser", function() {
+    it("should reject when passwordHash is invalid base64", function() {
+      return expect(transArrayToUser(["123", undefined, undefined, "false"])).to.have.property(
+        "error"
+      );
+    });
+
+    it("should not reject when passwordHash is valid base64", function() {
+      return expect(
+        transArrayToUser(["123", undefined, undefined, "Jlf7onfLbzqPNFP/1pqhx6fQF/w="])
+      ).to.not.have.property("error");
+    });
+  });
 
   describe("validateOptions", function() {
     it("should reject when unsupported hash algorithm provided", function() {
@@ -62,6 +77,24 @@ describe("accountImporter", function() {
           ],
         })
       ).to.have.property("error");
+    });
+
+    it("should reject when passwordHash is invalid base64", function() {
+      return expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: "false",
+        })
+      ).to.have.property("error");
+    });
+
+    it("should not reject when passwordHash is valid base64", function() {
+      return expect(
+        validateUserJson({
+          localId: "123",
+          passwordHash: "Jlf7onfLbzqPNFP/1pqhx6fQF/w=",
+        })
+      ).to.not.have.property("error");
     });
   });
 
