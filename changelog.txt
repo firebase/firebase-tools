@@ -1,0 +1,1 @@
+fixed - Issue in `firebase init` project selection.
