@@ -7,13 +7,16 @@ var path = require("path");
 
 var Command = require("../lib/command");
 var Config = require("../lib/config");
+var fsutils = require("../lib/fsutils");
 var init = require("../lib/init");
 var logger = require("../lib/logger");
 var prompt = require("../lib/prompt");
 var requireAuth = require("../lib/requireAuth");
 var utils = require("../lib/utils");
 
-var BANNER_TEXT = fs.readFileSync(__dirname + "/../templates/banner.txt", "utf8");
+var TEMPLATE_ROOT = path.resolve(__dirname, "../templates/");
+var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
+var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
 var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
@@ -155,6 +158,10 @@ module.exports = new Command("init [feature]")
         config.writeProjectFile("firebase.json", setup.config);
         utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
         config.writeProjectFile(".firebaserc", setup.rcfile);
+        if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
+          utils.logBullet("Writing gitignore file to " + clc.bold(".gitignore") + "...");
+          config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
+        }
         logger.info();
         utils.logSuccess("Firebase initialization complete!");
 
