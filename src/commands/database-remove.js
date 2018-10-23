@@ -43,7 +43,9 @@ module.exports = new Command("database:remove <path>")
             if (!options.confirm) {
                 return utils.reject("Command aborted.", { exit: 1 });
             }
-            var _chunkedDelete = function(path) {
+
+            // return whether it times out or not
+            function prefetchTest(path) {
                 var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
                 url += querystring.stringify({
                     timeout: '100ms'
@@ -77,101 +79,123 @@ module.exports = new Command("database:remove <path>")
                                     );
                                 });
                         });
-                    }).then(function (timeOut) {
-                        if (timeOut) {
-                            var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
-                            url += querystring.stringify({
-                                shallow: true,
-                                //limitToFirst: options.concurrent
-                            });
-                            var reqOptions = {
-                                url: url,
-                            };
-                            return api.addRequestHeaders(reqOptions)
-                                .then(function(reqOptionsWithToken) {
-                                    return new Promise(function (resolve, reject) {
-                                        var shallowGetResponse = "";
-                                        request
-                                            .get(reqOptionsWithToken)
-                                            .on("response", function (res) {
-                                                var response = res;
-                                                if (response.statusCode >= 300) {
-                                                    return reject()
-                                                }
-                                            })
-                                            .on("data", function(chunk) {
-                                                shallowGetResponse += chunk;
-                                            })
-                                            .on("end", function () {
-                                                try {
-                                                    var data = JSON.parse(shallowGetResponse);
-                                                    var keyList = Object.keys(data)
-                                                    if (keyList)
-                                                        return resolve(keyList)
-                                                    else
-                                                        return resolve([])
-                                                } catch (e) {
-                                                    return reject(
-                                                        new FirebaseError("Malformed JSON response in shallow get ", {
-                                                            exit: 2,
-                                                            original: e,
-                                                        })
-                                                    );
-                                                }
-                                            })
-                                            .on("error", function (error) {
-                                                return reject(
-                                                    new FirebaseError("Unexpected error while list subtrees", {
-                                                        exit: 2,
-                                                    })
-                                                );
-                                            });
-                                    }).then(function (paths){
-                                        utils.logSuccess("starts deleting " +  paths.length);
-                                        var promiseList = []
-                                        for (var i = 0; i < paths.length; i++) {
-                                            const subPath = path + (path == "/"? "" : "/") + paths[i]
-                                            promiseList.push(_chunkedDelete(subPath));
-                                        }
-                                        return Promise.all(promiseList);
-                                    });
-                                })
-                        } else {
-                            return new Promise(function (resolve, reject) {
-                                var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
-                                var reqOptions = {
-                                    url: url,
-                                    json: true,
-                                };
-                                return api.addRequestHeaders(reqOptions)
-                                    .then(function(reqOptionsWithToken) {
-                                        request.del(reqOptionsWithToken, function(err, res, body) {
-                                            if (err) {
-                                                return reject(
-                                                    new FirebaseError("Unexpected error while removing data", {
-                                                        exit: 2,
-                                                    })
-                                                );
-                                            } else if (res.statusCode >= 400) {
-                                                return reject(responseToError(res, body));
-                                            }
-                                            if (options.verbose) {
-                                                var pathString = path
-                                                var pathList = path.split("\/");
-                                                if (pathList.length > 6) {
-                                                    var firstTwoPaths = pathList.slice(0, 2).join("/");
-                                                    var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("/");
-                                                    pathString = firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
-                                                }
-                                                utils.logSuccess("Sucessfully removed data at " + pathString);
+                    });
+            }
 
-                                            }
-                                            return resolve();
-                                        });
-                                    });
+            function listPath(timeOut) {
+                var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+                url += querystring.stringify({
+                    shallow: true,
+                    //limitToFirst: options.concurrent
+                });
+                var reqOptions = {
+                    url: url,
+                };
+                return api.addRequestHeaders(reqOptions)
+                    .then(function(reqOptionsWithToken) {
+                        return new Promise(function (resolve, reject) {
+                            var shallowGetResponse = "";
+                            request
+                                .get(reqOptionsWithToken)
+                                .on("response", function (res) {
+                                    var response = res;
+                                    if (response.statusCode >= 300) {
+                                        return reject()
+                                    }
+                                })
+                                .on("data", function(chunk) {
+                                    shallowGetResponse += chunk;
+                                })
+                                .on("end", function () {
+                                    try {
+                                        var data = JSON.parse(shallowGetResponse);
+                                        var keyList = Object.keys(data)
+                                        if (keyList)
+                                            return resolve(keyList)
+                                        else
+                                            return resolve([])
+                                    } catch (e) {
+                                        return reject(
+                                            new FirebaseError("Malformed JSON response in shallow get ", {
+                                                exit: 2,
+                                                original: e,
+                                            })
+                                        );
+                                    }
+                                })
+                                .on("error", function (error) {
+                                    return reject(
+                                        new FirebaseError("Unexpected error while list subtrees", {
+                                            exit: 2,
+                                        })
+                                    );
+                                });
+                        });
+                    });
+            }
+
+            function deletePath(path){
+                return new Promise(function (resolve, reject) {
+                    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+                    var reqOptions = {
+                        url: url,
+                        json: true,
+                    };
+                    return api.addRequestHeaders(reqOptions)
+                        .then(function(reqOptionsWithToken) {
+                            request.del(reqOptionsWithToken, function(err, res, body) {
+                                if (err) {
+                                    return reject(
+                                        new FirebaseError("Unexpected error while removing data", {
+                                            exit: 2,
+                                        })
+                                    );
+                                } else if (res.statusCode >= 400) {
+                                    return reject(responseToError(res, body));
+                                }
+                                if (options.verbose) {
+                                    var pathString = path
+                                    var pathList = path.split("\/");
+                                    if (pathList.length > 6) {
+                                        var firstTwoPaths = pathList.slice(0, 2).join("/");
+                                        var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("/");
+                                        pathString = firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
+                                    }
+                                    utils.logSuccess("Sucessfully removed data at " + pathString);
+
+                                }
+                                return resolve();
                             });
+                        });
+                });
+            }
+
+            var _chunkedDelete = function(path) {
+                return prefetchTest(path)
+                    .then(function (timeOut) {
+                        if (timeOut) {
+                            return listPath(path)
+                                .then(function (paths){
+                                    var prom = Promise.resolve();
+                                    for (var i = 0; i < paths.length; i++) {
+                                        const subPath = path + (path == "/"? "" : "/") + paths[i]
+                                        prom = prom.then(function(){
+                                            return _chunkedDelete(subPath);
+                                        })
+                                    }
+                                    return prom;
+                                    //utils.logSuccess("starts deleting " +  paths.length);
+                                    //var promiseList = []
+                                    //for (var i = 0; i < paths.length; i++) {
+                                    //const subPath = path + (path == "/"? "" : "/") + paths[i]
+                                    //promiseList.push(_chunkedDelete(subPath));
+                                    //}
+                                    //return Promise.all(promiseList);
+                                });
+                        } else {
+                            return deletePath(path)
                         }
-                    })
+                    });
             }
             return _chunkedDelete(path)
                 .then(function() {
