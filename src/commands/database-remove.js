@@ -17,7 +17,8 @@ var _ = require("lodash");
 module.exports = new Command("database:remove <path>")
     .description("remove data from your Firebase at the specified path")
     .option("-y, --confirm", "pass this option to bypass confirmation prompt")
-    .option("-v, --verbose", "pass this option to show delete progress (helpful for large delete)")
+    .option("-v, --verbose", "show delete progress (helpful for large delete)")
+    .option("-c, --concurrent", "default=32. configure the concurrent threshold")
     .option(
         "--instance <instance>",
         "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -80,7 +81,8 @@ module.exports = new Command("database:remove <path>")
                         if (timeOut) {
                             var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
                             url += querystring.stringify({
-                                shallow: true
+                                shallow: true,
+                                //limitToFirst: options.concurrent
                             });
                             var reqOptions = {
                                 url: url,
@@ -125,14 +127,13 @@ module.exports = new Command("database:remove <path>")
                                                 );
                                             });
                                     }).then(function (paths){
-                                        var prom = Promise.resolve();
+                                        utils.logSuccess("starts deleting " +  paths.length);
+                                        var promiseList = []
                                         for (var i = 0; i < paths.length; i++) {
                                             const subPath = path + (path == "/"? "" : "/") + paths[i]
-                                            prom = prom.then(function(){
-                                                return _chunkedDelete(subPath);
-                                            })
+                                            promiseList.push(_chunkedDelete(subPath));
                                         }
-                                        return prom
+                                        return Promise.all(promiseList);
                                     });
                                 })
                         } else {
