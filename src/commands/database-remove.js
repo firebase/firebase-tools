@@ -14,26 +14,20 @@ var prompt = require("../lib/prompt");
 var clc = require("cli-color");
 var _ = require("lodash");
 
-function shortenPath(path) {
-    if (path.length > 100)
-        return "..[len=" + path.length + "].." + path.slice(path.length-100)
-    return path
-}
-
 module.exports = new Command("database:remove <path>")
-  .description("remove data from your Firebase at the specified path")
-  .option("-y, --confirm", "pass this option to bypass confirmation prompt")
-  .option(
-    "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
-  )
-  .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
-  .action(function(path, options) {
-    if (!_.startsWith(path, "/")) {
-      return utils.reject("Path must begin with /", { exit: 1 });
-    }
-
+    .description("remove data from your Firebase at the specified path")
+    .option("-y, --confirm", "pass this option to bypass confirmation prompt")
+    .option("-v, --verbose", "pass this option to show delete progress (helpful for large delete)")
+    .option(
+        "--instance <instance>",
+        "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    )
+    .before(requirePermissions, ["firebasedatabase.instances.update"])
+    .before(requireInstance)
+    .action(function(path, options) {
+        if (!_.startsWith(path, "/")) {
+            return utils.reject("Path must begin with /", { exit: 1 });
+        }
         return prompt(options, [
             {
                 type: "confirm",
@@ -56,7 +50,6 @@ module.exports = new Command("database:remove <path>")
                 var reqOptions = {
                     url: url
                 };
-                console.time("test get " + url);
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
@@ -64,21 +57,23 @@ module.exports = new Command("database:remove <path>")
                                 .get(reqOptionsWithToken)
                                 .on("response", function (res) {
                                     var response = res;
-                                    console.timeEnd("test get " + url);
-                                    console.error('test get on path ' + shortenPath(path) + ' status code: ', response.statusCode);
                                     if (response.statusCode >= 300) {
-                                        if (response.statusCode == 400 || response.statusCode == 413) {
-                                            return resolve(true)
+                                        if (response.statusCode != 400 && response.statusCode != 413) {
+                                            return reject(responseToError(res, ""))
                                         }
-                                        return reject('response ', response)
-                                    } else {
-                                        return resolve(false)
+                                        // large subtree, recursive delete for each subtree
                                         return resolve(true)
+                                    } else {
+                                        // small subtree
+                                        return resolve(false)
                                     }
                                 })
                                 .on("error", function (error) {
-                                    console.error('error on test get', error)
-                                    return reject()
+                                    return reject(
+                                        new FirebaseError("Unexpected error while prefetching data to delete", {
+                                            exit: 2,
+                                        })
+                                    );
                                 });
                         });
                     }).then(function (timeOut) {
@@ -90,7 +85,6 @@ module.exports = new Command("database:remove <path>")
                             var reqOptions = {
                                 url: url,
                             };
-                            console.time("shallow get " + url);
                             return api.addRequestHeaders(reqOptions)
                                 .then(function(reqOptionsWithToken) {
                                     return new Promise(function (resolve, reject) {
@@ -107,18 +101,16 @@ module.exports = new Command("database:remove <path>")
                                                 shallowGetResponse += chunk;
                                             })
                                             .on("end", function () {
-                                                console.timeEnd("shallow get " + url);
                                                 try {
                                                     var data = JSON.parse(shallowGetResponse);
                                                     var keyList = Object.keys(data)
-                                                    console.error('shallow get response path ' + shortenPath(path) +' size: ' + keyList.length);
                                                     if (keyList)
                                                         return resolve(keyList)
                                                     else
                                                         return resolve([])
                                                 } catch (e) {
                                                     return reject(
-                                                        new FirebaseError("Malformed JSON response", {
+                                                        new FirebaseError("Malformed JSON response in shallow get ", {
                                                             exit: 2,
                                                             original: e,
                                                         })
@@ -126,8 +118,11 @@ module.exports = new Command("database:remove <path>")
                                                 }
                                             })
                                             .on("error", function (error) {
-                                                console.error('error on shallow get', error)
-                                                return reject()
+                                                return reject(
+                                                    new FirebaseError("Unexpected error while list subtrees", {
+                                                        exit: 2,
+                                                    })
+                                                );
                                             });
                                     }).then(function (paths){
                                         var prom = Promise.resolve();
@@ -147,12 +142,9 @@ module.exports = new Command("database:remove <path>")
                                     url: url,
                                     json: true,
                                 };
-                                console.time("delete at path " + url);
-                                console.log('delete at path: path ', shortenPath(path));
                                 return api.addRequestHeaders(reqOptions)
                                     .then(function(reqOptionsWithToken) {
                                         request.del(reqOptionsWithToken, function(err, res, body) {
-                                            console.timeEnd("delete at path " + url);
                                             if (err) {
                                                 return reject(
                                                     new FirebaseError("Unexpected error while removing data", {
@@ -161,6 +153,17 @@ module.exports = new Command("database:remove <path>")
                                                 );
                                             } else if (res.statusCode >= 400) {
                                                 return reject(responseToError(res, body));
+                                            }
+                                            if (options.verbose) {
+                                                var pathString = path
+                                                var pathList = path.split("\/");
+                                                if (pathList.length > 6) {
+                                                    var firstTwoPaths = pathList.slice(0, 2).join("/");
+                                                    var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("/");
+                                                    pathString = firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
+                                                }
+                                                utils.logSuccess("Sucessfully removed data at " + pathString);
+
                                             }
                                             return resolve();
                                         });
@@ -171,10 +174,7 @@ module.exports = new Command("database:remove <path>")
             }
             return _chunkedDelete(path)
                 .then(function() {
-                    console.log()
-                })
-                .catch(function (error) {
-                    console.error('Exception', error)
+                    utils.logSuccess("Data removed successfully");
                 })
         });
     });
