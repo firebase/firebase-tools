@@ -18,7 +18,7 @@ module.exports = new Command("database:remove <path>")
     .description("remove data from your Firebase at the specified path")
     .option("-y, --confirm", "pass this option to bypass confirmation prompt")
     .option("-v, --verbose", "show delete progress (helpful for large delete)")
-    .option("-c, --concurrent", "default=32. configure the concurrent threshold")
+    .option("-c, --concurrent", "default=1. configure the concurrent threshold")
     .option(
         "--instance <instance>",
         "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -40,6 +40,9 @@ module.exports = new Command("database:remove <path>")
                 ". Are you sure?",
             },
         ]).then(function() {
+            if (!options.concurrent) {
+                options.concurrent = 25;
+            }
             if (!options.confirm) {
                 return utils.reject("Command aborted.", { exit: 1 });
             }
@@ -82,11 +85,11 @@ module.exports = new Command("database:remove <path>")
                     });
             }
 
-            function listPath(timeOut) {
+            function listPath(path) {
                 var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
                 url += querystring.stringify({
                     shallow: true,
-                    //limitToFirst: options.concurrent
+                    limitToFirst: 100
                 });
                 var reqOptions = {
                     url: url,
@@ -134,6 +137,34 @@ module.exports = new Command("database:remove <path>")
                     });
             }
 
+            function deleteList(path) {
+                function deleteUntilEmpty() {
+                    return listPath(path).then(function(ls) {
+                        if (ls.length == 0) {
+                            return Promise.resolve();
+                        } else {
+                            return batchDeleteHandler(ls).then(deleteUntilEmpty);
+                        }
+                    })
+                }
+                return deleteUntilEmpty();
+            }
+
+            function batchDeleteHandler(paths){
+                var pathQueue = [];
+                var prom = Promise.resolve();
+                for (var i = 0; i < paths.length; i++) {
+                    var subPath = path + (path == "/"? "" : "/") + paths[i]
+                    pathQueue.push(subPath);
+                    if (pathQueue >= options.concurrent) {
+                        prom = prom.then(doBatchJob(pathQueue));
+                        pathQueue = [];
+                    }
+                }
+                prom = prom.then(doBatchJob(pathQueue));
+                return prom;
+            }
+
             function deletePath(path){
                 return new Promise(function (resolve, reject) {
                     var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
@@ -162,7 +193,6 @@ module.exports = new Command("database:remove <path>")
                                         pathString = firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
                                     }
                                     utils.logSuccess("Sucessfully removed data at " + pathString);
-
                                 }
                                 return resolve();
                             });
@@ -170,36 +200,29 @@ module.exports = new Command("database:remove <path>")
                 });
             }
 
-            var _chunkedDelete = function(path) {
+            function doBatchJob(pathList) {
+                return function () {
+                    var batchPromises = pathList.map(function(path) {
+                        return chunckedDelete(path);
+                    });
+                    return Promise.all(batchPromises);
+                }
+            }
+
+            function chunckedDelete(path) {
                 return prefetchTest(path)
                     .then(function (timeOut) {
                         if (timeOut) {
-                            return listPath(path)
-                                .then(function (paths){
-                                    var prom = Promise.resolve();
-                                    for (var i = 0; i < paths.length; i++) {
-                                        const subPath = path + (path == "/"? "" : "/") + paths[i]
-                                        prom = prom.then(function(){
-                                            return _chunkedDelete(subPath);
-                                        })
-                                    }
-                                    return prom;
-                                    //utils.logSuccess("starts deleting " +  paths.length);
-                                    //var promiseList = []
-                                    //for (var i = 0; i < paths.length; i++) {
-                                    //const subPath = path + (path == "/"? "" : "/") + paths[i]
-                                    //promiseList.push(_chunkedDelete(subPath));
-                                    //}
-                                    //return Promise.all(promiseList);
-                                });
+                            return deleteList(path);
                         } else {
                             return deletePath(path)
                         }
                     });
             }
-            return _chunkedDelete(path)
+
+            return chunckedDelete(path)
                 .then(function() {
                     utils.logSuccess("Data removed successfully");
-                })
+                });
         });
     });
