@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "module": "commonjs",
+    "strict": true,
+    "outDir": "lib",
+    "removeComments": true,
+    "sourceMap": true,
+    "target": "ES5"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/test/**/*"
+  ]
+}
