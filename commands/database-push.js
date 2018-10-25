@@ -12,7 +12,6 @@ var utils = require("../lib/utils");
 var clc = require("cli-color");
 var logger = require("../lib/logger");
 var fs = require("fs");
-var Firebase = require("firebase");
 var _ = require("lodash");
 
 module.exports = new Command("database:push <path> [infile]")
@@ -62,13 +61,11 @@ module.exports = new Command("database:push <path> [infile]")
             }
 
             var consoleUrl = utils.consoleUrl(options.project, "/database/data" + path + body.name);
-            var refurl =
-              utils.addSubdomain(api.realtimeOrigin, options.instance) + path + body.name;
 
             utils.logSuccess("Data pushed successfully");
             logger.info();
             logger.info(clc.bold("View data at:"), consoleUrl);
-            return resolve(new Firebase(refurl));
+            return resolve({ key: body.name });
           })
         );
       });
