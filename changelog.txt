@@ -1,0 +1,2 @@
+important - As of v6.0.0, the Firebase CLI is transpiled from the `src` directory using TypeScript. Some deep requires of files may have changed, and `npm run build` must be run in the checked out repo directory (or when installed from git via `npm`) before the CLI can be used.
+important - As of v6.0.0, the Firebase CLI is only going to be supported with Node >= 6.0.0.
