@@ -18,7 +18,7 @@ module.exports = new Command("database:remove <path>")
     .description("remove data from your Firebase at the specified path")
     .option("-y, --confirm", "pass this option to bypass confirmation prompt")
     .option("-v, --verbose", "show delete progress (helpful for large delete)")
-    .option("-c, --concurrent", "default=100. configure the concurrent threshold")
+    .option("-c, --concurrent <num>", "default=100. configure the concurrent threshold")
     .option(
         "--instance <instance>",
         "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -94,28 +94,24 @@ module.exports = new Command("database:remove <path>")
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
-                            request
-                                .get(reqOptionsWithToken)
-                                .on("response", function (res) {
-                                    var response = res;
-                                    if (response.statusCode >= 300) {
-                                        if (response.statusCode != 400 && response.statusCode != 413) {
-                                            return reject(responseToError(res, ""))
-                                        }
-                                        // large subtree, recursive delete for each subtree
-                                        return resolve(true)
-                                    } else {
-                                        // small subtree
-                                        return resolve(false)
-                                    }
-                                })
-                                .on("error", function (error) {
+                            request.get(reqOptionsWithToken, function(err, res, body) {
+                                if (err) {
                                     return reject(
                                         new FirebaseError("Unexpected error while prefetching data to delete", {
                                             exit: 2,
                                         })
                                     );
-                                });
+                                } else if (res.statusCode == 200) {
+                                    // small subtree
+                                    return resolve(false)
+                                } else if (res.statusCode == 400 || res.statusCode == 413) {
+                                    // timeout or payload too large
+                                    // large subtree, recursive delete for each subtree
+                                    return resolve(true)
+                                } else {
+                                    return reject(responseToError(res, body));
+                                }
+                            })
                         });
                     });
             }
@@ -129,7 +125,7 @@ module.exports = new Command("database:remove <path>")
                 } else {
                     url += querystring.stringify({
                         shallow: true,
-                        limitToFirst: "100"
+                        limitToFirst: options.concurrent
                     });
                 }
                 var reqOptions = {
@@ -138,42 +134,33 @@ module.exports = new Command("database:remove <path>")
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
-                            var shallowGetResponse = "";
-                            request
-                                .get(reqOptionsWithToken)
-                                .on("response", function (res) {
-                                    var response = res;
-                                    if (response.statusCode >= 300) {
-                                        return reject()
-                                    }
-                                })
-                                .on("data", function(chunk) {
-                                    shallowGetResponse += chunk;
-                                })
-                                .on("end", function () {
-                                    try {
-                                        var data = JSON.parse(shallowGetResponse);
-                                        var keyList = Object.keys(data)
-                                        if (keyList)
-                                            return resolve(keyList)
-                                        else
-                                            return resolve([])
-                                    } catch (e) {
-                                        return reject(
-                                            new FirebaseError("Malformed JSON response in shallow get ", {
-                                                exit: 2,
-                                                original: e,
-                                            })
-                                        );
-                                    }
-                                })
-                                .on("error", function (error) {
+                            request.get(reqOptionsWithToken, function(err, res, body) {
+                                if (err) {
                                     return reject(
                                         new FirebaseError("Unexpected error while list subtrees", {
                                             exit: 2,
                                         })
                                     );
-                                });
+                                } else if (res.statusCode >= 400) {
+                                    return reject(responseToError(res, body));
+                                }
+                                var data = {};
+                                try {
+                                    data = JSON.parse(body);
+                                } catch (e) {
+                                    return reject(
+                                        new FirebaseError("Malformed JSON response in shallow get ", {
+                                            exit: 2,
+                                            original: e,
+                                        })
+                                    );
+                                }
+                                var keyList = Object.keys(data)
+                                if (keyList)
+                                    return resolve(keyList)
+                                else
+                                    return resolve([])
+                            })
                         });
                     });
             }
@@ -206,6 +193,7 @@ module.exports = new Command("database:remove <path>")
                 for (var i = 0; i < paths.length; i++) {
                     var subPath = path + (path === "/"? "" : "/") + paths[i]
                     pathQueue.push(subPath);
+                    // double check to limit concurrent requests
                     if (pathQueue.length >= options.concurrent) {
                         prom = prom.then(doBatchJob(pathQueue));
                         pathQueue = [];
