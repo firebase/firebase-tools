@@ -114,7 +114,9 @@ module.exports = new Command("database:get <path>")
             }
           })
           .on("end", function() {
-            outStream.write("\n");
+            outStream.write("\n", function() {
+              resolve();
+            });
             if (erroring) {
               try {
                 var data = JSON.parse(errorResponse);
@@ -128,7 +130,6 @@ module.exports = new Command("database:get <path>")
                 );
               }
             }
-            return resolve();
           })
           .on("error", reject);
       });
