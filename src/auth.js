@@ -168,7 +168,7 @@ var _loginWithLocalhost = function(port) {
         return _getTokensFromAuthorizationCode(query.code, callbackUrl)
           .then(function(result) {
             tokens = result;
-            return _respondWithFile(req, res, 200, "../../templates/loginSuccess.html");
+            return _respondWithFile(req, res, 200, "../templates/loginSuccess.html");
           })
           .then(function() {
             server.close();
@@ -178,10 +178,10 @@ var _loginWithLocalhost = function(port) {
             });
           })
           .catch(function() {
-            return _respondWithFile(req, res, 400, "../../templates/loginFailure.html");
+            return _respondWithFile(req, res, 400, "../templates/loginFailure.html");
           });
       }
-      _respondWithFile(req, res, 400, "../../templates/loginFailure.html");
+      _respondWithFile(req, res, 400, "../templates/loginFailure.html");
     });
 
     server.listen(port, function() {
