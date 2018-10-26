@@ -14,18 +14,6 @@ var prompt = require("../lib/prompt");
 var clc = require("cli-color");
 var _ = require("lodash");
 
-function shortPath(path) {
-    var pathString = path
-    var pathList = path.split("\/");
-    if (pathList.length > 6) {
-        var firstTwoPaths = pathList.slice(0, 2).join("\/");
-        var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("\/");
-        return firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
-    } else {
-        return path;
-    }
-}
-
 module.exports = new Command("database:remove <path>")
     .description("remove data from your Firebase at the specified path")
     .option("-y, --confirm", "pass this option to bypass confirmation prompt")
@@ -66,14 +54,12 @@ module.exports = new Command("database:remove <path>")
                         url: url,
                         json: true,
                     };
-                    utils.logSuccess("Start removed data at " + shortPath(path));
                     return api.addRequestHeaders(reqOptions)
                         .then(function(reqOptionsWithToken) {
                             request.del(reqOptionsWithToken, function(err, res, body) {
                                 if (err) {
-                                    utils.logWarning(path + " delete " + err);
                                     return reject(
-                                        new FirebaseError("Unexpected error while removing data", {
+                                        new FirebaseError("Unexpected error while removing data at " + path, {
                                             exit: 2,
                                         })
                                     );
@@ -81,7 +67,7 @@ module.exports = new Command("database:remove <path>")
                                     return reject(responseToError(res, body));
                                 }
                                 if (options.verbose) {
-                                    utils.logSuccess("Sucessfully removed data at " + shortPath(path));
+                                    utils.logSuccess("Sucessfully removed data at " + path);
                                 }
                                 return resolve();
                             });
@@ -98,13 +84,11 @@ module.exports = new Command("database:remove <path>")
                 var reqOptions = {
                     url: url
                 };
-                utils.logSuccess("Start prefetch data at " + shortPath(path));
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
                             request.get(reqOptionsWithToken, function(err, res, body) {
                                 if (err) {
-                                    utils.logWarning(path + " prefetch " + err);
                                     return reject(
                                         new FirebaseError("Unexpected error while prefetching data to delete", {
                                             exit: 2,
@@ -144,13 +128,11 @@ module.exports = new Command("database:remove <path>")
                 var reqOptions = {
                     url: url,
                 };
-                utils.logSuccess("Start fetched pathes at " + shortPath(path));
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
                             request.get(reqOptionsWithToken, function(err, res, body) {
                                 if (err) {
-                                    utils.logWarning(path);
                                     return reject(
                                         new FirebaseError("Unexpected error while list subtrees", {
                                             exit: 2,
@@ -163,7 +145,6 @@ module.exports = new Command("database:remove <path>")
                                 try {
                                     data = JSON.parse(body);
                                 } catch (e) {
-                                    utils.logWarning(path + " list path " + err);
                                     return reject(
                                         new FirebaseError("Malformed JSON response in shallow get ", {
                                             exit: 2,
@@ -173,9 +154,6 @@ module.exports = new Command("database:remove <path>")
                                 }
                                 if (data) {
                                     var keyList = Object.keys(data)
-                                    if (options.verbose) {
-                                        utils.logSuccess("Sucessfully fetched "+ keyList.length +" pathes at " + shortPath(path));
-                                    }
                                     return resolve(keyList);
                                 } else {
                                     return resolve([])
@@ -191,19 +169,11 @@ module.exports = new Command("database:remove <path>")
 
             var a = 1; var b = 0;
             function dfsLoop() {
-                var ax = deleteQueue.length;
-                var bx = openChunkDeleteJob;
-                if (a !== ax || b !== bx) {
-                    utils.logWarning("Time: "+ Date.now() + " deleteQueue length: " + deleteQueue.length + " openJob " + openChunkDeleteJob);
-                    a = ax;
-                    b = bx;
+                if (failures.length !== 0) {
+                    return true;
                 }
                 if (deleteQueue.length === 0) {
-                    if (openChunkDeleteJob === 0) {
-                        return true;
-                    } else {
-                        return false;
-                    }
+                    return openChunkDeleteJob === 0;
                 }
                 if (openChunkDeleteJob < options.concurrent) {
                     chunckedDelete(deleteQueue.pop());
@@ -215,7 +185,6 @@ module.exports = new Command("database:remove <path>")
                 openChunkDeleteJob +=1;
                 return prefetchTest(path)
                     .then(function (test) {
-                        utils.logSuccess("Finished prefetch data ["+test+"] at " + shortPath(path));
                         if (test === "small") {
                             return deletePath(path)
                         } else if (test === "larger") {
@@ -233,13 +202,19 @@ module.exports = new Command("database:remove <path>")
                         } else if (test === "empty") {
                             return Promise.resolve();
                         } else {
-                            console.log("should not happen");
-                            return Promise.reject("unexpected test resultL: " + test);
+                            logger.error("unexpected prefetch test result: " + test);
+                            return reject(
+                                new FirebaseError("unexpected prefetch test result: " + test, {
+                                    exit: 2,
+                                    original: e,
+                                })
+                            );
                         }
                     }).then(function () {
                         openChunkDeleteJob -= 1;
-                    }).catch(function () {
+                    }).catch(function (error) {
                         openChunkDeleteJob -= 1;
+                        failures.push(error);
                     });
             }
 
@@ -249,9 +224,13 @@ module.exports = new Command("database:remove <path>")
                         clearInterval(intervalId);
 
                         if (failures.length == 0) {
-                            resolve();
+                            return resolve();
+                        } else if (failures.length == 0) {
+                            return reject(failure[0]);
                         } else {
-                            reject("Failed to delete documents " + failures);
+                            return new FirebaseError("multiple failures", {
+                                children: failures
+                            });
                         }
                     }
                 }, 0);
