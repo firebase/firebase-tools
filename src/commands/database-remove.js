@@ -18,8 +18,8 @@ function shortPath(path) {
     var pathString = path
     var pathList = path.split("\/");
     if (pathList.length > 6) {
-        var firstTwoPaths = pathList.slice(0, 2).join("/");
-        var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("/");
+        var firstTwoPaths = pathList.slice(0, 2).join("\/");
+        var lastTwoPaths = "/" + pathList.slice(pathList.length-2).join("\/");
         return firstTwoPaths + "..["+(pathList.length-4)+"].." + lastTwoPaths;
     } else {
         return path;
@@ -66,6 +66,7 @@ module.exports = new Command("database:remove <path>")
                         url: url,
                         json: true,
                     };
+                    utils.logSuccess("Start removed data at " + shortPath(path));
                     return api.addRequestHeaders(reqOptions)
                         .then(function(reqOptionsWithToken) {
                             request.del(reqOptionsWithToken, function(err, res, body) {
@@ -97,6 +98,7 @@ module.exports = new Command("database:remove <path>")
                 var reqOptions = {
                     url: url
                 };
+                utils.logSuccess("Start prefetch data at " + shortPath(path));
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
@@ -109,12 +111,16 @@ module.exports = new Command("database:remove <path>")
                                         })
                                     );
                                 } else if (res.statusCode == 200) {
+                                    if (res) {
+                                        return resolve("small");
+                                    } else {
+                                        return resolve("empty");
+                                    }
                                     // small subtree
-                                    return resolve(false)
                                 } else if (res.statusCode == 400 || res.statusCode == 413) {
                                     // timeout or payload too large
                                     // large subtree, recursive delete for each subtree
-                                    return resolve(true)
+                                    return resolve("larger");
                                 } else {
                                     return reject(responseToError(res, body));
                                 }
@@ -132,12 +138,13 @@ module.exports = new Command("database:remove <path>")
                 } else {
                     url += querystring.stringify({
                         shallow: true,
-                        limitToFirst: options.concurrent
+                        limitToFirst: "100"
                     });
                 }
                 var reqOptions = {
                     url: url,
                 };
+                utils.logSuccess("Start fetched pathes at " + shortPath(path));
                 return api.addRequestHeaders(reqOptions)
                     .then(function(reqOptionsWithToken) {
                         return new Promise(function (resolve, reject) {
@@ -164,12 +171,12 @@ module.exports = new Command("database:remove <path>")
                                         })
                                     );
                                 }
-                                var keyList = Object.keys(data)
-                                if (keyList) {
+                                if (data) {
+                                    var keyList = Object.keys(data)
                                     if (options.verbose) {
                                         utils.logSuccess("Sucessfully fetched "+ keyList.length +" pathes at " + shortPath(path));
                                     }
-                                    return resolve(keyList)
+                                    return resolve(keyList);
                                 } else {
                                     return resolve([])
                                 }
@@ -178,62 +185,78 @@ module.exports = new Command("database:remove <path>")
                     });
             }
 
-            function deleteList(path) {
-                function deleteUntilEmpty(startAfter) {
-                    return listPath(path).then(function(ls) {
-                        if (ls.length === 0) {
-                            return Promise.resolve();
-                        } else {
-                            return batchDeleteHandler(ls).then(deleteUntilEmpty);
-                        }
-                    })
+            var deleteQueue = [path];
+            var failures = [];
+            var openChunkDeleteJob = 0;
+
+            var a = 1; var b = 0;
+            function dfsLoop() {
+                var ax = deleteQueue.length;
+                var bx = openChunkDeleteJob;
+                if (a !== ax || b !== bx) {
+                    utils.logWarning("Time: "+ Date.now() + " deleteQueue length: " + deleteQueue.length + " openJob " + openChunkDeleteJob);
+                    a = ax;
+                    b = bx;
                 }
-                return deleteUntilEmpty();
-            }
-
-            function doBatchJob(pathList) {
-                return function () {
-                    var batchPromises = pathList.map(function(path) {
-                        return chunckedDelete(path);
-                    });
-                    return Promise.all(batchPromises).then(pathList[pathList.length-1]);
-                }
-            }
-
-            var pathQueue = [];
-            var concurrentRequests = 0;
-
-            function batchDeleteHandler(paths){
-                var prom = Promise.resolve();
-                for (var i = 0; i < paths.length; i++) {
-                    var subPath = path + (path === "/"? "" : "/") + paths[i]
-                    pathQueue.push(subPath);
-                    // double check to limit concurrent requests
-                    var availableConcurrent = Math.min(options.concurrent - concurrentRequests, pathQueue.length);
-                    if (pathQueue.length >= availableConcurrent) {
-                        concurrentRequests += availableConcurrent;
-                        prom = prom.then(doBatchJob(pathQueue,splice(0, availableConcurrent)));
+                if (deleteQueue.length === 0) {
+                    if (openChunkDeleteJob === 0) {
+                        return true;
+                    } else {
+                        return false;
                     }
                 }
-                prom = prom.then(doBatchJob(pathQueue));
-                return prom;
+                if (openChunkDeleteJob < options.concurrent) {
+                    chunckedDelete(deleteQueue.pop());
+                }
+                return false;
             }
 
-
             function chunckedDelete(path) {
+                openChunkDeleteJob +=1;
                 return prefetchTest(path)
-                    .then(function (timeOut) {
-                        if (timeOut) {
-                            return deleteList(path);
-                        } else {
+                    .then(function (test) {
+                        utils.logSuccess("Finished prefetch data ["+test+"] at " + shortPath(path));
+                        if (test === "small") {
                             return deletePath(path)
+                        } else if (test === "larger") {
+                            return listPath(path)
+                                .then(function (pathList) {
+                                    if (pathList) {
+                                        deleteQueue.push(path);
+                                        for (var i = 0; i < pathList.length; i++) {
+                                            var subPath = path + (path === "/" ? "" : "/") + pathList[i]
+                                            deleteQueue.push(subPath);
+                                        }
+                                    }
+                                    return Promise.resolve();
+                                });
+                        } else if (test === "empty") {
+                            return Promise.resolve();
+                        } else {
+                            console.log("should not happen");
+                            return Promise.reject("unexpected test resultL: " + test);
                         }
+                    }).then(function () {
+                        openChunkDeleteJob -= 1;
+                    }).catch(function () {
+                        openChunkDeleteJob -= 1;
                     });
             }
 
-            return chunckedDelete(path)
-                .then(function() {
-                    utils.logSuccess("Data removed successfully");
-                });
+            return new Promise(function(resolve, reject) {
+                var intervalId = setInterval(function() {
+                    if (dfsLoop()) {
+                        clearInterval(intervalId);
+
+                        if (failures.length == 0) {
+                            resolve();
+                        } else {
+                            reject("Failed to delete documents " + failures);
+                        }
+                    }
+                }, 0);
+            }).then(function() {
+                utils.logSuccess("Data removed successfully");
+            });
         });
     });
