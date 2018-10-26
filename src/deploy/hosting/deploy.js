@@ -45,6 +45,7 @@ module.exports = function(context, options) {
       version: deploy.version,
       files: files,
       public: options.config.path(deploy.config.public),
+      cwd: options.cwd,
     });
 
     var progressInterval = setInterval(function() {
