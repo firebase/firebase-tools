@@ -53,9 +53,6 @@ module.exports = new Command("init [feature]")
         "\n";
     }
 
-    if (process.platform === "darwin") {
-      BANNER_TEXT = BANNER_TEXT.replace(/#/g, "🔥");
-    }
     logger.info(
       clc.yellow.bold(BANNER_TEXT) +
         "\nYou're about to initialize a Firebase project in this directory:\n\n  " +
