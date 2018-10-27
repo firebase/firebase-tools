@@ -1,7 +1,7 @@
-import * as glob from "glob";
+import { sync } from "glob";
 
-export function listFiles(cwd: string, ignore: string[] = []) {
-  return glob.sync("**/*", {
+export function listFiles(cwd: string, ignore: string[] = []): string[] {
+  return sync("**/*", {
     cwd,
     dot: true,
     follow: true,
