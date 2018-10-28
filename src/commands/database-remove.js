@@ -10,7 +10,6 @@ var pathLib = require("path");
 var FirebaseError = require("../error");
 
 var utils = require("../utils");
-var querystring = require("querystring");
 var prompt = require("../prompt");
 var clc = require("cli-color");
 var _ = require("lodash");
@@ -74,10 +73,8 @@ module.exports = new Command("database:remove <path>")
 
       // return whether it times out or not
       function prefetchTest(path) {
-        var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
-        url += querystring.stringify({
-          timeout: "100ms",
-        });
+        var url =
+          utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?timeout=100ms";
         var reqOptions = {
           url: url,
         };
@@ -111,17 +108,12 @@ module.exports = new Command("database:remove <path>")
       }
 
       function listPath(path) {
-        var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
-        if (path === "/") {
-          url += querystring.stringify({
-            shallow: true,
-          });
-        } else {
-          url += querystring.stringify({
-            shallow: true,
-            limitToFirst: "100",
-          });
-        }
+        var limitToFirst = 100;
+        var url =
+          utils.addSubdomain(api.realtimeOrigin, options.instance) +
+          path +
+          ".json?shallow=true&limitToFirst=" +
+          limitToFirst;
         var reqOptions = {
           url: url,
         };
@@ -159,7 +151,7 @@ module.exports = new Command("database:remove <path>")
       var failures = [];
       var openChunkedDeleteJob = 0;
 
-      function dfsLoop() {
+      function depthFirstProcessLoop() {
         if (failures.length !== 0) {
           return true;
         }
@@ -206,7 +198,7 @@ module.exports = new Command("database:remove <path>")
 
       return new Promise(function(resolve, reject) {
         var intervalId = setInterval(function() {
-          if (dfsLoop()) {
+          if (depthFirstProcessLoop()) {
             clearInterval(intervalId);
 
             if (failures.length == 0) {
