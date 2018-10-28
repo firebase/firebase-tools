@@ -6,11 +6,12 @@ var requirePermissions = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
+var pathLib = require("path");
 var FirebaseError = require("../error");
 
-var utils = require("../lib/utils");
+var utils = require("../utils");
 var querystring = require("querystring");
-var prompt = require("../lib/prompt");
+var prompt = require("../prompt");
 var clc = require("cli-color");
 var _ = require("lodash");
 
@@ -18,7 +19,7 @@ module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
   .option("-v, --verbose", "show delete progress (helpful for large delete)")
-  .option("-c, --concurrent <num>", "default=100. configure the concurrent threshold")
+  .option("-c, --concurrent <num>", "default=1000. configure the concurrent threshold")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -40,9 +41,7 @@ module.exports = new Command("database:remove <path>")
           ". Are you sure?",
       },
     ]).then(function() {
-      if (!options.concurrent) {
-        options.concurrent = 100;
-      }
+      options.concurrent = options.concurrent || 1000;
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
@@ -57,11 +56,10 @@ module.exports = new Command("database:remove <path>")
           return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
             request.del(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return reject(
-                  new FirebaseError("Unexpected error while removing data at " + path, {
-                    exit: 2,
-                  })
-                );
+                return utils.reject("Unexpected error while removing data at " + path, {
+                  exit: 2,
+                  original: err,
+                });
               } else if (res.statusCode >= 400) {
                 return reject(responseToError(res, body));
               }
@@ -87,24 +85,25 @@ module.exports = new Command("database:remove <path>")
           return new Promise(function(resolve, reject) {
             request.get(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return reject(
-                  new FirebaseError("Unexpected error while prefetching data to delete", {
-                    exit: 2,
-                  })
-                );
-              } else if (res.statusCode == 200) {
-                if (res) {
-                  return resolve("small");
-                } else {
-                  return resolve("empty");
-                }
-                // small subtree
-              } else if (res.statusCode == 400 || res.statusCode == 413) {
-                // timeout or payload too large
-                // large subtree, recursive delete for each subtree
-                return resolve("larger");
-              } else {
-                return reject(responseToError(res, body));
+                return utils.reject("Unexpected error while prefetching data to delete" + path, {
+                  exit: 2,
+                });
+              }
+              switch (res.statusCode) {
+                case 200:
+                  if (body) {
+                    return resolve("small");
+                  } else {
+                    return resolve("empty");
+                  }
+                case 400:
+                  // timeout. large subtree, recursive delete for each subtree
+                  return resolve("larger");
+                case 413:
+                  // payload too large. large subtree, recursive delete for each subtree
+                  return resolve("larger");
+                default:
+                  return reject(responseToError(res, body));
               }
             });
           });
@@ -130,11 +129,10 @@ module.exports = new Command("database:remove <path>")
           return new Promise(function(resolve, reject) {
             request.get(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return reject(
-                  new FirebaseError("Unexpected error while list subtrees", {
-                    exit: 2,
-                  })
-                );
+                return utils.reject("Unexpected error while list subtrees", {
+                  exit: 2,
+                  original: err,
+                });
               } else if (res.statusCode >= 400) {
                 return reject(responseToError(res, body));
               }
@@ -142,19 +140,16 @@ module.exports = new Command("database:remove <path>")
               try {
                 data = JSON.parse(body);
               } catch (e) {
-                return reject(
-                  new FirebaseError("Malformed JSON response in shallow get ", {
-                    exit: 2,
-                    original: e,
-                  })
-                );
+                return utils.reject("Malformed JSON response in shallow get ", {
+                  exit: 2,
+                  original: e,
+                });
               }
               if (data) {
                 var keyList = Object.keys(data);
                 return resolve(keyList);
-              } else {
-                return resolve([]);
               }
+              return resolve([]);
             });
           });
         });
@@ -162,55 +157,49 @@ module.exports = new Command("database:remove <path>")
 
       var deleteQueue = [path];
       var failures = [];
-      var openChunkDeleteJob = 0;
+      var openChunkedDeleteJob = 0;
 
       function dfsLoop() {
         if (failures.length !== 0) {
           return true;
         }
         if (deleteQueue.length === 0) {
-          return openChunkDeleteJob === 0;
+          return openChunkedDeleteJob === 0;
         }
-        if (openChunkDeleteJob < options.concurrent) {
-          chunckedDelete(deleteQueue.pop());
+        if (openChunkedDeleteJob < options.concurrent) {
+          chunkedDelete(deleteQueue.pop());
         }
         return false;
       }
 
-      function chunckedDelete(path) {
-        openChunkDeleteJob += 1;
+      function chunkedDelete(path) {
+        openChunkedDeleteJob += 1;
         return prefetchTest(path)
           .then(function(test) {
-            if (test === "small") {
-              return deletePath(path);
-            } else if (test === "larger") {
-              return listPath(path).then(function(pathList) {
-                if (pathList) {
-                  deleteQueue.push(path);
-                  for (var i = 0; i < pathList.length; i++) {
-                    var subPath = path + (path === "/" ? "" : "/") + pathList[i];
-                    deleteQueue.push(subPath);
+            switch (test) {
+              case "small":
+                return deletePath(path);
+              case "large":
+                return listPath(path).then(function(pathList) {
+                  if (pathList) {
+                    deleteQueue.push(path);
+                    for (var i = 0; i < pathList.length; i++) {
+                      deleteQueue.push(pathLib.join(path, pathList[i]));
+                    }
                   }
-                }
+                  return Promise.resolve();
+                });
+              case "empty":
                 return Promise.resolve();
-              });
-            } else if (test === "empty") {
-              return Promise.resolve();
-            } else {
-              logger.error("unexpected prefetch test result: " + test);
-              return reject(
-                new FirebaseError("unexpected prefetch test result: " + test, {
-                  exit: 2,
-                  original: e,
-                })
-              );
+              default:
+                return utils.reject("unexpected prefetch test result: " + test, { exit: 2 });
             }
           })
           .then(function() {
-            openChunkDeleteJob -= 1;
+            openChunkedDeleteJob -= 1;
           })
           .catch(function(error) {
-            openChunkDeleteJob -= 1;
+            openChunkedDeleteJob -= 1;
             failures.push(error);
           });
       }
@@ -222,12 +211,14 @@ module.exports = new Command("database:remove <path>")
 
             if (failures.length == 0) {
               return resolve();
-            } else if (failures.length == 0) {
+            } else if (failures.length == 1) {
               return reject(failure[0]);
             } else {
-              return new FirebaseError("multiple failures", {
-                children: failures,
-              });
+              return reject(
+                new FirebaseError("multiple failures", {
+                  children: failures,
+                })
+              );
             }
           }
         }, 0);
