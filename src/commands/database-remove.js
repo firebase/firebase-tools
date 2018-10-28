@@ -18,7 +18,7 @@ module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
   .option("-v, --verbose", "show delete progress (helpful for large delete)")
-  .option("-c, --concurrent <num>", "default=1000. configure the concurrent threshold")
+  .option("-c, --concurrent <num>", "default=10000. configure the concurrent threshold")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -27,7 +27,7 @@ module.exports = new Command("database:remove <path>")
   .before(requireInstance)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
-      return utils.reject("Path must begin with /", { exit: 1 });
+      return reject(new FirebaseError("Path must begin with /", { exit: 1 }));
     }
     return prompt(options, [
       {
@@ -40,9 +40,9 @@ module.exports = new Command("database:remove <path>")
           ". Are you sure?",
       },
     ]).then(function() {
-      options.concurrent = options.concurrent || 1000;
+      options.concurrent = options.concurrent || 10000;
       if (!options.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
+        return reject(new FirebaseError("Command aborted.", { exit: 1 }));
       }
 
       function deletePath(path) {
@@ -55,15 +55,24 @@ module.exports = new Command("database:remove <path>")
           return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
             request.del(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return utils.reject("Unexpected error while removing data at " + path, {
-                  exit: 2,
-                  original: err,
-                });
+                return reject(
+                  new FirebaseError("Unexpected error while removing data at " + path, {
+                    exit: 2,
+                    original: err,
+                  })
+                );
               } else if (res.statusCode >= 400) {
                 return reject(responseToError(res, body));
               }
               if (options.verbose) {
-                utils.logSuccess("Sucessfully removed data at " + path);
+                utils.logSuccess(
+                  "pending: " +
+                    deleteQueue.length +
+                    " in progress: " +
+                    openChunkedDeleteJob +
+                    " Sucessfully removed data at " +
+                    path
+                );
               }
               return resolve();
             });
@@ -82,9 +91,11 @@ module.exports = new Command("database:remove <path>")
           return new Promise(function(resolve, reject) {
             request.get(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return utils.reject("Unexpected error while prefetching data to delete" + path, {
-                  exit: 2,
-                });
+                return reject(
+                  new FirebaseError("Unexpected error while prefetching data to delete" + path, {
+                    exit: 2,
+                  })
+                );
               }
               switch (res.statusCode) {
                 case 200:
@@ -95,10 +106,10 @@ module.exports = new Command("database:remove <path>")
                   }
                 case 400:
                   // timeout. large subtree, recursive delete for each subtree
-                  return resolve("larger");
+                  return resolve("large");
                 case 413:
                   // payload too large. large subtree, recursive delete for each subtree
-                  return resolve("larger");
+                  return resolve("large");
                 default:
                   return reject(responseToError(res, body));
               }
@@ -108,12 +119,10 @@ module.exports = new Command("database:remove <path>")
       }
 
       function listPath(path) {
-        var limitToFirst = 100;
         var url =
           utils.addSubdomain(api.realtimeOrigin, options.instance) +
           path +
-          ".json?shallow=true&limitToFirst=" +
-          limitToFirst;
+          ".json?shallow=true&limitToFirst=10000";
         var reqOptions = {
           url: url,
         };
@@ -121,10 +130,12 @@ module.exports = new Command("database:remove <path>")
           return new Promise(function(resolve, reject) {
             request.get(reqOptionsWithToken, function(err, res, body) {
               if (err) {
-                return utils.reject("Unexpected error while list subtrees", {
-                  exit: 2,
-                  original: err,
-                });
+                return reject(
+                  new FirebaseError("Unexpected error while list subtrees", {
+                    exit: 2,
+                    original: err,
+                  })
+                );
               } else if (res.statusCode >= 400) {
                 return reject(responseToError(res, body));
               }
@@ -132,10 +143,12 @@ module.exports = new Command("database:remove <path>")
               try {
                 data = JSON.parse(body);
               } catch (e) {
-                return utils.reject("Malformed JSON response in shallow get ", {
-                  exit: 2,
-                  original: e,
-                });
+                return reject(
+                  new FirebaseError("Malformed JSON response in shallow get ", {
+                    exit: 2,
+                    original: e,
+                  })
+                );
               }
               if (data) {
                 var keyList = Object.keys(data);
@@ -184,7 +197,9 @@ module.exports = new Command("database:remove <path>")
               case "empty":
                 return Promise.resolve();
               default:
-                return utils.reject("unexpected prefetch test result: " + test, { exit: 2 });
+                return reject(
+                  new FirebaseError("unexpected prefetch test result: " + test, { exit: 2 })
+                );
             }
           })
           .then(function() {
@@ -204,7 +219,7 @@ module.exports = new Command("database:remove <path>")
             if (failures.length == 0) {
               return resolve();
             } else if (failures.length == 1) {
-              return reject(failure[0]);
+              return reject(failures[0]);
             } else {
               return reject(
                 new FirebaseError("multiple failures", {
