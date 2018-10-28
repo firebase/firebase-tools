@@ -55,7 +55,7 @@ module.exports = new Command("database:remove <path>")
 
       function deletePath(path) {
         return new Promise(function(resolve, reject) {
-          var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+          var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?print=silent";
           var reqOptions = {
             url: url,
             json: true,
