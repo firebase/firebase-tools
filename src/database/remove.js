@@ -52,7 +52,7 @@ DatabaseRemove.prototype.deletePath = function(path) {
               path
           );
         }
-        return resolve();
+        return resolve(true);
       });
     });
   });
@@ -157,24 +157,30 @@ DatabaseRemove.prototype.chunkedDelete = function(path) {
         case "large":
           return this.listPath(path).then(pathList => {
             if (pathList) {
-              this.deleteQueue.push(path);
               for (var i = 0; i < pathList.length; i++) {
                 this.deleteQueue.push(pathLib.join(path, pathList[i]));
               }
+              this.waitingPath[path] = pathList.length;
             }
-            return Promise.resolve();
+            return Promise.resolve(false);
           });
         case "empty":
-          return Promise.resolve();
+          return Promise.resolve(true);
         default:
           return reject(new FirebaseError("unexpected prefetch test result: " + test, { exit: 2 }));
       }
     })
-    .then(() => {
+    .then(deleted => {
+      if (path !== this.path && deleted) {
+        var parentPath = pathLib.dirname(path);
+        this.waitingPath[parentPath] -= 1;
+        if (this.waitingPath[parentPath] == 0) {
+          this.deleteQueue.push(parentPath);
+        }
+      }
       this.openChunkedDeleteJob -= 1;
     })
     .catch(error => {
-      this.openChunkedDeleteJob -= 1;
       this.failures.push(error);
     });
 };
@@ -194,6 +200,7 @@ DatabaseRemove.prototype.depthFirstProcessLoop = function() {
 
 DatabaseRemove.prototype.execute = function() {
   this.deleteQueue = [this.path];
+  this.waitingPath = {};
   this.failures = [];
   this.openChunkedDeleteJob = 0;
 
