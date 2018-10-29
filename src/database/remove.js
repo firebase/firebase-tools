@@ -1,6 +1,7 @@
 "use strict";
 
 var api = require("../api");
+var FirebaseError = require("../error");
 var request = require("request");
 var responseToError = require("../responseToError");
 var pathLib = require("path");
@@ -111,6 +112,11 @@ DatabaseRemove.prototype.listPath = function(path) {
     utils.addSubdomain(api.realtimeOrigin, this.instance) +
     path +
     ".json?shallow=true&limitToFirst=10000";
+  if (path === "/") {
+    // there is a known bug with shallow and limitToFirst at root
+    // TODO remove after the bug is fixed
+    url = utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?shallow=true";
+  }
   var reqOptions = {
     url: url,
   };
@@ -177,12 +183,13 @@ DatabaseRemove.prototype.chunkedDelete = function(path) {
         this.waitingPath[parentPath] -= 1;
         if (this.waitingPath[parentPath] == 0) {
           this.deleteQueue.push(parentPath);
+          this.waitingPath.remove(parentPath);
         }
       }
       this.openChunkedDeleteJob -= 1;
     })
     .catch(error => {
-      // allow `allowRetry` failures
+      // tolerate `allowRetry` failures
       this.deleteQueue.push(path);
       this.concurrency /= 2;
       this.failures.push(error);
@@ -205,7 +212,7 @@ DatabaseRemove.prototype.depthFirstProcessLoop = function() {
 
 DatabaseRemove.prototype.execute = function() {
   this.deleteQueue = [this.path];
-  this.waitingPath = {};
+  this.waitingPath = new Map();
   this.failures = [];
   this.openChunkedDeleteJob = 0;
 
@@ -214,7 +221,7 @@ DatabaseRemove.prototype.execute = function() {
       if (this.depthFirstProcessLoop()) {
         clearInterval(intervalId);
 
-        if (this.failures.length <= this.allowRetry) {
+        if (this.failures.length < this.allowRetry) {
           utils.logWarning(this.failures);
           return resolve();
         } else {

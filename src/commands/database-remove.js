@@ -18,7 +18,7 @@ module.exports = new Command("database:remove <path>")
   .option("-v, --verbose", "show delete progress (helpful for large delete)")
   .option(
     "-c, --concurrency <num>",
-    "default=500. configure the concurrency threshold. 10000 maximum"
+    "default=500. configure the concurrency threshold. 1000 maximum"
   )
   .option(
     "--instance <instance>",
@@ -44,7 +44,7 @@ module.exports = new Command("database:remove <path>")
       if (!options.confirm) {
         return reject(new FirebaseError("Command aborted.", { exit: 1 }));
       }
-      options.concurrency = options.concurrency || 500;
+      options.concurrency = options.concurrency || 100;
       if (options.concurrency > 10000) {
         return reject(
           new FirebaseError("Please specify a concurrency factor from 0 to 10000.", { exit: 1 })
