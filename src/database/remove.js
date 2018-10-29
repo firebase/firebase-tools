@@ -6,6 +6,8 @@ var request = require("request");
 var responseToError = require("../responseToError");
 var pathLib = require("path");
 var utils = require("../utils");
+var Queue = require("../queue");
+const logger = require("../logger");
 
 /**
  * Construct a new Firestore delete operation.
@@ -44,16 +46,7 @@ DatabaseRemove.prototype.deletePath = function(path) {
         } else if (res.statusCode >= 400) {
           return reject(responseToError(res, body));
         }
-        if (this.verbose) {
-          utils.logSuccess(
-            "pending: " +
-              this.deleteQueue.length +
-              " in progress: " +
-              this.openChunkedDeleteJob +
-              " Sucessfully removed data at " +
-              path
-          );
-        }
+        logger.debug("[database] Sucessfully removed data at " + path);
         return resolve(true);
       });
     });
@@ -68,16 +61,7 @@ DatabaseRemove.prototype.prefetchTest = function(path) {
   };
   return api.addRequestHeaders(reqOptions).then(reqOptionsWithToken => {
     return new Promise((resolve, reject) => {
-      if (this.verbose) {
-        utils.logSuccess(
-          "pending: " +
-            this.deleteQueue.length +
-            " in progress: " +
-            this.openChunkedDeleteJob +
-            " Checking " +
-            path
-        );
-      }
+      logger.debug("[database] Prefetching test at " + path);
       request.get(reqOptionsWithToken, (err, res, body) => {
         if (err) {
           return reject(
@@ -113,7 +97,7 @@ DatabaseRemove.prototype.listPath = function(path) {
     path +
     ".json?shallow=true&limitToFirst=10000";
   if (path === "/") {
-    // there is a known bug with shallow and limitToFirst at root
+    // there is a known bug with shallow and limitToFirst at "/"
     // TODO remove after the bug is fixed
     url = utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?shallow=true";
   }
@@ -155,7 +139,6 @@ DatabaseRemove.prototype.listPath = function(path) {
 };
 
 DatabaseRemove.prototype.chunkedDelete = function(path) {
-  this.openChunkedDeleteJob += 1;
   return this.prefetchTest(path)
     .then(test => {
       switch (test) {
@@ -165,75 +148,45 @@ DatabaseRemove.prototype.chunkedDelete = function(path) {
           return this.listPath(path).then(pathList => {
             if (pathList) {
               for (var i = 0; i < pathList.length; i++) {
-                this.deleteQueue.push(pathLib.join(path, pathList[i]));
+                this.jobQueue.add(pathLib.join(path, pathList[i]));
               }
               this.waitingPath[path] = pathList.length;
             }
-            return Promise.resolve(false);
+            return false;
           });
         case "empty":
-          return Promise.resolve(true);
+          return true;
         default:
           return reject(new FirebaseError("unexpected prefetch test result: " + test, { exit: 2 }));
       }
     })
     .then(deleted => {
-      if (path !== this.path && deleted) {
-        var parentPath = pathLib.dirname(path);
-        this.waitingPath[parentPath] -= 1;
-        if (this.waitingPath[parentPath] == 0) {
-          this.deleteQueue.push(parentPath);
-          this.waitingPath.remove(parentPath);
+      if (deleted) {
+        if (path === this.path) {
+          this.jobQueue.close();
+          logger.debug("[database][long delete queue][FINAL]", this.jobQueue.stats());
+        } else {
+          var parentPath = pathLib.dirname(path);
+          this.waitingPath[parentPath] -= 1;
+          if (this.waitingPath[parentPath] == 0) {
+            this.jobQueue.add(parentPath);
+            this.waitingPath.delete(parentPath);
+          }
         }
       }
-      this.openChunkedDeleteJob -= 1;
-    })
-    .catch(error => {
-      // tolerate `allowRetry` failures
-      this.deleteQueue.push(path);
-      this.concurrency /= 2;
-      this.failures.push(error);
-      this.openChunkedDeleteJob -= 1;
     });
 };
 
-DatabaseRemove.prototype.depthFirstProcessLoop = function() {
-  if (this.failures.length > this.allowRetry) {
-    return true;
-  }
-  if (this.deleteQueue.length === 0) {
-    return this.openChunkedDeleteJob === 0;
-  }
-  if (this.openChunkedDeleteJob < this.concurrency) {
-    this.chunkedDelete(this.deleteQueue.pop());
-  }
-  return false;
-};
-
 DatabaseRemove.prototype.execute = function() {
-  this.deleteQueue = [this.path];
   this.waitingPath = new Map();
-  this.failures = [];
-  this.openChunkedDeleteJob = 0;
-
-  return new Promise((resolve, reject) => {
-    var intervalId = setInterval(() => {
-      if (this.depthFirstProcessLoop()) {
-        clearInterval(intervalId);
-
-        if (this.failures.length < this.allowRetry) {
-          utils.logWarning(this.failures);
-          return resolve();
-        } else {
-          return reject(
-            new FirebaseError("too many failures", {
-              children: this.failures,
-            })
-          );
-        }
-      }
-    }, 0);
+  this.jobQueue = new Queue({
+    name: "long delete queue",
+    concurrency: this.concurrency,
+    handler: this.chunkedDelete.bind(this),
+    retries: this.retries,
   });
+  this.jobQueue.add(this.path);
+  return this.jobQueue.wait();
 };
 
 module.exports = DatabaseRemove;
