@@ -1,9 +1,9 @@
 "use strict";
 
-const DatabaseRemove = require("../database/remove");
 const chai = require("chai");
 const expect = chai.expect;
 const pathLib = require("path");
+const DatabaseRemove = require("../../database/remove");
 
 class TestDatabaseRemoveHelper {
   constructor(data) {
@@ -95,17 +95,16 @@ describe("TestDatabaseRemoveHelper", () => {
 });
 
 describe("DatabaseRemove", () => {
-  const fakeDb = new TestDatabaseRemoveHelper({
-    a: {
-      b: { x: { y: "1" } },
-      c: "2",
-    },
-    d: {
-      e: "3",
-    },
-  });
-
-  it("DatabaseRemove should remove fakeDb", () => {
+  it("DatabaseRemove should remove fakeDb at /", () => {
+    const fakeDb = new TestDatabaseRemoveHelper({
+      a: {
+        b: { x: { y: "1" } },
+        c: "2",
+      },
+      d: {
+        e: "3",
+      },
+    });
     var removeOps = new DatabaseRemove("/", {
       concurrency: 200,
       retries: 5,
@@ -116,5 +115,58 @@ describe("DatabaseRemove", () => {
       done();
     });
   });
-});
 
+  it("DatabaseRemove should remove fakeDb at /a/b", () => {
+    const fakeDb = new TestDatabaseRemoveHelper({
+      a: {
+        b: { x: { y: "1" } },
+        c: "2",
+      },
+      d: {
+        e: "3",
+      },
+    });
+
+    var removeOps = new DatabaseRemove("/a", {
+      concurrency: 200,
+      retries: 5,
+      removeHelper: fakeDb,
+    });
+    removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eq({
+        a: {
+          c: "2",
+        },
+        d: {
+          e: "3",
+        },
+      });
+      done();
+    });
+  });
+
+  it("DatabaseRemove should remove fakeDb at /a", () => {
+    const fakeDb = new TestDatabaseRemoveHelper({
+      a: {
+        b: { x: { y: "1" } },
+        c: "2",
+      },
+      d: {
+        e: "3",
+      },
+    });
+    var removeOps = new DatabaseRemove("/a", {
+      concurrency: 200,
+      retries: 5,
+      removeHelper: fakeDb,
+    });
+    removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eq({
+        d: {
+          e: "3",
+        },
+      });
+      done();
+    });
+  });
+});
