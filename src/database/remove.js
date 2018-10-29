@@ -66,6 +66,16 @@ DatabaseRemove.prototype.prefetchTest = function(path) {
   };
   return api.addRequestHeaders(reqOptions).then(reqOptionsWithToken => {
     return new Promise((resolve, reject) => {
+      if (this.verbose) {
+        utils.logSuccess(
+          "pending: " +
+            this.deleteQueue.length +
+            " in progress: " +
+            this.openChunkedDeleteJob +
+            " Checking " +
+            path
+        );
+      }
       request.get(reqOptionsWithToken, (err, res, body) => {
         if (err) {
           return reject(
