@@ -11,10 +11,10 @@ class DatabaseRemove {
    * Construct a new RTDB delete operation.
    *
    * @constructor
-   * @param {string} instance the RTDB instance ID.
    * @param {string} path path to delete.
-   * @param {boolean} options.concurrency the number of concurrent chunk delete allowed
-   * @param {boolean} options.retires the number of retries for each chunk delete
+   * @param {string} options.instance the RTDB instance ID.
+   * @param {string} options.concurrency the number of concurrent chunk delete allowed
+   * @param {string} options.retires the number of retries for each chunk delete
    */
   constructor(path, options) {
     this.path = path;
