@@ -5,7 +5,6 @@ var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove");
 var api = require("../api");
-var FirebaseError = require("../error");
 
 var utils = require("../utils");
 var prompt = require("../prompt");
@@ -25,6 +24,7 @@ module.exports = new Command("database:remove <path>")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
+
     return prompt(options, [
       {
         type: "confirm",

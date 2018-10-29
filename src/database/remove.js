@@ -10,21 +10,19 @@ var Queue = require("../queue");
 const logger = require("../logger");
 
 /**
- * Construct a new Firestore delete operation.
+ * Construct a new RTDB delete operation.
  *
  * @constructor
- * @param {string} project the Firestore project ID.
- * @param {string} path path to a document or collection.
- * @param {boolean} options.recursive true if the delete should be recursive.
- * @param {boolean} options.shallow true if the delete should be shallow (non-recursive).
- * @param {boolean} options.allCollections true if the delete should universally remove all collections and docs.
+ * @param {string} instance the RTDB instance ID.
+ * @param {string} path path to delete.
+ * @param {boolean} options.concurrency the number of concurrent chunk delete allowed
+ * @param {boolean} options.retires the number of retries for each chunk delete
  */
 function DatabaseRemove(instance, path, options) {
   this.instance = instance;
   this.path = path;
   this.concurrency = options.concurrency;
   this.retries = options.retries;
-  this.verbose = Boolean(options.verbose);
 }
 
 DatabaseRemove.prototype.deletePath = function(path) {
@@ -53,7 +51,6 @@ DatabaseRemove.prototype.deletePath = function(path) {
   });
 };
 
-// return whether it times out or not
 DatabaseRemove.prototype.prefetchTest = function(path) {
   var url = utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?timeout=100ms";
   var reqOptions = {
