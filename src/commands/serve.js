@@ -1,6 +1,7 @@
 "use strict";
 
 var clc = require("cli-color");
+var _ = require("lodash");
 
 var Command = require("../command");
 var logger = require("../logger");
@@ -13,11 +14,25 @@ var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
 var previews = require("../previews");
 
+var VALID_EMULATORS = [];
 var VALID_TARGETS = ["functions", "hosting"];
 
 if (previews.emulators) {
+  VALID_EMULATORS = ["database", "firestore"];
   VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
 }
+
+var filterOnlyEmulators = only => {
+  if (!only) {
+    return [];
+  }
+  return _.intersection(
+    VALID_EMULATORS,
+    only.split(",").map(opt => {
+      return opt.split(":")[0];
+    })
+  );
+};
 
 module.exports = new Command("serve")
   .description("start a local server for your static assets")
@@ -31,11 +46,20 @@ module.exports = new Command("serve")
     "--except <targets>",
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
-  .before(requireConfig)
-  .before(requirePermissions)
-  .before(checkDupHostingKeys)
-  .before(getProjectNumber)
-  .action(function(options) {
+  .before(options => {
+    if (filterOnlyEmulators(options.only).length > 0) {
+      return Promise.resolve();
+    }
+    return requireConfig(options)
+      .then(() => requirePermissions(options))
+      .then(() => checkDupHostingKeys(options))
+      .then(() => getProjectNumber(options));
+  })
+  .action(options => {
+    options.targets = filterOnlyEmulators(options.only);
+    if (options.targets.length > 0) {
+      return serve(options);
+    }
     if (options.config) {
       logger.info();
       logger.info(
