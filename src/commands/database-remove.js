@@ -23,7 +23,7 @@ module.exports = new Command("database:remove <path>")
   .before(requireInstance)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
-      return reject(new FirebaseError("Path must begin with /", { exit: 1 }));
+      return utils.reject("Path must begin with /", { exit: 1 });
     }
     return prompt(options, [
       {
@@ -37,7 +37,7 @@ module.exports = new Command("database:remove <path>")
       },
     ]).then(function() {
       if (!options.confirm) {
-        return reject(new FirebaseError("Command aborted.", { exit: 1 }));
+        return utils.reject("Command aborted.", { exit: 1 });
       }
       var removeOps = new DatabaseRemove(options.instance, path, {
         concurrency: 200,
