@@ -23,7 +23,7 @@ function DatabaseRemove(instance, path, options) {
   this.instance = instance;
   this.path = path;
   this.concurrency = options.concurrency;
-  this.allowRetry = options.allowRetry;
+  this.retries = options.retries;
   this.verbose = Boolean(options.verbose);
 }
 
