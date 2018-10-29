@@ -53,6 +53,7 @@ module.exports = new Command("database:remove <path>")
       var removeOps = new DatabaseRemove(options.instance, path, {
         concurrency: options.concurrency,
         verbose: options.verbose,
+        allowRetry: 10,
       });
       return removeOps.execute().then(function() {
         utils.logSuccess("Data removed successfully");

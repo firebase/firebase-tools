@@ -20,6 +20,7 @@ function DatabaseRemove(instance, path, options) {
   this.instance = instance;
   this.path = path;
   this.concurrency = options.concurrency;
+  this.allowRetry = options.allowRetry;
   this.verbose = Boolean(options.verbose);
 }
 
@@ -181,12 +182,16 @@ DatabaseRemove.prototype.chunkedDelete = function(path) {
       this.openChunkedDeleteJob -= 1;
     })
     .catch(error => {
+      // allow `allowRetry` failures
+      this.deleteQueue.push(path);
+      this.concurrency /= 2;
       this.failures.push(error);
+      this.openChunkedDeleteJob -= 1;
     });
 };
 
 DatabaseRemove.prototype.depthFirstProcessLoop = function() {
-  if (this.failures.length !== 0) {
+  if (this.failures.length > this.allowRetry) {
     return true;
   }
   if (this.deleteQueue.length === 0) {
@@ -209,13 +214,12 @@ DatabaseRemove.prototype.execute = function() {
       if (this.depthFirstProcessLoop()) {
         clearInterval(intervalId);
 
-        if (this.failures.length == 0) {
+        if (this.failures.length <= this.allowRetry) {
+          utils.logWarning(this.failures);
           return resolve();
-        } else if (this.failures.length == 1) {
-          return reject(this.failures[0]);
         } else {
           return reject(
-            new FirebaseError("multiple this.failures", {
+            new FirebaseError("too many failures", {
               children: this.failures,
             })
           );
