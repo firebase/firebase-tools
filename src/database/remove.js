@@ -4,7 +4,7 @@ var FirebaseError = require("../error");
 var pathLib = require("path");
 var Queue = require("../queue");
 var logger = require("../logger");
-var DatabaseRemoveHelper = require("./remove-helper");
+var DatabaseRemoveHelper = require("./removeHelper");
 
 class DatabaseRemove {
   /**
@@ -16,11 +16,11 @@ class DatabaseRemove {
    * @param {boolean} options.concurrency the number of concurrent chunk delete allowed
    * @param {boolean} options.retires the number of retries for each chunk delete
    */
-  constructor(instance, path, options) {
+  constructor(path, options) {
     this.path = path;
     this.concurrency = options.concurrency;
     this.retries = options.retries;
-    this.removeHelper = options.removeHelper || new DatabaseRemoveHelper(instance);
+    this.removeHelper = options.removeHelper || new DatabaseRemoveHelper(options.instance);
   }
 
   chunkedDelete(path) {

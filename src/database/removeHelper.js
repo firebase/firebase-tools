@@ -11,6 +11,7 @@ class DatabaseRemoveHelper {
   constructor(instance) {
     this.instance = instance;
   }
+
   deletePath(path) {
     return new Promise((resolve, reject) => {
       var url = utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?print=silent";

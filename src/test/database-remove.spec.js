@@ -1,159 +1,120 @@
 "use strict";
 
-var chai = require("chai");
-var expect = chai.expect;
+const DatabaseRemove = require("../database/remove");
+const chai = require("chai");
+const expect = chai.expect;
+const pathLib = require("path");
 
-var DatabaseRemove = require("../database/remove");
+class TestDatabaseRemoveHelper {
+  constructor(data) {
+    this.data = data;
+  }
 
-class DatabaseRemoveTest {
+  _dataAtpath(path) {
+    const splitedPath = path.slice(0).split("/");
+    var d = this.data;
+    console.log(d);
+    for (var i = 1; i < splitedPath.length; i++) {
+      if (d && splitedPath[i] !== "" && "string" !== typeof d) {
+        d = d[splitedPath[i]];
+        console.log(d, splitedPath[i]);
+      }
+    }
+    return d;
+  }
 
+  deletePath(path) {
+    const parentDir = pathLib.dirname(path);
+    const basename = pathLib.basename(path);
+    delete this._dataAtpath(parentDir)[basename];
+    return Promise.resolve();
+  }
+
+  prefetchTest(path) {
+    const d = this._dataAtpath(path);
+    if (d) {
+      if ("string" === typeof d) {
+        return Promise.resolve("small");
+      } else {
+        return Promise.resolve("large");
+      }
+    } else {
+      return Promise.resolve("empty");
+    }
+  }
+
+  listPath(path) {
+    const d = this._dataAtpath(path);
+    if (d) {
+      return Promise.resolve(Object.keys(d));
+    }
+    return Promise.resolve([]);
+  }
 }
 
-describe("database-remove", function() {
-  describe("", function() {
-    it("should parse multiple filters", function() {
-      var options = {
-        only: "functions:myFunc,functions:myOtherFunc",
-      };
-      expect(helper.getFilterGroups(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
-    });
-    it("should parse nested filters", function() {
-      var options = {
-        only: "functions:groupA.myFunc",
-      };
-      expect(helper.getFilterGroups(options)).to.deep.equal([["groupA", "myFunc"]]);
-    });
+describe("TestDatabaseRemoveHelper", () => {
+  const fakeDb = new TestDatabaseRemoveHelper({
+    a: {
+      b: "1",
+      c: "2",
+    },
+    d: {
+      e: "3",
+    },
   });
 
-  describe("getReleaseNames", function() {
-    it("should handle function update", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
-      var filter = [["myFunc"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myFunc",
-      ]);
-    });
-
-    it("should handle function deletion", function() {
-      var uploadNames = [];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
-      var filter = [["myFunc"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myFunc",
-      ]);
-    });
-
-    it("should handle function creation", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
-      var existingNames = [];
-      var filter = [["myFunc"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myFunc",
-      ]);
-    });
-
-    it("should handle existing function not being in filter", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc2"];
-      var filter = [["myFunc"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myFunc",
-      ]);
-    });
-
-    it("should handle no functions satisfying filter", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc2"];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc3"];
-      var filter = [["myFunc"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([]);
-    });
-
-    it("should handle entire function groups", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myGroup-func1"];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myGroup-func2"];
-      var filter = [["myGroup"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myGroup-func1",
-        "projects/myProject/locations/us-central1/functions/myGroup-func2",
-      ]);
-    });
-
-    it("should handle functions within groups", function() {
-      var uploadNames = ["projects/myProject/locations/us-central1/functions/myGroup-func1"];
-      var existingNames = ["projects/myProject/locations/us-central1/functions/myGroup-func2"];
-      var filter = [["myGroup", "func1"]];
-
-      expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([
-        "projects/myProject/locations/us-central1/functions/myGroup-func1",
-      ]);
-    });
+  it("listPath should work", () => {
+    expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d"]);
   });
 
-  describe("getFunctionsInfo", function() {
-    it("should handle default region", function() {
-      var triggers = [
-        {
-          name: "myFunc",
-        },
-        {
-          name: "myOtherFunc",
-        },
-      ];
+  it("prefetchTest should return empty", done => {
+    expect(fakeDb.prefetchTest("/z"))
+      .to.eventually.eql("empty")
+      .notify(done);
+  });
 
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-central1/functions/myFunc",
-        },
-        {
-          name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
-        },
-      ]);
-    });
+  it("prefetchTest should return large", done => {
+    expect(fakeDb.prefetchTest("/"))
+      .to.eventually.eql("large")
+      .notify(done);
+  });
 
-    it("should handle customized region", function() {
-      var triggers = [
-        {
-          name: "myFunc",
-          regions: ["us-east1"],
-        },
-        {
-          name: "myOtherFunc",
-        },
-      ];
+  it("prefetchTest should return small", done => {
+    expect(fakeDb.prefetchTest("/a/b"))
+      .to.eventually.eql("small")
+      .notify(done);
+  });
 
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-east1/functions/myFunc",
-        },
-        {
-          name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
-        },
-      ]);
-    });
-
-    it("should handle multiple customized region for a function", function() {
-      var triggers = [
-        {
-          name: "myFunc",
-          regions: ["us-east1", "eu-west1"],
-        },
-      ];
-
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-east1/functions/myFunc",
-        },
-        {
-          name: "projects/myProject/locations/eu-west1/functions/myFunc",
-        },
-      ]);
+  it("deletePath should work", done => {
+    fakeDb.deletePath("/a/b").then(() => {
+      expect(fakeDb.listPath("/a"))
+        .to.eventually.eql(["c"])
+        .notify(done);
     });
   });
 });
+
+describe("DatabaseRemove", () => {
+  const fakeDb = new TestDatabaseRemoveHelper({
+    a: {
+      b: { x: { y: "1" } },
+      c: "2",
+    },
+    d: {
+      e: "3",
+    },
+  });
+
+  it("DatabaseRemove should remove fakeDb", () => {
+    var removeOps = new DatabaseRemove("/", {
+      concurrency: 200,
+      retries: 5,
+      removeHelper: fakeDb,
+    });
+    removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eq({});
+      done();
+    });
+  });
+});
+
