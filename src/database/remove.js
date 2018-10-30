@@ -134,18 +134,18 @@ class DatabaseRemove {
     this.path = path;
     this.concurrency = options.concurrency;
     this.retries = options.retries;
-    this.removeHelper = options.removeHelper || new Remote(options.instance);
+    this.remote = options.remote || new Remote(options.instance);
   }
 
   chunkedDelete(path) {
-    return this.removeHelper
+    return this.remote
       .prefetchTest(path)
       .then(test => {
         switch (test) {
           case "small":
-            return this.removeHelper.deletePath(path);
+            return this.remote.deletePath(path);
           case "large":
-            return this.removeHelper.listPath(path).then(pathList => {
+            return this.remote.listPath(path).then(pathList => {
               if (pathList) {
                 for (var i = 0; i < pathList.length; i++) {
                   this.jobQueue.add(pathLib.join(path, pathList[i]));

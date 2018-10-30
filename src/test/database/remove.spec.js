@@ -1,11 +1,92 @@
 "use strict";
 
 const chai = require("chai");
+const nock = require("nock");
+const sinon = require("sinon");
 const expect = chai.expect;
 const pathLib = require("path");
 const DatabaseRemove = require("../../database/remove");
+const helpers = require("../helpers");
 
-class TestDatabaseRemoveHelper {
+describe("TestRemote", () => {
+  var databaseRemove = new DatabaseRemove("", {
+    concurrency: 0,
+    retires: 0,
+    instance: "fake-db",
+  });
+
+  var remote = databaseRemove.remote;
+  var sandbox;
+
+  beforeEach(function() {
+    sandbox = sinon.createSandbox();
+    helpers.mockAuth(sandbox);
+  });
+
+  afterEach(function() {
+    sandbox.restore();
+    nock.cleanAll();
+  });
+
+  it("listPath should work", done => {
+    nock("https://fake-db.firebaseio.com")
+      .get("/.json")
+      .query({ shallow: true, limitToFirst: "10000" })
+      .reply(200, {
+        a: true,
+        x: true,
+        f: true,
+      });
+    expect(remote.listPath("/"))
+      .to.eventually.eql(["a", "x", "f"])
+      .notify(done);
+  });
+
+  it("prefetchTest should return empty", done => {
+    nock("https://fake-db.firebaseio.com")
+      .get("/empty/path.json")
+      .query({ timeout: "100ms" })
+      .reply(200, null);
+    expect(remote.prefetchTest("/empty/path"))
+      .to.eventually.eql("empty")
+      .notify(done);
+  });
+
+  it("prefetchTest should return large", done => {
+    nock("https://fake-db.firebaseio.com")
+      .get("/large/path.json")
+      .query({ timeout: "100ms" })
+      .reply(400, {
+        error:
+          "Data requested exceeds the maximum size that can be accessed with a single request.",
+      });
+    expect(remote.prefetchTest("/large/path"))
+      .to.eventually.eql("large")
+      .notify(done);
+  });
+
+  it("prefetchTest should return small", done => {
+    nock("https://fake-db.firebaseio.com")
+      .get("/small/path.json")
+      .query({ timeout: "100ms" })
+      .reply(200, {
+        x: "some data",
+      });
+    expect(remote.prefetchTest("/small/path"))
+      .to.eventually.eql("small")
+      .notify(done);
+  });
+
+  it("deletePath should work", () => {
+    nock("https://fake-db.firebaseio.com")
+      .delete("/a/b.json")
+      .query({ print: "silent" })
+      .reply(200, {});
+    return remote.deletePath("/a/b");
+  });
+});
+
+class TestRemote {
   constructor(data) {
     this.data = data;
   }
@@ -62,8 +143,8 @@ class TestDatabaseRemoveHelper {
   }
 }
 
-describe("TestDatabaseRemoveHelper", () => {
-  const fakeDb = new TestDatabaseRemoveHelper({
+describe("TestRemote", () => {
+  const fakeDb = new TestRemote({
     a: {
       b: "1",
       c: "2",
@@ -107,13 +188,13 @@ describe("TestDatabaseRemoveHelper", () => {
 
 describe("DatabaseRemove", () => {
   it("DatabaseRemove should remove fakeDb at / 1", () => {
-    const fakeDb = new TestDatabaseRemoveHelper({
+    const fakeDb = new TestRemote({
       c: "2",
     });
     var removeOps = new DatabaseRemove("/", {
       concurrency: 200,
       retries: 5,
-      removeHelper: fakeDb,
+      remote: fakeDb,
     });
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql(null);
@@ -121,7 +202,7 @@ describe("DatabaseRemove", () => {
   });
 
   it("DatabaseRemove should remove fakeDb at / 2", () => {
-    const fakeDb = new TestDatabaseRemoveHelper({
+    const fakeDb = new TestRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -133,7 +214,7 @@ describe("DatabaseRemove", () => {
     var removeOps = new DatabaseRemove("/", {
       concurrency: 200,
       retries: 5,
-      removeHelper: fakeDb,
+      remote: fakeDb,
     });
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql(null);
@@ -141,7 +222,7 @@ describe("DatabaseRemove", () => {
   });
 
   it("DatabaseRemove should remove fakeDb at /a/b", () => {
-    const fakeDb = new TestDatabaseRemoveHelper({
+    const fakeDb = new TestRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -154,7 +235,7 @@ describe("DatabaseRemove", () => {
     var removeOps = new DatabaseRemove("/a/b", {
       concurrency: 200,
       retries: 5,
-      removeHelper: fakeDb,
+      remote: fakeDb,
     });
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql({
@@ -169,7 +250,7 @@ describe("DatabaseRemove", () => {
   });
 
   it("DatabaseRemove should remove fakeDb at /a", () => {
-    const fakeDb = new TestDatabaseRemoveHelper({
+    const fakeDb = new TestRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -181,7 +262,7 @@ describe("DatabaseRemove", () => {
     var removeOps = new DatabaseRemove("/a", {
       concurrency: 200,
       retries: 5,
-      removeHelper: fakeDb,
+      remote: fakeDb,
     });
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql({
