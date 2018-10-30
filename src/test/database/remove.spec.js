@@ -11,35 +11,45 @@ class TestDatabaseRemoveHelper {
   }
 
   _dataAtpath(path) {
-    const splitedPath = path.slice(0).split("/");
+    const splitedPath = path.slice(1).split("/");
     var d = this.data;
-    console.log(d);
-    for (var i = 1; i < splitedPath.length; i++) {
-      if (d && splitedPath[i] !== "" && "string" !== typeof d) {
-        d = d[splitedPath[i]];
-        console.log(d, splitedPath[i]);
+    for (var i = 0; i < splitedPath.length; i++) {
+      if (d && splitedPath[i] !== "") {
+        if ("string" === typeof d) {
+          d = null;
+        } else {
+          d = d[splitedPath[i]];
+        }
       }
     }
     return d;
   }
 
   deletePath(path) {
+    if (path === "/") {
+      this.data = null;
+      return Promise.resolve(true);
+    }
     const parentDir = pathLib.dirname(path);
     const basename = pathLib.basename(path);
     delete this._dataAtpath(parentDir)[basename];
-    return Promise.resolve();
+    if (Object.keys(this._dataAtpath(parentDir)).length === 0) {
+      return this.deletePath(parentDir);
+    }
+    return Promise.resolve(true);
   }
 
   prefetchTest(path) {
     const d = this._dataAtpath(path);
-    if (d) {
-      if ("string" === typeof d) {
-        return Promise.resolve("small");
-      } else {
-        return Promise.resolve("large");
-      }
-    } else {
+    if (!d) {
       return Promise.resolve("empty");
+    }
+    if ("string" === typeof d) {
+      return Promise.resolve("small");
+    } else if (Object.keys(d).length === 0) {
+      return Promise.resolve("empty");
+    } else {
+      return Promise.resolve("large");
     }
   }
 
@@ -61,14 +71,15 @@ describe("TestDatabaseRemoveHelper", () => {
     d: {
       e: "3",
     },
+    f: null,
   });
 
   it("listPath should work", () => {
-    expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d"]);
+    expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d", "f"]);
   });
 
   it("prefetchTest should return empty", done => {
-    expect(fakeDb.prefetchTest("/z"))
+    expect(fakeDb.prefetchTest("/f"))
       .to.eventually.eql("empty")
       .notify(done);
   });
@@ -80,7 +91,7 @@ describe("TestDatabaseRemoveHelper", () => {
   });
 
   it("prefetchTest should return small", done => {
-    expect(fakeDb.prefetchTest("/a/b"))
+    expect(fakeDb.prefetchTest("/d/e"))
       .to.eventually.eql("small")
       .notify(done);
   });
@@ -95,7 +106,21 @@ describe("TestDatabaseRemoveHelper", () => {
 });
 
 describe("DatabaseRemove", () => {
-  it("DatabaseRemove should remove fakeDb at /", () => {
+  it("DatabaseRemove should remove fakeDb at / 1", () => {
+    const fakeDb = new TestDatabaseRemoveHelper({
+      c: "2",
+    });
+    var removeOps = new DatabaseRemove("/", {
+      concurrency: 200,
+      retries: 5,
+      removeHelper: fakeDb,
+    });
+    return removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eql(null);
+    });
+  });
+
+  it("DatabaseRemove should remove fakeDb at / 2", () => {
     const fakeDb = new TestDatabaseRemoveHelper({
       a: {
         b: { x: { y: "1" } },
@@ -110,9 +135,8 @@ describe("DatabaseRemove", () => {
       retries: 5,
       removeHelper: fakeDb,
     });
-    removeOps.execute().then(() => {
-      expect(fakeDb.data).to.eq({});
-      done();
+    return removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eql(null);
     });
   });
 
@@ -127,13 +151,13 @@ describe("DatabaseRemove", () => {
       },
     });
 
-    var removeOps = new DatabaseRemove("/a", {
+    var removeOps = new DatabaseRemove("/a/b", {
       concurrency: 200,
       retries: 5,
       removeHelper: fakeDb,
     });
-    removeOps.execute().then(() => {
-      expect(fakeDb.data).to.eq({
+    return removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eql({
         a: {
           c: "2",
         },
@@ -141,7 +165,6 @@ describe("DatabaseRemove", () => {
           e: "3",
         },
       });
-      done();
     });
   });
 
@@ -160,13 +183,12 @@ describe("DatabaseRemove", () => {
       retries: 5,
       removeHelper: fakeDb,
     });
-    removeOps.execute().then(() => {
-      expect(fakeDb.data).to.eq({
+    return removeOps.execute().then(() => {
+      expect(fakeDb.data).to.eql({
         d: {
           e: "3",
         },
       });
-      done();
     });
   });
 });

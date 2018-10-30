@@ -56,7 +56,7 @@ class DatabaseRemove {
           } else {
             var parentPath = pathLib.dirname(path);
             this.waitingPath[parentPath] -= 1;
-            if (this.waitingPath[parentPath] == 0) {
+            if (this.waitingPath[parentPath] === 0) {
               this.jobQueue.add(parentPath);
               this.waitingPath.delete(parentPath);
             }
