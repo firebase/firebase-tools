@@ -80,11 +80,6 @@ class DatabaseRemoveHelper {
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
       ".json?shallow=true&limitToFirst=10000";
-    if (path === "/") {
-      // there is a known bug with shallow and limitToFirst at "/"
-      // TODO remove after the bug is fixed
-      url = utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?shallow=true";
-    }
     var reqOptions = {
       url: url,
     };
