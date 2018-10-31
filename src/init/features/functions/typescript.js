@@ -36,6 +36,10 @@ module.exports = function(setup, config) {
           'npm --prefix "$RESOURCE_DIR" run lint',
           'npm --prefix "$RESOURCE_DIR" run build',
         ]);
+        _.set(setup, "config.functions.ignore", [
+          "node_modules", // the default
+          "src", // we also want to exclude the typescript sources
+        ]);
         return config
           .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
           .then(function() {
