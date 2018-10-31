@@ -11,6 +11,7 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
+    "@firebase/app-types": "^0.3.2",
     "firebase-admin": "~6.0.0",
     "firebase-functions": "^2.1.0"
   },
