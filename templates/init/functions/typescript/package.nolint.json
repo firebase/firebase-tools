@@ -1,5 +1,7 @@
 {
   "name": "functions",
+  "private": true,
+  "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
     "serve": "npm run build && firebase serve --only functions",
@@ -8,7 +10,6 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
-  "main": "lib/index.js",
   "dependencies": {
     "firebase-admin": "~6.0.0",
     "firebase-functions": "^2.1.0"
@@ -16,5 +17,7 @@
   "devDependencies": {
     "typescript": "~2.8.3"
   },
-  "private": true
+  "engines": {
+    "node": "8"
+  }
 }
