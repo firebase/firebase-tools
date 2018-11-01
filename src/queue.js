@@ -29,7 +29,7 @@ class Queue {
     this.max = 0;
     this.avg = 0;
     this.retries = options.retries || 0;
-    this.backoff = 200;
+    this.backoff = typeof options.backoff == "number" ? options.backoff : 200;
     this.retryCounts = {};
     this.closed = false;
     this.finished = false;
