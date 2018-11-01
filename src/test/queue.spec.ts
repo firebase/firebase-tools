@@ -40,6 +40,19 @@ describe("Queue", () => {
     expect(q.taskName(0)).to.equal("index 0");
   });
 
+  it("should handle function tasks", () => {
+    const task = sinon.stub().resolves();
+    const q = new Queue({});
+
+    q.add(task);
+    q.close();
+
+    return q.wait()
+        .then(() => {
+          expect(task.callCount).to.equal(1);
+        });
+  });
+
   it("should handle tasks", () => {
     const handler = sinon.stub().resolves();
     const q = new Queue({
