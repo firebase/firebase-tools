@@ -201,6 +201,7 @@ class Uploader {
         auth: true,
         data: { files: batch },
         logOptions: { skipRequestBody: true },
+        timeout: 60000,
       })
       .then(function(result) {
         self.uploadUrl = result.body.uploadUrl;
