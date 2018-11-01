@@ -26,6 +26,10 @@ describe("Queue", () => {
     return q.wait()
         .then(() => {
           expect(task.callCount).to.equal(1);
+          expect(q.complete).to.equal(1);
+          expect(q.success).to.equal(1);
+          expect(q.errored).to.equal(0);
+          expect(q.retried).to.equal(0);
         });
   });
 
@@ -41,6 +45,10 @@ describe("Queue", () => {
     return q.wait()
       .then(() => {
         expect(handler.callCount).to.equal(1);
+        expect(q.complete).to.equal(1);
+        expect(q.success).to.equal(1);
+        expect(q.errored).to.equal(0);
+        expect(q.retried).to.equal(0);
       });
   });
 
@@ -63,6 +71,10 @@ describe("Queue", () => {
       })
       .then(() => {
         expect(handler.callCount).to.equal(1);
+        expect(q.complete).to.equal(1);
+        expect(q.success).to.equal(0);
+        expect(q.errored).to.equal(1);
+        expect(q.retried).to.equal(0);
       });
   });
 
@@ -86,6 +98,10 @@ describe("Queue", () => {
       })
       .then(() => {
         expect(handler.callCount).to.equal(4);
+        expect(q.complete).to.equal(1);
+        expect(q.success).to.equal(0);
+        expect(q.errored).to.equal(1);
+        expect(q.retried).to.equal(3);
       });
   });
 
@@ -113,6 +129,10 @@ describe("Queue", () => {
       })
       .then(() => {
         expect(handler.callCount).to.equal(6);
+        expect(q.complete).to.equal(2);
+        expect(q.success).to.equal(2);
+        expect(q.errored).to.equal(0);
+        expect(q.retried).to.equal(4);
       })
   });
 });
