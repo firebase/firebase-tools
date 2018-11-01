@@ -32,7 +32,13 @@ const _emulators = {
 const _commands = {
   database: {
     binary: "java",
-    args: ["-jar", _emulators.database.localPath, "--port", _emulators.database.port],
+    args: [
+      "-Duser.language=en",
+      "-jar",
+      _emulators.database.localPath,
+      "--port",
+      _emulators.database.port,
+    ],
   },
   firestore: {
     binary: "java",
