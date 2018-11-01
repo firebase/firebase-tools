@@ -1,0 +1,6 @@
+fixed - Realtime Database and Cloud Firestore emulators no longer crash in various language environments.
+fixed - Realtime Database and Cloud Firestore emulators can be started via `firebase serve` without project environment checks.
+fixed - `firebase init` no longer errors when an account has no projects.
+fixed - Firebase Hosting deploys have more robust retry logic for hanging requests.
+fixed - Fire emoji in `firebase init` removed to fix spacing issues on macOS Terminal (😢).
+fixed - Working directory passed through correctly for module-based Firebase Hosting deploys.
