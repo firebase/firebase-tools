@@ -17,7 +17,6 @@ describe("Queue", () => {
 
     q.add(4);
     q.close();
-    q.process();
 
     return q.wait()
       .then(() => {
@@ -34,7 +33,6 @@ describe("Queue", () => {
 
     q.add(4);
     q.close();
-    q.process();
 
     return q.wait()
       .then(() => {
@@ -58,7 +56,6 @@ describe("Queue", () => {
 
     q.add(4);
     q.close();
-    q.process();
 
     return q.wait()
       .then(() => {
@@ -70,5 +67,32 @@ describe("Queue", () => {
       .then(() => {
         expect(handler.callCount).to.equal(4);
       });
+  });
+
+  it("should retry the number of retries for both tasks", () => {
+    const stub = sinon.stub()
+        .onCall(2).resolves(0)
+        .onCall(5).resolves(0)
+        .rejects(TEST_ERROR);
+    const handler = stub;
+
+    const q = new Queue({
+      backoff: 0,
+      handler,
+      retries: 3,
+    });
+
+    q.add(5);
+    q.add(5);
+    q.close();
+
+    return q
+      .wait()
+      .catch((err: Error) => {
+        throw new Error("handler should have passed");
+      })
+      .then(() => {
+        expect(handler.callCount).to.equal(6);
+      })
   });
 });
