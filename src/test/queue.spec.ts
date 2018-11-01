@@ -9,6 +9,26 @@ const Queue = require("../queue");
 const TEST_ERROR = new Error("foobar");
 
 describe("Queue", () => {
+  it("should ignore non-number backoff", () => {
+    const q = new Queue({
+      backoff: "not a number"
+    });
+    expect(q.backoff).to.equal(200);
+  });
+
+  it("should handle function tasks", () => {
+    const task = sinon.stub().resolves();
+    const q = new Queue({});
+
+    q.add(task);
+    q.close();
+
+    return q.wait()
+        .then(() => {
+          expect(task.callCount).to.equal(1);
+        });
+  });
+
   it("should handle tasks", () => {
     const handler = sinon.stub().resolves();
     const q = new Queue({
