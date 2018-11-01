@@ -1,6 +1,5 @@
 import * as sinon from "sinon";
 import * as chai from "chai";
-import {fail} from 'assert';
 
 chai.use(require("chai-as-promised"));
 const { expect } = chai;
