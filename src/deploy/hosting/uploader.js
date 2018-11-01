@@ -26,7 +26,7 @@ function _progressMessage(message, current, total) {
     "/" +
     total +
     "] (" +
-    clc.bold.green(Math.floor(current * 1.0 / total * 100).toString() + "%") +
+    clc.bold.green(Math.floor(((current * 1.0) / total) * 100).toString() + "%") +
     ")"
   );
 }
