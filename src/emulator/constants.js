@@ -36,7 +36,13 @@ const _commands = {
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", _emulators.firestore.localPath, "--port", _emulators.firestore.port],
+    args: [
+      "-Duser.language=en",
+      "-jar",
+      _emulators.firestore.localPath,
+      "--port",
+      _emulators.firestore.port,
+    ],
   },
 };
 
