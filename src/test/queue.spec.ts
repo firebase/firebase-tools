@@ -50,6 +50,10 @@ describe("Queue", () => {
     return q.wait()
         .then(() => {
           expect(task.callCount).to.equal(1);
+          expect(q.complete).to.equal(1);
+          expect(q.success).to.equal(1);
+          expect(q.errored).to.equal(0);
+          expect(q.retried).to.equal(0);
         });
   });
 
