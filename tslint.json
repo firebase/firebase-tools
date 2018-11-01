@@ -1,7 +1,8 @@
 {
     "defaultSeverity": "error",
     "extends": [
-        "tslint:recommended"
+        "tslint:recommended",
+        "tslint-no-unused-expression-chai"
     ],
     "jsRules": {},
     "rules": {
