@@ -1,5 +1,6 @@
 import * as sinon from "sinon";
 import * as chai from "chai";
+import {fail} from 'assert';
 
 chai.use(require("chai-as-promised"));
 const { expect } = chai;
@@ -16,21 +17,28 @@ describe("Queue", () => {
     expect(q.backoff).to.equal(200);
   });
 
-  it("should handle function tasks", () => {
-    const task = sinon.stub().resolves();
-    const q = new Queue({});
+  it("taskName should be itself for string task", () => {
+    const handler = sinon.stub().resolves();
+    const q = new Queue({
+      handler,
+    });
 
-    q.add(task);
-    q.close();
+    const stringTask = "test task";
+    q.add(stringTask);
 
-    return q.wait()
-        .then(() => {
-          expect(task.callCount).to.equal(1);
-          expect(q.complete).to.equal(1);
-          expect(q.success).to.equal(1);
-          expect(q.errored).to.equal(0);
-          expect(q.retried).to.equal(0);
-        });
+    expect(q.taskName(0)).to.equal(stringTask);
+  });
+
+  it("taskName should be an index for non-string task", () => {
+    const handler = sinon.stub().resolves();
+    const q = new Queue({
+      handler,
+    });
+
+    const nonStringTask = 2;
+    q.add(nonStringTask);
+
+    expect(q.taskName(0)).to.equal("index 0");
   });
 
   it("should handle tasks", () => {
