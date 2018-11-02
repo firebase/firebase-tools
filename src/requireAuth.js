@@ -33,9 +33,9 @@ function _autoAuth(options, authScopes) {
   });
 }
 
-module.exports = function(options, authScopes) {
+module.exports = function(options) {
   api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
-  options.authScopes = api.commandScopes;
+  options.authScopes = api.getScopes();
 
   var tokens = configstore.get("tokens");
   var user = configstore.get("user");
@@ -48,7 +48,7 @@ module.exports = function(options, authScopes) {
   } else if (user) {
     logger.debug("> authorizing via signed-in user");
   } else {
-    return _autoAuth(options, authScopes);
+    return _autoAuth(options, options.authScopes);
   }
 
   tokenOpt = tokenOpt || process.env.FIREBASE_TOKEN;

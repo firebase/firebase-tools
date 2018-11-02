@@ -4,8 +4,12 @@ node_js:
 - '8'
 - '10'
 sudo: false
+before_script:
+- openssl aes-256-cbc -K $encrypted_830857fa25dd_key -iv $encrypted_830857fa25dd_iv -in scripts/creds-public.json.enc -out scripts/creds-public.json -d
+- openssl aes-256-cbc -K $encrypted_830857fa25dd_key -iv $encrypted_830857fa25dd_iv -in scripts/creds-private.json.enc -out scripts/creds-private.json -d
 after_script:
 - nyc report --reporter=text-lcov | coveralls
+- ./scripts/test-hosting.sh
 cache:
   directories:
   - node_modules

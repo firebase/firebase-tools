@@ -133,6 +133,9 @@ var api = {
   setAccessToken: function(token) {
     accessToken = token;
   },
+  getScopes: function() {
+    return commandScopes;
+  },
   setScopes: function(s) {
     commandScopes = _.uniq(
       _.flatten(
