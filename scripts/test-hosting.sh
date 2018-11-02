@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
+if [ "${TRAVIS}" != "true" ]; then
+  TRAVIS_COMMIT="localtesting"
+  TRAVIS_JOB_ID="$(echo $RANDOM)"
+  TRAVIS_REPO_SLUG="firebase/firebase-tools"
+fi
+
 CWD="$(pwd)"
-TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}"
+TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
 
 GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
 if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
@@ -50,7 +56,7 @@ cat > "firebase.json" <<- EOM
 EOM
 mkdir "public"
 touch "public/${TARGET_FILE}"
-echo "${DATE}" > "public/${TARGET_FILE}.txt"
+echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Initalized temp directory."
 
 echo "Testing local serve..."
@@ -61,6 +67,7 @@ sleep 5
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 kill "$PID"
+wait
 echo "Tested local serve."
 
 echo "Testing hosting deployment..."
