@@ -1,28 +1,25 @@
-import * as sinon from "sinon";
 import * as chai from "chai";
-import {fail} from 'assert';
+import * as sinon from "sinon";
 
-chai.use(require("chai-as-promised"));
 const { expect } = chai;
 
-const Queue = require("../queue");
+import Queue = require("../queue");
 
 const TEST_ERROR = new Error("foobar");
 
 describe("Queue", () => {
   it("should ignore non-number backoff", () => {
     const q = new Queue({
-      backoff: "not a number"
+      backoff: "not a number",
     });
     expect(q.backoff).to.equal(200);
   });
 
-  it("taskName should be itself for string task", () => {
+  it("should return the task as the task name", () => {
     const handler = sinon.stub().resolves();
     const q = new Queue({
       handler,
     });
-<<<<<<< HEAD
 
     const stringTask = "test task";
     q.add(stringTask);
@@ -30,14 +27,13 @@ describe("Queue", () => {
     expect(q.taskName(0)).to.equal(stringTask);
   });
 
-  it("taskName should be an index for non-string task", () => {
+  it("should return the index as the task name", () => {
     const handler = sinon.stub().resolves();
     const q = new Queue({
       handler,
     });
 
-    const nonStringTask = 2;
-    q.add(nonStringTask);
+    q.add(2);
 
     expect(q.taskName(0)).to.equal("index 0");
   });
@@ -45,25 +41,17 @@ describe("Queue", () => {
   it("should handle function tasks", () => {
     const task = sinon.stub().resolves();
     const q = new Queue({});
-=======
->>>>>>> tests about taskName
 
-    const stringTask = "test task";
-    q.add(stringTask);
+    q.add(task);
+    q.close();
 
-    expect(q.taskName(0)).to.equal(stringTask);
-  });
-
-  it("taskName should be an index for non-string task", () => {
-    const handler = sinon.stub().resolves();
-    const q = new Queue({
-      handler,
+    return q.wait().then(() => {
+      expect(task.callCount).to.equal(1);
+      expect(q.complete).to.equal(1);
+      expect(q.success).to.equal(1);
+      expect(q.errored).to.equal(0);
+      expect(q.retried).to.equal(0);
     });
-
-    const nonStringTask = 2;
-    q.add(nonStringTask);
-
-    expect(q.taskName(0)).to.equal("index 0");
   });
 
   it("should handle tasks", () => {
@@ -75,14 +63,13 @@ describe("Queue", () => {
     q.add(4);
     q.close();
 
-    return q.wait()
-      .then(() => {
-        expect(handler.callCount).to.equal(1);
-        expect(q.complete).to.equal(1);
-        expect(q.success).to.equal(1);
-        expect(q.errored).to.equal(0);
-        expect(q.retried).to.equal(0);
-      });
+    return q.wait().then(() => {
+      expect(handler.callCount).to.equal(1);
+      expect(q.complete).to.equal(1);
+      expect(q.success).to.equal(1);
+      expect(q.errored).to.equal(0);
+      expect(q.retried).to.equal(0);
+    });
   });
 
   it("should not retry", () => {
@@ -95,7 +82,8 @@ describe("Queue", () => {
     q.add(4);
     q.close();
 
-    return q.wait()
+    return q
+      .wait()
       .then(() => {
         throw new Error("handler should have rejected");
       })
@@ -122,7 +110,8 @@ describe("Queue", () => {
     q.add(4);
     q.close();
 
-    return q.wait()
+    return q
+      .wait()
       .then(() => {
         throw new Error("handler should have rejected");
       })
@@ -138,12 +127,16 @@ describe("Queue", () => {
       });
   });
 
-  it("should retry the number of retries for both tasks", () => {
-    const stub = sinon.stub()
-        .onCall(2).resolves(0)
-        .onCall(5).resolves(0)
-        .rejects(TEST_ERROR);
-    const handler = stub;
+  it("should retry the number of retries for mutiple tasks", () => {
+    const handler = sinon
+      .stub()
+      .rejects(TEST_ERROR)
+      .onCall(2)
+      .resolves(0)
+      .onCall(5)
+      .resolves(0)
+      .onCall(8)
+      .resolves(0);
 
     const q = new Queue({
       backoff: 0,
@@ -151,6 +144,7 @@ describe("Queue", () => {
       retries: 3,
     });
 
+    q.add(5);
     q.add(5);
     q.add(5);
     q.close();
@@ -161,11 +155,11 @@ describe("Queue", () => {
         throw new Error("handler should have passed");
       })
       .then(() => {
-        expect(handler.callCount).to.equal(6);
-        expect(q.complete).to.equal(2);
-        expect(q.success).to.equal(2);
+        expect(handler.callCount).to.equal(9);
+        expect(q.complete).to.equal(3);
+        expect(q.success).to.equal(3);
         expect(q.errored).to.equal(0);
-        expect(q.retried).to.equal(4);
-      })
+        expect(q.retried).to.equal(6);
+      });
   });
 });
