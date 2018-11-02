@@ -127,7 +127,47 @@ describe("Queue", () => {
       });
   });
 
-  it("should retry the number of retries for mutiple tasks", () => {
+  it("should handle tasks in concurrency", () => {
+    const callCountMap = new Map<any, number>();
+    const handler = (task: any) => {
+      let count = callCountMap.get(task);
+      if (!count) {
+        count = 0;
+      }
+      count += 1;
+      callCountMap.set(task, count);
+      if (count > 2) {
+        return Promise.resolve();
+      }
+      return Promise.reject();
+    };
+
+    const q = new Queue({
+      backoff: 0,
+      concurrency: 2,
+      handler,
+      retries: 2,
+    });
+
+    q.add("1");
+    q.add("2");
+    q.add("3");
+    q.close();
+
+    return q
+      .wait()
+      .catch((err: Error) => {
+        throw new Error("handler should have passed ");
+      })
+      .then(() => {
+        expect(q.complete).to.equal(3);
+        expect(q.success).to.equal(3);
+        expect(q.errored).to.equal(0);
+        expect(q.retried).to.equal(6);
+      });
+  });
+
+  it("should retry the number of retries for mutiple identical tasks", () => {
     const handler = sinon
       .stub()
       .rejects(TEST_ERROR)
@@ -140,8 +180,9 @@ describe("Queue", () => {
 
     const q = new Queue({
       backoff: 0,
+      concurrency: 1, // this makes sure only one task is running at a time, so not flaky
       handler,
-      retries: 3,
+      retries: 2,
     });
 
     q.add(5);
