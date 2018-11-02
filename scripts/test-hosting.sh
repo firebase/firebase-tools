@@ -8,6 +8,7 @@ GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
 if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
   GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
 fi
+export GOOGLE_APPLICATION_CREDENTIALS
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"
