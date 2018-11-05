@@ -29,14 +29,15 @@ class Queue {
     this.max = 0;
     this.avg = 0;
     this.retries = options.retries || 0;
-    this.backoff = 200;
+    this.backoff = typeof options.backoff == "number" ? options.backoff : 200;
     this.retryCounts = {};
     this.closed = false;
     this.finished = false;
   }
 
-  taskName(task) {
-    return typeof task === "string" ? task : "index " + this.tasks.indexOf(task);
+  taskName(cursorIndex) {
+    const task = this.tasks[cursorIndex];
+    return typeof task === "string" ? task : "index " + cursorIndex;
   }
 
   wait() {
@@ -73,13 +74,13 @@ class Queue {
       return;
     }
 
-    const task = this.tasks[this.cursor];
     this.cursor++;
     this.active++;
-    this.handle(task);
+    this.handle(this.cursor - 1);
   }
 
-  handle(task) {
+  handle(cursorIndex) {
+    const task = this.tasks[cursorIndex];
     const t0 = Date.now();
     const self = this;
     this.handler(task)
@@ -100,13 +101,13 @@ class Queue {
       })
       .catch(function(err) {
         if (self.retries > 0) {
-          self.retryCounts[task] = self.retryCounts[task] || 0;
-          if (self.retryCounts[task] < self.retries) {
-            self.retryCounts[task]++;
+          self.retryCounts[cursorIndex] = self.retryCounts[cursorIndex] || 0;
+          if (self.retryCounts[cursorIndex] < self.retries) {
+            self.retryCounts[cursorIndex]++;
             self.retried++;
-            return _backoff(self.retryCounts[task], self.backoff).then(function() {
-              logger.debug("[" + self.name + "] Retrying task", self.taskName(task));
-              return self.handle(task);
+            return _backoff(self.retryCounts[cursorIndex], self.backoff).then(function() {
+              logger.debug("[" + self.name + "] Retrying task", self.taskName(cursorIndex));
+              return self.handle(cursorIndex);
             });
           }
         }
@@ -114,15 +115,15 @@ class Queue {
         self.errored++;
         self.complete++;
         self.active--;
-        if (self.retryCounts[task] > 0) {
+        if (self.retryCounts[cursorIndex] > 0) {
           logger.debug(
             "[" + self.name + "] Retries exhausted for task",
-            self.taskName(task),
+            self.taskName(cursorIndex),
             ":",
             err
           );
         } else {
-          logger.debug("[" + self.name + "] Error on task", self.taskName(task), ":", err);
+          logger.debug("[" + self.name + "] Error on task", self.taskName(cursorIndex), ":", err);
         }
         self._finish(err);
       });
