@@ -280,7 +280,7 @@ module.exports = function(context, options, payload) {
         return "\t" + helper.getFunctionLabel(func);
       }).join("\n");
 
-      if (options.nonInteractive && !options.force) {
+      if (options.nonInteractive && !options.force && !options.ignoreExistingFunctions) {
         var deleteCommands = _.map(functionsToDelete, function(func) {
           return (
             "\tfirebase functions:delete " +
@@ -296,7 +296,11 @@ module.exports = function(context, options, payload) {
             "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
             clc.bold(deleteCommands)
         );
-      } else if (!options.force) {
+      } else if (options.force && options.ignoreExistingFunctions) {
+        throw new FirebaseError(
+          "\nYou can not specify both --force and --ignore-existing-functions\n"
+        );
+      } else if (!options.force && !options.ignoreExistingFunctions) {
         logger.info(
           "\nThe following functions are found in your project but do not exist in your local source code:\n" +
             deleteList +
@@ -310,13 +314,15 @@ module.exports = function(context, options, payload) {
 
       const next = options.force
         ? Promise.resolve(true)
-        : prompt.once({
-            type: "confirm",
-            name: "confirm",
-            default: false,
-            message:
-              "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
-          });
+        : options.ignoreExistingFunctions 
+          ? Promise.resolve(false)
+          : prompt.once({
+              type: "confirm",
+              name: "confirm",
+              default: false,
+              message:
+                "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
+            });
 
       next.then(function(proceed) {
         if (!proceed) {
