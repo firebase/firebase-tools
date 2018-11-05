@@ -7,6 +7,7 @@ if [ "${TRAVIS}" != "true" ]; then
   TRAVIS_REPO_SLUG="firebase/firebase-tools"
 fi
 
+false
 CWD="$(pwd)"
 TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
 
