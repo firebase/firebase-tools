@@ -7,7 +7,7 @@
     "outDir": "lib",
     "removeComments": true,
     "sourceMap": true,
-    "target": "ES5"
+    "target": "ES6"
   },
   "include": [
     "src/**/*"
