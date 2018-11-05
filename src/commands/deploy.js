@@ -47,7 +47,7 @@ module.exports = new Command("deploy")
     "delete Cloud Functions missing from the current working directory without confirmation"
   )
   .option(
-    "-i, --ignore-existing-functions", 
+    "-i, --ignore-existing-functions",
     "ignores Cloud Functions missing from the current working directory without confirmation"
   )
   .option(

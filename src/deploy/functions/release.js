@@ -314,7 +314,7 @@ module.exports = function(context, options, payload) {
 
       const next = options.force
         ? Promise.resolve(true)
-        : options.ignoreExistingFunctions 
+        : options.ignoreExistingFunctions
           ? Promise.resolve(false)
           : prompt.once({
               type: "confirm",
