@@ -15,6 +15,7 @@ jobs:
     - stage: hosting functional test
       node_js: '6'
       script: ./scripts/test-hosting.sh
+      after_script: skip
 cache:
   directories:
   - node_modules
