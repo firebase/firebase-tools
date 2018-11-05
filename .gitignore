@@ -11,5 +11,7 @@ yarn.lock
 .DS_Store
 .idea
 *.iml
+*.tgz
+scripts/*.json
 
 lib/
