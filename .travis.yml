@@ -10,7 +10,11 @@ before_script:
 - test -f scripts/creds-public.json || test -f scripts/creds-private.json || (echo "No Credentials Decrypted" && false)
 after_script:
 - nyc report --reporter=text-lcov | coveralls
-- ./scripts/test-hosting.sh
+jobs:
+  include:
+    - stage: hosting functional test
+      node_js: '6'
+      script: ./scripts/test-hosting.sh
 cache:
   directories:
   - node_modules
