@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ev
+set -e
 
 if [ "${TRAVIS}" != "true" ]; then
   TRAVIS_COMMIT="localtesting"
