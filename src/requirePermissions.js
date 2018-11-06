@@ -30,7 +30,7 @@ module.exports = function(options, permissions) {
         origin: api.resourceManagerOrigin,
       });
     })
-    .then(response => {
+    .then((response) => {
       const allowedPermissions = (response.body.permissions || []).sort();
       const missingPermissions = _.difference(requiredPermissions, allowedPermissions);
 

@@ -15,7 +15,7 @@ function _list(nextPageToken, projects) {
       auth: true,
       origin: api.firebaseApiOrigin,
     })
-    .then(response => {
+    .then((response) => {
       projects = projects.concat(response.body.results);
       if (response.body.nextPageToken) {
         return _list(response.body.nextPageToken, projects);
@@ -26,10 +26,10 @@ function _list(nextPageToken, projects) {
 
 exports.listProjects = () => _list();
 
-exports.getProject = projectId =>
+exports.getProject = (projectId) =>
   api
     .request("GET", `/${API_VERSION}/projects/${projectId}`, {
       auth: true,
       origin: api.firebaseApiOrigin,
     })
-    .then(response => response.body);
+    .then((response) => response.body);

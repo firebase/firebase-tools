@@ -14,19 +14,19 @@ function _fatal(emulator, errorMsg) {
 }
 
 function _runBinary(emulator, command) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(emulator.name + "-debug.log");
     emulator.instance = childProcess.spawn(command.binary, command.args, {
       stdio: ["inherit", "pipe", "pipe"],
     });
-    emulator.instance.stdout.on("data", data => {
+    emulator.instance.stdout.on("data", (data) => {
       console.log(data.toString());
       emulator.stdout.write(data.toString());
     });
-    emulator.instance.stderr.on("data", data => {
+    emulator.instance.stderr.on("data", (data) => {
       utils.logWarning(emulator.name + ": " + data.toString());
     });
-    emulator.instance.on("error", err => {
+    emulator.instance.on("error", (err) => {
       if (err.path == "java" && err.code == "ENOENT") {
         _fatal(
           emulator,

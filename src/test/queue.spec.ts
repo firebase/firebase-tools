@@ -3,18 +3,11 @@ import * as sinon from "sinon";
 
 const { expect } = chai;
 
-import Queue = require("../queue");
+import Queue from "../queue";
 
 const TEST_ERROR = new Error("foobar");
 
 describe("Queue", () => {
-  it("should ignore non-number backoff", () => {
-    const q = new Queue({
-      backoff: "not a number",
-    });
-    expect(q.backoff).to.equal(200);
-  });
-
   it("should return the task as the task name", () => {
     const handler = sinon.stub().resolves();
     const q = new Queue({

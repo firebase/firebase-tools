@@ -22,13 +22,13 @@ if (previews.emulators) {
   VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
 }
 
-var filterOnlyEmulators = only => {
+var filterOnlyEmulators = (only) => {
   if (!only) {
     return [];
   }
   return _.intersection(
     VALID_EMULATORS,
-    only.split(",").map(opt => {
+    only.split(",").map((opt) => {
       return opt.split(":")[0];
     })
   );
@@ -46,7 +46,7 @@ module.exports = new Command("serve")
     "--except <targets>",
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
-  .before(options => {
+  .before((options) => {
     if (filterOnlyEmulators(options.only).length > 0) {
       return Promise.resolve();
     }
@@ -55,7 +55,7 @@ module.exports = new Command("serve")
       .then(() => checkDupHostingKeys(options))
       .then(() => getProjectNumber(options));
   })
-  .action(options => {
+  .action((options) => {
     options.targets = filterOnlyEmulators(options.only);
     if (options.targets.length > 0) {
       return serve(options);

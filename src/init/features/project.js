@@ -43,7 +43,7 @@ function _getProject(options) {
 
   // Load all projects and prompt the user to choose.
   return firebaseApi.listProjects().then(function(projects) {
-    var choices = projects.filter(project => !!project).map(project => {
+    var choices = projects.filter((project) => !!project).map((project) => {
       return {
         name: project.projectId,
         label: project.projectId + " (" + project.displayName + ")",
@@ -82,7 +82,7 @@ function _getProject(options) {
         }
 
         var id = prompt.listLabelToValue(label, choices);
-        const project = projects.find(p => p.projectId === id);
+        const project = projects.find((p) => p.projectId === id);
         return {
           id: id,
           label: label,
