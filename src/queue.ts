@@ -154,7 +154,7 @@ export class Queue<T> {
           err
         );
       } else {
-        logger.debug("[" + this.name + "] Error on task", this.taskName(cursorIndex), ":", err);
+        logger.debug(`[${this.name}] Error on task ${this.taskName(cursorIndex)}: ${err}`);
       }
       this._finish(err);
     }
