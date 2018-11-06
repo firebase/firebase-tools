@@ -177,7 +177,7 @@ export class Queue<T> {
 
   public taskName(cursorIndex: number): string {
     const task = this.tasks[cursorIndex];
-    return typeof task === "string" ? task : "index " + cursorIndex;
+    return typeof task === "string" ? task : `index ${cursorIndex}`;
   }
 
   private _finishIfIdle(): boolean {
