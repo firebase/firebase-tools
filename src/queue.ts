@@ -115,7 +115,9 @@ export class Queue<T> {
 
   public async handle(cursorIndex: number): Promise<void> {
     const task = this.tasks[cursorIndex];
+    const tname = this.taskName(cursorIndex);
     const t0 = Date.now();
+
     try {
       await this.handler(task);
       const dt = Date.now() - t0;
@@ -138,7 +140,7 @@ export class Queue<T> {
           this.retryCounts[cursorIndex]++;
           this.retried++;
           await _backoff(this.retryCounts[cursorIndex], this.backoff);
-          logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
+          logger.debug(`[${this.name}] Retrying task`, tname);
           return this.handle(cursorIndex);
         }
       }
@@ -147,14 +149,9 @@ export class Queue<T> {
       this.complete++;
       this.active--;
       if (this.retryCounts[cursorIndex] > 0) {
-        logger.debug(
-          "[" + this.name + "] Retries exhausted for task",
-          this.taskName(cursorIndex),
-          ":",
-          err
-        );
+        logger.debug(`[${this.name}] Retries exhausted for task ${tname}:`, err);
       } else {
-        logger.debug(`[${this.name}] Error on task ${this.taskName(cursorIndex)}: ${err}`);
+        logger.debug(`[${this.name}] Error on task ${tname}:`, err);
       }
       this._finish(err);
     }
@@ -190,7 +187,7 @@ export class Queue<T> {
   }
 
   private _finish(err: Error | null): void {
-    this.waits.forEach(p => {
+    this.waits.forEach((p) => {
       if (err) {
         return p.reject(err);
       }

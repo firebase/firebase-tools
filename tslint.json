@@ -6,7 +6,7 @@
     "prettier": true,
     "interface-name": false,
     "object-literal-sort-keys": false,
-    "arrow-parens": false,
+    "arrow-parens": true,
     "trailing-comma": [true, { "functions": "never" }]
   },
   "rulesDirectory": ["tslint-plugin-prettier"],

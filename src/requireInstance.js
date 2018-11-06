@@ -5,7 +5,7 @@ module.exports = function(options) {
     return Promise.resolve();
   }
 
-  return getInstanceId(options).then(instance => {
+  return getInstanceId(options).then((instance) => {
     options.instance = instance;
   });
 };
