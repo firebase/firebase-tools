@@ -138,7 +138,7 @@ export class Queue<T> {
           this.retryCounts[cursorIndex]++;
           this.retried++;
           await _backoff(this.retryCounts[cursorIndex], this.backoff);
-          logger.debug("[" + this.name + "] Retrying task", this.taskName(cursorIndex));
+          logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
           return this.handle(cursorIndex);
         }
       }
