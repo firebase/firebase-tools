@@ -6,7 +6,6 @@ var path = require("path");
 var stream = require("stream");
 var ProfileReport = require("../profileReport");
 
-chai.use(require("chai-as-promised"));
 var expect = chai.expect;
 
 var combinerFunc = function(obj1, obj2) {
