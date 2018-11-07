@@ -1,9 +1,7 @@
 import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 
 import * as utils from "../utils";
 
-chai.use(chaiAsPromised);
 const { expect } = chai;
 
 describe("utils", () => {
@@ -49,7 +47,7 @@ describe("utils", () => {
       delete process.env.FOO_BAR_BAZ;
     });
 
-    it("should coerse the value", () => {
+    it("should coerce the value", () => {
       process.env.FOO_BAR_BAZ = "set";
 
       expect(utils.envOverride("FOO_BAR_BAZ", "notset", (s) => s.split(""))).to.deep.equal([
@@ -61,13 +59,13 @@ describe("utils", () => {
       delete process.env.FOO_BAR_BAZ;
     });
 
-    it("should return provided value if coerse fails", () => {
+    it("should return provided value if coerce fails", () => {
       process.env.FOO_BAR_BAZ = "set";
 
-      const coerse = () => {
+      const coerce = () => {
         throw new Error();
       };
-      expect(utils.envOverride("FOO_BAR_BAZ", "notset", coerse)).to.deep.equal("notset");
+      expect(utils.envOverride("FOO_BAR_BAZ", "notset", coerce)).to.deep.equal("notset");
 
       delete process.env.FOO_BAR_BAZ;
     });

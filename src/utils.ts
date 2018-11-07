@@ -6,7 +6,9 @@ import * as configstore from "./configstore";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
 
-const isWindows = process.platform === "win32";
+const IS_WINDOWS = process.platform === "win32";
+const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
+const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
 
 export const envOverrides: string[] = [];
 
@@ -69,16 +71,14 @@ export function addSubdomain(origin: string, subdomain: string): string {
  * Log an info statement with a green checkmark at the start of the line.
  */
 export function logSuccess(message: string, type = "info"): void {
-  const chr = isWindows ? "+" : "✔";
-  logger[type](clc.green(`${chr} `), message);
+  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message);
 }
 
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
 export function logLabeledSuccess(label: string, message: string, type = "info"): void {
-  const chr = isWindows ? "+" : "✔";
-  logger[type](clc.green(`${chr}  ${label}:`), message);
+  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message);
 }
 
 /**
@@ -99,8 +99,7 @@ export function logLabeledBullet(label: string, message: string, type = "info"):
  * Log an info statement with a gray bullet at the start of the line.
  */
 export function logWarning(message: string, type = "warn"): void {
-  const chr = isWindows ? "!" : "⚠";
-  logger[type](clc.yellow.bold(`${chr} `), message);
+  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message);
 }
 
 /**
@@ -114,7 +113,7 @@ export function reject(message: string, options: any): Promise<void> {
  * Print out an explanatory message if a TTY is detected for how to manage STDIN
  */
 export function explainStdin(): void {
-  if (isWindows) {
+  if (IS_WINDOWS) {
     throw new FirebaseError("STDIN input is not available on Windows.", {
       exit: 1,
     });
