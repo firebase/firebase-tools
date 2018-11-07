@@ -395,7 +395,7 @@ module.exports = function(context, options, payload) {
             logger.info(
               "    " +
                 clc.bold("firebase deploy --only ") +
-                clc.bold(sortedFailedCalls.map(name => `functions:${name}`).join(","))
+                clc.bold(sortedFailedCalls.map((name) => `functions:${name}`).join(","))
             );
             logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));
