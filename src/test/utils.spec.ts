@@ -1,8 +1,6 @@
-import * as chai from "chai";
+import { expect } from "chai";
 
 import * as utils from "../utils";
-
-const { expect } = chai;
 
 describe("utils", () => {
   describe("consoleUrl", () => {
