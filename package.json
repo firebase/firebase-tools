@@ -103,7 +103,10 @@
   },
   "devDependencies": {
     "@types/chai": "^4.1.6",
+    "@types/chai-as-promised": "^7.1.0",
+    "@types/cli-color": "^0.3.29",
     "@types/glob": "^7.1.1",
+    "@types/lodash": "^4.14.118",
     "@types/mocha": "^5.2.5",
     "@types/node": "^10.12.0",
     "@types/sinon": "^5.0.5",
