@@ -14,7 +14,7 @@ var prompt = require("../../prompt");
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
 var deployments = [];
-var failedDeployments = 0;
+var failedDeployments = [];
 
 function _startTimer(name, type) {
   timings[name] = { type: type, t0: process.hrtime() };
@@ -73,7 +73,7 @@ var printSuccess = function(op) {
 };
 var printFail = function(op) {
   _endTimer(op.func);
-  failedDeployments += 1;
+  failedDeployments.push(helper.getFunctionName(op.func));
   utils.logWarning(
     clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
   );
@@ -367,7 +367,7 @@ module.exports = function(context, options, payload) {
         .filter({ state: "fulfilled" })
         .map("value")
         .value();
-      failedDeployments += failedCalls.length;
+      const numFailedDeployments = failedDeployments.length + failedCalls.length;
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
         .then(function() {
@@ -381,21 +381,26 @@ module.exports = function(context, options, payload) {
         })
         .then(() => {
           if (deployments.length > 0) {
-            track("Functions Deploy (Result)", "failure", failedDeployments);
-            track("Functions Deploy (Result)", "success", deployments.length - failedDeployments);
+            track("Functions Deploy (Result)", "failure", numFailedDeployments);
+            track(
+              "Functions Deploy (Result)",
+              "success",
+              deployments.length - numFailedDeployments
+            );
           }
-          if (failedDeployments > 0) {
+          if (numFailedDeployments > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:\n");
-            const sortedFailedCalls = failedCalls.sort();
-
-            for (let i = 0; i < sortedFailedCalls.length; i++) {
-              logger.info(sortedFailedCalls[i]);
+            const sortedFailedDeployments = failedDeployments
+              .concat(failedCalls.map((call) => call.func))
+              .sort();
+            for (let i = 0; i < sortedFailedDeployments.length; i++) {
+              logger.info(sortedFailedDeployments[i]);
             }
             logger.info("\n\nTo try redeploying those functions, run:");
             logger.info(
               "    " +
                 clc.bold("firebase deploy --only ") +
-                clc.bold(sortedFailedCalls.map((name) => `functions:${name}`).join(","))
+                clc.bold(sortedFailedDeployments.map((name) => `functions:${name}`).join(","))
             );
             logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));

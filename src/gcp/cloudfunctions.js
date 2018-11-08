@@ -20,7 +20,10 @@ function _functionsOpLogReject(func, type, err) {
   } else {
     logger.info(err.message);
   }
-  return Promise.reject(func);
+  return Promise.reject({
+    func,
+    err,
+  });
 }
 
 function _generateUploadUrl(projectId, location) {
