@@ -389,12 +389,12 @@ module.exports = function(context, options, payload) {
             );
           }
           if (numFailedDeployments > 0) {
-            logger.info("\n\nFunctions deploy had errors with the following functions:\n");
+            logger.info("\n\nFunctions deploy had errors with the following functions:");
             const sortedFailedDeployments = failedDeployments
-              .concat(failedCalls.map((call) => call.func))
+              .concat(failedCalls.map((call) => call.context.function))
               .sort();
             for (let i = 0; i < sortedFailedDeployments.length; i++) {
-              logger.info(sortedFailedDeployments[i]);
+              logger.info(`\t${sortedFailedDeployments[i]}`);
             }
             logger.info("\n\nTo try redeploying those functions, run:");
             logger.info(

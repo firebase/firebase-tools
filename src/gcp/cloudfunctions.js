@@ -1,7 +1,6 @@
 "use strict";
 
 var api = require("../api");
-
 var utils = require("../utils");
 var _ = require("lodash");
 var logger = require("../logger");
@@ -20,10 +19,8 @@ function _functionsOpLogReject(func, type, err) {
   } else {
     logger.info(err.message);
   }
-  return Promise.reject({
-    func,
-    err,
-  });
+  err.context = { function: func };
+  return Promise.reject(err);
 }
 
 function _generateUploadUrl(projectId, location) {
