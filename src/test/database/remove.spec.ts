@@ -1,29 +1,30 @@
 "use strict";
 
-const chai = require("chai");
-const nock = require("nock");
-const sinon = require("sinon");
-const expect = chai.expect;
-const pathLib = require("path");
-const DatabaseRemove = require("../../database/remove");
-const helpers = require("../helpers");
+import { expect } from "chai";
+import * as nock from "nock";
+import * as sinon from "sinon";
+import * as pathLib from "path";
+import { SinonSandbox } from "sinon";
+
+import DatabaseRemove = require("../../database/remove");
+import helpers = require("../helpers");
 
 describe("Remote", () => {
-  var databaseRemove = new DatabaseRemove("", {
+  const databaseRemove = new DatabaseRemove("", {
     concurrency: 0,
     retires: 0,
     instance: "fake-db",
   });
 
-  var remote = databaseRemove.remote;
-  var sandbox;
+  const remote = databaseRemove.remote;
+  let sandbox: SinonSandbox;
 
-  beforeEach(function() {
+  beforeEach(() => {
     sandbox = sinon.createSandbox();
     helpers.mockAuth(sandbox);
   });
 
-  afterEach(function() {
+  afterEach(() => {
     sandbox.restore();
     nock.cleanAll();
   });
@@ -87,26 +88,13 @@ describe("Remote", () => {
 });
 
 class TestRemote {
-  constructor(data) {
+  public data: any;
+
+  constructor(data: any) {
     this.data = data;
   }
 
-  _dataAtpath(path) {
-    const splitedPath = path.slice(1).split("/");
-    var d = this.data;
-    for (var i = 0; i < splitedPath.length; i++) {
-      if (d && splitedPath[i] !== "") {
-        if ("string" === typeof d) {
-          d = null;
-        } else {
-          d = d[splitedPath[i]];
-        }
-      }
-    }
-    return d;
-  }
-
-  deletePath(path) {
+  public deletePath(path: string): Promise<boolean> {
     if (path === "/") {
       this.data = null;
       return Promise.resolve(true);
@@ -120,7 +108,7 @@ class TestRemote {
     return Promise.resolve(true);
   }
 
-  prefetchTest(path) {
+  public prefetchTest(path: string): Promise<string> {
     const d = this._dataAtpath(path);
     if (!d) {
       return Promise.resolve("empty");
@@ -134,12 +122,27 @@ class TestRemote {
     }
   }
 
-  listPath(path) {
+  public listPath(path: string): Promise<string[]> {
     const d = this._dataAtpath(path);
     if (d) {
       return Promise.resolve(Object.keys(d));
     }
     return Promise.resolve([]);
+  }
+
+  private _dataAtpath(path: string): any {
+    const splitedPath = path.slice(1).split("/");
+    let d = this.data;
+    for (const p of splitedPath) {
+      if (d && p !== "") {
+        if ("string" === typeof d) {
+          d = null;
+        } else {
+          d = d[p];
+        }
+      }
+    }
+    return d;
   }
 }
 
@@ -191,7 +194,7 @@ describe("DatabaseRemove", () => {
     const fakeDb = new TestRemote({
       c: "2",
     });
-    var removeOps = new DatabaseRemove("/", {
+    const removeOps = new DatabaseRemove("/", {
       concurrency: 200,
       retries: 5,
       remote: fakeDb,
@@ -211,7 +214,7 @@ describe("DatabaseRemove", () => {
         e: "3",
       },
     });
-    var removeOps = new DatabaseRemove("/", {
+    const removeOps = new DatabaseRemove("/", {
       concurrency: 200,
       retries: 5,
       remote: fakeDb,
@@ -232,7 +235,7 @@ describe("DatabaseRemove", () => {
       },
     });
 
-    var removeOps = new DatabaseRemove("/a/b", {
+    const removeOps = new DatabaseRemove("/a/b", {
       concurrency: 200,
       retries: 5,
       remote: fakeDb,
@@ -259,7 +262,7 @@ describe("DatabaseRemove", () => {
         e: "3",
       },
     });
-    var removeOps = new DatabaseRemove("/a", {
+    const removeOps = new DatabaseRemove("/a", {
       concurrency: 200,
       retries: 5,
       remote: fakeDb,
