@@ -40,7 +40,7 @@ module.exports = new Command("database:remove <path>")
         return utils.reject("Command aborted.", { exit: 1 });
       }
       var removeOps = new DatabaseRemove(path, {
-        concurrency: 200,
+        concurrency: 20,
         retries: 5,
         instance: options.instance,
       });

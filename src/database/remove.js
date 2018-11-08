@@ -1,13 +1,14 @@
 "use strict";
 
 var pathLib = require("path");
-var Queue = require("../queue");
 var logger = require("../logger");
 var api = require("../api");
 var FirebaseError = require("../error");
 var request = require("request");
 var responseToError = require("../responseToError");
 var utils = require("../utils");
+
+const { Queue } = require("../queue");
 
 class Remote {
   constructor(instance) {
@@ -21,7 +22,7 @@ class Remote {
         url: url,
         json: true,
       };
-      return api.addRequestHeaders(reqOptions).then(reqOptionsWithToken => {
+      return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.del(reqOptionsWithToken, (err, res, body) => {
           if (err) {
             return reject(
@@ -45,7 +46,7 @@ class Remote {
     var reqOptions = {
       url: url,
     };
-    return api.addRequestHeaders(reqOptions).then(reqOptionsWithToken => {
+    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
       return new Promise((resolve, reject) => {
         logger.debug("[database] Prefetching test at " + path);
         request.get(reqOptionsWithToken, (err, res, body) => {
@@ -81,11 +82,11 @@ class Remote {
     var url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
-      ".json?shallow=true&limitToFirst=10000";
+      ".json?shallow=true&limitToFirst=50000";
     var reqOptions = {
       url: url,
     };
-    return api.addRequestHeaders(reqOptions).then(reqOptionsWithToken => {
+    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
       return new Promise((resolve, reject) => {
         request.get(reqOptionsWithToken, (err, res, body) => {
           if (err) {
@@ -140,12 +141,12 @@ class DatabaseRemove {
   chunkedDelete(path) {
     return this.remote
       .prefetchTest(path)
-      .then(test => {
+      .then((test) => {
         switch (test) {
           case "small":
             return this.remote.deletePath(path);
           case "large":
-            return this.remote.listPath(path).then(pathList => {
+            return this.remote.listPath(path).then((pathList) => {
               if (pathList) {
                 for (var i = 0; i < pathList.length; i++) {
                   this.jobQueue.add(pathLib.join(path, pathList[i]));
@@ -162,7 +163,7 @@ class DatabaseRemove {
             );
         }
       })
-      .then(deleted => {
+      .then((deleted) => {
         if (deleted) {
           if (path === this.path) {
             this.jobQueue.close();
@@ -187,6 +188,7 @@ class DatabaseRemove {
       handler: this.chunkedDelete.bind(this),
       retries: this.retries,
     });
+    this.remote.jobQueue = this.jobQueue;
     this.jobQueue.add(this.path);
     return this.jobQueue.wait();
   }

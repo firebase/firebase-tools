@@ -8,7 +8,7 @@ const pathLib = require("path");
 const DatabaseRemove = require("../../database/remove");
 const helpers = require("../helpers");
 
-describe("TestRemote", () => {
+describe("Remote", () => {
   var databaseRemove = new DatabaseRemove("", {
     concurrency: 0,
     retires: 0,
@@ -28,10 +28,10 @@ describe("TestRemote", () => {
     nock.cleanAll();
   });
 
-  it("listPath should work", done => {
+  it("listPath should work", (done) => {
     nock("https://fake-db.firebaseio.com")
       .get("/.json")
-      .query({ shallow: true, limitToFirst: "10000" })
+      .query({ shallow: true, limitToFirst: "50000" })
       .reply(200, {
         a: true,
         x: true,
@@ -42,7 +42,7 @@ describe("TestRemote", () => {
       .notify(done);
   });
 
-  it("prefetchTest should return empty", done => {
+  it("prefetchTest should return empty", (done) => {
     nock("https://fake-db.firebaseio.com")
       .get("/empty/path.json")
       .query({ timeout: "100ms" })
@@ -52,7 +52,7 @@ describe("TestRemote", () => {
       .notify(done);
   });
 
-  it("prefetchTest should return large", done => {
+  it("prefetchTest should return large", (done) => {
     nock("https://fake-db.firebaseio.com")
       .get("/large/path.json")
       .query({ timeout: "100ms" })
@@ -65,7 +65,7 @@ describe("TestRemote", () => {
       .notify(done);
   });
 
-  it("prefetchTest should return small", done => {
+  it("prefetchTest should return small", (done) => {
     nock("https://fake-db.firebaseio.com")
       .get("/small/path.json")
       .query({ timeout: "100ms" })
@@ -159,25 +159,25 @@ describe("TestRemote", () => {
     expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d", "f"]);
   });
 
-  it("prefetchTest should return empty", done => {
+  it("prefetchTest should return empty", (done) => {
     expect(fakeDb.prefetchTest("/f"))
       .to.eventually.eql("empty")
       .notify(done);
   });
 
-  it("prefetchTest should return large", done => {
+  it("prefetchTest should return large", (done) => {
     expect(fakeDb.prefetchTest("/"))
       .to.eventually.eql("large")
       .notify(done);
   });
 
-  it("prefetchTest should return small", done => {
+  it("prefetchTest should return small", (done) => {
     expect(fakeDb.prefetchTest("/d/e"))
       .to.eventually.eql("small")
       .notify(done);
   });
 
-  it("deletePath should work", done => {
+  it("deletePath should work", (done) => {
     fakeDb.deletePath("/a/b").then(() => {
       expect(fakeDb.listPath("/a"))
         .to.eventually.eql(["c"])
