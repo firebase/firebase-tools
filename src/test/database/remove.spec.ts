@@ -1,11 +1,10 @@
-"use strict";
-
 import { expect } from "chai";
 import * as pathLib from "path";
 
 import DatabaseRemove from "../../database/remove";
+import { PrefetchResult } from "../../database/remove-remote";
 
-class TestRemote {
+class TestRemoveRemote {
   public data: any;
 
   constructor(data: any) {
@@ -26,17 +25,17 @@ class TestRemote {
     return Promise.resolve(true);
   }
 
-  public prefetchTest(path: string): Promise<string> {
+  public prefetchTest(path: string): Promise<PrefetchResult> {
     const d = this._dataAtpath(path);
     if (!d) {
-      return Promise.resolve("empty");
+      return Promise.resolve(PrefetchResult.EMPTY);
     }
     if ("string" === typeof d) {
-      return Promise.resolve("small");
+      return Promise.resolve(PrefetchResult.SMALL);
     } else if (Object.keys(d).length === 0) {
-      return Promise.resolve("empty");
+      return Promise.resolve(PrefetchResult.EMPTY);
     } else {
-      return Promise.resolve("large");
+      return Promise.resolve(PrefetchResult.LARGE);
     }
   }
 
@@ -53,7 +52,7 @@ class TestRemote {
     let d = this.data;
     for (const p of splitedPath) {
       if (d && p !== "") {
-        if ("string" === typeof d) {
+        if (typeof d === "string") {
           d = null;
         } else {
           d = d[p];
@@ -64,8 +63,8 @@ class TestRemote {
   }
 }
 
-describe("TestRemote", () => {
-  const fakeDb = new TestRemote({
+describe("TestRemoveRemote", () => {
+  const fakeDb = new TestRemoveRemote({
     a: {
       b: "1",
       c: "2",
@@ -77,53 +76,46 @@ describe("TestRemote", () => {
   });
 
   it("listPath should work", () => {
-    expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d", "f"]);
+    return expect(fakeDb.listPath("/")).to.eventually.eql(["a", "d", "f"]);
   });
 
-  it("prefetchTest should return empty", (done) => {
-    expect(fakeDb.prefetchTest("/f"))
-      .to.eventually.eql("empty")
-      .notify(done);
+  it("prefetchTest should return empty", () => {
+    return expect(fakeDb.prefetchTest("/f")).to.eventually.eql(PrefetchResult.EMPTY);
   });
 
-  it("prefetchTest should return large", (done) => {
-    expect(fakeDb.prefetchTest("/"))
-      .to.eventually.eql("large")
-      .notify(done);
+  it("prefetchTest should return large", () => {
+    return expect(fakeDb.prefetchTest("/")).to.eventually.eql(PrefetchResult.LARGE);
   });
 
-  it("prefetchTest should return small", (done) => {
-    expect(fakeDb.prefetchTest("/d/e"))
-      .to.eventually.eql("small")
-      .notify(done);
+  it("prefetchTest should return small", () => {
+    return expect(fakeDb.prefetchTest("/d/e")).to.eventually.eql(PrefetchResult.SMALL);
   });
 
-  it("deletePath should work", (done) => {
-    fakeDb.deletePath("/a/b").then(() => {
-      expect(fakeDb.listPath("/a"))
-        .to.eventually.eql(["c"])
-        .notify(done);
+  it("deletePath should work", () => {
+    return fakeDb.deletePath("/a/b").then(() => {
+      return expect(fakeDb.listPath("/a")).to.eventually.eql(["c"]);
     });
   });
 });
 
 describe("DatabaseRemove", () => {
   it("DatabaseRemove should remove fakeDb at / 1", () => {
-    const fakeDb = new TestRemote({
+    const fakeDb = new TestRemoveRemote({
       c: "2",
     });
     const removeOps = new DatabaseRemove("/", {
+      instance: "test-remover",
       concurrency: 200,
       retries: 5,
-      remote: fakeDb,
     });
+    removeOps.remote = fakeDb;
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql(null);
     });
   });
 
   it("DatabaseRemove should remove fakeDb at / 2", () => {
-    const fakeDb = new TestRemote({
+    const fakeDb = new TestRemoveRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -133,17 +125,18 @@ describe("DatabaseRemove", () => {
       },
     });
     const removeOps = new DatabaseRemove("/", {
+      instance: "test-remover",
       concurrency: 200,
       retries: 5,
-      remote: fakeDb,
     });
+    removeOps.remote = fakeDb;
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql(null);
     });
   });
 
   it("DatabaseRemove should remove fakeDb at /a/b", () => {
-    const fakeDb = new TestRemote({
+    const fakeDb = new TestRemoveRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -154,10 +147,11 @@ describe("DatabaseRemove", () => {
     });
 
     const removeOps = new DatabaseRemove("/a/b", {
+      instance: "test-remover",
       concurrency: 200,
       retries: 5,
-      remote: fakeDb,
     });
+    removeOps.remote = fakeDb;
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql({
         a: {
@@ -171,7 +165,7 @@ describe("DatabaseRemove", () => {
   });
 
   it("DatabaseRemove should remove fakeDb at /a", () => {
-    const fakeDb = new TestRemote({
+    const fakeDb = new TestRemoveRemote({
       a: {
         b: { x: { y: "1" } },
         c: "2",
@@ -181,10 +175,11 @@ describe("DatabaseRemove", () => {
       },
     });
     const removeOps = new DatabaseRemove("/a", {
+      instance: "test-remover",
       concurrency: 200,
       retries: 5,
-      remote: fakeDb,
     });
+    removeOps.remote = fakeDb;
     return removeOps.execute().then(() => {
       expect(fakeDb.data).to.eql({
         d: {

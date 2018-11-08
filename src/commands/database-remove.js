@@ -3,7 +3,7 @@
 var Command = require("../command");
 var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
-var DatabaseRemove = require("../database/remove");
+var DatabaseRemove = require("../database/remove").default;
 var api = require("../api");
 
 var utils = require("../utils");

@@ -1,14 +1,18 @@
-"use strict";
-
 import { Response } from "request";
 import * as request from "request";
-import responseToError = require("../responseToError");
-import utils = require("../utils");
-import FirebaseError = require("../error");
-import logger = require("../logger");
-import api = require("../api");
+import * as responseToError from "../responseToError";
+import * as utils from "../utils";
+import * as FirebaseError from "../error";
+import * as logger from "../logger";
+import * as api from "../api";
 
-class RemoveRemote {
+export enum PrefetchResult {
+  SMALL,
+  LARGE,
+  EMPTY,
+}
+
+export default class RemoveRemote {
   private instance: string;
 
   constructor(instance: string) {
@@ -24,10 +28,10 @@ class RemoveRemote {
         json: true,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-        request.del(reqOptionsWithToken, (err: any, res: Response, body: any) => {
+        request.del(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
             return reject(
-              new FirebaseError("Unexpected error while removing data at " + path, {
+              new FirebaseError(`Unexpected error while removing data at ${path}`, {
                 exit: 2,
                 original: err,
               })
@@ -35,26 +39,26 @@ class RemoveRemote {
           } else if (res.statusCode >= 400) {
             return reject(responseToError(res, body));
           }
-          logger.debug("[database] Sucessfully removed data at " + path);
+          logger.debug(`[database] Sucessfully removed data at ${path}`);
           return resolve(true);
         });
       });
     });
   }
 
-  public prefetchTest(path: string): Promise<string> {
+  public prefetchTest(path: string): Promise<PrefetchResult> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?timeout=100ms";
     const reqOptions = {
       url,
     };
     return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-      return new Promise<string>((resolve, reject) => {
-        logger.debug("[database] Prefetching test at " + path);
-        request.get(reqOptionsWithToken, (err: any, res: Response, body: any) => {
+      return new Promise<PrefetchResult>((resolve, reject) => {
+        logger.debug(`[database] Prefetching test at ${path}`);
+        request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
             return reject(
-              new FirebaseError("Unexpected error while prefetching data to delete" + path, {
+              new FirebaseError(`Unexpected error while prefetching data to delete ${path}`, {
                 exit: 2,
               })
             );
@@ -62,16 +66,16 @@ class RemoveRemote {
           switch (res.statusCode) {
             case 200:
               if (body) {
-                return resolve("small");
+                return resolve(PrefetchResult.SMALL);
               } else {
-                return resolve("empty");
+                return resolve(PrefetchResult.EMPTY);
               }
             case 400:
               // timeout. large subtree, recursive delete for each subtree
-              return resolve("large");
+              return resolve(PrefetchResult.LARGE);
             case 413:
               // payload too large. large subtree, recursive delete for each subtree
-              return resolve("large");
+              return resolve(PrefetchResult.LARGE);
             default:
               return reject(responseToError(res, body));
           }
@@ -90,7 +94,7 @@ class RemoveRemote {
     };
     return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
       return new Promise<string[]>((resolve, reject) => {
-        request.get(reqOptionsWithToken, (err: any, res: Response, body: any) => {
+        request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
             return reject(
               new FirebaseError("Unexpected error while list subtrees", {
@@ -116,11 +120,9 @@ class RemoveRemote {
             const keyList = Object.keys(data);
             return resolve(keyList);
           }
-          return resolve([]);
+          resolve([]);
         });
       });
     });
   }
 }
-
-export default RemoveRemote;

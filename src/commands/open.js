@@ -38,9 +38,9 @@ var LINKS = [
   },
   { name: "Hosting", arg: "hosting", consoleUrl: "/hosting/main" },
   { name: "Hosting: Deployed Site", arg: "hosting:site" },
-  { name: "RemoveRemote Config", arg: "config", consoleUrl: "/config" },
+  { name: "Remote Config", arg: "config", consoleUrl: "/config" },
   {
-    name: "RemoveRemote Config: Conditions",
+    name: "Remote Config: Conditions",
     arg: "config:conditions",
     consoleUrl: "/config/conditions",
   },
