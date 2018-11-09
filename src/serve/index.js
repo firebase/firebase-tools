@@ -3,7 +3,6 @@
 var _ = require("lodash");
 
 var logger = require("../logger");
-var previews = require("../previews");
 
 var TARGETS = {
   hosting: require("./hosting"),

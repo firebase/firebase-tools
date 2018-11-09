@@ -12,7 +12,6 @@ var checkDupHostingKeys = require("../checkDupHostingKeys");
 var serve = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
-var previews = require("../previews");
 
 var VALID_EMULATORS = ["database", "firestore"];
 var VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
