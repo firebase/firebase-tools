@@ -6,13 +6,39 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 
-export enum PrefetchResult {
-  SMALL,
-  LARGE,
-  EMPTY,
+export enum NodeSize {
+  SMALL = "small",
+  LARGE = "large",
+  EMPTY = "empty",
 }
 
-export default class RemoveRemote {
+export interface RemoveRemote {
+  /**
+   *
+   * @param {string} path
+   * @return {Promise<boolean>} true if the deletion is sucessful.
+   */
+  deletePath(path: string): Promise<boolean>;
+
+  /**
+   *
+   * Run a prefetch test on a path before issuing a delete to detect
+   * large subtrees and issue recursive chunked deletes instead.
+   *
+   * @param {string} path
+   * @return {Promise<NodeSize>}j
+   */
+  prefetchTest(path: string): Promise<NodeSize>;
+
+  /**
+   *
+   * @param {string} path
+   * @return {Promise<string[]>} the list of sub pathes found.
+   */
+  listPath(path: string): Promise<string[]>;
+}
+
+export class RTDBRemoveRemote implements RemoveRemote {
   private instance: string;
 
   constructor(instance: string) {
@@ -46,14 +72,14 @@ export default class RemoveRemote {
     });
   }
 
-  public prefetchTest(path: string): Promise<PrefetchResult> {
+  public prefetchTest(path: string): Promise<NodeSize> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?timeout=100ms";
     const reqOptions = {
       url,
     };
     return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-      return new Promise<PrefetchResult>((resolve, reject) => {
+      return new Promise<NodeSize>((resolve, reject) => {
         logger.debug(`[database] Prefetching test at ${path}`);
         request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
@@ -66,16 +92,16 @@ export default class RemoveRemote {
           switch (res.statusCode) {
             case 200:
               if (body) {
-                return resolve(PrefetchResult.SMALL);
+                return resolve(NodeSize.SMALL);
               } else {
-                return resolve(PrefetchResult.EMPTY);
+                return resolve(NodeSize.EMPTY);
               }
             case 400:
               // timeout. large subtree, recursive delete for each subtree
-              return resolve(PrefetchResult.LARGE);
+              return resolve(NodeSize.LARGE);
             case 413:
               // payload too large. large subtree, recursive delete for each subtree
-              return resolve(PrefetchResult.LARGE);
+              return resolve(NodeSize.LARGE);
             default:
               return reject(responseToError(res, body));
           }
@@ -97,7 +123,7 @@ export default class RemoveRemote {
         request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
             return reject(
-              new FirebaseError("Unexpected error while list subtrees", {
+              new FirebaseError("Unexpected error while listing subtrees", {
                 exit: 2,
                 original: err,
               })

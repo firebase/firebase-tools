@@ -2,9 +2,9 @@ import { expect } from "chai";
 import * as pathLib from "path";
 
 import DatabaseRemove from "../../database/remove";
-import { PrefetchResult } from "../../database/remove-remote";
+import { NodeSize, RemoveRemote } from "../../database/removeRemote";
 
-class TestRemoveRemote {
+class TestRemoveRemote implements RemoveRemote {
   public data: any;
 
   constructor(data: any) {
@@ -25,17 +25,17 @@ class TestRemoveRemote {
     return Promise.resolve(true);
   }
 
-  public prefetchTest(path: string): Promise<PrefetchResult> {
+  public prefetchTest(path: string): Promise<NodeSize> {
     const d = this._dataAtpath(path);
     if (!d) {
-      return Promise.resolve(PrefetchResult.EMPTY);
+      return Promise.resolve(NodeSize.EMPTY);
     }
     if ("string" === typeof d) {
-      return Promise.resolve(PrefetchResult.SMALL);
+      return Promise.resolve(NodeSize.SMALL);
     } else if (Object.keys(d).length === 0) {
-      return Promise.resolve(PrefetchResult.EMPTY);
+      return Promise.resolve(NodeSize.EMPTY);
     } else {
-      return Promise.resolve(PrefetchResult.LARGE);
+      return Promise.resolve(NodeSize.LARGE);
     }
   }
 
@@ -80,15 +80,15 @@ describe("TestRemoveRemote", () => {
   });
 
   it("prefetchTest should return empty", () => {
-    return expect(fakeDb.prefetchTest("/f")).to.eventually.eql(PrefetchResult.EMPTY);
+    return expect(fakeDb.prefetchTest("/f")).to.eventually.eql(NodeSize.EMPTY);
   });
 
   it("prefetchTest should return large", () => {
-    return expect(fakeDb.prefetchTest("/")).to.eventually.eql(PrefetchResult.LARGE);
+    return expect(fakeDb.prefetchTest("/")).to.eventually.eql(NodeSize.LARGE);
   });
 
   it("prefetchTest should return small", () => {
-    return expect(fakeDb.prefetchTest("/d/e")).to.eventually.eql(PrefetchResult.SMALL);
+    return expect(fakeDb.prefetchTest("/d/e")).to.eventually.eql(NodeSize.SMALL);
   });
 
   it("deletePath should work", () => {

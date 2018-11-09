@@ -1,8 +1,9 @@
 import * as pathLib from "path";
-import { Queue } from "../queue";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
-import RemoveRemote, { PrefetchResult } from "./remove-remote";
+
+import { NodeSize, RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
+import { Queue } from "../queue";
 
 export interface DatabaseRemoveOptions {
   // RTBD instance ID.
@@ -32,7 +33,7 @@ export default class DatabaseRemove {
     this.path = path;
     this.concurrency = options.concurrency;
     this.retries = options.retries;
-    this.remote = new RemoveRemote(options.instance);
+    this.remote = new RTDBRemoveRemote(options.instance);
     this.waitingPath = new Map();
     this.jobQueue = new Queue({
       name: "long delete queue",
@@ -51,11 +52,11 @@ export default class DatabaseRemove {
   private chunkedDelete(path: string): Promise<any> {
     return this.remote
       .prefetchTest(path)
-      .then((test: PrefetchResult) => {
+      .then((test: NodeSize) => {
         switch (test) {
-          case PrefetchResult.SMALL:
+          case NodeSize.SMALL:
             return this.remote.deletePath(path);
-          case PrefetchResult.LARGE:
+          case NodeSize.LARGE:
             return this.remote.listPath(path).then((pathList: string[]) => {
               if (pathList) {
                 for (const p of pathList) {
@@ -65,7 +66,7 @@ export default class DatabaseRemove {
               }
               return false;
             });
-          case PrefetchResult.EMPTY:
+          case NodeSize.EMPTY:
             return true;
           default:
             throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });

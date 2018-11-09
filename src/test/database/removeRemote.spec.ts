@@ -5,11 +5,11 @@ import * as utils from "../../utils";
 import * as api from "../../api";
 
 import * as helpers from "../helpers";
-import RemoveRemote, { PrefetchResult } from "../../database/remove-remote";
+import { NodeSize, RTDBRemoveRemote } from "../../database/removeRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
-  const remote = new RemoveRemote(instance);
+  const remote = new RTDBRemoveRemote(instance);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
   let sandbox: sinon.SinonSandbox;
 
@@ -40,7 +40,7 @@ describe("RemoveRemote", () => {
       .get("/empty/path.json")
       .query({ timeout: "100ms" })
       .reply(200, null);
-    return expect(remote.prefetchTest("/empty/path")).to.eventually.eql(PrefetchResult.EMPTY);
+    return expect(remote.prefetchTest("/empty/path")).to.eventually.eql(NodeSize.EMPTY);
   });
 
   it("prefetchTest should return large", () => {
@@ -51,7 +51,7 @@ describe("RemoveRemote", () => {
         error:
           "Data requested exceeds the maximum size that can be accessed with a single request.",
       });
-    return expect(remote.prefetchTest("/large/path")).to.eventually.eql(PrefetchResult.LARGE);
+    return expect(remote.prefetchTest("/large/path")).to.eventually.eql(NodeSize.LARGE);
   });
 
   it("prefetchTest should return small", () => {
@@ -61,7 +61,7 @@ describe("RemoveRemote", () => {
       .reply(200, {
         x: "some data",
       });
-    return expect(remote.prefetchTest("/small/path")).to.eventually.eql(PrefetchResult.SMALL);
+    return expect(remote.prefetchTest("/small/path")).to.eventually.eql(NodeSize.SMALL);
   });
 
   it("deletePath should work", () => {
