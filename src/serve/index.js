@@ -8,12 +8,9 @@ var previews = require("../previews");
 var TARGETS = {
   hosting: require("./hosting"),
   functions: require("./functions"),
+  database: require("./database"),
+  firestore: require("./firestore"),
 };
-
-if (previews.emulators) {
-  TARGETS["database"] = require("./database");
-  TARGETS["firestore"] = require("./firestore");
-}
 
 var _serve = function(options) {
   var targetNames = options.targets;
