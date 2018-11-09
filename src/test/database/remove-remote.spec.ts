@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { SinonSandbox } from "sinon";
 import * as sinon from "sinon";
 import * as nock from "nock";
 import * as utils from "../../utils";
@@ -12,7 +11,7 @@ describe("RemoveRemote", () => {
   const instance = "fake-db";
   const remote = new RemoveRemote(instance);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
-  let sandbox: SinonSandbox;
+  let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();

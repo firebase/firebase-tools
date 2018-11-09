@@ -17,7 +17,7 @@ export default class DatabaseRemove {
   public path: string;
   public concurrency: number;
   public retries: number;
-  public remote: any;
+  public remote: RemoveRemote;
   private jobQueue: Queue<string>;
   private waitingPath: Map<string, number>;
 
@@ -26,9 +26,7 @@ export default class DatabaseRemove {
    *
    * @constructor
    * @param path path to delete.
-   * @param the RTDB instance ID.
-   * @param options.concurrency the number of concurrent chunk delete allowed
-   * @param options.retires the number of retries for each chunk delete
+   * @param options
    */
   constructor(path: string, options: DatabaseRemoveOptions) {
     this.path = path;
@@ -69,6 +67,8 @@ export default class DatabaseRemove {
             });
           case PrefetchResult.EMPTY:
             return true;
+          default:
+            throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });
         }
       })
       .then((deleted: boolean) => {
