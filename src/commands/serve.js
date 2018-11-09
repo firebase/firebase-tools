@@ -15,7 +15,7 @@ var getProjectNumber = require("../getProjectNumber");
 var previews = require("../previews");
 
 VALID_EMULATORS = ["database", "firestore"];
-VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
+var VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
 
 var filterOnlyEmulators = (only) => {
   if (!only) {
