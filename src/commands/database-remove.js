@@ -3,10 +3,8 @@
 var Command = require("../command");
 var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
-var request = require("request");
+var DatabaseRemove = require("../database/remove").default;
 var api = require("../api");
-var responseToError = require("../responseToError");
-var FirebaseError = require("../error");
 
 var utils = require("../utils");
 var prompt = require("../prompt");
@@ -41,29 +39,13 @@ module.exports = new Command("database:remove <path>")
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
-      var reqOptions = {
-        url: url,
-        json: true,
-      };
-
-      return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-        return new Promise(function(resolve, reject) {
-          request.del(reqOptionsWithToken, function(err, res, body) {
-            if (err) {
-              return reject(
-                new FirebaseError("Unexpected error while removing data", {
-                  exit: 2,
-                })
-              );
-            } else if (res.statusCode >= 400) {
-              return reject(responseToError(res, body));
-            }
-
-            utils.logSuccess("Data removed successfully");
-            return resolve();
-          });
-        });
+      var removeOps = new DatabaseRemove(path, {
+        concurrency: 20,
+        retries: 5,
+        instance: options.instance,
+      });
+      return removeOps.execute().then(function() {
+        utils.logSuccess("Data removed successfully");
       });
     });
   });
