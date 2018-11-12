@@ -41,7 +41,8 @@ export class Queue<T> {
   public success: number = 0;
   public errored: number = 0;
   public retried: number = 0;
-  public tasks: T[] = [];
+  public total: number = 0;
+  public tasks: { [index: number]: T } = {};
   public waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   public min: number = 9999999999;
   public max: number = 0;
@@ -90,7 +91,8 @@ export class Queue<T> {
       this.startTime = Date.now();
     }
 
-    this.tasks.push(task);
+    this.tasks[this.total] = task;
+    this.total++;
     this.process();
   }
 
@@ -100,11 +102,7 @@ export class Queue<T> {
   }
 
   public process(): void {
-    if (
-      this._finishIfIdle() ||
-      this.active >= this.concurrency ||
-      this.cursor === this.tasks.length
-    ) {
+    if (this._finishIfIdle() || this.active >= this.concurrency || this.cursor === this.total) {
       return;
     }
 
@@ -132,6 +130,8 @@ export class Queue<T> {
       this.success++;
       this.complete++;
       this.active--;
+      delete this.tasks[cursorIndex];
+      delete this.retryCounts[cursorIndex];
       this.process();
     } catch (err) {
       if (this.retries > 0) {
@@ -167,18 +167,18 @@ export class Queue<T> {
       success: this.success,
       errored: this.errored,
       retried: this.retried,
-      total: this.tasks.length,
+      total: this.total,
       elapsed: Date.now() - this.startTime,
     };
   }
 
   public taskName(cursorIndex: number): string {
-    const task = this.tasks[cursorIndex];
+    const task = this.tasks[cursorIndex] || "finished task";
     return typeof task === "string" ? task : `index ${cursorIndex}`;
   }
 
   private _finishIfIdle(): boolean {
-    if (this.closed && this.cursor === this.tasks.length && this.active === 0) {
+    if (this.closed && this.cursor === this.total && this.active === 0) {
       this._finish(null);
       return true;
     }
