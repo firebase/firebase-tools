@@ -1,0 +1,1 @@
+fixed - JSON output when performing a hosting deploy should include the version.
