@@ -72,14 +72,11 @@ module.exports = function(client) {
 
   client.setup = {
     web: loadCommand("setup-web"),
-  };
-
-  if (previews.emulators) {
-    client.setup.emulators = {
+    emulators: {
       database: loadCommand("setup-emulators-database"),
       firestore: loadCommand("setup-emulators-firestore"),
-    };
-  }
+    },
+  };
 
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

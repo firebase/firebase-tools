@@ -318,7 +318,7 @@ module.exports = function(context, options, payload) {
               "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
           });
 
-      next.then(function(proceed) {
+      return next.then(function(proceed) {
         if (!proceed) {
           if (deployments.length !== 0) {
             utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
