@@ -106,7 +106,7 @@ var deploy = function(targetNames, options) {
           logger.info(clc.bold("Hosting URL:"), utils.addSubdomain(api.hostingOrigin, deploy.site));
         });
         const versionNames = context.hosting.deploys.map((deploy) => deploy.version);
-        return { hosting: (versionNames.length === 1 ? versionNames[0] : versionNames) };
+        return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
       }
     });
 };
