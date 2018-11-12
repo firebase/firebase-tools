@@ -31,6 +31,20 @@ describe("Queue", () => {
     expect(q.taskName(0)).to.equal("index 0");
   });
 
+  it("should return 'finished task' as the task name", () => {
+    const handler = sinon.stub().resolves();
+    const q = new Queue({
+      handler,
+    });
+
+    q.add(2);
+    q.close();
+
+    return q.wait().then(() => {
+      expect(q.taskName(0)).to.equal("finished task");
+    });
+  });
+
   it("should handle function tasks", () => {
     const task = sinon.stub().resolves();
     const q = new Queue({});
@@ -44,6 +58,7 @@ describe("Queue", () => {
       expect(q.success).to.equal(1);
       expect(q.errored).to.equal(0);
       expect(q.retried).to.equal(0);
+      expect(q.total).to.equal(1);
     });
   });
 
@@ -62,6 +77,7 @@ describe("Queue", () => {
       expect(q.success).to.equal(1);
       expect(q.errored).to.equal(0);
       expect(q.retried).to.equal(0);
+      expect(q.total).to.equal(1);
     });
   });
 
@@ -89,6 +105,7 @@ describe("Queue", () => {
         expect(q.success).to.equal(0);
         expect(q.errored).to.equal(1);
         expect(q.retried).to.equal(0);
+        expect(q.total).to.equal(1);
       });
   });
 
@@ -117,6 +134,7 @@ describe("Queue", () => {
         expect(q.success).to.equal(0);
         expect(q.errored).to.equal(1);
         expect(q.retried).to.equal(3);
+        expect(q.total).to.equal(1);
       });
   });
 
@@ -157,6 +175,7 @@ describe("Queue", () => {
         expect(q.success).to.equal(3);
         expect(q.errored).to.equal(0);
         expect(q.retried).to.equal(6);
+        expect(q.total).to.equal(3);
       });
   });
 
@@ -194,6 +213,7 @@ describe("Queue", () => {
         expect(q.success).to.equal(3);
         expect(q.errored).to.equal(0);
         expect(q.retried).to.equal(6);
+        expect(q.total).to.equal(3);
       });
   });
 });
