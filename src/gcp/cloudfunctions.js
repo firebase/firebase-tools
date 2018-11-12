@@ -1,6 +1,7 @@
 "use strict";
 
 var api = require("../api");
+const FirebaseError = require("../error");
 var utils = require("../utils");
 var _ = require("lodash");
 var logger = require("../logger");
@@ -19,8 +20,12 @@ function _functionsOpLogReject(func, type, err) {
   } else {
     logger.info(err.message);
   }
-  err.context = { function: func };
-  return Promise.reject(err);
+  return Promise.reject(
+    new FirebaseError(`Failed to ${type} function ${func}`, {
+      original: err,
+      context: { function: func },
+    })
+  );
 }
 
 function _generateUploadUrl(projectId, location) {

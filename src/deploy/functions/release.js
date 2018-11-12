@@ -367,7 +367,7 @@ module.exports = function(context, options, payload) {
         .filter({ state: "fulfilled" })
         .map("value")
         .value();
-      const numFailedDeployments = failedDeployments.length + failedCalls.length;
+      failedDeployments = failedCalls.map((error) => error.context.function);
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
         .then(function() {
@@ -381,18 +381,16 @@ module.exports = function(context, options, payload) {
         })
         .then(() => {
           if (deployments.length > 0) {
-            track("Functions Deploy (Result)", "failure", numFailedDeployments);
+            track("Functions Deploy (Result)", "failure", failedDeployments.length);
             track(
               "Functions Deploy (Result)",
               "success",
-              deployments.length - numFailedDeployments
+              deployments.length - failedDeployments.length
             );
           }
-          if (numFailedDeployments > 0) {
+          if (failedDeployments.length > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:");
-            const sortedFailedDeployments = failedDeployments
-              .concat(failedCalls.map((call) => call.context.function))
-              .sort();
+            const sortedFailedDeployments = failedDeployments.sort();
             for (let i = 0; i < sortedFailedDeployments.length; i++) {
               logger.info(`\t${sortedFailedDeployments[i]}`);
             }
