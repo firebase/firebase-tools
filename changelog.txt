@@ -1,5 +1,0 @@
-fixed - JSON output when performing a hosting deploy should include the version.
-fixed - Authentication using GOOGLE_APPLICATION_CREDENTIALS now uses correct scopes.
-fixed - Fixed functions deletion issue in interactive mode.
-fixed - Improved performance when deleting large amounts of data in RTDBs.
-feature - Added Emulators for RTDB and Firestore to `firebase serve`.
