@@ -367,13 +367,7 @@ module.exports = function(context, options, payload) {
         .filter({ state: "fulfilled" })
         .map("value")
         .value();
-      failedDeployments = failedCalls.map((error) => {
-        if (error.context && error.context.function) {
-          return error.context.function;
-        } else {
-          return "";
-        }
-      });
+      failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
         .then(function() {
