@@ -53,12 +53,27 @@ export interface Index {
 }
 
 export class FirestoreIndexes implements FirestoreIndexApi<Index> {
-  public async deploy(indexes: any[]): Promise<any> {
-    // TODO: Validate
-    // TODO: List existing indexes
+  public async deploy(project: string, indexes: any[]): Promise<any> {
+    indexes.forEach((index) => {
+      this.validate(index);
+    });
+
+    const toDeploy: IndexSpecEntry[] = indexes;
+    const existing = await this.list(project);
+
     // TODO: Figure out which deployed indexes are missing here
     // TODO: Log the missing ones
-    // TODO: Deploy all indexes specified here
+
+    toDeploy.forEach((index) => {
+      const exists = existing.some((x) => this.sameSpec(x, index));
+      if (exists) {
+        logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
+        return;
+      }
+
+      logger.debug(`Creating new index: ${JSON.stringify(index)}`);
+      // TODO: Actually create
+    });
   }
 
   /**
@@ -119,13 +134,13 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   /**
    * TODO
    */
-  private validate(index: any): IndexSpecEntry {
+  public validate(index: any): void {
     validator.assertHas(index, "collectionGroup");
     validator.assertHas(index, "queryScope");
     validator.assertEnum(index, "queryScope", Object.keys(QueryScope));
     validator.assertHas(index, "fields");
 
-    index.fields.array.forEach((field: any) => {
+    index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
       validator.assertHasOneOf(field, ["order", "arrayConfig"]);
 
@@ -137,8 +152,6 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
         validator.assertEnum(field, "arrayConfig", Object.keys(ArrayConfig));
       }
     });
-
-    return index as IndexSpecEntry;
   }
 
   /**
