@@ -1,4 +1,5 @@
 import * as api from "../api";
+import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as clc from "cli-color";
 
@@ -48,23 +49,7 @@ export interface Index {
 }
 
 export class FirestoreIndexes {
-  /**
-   * Parse an Index name into useful pieces.
-   */
-  private static _parseIndexName(name: string) {
-    const m = name.match(INDEX_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw `Error parsing index name: ${name}`;
-    }
-
-    return {
-      projectId: m[1],
-      collectionGroupId: m[2],
-      indexId: m[3],
-    };
-  }
-
-  static makeIndexSpec(indexes: Index[]): IndexSpec {
+  public static makeIndexSpec(indexes: Index[]): IndexSpec {
     // TODO: QueryScope
     const indexesJson = indexes.map((index) => {
       return {
@@ -78,7 +63,7 @@ export class FirestoreIndexes {
     };
   }
 
-  static printIndexes(indexes: Index[], pretty: boolean) {
+  public static printIndexes(indexes: Index[], pretty: boolean): void {
     if (!pretty) {
       logger.info(JSON.stringify(this.makeIndexSpec(indexes), undefined, 2));
       return;
@@ -92,8 +77,8 @@ export class FirestoreIndexes {
   /**
    * TODO
    */
-  static getCollectionGroup(index: Index): string {
-    return this._parseIndexName(index.name).collectionGroupId;
+  public static getCollectionGroup(index: Index): string {
+    return this.parseIndexName(index.name).collectionGroupId;
   }
 
   /**
@@ -101,7 +86,7 @@ export class FirestoreIndexes {
    *
    * @param index a Firestore index.
    */
-  static toPrettyString(index: Index) {
+  public static toPrettyString(index: Index): string {
     let result = "";
 
     if (index.state) {
@@ -116,12 +101,12 @@ export class FirestoreIndexes {
       }
     }
 
-    const nameInfo = this._parseIndexName(index.name);
+    const nameInfo = this.parseIndexName(index.name);
 
     result += clc.cyan(`(${nameInfo.collectionGroupId})`);
     result += " -- ";
 
-    index.fields.forEach(function(field) {
+    index.fields.forEach((field) => {
       if (field.fieldPath === "__name__") {
         return;
       }
@@ -137,7 +122,7 @@ export class FirestoreIndexes {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  static async list(project: string): Promise<Index[]> {
+  public static async list(project: string): Promise<Index[]> {
     const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
 
     const res = await api.request("GET", `/v1beta2/${url}`, {
@@ -160,5 +145,21 @@ export class FirestoreIndexes {
         fields,
       } as Index;
     });
+  }
+
+  /**
+   * Parse an Index name into useful pieces.
+   */
+  private static parseIndexName(name: string): any {
+    const m = name.match(INDEX_NAME_REGEX);
+    if (!m || m.length < 4) {
+      throw new FirebaseError(`Error parsing index name: ${name}`);
+    }
+
+    return {
+      projectId: m[1],
+      collectionGroupId: m[2],
+      indexId: m[3],
+    };
   }
 }
