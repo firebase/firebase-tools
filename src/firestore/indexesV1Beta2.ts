@@ -2,6 +2,7 @@ import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as clc from "cli-color";
+import { FirestoreIndexApi } from "./indexes";
 
 // projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/indexes/$INDEX_ID
 const INDEX_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/indexes\/([^\/]*)/;
@@ -48,12 +49,12 @@ export interface Index {
   state: State;
 }
 
-export class FirestoreIndexes {
-  public static makeIndexSpec(indexes: Index[]): IndexSpec {
+export class FirestoreIndexes implements FirestoreIndexApi<Index> {
+  public makeIndexSpec(indexes: Index[]): IndexSpec {
     // TODO: QueryScope
     const indexesJson = indexes.map((index) => {
       return {
-        collectionGroup: this.getCollectionGroup(index),
+        collectionGroup: this.parseIndexName(index.name).collectionGroupId,
         fields: index.fields,
       };
     });
@@ -63,7 +64,7 @@ export class FirestoreIndexes {
     };
   }
 
-  public static printIndexes(indexes: Index[], pretty: boolean): void {
+  public printIndexes(indexes: Index[], pretty: boolean): void {
     if (!pretty) {
       logger.info(JSON.stringify(this.makeIndexSpec(indexes), undefined, 2));
       return;
@@ -75,54 +76,10 @@ export class FirestoreIndexes {
   }
 
   /**
-   * TODO
-   */
-  public static getCollectionGroup(index: Index): string {
-    return this.parseIndexName(index.name).collectionGroupId;
-  }
-
-  /**
-   * Get a colored, pretty-printed representation of an index.
-   *
-   * @param index a Firestore index.
-   */
-  public static toPrettyString(index: Index): string {
-    let result = "";
-
-    if (index.state) {
-      const stateMsg = `[${index.state}] `;
-
-      if (index.state === State.READY) {
-        result += clc.green(stateMsg);
-      } else if (index.state === State.CREATING) {
-        result += clc.yellow(stateMsg);
-      } else {
-        result += clc.red(stateMsg);
-      }
-    }
-
-    const nameInfo = this.parseIndexName(index.name);
-
-    result += clc.cyan(`(${nameInfo.collectionGroupId})`);
-    result += " -- ";
-
-    index.fields.forEach((field) => {
-      if (field.fieldPath === "__name__") {
-        return;
-      }
-
-      const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
-      result += `(${field.fieldPath},${orderOrArrayConfig}) `;
-    });
-
-    return result;
-  }
-
-  /**
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  public static async list(project: string): Promise<Index[]> {
+  public async list(project: string): Promise<Index[]> {
     const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
 
     const res = await api.request("GET", `/v1beta2/${url}`, {
@@ -148,9 +105,48 @@ export class FirestoreIndexes {
   }
 
   /**
+   * Get a colored, pretty-printed representation of an index.
+   *
+   * @param index a Firestore index.
+   */
+  private toPrettyString(index: Index): string {
+    let result = "";
+
+    if (index.state) {
+      const stateMsg = `[${index.state}] `;
+
+      if (index.state === State.READY) {
+        result += clc.green(stateMsg);
+      } else if (index.state === State.CREATING) {
+        result += clc.yellow(stateMsg);
+      } else {
+        result += clc.red(stateMsg);
+      }
+    }
+
+    const nameInfo = this.parseIndexName(index.name);
+
+    result += clc.cyan(`(${nameInfo.collectionGroupId})`);
+    result += " -- ";
+
+    index.fields.forEach((field) => {
+      if (field.fieldPath === "__name__") {
+        return;
+      }
+
+      // Normal field indexes have an "order" while array indexes have an "arrayConfig",
+      // we want to display whichever one is present.
+      const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
+      result += `(${field.fieldPath},${orderOrArrayConfig}) `;
+    });
+
+    return result;
+  }
+
+  /**
    * Parse an Index name into useful pieces.
    */
-  private static parseIndexName(name: string): any {
+  private parseIndexName(name: string): any {
     const m = name.match(INDEX_NAME_REGEX);
     if (!m || m.length < 4) {
       throw new FirebaseError(`Error parsing index name: ${name}`);

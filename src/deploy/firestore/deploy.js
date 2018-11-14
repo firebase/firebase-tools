@@ -74,9 +74,7 @@ var _logAllMissing = function(indexes, existingIndexes) {
         "The following indexes are already deployed but not present in the specified indexes file:"
     );
 
-    missingIndexes.forEach(function(index) {
-      logger.info(firestoreIndexes.toPrettyString(index));
-    });
+    firestoreIndexes.printIndexes(missingIndexes, true);
     logger.info();
   }
 };
@@ -103,6 +101,18 @@ function _deployIndexes(context, options) {
   var indexes = indexesSrc.indexes;
   if (!indexes) {
     return utils.reject('Index file must contain an "indexes" property.');
+  }
+
+  // TODO: This should be elsewhere
+  let version = indexesSrc.version;
+  if (!version) {
+    logger.debug("No Firestore indexes version present, defaulting to v1beta2.");
+    version = "v1beta2";
+  }
+
+  const validVersions = ["v1beta1", "v1beta2"];
+  if (validVersions.indexOf(version) < 0) {
+    return utils.reject("Invalid Firestore indexes version: " + version);
   }
 
   return firestoreIndexes.list(options.project).then(function(existingIndexes) {

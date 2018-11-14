@@ -20,8 +20,9 @@ var RULES_TEMPLATE = fs.readFileSync(
 
 var DEFAULT_RULES_FILE = "firestore.rules";
 
+// TODO: Make this work across index versions
 var INDEXES_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../templates/init/firestore/firestore.indexes.json",
+  __dirname + "/../../../templates/init/firestore/v1beta2/firestore.indexes.json",
   "utf8"
 );
 

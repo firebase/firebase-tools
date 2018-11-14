@@ -1,9 +1,17 @@
 "use strict";
 
 import * as Command from "../command";
+import { FirestoreIndexApi } from "../firestore/indexes";
 import * as iv1 from "../firestore/indexesV1Beta1";
 import * as iv2 from "../firestore/indexesV1Beta2";
 import * as requirePermissions from "../requirePermissions";
+
+function _listIndexes<T>(fsIndexes: FirestoreIndexApi<T>, options: any): any {
+  return fsIndexes.list(options.project).then((indexes) => {
+    fsIndexes.printIndexes(indexes, options.pretty);
+    return fsIndexes.makeIndexSpec(indexes);
+  });
+}
 
 module.exports = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
@@ -19,15 +27,11 @@ module.exports = new Command("firestore:indexes")
   )
   .before(requirePermissions, ["datastore.indexes.list"])
   .action((options: any) => {
+    // TODO: Better option name
     if (options.v1beta1) {
-      return iv1.list(options.project).then((indexes: any[]) => {
-        iv1.printIndexes(indexes, options.pretty);
-        return iv1.makeIndexSpec(indexes);
-      });
+      const fsi = iv1 as FirestoreIndexApi<any>;
+      return _listIndexes(fsi, options);
+    } else {
+      return _listIndexes(new iv2.FirestoreIndexes(), options);
     }
-
-    return iv2.FirestoreIndexes.list(options.project).then((indexes) => {
-      iv2.FirestoreIndexes.printIndexes(indexes, options.pretty);
-      return iv2.FirestoreIndexes.makeIndexSpec(indexes);
-    });
   });
