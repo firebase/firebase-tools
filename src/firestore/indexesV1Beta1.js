@@ -1,11 +1,13 @@
 "use strict";
 
-var api = require("../api");
-var clc = require("cli-color");
-var FirebaseError = require("../error");
-var loadCJSON = require("../loadCJSON");
+const api = require("../api");
+const clc = require("cli-color");
+const FirebaseError = require("../error");
+const loadCJSON = require("../loadCJSON");
+const logger = require("../logger");
+const _ = require("lodash");
 
-var VALID_INDEX_MODES = ["ASCENDING", "DESCENDING", "ARRAY_CONTAINS"];
+const VALID_INDEX_MODES = ["ASCENDING", "DESCENDING", "ARRAY_CONTAINS"];
 
 /**
  * Validate an index is correctly formed, throws an exception for all
@@ -209,6 +211,30 @@ var toPrettyString = function(index) {
 };
 
 /**
+ * TODO
+ */
+var makeIndexSpec = function(indexes) {
+  return {
+    indexes: indexes.map((index) => {
+      return _.pick(index, ["collectionId", "fields"]);
+    }),
+  };
+};
+
+/**
+ * TODO
+ */
+var printIndexes = function(indexes, pretty) {
+  if (pretty) {
+    indexes.forEach((index) => {
+      logger.info(toPrettyString(index));
+    });
+  } else {
+    logger.info(JSON.stringify(jsonSpec, undefined, 2));
+  }
+};
+
+/**
  * Prepare indexes for deployment.
  */
 var prepare = function(context, options) {
@@ -234,10 +260,12 @@ var prepare = function(context, options) {
 };
 
 module.exports = {
-  create: create,
-  list: list,
-  equal: equal,
-  hash: hash,
-  toPrettyString: toPrettyString,
-  prepare: prepare,
+  create,
+  list,
+  equal,
+  hash,
+  toPrettyString,
+  prepare,
+  makeIndexSpec,
+  printIndexes,
 };

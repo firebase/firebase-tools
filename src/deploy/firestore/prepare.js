@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var firestoreIndexes = require("../../firestore/indexes");
+var firestoreIndexes = require("../../firestore/indexesV1Beta1");
 var RulesDeploy = require("../../RulesDeploy");
 
 function _prepareRules(context, options) {

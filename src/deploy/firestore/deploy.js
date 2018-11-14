@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 var clc = require("cli-color");
-var firestoreIndexes = require("../../firestore/indexes");
+var firestoreIndexes = require("../../firestore/indexesV1Beta1");
 var logger = require("../../logger");
 
 var utils = require("../../utils");
