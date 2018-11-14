@@ -5,6 +5,7 @@ const clc = require("cli-color");
 const FirebaseError = require("../error");
 const loadCJSON = require("../loadCJSON");
 const logger = require("../logger");
+const validator = require("./validator");
 const _ = require("lodash");
 
 const VALID_INDEX_MODES = ["ASCENDING", "DESCENDING", "ARRAY_CONTAINS"];
@@ -20,32 +21,14 @@ const VALID_INDEX_MODES = ["ASCENDING", "DESCENDING", "ARRAY_CONTAINS"];
  * @param {object[]} index.fields array of index field specifications.
  */
 var _validate = function(index) {
-  var indexString = clc.cyan(JSON.stringify(index));
-  if (!index.collectionId) {
-    throw new FirebaseError('Index must contain "collectionId": ' + indexString);
-  }
+  validator.assertHas(index, "collectionId");
+  validator.assertHas(index, "fields");
 
-  if (!index.fields) {
-    throw new FirebaseError('Index must contain "fields": ' + indexString);
-  }
-
-  for (var i = 0; i < index.fields.length; i++) {
-    var field = index.fields[i];
-
-    if (!field.fieldPath) {
-      throw new FirebaseError('All index fields must contain "fieldPath": ' + indexString);
-    }
-
-    if (!field.mode) {
-      throw new FirebaseError('All index fields must contain "mode": ' + indexString);
-    }
-
-    if (VALID_INDEX_MODES.indexOf(field.mode) < 0) {
-      throw new FirebaseError(
-        "Index field mode must be one of " + VALID_INDEX_MODES.join(", ") + ": " + indexString
-      );
-    }
-  }
+  index.fields.forEach((field) => {
+    validator.assertHas(field, "fieldPath");
+    validator.assertHas(field, "mode");
+    validator.assertEnum(field, "mode", VALID_INDEX_MODES);
+  });
 };
 
 /**
@@ -215,6 +198,7 @@ var toPrettyString = function(index) {
  */
 var makeIndexSpec = function(indexes) {
   return {
+    version: "v1beta1",
     indexes: indexes.map((index) => {
       return _.pick(index, ["collectionId", "fields"]);
     }),
