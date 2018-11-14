@@ -10,7 +10,7 @@ module.exports = new Command("firestore:indexes")
   .option(
     "--pretty",
     "Pretty print. When not specified the indexes are printed in the " +
-      "JSON specification format.",
+      "JSON specification format."
   )
   .option(
     "--v1beta1",
