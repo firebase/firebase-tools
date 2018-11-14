@@ -271,7 +271,8 @@ var toPrettyString = function(index) {
 };
 
 /**
- * TODO
+ * Make a JSON object that is suitable for writing out to an indexes.json file.
+ * @param {object[]} indexes  an array of proposed indexes.
  */
 var makeIndexSpec = function(indexes) {
   return {
@@ -283,7 +284,9 @@ var makeIndexSpec = function(indexes) {
 };
 
 /**
- * TODO
+ * Print out an array of indexes to the console.
+ * @param {object[]} an array of indexes from the v1beta1 API.
+ * @param {boolean} pretty true if the indexes should pretty print, false for JSON.
  */
 var printIndexes = function(indexes, pretty) {
   if (pretty) {

@@ -1,10 +1,11 @@
+"use strict";
+
 const clc = require("cli-color");
 const FirebaseError = require("../error");
 
 /**
- * TODO: Docs
+ * Throw an error if 'obj' does not have a value for the property 'prop'.
  */
-
 const assertHas = function(obj, prop) {
   const objString = clc.cyan(JSON.stringify(obj));
   if (!obj[prop]) {
@@ -12,6 +13,10 @@ const assertHas = function(obj, prop) {
   }
 };
 
+/**
+ * throw an error if 'obj' does not have a value for exactly one of the
+ * properties in 'props'.
+ */
 const assertHasOneOf = function(obj, props) {
   const objString = clc.cyan(JSON.stringify(obj));
   let count = 0;
@@ -26,6 +31,10 @@ const assertHasOneOf = function(obj, props) {
   }
 };
 
+/**
+ * Throw an error if the value of the property 'prop' on 'obj' is not one of
+ * the values in the the array 'valid'.
+ */
 const assertEnum = function(obj, prop, valid) {
   const objString = clc.cyan(JSON.stringify(obj));
   if (valid.indexOf(obj[prop]) < 0) {

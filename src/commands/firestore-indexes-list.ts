@@ -21,14 +21,12 @@ module.exports = new Command("firestore:indexes")
       "JSON specification format."
   )
   .option(
-    "--v1beta1",
-    "Use the v1beta1 index API, which does not have support for " +
-      " array indexes, single-field index controls, etc."
+    "--api",
+    "Override the version of the Firestore indexes API to use, such as " + "v1beta1 or v1beta2."
   )
   .before(requirePermissions, ["datastore.indexes.list"])
   .action((options: any) => {
-    // TODO: Better option name
-    if (options.v1beta1) {
+    if (options.api === "v1beta1") {
       const fsi = iv1 as FirestoreIndexApi<any>;
       return _listIndexes(fsi, options);
     } else {

@@ -34,17 +34,9 @@ export interface IndexField {
   arrayConfig: ArrayConfig | undefined;
 }
 
-export interface IndexSpecEntry {
-  collectionGroup: string;
-  queryScope: QueryScope;
-  fields: IndexField[];
-}
-
-export interface IndexSpec {
-  version: string;
-  indexes: IndexSpecEntry[];
-}
-
+/**
+ * An Index as it is represented in the Firestore v1beta2 indexes API.
+ */
 export interface Index {
   name: string;
   queryScope: QueryScope;
@@ -52,7 +44,30 @@ export interface Index {
   state: State;
 }
 
+/**
+ * A single index entry in the index spec JSON file.
+ */
+export interface IndexSpecEntry {
+  collectionGroup: string;
+  queryScope: QueryScope;
+  fields: IndexField[];
+}
+
+/**
+ * Specification for the JSON file that is used for index deployment,
+ */
+export interface IndexSpec {
+  version: string;
+  indexes: IndexSpecEntry[];
+}
+
 export class FirestoreIndexes implements FirestoreIndexApi<Index> {
+  /**
+   * Deploy an index specification to the specified project.
+   * @param project the Firebase project ID.
+   * @param indexes an array of objects, each will be validated and then converted
+   * to an {@link IndexSpecEntry}.
+   */
   public async deploy(project: string, indexes: any[]): Promise<any> {
     indexes.forEach((index) => {
       this.validate(index);
@@ -65,7 +80,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     // TODO: Log the missing ones
 
     toDeploy.forEach(async (index) => {
-      const exists = existing.some((x) => this.sameSpec(x, index));
+      const exists = existing.some((x) => this.isSameSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
         return;
@@ -105,6 +120,10 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     });
   }
 
+  /**
+   * Turn an array of indexes into a {@link IndexSpec} suitable for use
+   * in an indexes.json file.
+   */
   public makeIndexSpec(indexes: Index[]): IndexSpec {
     const indexesJson = indexes.map((index) => {
       return {
@@ -120,6 +139,11 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     };
   }
 
+  /**
+   * Print an array of indexes to the console.
+   * @param indexes the array of indexes.
+   * @param pretty if true, pretty prints. If false, print as JSON.
+   */
   public printIndexes(indexes: Index[], pretty: boolean): void {
     if (!pretty) {
       logger.info(JSON.stringify(this.makeIndexSpec(indexes), undefined, 2));
@@ -132,7 +156,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   }
 
   /**
-   * TODO
+   * Validate that an arbitrary object is safe to use as an {@link IndexSpecEntry}.
    */
   public validate(index: any): void {
     validator.assertHas(index, "collectionGroup");
@@ -154,8 +178,13 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     });
   }
 
+  /**
+   * Create a new index on the specified project.
+   */
   private create(project: string, index: IndexSpecEntry): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
+    const url = `projects/${project}/databases/(default)/collectionGroups/${
+      index.collectionGroup
+    }/indexes`;
     return api.request("POST", "/v1beta2/" + url, {
       auth: true,
       data: {
@@ -168,8 +197,6 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
 
   /**
    * Get a colored, pretty-printed representation of an index.
-   *
-   * @param index a Firestore index.
    */
   private toPrettyString(index: Index): string {
     let result = "";
@@ -222,9 +249,9 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   }
 
   /**
-   * Determine if an Index and an index specification are functionally equivalent.
+   * Determine if an Index and an IndexSpecEntry are functionally equivalent.
    */
-  private sameSpec(index: Index, spec: IndexSpecEntry): boolean {
+  private isSameSpec(index: Index, spec: IndexSpecEntry): boolean {
     const collection = this.parseIndexName(index.name).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
