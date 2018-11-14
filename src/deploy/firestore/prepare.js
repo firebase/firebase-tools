@@ -6,6 +6,7 @@ var loadCJSON = require("../../loadCJSON");
 var FirebaseError = require("../../error");
 var iv1 = require("../../firestore/indexesV1Beta1");
 var iv2 = require("../../firestore/indexesV1Beta2");
+var validator = require("../../firestore/validator");
 var RulesDeploy = require("../../RulesDeploy");
 
 function _prepareRules(context, options) {
@@ -31,11 +32,21 @@ function _prepareIndexes(context, options) {
   var indexesPath = options.config.path(indexesFileName);
   var parsedSrc = loadCJSON(indexesPath);
 
-  if (!parsedSrc.indexes) {
-    throw new FirebaseError('Indexes file must contain "indexes" property: ' + indexesPath);
+  validator.assertHas(parsedSrc, "indexes");
+
+  var version = parsedSrc.version;
+  if (!version) {
+    logger.debug("No Firestore indexes version present, defaulting to v1beta1.");
+    version = "v1beta1";
+  } else {
+    logger.debug("Detected Firestore index version: " + version);
   }
 
-  // TODO: Dedupe version code
+  var validVersions = ["v1beta1", "v1beta2"];
+  if (validVersions.indexOf(version) < 0) {
+    throw new FirebaseError("Invalid Firestore indexes version: " + version);
+  }
+
   var fsi;
   if (parsedSrc.version == "v1beta1") {
     fsi = iv1;
@@ -43,7 +54,6 @@ function _prepareIndexes(context, options) {
     fsi = new iv2.FirestoreIndexes();
   }
 
-  // TODO: is validate part of the interface?
   parsedSrc.indexes.forEach(function(index) {
     fsi.validate(index);
   });
@@ -51,6 +61,7 @@ function _prepareIndexes(context, options) {
   context.firestore = context.firestore || {};
   context.firestore.indexes = {
     name: indexesFileName,
+    version: version,
     content: parsedSrc,
   };
 }

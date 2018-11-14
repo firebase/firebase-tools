@@ -31,20 +31,7 @@ function _deployIndexes(context, options) {
     return utils.reject('Index file must contain an "indexes" property.');
   }
 
-  // TODO: This should be elsewhere
-  let version = indexesSrc.version;
-  if (!version) {
-    logger.debug("No Firestore indexes version present, defaulting to v1beta2.");
-    version = "v1beta2";
-  } else {
-    logger.debug("Detected Firestore index version: " + version);
-  }
-
-  const validVersions = ["v1beta1", "v1beta2"];
-  if (validVersions.indexOf(version) < 0) {
-    return utils.reject("Invalid Firestore indexes version: " + version);
-  }
-
+  var version = _.get(context, "firestore.indexes.version");
   if (version === "v1beta1") {
     return iv1.deploy(options.project, indexes);
   } else {
