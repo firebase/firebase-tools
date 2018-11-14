@@ -2,7 +2,6 @@
 
 const api = require("../api");
 const clc = require("cli-color");
-const FirebaseError = require("../error");
 const logger = require("../logger");
 const validator = require("./validator");
 const _ = require("lodash");

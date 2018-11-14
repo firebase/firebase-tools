@@ -64,7 +64,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     // TODO: Figure out which deployed indexes are missing here
     // TODO: Log the missing ones
 
-    toDeploy.forEach((index) => {
+    toDeploy.forEach(async (index) => {
       const exists = existing.some((x) => this.sameSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
@@ -72,7 +72,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
       }
 
       logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-      // TODO: Actually create
+      await this.create(project, index);
     });
   }
 
@@ -151,6 +151,18 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
       if (field.arrayConfig) {
         validator.assertEnum(field, "arrayConfig", Object.keys(ArrayConfig));
       }
+    });
+  }
+
+  private create(project: string, index: IndexSpecEntry): Promise<any> {
+    const url = `projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
+    return api.request("POST", "/v1beta2/" + url, {
+      auth: true,
+      data: {
+        fields: index.fields,
+        queryScope: index.queryScope,
+      },
+      origin: api.firestoreOrigin,
     });
   }
 

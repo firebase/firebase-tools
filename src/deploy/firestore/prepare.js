@@ -4,6 +4,7 @@ var _ = require("lodash");
 
 var loadCJSON = require("../../loadCJSON");
 var FirebaseError = require("../../error");
+var logger = require("../../logger");
 var iv1 = require("../../firestore/indexesV1Beta1");
 var iv2 = require("../../firestore/indexesV1Beta2");
 var validator = require("../../firestore/validator");
