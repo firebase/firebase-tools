@@ -14,7 +14,7 @@ var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
 
 var VALID_EMULATORS = ["database", "firestore"];
-var VALID_TARGETS = ["functions", "hosting", "database", "firestore"];
+var VALID_TARGETS = ["functions", "hosting"];
 
 var filterOnlyEmulators = (only) => {
   if (!only) {
@@ -34,7 +34,9 @@ module.exports = new Command("serve")
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
+    "only serve specified targets (valid targets are: " +
+      _.union(VALID_TARGETS, VALID_EMULATORS).join(", ") +
+      ")"
   )
   .option(
     "--except <targets>",
