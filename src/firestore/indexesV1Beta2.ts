@@ -8,60 +8,106 @@ import { FirestoreIndexApi } from "./indexes";
 // projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/indexes/$INDEX_ID
 const INDEX_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/indexes\/([^\/]*)/;
 
-export enum QueryScope {
-  COLLECTION = "COLLECTION",
-  COLLECTION_GROUP = "COLLECTION_GROUP",
-}
+// projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/fields/$FIELD_ID
+const FIELD_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/fields\/([^\/]*)/;
 
-export enum Order {
-  ASCENDING = "ASCENDING",
-  DESCENDING = "DESCENDING",
-}
+/**
+ * Type definitions for working with the v1beta2 indexes API. These are direct
+ * translations from the protos.
+ */
+namespace API {
+  export enum QueryScope {
+    COLLECTION = "COLLECTION",
+    COLLECTION_GROUP = "COLLECTION_GROUP",
+  }
 
-export enum ArrayConfig {
-  CONTAINS = "CONTAINS",
-}
+  export enum Order {
+    ASCENDING = "ASCENDING",
+    DESCENDING = "DESCENDING",
+  }
 
-export enum State {
-  CREATING = "CREATING",
-  READY = "READY",
-  NEEDS_REPAIR = "NEEDS_REPAIR",
-}
+  export enum ArrayConfig {
+    CONTAINS = "CONTAINS",
+  }
 
-export interface IndexField {
-  fieldPath: string;
-  order: Order | undefined;
-  arrayConfig: ArrayConfig | undefined;
+  export enum State {
+    CREATING = "CREATING",
+    READY = "READY",
+    NEEDS_REPAIR = "NEEDS_REPAIR",
+  }
+
+  /**
+   * An Index as it is represented in the Firestore v1beta2 indexes API.
+   */
+  export interface Index {
+    name: string | undefined;
+    queryScope: QueryScope;
+    fields: IndexField[];
+    state: State;
+  }
+
+  /**
+   * A field in an index.
+   */
+  export interface IndexField {
+    fieldPath: string;
+    order: Order | undefined;
+    arrayConfig: ArrayConfig | undefined;
+  }
+
+  /**
+   * Represents a single field in the database.
+   *
+   * If a field has an empty indexConfig, that means all
+   * default indexes are exempted.
+   */
+  export interface Field {
+    name: string;
+    indexConfig: IndexConfig[];
+  }
+
+  /**
+   * Index configuration overrides for a field.
+   */
+  export interface IndexConfig {
+    ancestorField: string | undefined;
+    indexes: Index[];
+  }
 }
 
 /**
- * An Index as it is represented in the Firestore v1beta2 indexes API.
+ * Types that are unique to the CLI, used by the developer to
+ * specify indexes in a configuration file.
  */
-export interface Index {
-  name: string;
-  queryScope: QueryScope;
-  fields: IndexField[];
-  state: State;
+namespace Spec {
+  /**
+   * TODO
+   */
+  export interface Field {
+    collectionGroup: string;
+    indexConfig: API.IndexConfig;
+  }
+
+  /**
+   * A single index entry in the index spec JSON file.
+   */
+  export interface Index {
+    collectionGroup: string;
+    queryScope: API.QueryScope;
+    fields: API.IndexField[];
+  }
+
+  /**
+   * Specification for the JSON file that is used for index deployment,
+   */
+  export interface IndexFile {
+    version: string;
+    indexes: Spec.Index[];
+    fields: Spec.Field[];
+  }
 }
 
-/**
- * A single index entry in the index spec JSON file.
- */
-export interface IndexSpecEntry {
-  collectionGroup: string;
-  queryScope: QueryScope;
-  fields: IndexField[];
-}
-
-/**
- * Specification for the JSON file that is used for index deployment,
- */
-export interface IndexSpec {
-  version: string;
-  indexes: IndexSpecEntry[];
-}
-
-export class FirestoreIndexes implements FirestoreIndexApi<Index> {
+export class FirestoreIndexes implements FirestoreIndexApi<API.Index> {
   /**
    * Deploy an index specification to the specified project.
    * @param project the Firebase project ID.
@@ -73,7 +119,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
       this.validate(index);
     });
 
-    const toDeploy: IndexSpecEntry[] = indexes;
+    const toDeploy: Spec.Index[] = indexes;
     const existing = await this.list(project);
 
     // TODO: Figure out which deployed indexes are missing here
@@ -95,7 +141,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  public async list(project: string): Promise<Index[]> {
+  public async list(project: string): Promise<API.Index[]> {
     const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
 
     const res = await api.request("GET", `/v1beta2/${url}`, {
@@ -107,7 +153,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     return indexes.map((index: any) => {
       // Ignore any fields that point at the document ID, as those are implied
       // in all indexes.
-      const fields = index.fields.filter((field: IndexField) => {
+      const fields = index.fields.filter((field: API.IndexField) => {
         return field.fieldPath !== "__name__";
       });
 
@@ -116,18 +162,18 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
         state: index.state,
         queryScope: index.queryScope,
         fields,
-      } as Index;
+      } as API.Index;
     });
   }
 
   /**
-   * Turn an array of indexes into a {@link IndexSpec} suitable for use
+   * Turn an array of indexes into a {@link Spec.IndexFile} suitable for use
    * in an indexes.json file.
    */
-  public makeIndexSpec(indexes: Index[]): IndexSpec {
+  public makeIndexSpec(indexes: API.Index[]): Spec.IndexFile {
     const indexesJson = indexes.map((index) => {
       return {
-        collectionGroup: this.parseIndexName(index.name).collectionGroupId,
+        collectionGroup: this.parseIndexName(index).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
       };
@@ -136,6 +182,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
     return {
       version: "v1beta2",
       indexes: indexesJson,
+      fields: [],
     };
   }
 
@@ -144,7 +191,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
    * @param indexes the array of indexes.
    * @param pretty if true, pretty prints. If false, print as JSON.
    */
-  public printIndexes(indexes: Index[], pretty: boolean): void {
+  public printIndexes(indexes: API.Index[], pretty: boolean): void {
     if (!pretty) {
       logger.info(JSON.stringify(this.makeIndexSpec(indexes), undefined, 2));
       return;
@@ -161,7 +208,7 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   public validate(index: any): void {
     validator.assertHas(index, "collectionGroup");
     validator.assertHas(index, "queryScope");
-    validator.assertEnum(index, "queryScope", Object.keys(QueryScope));
+    validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {
@@ -169,19 +216,31 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
       validator.assertHasOneOf(field, ["order", "arrayConfig"]);
 
       if (field.order) {
-        validator.assertEnum(field, "order", Object.keys(Order));
+        validator.assertEnum(field, "order", Object.keys(API.Order));
       }
 
       if (field.arrayConfig) {
-        validator.assertEnum(field, "arrayConfig", Object.keys(ArrayConfig));
+        validator.assertEnum(field, "arrayConfig", Object.keys(API.ArrayConfig));
       }
+    });
+  }
+
+  /**
+   * TODO: Fix type
+   */
+  private async listFields(project: string): Promise<any> {
+    const url = `projects/${project}/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false`;
+
+    const res = await api.request("GET", `/v1beta2/${url}`, {
+      auth: true,
+      origin: api.firestoreOrigin,
     });
   }
 
   /**
    * Create a new index on the specified project.
    */
-  private create(project: string, index: IndexSpecEntry): Promise<any> {
+  private create(project: string, index: Spec.Index): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       index.collectionGroup
     }/indexes`;
@@ -198,22 +257,22 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   /**
    * Get a colored, pretty-printed representation of an index.
    */
-  private toPrettyString(index: Index): string {
+  private toPrettyString(index: API.Index): string {
     let result = "";
 
     if (index.state) {
       const stateMsg = `[${index.state}] `;
 
-      if (index.state === State.READY) {
+      if (index.state === API.State.READY) {
         result += clc.green(stateMsg);
-      } else if (index.state === State.CREATING) {
+      } else if (index.state === API.State.CREATING) {
         result += clc.yellow(stateMsg);
       } else {
         result += clc.red(stateMsg);
       }
     }
 
-    const nameInfo = this.parseIndexName(index.name);
+    const nameInfo = this.parseIndexName(index);
 
     result += clc.cyan(`(${nameInfo.collectionGroupId})`);
     result += " -- ";
@@ -235,8 +294,12 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   /**
    * Parse an Index name into useful pieces.
    */
-  private parseIndexName(name: string): any {
-    const m = name.match(INDEX_NAME_REGEX);
+  private parseIndexName(index: API.Index): any {
+    if (!index.name) {
+      throw new FirebaseError(`Index has no "name": ${JSON.stringify(index)}`);
+    }
+
+    const m = index.name.match(INDEX_NAME_REGEX);
     if (!m || m.length < 4) {
       throw new FirebaseError(`Error parsing index name: ${name}`);
     }
@@ -251,8 +314,8 @@ export class FirestoreIndexes implements FirestoreIndexApi<Index> {
   /**
    * Determine if an Index and an IndexSpecEntry are functionally equivalent.
    */
-  private isSameSpec(index: Index, spec: IndexSpecEntry): boolean {
-    const collection = this.parseIndexName(index.name).collectionGroupId;
+  private isSameSpec(index: API.Index, spec: Spec.Index): boolean {
+    const collection = this.parseIndexName(index).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
     }
