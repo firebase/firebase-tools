@@ -81,15 +81,16 @@ namespace API {
  */
 namespace Spec {
   /**
-   * TODO
+   * An entry specifying field index configuration override.
    */
   export interface Field {
     collectionGroup: string;
-    indexConfig: API.IndexConfig;
+    fieldPath: string;
+    indexes: API.Index[]
   }
 
   /**
-   * A single index entry in the index spec JSON file.
+   * An entry specifying a compound or other non-default index.
    */
   export interface Index {
     collectionGroup: string;

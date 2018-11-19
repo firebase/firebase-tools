@@ -9,8 +9,12 @@
   //       { "fieldPath": "foo", "arrayConfig": "CONTAINS" },
   //       { "fieldPath": "bar", "mode": "DESCENDING" }
   //     ]
-  //   }
+  //   },
+  //  "fields": [
+  //   
+  //   ]
   // ]
   "version": "v1beta2",
-  "indexes": []
+  "indexes": [],
+  "fields": []
 }
