@@ -1,21 +1,21 @@
 "use strict";
 
-var _ = require("lodash");
-
+const _ = require("lodash");
 const clc = require("cli-color");
+
 const api = require("../../api");
 const convertConfig = require("./convertConfig");
-const fsutils = require("../../fsutils");
-const resolveProjectPath = require("../../resolveProjectPath");
-const utils = require("../../utils");
-const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
 const deploymentTool = require("../../deploymentTool");
+const FirebaseError = require("../../error");
+const fsutils = require("../../fsutils");
+const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
+const resolveProjectPath = require("../../resolveProjectPath");
 
 module.exports = function(context, options) {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (_.isArray(options.config.get("hosting"))) {
-      return utils.reject("Cannot specify --public option with multi-site configuration.");
+      throw new FirebaseError("Cannot specify --public option with multi-site configuration.");
     }
 
     // trigger legacy key import since public may not exist in firebase.json
@@ -42,29 +42,24 @@ module.exports = function(context, options) {
     if (cfg.target) {
       const matchingTargets = options.rc.requireTarget(options.project, "hosting", cfg.target);
       if (matchingTargets.length > 1) {
-        return utils.reject(
-          "Hosting target " +
-            clc.bold(cfg.target) +
-            " is linked to multiple sites, but only one is permitted. To clear, run:\n\n  firebase target:clear hosting " +
-            cfg.target
+        throw new FirebaseError(
+          `Hosting target ${clc.bold(cfg.target)} is linked to multiple sites, ` +
+            `but only one is permitted. ` +
+            `To clear, run:\n\n  firebase target:clear hosting ${cfg.target}`
         );
       }
       deploy.site = matchingTargets[0];
     } else if (cfg.site) {
       deploy.site = cfg.site;
     } else {
-      return utils.reject('Must supply either "site" or "target" in each "hosting" config.');
+      throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
     }
 
     if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {
-      return utils.reject(
-        "Specified public directory '" +
-          cfg.public +
-          "'does not exist, can't deploy hosting to site " +
-          deploy.site,
-        {
-          exit: 1,
-        }
+      throw new FirebaseError(
+        `Specified public directory '${cfg.public}' does not exist, ` +
+          `can't deploy hosting to site ${deploy.site}`,
+        { exit: 1 }
       );
     }
 
