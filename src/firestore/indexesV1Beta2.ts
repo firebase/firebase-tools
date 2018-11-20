@@ -81,15 +81,6 @@ namespace API {
  */
 namespace Spec {
   /**
-   * An entry specifying field index configuration override.
-   */
-  export interface Field {
-    collectionGroup: string;
-    fieldPath: string;
-    indexes: API.Index[]
-  }
-
-  /**
    * An entry specifying a compound or other non-default index.
    */
   export interface Index {
@@ -99,9 +90,27 @@ namespace Spec {
   }
 
   /**
+   * An entry specifying field index configuration override.
+   */
+  export interface Field {
+    collectionGroup: string;
+    fieldPath: string;
+    indexes: FieldIndex[];
+  }
+
+  /**
+   * Entry specifying a single-field index.
+   */
+  export interface FieldIndex {
+    order: API.Order | undefined;
+    arrayConfig: API.ArrayConfig | undefined;
+  }
+
+  /**
    * Specification for the JSON file that is used for index deployment,
    */
   export interface IndexFile {
+    // TODO: Probably remove this
     version: string;
     indexes: Spec.Index[];
     fields: Spec.Field[];
@@ -235,6 +244,28 @@ export class FirestoreIndexes implements FirestoreIndexApi<API.Index> {
     const res = await api.request("GET", `/v1beta2/${url}`, {
       auth: true,
       origin: api.firestoreOrigin,
+    });
+  }
+
+  /**
+   * TODO: Doc
+   * TODO: Maybe change name of all the indexing functions?
+   */
+  private async patchField(project: string, spec: Spec.Field): Promise<any> {
+    const url = `projects/${project}/databases/(default)/collectionGroups/${
+      spec.collectionGroup
+    }/fields/${spec.fieldPath}`;
+    const data = {
+      queryScope: API.QueryScope.COLLECTION,
+      indexConfig: {
+        indexes: spec.indexes,
+      },
+    };
+
+    const res = await api.request("PATCH", `/v1beta2/${url}`, {
+      auth: true,
+      origin: api.firestoreOrigin,
+      data: data,
     });
   }
 
