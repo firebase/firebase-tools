@@ -1,4 +1,4 @@
-changed - Emulators are not started unless specified.
+fixed - Database emulators (RTDB, Firestore) are not started on `serve` unless specified.
 fixed - Error handling in Hosting deployment has been improved.
 fixed - Progress bar in Hosting deployment has been fixed.
 fixed - Project name is displayed when deleting all collections in Firestore.
