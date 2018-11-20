@@ -1,0 +1,4 @@
+fixed - In v6.1.0, `firebase serve` automatically emulated Realtime Database and Firestore in addition to HTTPS functions and hosting. Now, only HTTPS functions and hosting are emulated by default. To emulate Realtime Database and Firestore, use the `only` flag (e.g. `firebase serve --only database,firestore`).
+fixed - Error handling in Hosting deployment has been improved.
+fixed - Progress bar in Hosting deployment has been fixed.
+fixed - Project name is displayed when deleting all collections in Firestore.
