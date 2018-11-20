@@ -1,4 +1,4 @@
-fixed - Emulators are not started unless specified.
+changed - Emulators are not started unless specified.
 fixed - Error handling in Hosting deployment has been improved.
 fixed - Progress bar in Hosting deployment has been fixed.
 fixed - Project name is displayed when deleting all collections in Firestore.
