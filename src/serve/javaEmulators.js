@@ -58,9 +58,11 @@ function _stop(targetName) {
   return new Promise(function(resolve) {
     utils.logLabeledSuccess(emulator.name, "shutting down");
     if (emulator.instance) {
-      return emulator.instance.kill(0);
+      emulator.instance.once("exit", resolve);
+      emulator.instance.kill("SIGINT");
+    } else {
+      resolve();
     }
-    return resolve();
   });
 }
 
