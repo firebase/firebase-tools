@@ -5,6 +5,7 @@ var fs = require("fs-extra");
 var childProcess = require("child_process");
 var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
+var logger = require("../logger");
 
 var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000 /* ms */;
 
@@ -61,7 +62,12 @@ function _stop(targetName) {
     utils.logLabeledSuccess(emulator.name, "shutting down");
     if (emulator.instance) {
       var killTimeout = setTimeout(function() {
-        var errorMsg = "Unable to terminate emulator process (PID=" + emulator.instance.pid + ")";
+        var errorMsg =
+          emulator.name +
+          ": Unable to terminate emulator process (PID=" +
+          emulator.instance.pid +
+          ")";
+        logger.debug(errorMsg);
         console.warn(errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
