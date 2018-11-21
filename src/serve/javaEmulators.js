@@ -64,9 +64,9 @@ function _stop(targetName) {
         var errorMsg = "Unable to terminate emulator process (PID=" + emulator.instance.pid + ")";
         console.warn(errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
-      }, EMULATOR_INSTANCE_KILL_TIMEOUT)
+      }, EMULATOR_INSTANCE_KILL_TIMEOUT);
       emulator.instance.once("exit", function() {
-        clearTimeout(killTimeout)
+        clearTimeout(killTimeout);
         resolve();
       });
       emulator.instance.kill("SIGINT");
