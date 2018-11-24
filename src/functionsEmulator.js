@@ -3,6 +3,7 @@
 var _ = require("lodash");
 var clc = require("cli-color");
 var path = require("path");
+const portfinder = require("portfinder");
 
 var getProjectId = require("./getProjectId");
 var utils = require("./utils");
@@ -13,6 +14,7 @@ var track = require("./track");
 var logger = require("./logger");
 
 var EmulatorController;
+portfinder.basePort = 5000;
 
 var FunctionsEmulator = function(options) {
   this.controller = null;
@@ -64,25 +66,28 @@ FunctionsEmulator.prototype.stop = function() {
 };
 
 FunctionsEmulator.prototype._getPorts = function() {
-  var portsConfig = {
-    supervisorPort: this.options.port,
-    restPort: this.options.port + 1,
-  };
-  if (_.includes(this.options.targets, "hosting")) {
-    return _.mapValues(portsConfig, function(port) {
-      return port + 1; // bump up port numbers by 1 so hosting can be served on first port
-    });
-  }
-  return portsConfig;
+  return portfinder.getPortPromise().then((restPort) => {
+    var portsConfig = {
+      supervisorPort: this.options.port,
+      restPort,
+    };
+    if (_.includes(this.options.targets, "hosting")) {
+      return _.mapValues(portsConfig, function(port) {
+        return port + 1; // bump up port numbers by 1 so hosting can be served on first port
+      });
+    }
+    return portsConfig;
+  });
 };
 
 FunctionsEmulator.prototype._getConfigOptions = function(options) {
-  var ports = this._getPorts();
-  return _.merge(ports, {
-    maxIdle: 540000,
-    tail: true,
-    host: options.host,
-    bindHost: options.host,
+  return this._getPorts().then((ports) => {
+    return _.merge(ports, {
+      maxIdle: 540000,
+      tail: true,
+      host: options.host,
+      bindHost: options.host,
+    });
   });
 };
 
@@ -93,7 +98,6 @@ FunctionsEmulator.prototype.start = function(shellMode) {
   var emulatedFunctions = this.emulatedFunctions;
   var instance = this;
   var functionsDir = path.join(options.config.projectDir, options.config.get("functions.source"));
-  var controllerConfig = this._getConfigOptions(options);
   var firebaseConfig;
   var emulatedProviders = {};
 
@@ -110,14 +114,18 @@ FunctionsEmulator.prototype.start = function(shellMode) {
     return Promise.reject();
   }
 
-  this.controller = new EmulatorController(controllerConfig);
-  var controller = this.controller;
+  var controllerConfigPromise = this._getConfigOptions(options);
+  var controller;
 
   utils.logBullet(clc.cyan.bold("functions:") + " Preparing to emulate functions.");
   logger.debug("Fetching environment");
   ensureDefaultCredentials();
-  return functionsConfig
-    .getFirebaseConfig(options)
+  Promise.all([functionsConfig.getFirebaseConfig(options), controllerConfigPromise])
+    .then(([result, controllerConfig]) => {
+      this.controller = new EmulatorController(controllerConfig);
+      controller = this.controller;
+      return result;
+    })
     .then(function(result) {
       firebaseConfig = JSON.stringify(result);
       process.env.FIREBASE_CONFIG = firebaseConfig;
