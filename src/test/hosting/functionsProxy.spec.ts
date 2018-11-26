@@ -1,9 +1,9 @@
 import { cloneDeep } from "lodash";
 import { expect } from "chai";
+import * as express from "express";
 import * as nock from "nock";
 import * as sinon from "sinon";
 import * as supertest from "supertest";
-import * as express from "express";
 
 import functionsProxy, {
   FunctionProxyRewrite,
@@ -14,7 +14,7 @@ describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {
     port: 7777,
     project: "project-foo",
-    targets: [] as string[],
+    targets: [],
   };
 
   const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
