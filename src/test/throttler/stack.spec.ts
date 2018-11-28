@@ -2,7 +2,7 @@ import * as chai from "chai";
 const { expect } = chai;
 
 import Stack from "../../throttler/stack";
-import { createTask, Task } from "./throttler.spec";
+import {createHandler, createTask, Task} from "./throttler.spec";
 
 describe("Stack", () => {
   it("should have default name of stack", () => {
@@ -13,11 +13,7 @@ describe("Stack", () => {
   it("should be first-in-last-out", async () => {
     const order: string[] = [];
     const queue = new Stack<Task>({
-      handler: (task: Task) => {
-        return task.promise.then(() => {
-          order.push(task.name);
-        });
-      },
+      handler: createHandler(order),
       concurrency: 1,
     });
 
@@ -36,12 +32,7 @@ describe("Stack", () => {
   it("should not repeat completed tasks", async () => {
     const order: string[] = [];
     const queue = new Stack<Task>({
-      handler: (task: Task) => {
-        task.startExecute();
-        return task.promise.then(() => {
-          order.push(task.name);
-        });
-      },
+      handler: createHandler(order),
       concurrency: 1,
     });
 
@@ -50,25 +41,25 @@ describe("Stack", () => {
     const t2 = await createTask("t2", false);
     queue.add(t2);
 
-    queue.add(await createTask("added before t1 finished 1", true));
-    queue.add(await createTask("added before t1 finished 2", true));
+    queue.add(await createTask("added before t1 finished a", true));
+    queue.add(await createTask("added before t1 finished b", true));
     t1.resolve();
 
     await t2.startExecutePromise; // wait until t2 starts to execute
 
-    queue.add(await createTask("added before t2 finished 1", true));
-    queue.add(await createTask("added before t2 finished 2", true));
+    queue.add(await createTask("added before t2 finished a", true));
+    queue.add(await createTask("added before t2 finished b", true));
     t2.resolve();
 
     queue.close();
     await queue.wait();
     expect(order).to.deep.equal([
       "t1",
-      "added before t1 finished 2",
-      "added before t1 finished 1",
+      "added before t1 finished b",
+      "added before t1 finished a",
       "t2",
-      "added before t2 finished 2",
-      "added before t2 finished 1",
+      "added before t2 finished b",
+      "added before t2 finished a",
     ]);
   });
 });

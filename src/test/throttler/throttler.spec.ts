@@ -238,6 +238,8 @@ describe("Throttler", () => {
   });
 });
 
+
+// Some shared test utility for Queue and Stack.
 export interface Task {
   name: string;
   promise: Promise<any>;
@@ -278,4 +280,13 @@ export const createTask = (name: string, resolved: boolean) => {
       resolve();
     }
   });
+};
+
+export const createHandler = (orderList: string[]) => {
+  return (task: Task) => {
+    task.startExecute();
+    return task.promise.then(() => {
+      orderList.push(task.name);
+    });
+  };
 };
