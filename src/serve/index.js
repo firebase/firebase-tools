@@ -24,7 +24,7 @@ var _serve = function(options) {
       process.on("SIGINT", function() {
         logger.info("Shutting down...");
         return Promise.all(
-          _.forEach(targetNames, function(targetName) {
+          _.map(targetNames, function(targetName) {
             var target = TARGETS[targetName];
             return target.stop(options);
           })

@@ -11,7 +11,9 @@ var _getConfirmationMessage = function(deleteOp, options) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
-      clc.bold.yellow.underline("YOUR ENTIRE DATABASE") +
+      clc.bold.yellow.underline("THE ENTIRE DATABASE") +
+      " for " +
+      clc.cyan(options.project) +
       ". Are you sure?"
     );
   }
