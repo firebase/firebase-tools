@@ -232,3 +232,45 @@ describe("Throttler", () => {
     throttlerTest(Stack);
   });
 });
+
+export interface Task {
+  name: string;
+  promise: Promise<any>;
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+
+  startExecute: (value?: any) => void;
+  startExecutePromise: Promise<any>;
+}
+
+export const createTask = (name: string, resolved: boolean) => {
+  return new Promise<Task>((res) => {
+    let resolve: (value?: any) => void = () => {
+      throw new Error();
+    };
+    let reject: (reason?: any) => void = () => {
+      throw new Error();
+    };
+    let startExecute: (value?: any) => void = () => {
+      throw new Error();
+    };
+    const promise = new Promise((s, j) => {
+      resolve = s;
+      reject = j;
+    });
+    const startExecutePromise = new Promise((s, j) => {
+      startExecute = s;
+    });
+    res({
+      name,
+      promise,
+      resolve,
+      reject,
+      startExecute,
+      startExecutePromise,
+    });
+    if (resolved) {
+      resolve();
+    }
+  });
+};

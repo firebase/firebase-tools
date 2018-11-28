@@ -1,8 +1,8 @@
 import * as chai from "chai";
-
 const { expect } = chai;
 
 import Queue from "../../throttler/queue";
+import { createTask, Task } from "./throttler.spec";
 
 describe("Queue", () => {
   it("should have default name of queue", () => {
@@ -10,20 +10,26 @@ describe("Queue", () => {
     expect(queue.name).to.equal("queue");
   });
 
-  it("should be first-in-first-out", () => {
-    const queue = new Queue({});
-    expect(queue.hasWaitingTask()).to.equal(false);
+  it("should be first-in-first-out", async () => {
+    const order: string[] = [];
+    const queue = new Queue<Task>({
+      handler: (task: Task) => {
+        return task.promise.then(() => {
+          order.push(task.name);
+        });
+      },
+      concurrency: 1,
+    });
 
-    queue.total++;
-    expect(queue.hasWaitingTask()).to.equal(true);
+    const blocker = await createTask("blocker", false);
+    queue.add(blocker);
+    queue.add(await createTask("1", true));
+    queue.add(await createTask("2", true));
 
-    queue.total++;
-    expect(queue.hasWaitingTask()).to.equal(true);
+    blocker.resolve();
 
-    expect(queue.nextWaitingTaskIndex()).to.equal(0);
-    expect(queue.hasWaitingTask()).to.equal(true);
-
-    expect(queue.nextWaitingTaskIndex()).to.equal(1);
-    expect(queue.hasWaitingTask()).to.equal(false);
+    queue.close();
+    await queue.wait();
+    expect(order).to.deep.equal(["blocker", "1", "2"]);
   });
 });

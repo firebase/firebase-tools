@@ -1,7 +1,8 @@
 import * as chai from "chai";
-import Stack from "../../throttler/stack";
-
 const { expect } = chai;
+
+import Stack from "../../throttler/stack";
+import { createTask, Task } from "./throttler.spec";
 
 describe("Stack", () => {
   it("should have default name of stack", () => {
@@ -9,39 +10,65 @@ describe("Stack", () => {
     expect(stack.name).to.equal("stack");
   });
 
-  it("should be first-in-last-out", () => {
-    const stack = new Stack({});
-    expect(stack.hasWaitingTask()).to.equal(false);
+  it("should be first-in-last-out", async () => {
+    const order: string[] = [];
+    const queue = new Stack<Task>({
+      handler: (task: Task) => {
+        return task.promise.then(() => {
+          order.push(task.name);
+        });
+      },
+      concurrency: 1,
+    });
 
-    stack.total++;
-    expect(stack.hasWaitingTask()).to.equal(true);
+    const blocker = await createTask("blocker", false);
+    queue.add(blocker);
+    queue.add(await createTask("1", true));
+    queue.add(await createTask("2", true));
 
-    stack.total++;
-    expect(stack.hasWaitingTask()).to.equal(true);
+    blocker.resolve();
 
-    expect(stack.nextWaitingTaskIndex()).to.equal(1);
-    expect(stack.hasWaitingTask()).to.equal(true);
-
-    expect(stack.nextWaitingTaskIndex()).to.equal(0);
-    expect(stack.hasWaitingTask()).to.equal(false);
+    queue.close();
+    await queue.wait();
+    expect(order).to.deep.equal(["blocker", "2", "1"]);
   });
 
-  it("should not repeat completed tasks", () => {
-    const stack = new Stack({});
-    expect(stack.hasWaitingTask()).to.equal(false);
+  it("should not repeat completed tasks", async () => {
+    const order: string[] = [];
+    const queue = new Stack<Task>({
+      handler: (task: Task) => {
+        task.startExecute();
+        return task.promise.then(() => {
+          order.push(task.name);
+        });
+      },
+      concurrency: 1,
+    });
 
-    stack.total += 3;
-    expect(stack.nextWaitingTaskIndex()).to.equal(2);
+    const t1 = await createTask("t1", false);
+    queue.add(t1);
+    const t2 = await createTask("t2", false);
+    queue.add(t2);
 
-    stack.total += 2;
-    expect(stack.nextWaitingTaskIndex()).to.equal(4);
-    expect(stack.nextWaitingTaskIndex()).to.equal(3);
-    expect(stack.nextWaitingTaskIndex()).to.equal(1);
+    queue.add(await createTask("added before t1 finished 1", true));
+    queue.add(await createTask("added before t1 finished 2", true));
+    t1.resolve();
 
-    stack.total += 2;
-    expect(stack.nextWaitingTaskIndex()).to.equal(6);
-    expect(stack.nextWaitingTaskIndex()).to.equal(5);
-    expect(stack.nextWaitingTaskIndex()).to.equal(0);
-    expect(stack.hasWaitingTask()).to.equal(false);
+    await t2.startExecutePromise; // wait until t2 starts to execute
+
+    queue.add(await createTask("added before t2 finished 1", true));
+    queue.add(await createTask("added before t2 finished 2", true));
+    t2.resolve();
+
+    queue.close();
+    await queue.wait();
+    expect(order).to.deep.equal([
+      "t1",
+      "added before t1 finished 2",
+      "added before t1 finished 1",
+      "t2",
+      "added before t2 finished 2",
+      "added before t2 finished 1",
+    ]);
   });
 });
