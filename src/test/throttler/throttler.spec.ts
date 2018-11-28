@@ -3,14 +3,20 @@ import * as sinon from "sinon";
 
 const { expect } = chai;
 
-import Queue from "../queue";
+import Queue from "../../throttler/queue";
+import Stack from "../../throttler/stack";
 
 const TEST_ERROR = new Error("foobar");
 
-describe("Queue", () => {
+const throttlerTest = (Throttler: any) => {
+  it("should have no waiting task after creation", () => {
+    const queue = new Throttler({});
+    expect(queue.hasWaitingTask()).to.equal(false);
+  });
+
   it("should return the task as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new Queue({
+    const q = new Throttler({
       handler,
     });
 
@@ -22,7 +28,7 @@ describe("Queue", () => {
 
   it("should return the index as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new Queue({
+    const q = new Throttler({
       handler,
     });
 
@@ -33,7 +39,7 @@ describe("Queue", () => {
 
   it("should return 'finished task' as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new Queue({
+    const q = new Throttler({
       handler,
     });
 
@@ -47,7 +53,7 @@ describe("Queue", () => {
 
   it("should handle function tasks", () => {
     const task = sinon.stub().resolves();
-    const q = new Queue({});
+    const q = new Throttler({});
 
     q.add(task);
     q.close();
@@ -64,7 +70,7 @@ describe("Queue", () => {
 
   it("should handle tasks", () => {
     const handler = sinon.stub().resolves();
-    const q = new Queue({
+    const q = new Throttler({
       handler,
     });
 
@@ -83,7 +89,7 @@ describe("Queue", () => {
 
   it("should not retry", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new Queue({
+    const q = new Throttler({
       handler,
       retries: 0,
     });
@@ -111,7 +117,7 @@ describe("Queue", () => {
 
   it("should retry the number of retries, plus one", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new Queue({
+    const q = new Throttler({
       backoff: 0,
       handler,
       retries: 3,
@@ -153,7 +159,7 @@ describe("Queue", () => {
       return Promise.reject();
     };
 
-    const q = new Queue({
+    const q = new Throttler({
       backoff: 0,
       concurrency: 2,
       handler,
@@ -190,7 +196,7 @@ describe("Queue", () => {
       .onCall(8)
       .resolves(0);
 
-    const q = new Queue({
+    const q = new Throttler({
       backoff: 0,
       concurrency: 1, // this makes sure only one task is running at a time, so not flaky
       handler,
@@ -215,5 +221,14 @@ describe("Queue", () => {
         expect(q.retried).to.equal(6);
         expect(q.total).to.equal(3);
       });
+  });
+};
+
+describe("Throttler", () => {
+  describe("Queue", () => {
+    throttlerTest(Queue);
+  });
+  describe("Stack", () => {
+    throttlerTest(Stack);
   });
 });

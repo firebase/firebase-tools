@@ -3,7 +3,7 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 
 import { NodeSize, RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
-import { Queue } from "../queue";
+import { Stack } from "../throttler/stack";
 
 export interface DatabaseRemoveOptions {
   // RTBD instance ID.
@@ -19,7 +19,7 @@ export default class DatabaseRemove {
   public concurrency: number;
   public retries: number;
   public remote: RemoveRemote;
-  private jobQueue: Queue<string>;
+  private jobStack: Stack<string>;
   private waitingPath: Map<string, number>;
 
   /**
@@ -35,8 +35,8 @@ export default class DatabaseRemove {
     this.retries = options.retries;
     this.remote = new RTDBRemoveRemote(options.instance);
     this.waitingPath = new Map();
-    this.jobQueue = new Queue({
-      name: "long delete queue",
+    this.jobStack = new Stack({
+      name: "long delete stack",
       concurrency: this.concurrency,
       handler: this.chunkedDelete.bind(this),
       retries: this.retries,
@@ -44,8 +44,8 @@ export default class DatabaseRemove {
   }
 
   public execute(): Promise<void> {
-    const prom: Promise<void> = this.jobQueue.wait();
-    this.jobQueue.add(this.path);
+    const prom: Promise<void> = this.jobStack.wait();
+    this.jobStack.add(this.path);
     return prom;
   }
 
@@ -60,7 +60,7 @@ export default class DatabaseRemove {
             return this.remote.listPath(path).then((pathList: string[]) => {
               if (pathList) {
                 for (const p of pathList) {
-                  this.jobQueue.add(pathLib.join(path, p));
+                  this.jobStack.add(pathLib.join(path, p));
                 }
                 this.waitingPath.set(path, pathList.length);
               }
@@ -77,8 +77,8 @@ export default class DatabaseRemove {
           return;
         }
         if (path === this.path) {
-          this.jobQueue.close();
-          logger.debug("[database][long delete queue][FINAL]", this.jobQueue.stats());
+          this.jobStack.close();
+          logger.debug("[database][long delete stack][FINAL]", this.jobStack.stats());
         } else {
           const parentPath = pathLib.dirname(path);
           const prevParentPathReference = this.waitingPath.get(parentPath);
@@ -90,7 +90,7 @@ export default class DatabaseRemove {
           }
           this.waitingPath.set(parentPath, prevParentPathReference - 1);
           if (this.waitingPath.get(parentPath) === 0) {
-            this.jobQueue.add(parentPath);
+            this.jobStack.add(parentPath);
             this.waitingPath.delete(parentPath);
           }
         }
