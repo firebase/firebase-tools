@@ -1,13 +1,14 @@
 "use strict";
 
-var api = require("../api");
-const FirebaseError = require("../error");
-var utils = require("../utils");
-var _ = require("lodash");
-var logger = require("../logger");
-var clc = require("cli-color");
+const _ = require("lodash");
+const clc = require("cli-color");
 
-var API_VERSION = "v1";
+const api = require("../api");
+const FirebaseError = require("../error");
+const logger = require("../logger");
+const utils = require("../utils");
+
+const API_VERSION = "v1";
 
 function _functionsOpLogReject(func, type, err) {
   utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + func);
