@@ -76,9 +76,14 @@ export abstract class Throttler<T> {
 
   /**
    *
-   * @return {boolean} true if there are waiting
+   * @return {boolean} true if there are unscheduled task waiting to be scheduled.
    */
   public abstract hasWaitingTask(): boolean;
+
+  /**
+   *
+   * @return {number} the index of the next task to schedule.
+   */
   public abstract nextWaitingTaskIndex(): number;
 
   public wait(): Promise<void> {
