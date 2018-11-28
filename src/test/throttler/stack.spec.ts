@@ -2,7 +2,7 @@ import * as chai from "chai";
 const { expect } = chai;
 
 import Stack from "../../throttler/stack";
-import {createHandler, createTask, Task} from "./throttler.spec";
+import { createHandler, createTask, Task } from "./throttler.spec";
 
 describe("Stack", () => {
   it("should have default name of stack", () => {

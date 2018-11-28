@@ -238,15 +238,39 @@ describe("Throttler", () => {
   });
 });
 
-
-// Some shared test utility for Queue and Stack.
+/**
+ * Some shared test utility for Queue and Stack.
+ */
 export interface Task {
+  /**
+   * The identifier added to the ordering list.
+   */
   name: string;
+
+  /**
+   * Gets returned by the handler.
+   * We can control the timing of this promise in test.
+   */
   promise: Promise<any>;
+
+  /**
+   * Mark the task as done.
+   */
   resolve: (value?: any) => void;
+
+  /**
+   * Mark the task as failed.
+   */
   reject: (reason?: any) => void;
 
+  /**
+   * Mark the task as started.
+   */
   startExecute: (value?: any) => void;
+
+  /**
+   * A promise that wait until this task starts executing.
+   */
   startExecutePromise: Promise<any>;
 }
 
