@@ -1,13 +1,14 @@
 "use strict";
 
-var api = require("../api");
+const _ = require("lodash");
+const clc = require("cli-color");
 
-var utils = require("../utils");
-var _ = require("lodash");
-var logger = require("../logger");
-var clc = require("cli-color");
+const api = require("../api");
+const FirebaseError = require("../error");
+const logger = require("../logger");
+const utils = require("../utils");
 
-var API_VERSION = "v1";
+const API_VERSION = "v1";
 
 function _functionsOpLogReject(func, type, err) {
   utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + func);
@@ -20,7 +21,12 @@ function _functionsOpLogReject(func, type, err) {
   } else {
     logger.info(err.message);
   }
-  return Promise.reject(err.message);
+  return Promise.reject(
+    new FirebaseError(`Failed to ${type} function ${func}`, {
+      original: err,
+      context: { function: func },
+    })
+  );
 }
 
 function _generateUploadUrl(projectId, location) {
