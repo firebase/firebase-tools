@@ -5,6 +5,9 @@ var fs = require("fs-extra");
 var childProcess = require("child_process");
 var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
+var logger = require("../logger");
+
+var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000 /* ms */;
 
 function _fatal(emulator, errorMsg) {
   if (emulator.instance) {
@@ -55,12 +58,27 @@ function _runBinary(emulator, command) {
 
 function _stop(targetName) {
   var emulator = emulatorConstants.emulators[targetName];
-  return new Promise(function(resolve) {
+  return new Promise(function(resolve, reject) {
     utils.logLabeledSuccess(emulator.name, "shutting down");
     if (emulator.instance) {
-      return emulator.instance.kill(0);
+      var killTimeout = setTimeout(function() {
+        var errorMsg =
+          emulator.name +
+          ": Unable to terminate emulator process (PID=" +
+          emulator.instance.pid +
+          ")";
+        logger.debug(errorMsg);
+        console.warn(errorMsg);
+        reject(new FirebaseError(emulator.name + ": " + errorMsg));
+      }, EMULATOR_INSTANCE_KILL_TIMEOUT);
+      emulator.instance.once("exit", function() {
+        clearTimeout(killTimeout);
+        resolve();
+      });
+      emulator.instance.kill("SIGINT");
+    } else {
+      resolve();
     }
-    return resolve();
   });
 }
 
