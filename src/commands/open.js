@@ -61,6 +61,7 @@ var CHOICES = _.map(LINKS, "name");
 module.exports = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
+  .before(requireInstance)
   .action(function(linkName, options) {
     var link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {
