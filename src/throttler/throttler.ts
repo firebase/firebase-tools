@@ -80,7 +80,7 @@ export abstract class Throttler<T> {
   public abstract hasWaitingTask(): boolean;
 
   /**
-   * @return {number} the index of the next task to schedule.
+   * @return the index of the next task to schedule.
    */
   public abstract nextWaitingTaskIndex(): number;
 
