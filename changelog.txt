@@ -1,0 +1,1 @@
+fixed - `firebase open hosting:site` might return an `undefined` Hosting Site
