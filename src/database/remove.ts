@@ -19,8 +19,7 @@ export default class DatabaseRemove {
   public concurrency: number;
   public retries: number;
   public remote: RemoveRemote;
-  private jobStack: Stack<string>;
-  private waitingPath: Map<string, number>;
+  private jobStack: Stack<() => Promise<any>>;
 
   /**
    * Construct a new RTDB delete operation.
@@ -34,66 +33,29 @@ export default class DatabaseRemove {
     this.concurrency = options.concurrency;
     this.retries = options.retries;
     this.remote = new RTDBRemoveRemote(options.instance);
-    this.waitingPath = new Map();
     this.jobStack = new Stack({
       name: "long delete stack",
       concurrency: this.concurrency,
-      handler: this.chunkedDelete.bind(this),
       retries: this.retries,
     });
   }
 
   public execute(): Promise<void> {
-    const prom: Promise<void> = this.jobStack.wait();
-    this.jobStack.add(this.path);
-    return prom;
+    return this.chunkedDelete(this.path);
   }
 
-  private chunkedDelete(path: string): Promise<any> {
-    return this.remote
-      .prefetchTest(path)
-      .then((test: NodeSize) => {
-        switch (test) {
-          case NodeSize.SMALL:
-            return this.remote.deletePath(path);
-          case NodeSize.LARGE:
-            return this.remote.listPath(path).then((pathList: string[]) => {
-              if (pathList) {
-                for (const p of pathList) {
-                  this.jobStack.add(pathLib.join(path, p));
-                }
-                this.waitingPath.set(path, pathList.length);
-              }
-              return false;
-            });
-          case NodeSize.EMPTY:
-            return true;
-          default:
-            throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });
-        }
-      })
-      .then((deleted: boolean) => {
-        if (!deleted) {
-          return;
-        }
-        if (path === this.path) {
-          this.jobStack.close();
-          logger.debug("[database][long delete stack][FINAL]", this.jobStack.stats());
-        } else {
-          const parentPath = pathLib.dirname(path);
-          const prevParentPathReference = this.waitingPath.get(parentPath);
-          if (!prevParentPathReference) {
-            throw new FirebaseError(
-              `Unexpected error: parent path reference is zero for path=${path}`,
-              { exit: 3 }
-            );
-          }
-          this.waitingPath.set(parentPath, prevParentPathReference - 1);
-          if (this.waitingPath.get(parentPath) === 0) {
-            this.jobStack.add(parentPath);
-            this.waitingPath.delete(parentPath);
-          }
-        }
-      });
+  private async chunkedDelete(path: string): Promise<void> {
+    switch (await this.jobStack.throttle<NodeSize>(() => this.remote.prefetchTest(path))) {
+      case NodeSize.SMALL:
+        return this.jobStack.throttle<void>(() => this.remote.deletePath(path));
+      case NodeSize.LARGE:
+        const pathList = await this.jobStack.throttle<string[]>(() => this.remote.listPath(path));
+        await Promise.all(pathList.map((p) => this.chunkedDelete(pathLib.join(path, p))));
+        return this.chunkedDelete(path);
+      case NodeSize.EMPTY:
+        return;
+      default:
+        throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });
+    }
   }
 }

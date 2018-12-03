@@ -225,6 +225,19 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
         expect(q.total).to.equal(3);
       });
   });
+
+  it("should return the result of task", () => {
+    const handler = (task: number) => {
+      return Promise.resolve("result: " + task);
+    };
+
+    const q = new throttlerConstructor({
+      handler,
+    });
+
+    expect(q.throttle(2)).to.eventually.to.equal("result: 2");
+    expect(q.throttle(3)).to.eventually.to.equal("result: 3");
+  });
 };
 
 describe("Throttler", () => {

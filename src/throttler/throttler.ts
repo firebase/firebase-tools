@@ -31,6 +31,12 @@ export interface ThrottlerStats {
   elapsed: number;
 }
 
+interface TaskData<T> {
+  task: T;
+  retryCount: number;
+  wait: { resolve: (result: any) => void; reject: (err: Error) => void } | undefined;
+}
+
 export abstract class Throttler<T> {
   public name: string = "";
   public concurrency: number = 200;
@@ -41,14 +47,13 @@ export abstract class Throttler<T> {
   public errored: number = 0;
   public retried: number = 0;
   public total: number = 0;
-  public tasks: { [index: number]: T } = {};
+  public taskDatas: { [index: number]: TaskData<T> } = {};
   public waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   public min: number = 9999999999;
   public max: number = 0;
   public avg: number = 0;
   public retries: number = 0;
   public backoff: number = 200;
-  public retryCounts: { [index: number]: number } = {};
   public closed: boolean = false;
   public finished: boolean = false;
   public startTime: number = 0;
@@ -91,18 +96,32 @@ export abstract class Throttler<T> {
     return p;
   }
 
-  public add(task: T): void {
+  /**
+   * Add the task to the throttler, which eventually gets executed.
+   */
+  public add(task: T, wait?: { resolve: () => void; reject: (err: Error) => void }): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");
     }
-
     if (!this.startTime) {
       this.startTime = Date.now();
     }
-
-    this.tasks[this.total] = task;
+    this.taskDatas[this.total] = {
+      task,
+      wait,
+      retryCount: 0,
+    };
     this.total++;
     this.process();
+  }
+
+  /**
+   * Add the task to the throttler and return a promise of handler's result.
+   */
+  public throttle<R>(task: T): Promise<R> {
+    return new Promise<R>((resolve, reject) => {
+      this.add(task, { resolve, reject });
+    });
   }
 
   public close(): boolean {
@@ -120,12 +139,13 @@ export abstract class Throttler<T> {
   }
 
   public async handle(cursorIndex: number): Promise<void> {
-    const task = this.tasks[cursorIndex];
+    const taskData = this.taskDatas[cursorIndex];
+    const task = taskData.task;
     const tname = this.taskName(cursorIndex);
     const t0 = Date.now();
 
     try {
-      await this.handler(task);
+      const result = await this.handler(task);
       const dt = Date.now() - t0;
       if (dt < this.min) {
         this.min = dt;
@@ -138,16 +158,17 @@ export abstract class Throttler<T> {
       this.success++;
       this.complete++;
       this.active--;
-      delete this.tasks[cursorIndex];
-      delete this.retryCounts[cursorIndex];
+      if (taskData.wait) {
+        taskData.wait.resolve(result);
+      }
+      delete this.taskDatas[cursorIndex];
       this.process();
     } catch (err) {
       if (this.retries > 0) {
-        this.retryCounts[cursorIndex] = this.retryCounts[cursorIndex] || 0;
-        if (this.retryCounts[cursorIndex] < this.retries) {
-          this.retryCounts[cursorIndex]++;
+        if (taskData.retryCount < this.retries) {
+          taskData.retryCount++;
           this.retried++;
-          await _backoff(this.retryCounts[cursorIndex], this.backoff);
+          await _backoff(taskData.retryCount, this.backoff);
           logger.debug(`[${this.name}] Retrying task`, tname);
           return this.handle(cursorIndex);
         }
@@ -156,10 +177,13 @@ export abstract class Throttler<T> {
       this.errored++;
       this.complete++;
       this.active--;
-      if (this.retryCounts[cursorIndex] > 0) {
+      if (taskData.retryCount > 0) {
         logger.debug(`[${this.name}] Retries exhausted for task ${tname}:`, err);
       } else {
         logger.debug(`[${this.name}] Error on task ${tname}:`, err);
+      }
+      if (taskData.wait) {
+        taskData.wait.reject(err);
       }
       this._finish(err);
     }
@@ -181,8 +205,11 @@ export abstract class Throttler<T> {
   }
 
   public taskName(cursorIndex: number): string {
-    const task = this.tasks[cursorIndex] || "finished task";
-    return typeof task === "string" ? task : `index ${cursorIndex}`;
+    const taskData = this.taskDatas[cursorIndex];
+    if (!taskData) {
+      return "finished task";
+    }
+    return typeof taskData.task === "string" ? taskData.task : `index ${cursorIndex}`;
   }
 
   private _finishIfIdle(): boolean {
