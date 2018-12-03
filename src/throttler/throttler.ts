@@ -75,7 +75,7 @@ export abstract class Throttler<T> {
   }
 
   /**
-   * @return {boolean} true if there are unscheduled task waiting to be scheduled.
+   * @return `true` if there are unscheduled task waiting to be scheduled.
    */
   public abstract hasWaitingTask(): boolean;
 
