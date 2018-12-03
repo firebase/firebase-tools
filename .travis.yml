@@ -3,7 +3,6 @@ node_js:
 - '6'
 - '8'
 - '10'
-sudo: false
 after_script:
 - nyc report --reporter=text-lcov | coveralls
 jobs:

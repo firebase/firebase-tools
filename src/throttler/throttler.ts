@@ -1,4 +1,4 @@
-import * as logger from "./logger";
+import * as logger from "../logger";
 
 function _backoff(retryNumber: number, delay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
@@ -10,7 +10,7 @@ function DEFAULT_HANDLER(task: any): Promise<any> {
   return (task as () => Promise<any>)();
 }
 
-export interface QueueOptions<T> {
+export interface ThrottlerOptions<T> {
   name?: string;
   concurrency?: number;
   handler?: (task: T) => Promise<any>;
@@ -18,7 +18,7 @@ export interface QueueOptions<T> {
   backoff?: number;
 }
 
-export interface QueueStats {
+export interface ThrottlerStats {
   max: number;
   min: number;
   avg: number;
@@ -31,11 +31,10 @@ export interface QueueStats {
   elapsed: number;
 }
 
-export class Queue<T> {
-  public name: string = "queue";
+export abstract class Throttler<T> {
+  public name: string = "";
   public concurrency: number = 200;
   public handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
-  public cursor: number = 0;
   public active: number = 0;
   public complete: number = 0;
   public success: number = 0;
@@ -54,7 +53,7 @@ export class Queue<T> {
   public finished: boolean = false;
   public startTime: number = 0;
 
-  constructor(options: QueueOptions<T>) {
+  constructor(options: ThrottlerOptions<T>) {
     if (options.name) {
       this.name = options.name;
     }
@@ -75,6 +74,16 @@ export class Queue<T> {
     }
   }
 
+  /**
+   * @return `true` if there are unscheduled task waiting to be scheduled.
+   */
+  public abstract hasWaitingTask(): boolean;
+
+  /**
+   * @return the index of the next task to schedule.
+   */
+  public abstract nextWaitingTaskIndex(): number;
+
   public wait(): Promise<void> {
     const p = new Promise<void>((resolve, reject) => {
       this.waits.push({ resolve, reject });
@@ -84,7 +93,7 @@ export class Queue<T> {
 
   public add(task: T): void {
     if (this.closed) {
-      throw new Error("Cannot add a task to a closed queue.");
+      throw new Error("Cannot add a task to a closed throttler.");
     }
 
     if (!this.startTime) {
@@ -102,13 +111,12 @@ export class Queue<T> {
   }
 
   public process(): void {
-    if (this._finishIfIdle() || this.active >= this.concurrency || this.cursor === this.total) {
+    if (this._finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
       return;
     }
 
-    this.cursor++;
     this.active++;
-    this.handle(this.cursor - 1);
+    this.handle(this.nextWaitingTaskIndex());
   }
 
   public async handle(cursorIndex: number): Promise<void> {
@@ -157,7 +165,7 @@ export class Queue<T> {
     }
   }
 
-  public stats(): QueueStats {
+  public stats(): ThrottlerStats {
     return {
       max: this.max,
       min: this.min,
@@ -178,7 +186,7 @@ export class Queue<T> {
   }
 
   private _finishIfIdle(): boolean {
-    if (this.closed && this.cursor === this.total && this.active === 0) {
+    if (this.closed && !this.hasWaitingTask() && this.active === 0) {
       this._finish(null);
       return true;
     }
@@ -196,5 +204,3 @@ export class Queue<T> {
     });
   }
 }
-
-export default Queue;
