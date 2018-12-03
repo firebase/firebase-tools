@@ -1,7 +1,6 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
-
-const { expect } = chai;
+import { expect } from "chai";
 
 import Queue from "../../throttler/queue";
 import Stack from "../../throttler/stack";
@@ -277,13 +276,13 @@ export interface Task {
 export const createTask = (name: string, resolved: boolean) => {
   return new Promise<Task>((res) => {
     let resolve: (value?: any) => void = () => {
-      throw new Error();
+      throw new Error("resolve is not set");
     };
     let reject: (reason?: any) => void = () => {
-      throw new Error();
+      throw new Error("reject is not set");
     };
     let startExecute: (value?: any) => void = () => {
-      throw new Error();
+      throw new Error("startExecute is not set");
     };
     const promise = new Promise((s, j) => {
       resolve = s;

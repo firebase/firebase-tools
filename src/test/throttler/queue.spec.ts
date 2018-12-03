@@ -1,5 +1,5 @@
 import * as chai from "chai";
-const { expect } = chai;
+import { expect } from "chai";
 
 import Queue from "../../throttler/queue";
 import { createHandler, createTask, Task } from "./throttler.spec";
