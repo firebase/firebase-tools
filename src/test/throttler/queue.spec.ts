@@ -1,4 +1,3 @@
-import * as chai from "chai";
 import { expect } from "chai";
 
 import Queue from "../../throttler/queue";
