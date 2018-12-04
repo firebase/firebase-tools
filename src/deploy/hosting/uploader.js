@@ -179,7 +179,7 @@ class Uploader {
 
   queuePopulate() {
     const pop = this.populateBatch;
-    this.populateQueue.add(pop, "batch" + (this.populateQueue.stats().total + 1));
+    this.populateQueue.add(pop);
     this.populateBatch = {};
     this.populateQueue.process();
   }
