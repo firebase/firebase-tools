@@ -97,9 +97,14 @@ export abstract class Throttler<T> {
   }
 
   /**
-   * Add the task to the throttler, which eventually gets executed.
+   * Add the task to the throttler.
+   * When the task is completed, resolve will be called with handler's result.
+   * If this task fails after retries, reject will be called with the error.
    */
-  public add(task: T, wait?: { resolve: () => void; reject: (err: Error) => void }): void {
+  public add(
+    task: T,
+    wait?: { resolve: (result: any) => void; reject: (err: Error) => void }
+  ): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");
     }
