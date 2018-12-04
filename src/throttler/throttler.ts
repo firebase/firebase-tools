@@ -1,6 +1,6 @@
 import * as logger from "../logger";
 
-function _backoff(retryNumber: number, delay: number): Promise<void> {
+function backoff(retryNumber: number, delay: number): Promise<void> {
   return new Promise((resolve: () => void) => {
     setTimeout(resolve, delay * Math.pow(2, retryNumber));
   });
@@ -34,7 +34,7 @@ export interface ThrottlerStats {
 interface TaskData<T> {
   task: T;
   retryCount: number;
-  wait: { resolve: (result: any) => void; reject: (err: Error) => void } | undefined;
+  wait?: { resolve: (result: any) => void; reject: (err: Error) => void };
 }
 
 export abstract class Throttler<T> {
@@ -47,7 +47,7 @@ export abstract class Throttler<T> {
   public errored: number = 0;
   public retried: number = 0;
   public total: number = 0;
-  public taskDatas: { [index: number]: TaskData<T> } = {};
+  public taskDataMap = new Map<number, TaskData<T>>();
   public waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   public min: number = 9999999999;
   public max: number = 0;
@@ -111,11 +111,11 @@ export abstract class Throttler<T> {
     if (!this.startTime) {
       this.startTime = Date.now();
     }
-    this.taskDatas[this.total] = {
+    this.taskDataMap.set(this.total, {
       task,
       wait,
       retryCount: 0,
-    };
+    });
     this.total++;
     this.process();
   }
@@ -144,7 +144,10 @@ export abstract class Throttler<T> {
   }
 
   public async handle(cursorIndex: number): Promise<void> {
-    const taskData = this.taskDatas[cursorIndex];
+    const taskData = this.taskDataMap.get(cursorIndex);
+    if (!taskData) {
+      throw new Error(`taskData.get(${cursorIndex}) does not exist`);
+    }
     const task = taskData.task;
     const tname = this.taskName(cursorIndex);
     const t0 = Date.now();
@@ -166,14 +169,14 @@ export abstract class Throttler<T> {
       if (taskData.wait) {
         taskData.wait.resolve(result);
       }
-      delete this.taskDatas[cursorIndex];
+      this.taskDataMap.delete(cursorIndex);
       this.process();
     } catch (err) {
       if (this.retries > 0) {
         if (taskData.retryCount < this.retries) {
           taskData.retryCount++;
           this.retried++;
-          await _backoff(taskData.retryCount, this.backoff);
+          await backoff(taskData.retryCount, this.backoff);
           logger.debug(`[${this.name}] Retrying task`, tname);
           return this.handle(cursorIndex);
         }
@@ -210,7 +213,7 @@ export abstract class Throttler<T> {
   }
 
   public taskName(cursorIndex: number): string {
-    const taskData = this.taskDatas[cursorIndex];
+    const taskData = this.taskDataMap.get(cursorIndex);
     if (!taskData) {
       return "finished task";
     }

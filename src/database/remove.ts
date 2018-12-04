@@ -45,7 +45,10 @@ export default class DatabaseRemove {
   }
 
   private async chunkedDelete(path: string): Promise<void> {
-    switch (await this.jobStack.throttle<NodeSize>(() => this.remote.prefetchTest(path))) {
+    const prefetchTestResult = await this.jobStack.throttle<NodeSize>(() =>
+      this.remote.prefetchTest(path)
+    );
+    switch (prefetchTestResult) {
       case NodeSize.SMALL:
         return this.jobStack.throttle<void>(() => this.remote.deletePath(path));
       case NodeSize.LARGE:
@@ -55,7 +58,9 @@ export default class DatabaseRemove {
       case NodeSize.EMPTY:
         return;
       default:
-        throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });
+        throw new FirebaseError("Unexpected prefetch test result: ${prefetchTestResult}", {
+          exit: 3,
+        });
     }
   }
 }

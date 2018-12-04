@@ -228,7 +228,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should return the result of task", () => {
     const handler = (task: number) => {
-      return Promise.resolve("result: " + task);
+      return Promise.resolve(`result: ${task}`);
     };
 
     const q = new throttlerConstructor({
