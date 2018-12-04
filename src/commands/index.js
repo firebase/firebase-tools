@@ -1,6 +1,5 @@
 "use strict";
 
-var previews = require("../previews");
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require("./" + name);
