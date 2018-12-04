@@ -58,7 +58,7 @@ export default class DatabaseRemove {
       case NodeSize.EMPTY:
         return;
       default:
-        throw new FirebaseError("Unexpected prefetch test result: ${prefetchTestResult}", {
+        throw new FirebaseError(`Unexpected prefetch test result: ${prefetchTestResult}`, {
           exit: 3,
         });
     }
