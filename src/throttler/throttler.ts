@@ -101,23 +101,8 @@ export abstract class Throttler<T> {
    * When the task is completed, resolve will be called with handler's result.
    * If this task fails after retries, reject will be called with the error.
    */
-  public add(
-    task: T,
-    wait?: { resolve: (result: any) => void; reject: (err: Error) => void }
-  ): void {
-    if (this.closed) {
-      throw new Error("Cannot add a task to a closed throttler.");
-    }
-    if (!this.startTime) {
-      this.startTime = Date.now();
-    }
-    this.taskDataMap.set(this.total, {
-      task,
-      wait,
-      retryCount: 0,
-    });
-    this.total++;
-    this.process();
+  public add(task: T): void {
+    this.addHelper(task);
   }
 
   /**
@@ -125,17 +110,17 @@ export abstract class Throttler<T> {
    */
   public throttle<R>(task: T): Promise<R> {
     return new Promise<R>((resolve, reject) => {
-      this.add(task, { resolve, reject });
+      this.addHelper(task, { resolve, reject });
     });
   }
 
   public close(): boolean {
     this.closed = true;
-    return this._finishIfIdle();
+    return this.finishIfIdle();
   }
 
   public process(): void {
-    if (this._finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
+    if (this.finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
       return;
     }
 
@@ -193,7 +178,7 @@ export abstract class Throttler<T> {
       if (taskData.wait) {
         taskData.wait.reject(err);
       }
-      this._finish(err);
+      this.finish(err);
     }
   }
 
@@ -220,16 +205,35 @@ export abstract class Throttler<T> {
     return typeof taskData.task === "string" ? taskData.task : `index ${cursorIndex}`;
   }
 
-  private _finishIfIdle(): boolean {
+  private addHelper(
+    task: T,
+    wait?: { resolve: (result: any) => void; reject: (err: Error) => void }
+  ): void {
+    if (this.closed) {
+      throw new Error("Cannot add a task to a closed throttler.");
+    }
+    if (!this.startTime) {
+      this.startTime = Date.now();
+    }
+    this.taskDataMap.set(this.total, {
+      task,
+      wait,
+      retryCount: 0,
+    });
+    this.total++;
+    this.process();
+  }
+
+  private finishIfIdle(): boolean {
     if (this.closed && !this.hasWaitingTask() && this.active === 0) {
-      this._finish(null);
+      this.finish(null);
       return true;
     }
 
     return false;
   }
 
-  private _finish(err: Error | null): void {
+  private finish(err: Error | null): void {
     this.waits.forEach((p) => {
       if (err) {
         return p.reject(err);
