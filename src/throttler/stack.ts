@@ -1,19 +1,19 @@
 import { Throttler, ThrottlerOptions } from "./throttler";
 
 export class Stack<T> extends Throttler<T> {
-  public lastTotal: number = 0;
-  public stack: number[] = [];
+  lastTotal: number = 0;
+  stack: number[] = [];
 
   constructor(options: ThrottlerOptions<T>) {
     super(options);
     this.name = this.name || "stack";
   }
 
-  public hasWaitingTask(): boolean {
+  hasWaitingTask(): boolean {
     return this.lastTotal !== this.total || this.stack.length > 0;
   }
 
-  public nextWaitingTaskIndex(): number {
+  nextWaitingTaskIndex(): number {
     while (this.lastTotal < this.total) {
       this.stack.push(this.lastTotal);
       this.lastTotal++;

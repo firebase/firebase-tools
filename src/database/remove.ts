@@ -15,10 +15,10 @@ export interface DatabaseRemoveOptions {
 }
 
 export default class DatabaseRemove {
-  public path: string;
-  public concurrency: number;
-  public retries: number;
-  public remote: RemoveRemote;
+  path: string;
+  concurrency: number;
+  retries: number;
+  remote: RemoveRemote;
   private jobStack: Stack<string>;
   private waitingPath: Map<string, number>;
 
@@ -43,7 +43,7 @@ export default class DatabaseRemove {
     });
   }
 
-  public execute(): Promise<void> {
+  execute(): Promise<void> {
     const prom: Promise<void> = this.jobStack.wait();
     this.jobStack.add(this.path);
     return prom;
