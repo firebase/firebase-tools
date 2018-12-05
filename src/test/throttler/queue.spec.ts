@@ -11,7 +11,7 @@ describe("Queue", () => {
 
   it("should be first-in-first-out", async () => {
     const order: string[] = [];
-    const queue = new Queue<Task>({
+    const queue = new Queue<Task, void>({
       handler: createHandler(order),
       concurrency: 1,
     });

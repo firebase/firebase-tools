@@ -8,7 +8,7 @@ import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
 const TEST_ERROR = new Error("foobar");
 
 interface ThrottlerConstructor {
-  new <T>(options: ThrottlerOptions<T>): Throttler<T>;
+  new <T, R>(options: ThrottlerOptions<T, R>): Throttler<T, R>;
 }
 
 const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
@@ -224,6 +224,19 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
         expect(q.retried).to.equal(6);
         expect(q.total).to.equal(3);
       });
+  });
+
+  it("should return the result of task", () => {
+    const handler = (task: number) => {
+      return Promise.resolve(`result: ${task}`);
+    };
+
+    const q = new throttlerConstructor({
+      handler,
+    });
+
+    expect(q.run(2)).to.eventually.to.equal("result: 2");
+    expect(q.run(3)).to.eventually.to.equal("result: 3");
   });
 };
 
