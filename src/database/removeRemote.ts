@@ -6,36 +6,21 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 
-export enum NodeSize {
-  SMALL = "small",
-  LARGE = "large",
-  EMPTY = "empty",
-}
-
 export interface RemoveRemote {
   /**
-   *
-   * @param {string} path
    * @return {Promise<boolean>} true if the deletion is sucessful.
    */
   deletePath(path: string): Promise<boolean>;
 
   /**
-   *
-   * Run a prefetch test on a path before issuing a delete to detect
-   * large subtrees and issue recursive chunked deletes instead.
-   *
-   * @param {string} path
-   * @return {Promise<NodeSize>}j
+   * @return {Promise<boolean>} true if the deletion is sucessful.
    */
-  prefetchTest(path: string): Promise<NodeSize>;
+  deleteSubPath(path: string, children: string[]): Promise<boolean>;
 
   /**
-   *
-   * @param {string} path
    * @return {Promise<string[]>} the list of sub pathes found.
    */
-  listPath(path: string): Promise<string[]>;
+  listPath(path: string, numChildren: number): Promise<string[]>;
 }
 
 export class RTDBRemoveRemote implements RemoveRemote {
@@ -45,76 +30,23 @@ export class RTDBRemoveRemote implements RemoveRemote {
     this.instance = instance;
   }
 
-  public deletePath(path: string): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const url =
-        utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?print=silent";
-      const reqOptions = {
-        url,
-        json: true,
-      };
-      return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-        request.del(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
-          if (err) {
-            return reject(
-              new FirebaseError(`Unexpected error while removing data at ${path}`, {
-                exit: 2,
-                original: err,
-              })
-            );
-          } else if (res.statusCode >= 400) {
-            return reject(responseToError(res, body));
-          }
-          logger.debug(`[database] Sucessfully removed data at ${path}`);
-          return resolve(true);
-        });
-      });
-    });
+  deletePath(path: string): Promise<boolean> {
+    return this.put(path, null);
   }
 
-  public prefetchTest(path: string): Promise<NodeSize> {
-    const url =
-      utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?timeout=100ms";
-    const reqOptions = {
-      url,
-    };
-    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-      return new Promise<NodeSize>((resolve, reject) => {
-        logger.debug(`[database] Prefetching test at ${path}`);
-        request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
-          if (err) {
-            return reject(
-              new FirebaseError(`Unexpected error while prefetching data to delete ${path}`, {
-                exit: 2,
-              })
-            );
-          }
-          switch (res.statusCode) {
-            case 200:
-              if (body) {
-                return resolve(NodeSize.SMALL);
-              } else {
-                return resolve(NodeSize.EMPTY);
-              }
-            case 400:
-              // timeout. large subtree, recursive delete for each subtree
-              return resolve(NodeSize.LARGE);
-            case 413:
-              // payload too large. large subtree, recursive delete for each subtree
-              return resolve(NodeSize.LARGE);
-            default:
-              return reject(responseToError(res, body));
-          }
-        });
-      });
-    });
+  deleteSubPath(path: string, children: string[]): Promise<boolean> {
+    const body = {};
+    for (let c in children) {
+      body[c] = null;
+    }
+    return this.put(path, body);
   }
 
-  public listPath(path: string): Promise<string[]> {
+  listPath(path: string, numChildren: number): Promise<string[]> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
-      ".json?shallow=true&limitToFirst=50000";
+      `.json?shallow=true&limitToFirst=${numChildren}`;
     const reqOptions = {
       url,
     };
@@ -147,6 +79,36 @@ export class RTDBRemoveRemote implements RemoveRemote {
             return resolve(keyList);
           }
           resolve([]);
+        });
+      });
+    });
+  }
+
+  private put(path: string, body: any): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      const url =
+        utils.addSubdomain(api.realtimeOrigin, this.instance) +
+        path +
+        ".json?print=silent&allowLongWrite=small";
+      const reqOptions = {
+        url,
+        body,
+        json: true,
+      };
+      return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
+        request.del(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+          if (err) {
+            return reject(
+              new FirebaseError(`Unexpected error while removing data at ${path}`, {
+                exit: 2,
+                original: err,
+              })
+            );
+          } else if (res.statusCode >= 400) {
+            return reject(responseToError(res, body));
+          }
+          logger.debug(`[database] Sucessfully removed data at ${path}`);
+          return resolve(true);
         });
       });
     });
