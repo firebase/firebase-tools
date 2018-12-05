@@ -107,8 +107,9 @@ export abstract class Throttler<T> {
 
   /**
    * Add the task to the throttler and return a promise of handler's result.
+   * If the task failed, both the promised returned by throttle and wait will reject.
    */
-  public throttle<R>(task: T): Promise<R> {
+  public run<R>(task: T): Promise<R> {
     return new Promise<R>((resolve, reject) => {
       this.addHelper(task, { resolve, reject });
     });

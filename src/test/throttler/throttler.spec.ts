@@ -235,8 +235,8 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       handler,
     });
 
-    expect(q.throttle(2)).to.eventually.to.equal("result: 2");
-    expect(q.throttle(3)).to.eventually.to.equal("result: 3");
+    expect(q.run(2)).to.eventually.to.equal("result: 2");
+    expect(q.run(3)).to.eventually.to.equal("result: 3");
   });
 };
 

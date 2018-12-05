@@ -45,14 +45,14 @@ export default class DatabaseRemove {
   }
 
   private async chunkedDelete(path: string): Promise<void> {
-    const prefetchTestResult = await this.jobStack.throttle<NodeSize>(() =>
+    const prefetchTestResult = await this.jobStack.run<NodeSize>(() =>
       this.remote.prefetchTest(path)
     );
     switch (prefetchTestResult) {
       case NodeSize.SMALL:
-        return this.jobStack.throttle<void>(() => this.remote.deletePath(path));
+        return this.jobStack.run<void>(() => this.remote.deletePath(path));
       case NodeSize.LARGE:
-        const pathList = await this.jobStack.throttle<string[]>(() => this.remote.listPath(path));
+        const pathList = await this.jobStack.run<string[]>(() => this.remote.listPath(path));
         await Promise.all(pathList.map((p) => this.chunkedDelete(pathLib.join(path, p))));
         return this.chunkedDelete(path);
       case NodeSize.EMPTY:
