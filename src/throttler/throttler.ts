@@ -32,26 +32,26 @@ export interface ThrottlerStats {
 }
 
 export abstract class Throttler<T> {
-  public name: string = "";
-  public concurrency: number = 200;
-  public handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
-  public active: number = 0;
-  public complete: number = 0;
-  public success: number = 0;
-  public errored: number = 0;
-  public retried: number = 0;
-  public total: number = 0;
-  public tasks: { [index: number]: T } = {};
-  public waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
-  public min: number = 9999999999;
-  public max: number = 0;
-  public avg: number = 0;
-  public retries: number = 0;
-  public backoff: number = 200;
-  public retryCounts: { [index: number]: number } = {};
-  public closed: boolean = false;
-  public finished: boolean = false;
-  public startTime: number = 0;
+  name: string = "";
+  concurrency: number = 200;
+  handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
+  active: number = 0;
+  complete: number = 0;
+  success: number = 0;
+  errored: number = 0;
+  retried: number = 0;
+  total: number = 0;
+  tasks: { [index: number]: T } = {};
+  waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
+  min: number = 9999999999;
+  max: number = 0;
+  avg: number = 0;
+  retries: number = 0;
+  backoff: number = 200;
+  retryCounts: { [index: number]: number } = {};
+  closed: boolean = false;
+  finished: boolean = false;
+  startTime: number = 0;
 
   constructor(options: ThrottlerOptions<T>) {
     if (options.name) {
@@ -77,21 +77,21 @@ export abstract class Throttler<T> {
   /**
    * @return `true` if there are unscheduled task waiting to be scheduled.
    */
-  public abstract hasWaitingTask(): boolean;
+  abstract hasWaitingTask(): boolean;
 
   /**
    * @return the index of the next task to schedule.
    */
-  public abstract nextWaitingTaskIndex(): number;
+  abstract nextWaitingTaskIndex(): number;
 
-  public wait(): Promise<void> {
+  wait(): Promise<void> {
     const p = new Promise<void>((resolve, reject) => {
       this.waits.push({ resolve, reject });
     });
     return p;
   }
 
-  public add(task: T): void {
+  add(task: T): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");
     }
@@ -105,12 +105,12 @@ export abstract class Throttler<T> {
     this.process();
   }
 
-  public close(): boolean {
+  close(): boolean {
     this.closed = true;
     return this._finishIfIdle();
   }
 
-  public process(): void {
+  process(): void {
     if (this._finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
       return;
     }
@@ -119,7 +119,7 @@ export abstract class Throttler<T> {
     this.handle(this.nextWaitingTaskIndex());
   }
 
-  public async handle(cursorIndex: number): Promise<void> {
+  async handle(cursorIndex: number): Promise<void> {
     const task = this.tasks[cursorIndex];
     const tname = this.taskName(cursorIndex);
     const t0 = Date.now();
@@ -165,7 +165,7 @@ export abstract class Throttler<T> {
     }
   }
 
-  public stats(): ThrottlerStats {
+  stats(): ThrottlerStats {
     return {
       max: this.max,
       min: this.min,
@@ -180,7 +180,7 @@ export abstract class Throttler<T> {
     };
   }
 
-  public taskName(cursorIndex: number): string {
+  taskName(cursorIndex: number): string {
     const task = this.tasks[cursorIndex] || "finished task";
     return typeof task === "string" ? task : `index ${cursorIndex}`;
   }
