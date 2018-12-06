@@ -19,7 +19,7 @@ export default class DatabaseRemove {
   concurrency: number;
   retries: number;
   remote: RemoveRemote;
-  private jobStack: Stack<string>;
+  private jobStack: Stack<string, void>;
   private waitingPath: Map<string, number>;
 
   /**
@@ -35,7 +35,7 @@ export default class DatabaseRemove {
     this.retries = options.retries;
     this.remote = new RTDBRemoveRemote(options.instance);
     this.waitingPath = new Map();
-    this.jobStack = new Stack({
+    this.jobStack = new Stack<string, void>({
       name: "long delete stack",
       concurrency: this.concurrency,
       handler: this.chunkedDelete.bind(this),
@@ -49,7 +49,7 @@ export default class DatabaseRemove {
     return prom;
   }
 
-  private chunkedDelete(path: string): Promise<any> {
+  private chunkedDelete(path: string): Promise<void> {
     return this.remote
       .prefetchTest(path)
       .then((test: NodeSize) => {

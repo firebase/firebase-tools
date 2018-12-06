@@ -1,10 +1,10 @@
 import { Throttler, ThrottlerOptions } from "./throttler";
 
-export class Stack<T> extends Throttler<T> {
+export class Stack<T, R> extends Throttler<T, R> {
   lastTotal: number = 0;
   stack: number[] = [];
 
-  constructor(options: ThrottlerOptions<T>) {
+  constructor(options: ThrottlerOptions<T, R>) {
     super(options);
     this.name = this.name || "stack";
   }

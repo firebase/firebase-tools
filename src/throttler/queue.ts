@@ -1,9 +1,9 @@
 import { Throttler, ThrottlerOptions } from "./throttler";
 
-export class Queue<T> extends Throttler<T> {
+export class Queue<T, R> extends Throttler<T, R> {
   cursor: number = 0;
 
-  constructor(options: ThrottlerOptions<T>) {
+  constructor(options: ThrottlerOptions<T, R>) {
     super(options);
     this.name = this.name || "queue";
   }
