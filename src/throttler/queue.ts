@@ -1,18 +1,18 @@
 import { Throttler, ThrottlerOptions } from "./throttler";
 
-export class Queue<T> extends Throttler<T> {
-  public cursor: number = 0;
+export class Queue<T, R> extends Throttler<T, R> {
+  cursor: number = 0;
 
-  constructor(options: ThrottlerOptions<T>) {
+  constructor(options: ThrottlerOptions<T, R>) {
     super(options);
     this.name = this.name || "queue";
   }
 
-  public hasWaitingTask(): boolean {
+  hasWaitingTask(): boolean {
     return this.cursor !== this.total;
   }
 
-  public nextWaitingTaskIndex(): number {
+  nextWaitingTaskIndex(): number {
     if (this.cursor >= this.total) {
       throw new Error("There is no more task in queue");
     }

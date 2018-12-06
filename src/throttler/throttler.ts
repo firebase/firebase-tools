@@ -6,14 +6,14 @@ function backoff(retryNumber: number, delay: number): Promise<void> {
   });
 }
 
-function DEFAULT_HANDLER(task: any): Promise<any> {
-  return (task as () => Promise<any>)();
+function DEFAULT_HANDLER<R>(task: any): Promise<R> {
+  return (task as () => Promise<R>)();
 }
 
-export interface ThrottlerOptions<T> {
+export interface ThrottlerOptions<T, R> {
   name?: string;
   concurrency?: number;
-  handler?: (task: T) => Promise<any>;
+  handler?: (task: T) => Promise<R>;
   retries?: number;
   backoff?: number;
 }
@@ -31,34 +31,34 @@ export interface ThrottlerStats {
   elapsed: number;
 }
 
-interface TaskData<T> {
+interface TaskData<T, R> {
   task: T;
   retryCount: number;
-  wait?: { resolve: (result: any) => void; reject: (err: Error) => void };
+  wait?: { resolve: (R: any) => void; reject: (err: Error) => void };
 }
 
-export abstract class Throttler<T> {
-  public name: string = "";
-  public concurrency: number = 200;
-  public handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
-  public active: number = 0;
-  public complete: number = 0;
-  public success: number = 0;
-  public errored: number = 0;
-  public retried: number = 0;
-  public total: number = 0;
-  public taskDataMap = new Map<number, TaskData<T>>();
-  public waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
-  public min: number = 9999999999;
-  public max: number = 0;
-  public avg: number = 0;
-  public retries: number = 0;
-  public backoff: number = 200;
-  public closed: boolean = false;
-  public finished: boolean = false;
-  public startTime: number = 0;
+export abstract class Throttler<T, R> {
+  name: string = "";
+  concurrency: number = 200;
+  handler: (task: T) => Promise<any> = DEFAULT_HANDLER;
+  active: number = 0;
+  complete: number = 0;
+  success: number = 0;
+  errored: number = 0;
+  retried: number = 0;
+  total: number = 0;
+  taskDataMap = new Map<number, TaskData<T, R>>();
+  waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
+  min: number = 9999999999;
+  max: number = 0;
+  avg: number = 0;
+  retries: number = 0;
+  backoff: number = 200;
+  closed: boolean = false;
+  finished: boolean = false;
+  startTime: number = 0;
 
-  constructor(options: ThrottlerOptions<T>) {
+  constructor(options: ThrottlerOptions<T, R>) {
     if (options.name) {
       this.name = options.name;
     }
@@ -82,14 +82,14 @@ export abstract class Throttler<T> {
   /**
    * @return `true` if there are unscheduled task waiting to be scheduled.
    */
-  public abstract hasWaitingTask(): boolean;
+  abstract hasWaitingTask(): boolean;
 
   /**
    * @return the index of the next task to schedule.
    */
-  public abstract nextWaitingTaskIndex(): number;
+  abstract nextWaitingTaskIndex(): number;
 
-  public wait(): Promise<void> {
+  wait(): Promise<void> {
     const p = new Promise<void>((resolve, reject) => {
       this.waits.push({ resolve, reject });
     });
@@ -101,7 +101,7 @@ export abstract class Throttler<T> {
    * When the task is completed, resolve will be called with handler's result.
    * If this task fails after retries, reject will be called with the error.
    */
-  public add(task: T): void {
+  add(task: T): void {
     this.addHelper(task);
   }
 
@@ -109,18 +109,18 @@ export abstract class Throttler<T> {
    * Add the task to the throttler and return a promise of handler's result.
    * If the task failed, both the promised returned by throttle and wait will reject.
    */
-  public run<R>(task: T): Promise<R> {
-    return new Promise<R>((resolve, reject) => {
+  run(task: T): Promise<R> {
+    return new Promise((resolve, reject) => {
       this.addHelper(task, { resolve, reject });
     });
   }
 
-  public close(): boolean {
+  close(): boolean {
     this.closed = true;
     return this.finishIfIdle();
   }
 
-  public process(): void {
+  process(): void {
     if (this.finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
       return;
     }
@@ -129,7 +129,7 @@ export abstract class Throttler<T> {
     this.handle(this.nextWaitingTaskIndex());
   }
 
-  public async handle(cursorIndex: number): Promise<void> {
+  async handle(cursorIndex: number): Promise<void> {
     const taskData = this.taskDataMap.get(cursorIndex);
     if (!taskData) {
       throw new Error(`taskData.get(${cursorIndex}) does not exist`);
@@ -183,7 +183,7 @@ export abstract class Throttler<T> {
     }
   }
 
-  public stats(): ThrottlerStats {
+  stats(): ThrottlerStats {
     return {
       max: this.max,
       min: this.min,
@@ -198,7 +198,7 @@ export abstract class Throttler<T> {
     };
   }
 
-  public taskName(cursorIndex: number): string {
+  taskName(cursorIndex: number): string {
     const taskData = this.taskDataMap.get(cursorIndex);
     if (!taskData) {
       return "finished task";
@@ -208,7 +208,7 @@ export abstract class Throttler<T> {
 
   private addHelper(
     task: T,
-    wait?: { resolve: (result: any) => void; reject: (err: Error) => void }
+    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
   ): void {
     if (this.closed) {
       throw new Error("Cannot add a task to a closed throttler.");

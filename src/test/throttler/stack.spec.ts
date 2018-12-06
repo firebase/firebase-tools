@@ -11,7 +11,7 @@ describe("Stack", () => {
 
   it("should be first-in-last-out", async () => {
     const order: string[] = [];
-    const queue = new Stack<Task>({
+    const queue = new Stack<Task, void>({
       handler: createHandler(order),
       concurrency: 1,
     });
@@ -30,7 +30,7 @@ describe("Stack", () => {
 
   it("should not repeat completed tasks", async () => {
     const order: string[] = [];
-    const queue = new Stack<Task>({
+    const queue = new Stack<Task, void>({
       handler: createHandler(order),
       concurrency: 1,
     });

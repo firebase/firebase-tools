@@ -8,7 +8,7 @@ import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
 const TEST_ERROR = new Error("foobar");
 
 interface ThrottlerConstructor {
-  new <T>(options: ThrottlerOptions<T>): Throttler<T>;
+  new <T, R>(options: ThrottlerOptions<T, R>): Throttler<T, R>;
 }
 
 const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
