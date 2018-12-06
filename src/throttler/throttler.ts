@@ -37,6 +37,14 @@ interface TaskData<T, R> {
   wait?: { resolve: (R: any) => void; reject: (err: Error) => void };
 }
 
+/**
+ * Throttler is a task scheduler that throttles the maximum number of tasks running at the same time.
+ * In the case of failure, it will retry with exponential backoff, until exceeding the retries limit.
+ * T is the type of task. R is the type of the handler's result.
+ * You can use throttler in two ways:
+ * 1. Specify handler that is (T) => R.
+ * 2. Not specify the handler, but T must be () => R.
+ */
 export abstract class Throttler<T, R> {
   name: string = "";
   concurrency: number = 200;
@@ -89,6 +97,9 @@ export abstract class Throttler<T, R> {
    */
   abstract nextWaitingTaskIndex(): number;
 
+  /**
+   * Return a promise that waits until the Throttler is closed and all tasks finish.
+   */
   wait(): Promise<void> {
     const p = new Promise<void>((resolve, reject) => {
       this.waits.push({ resolve, reject });
