@@ -31,6 +31,6 @@ export interface FieldIndex {
  * Specification for the JSON file that is used for index deployment,
  */
 export interface IndexFile {
-  indexes: Spec.Index[];
-  fieldOverrides: Spec.Field[] | undefined;
+  indexes: Index[];
+  fieldOverrides: Field[] | undefined;
 }
