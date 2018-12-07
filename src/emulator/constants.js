@@ -24,8 +24,8 @@ const _emulators = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.2.1.jar",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.2.1.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.2.2.jar",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.2.2.jar"),
   },
 };
 
