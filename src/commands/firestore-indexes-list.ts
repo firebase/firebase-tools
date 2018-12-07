@@ -1,7 +1,9 @@
 "use strict";
 
 import * as Command from "../command";
+import * as clc from "cli-color";
 import * as fsi from "../firestore/indexes";
+import * as logger from "../logger";
 import * as requirePermissions from "../requirePermissions";
 
 module.exports = new Command("firestore:indexes")
@@ -12,10 +14,27 @@ module.exports = new Command("firestore:indexes")
       "JSON specification format."
   )
   .before(requirePermissions, ["datastore.indexes.list"])
-  .action((options: any) => {
+  .action(async (options: any) => {
     const indexApi = new fsi.FirestoreIndexes();
-    return indexApi.list(options.project).then((indexes) => {
-      indexApi.printIndexes(indexes, options.pretty);
-      return indexApi.makeIndexSpec(indexes);
-    });
+
+    const indexes = await indexApi.listIndexes(options.project);
+    const fieldOverrides = await indexApi.listFieldOverrides(options.project);
+
+    // TODO: Include fields
+    const indexSpec = indexApi.makeIndexSpec(indexes);
+
+    if (options.pretty) {
+      logger.info(clc.bold.white("Compound Indexes"));
+      indexApi.prettyPrintIndexes(indexes);
+
+      if (fieldOverrides) {
+        logger.info();
+        logger.info(clc.bold.white("Field Overrides"));
+        indexApi.printFieldOverrides(fieldOverrides);
+      }
+    } else {
+      logger.info(JSON.stringify(indexSpec, undefined, 2));
+    }
+
+    return indexSpec;
   });

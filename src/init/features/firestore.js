@@ -144,7 +144,7 @@ var _initIndexes = function(setup, config) {
 
 var _getIndexesFromConsole = function(projectId) {
   return indexes
-    .list(projectId)
+    .listIndexes(projectId)
     .then(function(res) {
       return indexes.makeIndexSpec(res);
     })

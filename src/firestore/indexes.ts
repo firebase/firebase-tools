@@ -62,7 +62,7 @@ namespace API {
    */
   export interface Field {
     name: string;
-    indexConfig: IndexConfig[];
+    indexConfig: IndexConfig;
   }
 
   /**
@@ -127,7 +127,7 @@ export class FirestoreIndexes {
     });
 
     const toDeploy: Spec.Index[] = indexes;
-    const existing = await this.list(project);
+    const existing = await this.listIndexes(project);
 
     // TODO: Figure out which deployed indexes are missing here
     // TODO: Log the missing ones
@@ -148,7 +148,7 @@ export class FirestoreIndexes {
    * List all indexes that exist on a given project.
    * @param project the Firebase project id.
    */
-  public async list(project: string): Promise<API.Index[]> {
+  public async listIndexes(project: string): Promise<API.Index[]> {
     const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
 
     const res = await api.request("GET", `/v1beta2/${url}`, {
@@ -170,6 +170,23 @@ export class FirestoreIndexes {
         queryScope: index.queryScope,
         fields,
       } as API.Index;
+    });
+  }
+
+  // TODO
+  public async listFieldOverrides(project: string): Promise<API.Field[]> {
+    const url = `projects/${project}/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false`;
+
+    const res = await api.request("GET", `/v1beta2/${url}`, {
+      auth: true,
+      origin: api.firestoreOrigin,
+    });
+
+    const fields = res.body.fields as API.Field[];
+
+    // Ignore the default config, only list fields.
+    return fields.filter((field) => {
+      return field.name.indexOf("__default__") < 0;
     });
   }
 
@@ -195,16 +212,19 @@ export class FirestoreIndexes {
   /**
    * Print an array of indexes to the console.
    * @param indexes the array of indexes.
-   * @param pretty if true, pretty prints. If false, print as JSON.
    */
-  public printIndexes(indexes: API.Index[], pretty: boolean): void {
-    if (!pretty) {
-      logger.info(JSON.stringify(this.makeIndexSpec(indexes), undefined, 2));
-      return;
-    }
-
+  public prettyPrintIndexes(indexes: API.Index[]): void {
     indexes.forEach((index) => {
-      logger.info(this.toPrettyString(index));
+      logger.info(this.prettyIndexString(index));
+    });
+  }
+
+  /**
+   * TODO
+   */
+  public printFieldOverrides(fields: API.Field[]): void {
+    fields.forEach((field) => {
+      logger.info(this.prettyFieldString(field));
     });
   }
 
@@ -228,18 +248,6 @@ export class FirestoreIndexes {
       if (field.arrayConfig) {
         validator.assertEnum(field, "arrayConfig", Object.keys(API.ArrayConfig));
       }
-    });
-  }
-
-  /**
-   * TODO: Fix type
-   */
-  private async listFields(project: string): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false`;
-
-    const res = await api.request("GET", `/v1beta2/${url}`, {
-      auth: true,
-      origin: api.firestoreOrigin,
     });
   }
 
@@ -285,7 +293,7 @@ export class FirestoreIndexes {
   /**
    * Get a colored, pretty-printed representation of an index.
    */
-  private toPrettyString(index: API.Index): string {
+  private prettyIndexString(index: API.Index): string {
     let result = "";
 
     if (index.state) {
@@ -314,6 +322,30 @@ export class FirestoreIndexes {
       // we want to display whichever one is present.
       const orderOrArrayConfig = field.order ? field.order : field.arrayConfig;
       result += `(${field.fieldPath},${orderOrArrayConfig}) `;
+    });
+
+    return result;
+  }
+
+  /**
+   * Get a colored, pretty-printed representation of a field
+   */
+  private prettyFieldString(field: API.Field): string {
+    let result = "";
+
+    const m = field.name.match(FIELD_NAME_REGEX);
+    if (!m || m.length < 4) {
+      throw new FirebaseError(`Error parsing field name: ${field.name}`);
+    }
+
+    const collectionName = m[2];
+    const fieldName = m[3];
+    result += "[" + clc.yellow(collectionName) + "." + clc.cyan(fieldName) + "] --";
+
+    field.indexConfig.indexes.forEach((index) => {
+      const firstField = index.fields[0];
+      const mode = firstField.order || firstField.arrayConfig;
+      result += " (" + mode + ")";
     });
 
     return result;
