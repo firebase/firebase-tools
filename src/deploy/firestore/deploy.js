@@ -1,8 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var iv1 = require("../../firestore/indexesV1Beta1");
-var iv2 = require("../../firestore/indexesV1Beta2");
+var fsi = require("../../firestore/indexes");
 var logger = require("../../logger");
 
 var utils = require("../../utils");
@@ -31,12 +30,7 @@ function _deployIndexes(context, options) {
     return utils.reject('Index file must contain an "indexes" property.');
   }
 
-  var version = _.get(context, "firestore.indexes.version");
-  if (version === "v1beta1") {
-    return iv1.deploy(options.project, indexes);
-  } else {
-    return new iv2.FirestoreIndexes().deploy(options.project, indexes);
-  }
+  return new fsi.FirestoreIndexes().deploy(options.project, indexes);
 }
 
 /**

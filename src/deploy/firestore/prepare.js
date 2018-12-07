@@ -3,10 +3,7 @@
 var _ = require("lodash");
 
 var loadCJSON = require("../../loadCJSON");
-var FirebaseError = require("../../error");
-var logger = require("../../logger");
-var iv1 = require("../../firestore/indexesV1Beta1");
-var iv2 = require("../../firestore/indexesV1Beta2");
+var fsi = require("../../firestore/indexes");
 var validator = require("../../firestore/validator");
 var RulesDeploy = require("../../RulesDeploy");
 
@@ -35,34 +32,14 @@ function _prepareIndexes(context, options) {
 
   validator.assertHas(parsedSrc, "indexes");
 
-  var version = parsedSrc.version;
-  if (!version) {
-    logger.debug("No Firestore indexes version present, defaulting to v1beta1.");
-    version = "v1beta1";
-  } else {
-    logger.debug("Detected Firestore index version: " + version);
-  }
-
-  var validVersions = ["v1beta1", "v1beta2"];
-  if (validVersions.indexOf(version) < 0) {
-    throw new FirebaseError("Invalid Firestore indexes version: " + version);
-  }
-
-  var fsi;
-  if (parsedSrc.version == "v1beta1") {
-    fsi = iv1;
-  } else {
-    fsi = new iv2.FirestoreIndexes();
-  }
-
+  var indexApi = new fsi.FirestoreIndexes();
   parsedSrc.indexes.forEach(function(index) {
-    fsi.validate(index);
+    indexApi.validate(index);
   });
 
   context.firestore = context.firestore || {};
   context.firestore.indexes = {
     name: indexesFileName,
-    version: version,
     content: parsedSrc,
   };
 }

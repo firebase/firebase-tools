@@ -5,7 +5,7 @@ var fs = require("fs");
 
 var FirebaseError = require("../../error");
 var gcp = require("../../gcp");
-var iv2 = require("../../firestore/indexesV1Beta2");
+var iv2 = require("../../firestore/indexes");
 var fsutils = require("../../fsutils");
 var prompt = require("../../prompt");
 var logger = require("../../logger");
