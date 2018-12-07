@@ -23,7 +23,7 @@ function _runBinary(emulator, command) {
       stdio: ["inherit", "pipe", "pipe"],
     });
     emulator.instance.stdout.on("data", (data) => {
-      console.log(data.toString());
+      process.stdout.write(data.toString());
       emulator.stdout.write(data.toString());
     });
     emulator.instance.stderr.on("data", (data) => {
@@ -51,7 +51,6 @@ function _runBinary(emulator, command) {
         utils.logLabeledBullet(emulator.name, "emulator has exited");
       }
     });
-    utils.logLabeledSuccess(emulator.name, "started on http://localhost:" + emulator.port);
     resolve();
   });
 }
