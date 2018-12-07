@@ -14,7 +14,7 @@ module.exports = (name) => {
     let req = request.get(emulator.remoteUrl);
     let writeStream = fs.createWriteStream(emulator.localPath);
     req.on("error", (err) => reject(err));
-    req.on('response', response => {
+    req.on("response", (response) => {
       if (response.statusCode != 200) {
         reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
       }
