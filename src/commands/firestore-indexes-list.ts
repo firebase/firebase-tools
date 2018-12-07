@@ -19,9 +19,7 @@ module.exports = new Command("firestore:indexes")
 
     const indexes = await indexApi.listIndexes(options.project);
     const fieldOverrides = await indexApi.listFieldOverrides(options.project);
-
-    // TODO: Include fields
-    const indexSpec = indexApi.makeIndexSpec(indexes);
+    const indexSpec = indexApi.makeIndexSpec(indexes, fieldOverrides);
 
     if (options.pretty) {
       logger.info(clc.bold.white("Compound Indexes"));

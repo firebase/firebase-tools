@@ -1,8 +1,12 @@
+import * as clc from "cli-color";
+
 import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
-import * as clc from "cli-color";
 import * as validator from "./validator";
+
+import * as API from "./indexes-api";
+import * as Spec from "./indexes-spec";
 
 // projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/indexes/$INDEX_ID
 const INDEX_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/indexes\/([^\/]*)/;
@@ -10,108 +14,16 @@ const INDEX_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectio
 // projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/fields/$FIELD_ID
 const FIELD_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/fields\/([^\/]*)/;
 
-/**
- * Type definitions for working with the v1beta2 indexes API. These are direct
- * translations from the protos.
- */
-namespace API {
-  export enum QueryScope {
-    COLLECTION = "COLLECTION",
-    COLLECTION_GROUP = "COLLECTION_GROUP",
-  }
-
-  export enum Order {
-    ASCENDING = "ASCENDING",
-    DESCENDING = "DESCENDING",
-  }
-
-  export enum ArrayConfig {
-    CONTAINS = "CONTAINS",
-  }
-
-  export enum State {
-    CREATING = "CREATING",
-    READY = "READY",
-    NEEDS_REPAIR = "NEEDS_REPAIR",
-  }
-
-  /**
-   * An Index as it is represented in the Firestore v1beta2 indexes API.
-   */
-  export interface Index {
-    name: string | undefined;
-    queryScope: QueryScope;
-    fields: IndexField[];
-    state: State;
-  }
-
-  /**
-   * A field in an index.
-   */
-  export interface IndexField {
-    fieldPath: string;
-    order: Order | undefined;
-    arrayConfig: ArrayConfig | undefined;
-  }
-
-  /**
-   * Represents a single field in the database.
-   *
-   * If a field has an empty indexConfig, that means all
-   * default indexes are exempted.
-   */
-  export interface Field {
-    name: string;
-    indexConfig: IndexConfig;
-  }
-
-  /**
-   * Index configuration overrides for a field.
-   */
-  export interface IndexConfig {
-    ancestorField: string | undefined;
-    indexes: Index[];
-  }
+interface IndexName {
+  projectId: string;
+  collectionGroupId: string;
+  indexId: string;
 }
 
-/**
- * Types that are unique to the CLI, used by the developer to
- * specify indexes in a configuration file.
- */
-namespace Spec {
-  /**
-   * An entry specifying a compound or other non-default index.
-   */
-  export interface Index {
-    collectionGroup: string;
-    queryScope: API.QueryScope;
-    fields: API.IndexField[];
-  }
-
-  /**
-   * An entry specifying field index configuration override.
-   */
-  export interface Field {
-    collectionGroup: string;
-    fieldPath: string;
-    indexes: FieldIndex[];
-  }
-
-  /**
-   * Entry specifying a single-field index.
-   */
-  export interface FieldIndex {
-    order: API.Order | undefined;
-    arrayConfig: API.ArrayConfig | undefined;
-  }
-
-  /**
-   * Specification for the JSON file that is used for index deployment,
-   */
-  export interface IndexFile {
-    indexes: Spec.Index[];
-    fieldOverrides: Spec.Field[] | undefined;
-  }
+interface FieldName {
+  projectId: string;
+  collectionGroupId: string;
+  fieldPath: string;
 }
 
 export class FirestoreIndexes {
@@ -175,7 +87,8 @@ export class FirestoreIndexes {
 
   // TODO
   public async listFieldOverrides(project: string): Promise<API.Field[]> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/-/fields?filter=indexConfig.usesAncestorConfig=false`;
+    const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
+    const url = `${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
 
     const res = await api.request("GET", `/v1beta2/${url}`, {
       auth: true,
@@ -191,10 +104,10 @@ export class FirestoreIndexes {
   }
 
   /**
-   * Turn an array of indexes into a {@link Spec.IndexFile} suitable for use
+   * Turn an array of indexes and field overrides into a {@link Spec.IndexFile} suitable for use
    * in an indexes.json file.
    */
-  public makeIndexSpec(indexes: API.Index[]): Spec.IndexFile {
+  public makeIndexSpec(indexes: API.Index[], fields: API.Field[] | undefined): Spec.IndexFile {
     const indexesJson = indexes.map((index) => {
       return {
         collectionGroup: this.parseIndexName(index).collectionGroupId,
@@ -203,9 +116,28 @@ export class FirestoreIndexes {
       };
     });
 
+    fields = fields || [];
+
+    const fieldsJson = fields.map((field) => {
+      const parsedName = this.parseFieldName(field);
+      return {
+        collectionGroup: parsedName.collectionGroupId,
+        fieldPath: parsedName.fieldPath,
+
+        indexes: field.indexConfig.indexes.map((index) => {
+          const firstField = index.fields[0];
+          return {
+            order: firstField.order,
+            arrayConfig: firstField.arrayConfig,
+            queryScope: index.queryScope,
+          };
+        }),
+      };
+    });
+
     return {
       indexes: indexesJson,
-      fieldOverrides: [],
+      fieldOverrides: fieldsJson,
     };
   }
 
@@ -260,6 +192,7 @@ export class FirestoreIndexes {
       spec.collectionGroup
     }/fields/${spec.fieldPath}`;
     const data = {
+      // TODO: Scope spec
       queryScope: API.QueryScope.COLLECTION,
       indexConfig: {
         indexes: spec.indexes,
@@ -269,7 +202,7 @@ export class FirestoreIndexes {
     const res = await api.request("PATCH", `/v1beta2/${url}`, {
       auth: true,
       origin: api.firestoreOrigin,
-      data: data,
+      data,
     });
   }
 
@@ -333,14 +266,14 @@ export class FirestoreIndexes {
   private prettyFieldString(field: API.Field): string {
     let result = "";
 
-    const m = field.name.match(FIELD_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing field name: ${field.name}`);
-    }
+    const parsedName = this.parseFieldName(field);
 
-    const collectionName = m[2];
-    const fieldName = m[3];
-    result += "[" + clc.yellow(collectionName) + "." + clc.cyan(fieldName) + "] --";
+    result +=
+      "[" +
+      clc.cyan(parsedName.collectionGroupId) +
+      "." +
+      clc.yellow(parsedName.fieldPath) +
+      "] --";
 
     field.indexConfig.indexes.forEach((index) => {
       const firstField = index.fields[0];
@@ -354,20 +287,40 @@ export class FirestoreIndexes {
   /**
    * Parse an Index name into useful pieces.
    */
-  private parseIndexName(index: API.Index): any {
+  private parseIndexName(index: API.Index): IndexName {
     if (!index.name) {
       throw new FirebaseError(`Index has no "name": ${JSON.stringify(index)}`);
     }
 
     const m = index.name.match(INDEX_NAME_REGEX);
     if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing index name: ${name}`);
+      throw new FirebaseError(`Error parsing index name: ${index.name}`);
     }
 
     return {
       projectId: m[1],
       collectionGroupId: m[2],
       indexId: m[3],
+    };
+  }
+
+  /**
+   * Parse an Field name into useful pieces.
+   */
+  private parseFieldName(field: API.Field): FieldName {
+    if (!field.name) {
+      throw new FirebaseError(`Feld has no "name": ${JSON.stringify(field)}`);
+    }
+
+    const m = field.name.match(FIELD_NAME_REGEX);
+    if (!m || m.length < 4) {
+      throw new FirebaseError(`Error parsing field name: ${field.name}`);
+    }
+
+    return {
+      projectId: m[1],
+      collectionGroupId: m[2],
+      fieldPath: m[3],
     };
   }
 
