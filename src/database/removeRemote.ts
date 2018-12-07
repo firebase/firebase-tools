@@ -36,7 +36,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
 
   deleteSubPath(path: string, children: string[]): Promise<boolean> {
     const body = {};
-    for (let c in children) {
+    for (const c in children) {
       body[c] = null;
     }
     return this.put(path, body);

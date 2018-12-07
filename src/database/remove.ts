@@ -27,10 +27,10 @@ function chunkList(ls: number[], chunkSize: number) {
 }
 
 export default class DatabaseRemove {
-  public path: string;
-  public concurrency: number;
-  public retries: number;
-  public remote: RemoveRemote;
+  path: string;
+  concurrency: number;
+  retries: number;
+  remote: RemoveRemote;
   private jobStack: Stack<() => Promise<any>>;
   private INITIAL_DELETE_BATCH_SIZE = 25;
   private INITIAL_SHALLOW_GET_SIZE = 100;
@@ -55,7 +55,7 @@ export default class DatabaseRemove {
     });
   }
 
-  public async execute(): Promise<number> {
+  async execute(): Promise<number> {
     return this.deletePath(this.path);
   }
 
