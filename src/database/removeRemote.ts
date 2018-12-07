@@ -31,15 +31,31 @@ export class RTDBRemoveRemote implements RemoveRemote {
   }
 
   deletePath(path: string): Promise<boolean> {
-    return this.put(path, null);
+    return this.patch(path, null)
+    .then((x) => {
+      if (x) {
+          logger.debug(`[database] Sucessfully removed data at ${path}`);
+          } else {
+          logger.debug(`[database] Failed removed data at ${path}`);
+          }
+      return x;
+    });
   }
 
   deleteSubPath(path: string, children: string[]): Promise<boolean> {
-    const body = {};
+    const body:any = {};
     for (const c in children) {
       body[c] = null;
     }
-    return this.put(path, body);
+    return this.patch(path, body)
+    .then((x) => {
+      if (x) {
+      logger.debug(`[database] Sucessfully removed paths at ${path} length:${children.length} \n\r\r${children}`);
+      } else {
+      logger.debug(`[database] Failed removed paths at ${path} length:${children.length} \n\r\r${children}`);
+      }
+      return x;
+    });
   }
 
   listPath(path: string, numChildren: number): Promise<string[]> {
@@ -84,19 +100,19 @@ export class RTDBRemoveRemote implements RemoveRemote {
     });
   }
 
-  private put(path: string, body: any): Promise<boolean> {
+  private patch(path: string, body: any): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const url =
         utils.addSubdomain(api.realtimeOrigin, this.instance) +
         path +
-        ".json?print=silent&allowLongWrite=small";
+        ".json?print=silent&timeWrite=200000000";
       const reqOptions = {
         url,
         body,
         json: true,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-        request.del(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+        request.patch(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
           if (err) {
             return reject(
               new FirebaseError(`Unexpected error while removing data at ${path}`, {
@@ -105,9 +121,9 @@ export class RTDBRemoveRemote implements RemoveRemote {
               })
             );
           } else if (res.statusCode >= 400) {
-            return reject(responseToError(res, body));
+          //          console.log(res);
+            return resolve(false);
           }
-          logger.debug(`[database] Sucessfully removed data at ${path}`);
           return resolve(true);
         });
       });
