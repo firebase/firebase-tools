@@ -30,7 +30,9 @@ function _deployIndexes(context, options) {
     return utils.reject('Index file must contain an "indexes" property.');
   }
 
-  return new fsi.FirestoreIndexes().deploy(options.project, indexes);
+  var fieldOverrides = indexesSrc.fieldOverrides || [];
+
+  return new fsi.FirestoreIndexes().deploy(options.project, indexes, fieldOverrides);
 }
 
 /**

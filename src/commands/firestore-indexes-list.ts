@@ -19,6 +19,7 @@ module.exports = new Command("firestore:indexes")
 
     const indexes = await indexApi.listIndexes(options.project);
     const fieldOverrides = await indexApi.listFieldOverrides(options.project);
+
     const indexSpec = indexApi.makeIndexSpec(indexes, fieldOverrides);
 
     if (options.pretty) {

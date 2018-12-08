@@ -143,10 +143,12 @@ var _initIndexes = function(setup, config) {
 };
 
 var _getIndexesFromConsole = function(projectId) {
-  return indexes
-    .listIndexes(projectId)
+  var indexesPromise = indexes.listIndexes(projectId);
+  var fieldOverridesPromise = indexes.listFieldOverrides(projectId);
+
+  return Promise.all([indexesPromise, fieldOverridesPromise])
     .then(function(res) {
-      return indexes.makeIndexSpec(res);
+      return indexes.makeIndexSpec(res[0], res[1]);
     })
     .catch(function(e) {
       if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {

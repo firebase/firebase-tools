@@ -12,7 +12,7 @@ export interface Index {
 /**
  * An entry specifying field index configuration override.
  */
-export interface Field {
+export interface FieldOverride {
   collectionGroup: string;
   fieldPath: string;
   indexes: FieldIndex[];
@@ -32,5 +32,5 @@ export interface FieldIndex {
  */
 export interface IndexFile {
   indexes: Index[];
-  fieldOverrides: Field[] | undefined;
+  fieldOverrides: FieldOverride[] | undefined;
 }

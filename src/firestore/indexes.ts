@@ -33,26 +33,44 @@ export class FirestoreIndexes {
    * @param indexes an array of objects, each will be validated and then converted
    * to an {@link IndexSpecEntry}.
    */
-  public async deploy(project: string, indexes: any[]): Promise<any> {
+  public async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<any> {
     indexes.forEach((index) => {
-      this.validate(index);
+      this.validateIndex(index);
     });
 
-    const toDeploy: Spec.Index[] = indexes;
-    const existing = await this.listIndexes(project);
+    fieldOverrides.forEach((field) => {
+      this.validateField(field);
+    });
+
+    const indexesToDeploy: Spec.Index[] = indexes;
+    const fieldOverridesToDeploy: Spec.FieldOverride[] = fieldOverrides;
+
+    const existingIndexes = await this.listIndexes(project);
+    const existingFieldOverrides = await this.listFieldOverrides(project);
 
     // TODO: Figure out which deployed indexes are missing here
     // TODO: Log the missing ones
 
-    toDeploy.forEach(async (index) => {
-      const exists = existing.some((x) => this.isSameSpec(x, index));
+    indexesToDeploy.forEach(async (index) => {
+      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
         return;
       }
 
       logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-      await this.create(project, index);
+      await this.createIndex(project, index);
+    });
+
+    fieldOverridesToDeploy.forEach(async (field) => {
+      const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
+      if (exists) {
+        logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
+        return;
+      }
+
+      logger.debug(`Updating field override: ${JSON.stringify(field)}`);
+      await this.patchField(project, field);
     });
   }
 
@@ -116,7 +134,10 @@ export class FirestoreIndexes {
       };
     });
 
-    fields = fields || [];
+    if (!fields) {
+      logger.debug("No field overrides specified, using [].");
+      fields = [];
+    }
 
     const fieldsJson = fields.map((field) => {
       const parsedName = this.parseFieldName(field);
@@ -163,7 +184,7 @@ export class FirestoreIndexes {
   /**
    * Validate that an arbitrary object is safe to use as an {@link IndexSpecEntry}.
    */
-  public validate(index: any): void {
+  public validateIndex(index: any): void {
     validator.assertHas(index, "collectionGroup");
     validator.assertHas(index, "queryScope");
     validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
@@ -183,11 +204,34 @@ export class FirestoreIndexes {
     });
   }
 
+  // TODO
+  public validateField(field: any): void {
+    validator.assertHas(field, "collectionGroup");
+    validator.assertHas(field, "fieldPath");
+    validator.assertHas(field, "indexes");
+
+    field.indexes.forEach((index: any) => {
+      validator.assertHasOneOf(index, ["arrayConfig", "order"]);
+
+      if (index.arrayConfig) {
+        validator.assertEnum(field, "arrayConfig", Object.keys(API.ArrayConfig));
+      }
+
+      if (index.order) {
+        validator.assertEnum(field, "order", Object.keys(API.Order));
+      }
+
+      if (index.queryScope) {
+        validator.assertEnum(field, "queryScope", Object.keys(API.QueryScope));
+      }
+    });
+  }
+
   /**
    * TODO: Doc
    * TODO: Maybe change name of all the indexing functions?
    */
-  private async patchField(project: string, spec: Spec.Field): Promise<any> {
+  private async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       spec.collectionGroup
     }/fields/${spec.fieldPath}`;
@@ -209,7 +253,7 @@ export class FirestoreIndexes {
   /**
    * Create a new index on the specified project.
    */
-  private create(project: string, index: Spec.Index): Promise<any> {
+  private createIndex(project: string, index: Spec.Index): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       index.collectionGroup
     }/indexes`;
@@ -325,9 +369,9 @@ export class FirestoreIndexes {
   }
 
   /**
-   * Determine if an Index and an IndexSpecEntry are functionally equivalent.
+   * Determine if an API Index and a Spec Index are functionally equivalent.
    */
-  private isSameSpec(index: API.Index, spec: Spec.Index): boolean {
+  private indexMatchesSpec(index: API.Index, spec: Spec.Index): boolean {
     const collection = this.parseIndexName(index).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
@@ -356,6 +400,34 @@ export class FirestoreIndexes {
       if (iField.arrayConfig !== sField.arrayConfig) {
         return false;
       }
+    }
+
+    return true;
+  }
+
+  /**
+   * Determine if an API Field and a Spec Field are functionally equivalent.
+   */
+  private fieldMatchesSpec(field: API.Field, spec: Spec.FieldOverride): boolean {
+    const parsedName = this.parseFieldName(field);
+
+    if (parsedName.collectionGroupId !== spec.collectionGroup) {
+      return false;
+    }
+
+    if (parsedName.fieldPath !== spec.fieldPath) {
+      return false;
+    }
+
+    if (field.indexConfig.indexes.length !== spec.indexes.length) {
+      return false;
+    }
+
+    for (let i = 0; i < spec.indexes.length; i++) {
+      const fieldIndex = field.indexConfig.indexes[i];
+      const specIndex = spec.indexes[i];
+
+      // TODO: Check that the **SET** of orders/arrayconfigs/queryScopes is the same
     }
 
     return true;

@@ -34,7 +34,7 @@ function _prepareIndexes(context, options) {
 
   var indexApi = new fsi.FirestoreIndexes();
   parsedSrc.indexes.forEach(function(index) {
-    indexApi.validate(index);
+    indexApi.validateIndex(index);
   });
 
   context.firestore = context.firestore || {};
