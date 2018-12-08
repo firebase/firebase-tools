@@ -5,10 +5,6 @@ import * as logger from "../logger";
 import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
 import { Stack } from "../throttler/stack";
 
-function sumList(ls: number[]): number {
-  return ls.reduce((acc, x) => acc + x, 0);
-}
-
 function chunkList<T>(ls: T[], chunkSize: number): T[][] {
   const chunks = [];
   for (let i = 0; i < ls.length; i += chunkSize) {
@@ -19,7 +15,8 @@ function chunkList<T>(ls: T[], chunkSize: number): T[][] {
 
 const INITIAL_DELETE_BATCH_SIZE = 25;
 const INITIAL_SHALLOW_GET_SIZE = 100;
-const MAX_SHALLOW_GET_SIZE = 100000;
+// const MAX_SHALLOW_GET_SIZE = 102400;
+const MAX_SHALLOW_GET_SIZE = 1638400;
 
 export default class DatabaseRemove {
   path: string;
@@ -49,48 +46,52 @@ export default class DatabaseRemove {
     });
   }
 
-  async execute(): Promise<number> {
-    return this.deletePath(this.path);
+  async execute(): Promise<void> {
+    await this.deletePath(this.path);
   }
 
-  private async deletePath(path: string): Promise<number> {
+  private async deletePath(path: string): Promise<boolean> {
     const deleteSucessful = await this.deleteJobStack.run(() => this.remote.deletePath(path));
     if (deleteSucessful) {
-      return Promise.resolve(1);
+      return Promise.resolve(true);
     }
-    let numChildDeleted = 0;
-    let numDeleteTaken = 0;
     let deleteBatchSize = INITIAL_DELETE_BATCH_SIZE;
     let shallowGetBatchSize = INITIAL_SHALLOW_GET_SIZE;
+    let low = 1;
+    let high = MAX_SHALLOW_GET_SIZE + 1;
     while (true) {
       const childrenList = await this.listStack.run(() =>
         this.remote.listPath(path, shallowGetBatchSize)
       );
       if (childrenList.length == 0) {
-        return Promise.resolve(numDeleteTaken);
+        return Promise.resolve(false);
       }
       const chunks = chunkList(childrenList, deleteBatchSize);
-      const nDeletes = await Promise.all(chunks.map((p) => this.deleteChildren(path, p))).then(
-        sumList
-      );
-      numChildDeleted += childrenList.length;
-      numDeleteTaken += nDeletes;
-      if (nDeletes == chunks.length) {
-        // All chunks are small, double deleteBatchSize.
-        deleteBatchSize = deleteBatchSize * 2;
-      } else {
-        // Some chunk are large, set deleteBatchSize to the average sucessful chunk size.
-        // If all children are large, then deleteBatchSize will be set to 1.
-        deleteBatchSize = Math.ceil(numChildDeleted / numDeleteTaken);
+      let nNoRetry = 0;
+      for (const chunk of chunks) {
+        if (await this.deleteChildren(path, chunk)) {
+          nNoRetry += 1;
+        }
       }
+      if (nNoRetry > chunks.length / 2) {
+        // majority chunk has no retry
+        low = deleteBatchSize;
+        deleteBatchSize = Math.floor(Math.min(deleteBatchSize * 2, (high + deleteBatchSize) / 2));
+      } else {
+        high = deleteBatchSize;
+        deleteBatchSize = Math.floor((low + deleteBatchSize) / 2);
+      }
+      console.log(deleteBatchSize);
       // Start with small number of children to learn about an appropriate size.
       if (shallowGetBatchSize * 2 <= MAX_SHALLOW_GET_SIZE) {
         shallowGetBatchSize = shallowGetBatchSize * 2;
+      } else {
+        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / deleteBatchSize) * deleteBatchSize;
       }
     }
   }
 
-  private async deleteChildren(path: string, children: string[]): Promise<number> {
+  private async deleteChildren(path: string, children: string[]): Promise<boolean> {
     if (children.length == 0) {
       throw new Error("deleteChildren is called with empty children list");
     }
@@ -102,12 +103,11 @@ export default class DatabaseRemove {
       this.remote.deleteSubPath(path, children)
     );
     if (deleteSucessful) {
-      return Promise.resolve(1);
+      return Promise.resolve(true);
     }
     const mid = Math.floor(children.length / 2);
-    return Promise.all([
-      this.deleteChildren(path, children.slice(0, mid)),
-      this.deleteChildren(path, children.slice(mid)),
-    ]).then(sumList);
+    await this.deleteChildren(path, children.slice(0, mid));
+    await this.deleteChildren(path, children.slice(mid));
+    return Promise.resolve(false);
   }
 }
