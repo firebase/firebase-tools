@@ -31,28 +31,30 @@ export class RTDBRemoveRemote implements RemoveRemote {
   }
 
   deletePath(path: string): Promise<boolean> {
-    return this.patch(path, null)
-    .then((x) => {
+    const t0 = Date.now();
+    return this.patch(path, null).then((x) => {
+      const dt = Date.now() - t0;
       if (x) {
-          logger.debug(`[database] Sucessfully removed data at ${path}`);
-          } else {
-          logger.debug(`[database] Failed removed data at ${path}`);
-          }
+        logger.debug(`[database] Sucessfully removed data at ${path} ${dt}`);
+      } else {
+        logger.debug(`[database] Failed to removed data at ${path} ${dt}`);
+      }
       return x;
     });
   }
 
   deleteSubPath(path: string, children: string[]): Promise<boolean> {
-    const body:any = {};
-    for (const c in children) {
+    const body: any = {};
+    for (const c of children) {
       body[c] = null;
     }
-    return this.patch(path, body)
-    .then((x) => {
+    const t0 = Date.now();
+    return this.patch(path, body).then((x) => {
+      const dt = Date.now() - t0;
       if (x) {
-      logger.debug(`[database] Sucessfully removed paths at ${path} length:${children.length} \n\r\r${children}`);
+        logger.debug(`[database] Sucessfully removed ${children.length} paths at ${path} ${dt}`);
       } else {
-      logger.debug(`[database] Failed removed paths at ${path} length:${children.length} \n\r\r${children}`);
+        logger.debug(`[database] Failed to removed ${children.length} paths at ${path} ${dt}`);
       }
       return x;
     });
@@ -66,38 +68,46 @@ export class RTDBRemoveRemote implements RemoveRemote {
     const reqOptions = {
       url,
     };
-    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-      return new Promise<string[]>((resolve, reject) => {
-        request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
-          if (err) {
-            return reject(
-              new FirebaseError("Unexpected error while listing subtrees", {
-                exit: 2,
-                original: err,
-              })
-            );
-          } else if (res.statusCode >= 400) {
-            return reject(responseToError(res, body));
-          }
-          let data = {};
-          try {
-            data = JSON.parse(body);
-          } catch (e) {
-            return reject(
-              new FirebaseError("Malformed JSON response in shallow get ", {
-                exit: 2,
-                original: e,
-              })
-            );
-          }
-          if (data) {
-            const keyList = Object.keys(data);
-            return resolve(keyList);
-          }
-          resolve([]);
+    const t0 = Date.now();
+    return api
+      .addRequestHeaders(reqOptions)
+      .then((reqOptionsWithToken) => {
+        return new Promise<string[]>((resolve, reject) => {
+          request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+            if (err) {
+              return reject(
+                new FirebaseError("Unexpected error while listing subtrees", {
+                  exit: 2,
+                  original: err,
+                })
+              );
+            } else if (res.statusCode >= 400) {
+              return reject(responseToError(res, body));
+            }
+            let data = {};
+            try {
+              data = JSON.parse(body);
+            } catch (e) {
+              return reject(
+                new FirebaseError("Malformed JSON response in shallow get ", {
+                  exit: 2,
+                  original: e,
+                })
+              );
+            }
+            if (data) {
+              const keyList = Object.keys(data);
+              return resolve(keyList);
+            }
+            resolve([]);
+          });
         });
+      })
+      .then((x: string[]) => {
+        const dt = Date.now() - t0;
+        logger.debug(`[database] Sucessfully fetched ${x.length} path at ${path} ${dt}`);
+        return x;
       });
-    });
   }
 
   private patch(path: string, body: any): Promise<boolean> {
@@ -105,7 +115,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
       const url =
         utils.addSubdomain(api.realtimeOrigin, this.instance) +
         path +
-        ".json?print=silent&timeWrite=200000000";
+        ".json?print=silent&timeWrite=2000";
       const reqOptions = {
         url,
         body,
@@ -121,7 +131,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
               })
             );
           } else if (res.statusCode >= 400) {
-          //          console.log(res);
+            //          console.log(res);
             return resolve(false);
           }
           return resolve(true);

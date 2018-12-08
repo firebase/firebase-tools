@@ -19,13 +19,13 @@ function chunkList<T>(ls: T[], chunkSize: number): T[][] {
 
 const INITIAL_DELETE_BATCH_SIZE = 25;
 const INITIAL_SHALLOW_GET_SIZE = 100;
-const MAX_SHALLOW_GET_SIZE = 102400;
+const MAX_SHALLOW_GET_SIZE = 100000;
 
 export default class DatabaseRemove {
   path: string;
   remote: RemoveRemote;
   private deleteJobStack: Stack<() => Promise<boolean>, boolean>;
-  private listStack : Stack<() => Promise<string[]>, string[]>;
+  private listStack: Stack<() => Promise<string[]>, string[]>;
 
   /**
    * Construct a new RTDB delete operation.
@@ -63,7 +63,9 @@ export default class DatabaseRemove {
     let deleteBatchSize = INITIAL_DELETE_BATCH_SIZE;
     let shallowGetBatchSize = INITIAL_SHALLOW_GET_SIZE;
     while (true) {
-      const childrenList = await this.listStack.run(() => this.remote.listPath(path, shallowGetBatchSize));
+      const childrenList = await this.listStack.run(() =>
+        this.remote.listPath(path, shallowGetBatchSize)
+      );
       if (childrenList.length == 0) {
         return Promise.resolve(numDeleteTaken);
       }
