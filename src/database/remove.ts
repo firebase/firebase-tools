@@ -15,8 +15,7 @@ function chunkList<T>(ls: T[], chunkSize: number): T[][] {
 
 const INITIAL_DELETE_BATCH_SIZE = 25;
 const INITIAL_SHALLOW_GET_SIZE = 100;
-// const MAX_SHALLOW_GET_SIZE = 102400;
-const MAX_SHALLOW_GET_SIZE = 1638400;
+const MAX_SHALLOW_GET_SIZE = 204800;
 
 export default class DatabaseRemove {
   path: string;
