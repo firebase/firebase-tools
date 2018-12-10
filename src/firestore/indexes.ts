@@ -202,28 +202,15 @@ export class FirestoreIndexes {
    * Validate that an arbitrary object is safe to use as an {@link IndexSpecEntry}.
    */
   validateIndex(index: any): void {
-    validator.assertHasOneOf(index, ["collectionGroup", "collectionId"]);
-
-    // The v1beta2 API uses the pair of "collectionGroup" and "queryScope"
-    // whereas the old v1beta1 API encoded both pieces in "collectionId".
-    if (index.collectionGroup) {
-      validator.assertHas(index, "queryScope");
-      validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
-    }
+    validator.assertHas(index, "collectionGroup");
+    validator.assertHas(index, "queryScope");
+    validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
 
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig", "mode"]);
-
-      if (field.mode) {
-        // Mode is only supported to be compatible with the v1beta1 indexes API
-        logger.debug(
-          'The use of "mode" in indexes is deprecated, please update to "order" or "arrayConfig"'
-        );
-        validator.assertEnum(field, "mode", Object.keys(API.Mode));
-      }
+      validator.assertHasOneOf(field, ["order", "arrayConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(API.Order));
@@ -435,8 +422,7 @@ export class FirestoreIndexes {
    * This function is meant to be run **before** validation and
    * works on a purely best-effort basis.
    */
-  private upgradeOldSpec(spec: any): any {
-    // TODO: Make the validation more strict
+  upgradeOldSpec(spec: any): any {
     const result = {
       indexes: [],
       fieldOverrides: spec.fieldOverrides || [],
@@ -444,6 +430,15 @@ export class FirestoreIndexes {
 
     if (!spec.indexes) {
       return;
+    }
+
+    // Try to detect use of the old API, warn the users.
+    if (spec.indexes[0].collectionId) {
+      logger.info(
+        "Your Firestore indexes are specified in the v1beta1 API format. " +
+          "Please upgrade to the new index API format by running " +
+          "firebase firestore:indexes again and saving the result."
+      );
     }
 
     result.indexes = spec.indexes.map((index: any) => {

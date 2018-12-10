@@ -32,24 +32,24 @@ describe("IndexValidation", () => {
     });
   });
 
-  it("should accept a valid v1beta1 index spec", () => {
-    idx.validateSpec({
-      indexes: [
-        {
-          collectionId: "collection",
-          fields: [
-            { fieldPath: "foo", mode: "ASCENDING" },
-            { fieldPath: "bar", mode: "DESCENDING" },
-            { fieldPath: "baz", mode: "ARRAY_CONTAINS" },
-          ],
-        },
-      ],
-    });
+  it("should accept a valid v1beta1 index spec after upgrade", () => {
+    idx.validateSpec(
+      idx.upgradeOldSpec({
+        indexes: [
+          {
+            collectionId: "collection",
+            fields: [
+              { fieldPath: "foo", mode: "ASCENDING" },
+              { fieldPath: "bar", mode: "DESCENDING" },
+              { fieldPath: "baz", mode: "ARRAY_CONTAINS" },
+            ],
+          },
+        ],
+      })
+    );
   });
 
-  it("should reject a mixed v1beta1/v1beta2 index spec", () => {
-    // This spec uses "collectionGroup" and therefore must specify
-    // the "queryScope".
+  it("should reject an incomplete index spec", () => {
     expect(() => {
       idx.validateSpec({
         indexes: [
@@ -58,7 +58,23 @@ describe("IndexValidation", () => {
             fields: [
               { fieldPath: "foo", order: "ASCENDING" },
               { fieldPath: "bar", order: "DESCENDING" },
-              { fieldPath: "baz", arrayConfig: "CONTAINS" },
+            ],
+          },
+        ],
+      });
+    }).to.throw();
+  });
+
+  it("should reject an overspecified index spec", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              { fieldPath: "foo", order: "ASCENDING", arrayConfig: "CONTAINES" },
+              { fieldPath: "bar", order: "DESCENDING" },
             ],
           },
         ],
