@@ -10,11 +10,17 @@
   //       { "fieldPath": "bar", "mode": "DESCENDING" }
   //     ]
   //   },
-  //  "fields": [
-  //   
+  //
+  //  "fieldOverrides": [
+  //    {
+  //      "collectionGroup": "widgets",
+  //      "fieldPath": "baz",
+  //      "indexes": [
+  //        { "order": "ASCENDING", "queryScope": "COLLECTION" }
+  //      ]
+  //    },
   //   ]
   // ]
-  "version": "v1beta2",
   "indexes": [],
-  "fields": []
+  "fieldOverrides": []
 }

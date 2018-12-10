@@ -1,3 +1,15 @@
+/**
+ * The v1beta1 indexes API used a 'mode' field to represent the indexing mode.
+ * This information has now been split into the fields 'arrayConfig' and 'order'.
+ * We allow use of 'mode' (for now) so that the move to v1beta2/v1 is not
+ * breaking when we can understand the developer's intent.
+ */
+export enum Mode {
+  ASCENDING = "ASCENDING",
+  DESCENDING = "DESCENDING",
+  ARRAY_CONTAINS = "ARRAY_CONTAINS",
+}
+
 export enum QueryScope {
   COLLECTION = "COLLECTION",
   COLLECTION_GROUP = "COLLECTION_GROUP",
@@ -25,7 +37,7 @@ export interface Index {
   name: string | undefined;
   queryScope: QueryScope;
   fields: IndexField[];
-  state: State;
+  state: State | undefined;
 }
 
 /**

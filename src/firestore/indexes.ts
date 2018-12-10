@@ -185,14 +185,28 @@ export class FirestoreIndexes {
    * Validate that an arbitrary object is safe to use as an {@link IndexSpecEntry}.
    */
   public validateIndex(index: any): void {
-    validator.assertHas(index, "collectionGroup");
-    validator.assertHas(index, "queryScope");
-    validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
+    validator.assertHasOneOf(index, ["collectionGroup", "collectionId"]);
+
+    // The v1beta2 API uses the pair of "collectionGroup" and "queryScope"
+    // whereas the old v1beta1 API encoded both pieces in "collectionId".
+    if (index.collectionGroup) {
+      validator.assertHas(index, "queryScope");
+      validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
+    }
+
     validator.assertHas(index, "fields");
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "mode"]);
+
+      if (field.mode) {
+        // Mode is only supported to be compatible with the v1beta1 indexes API
+        logger.debug(
+          'The use of "mode" in indexes is deprecated, please update to "order" or "arrayConfig"'
+        );
+        validator.assertEnum(field, "mode", Object.keys(API.Mode));
+      }
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(API.Order));
@@ -214,32 +228,44 @@ export class FirestoreIndexes {
       validator.assertHasOneOf(index, ["arrayConfig", "order"]);
 
       if (index.arrayConfig) {
-        validator.assertEnum(field, "arrayConfig", Object.keys(API.ArrayConfig));
+        validator.assertEnum(index, "arrayConfig", Object.keys(API.ArrayConfig));
       }
 
       if (index.order) {
-        validator.assertEnum(field, "order", Object.keys(API.Order));
+        validator.assertEnum(index, "order", Object.keys(API.Order));
       }
 
       if (index.queryScope) {
-        validator.assertEnum(field, "queryScope", Object.keys(API.QueryScope));
+        validator.assertEnum(index, "queryScope", Object.keys(API.QueryScope));
       }
     });
   }
 
   /**
    * TODO: Doc
-   * TODO: Maybe change name of all the indexing functions?
    */
   private async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       spec.collectionGroup
     }/fields/${spec.fieldPath}`;
+
+    const indexes = spec.indexes.map((index) => {
+      return {
+        // TODO: Scope spec
+        queryScope: API.QueryScope.COLLECTION,
+        fields: [
+          {
+            fieldPath: spec.fieldPath,
+            arrayConfig: index.arrayConfig,
+            order: index.order,
+          },
+        ],
+      };
+    });
+
     const data = {
-      // TODO: Scope spec
-      queryScope: API.QueryScope.COLLECTION,
       indexConfig: {
-        indexes: spec.indexes,
+        indexes,
       },
     };
 
