@@ -22,9 +22,9 @@ export interface FieldOverride {
  * Entry specifying a single-field index.
  */
 export interface FieldIndex {
+  queryScope: API.QueryScope;
   order: API.Order | undefined;
   arrayConfig: API.ArrayConfig | undefined;
-  queryScope: API.QueryScope | undefined;
 }
 
 /**

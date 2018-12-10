@@ -115,7 +115,10 @@ export class FirestoreIndexes {
     });
   }
 
-  // TODO
+  /**
+   * List all field configuration overrides defined on the given project.
+   * @param project the Firebase project.
+   */
   async listFieldOverrides(project: string): Promise<API.Field[]> {
     const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
     const url = `${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
@@ -127,7 +130,7 @@ export class FirestoreIndexes {
 
     const fields = res.body.fields as API.Field[];
 
-    // Ignore the default config, only list fields.
+    // Ignore the default config, only list other fields.
     return fields.filter((field) => {
       return field.name.indexOf("__default__") < 0;
     });
@@ -185,7 +188,8 @@ export class FirestoreIndexes {
   }
 
   /**
-   * TODO
+   * Print an array of field overrides to the console.
+   * @param fields  the array of field overrides.
    */
   printFieldOverrides(fields: API.Field[]): void {
     fields.forEach((field) => {
@@ -194,7 +198,8 @@ export class FirestoreIndexes {
   }
 
   /**
-   * TODO
+   * Validate that an object is a valid index specification.
+   * @param spec the object, normally parsed from JSON.
    */
   validateSpec(spec: any): void {
     validator.assertHas(spec, "indexes");
@@ -211,7 +216,7 @@ export class FirestoreIndexes {
   }
 
   /**
-   * Validate that an arbitrary object is safe to use as an {@link IndexSpecEntry}.
+   * Validate that an arbitrary object is safe to use as an {@link API.Field}.
    */
   validateIndex(index: any): void {
     validator.assertHas(index, "collectionGroup");
@@ -234,7 +239,10 @@ export class FirestoreIndexes {
     });
   }
 
-  // TODO
+  /**
+   * Validate that an arbitrary object is safe to use as an {@link Spec.FieldOverride}.
+   * @param field
+   */
   validateField(field: any): void {
     validator.assertHas(field, "collectionGroup");
     validator.assertHas(field, "fieldPath");
@@ -258,7 +266,11 @@ export class FirestoreIndexes {
   }
 
   /**
-   * TODO: Doc
+   * Update the configuration of a field. Note that this kicks off a long-running
+   * operation for index creation/deletion so the update is complete when this
+   * method returns.
+   * @param project the Firebase project.
+   * @param spec the new field override specification.
    */
   async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
@@ -267,8 +279,7 @@ export class FirestoreIndexes {
 
     const indexes = spec.indexes.map((index) => {
       return {
-        // TODO: Scope spec
-        queryScope: API.QueryScope.COLLECTION,
+        queryScope: index.queryScope,
         fields: [
           {
             fieldPath: spec.fieldPath,
@@ -285,7 +296,7 @@ export class FirestoreIndexes {
       },
     };
 
-    const res = await api.request("PATCH", `/v1beta2/${url}`, {
+    await api.request("PATCH", `/v1beta2/${url}`, {
       auth: true,
       origin: api.firestoreOrigin,
       data,
