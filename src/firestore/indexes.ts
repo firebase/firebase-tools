@@ -34,13 +34,16 @@ export class FirestoreIndexes {
    * to an {@link IndexSpecEntry}.
    */
   public async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<any> {
-    this.validateSpec({
+    const spec = this.upgradeOldSpec({
       indexes,
       fieldOverrides,
     });
 
-    const indexesToDeploy: Spec.Index[] = indexes;
-    const fieldOverridesToDeploy: Spec.FieldOverride[] = fieldOverrides;
+    this.validateSpec(spec);
+
+    // Now that the spec is validated we can safely assert these types.
+    const indexesToDeploy: Spec.Index[] = spec.indexes;
+    const fieldOverridesToDeploy: Spec.FieldOverride[] = spec.fieldOverrides;
 
     const existingIndexes = await this.listIndexes(project);
     const existingFieldOverrides = await this.listFieldOverrides(project);
@@ -423,6 +426,53 @@ export class FirestoreIndexes {
       collectionGroupId: m[2],
       fieldPath: m[3],
     };
+  }
+
+  /**
+   * Take a object that may represent an old v1beta1 indexes spec
+   * and convert it to the new v1beta2/v1 spec format.
+   *
+   * This function is meant to be run **before** validation and
+   * works on a purely best-effort basis.
+   */
+  private upgradeOldSpec(spec: any): any {
+    // TODO: Make the validation more strict
+    const result = {
+      indexes: [],
+      fieldOverrides: spec.fieldOverrides || [],
+    };
+
+    if (!spec.indexes) {
+      return;
+    }
+
+    result.indexes = spec.indexes.map((index: any) => {
+      const i = {
+        collectionGroup: index.collectionGroup || index.collectionId,
+        queryScope: index.queryScope || API.QueryScope.COLLECTION,
+        fields: [],
+      };
+
+      if (index.fields) {
+        index.fields = index.fields.map((field: any) => {
+          const f: any = {
+            fieldPath: field.fieldPath,
+          };
+
+          if (field.mode == API.Mode.ARRAY_CONTAINS) {
+            f.arrayConfig = "CONTAINS";
+          } else {
+            f.order = field.mode;
+          }
+
+          return f;
+        });
+      }
+
+      return i;
+    });
+
+    return result;
   }
 
   /**
