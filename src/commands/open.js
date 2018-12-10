@@ -9,6 +9,7 @@ var Command = require("../command");
 var logger = require("../logger");
 var prompt = require("../prompt");
 var requirePermissions = require("../requirePermissions");
+var requireInstance = require("../requireInstance");
 var utils = require("../utils");
 
 var LINKS = [
@@ -61,6 +62,7 @@ var CHOICES = _.map(LINKS, "name");
 module.exports = new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
+  .before(requireInstance)
   .action(function(linkName, options) {
     var link = _.find(LINKS, { arg: linkName });
     if (linkName && !link) {

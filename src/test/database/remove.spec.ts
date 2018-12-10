@@ -5,13 +5,13 @@ import DatabaseRemove from "../../database/remove";
 import { NodeSize, RemoveRemote } from "../../database/removeRemote";
 
 class TestRemoveRemote implements RemoveRemote {
-  public data: any;
+  data: any;
 
   constructor(data: any) {
     this.data = data;
   }
 
-  public deletePath(path: string): Promise<boolean> {
+  deletePath(path: string): Promise<boolean> {
     if (path === "/") {
       this.data = null;
       return Promise.resolve(true);
@@ -25,7 +25,7 @@ class TestRemoveRemote implements RemoveRemote {
     return Promise.resolve(true);
   }
 
-  public prefetchTest(path: string): Promise<NodeSize> {
+  prefetchTest(path: string): Promise<NodeSize> {
     const d = this._dataAtpath(path);
     if (!d) {
       return Promise.resolve(NodeSize.EMPTY);
@@ -39,7 +39,7 @@ class TestRemoveRemote implements RemoveRemote {
     }
   }
 
-  public listPath(path: string): Promise<string[]> {
+  listPath(path: string): Promise<string[]> {
     const d = this._dataAtpath(path);
     if (d) {
       return Promise.resolve(Object.keys(d));

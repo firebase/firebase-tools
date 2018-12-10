@@ -5,6 +5,8 @@
   "rules": {
     "arrow-parens": true,
     "interface-name": false,
+    "member-access": [true, "no-public"],
+    "object-literal-key-quotes": [true, "as-needed"],
     "object-literal-sort-keys": false,
     "ordered-imports": [true, { "import-sources-order": "any" }],
     "prettier": true,

@@ -45,7 +45,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     this.instance = instance;
   }
 
-  public deletePath(path: string): Promise<boolean> {
+  deletePath(path: string): Promise<boolean> {
     return new Promise((resolve, reject) => {
       const url =
         utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?print=silent";
@@ -72,7 +72,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     });
   }
 
-  public prefetchTest(path: string): Promise<NodeSize> {
+  prefetchTest(path: string): Promise<NodeSize> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) + path + ".json?timeout=100ms";
     const reqOptions = {
@@ -110,7 +110,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     });
   }
 
-  public listPath(path: string): Promise<string[]> {
+  listPath(path: string): Promise<string[]> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
