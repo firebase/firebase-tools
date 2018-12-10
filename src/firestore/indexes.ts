@@ -34,12 +34,9 @@ export class FirestoreIndexes {
    * to an {@link IndexSpecEntry}.
    */
   public async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<any> {
-    indexes.forEach((index) => {
-      this.validateIndex(index);
-    });
-
-    fieldOverrides.forEach((field) => {
-      this.validateField(field);
+    this.validateSpec({
+      indexes,
+      fieldOverrides,
     });
 
     const indexesToDeploy: Spec.Index[] = indexes;
@@ -128,7 +125,7 @@ export class FirestoreIndexes {
   public makeIndexSpec(indexes: API.Index[], fields: API.Field[] | undefined): Spec.IndexFile {
     const indexesJson = indexes.map((index) => {
       return {
-        collectionGroup: this.parseIndexName(index).collectionGroupId,
+        collectionGroup: this.parseIndexName(index.name).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
       };
@@ -140,7 +137,7 @@ export class FirestoreIndexes {
     }
 
     const fieldsJson = fields.map((field) => {
-      const parsedName = this.parseFieldName(field);
+      const parsedName = this.parseFieldName(field.name);
       return {
         collectionGroup: parsedName.collectionGroupId,
         fieldPath: parsedName.fieldPath,
@@ -179,6 +176,23 @@ export class FirestoreIndexes {
     fields.forEach((field) => {
       logger.info(this.prettyFieldString(field));
     });
+  }
+
+  /**
+   * TODO
+   */
+  public validateSpec(spec: any): void {
+    validator.assertHas(spec, "indexes");
+
+    spec.indexes.forEach((index: any) => {
+      this.validateIndex(index);
+    });
+
+    if (spec.fieldOverrides) {
+      spec.fieldOverrides.forEach((field: any) => {
+        this.validateField(field);
+      });
+    }
   }
 
   /**
@@ -244,7 +258,7 @@ export class FirestoreIndexes {
   /**
    * TODO: Doc
    */
-  private async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
+  public async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       spec.collectionGroup
     }/fields/${spec.fieldPath}`;
@@ -279,7 +293,7 @@ export class FirestoreIndexes {
   /**
    * Create a new index on the specified project.
    */
-  private createIndex(project: string, index: Spec.Index): Promise<any> {
+  public createIndex(project: string, index: Spec.Index): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${
       index.collectionGroup
     }/indexes`;
@@ -291,6 +305,124 @@ export class FirestoreIndexes {
       },
       origin: api.firestoreOrigin,
     });
+  }
+
+  /**
+   * Determine if an API Index and a Spec Index are functionally equivalent.
+   */
+  public indexMatchesSpec(index: API.Index, spec: Spec.Index): boolean {
+    const collection = this.parseIndexName(index.name).collectionGroupId;
+    if (collection !== spec.collectionGroup) {
+      return false;
+    }
+
+    if (index.queryScope !== spec.queryScope) {
+      return false;
+    }
+
+    if (index.fields.length !== spec.fields.length) {
+      return false;
+    }
+
+    let i = 0;
+    while (i < index.fields.length) {
+      const iField = index.fields[i];
+      const sField = spec.fields[i];
+
+      if (iField.fieldPath !== sField.fieldPath) {
+        return false;
+      }
+
+      if (iField.order !== sField.order) {
+        return false;
+      }
+
+      if (iField.arrayConfig !== sField.arrayConfig) {
+        return false;
+      }
+
+      i++;
+    }
+
+    return true;
+  }
+
+  /**
+   * Determine if an API Field and a Spec Field are functionally equivalent.
+   */
+  public fieldMatchesSpec(field: API.Field, spec: Spec.FieldOverride): boolean {
+    const parsedName = this.parseFieldName(field.name);
+
+    if (parsedName.collectionGroupId !== spec.collectionGroup) {
+      return false;
+    }
+
+    if (parsedName.fieldPath !== spec.fieldPath) {
+      return false;
+    }
+
+    if (field.indexConfig.indexes.length !== spec.indexes.length) {
+      return false;
+    }
+
+    const fieldModes = field.indexConfig.indexes.map((index) => {
+      const firstField = index.fields[0];
+      return firstField.order || firstField.arrayConfig;
+    });
+
+    const specModes = spec.indexes.map((index) => {
+      return index.order || index.arrayConfig;
+    });
+
+    // Confirms that the two objects have the same set of enabled indexes without
+    // caring about specification order.
+    for (const mode of fieldModes) {
+      if (specModes.indexOf(mode) < 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Parse an Index name into useful pieces.
+   */
+  public parseIndexName(name: string | undefined): IndexName {
+    if (!name) {
+      throw new FirebaseError(`Cannot parse undefined index name.`);
+    }
+
+    const m = name.match(INDEX_NAME_REGEX);
+    if (!m || m.length < 4) {
+      throw new FirebaseError(`Error parsing index name: ${name}`);
+    }
+
+    return {
+      projectId: m[1],
+      collectionGroupId: m[2],
+      indexId: m[3],
+    };
+  }
+
+  /**
+   * Parse an Field name into useful pieces.
+   */
+  public parseFieldName(name: string): FieldName {
+    if (!name) {
+      throw new FirebaseError(`Cannot parse undefined field name.`);
+    }
+
+    const m = name.match(FIELD_NAME_REGEX);
+    if (!m || m.length < 4) {
+      throw new FirebaseError(`Error parsing field name: ${name}`);
+    }
+
+    return {
+      projectId: m[1],
+      collectionGroupId: m[2],
+      fieldPath: m[3],
+    };
   }
 
   /**
@@ -311,7 +443,7 @@ export class FirestoreIndexes {
       }
     }
 
-    const nameInfo = this.parseIndexName(index);
+    const nameInfo = this.parseIndexName(index.name);
 
     result += clc.cyan(`(${nameInfo.collectionGroupId})`);
     result += " -- ";
@@ -336,7 +468,7 @@ export class FirestoreIndexes {
   private prettyFieldString(field: API.Field): string {
     let result = "";
 
-    const parsedName = this.parseFieldName(field);
+    const parsedName = this.parseFieldName(field.name);
 
     result +=
       "[" +
@@ -352,110 +484,5 @@ export class FirestoreIndexes {
     });
 
     return result;
-  }
-
-  /**
-   * Parse an Index name into useful pieces.
-   */
-  private parseIndexName(index: API.Index): IndexName {
-    if (!index.name) {
-      throw new FirebaseError(`Index has no "name": ${JSON.stringify(index)}`);
-    }
-
-    const m = index.name.match(INDEX_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing index name: ${index.name}`);
-    }
-
-    return {
-      projectId: m[1],
-      collectionGroupId: m[2],
-      indexId: m[3],
-    };
-  }
-
-  /**
-   * Parse an Field name into useful pieces.
-   */
-  private parseFieldName(field: API.Field): FieldName {
-    if (!field.name) {
-      throw new FirebaseError(`Feld has no "name": ${JSON.stringify(field)}`);
-    }
-
-    const m = field.name.match(FIELD_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing field name: ${field.name}`);
-    }
-
-    return {
-      projectId: m[1],
-      collectionGroupId: m[2],
-      fieldPath: m[3],
-    };
-  }
-
-  /**
-   * Determine if an API Index and a Spec Index are functionally equivalent.
-   */
-  private indexMatchesSpec(index: API.Index, spec: Spec.Index): boolean {
-    const collection = this.parseIndexName(index).collectionGroupId;
-    if (collection !== spec.collectionGroup) {
-      return false;
-    }
-
-    if (index.queryScope !== spec.queryScope) {
-      return false;
-    }
-
-    if (index.fields.length !== spec.fields.length) {
-      return false;
-    }
-
-    for (let i = 0; i < index.fields.length; i++) {
-      const iField = index.fields[i];
-      const sField = spec.fields[i];
-
-      if (iField.fieldPath !== sField.fieldPath) {
-        return false;
-      }
-
-      if (iField.order !== sField.order) {
-        return false;
-      }
-
-      if (iField.arrayConfig !== sField.arrayConfig) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Determine if an API Field and a Spec Field are functionally equivalent.
-   */
-  private fieldMatchesSpec(field: API.Field, spec: Spec.FieldOverride): boolean {
-    const parsedName = this.parseFieldName(field);
-
-    if (parsedName.collectionGroupId !== spec.collectionGroup) {
-      return false;
-    }
-
-    if (parsedName.fieldPath !== spec.fieldPath) {
-      return false;
-    }
-
-    if (field.indexConfig.indexes.length !== spec.indexes.length) {
-      return false;
-    }
-
-    for (let i = 0; i < spec.indexes.length; i++) {
-      const fieldIndex = field.indexConfig.indexes[i];
-      const specIndex = spec.indexes[i];
-
-      // TODO: Check that the **SET** of orders/arrayconfigs/queryScopes is the same
-    }
-
-    return true;
   }
 }
