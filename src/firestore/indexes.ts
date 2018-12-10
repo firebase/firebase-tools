@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
+import * as utils from "../utils";
 import * as validator from "./validator";
 
 import * as API from "./indexes-api";
@@ -48,8 +49,12 @@ export class FirestoreIndexes {
     const existingIndexes = await this.listIndexes(project);
     const existingFieldOverrides = await this.listFieldOverrides(project);
 
-    // TODO: Figure out which deployed indexes are missing here
-    // TODO: Log the missing ones
+    if (existingIndexes.length > indexesToDeploy.length) {
+      utils.logBullet(
+        "There are some indexes defined in your project that are not present in your " +
+          "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
+      );
+    }
 
     indexesToDeploy.forEach(async (index) => {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
@@ -61,6 +66,13 @@ export class FirestoreIndexes {
       logger.debug(`Creating new index: ${JSON.stringify(index)}`);
       await this.createIndex(project, index);
     });
+
+    if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
+      utils.logBullet(
+        "There are some field overrides defined in your project that are not present in your " +
+          "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
+      );
+    }
 
     fieldOverridesToDeploy.forEach(async (field) => {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
@@ -434,7 +446,7 @@ export class FirestoreIndexes {
 
     // Try to detect use of the old API, warn the users.
     if (spec.indexes[0].collectionId) {
-      logger.info(
+      utils.logBullet(
         "Your Firestore indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
           "firebase firestore:indexes again and saving the result."
@@ -449,12 +461,16 @@ export class FirestoreIndexes {
       };
 
       if (index.fields) {
-        index.fields = index.fields.map((field: any) => {
+        i.fields = index.fields.map((field: any) => {
           const f: any = {
             fieldPath: field.fieldPath,
           };
 
-          if (field.mode === API.Mode.ARRAY_CONTAINS) {
+          if (field.order) {
+            f.order = field.order;
+          } else if (field.arrayConfig) {
+            f.arrayConfig = field.arrayConfig;
+          } else if (field.mode === API.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = API.ArrayConfig.CONTAINS;
           } else {
             f.order = field.mode;

@@ -5,31 +5,38 @@ import * as Spec from "../../firestore/indexes-spec";
 
 const idx = new FirestoreIndexes();
 
+const VALID_SPEC = {
+  indexes: [
+    {
+      collectionGroup: "collection",
+      queryScope: "COLLECTION",
+      fields: [
+        { fieldPath: "foo", order: "ASCENDING" },
+        { fieldPath: "bar", order: "DESCENDING" },
+        { fieldPath: "baz", arrayConfig: "CONTAINS" },
+      ],
+    },
+  ],
+  fieldOverrides: [
+    {
+      collectionGroup: "collection",
+      fieldPath: "foo",
+      indexes: [
+        { order: "ASCENDING", scope: "COLLECTION" },
+        { arrayConfig: "CONTAINS", scope: "COLLECTION" },
+      ],
+    },
+  ],
+};
+
 describe("IndexValidation", () => {
   it("should accept a valid v1beta2 index spec", () => {
-    idx.validateSpec({
-      indexes: [
-        {
-          collectionGroup: "collection",
-          queryScope: "COLLECTION",
-          fields: [
-            { fieldPath: "foo", order: "ASCENDING" },
-            { fieldPath: "bar", order: "DESCENDING" },
-            { fieldPath: "baz", arrayConfig: "CONTAINS" },
-          ],
-        },
-      ],
-      fieldOverrides: [
-        {
-          collectionGroup: "collection",
-          fieldPath: "foo",
-          indexes: [
-            { order: "ASCENDING", scope: "COLLECTION" },
-            { arrayConfig: "CONTAINS", scope: "COLLECTION" },
-          ],
-        },
-      ],
-    });
+    idx.validateSpec(VALID_SPEC);
+  });
+
+  it("should not change a valid v1beta2 index spec after upgrade", () => {
+    const upgraded = idx.upgradeOldSpec(VALID_SPEC);
+    expect(upgraded).to.eql(VALID_SPEC);
   });
 
   it("should accept a valid v1beta1 index spec after upgrade", () => {
