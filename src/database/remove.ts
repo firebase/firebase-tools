@@ -80,7 +80,6 @@ export default class DatabaseRemove {
         high = deleteBatchSize;
         deleteBatchSize = Math.floor((low + deleteBatchSize) / 2);
       }
-      console.log(deleteBatchSize);
       // Start with small number of children to learn about an appropriate size.
       if (shallowGetBatchSize * 2 <= MAX_SHALLOW_GET_SIZE) {
         shallowGetBatchSize = shallowGetBatchSize * 2;
