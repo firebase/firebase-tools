@@ -8,6 +8,11 @@ module.exports = function(client) {
     cmd.register(client);
     return cmd.runner();
   };
+  var loadTsCommand = function(name) {
+    var cmd = require("./" + name).default;
+    cmd.register(client);
+    return cmd.runner();
+  };
 
   client.auth = {
     upload: loadCommand("auth-import"),
@@ -21,6 +26,10 @@ module.exports = function(client) {
     remove: loadCommand("database-remove"),
     update: loadCommand("database-update"),
     profile: loadCommand("database-profile"),
+    config: {
+      get: loadTsCommand("database-config-get"),
+      set: loadTsCommand("database-config-set"),
+    },
   };
 
   client.firestore = {
