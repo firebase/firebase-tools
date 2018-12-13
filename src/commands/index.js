@@ -28,7 +28,7 @@ module.exports = function(client) {
     profile: loadCommand("database-profile"),
     flag: {
       get: loadTsCommand("database-flag-get"),
-      //set: loadTsCommand("database-flag-set"),
+      set: loadTsCommand("database-flag-set"),
     },
   };
 

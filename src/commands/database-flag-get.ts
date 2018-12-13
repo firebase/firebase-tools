@@ -10,9 +10,9 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DatabaseFlag, DATABASE_FLAGS } from "../database/flag";
+import { DATABASE_FLAGS } from "../database/flag";
 
-export default new Command("database:flag:get [path]")
+export default new Command("database:flag:get <path>")
   .description(
     "fetch RTDB config stored at the given path. To view all configs, do database;config:get /"
   )
@@ -23,11 +23,10 @@ export default new Command("database:flag:get [path]")
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action(function(path: string, options: any) {
-    if (!path) {
-      // get all flags
-      path = "";
-    } else if (!DATABASE_FLAGS.has(path)) {
-      return utils.reject(`Path must be one of ${Array.from(DATABASE_FLAGS.keys()).join(", ")}.`, { exit: 1 });
+    if (!DATABASE_FLAGS.has(path)) {
+      return utils.reject(`Path must be one of ${Array.from(DATABASE_FLAGS.keys()).join(", ")}.`, {
+        exit: 1,
+      });
     }
     return new Promise((resolve, reject) => {
       const url =
@@ -47,10 +46,10 @@ export default new Command("database:flag:get [path]")
           } else if (res.statusCode >= 400) {
             return reject(responseToError(res, body));
           }
-          const outStream = process.stdout;
-          outStream.write(body, function() {
-            resolve();
-          });
+          utils.logSuccess(
+            `For database instance ${options.instance}\n\t ${path} = ${body}`
+          );
+          resolve();
         });
       });
     });
