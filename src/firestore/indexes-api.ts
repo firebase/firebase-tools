@@ -34,10 +34,10 @@ export enum State {
  * An Index as it is represented in the Firestore v1beta2 indexes API.
  */
 export interface Index {
-  name: string | undefined;
+  name?: string;
   queryScope: QueryScope;
   fields: IndexField[];
-  state: State | undefined;
+  state?: State;
 }
 
 /**
@@ -45,8 +45,8 @@ export interface Index {
  */
 export interface IndexField {
   fieldPath: string;
-  order: Order | undefined;
-  arrayConfig: ArrayConfig | undefined;
+  order?: Order;
+  arrayConfig?: ArrayConfig;
 }
 
 /**
@@ -64,6 +64,6 @@ export interface Field {
  * Index configuration overrides for a field.
  */
 export interface IndexConfig {
-  ancestorField: string | undefined;
+  ancestorField?: string;
   indexes: Index[];
 }

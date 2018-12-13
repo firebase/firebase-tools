@@ -32,9 +32,11 @@ export class FirestoreIndexes {
    * Deploy an index specification to the specified project.
    * @param project the Firebase project ID.
    * @param indexes an array of objects, each will be validated and then converted
-   * to an {@link IndexSpecEntry}.
+   * to an {@link Spec.Index}.
+   * @param fieldOverrides an array of objects, each will be validated and then
+   * converted to an {@link Spec.FieldOverride}.
    */
-  async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<any> {
+  async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
       fieldOverrides,
@@ -99,20 +101,22 @@ export class FirestoreIndexes {
     });
 
     const indexes = res.body.indexes;
-    return indexes.map((index: any) => {
-      // Ignore any fields that point at the document ID, as those are implied
-      // in all indexes.
-      const fields = index.fields.filter((field: API.IndexField) => {
-        return field.fieldPath !== "__name__";
-      });
+    return indexes.map(
+      (index: any): API.Index => {
+        // Ignore any fields that point at the document ID, as those are implied
+        // in all indexes.
+        const fields = index.fields.filter((field: API.IndexField) => {
+          return field.fieldPath !== "__name__";
+        });
 
-      return {
-        name: index.name,
-        state: index.state,
-        queryScope: index.queryScope,
-        fields,
-      } as API.Index;
-    });
+        return {
+          name: index.name,
+          state: index.state,
+          queryScope: index.queryScope,
+          fields,
+        };
+      }
+    );
   }
 
   /**
@@ -140,7 +144,7 @@ export class FirestoreIndexes {
    * Turn an array of indexes and field overrides into a {@link Spec.IndexFile} suitable for use
    * in an indexes.json file.
    */
-  makeIndexSpec(indexes: API.Index[], fields: API.Field[] | undefined): Spec.IndexFile {
+  makeIndexSpec(indexes: API.Index[], fields?: API.Field[]): Spec.IndexFile {
     const indexesJson = indexes.map((index) => {
       return {
         collectionGroup: this.parseIndexName(index.name).collectionGroupId,
@@ -401,7 +405,7 @@ export class FirestoreIndexes {
   /**
    * Parse an Index name into useful pieces.
    */
-  parseIndexName(name: string | undefined): IndexName {
+  parseIndexName(name?: string): IndexName {
     if (!name) {
       throw new FirebaseError(`Cannot parse undefined index name.`);
     }
@@ -422,10 +426,6 @@ export class FirestoreIndexes {
    * Parse an Field name into useful pieces.
    */
   parseFieldName(name: string): FieldName {
-    if (!name) {
-      throw new FirebaseError(`Cannot parse undefined field name.`);
-    }
-
     const m = name.match(FIELD_NAME_REGEX);
     if (!m || m.length < 4) {
       throw new FirebaseError(`Error parsing field name: ${name}`);

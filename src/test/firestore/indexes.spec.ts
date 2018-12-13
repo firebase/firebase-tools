@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { FirestoreIndexes } from "../../firestore/indexes";
+import * as FirebaseError from "../../error";
 import * as API from "../../firestore/indexes-api";
 import * as Spec from "../../firestore/indexes-spec";
 
@@ -69,7 +70,7 @@ describe("IndexValidation", () => {
           },
         ],
       });
-    }).to.throw();
+    }).to.throw(FirebaseError, /Must contain "queryScope"/);
   });
 
   it("should reject an overspecified index spec", () => {
@@ -86,7 +87,7 @@ describe("IndexValidation", () => {
           },
         ],
       });
-    }).to.throw();
+    }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig"/);
   });
 });
 
@@ -114,15 +115,15 @@ describe("IndexNameParsing", () => {
 
 describe("IndexSpecMatching", () => {
   it("should identify a positive index spec match", () => {
-    const apiIndex = {
+    const apiIndex: API.Index = {
       name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
-      queryScope: "COLLECTION",
+      queryScope: API.QueryScope.COLLECTION,
       fields: [
-        { fieldPath: "foo", order: "ASCENDING" },
-        { fieldPath: "bar", arrayConfig: "CONTAINS" },
+        { fieldPath: "foo", order: API.Order.ASCENDING },
+        { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
       ],
       state: API.State.READY,
-    } as API.Index;
+    };
 
     const specIndex = {
       collectionGroup: "collection",
