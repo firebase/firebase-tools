@@ -26,9 +26,9 @@ module.exports = function(client) {
     remove: loadCommand("database-remove"),
     update: loadCommand("database-update"),
     profile: loadCommand("database-profile"),
-    config: {
-      get: loadTsCommand("database-config-get"),
-      set: loadTsCommand("database-config-set"),
+    flag: {
+      get: loadTsCommand("database-flag-get"),
+      //set: loadTsCommand("database-flag-set"),
     },
   };
 
