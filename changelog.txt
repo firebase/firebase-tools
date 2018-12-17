@@ -1,0 +1,2 @@
+fixed - Firestore Emulator bug when running in Java 10 + Java 11 environments (due to better system clock granularity)
+changed - Firestore Emulator now binds to IPv6 loopback address by default (previous behavior was to bind to "localhost", which was usually IPv4-only). This improves gRPC performance significantly due to https://github.com/grpc/grpc/issues/17282.
