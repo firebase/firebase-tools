@@ -10,7 +10,7 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DatabaseFlag, DATABASE_FLAGS } from "../database/flag";
+import { DATABASE_FLAGS } from "../database/flag";
 
 export default new Command("database:flag:set <path> <value>")
   .description(

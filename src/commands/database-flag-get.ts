@@ -10,11 +10,12 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DATABASE_FLAGS } from "../database/flag";
+import { DatabaseFlag, DATABASE_FLAGS } from "../database/flag";
 
 export default new Command("database:flag:get <path>")
   .description(
-    "fetch RTDB config stored at the given path. To view all configs, do database;config:get /"
+    "fetch realtime database flag. The available flags are:\n" +
+    Array.from(DATABASE_FLAGS.values()).map((flag: DatabaseFlag) => `${flag.path}\t\t${flag.description}` ).join("\n")
   )
   .option(
     "--instance <instance>",

@@ -111,7 +111,7 @@ var api = {
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://firebaseapp.com"),
-  realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio-staging.com"),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
     "https://cloudresourcemanager.googleapis.com"
