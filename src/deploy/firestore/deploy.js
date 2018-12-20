@@ -1,6 +1,8 @@
 "use strict";
 
 var _ = require("lodash");
+var clc = require("cli-color");
+
 var fsi = require("../../firestore/indexes");
 var logger = require("../../logger");
 
@@ -19,6 +21,7 @@ function _deployIndexes(context, options) {
     return Promise.resolve();
   }
 
+  var indexesFileName = _.get(context, "firestore.indexes.name");
   var indexesSrc = _.get(context, "firestore.indexes.content");
   if (!indexesSrc) {
     logger.debug("No Firestore indexes present.");
@@ -32,7 +35,16 @@ function _deployIndexes(context, options) {
 
   var fieldOverrides = indexesSrc.fieldOverrides || [];
 
-  return new fsi.FirestoreIndexes().deploy(options.project, indexes, fieldOverrides);
+  return new fsi.FirestoreIndexes()
+    .deploy(options.project, indexes, fieldOverrides)
+    .then(function() {
+      utils.logSuccess(
+        clc.bold.green("firestore:") +
+          " deployed indexes in " +
+          clc.bold(indexesFileName) +
+          " successfully"
+      );
+    });
 }
 
 /**

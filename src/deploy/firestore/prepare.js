@@ -1,9 +1,11 @@
 "use strict";
 
 var _ = require("lodash");
+var clc = require("cli-color");
 
 var loadCJSON = require("../../loadCJSON");
 var RulesDeploy = require("../../RulesDeploy");
+var utils = require("../../utils");
 
 function _prepareRules(context, options) {
   var prepare = Promise.resolve();
@@ -27,6 +29,10 @@ function _prepareIndexes(context, options) {
   var indexesFileName = options.config.get("firestore.indexes");
   var indexesPath = options.config.path(indexesFileName);
   var parsedSrc = loadCJSON(indexesPath);
+
+  utils.logBullet(
+    clc.bold.cyan("firestore:") + " reading indexes from " + clc.bold(indexesFileName) + "..."
+  );
 
   context.firestore = context.firestore || {};
   context.firestore.indexes = {

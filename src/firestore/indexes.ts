@@ -53,7 +53,8 @@ export class FirestoreIndexes {
 
     if (existingIndexes.length > indexesToDeploy.length) {
       utils.logBullet(
-        "There are some indexes defined in your project that are not present in your " +
+        clc.bold.cyan("firestore:") +
+          " there are some indexes defined in your project that are not present in your " +
           "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
       );
     }
@@ -71,7 +72,8 @@ export class FirestoreIndexes {
 
     if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
       utils.logBullet(
-        "There are some field overrides defined in your project that are not present in your " +
+        clc.bold.cyan("firestore:") +
+          " there are some field overrides defined in your project that are not present in your " +
           "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
       );
     }
@@ -458,9 +460,11 @@ export class FirestoreIndexes {
     // Try to detect use of the old API, warn the users.
     if (spec.indexes[0].collectionId) {
       utils.logBullet(
-        "Your Firestore indexes are specified in the v1beta1 API format. " +
+        clc.bold.cyan("firestore:") +
+          " your indexes indexes are specified in the v1beta1 API format. " +
           "Please upgrade to the new index API format by running " +
-          "firebase firestore:indexes again and saving the result."
+          clc.bold("firebase firestore:indexes") +
+          " again and saving the result."
       );
     }
 
