@@ -3,8 +3,6 @@
 var _ = require("lodash");
 
 var loadCJSON = require("../../loadCJSON");
-var fsi = require("../../firestore/indexes");
-var validator = require("../../firestore/validator");
 var RulesDeploy = require("../../RulesDeploy");
 
 function _prepareRules(context, options) {
@@ -29,13 +27,6 @@ function _prepareIndexes(context, options) {
   var indexesFileName = options.config.get("firestore.indexes");
   var indexesPath = options.config.path(indexesFileName);
   var parsedSrc = loadCJSON(indexesPath);
-
-  validator.assertHas(parsedSrc, "indexes");
-
-  var indexApi = new fsi.FirestoreIndexes();
-  parsedSrc.indexes.forEach(function(index) {
-    indexApi.validateIndex(index);
-  });
 
   context.firestore = context.firestore || {};
   context.firestore.indexes = {
