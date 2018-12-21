@@ -453,8 +453,8 @@ export class FirestoreIndexes {
       fieldOverrides: spec.fieldOverrides || [],
     };
 
-    if (!spec.indexes) {
-      return;
+    if (!(spec.indexes && spec.indexes.length > 0)) {
+      return result;
     }
 
     // Try to detect use of the old API, warn the users.
