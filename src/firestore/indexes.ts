@@ -103,6 +103,10 @@ export class FirestoreIndexes {
     });
 
     const indexes = res.body.indexes;
+    if (!indexes) {
+      return [];
+    }
+
     return indexes.map(
       (index: any): API.Index => {
         // Ignore any fields that point at the document ID, as those are implied
@@ -135,6 +139,12 @@ export class FirestoreIndexes {
     });
 
     const fields = res.body.fields as API.Field[];
+
+    // This should never be the case, since the API always returns the __default__
+    // configuration, but this is a defensive check.
+    if (!fields) {
+      return [];
+    }
 
     // Ignore the default config, only list other fields.
     return fields.filter((field) => {
