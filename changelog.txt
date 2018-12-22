@@ -1,1 +1,0 @@
-fixed - fixed an issue where Firestore Indexes couldn't be fetched from projects with no console-defined indexes.
