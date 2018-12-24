@@ -39,7 +39,7 @@ module.exports = function(setup, config) {
         return config
           .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
           .then(function() {
-            config.askWriteProjectFile("functions/tslint.json", TSLINT_TEMPLATE);
+            return config.askWriteProjectFile("functions/tslint.json", TSLINT_TEMPLATE);
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
