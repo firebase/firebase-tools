@@ -59,7 +59,7 @@ export class FirestoreIndexes {
       );
     }
 
-    const indexPromises: Promise<any>[] = [];
+    const indexPromises: Array<Promise<any>> = [];
     for (const index of indexesToDeploy) {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
@@ -79,7 +79,7 @@ export class FirestoreIndexes {
       );
     }
 
-    const fieldPromises: Promise<any>[] = [];
+    const fieldPromises: Array<Promise<any>> = [];
     for (const field of fieldOverridesToDeploy) {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
       if (exists) {
@@ -174,11 +174,12 @@ export class FirestoreIndexes {
 
     const fieldsJson = fields.map((field) => {
       const parsedName = this.parseFieldName(field.name);
+      const fieldIndexes = field.indexConfig.indexes || [];
       return {
         collectionGroup: parsedName.collectionGroupId,
         fieldPath: parsedName.fieldPath,
 
-        indexes: field.indexConfig.indexes.map((index) => {
+        indexes: fieldIndexes.map((index) => {
           const firstField = index.fields[0];
           return {
             order: firstField.order,
@@ -200,7 +201,7 @@ export class FirestoreIndexes {
    * @param indexes the array of indexes.
    */
   prettyPrintIndexes(indexes: API.Index[]): void {
-    if (indexes.length == 0) {
+    if (indexes.length === 0) {
       logger.info("None");
       return;
     }
@@ -215,7 +216,7 @@ export class FirestoreIndexes {
    * @param fields  the array of field overrides.
    */
   printFieldOverrides(fields: API.Field[]): void {
-    if (fields.length == 0) {
+    if (fields.length === 0) {
       logger.info("None");
       return;
     }
@@ -402,11 +403,12 @@ export class FirestoreIndexes {
       return false;
     }
 
-    if (field.indexConfig.indexes.length !== spec.indexes.length) {
+    const fieldIndexes = field.indexConfig.indexes || [];
+    if (fieldIndexes.length !== spec.indexes.length) {
       return false;
     }
 
-    const fieldModes = field.indexConfig.indexes.map((index) => {
+    const fieldModes = fieldIndexes.map((index) => {
       const firstField = index.fields[0];
       return firstField.order || firstField.arrayConfig;
     });
@@ -575,11 +577,16 @@ export class FirestoreIndexes {
       clc.yellow(parsedName.fieldPath) +
       "] --";
 
-    field.indexConfig.indexes.forEach((index) => {
-      const firstField = index.fields[0];
-      const mode = firstField.order || firstField.arrayConfig;
-      result += " (" + mode + ")";
-    });
+    const fieldIndexes = field.indexConfig.indexes || [];
+    if (fieldIndexes.length > 0) {
+      fieldIndexes.forEach((index) => {
+        const firstField = index.fields[0];
+        const mode = firstField.order || firstField.arrayConfig;
+        result += " (" + mode + ")";
+      });
+    } else {
+      result += " (no indexes)";
+    }
 
     return result;
   }
