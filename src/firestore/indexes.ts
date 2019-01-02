@@ -59,16 +59,17 @@ export class FirestoreIndexes {
       );
     }
 
-    indexesToDeploy.forEach(async (index) => {
+    const indexPromises: Promise<any>[] = [];
+    for (const index of indexesToDeploy) {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
-        return;
+      } else {
+        logger.debug(`Creating new index: ${JSON.stringify(index)}`);
+        indexPromises.push(this.createIndex(project, index));
       }
-
-      logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-      await this.createIndex(project, index);
-    });
+    }
+    await Promise.all(indexPromises);
 
     if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
       utils.logBullet(
@@ -78,16 +79,17 @@ export class FirestoreIndexes {
       );
     }
 
-    fieldOverridesToDeploy.forEach(async (field) => {
+    const fieldPromises: Promise<any>[] = [];
+    for (const field of fieldOverridesToDeploy) {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
       if (exists) {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
-        return;
+      } else {
+        logger.debug(`Updating field override: ${JSON.stringify(field)}`);
+        fieldPromises.push(this.patchField(project, field));
       }
-
-      logger.debug(`Updating field override: ${JSON.stringify(field)}`);
-      await this.patchField(project, field);
-    });
+    }
+    await Promise.all(fieldPromises);
   }
 
   /**
@@ -198,6 +200,11 @@ export class FirestoreIndexes {
    * @param indexes the array of indexes.
    */
   prettyPrintIndexes(indexes: API.Index[]): void {
+    if (indexes.length == 0) {
+      logger.info("None");
+      return;
+    }
+
     indexes.forEach((index) => {
       logger.info(this.prettyIndexString(index));
     });
@@ -208,6 +215,11 @@ export class FirestoreIndexes {
    * @param fields  the array of field overrides.
    */
   printFieldOverrides(fields: API.Field[]): void {
+    if (fields.length == 0) {
+      logger.info("None");
+      return;
+    }
+
     fields.forEach((field) => {
       logger.info(this.prettyFieldString(field));
     });
