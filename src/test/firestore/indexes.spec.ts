@@ -40,6 +40,14 @@ describe("IndexValidation", () => {
     expect(upgraded).to.eql(VALID_SPEC);
   });
 
+  it("should accept an empty spec", () => {
+    const empty = {
+      indexes: [],
+    };
+
+    idx.validateSpec(idx.upgradeOldSpec(empty));
+  });
+
   it("should accept a valid v1beta1 index spec after upgrade", () => {
     idx.validateSpec(
       idx.upgradeOldSpec({
