@@ -59,16 +59,17 @@ export class FirestoreIndexes {
       );
     }
 
-    indexesToDeploy.forEach(async (index) => {
+    const indexPromises: Array<Promise<any>> = [];
+    indexesToDeploy.forEach((index) => {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
-        return;
+      } else {
+        logger.debug(`Creating new index: ${JSON.stringify(index)}`);
+        indexPromises.push(this.createIndex(project, index));
       }
-
-      logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-      await this.createIndex(project, index);
     });
+    await Promise.all(indexPromises);
 
     if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
       utils.logBullet(
@@ -78,16 +79,17 @@ export class FirestoreIndexes {
       );
     }
 
-    fieldOverridesToDeploy.forEach(async (field) => {
+    const fieldPromises: Array<Promise<any>> = [];
+    fieldOverridesToDeploy.forEach((field) => {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
       if (exists) {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
-        return;
+      } else {
+        logger.debug(`Updating field override: ${JSON.stringify(field)}`);
+        fieldPromises.push(this.patchField(project, field));
       }
-
-      logger.debug(`Updating field override: ${JSON.stringify(field)}`);
-      await this.patchField(project, field);
     });
+    await Promise.all(fieldPromises);
   }
 
   /**
@@ -172,11 +174,12 @@ export class FirestoreIndexes {
 
     const fieldsJson = fields.map((field) => {
       const parsedName = this.parseFieldName(field.name);
+      const fieldIndexes = field.indexConfig.indexes || [];
       return {
         collectionGroup: parsedName.collectionGroupId,
         fieldPath: parsedName.fieldPath,
 
-        indexes: field.indexConfig.indexes.map((index) => {
+        indexes: fieldIndexes.map((index) => {
           const firstField = index.fields[0];
           return {
             order: firstField.order,
@@ -198,6 +201,11 @@ export class FirestoreIndexes {
    * @param indexes the array of indexes.
    */
   prettyPrintIndexes(indexes: API.Index[]): void {
+    if (indexes.length === 0) {
+      logger.info("None");
+      return;
+    }
+
     indexes.forEach((index) => {
       logger.info(this.prettyIndexString(index));
     });
@@ -208,6 +216,11 @@ export class FirestoreIndexes {
    * @param fields  the array of field overrides.
    */
   printFieldOverrides(fields: API.Field[]): void {
+    if (fields.length === 0) {
+      logger.info("None");
+      return;
+    }
+
     fields.forEach((field) => {
       logger.info(this.prettyFieldString(field));
     });
@@ -390,11 +403,12 @@ export class FirestoreIndexes {
       return false;
     }
 
-    if (field.indexConfig.indexes.length !== spec.indexes.length) {
+    const fieldIndexes = field.indexConfig.indexes || [];
+    if (fieldIndexes.length !== spec.indexes.length) {
       return false;
     }
 
-    const fieldModes = field.indexConfig.indexes.map((index) => {
+    const fieldModes = fieldIndexes.map((index) => {
       const firstField = index.fields[0];
       return firstField.order || firstField.arrayConfig;
     });
@@ -563,11 +577,16 @@ export class FirestoreIndexes {
       clc.yellow(parsedName.fieldPath) +
       "] --";
 
-    field.indexConfig.indexes.forEach((index) => {
-      const firstField = index.fields[0];
-      const mode = firstField.order || firstField.arrayConfig;
-      result += " (" + mode + ")";
-    });
+    const fieldIndexes = field.indexConfig.indexes || [];
+    if (fieldIndexes.length > 0) {
+      fieldIndexes.forEach((index) => {
+        const firstField = index.fields[0];
+        const mode = firstField.order || firstField.arrayConfig;
+        result += ` (${mode})`;
+      });
+    } else {
+      result += " (no indexes)";
+    }
 
     return result;
   }
