@@ -198,6 +198,21 @@ describe("IndexSpecMatching", () => {
     expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
   });
 
+  it("should match a field spec with all indexes excluded", () => {
+    const apiField = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
+      indexConfig: {},
+    } as API.Field;
+
+    const specField = {
+      collectionGroup: "collection",
+      fieldPath: "abc123",
+      indexes: [],
+    } as Spec.FieldOverride;
+
+    expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(true);
+  });
+
   it("should identify a negative field spec match", () => {
     const apiField = {
       name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
