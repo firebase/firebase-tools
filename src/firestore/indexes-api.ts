@@ -65,5 +65,5 @@ export interface Field {
  */
 export interface IndexConfig {
   ancestorField?: string;
-  indexes: Index[];
+  indexes?: Index[];
 }
