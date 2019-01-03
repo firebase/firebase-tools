@@ -60,7 +60,7 @@ export class FirestoreIndexes {
     }
 
     const indexPromises: Array<Promise<any>> = [];
-    for (const index of indexesToDeploy) {
+    indexesToDeploy.forEach((index) => {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
@@ -68,7 +68,7 @@ export class FirestoreIndexes {
         logger.debug(`Creating new index: ${JSON.stringify(index)}`);
         indexPromises.push(this.createIndex(project, index));
       }
-    }
+    });
     await Promise.all(indexPromises);
 
     if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
@@ -80,7 +80,7 @@ export class FirestoreIndexes {
     }
 
     const fieldPromises: Array<Promise<any>> = [];
-    for (const field of fieldOverridesToDeploy) {
+    fieldOverridesToDeploy.forEach((field) => {
       const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
       if (exists) {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
@@ -88,7 +88,7 @@ export class FirestoreIndexes {
         logger.debug(`Updating field override: ${JSON.stringify(field)}`);
         fieldPromises.push(this.patchField(project, field));
       }
-    }
+    });
     await Promise.all(fieldPromises);
   }
 
@@ -582,7 +582,7 @@ export class FirestoreIndexes {
       fieldIndexes.forEach((index) => {
         const firstField = index.fields[0];
         const mode = firstField.order || firstField.arrayConfig;
-        result += " (" + mode + ")";
+        result += ` (${mode})`;
       });
     } else {
       result += " (no indexes)";
