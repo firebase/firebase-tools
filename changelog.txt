@@ -1,0 +1,6 @@
+fixed - Firestore emulator bug related to https://github.com/firebase/firebase-tools/issues/1073
+fixed - Firestore emulator bug regarding array ordering during writing/reading
+fixed - Firestore emulator handling of query cursors
+changed - Firestore emulator now has the ability to produce rule-coverage reports
+changed - Firestore emulator now exposes the v1 service definition
+changed - Firestore emulator has various runtime improvements
