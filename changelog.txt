@@ -7,3 +7,5 @@ feature - Firestore emulator now has the ability to produce rule-coverage report
 changed - Firestore emulator now exposes the v1 service definition
 changed - Firestore emulator has various runtime improvements
 changed - Clearer empty state when pretty-printing Firestore indexes
+
+change
