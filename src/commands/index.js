@@ -1,6 +1,7 @@
 "use strict";
 
-var previews = require("../previews");
+var previews = require("../previews"); //eslint-disable-line
+
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require("./" + name);
@@ -52,13 +53,6 @@ module.exports = function(client) {
   };
 
   client.help = loadCommand("help");
-
-  if (previews.kits) {
-    client.kits = {
-      install: loadCommand("kits-install"),
-      uninstall: loadCommand("kits-uninstall"),
-    };
-  }
 
   client.init = loadCommand("init");
   client.list = loadCommand("list");

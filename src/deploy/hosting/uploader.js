@@ -12,7 +12,7 @@ const hashcache = require("./hashcache");
 const detectProjectRoot = require("../../detectProjectRoot");
 const api = require("../../api");
 const logger = require("../../logger");
-const { Queue } = require("../../queue");
+const { Queue } = require("../../throttler/queue");
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
@@ -179,7 +179,7 @@ class Uploader {
 
   queuePopulate() {
     const pop = this.populateBatch;
-    this.populateQueue.add(pop, "batch" + (this.populateQueue.stats().total + 1));
+    this.populateQueue.add(pop);
     this.populateBatch = {};
     this.populateQueue.process();
   }

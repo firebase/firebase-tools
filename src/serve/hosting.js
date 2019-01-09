@@ -8,7 +8,7 @@ var utils = require("../utils");
 var detectProjectRoot = require("../detectProjectRoot");
 var implicitInit = require("../hosting/implicitInit");
 var initMiddleware = require("../hosting/initMiddleware");
-var functionsProxy = require("../hosting/functionsProxy");
+var functionsProxy = require("../hosting/functionsProxy").default;
 var normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
 var MAX_PORT_ATTEMPTS = 10;
