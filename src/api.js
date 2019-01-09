@@ -30,10 +30,11 @@ var _request = function(options, logOptions) {
   }
 
   logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
-  
-  options.timeout = options.timeout || 60000; // 1 minute ought to be enough for everybody
-  options.headers['connection'] = 'keep-alive';
-  
+
+  // 1 minute ought to be enough for everybody
+  options.timeout = options.timeout || 60000;
+  options.headers["connection"] = "keep-alive";
+
   return new Promise(function(resolve, reject) {
     var req = request(options, function(err, response, body) {
       if (err) {
