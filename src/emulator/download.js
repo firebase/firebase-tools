@@ -26,7 +26,7 @@ module.exports = (name) => {
     });
     req.on("end", () => {
       writeStream.close();
-      fs.moveSync(tmpFile.name, emulator.localPath);
+      fs.copySync(tmpFile.name, emulator.localPath);
       fs.chmodSync(emulator.localPath, 0o755);
       resolve();
     });
