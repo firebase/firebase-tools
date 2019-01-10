@@ -1,17 +1,18 @@
 language: node_js
 node_js:
-- '6'
-- '8'
-- '10'
+  - "6"
+  - "8"
+  - "10"
 after_script:
-- nyc report --reporter=text-lcov | coveralls
+  - nyc report --reporter=text-lcov | coveralls
 jobs:
   include:
     - stage: hosting functional test
-      node_js: '6'
+      if: repo == head_repo OR type == push
+      node_js: "6"
       before_script: ./scripts/decrypt-app-credentials.sh
       script: ./scripts/test-hosting.sh
       after_script: skip
 cache:
   directories:
-  - node_modules
+    - node_modules
