@@ -22,7 +22,7 @@ module.exports = new Command("functions:log")
   .action(function(options) {
     var projectId = getProjectId(options);
     var apiFilter = 'resource.type="cloud_function" ';
-    var consoleFilter = 'metadata.serviceName:"cloudfunctions.googleapis.com"';
+    var consoleFilter = 'protoPayload.serviceName:"cloudfunctions.googleapis.com"';
     if (options.only) {
       var funcNames = options.only.split(",");
       var apiFuncFilters = _.map(funcNames, function(funcName) {
