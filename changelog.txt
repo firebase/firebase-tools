@@ -11,3 +11,4 @@ changed - Firestore emulator has various runtime improvements
 changed - Clearer empty state when pretty-printing Firestore indexes
 changed - JavasSript functions template now includes gitignore
 changed - Added node_modules/ to TypeScript functions template gitignore
+fixed - Fixed the link to the Google Cloud Console when opening Functions logs
