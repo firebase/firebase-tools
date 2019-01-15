@@ -12,3 +12,4 @@ changed - Clearer empty state when pretty-printing Firestore indexes
 changed - JavasSript functions template now includes gitignore
 changed - Added node_modules/ to TypeScript functions template gitignore
 fixed - Fixed the link to the Google Cloud Console when opening Functions logs
+changed - Updated Typescript and other dependencies in newly initalized folders containing Functions
