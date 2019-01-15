@@ -13,7 +13,7 @@ function _deployRules(context) {
   if (!context.firestoreRules || !rulesDeploy) {
     return Promise.resolve();
   }
-  return rulesDeploy.createRulesets();
+  return rulesDeploy.createRulesets("cloud.firestore");
 }
 
 function _deployIndexes(context, options) {

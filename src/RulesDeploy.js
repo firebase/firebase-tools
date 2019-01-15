@@ -51,21 +51,43 @@ RulesDeploy.prototype = {
   /**
    * Create rulesets for each file added to this deploy, and record
    * the name for use in the release process later.
+   *
+   * If the ruleset to create is identical to the latest existing ruleset,
+   * then we record the existing ruleset name instead of creating a duplicate.
    */
-  createRulesets: function() {
+  createRulesets: function(service) {
     var self = this;
-    var promises = [];
-    _.forEach(this.rulesFiles, function(files, filename) {
-      utils.logBullet(
-        clc.bold.cyan(self.type + ":") + " uploading rules " + clc.bold(filename) + "..."
-      );
-      promises.push(
-        gcp.rules.createRuleset(self.options.project, files).then(function(rulesetName) {
-          self.rulesetNames[filename] = rulesetName;
-        })
-      );
-    });
-    return Promise.all(promises);
+    var latestRulesetName = "";
+    return gcp.rules
+      .getLatestRulesetName(self.options.project, service)
+      .then(function(retrievedLatestRulesetName) {
+        latestRulesetName = retrievedLatestRulesetName;
+        return gcp.rules.getRulesetContent(latestRulesetName);
+      })
+      .then(function(latestRulesetContent) {
+        var promises = [];
+        _.forEach(self.rulesFiles, function(files, filename) {
+          if (_.isEqual(files, latestRulesetContent)) {
+            utils.logBullet(
+              clc.bold.cyan(self.type + ":") +
+                " latest version of " +
+                clc.bold(filename) +
+                " already up to date, skipping upload..."
+            );
+            self.rulesetNames[filename] = latestRulesetName;
+          } else {
+            utils.logBullet(
+              clc.bold.cyan(self.type + ":") + " uploading rules " + clc.bold(filename) + "..."
+            );
+            promises.push(
+              gcp.rules.createRuleset(self.options.project, files).then(function(rulesetName) {
+                self.rulesetNames[filename] = rulesetName;
+              })
+            );
+          }
+        });
+        return Promise.all(promises);
+      });
   },
 
   release: function(filename, resourceName) {
