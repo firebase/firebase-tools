@@ -10,6 +10,10 @@ assignees: ''
 <!--
 Thank you for contributing to the Firebase community!
 
+Think you found a bug?
+=======================
+Yeah, we're definitely not perfect! Please use this template and include a minimal repro when opening the issue. If you know how to solve the issue, please create a Pull Request, and we'd be happy to review it!
+
 Have a usage question?
 =======================
 We get lots of those and we love helping you, but GitHub is not the best place for them and they will be closed. Please take a look at the guide first: https://firebase.google.com/docs/cli/
@@ -21,10 +25,6 @@ Additional locations to check for solutions or assistance from the community:
 - Firebase Slack Community: https://firebase.community/
 
 *Please avoid duplicate posting across multiple channels!*
-
-Think you found a bug?
-=======================
-Yeah, we're definitely not perfect! Please use this template and include a minimal repro when opening the issue. If you know how to solve the issue, please create a Pull Request, and we'd be happy to review it!
 
 Have a feature request?
 ========================
@@ -38,7 +38,7 @@ Great, we love hearing how we can improve our products! However, do not use this
 <!-- Output of `firebase --version` -->
 **firebase-tools:**
 
-<!-- e.g. macOS, Windows 10, Ubuntu 18.04 -->
+<!-- e.g. macOS, Windows, Ubuntu -->
 **Platform:**
 
 ### [REQUIRED] Test case
