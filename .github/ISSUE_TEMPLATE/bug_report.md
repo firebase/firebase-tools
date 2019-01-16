@@ -14,6 +14,10 @@ Think you found a bug?
 =======================
 Yeah, we're definitely not perfect! Please use this template and include a minimal repro when opening the issue. If you know how to solve the issue, please create a Pull Request, and we'd be happy to review it!
 
+Have a feature request?
+========================
+Great, we love hearing how we can improve our products! However, do not use this template to submit a feature request. Please submit your feature requests to: https://firebase.google.com/support/contact/bugs-features/
+
 Have a usage question?
 =======================
 We get lots of those and we love helping you, but GitHub is not the best place for them and they will be closed. Please take a look at the guide first: https://firebase.google.com/docs/cli/
@@ -25,10 +29,6 @@ Additional locations to check for solutions or assistance from the community:
 - Firebase Slack Community: https://firebase.community/
 
 *Please avoid duplicate posting across multiple channels!*
-
-Have a feature request?
-========================
-Great, we love hearing how we can improve our products! However, do not use this template to submit a feature request. Please submit your feature requests to: https://firebase.google.com/support/contact/bugs-features/
 -->
 
 ### [REQUIRED] Environment info
