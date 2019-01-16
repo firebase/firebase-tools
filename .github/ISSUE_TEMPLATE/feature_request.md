@@ -15,6 +15,8 @@ Have a feature request?
 Great, we love hearing how we can improve our products! However, GitHub is not the place to submit them. Please submit your feature requests to:
 https://firebase.google.com/support/contact/bugs-features/
 
+**Think you found a bug?** Please do not use this template - use the `🐛 Bug report` template.
+
 Have a usage question?
 =======================
 We get lots of those and we love helping you, but GitHub is not the best place for them and they
@@ -30,12 +32,6 @@ If the official documentation doesn't help, try asking through our official supp
 https://firebase.google.com/support/
 
 *Please avoid double posting across multiple channels!*
-
-Think you found a bug?
-=======================
-Yeah, we're definitely not perfect! Please use the bug report template below and include a minimal
-repro when opening the issue. If you know how to solve the issue, please create a Pull Request, and
-we'd be happy to review it!
 -->
 
 Please submit feature requests through our [support page](https://firebase.google.com/support/contact/bugs-features/).
