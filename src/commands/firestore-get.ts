@@ -7,7 +7,6 @@ import * as utils from "../utils";
 
 module.exports = new Command("firestore:get [path]")
   .description("Get a document from Cloud Firestore.")
-  .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.get"])
   .action(async (path: string, options: any) => {
     // Guarantee path
