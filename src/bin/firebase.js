@@ -3,7 +3,7 @@
 
 var pkg = require("../../package.json");
 var updateNotifier = require("update-notifier")({ pkg: pkg });
-updateNotifier.notify({ defer: true });
+updateNotifier.notify({ defer: true, isGlobal: true });
 
 var client = require("..");
 var errorOut = require("../errorOut");
