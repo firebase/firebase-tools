@@ -4,6 +4,7 @@ import * as firestore from "../gcp/firestore";
 import * as FirebaseError from "../error";
 import { FirestorePath } from "./path";
 import * as utils from "../utils";
+import * as decodeFirestoreValue from "./decodeFirestoreValue";
 
 export class FirestoreGet {
   path: FirestorePath;
@@ -49,16 +50,12 @@ export class FirestoreGet {
     return firestore
       .getDocument(doc)
       .then((firestoreDoc: any) => {
-        logger.log(firestoreDoc);
-        console.log(firestoreDoc);
-
-        //console.log(firestoreDoc.fields.users)
+        const data = decodeFirestoreValue(firestoreDoc);
+        process.stdout.write(JSON.stringify(data));
+        process.stdout.write("\n");
       })
       .catch((err) => {
-        console.log(err);
-
         return utils.reject("Unable to get " + clc.cyan(this.path), null);
       });
   }
-
 }
