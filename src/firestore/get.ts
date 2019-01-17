@@ -1,10 +1,11 @@
 import * as clc from "cli-color";
 import * as api from "../api";
+import * as logger from "../logger";
 import * as firestore from "../gcp/firestore";
 import * as FirebaseError from "../error";
-import { FirestorePath } from "./path";
 import * as utils from "../utils";
 import * as decodeFirestoreValue from "./decodeFirestoreValue";
+import { FirestorePath } from "./path";
 
 export class FirestoreGet {
   path: FirestorePath;
@@ -14,7 +15,7 @@ export class FirestoreGet {
    *
    * @constructor
    * @param project the Firestore project ID.
-   * @param path path to a document or collection.
+   * @param path path to a document.
    */
   constructor(project: string, path: string, options: any) {
     this.path = new FirestorePath(project, path);
@@ -55,7 +56,8 @@ export class FirestoreGet {
         process.stdout.write("\n");
       })
       .catch((err) => {
-        return utils.reject("Unable to get " + clc.cyan(this.path), null);
+        logger.debug(err.message);
+        return utils.reject("Unable to get " + clc.cyan(this.path.getPath()), null);
       });
   }
 }
