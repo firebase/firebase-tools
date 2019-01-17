@@ -8,6 +8,7 @@ var firestore = require("../gcp/firestore");
 var FirebaseError = require("../error");
 var logger = require("../logger");
 var utils = require("../utils");
+var FirestorePath = require("./path").FirestorePath;
 
 /**
  * Construct a new Firestore delete operation.
@@ -21,21 +22,17 @@ var utils = require("../utils");
  */
 function FirestoreDelete(project, path, options) {
   this.project = project;
-  this.path = path;
+  this.firestorePath = new FirestorePath(project, path);
+  this.path = this.firestorePath.getPath();
   this.recursive = Boolean(options.recursive);
   this.shallow = Boolean(options.shallow);
   this.allCollections = Boolean(options.allCollections);
 
-  // Remove any leading or trailing slashes from the path
-  if (this.path) {
-    this.path = this.path.replace(/(^\/+|\/+$)/g, "");
-  }
-
-  this.isDocumentPath = this._isDocumentPath(this.path);
-  this.isCollectionPath = this._isCollectionPath(this.path);
+  this.isDocumentPath = this.firestorePath.isDocumentPath();
+  this.isCollectionPath = this.firestorePath.isCollectionPath();
 
   this.allDescendants = this.recursive;
-  this.parent = "projects/" + project + "/databases/(default)/documents";
+  this.parent = this.firestorePath.getParent();
 
   // When --all-collections is passed any other flags or arguments are ignored
   if (!options.allCollections) {
@@ -55,50 +52,7 @@ FirestoreDelete.prototype._validateOptions = function() {
     throw new FirebaseError("Must pass recursive or shallow option when deleting a collection.");
   }
 
-  var pieces = this.path.split("/");
-
-  if (pieces.length === 0) {
-    throw new FirebaseError("Path length must be greater than zero.");
-  }
-
-  var hasEmptySegment = pieces.some(function(piece) {
-    return piece.length === 0;
-  });
-
-  if (hasEmptySegment) {
-    throw new FirebaseError("Path must not have any empty segments.");
-  }
-};
-
-/**
- * Determine if a path points to a document.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a document, false
- * if it points to a collection.
- */
-FirestoreDelete.prototype._isDocumentPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  var pieces = path.split("/");
-  return pieces.length % 2 === 0;
-};
-
-/**
- * Determine if a path points to a collection.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a collection, false
- * if it points to a document.
- */
-FirestoreDelete.prototype._isCollectionPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  return !this._isDocumentPath(path);
+  this.firestorePath.validate();
 };
 
 /**
@@ -119,8 +73,8 @@ FirestoreDelete.prototype._collectionDescendantsQuery = function(
 ) {
   var nullChar = String.fromCharCode(0);
 
-  var startAt = this.parent + "/" + this.path + "/" + nullChar;
-  var endAt = this.parent + "/" + this.path + nullChar + "/" + nullChar;
+  var startAt = this.firestorePath.getResourceName() + "/" + nullChar;
+  var endAt = this.firestorePath.getResourceName() + nullChar + "/" + nullChar;
 
   var where = {
     compositeFilter: {
@@ -232,7 +186,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
   var url;
   var body;
   if (this.isDocumentPath) {
-    url = this.parent + "/" + this.path + ":runQuery";
+    url = this.firestorePath.getResourceName() + ":runQuery";
     body = this._docDescendantsQuery(allDescendants, batchSize, startAfter);
   } else {
     url = this.parent + ":runQuery";
@@ -396,7 +350,7 @@ FirestoreDelete.prototype._deletePath = function() {
   var self = this;
   var initialDelete;
   if (this.isDocumentPath) {
-    var doc = { name: this.parent + "/" + this.path };
+    var doc = { name: this.firestorePath.getResourceName() };
     initialDelete = firestore.deleteDocument(doc).catch(function(err) {
       logger.debug("deletePath:initialDelete:error", err);
       if (self.allDescendants) {

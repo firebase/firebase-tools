@@ -1,15 +1,12 @@
 import * as clc from "cli-color";
-
 import * as api from "../api";
 import * as firestore from "../gcp/firestore";
 import * as FirebaseError from "../error";
-import * as logger from "../logger";
+import { FirestorePath } from "./path";
 import * as utils from "../utils";
 
 export class FirestoreGet {
-
-  path: string;
-  parent: string;
+  path: FirestorePath;
 
   /**
    * Construct a new Firestore get operation.
@@ -19,13 +16,7 @@ export class FirestoreGet {
    * @param path path to a document or collection.
    */
   constructor(project: string, path: string, options: any) {
-    // Remove any leading or trailing slashes from the path
-    this.path = path.replace(/(^\/+|\/+$)/g, "");
-
-    //this.isDocumentPath = this._isDocumentPath(this.path);
-    //this.isCollectionPath = this._isCollectionPath(this.path);
-
-    this.parent = "projects/" + project + "/databases/(default)/documents";
+    this.path = new FirestorePath(project, path);
 
     this._validateOptions();
   }
@@ -40,19 +31,11 @@ export class FirestoreGet {
   /**
    * Validate all options, throwing an exception for any fatal errors.
    */
-  private _validateOptions() {
-    const pieces = this.path.split("/");
+  private _validateOptions(): void {
+    this.path.validate();
 
-    if (pieces.length === 0) {
-      throw new FirebaseError("Path length must be greater than zero.");
-    }
-
-    const hasEmptySegment = pieces.some(function(piece) {
-      return piece.length === 0;
-    });
-
-    if (hasEmptySegment) {
-      throw new FirebaseError("Path must not have any empty segments.");
+    if (this.path.isCollectionPath()) {
+      throw new FirebaseError("Path must not be a collection path.");
     }
   }
 
@@ -62,8 +45,9 @@ export class FirestoreGet {
    * @return {Promise} a promise for the entire operation.
    */
   private _getDocument(): Promise<void> {
-    const doc = { name: this.parent + "/" + this.path };
-    return firestore.getDocument(doc)
+    const doc = { name: this.path.getResourceName() };
+    return firestore
+      .getDocument(doc)
       .then((firestoreDoc: any) => {
         logger.log(firestoreDoc);
         console.log(firestoreDoc);
