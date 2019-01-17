@@ -7,13 +7,8 @@ import * as utils from "../utils";
 
 module.exports = new Command("firestore:get [path]")
   .description("Get a document from Cloud Firestore.")
-  .option(
-      "-y, --yes",
-      "No confirmation. Otherwise, a confirmation prompt will appear."
-  )
-  .before(
-      requirePermissions,
-      ["datastore.entities.list", "datastore.entities.get"])
+  .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .before(requirePermissions, ["datastore.entities.list", "datastore.entities.get"])
   .action(async (path: string, options: any) => {
     // Guarantee path
     if (!path) {
@@ -21,14 +16,5 @@ module.exports = new Command("firestore:get [path]")
     }
 
     const getApi = new fsi.FirestoreGet(options.project, path, options);
-
-    const checkPrompt = Promise.resolve({ confirm: true });
-
-    return checkPrompt.then(function(res) {
-      if (!res.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
-      }
-
-      return getApi.execute();
-    });
+    return getApi.execute();
   });

@@ -78,7 +78,6 @@ var _deleteDocuments = function(project, docs) {
     });
 };
 
-
 /**
  * Get a single Firestore document.
  *
