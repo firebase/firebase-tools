@@ -49,15 +49,18 @@ export default class DatabaseRemove {
     await this.deletePath(this.path);
   }
 
+  /**
+   * @return true if this path is small (i.e. can be deleted with a single request with writeSizeLimit=tiny),
+   */
   private async deletePath(path: string): Promise<boolean> {
-    const deleteSucessful = await this.deleteJobStack.run(() => this.remote.deletePath(path));
-    if (deleteSucessful) {
+    if (await this.deleteJobStack.run(() => this.remote.deletePath(path))) {
       return Promise.resolve(true);
     }
-    let deleteBatchSize = INITIAL_DELETE_BATCH_SIZE;
     let shallowGetBatchSize = INITIAL_SHALLOW_GET_SIZE;
-    let low = 1;
-    let high = MAX_SHALLOW_GET_SIZE + 1;
+    // The range of batchSize to gradually narrow down.
+    let batchSizeLow = 1;
+    let batchSizeHigh = MAX_SHALLOW_GET_SIZE + 1;
+    let batchSize = INITIAL_DELETE_BATCH_SIZE;
     while (true) {
       const childrenList = await this.listStack.run(() =>
         this.remote.listPath(path, shallowGetBatchSize)
@@ -65,26 +68,28 @@ export default class DatabaseRemove {
       if (childrenList.length == 0) {
         return Promise.resolve(false);
       }
-      const chunks = chunkList(childrenList, deleteBatchSize);
+      const chunks = chunkList(childrenList, batchSize);
       let nNoRetry = 0;
       for (const chunk of chunks) {
         if (await this.deleteChildren(path, chunk)) {
           nNoRetry += 1;
         }
       }
+      // Narrow the batchSize range depending on whether the majority of the chunks are small.
       if (nNoRetry > chunks.length / 2) {
-        // majority chunk has no retry
-        low = deleteBatchSize;
-        deleteBatchSize = Math.floor(Math.min(deleteBatchSize * 2, (high + deleteBatchSize) / 2));
+        batchSizeLow = batchSize;
+        batchSize = Math.floor(
+          Math.min(deleteBatchSize * 2, (batchSizeHigh + deleteBatchSize) / 2)
+        );
       } else {
-        high = deleteBatchSize;
-        deleteBatchSize = Math.floor((low + deleteBatchSize) / 2);
+        batchSizeHigh = batchSize;
+        batchSize = Math.floor((batchSizeLow + deleteBatchSize) / 2);
       }
-      // Start with small number of children to learn about an appropriate size.
+      // Start with small number of children to learn about an appropriate batchSize.
       if (shallowGetBatchSize * 2 <= MAX_SHALLOW_GET_SIZE) {
         shallowGetBatchSize = shallowGetBatchSize * 2;
       } else {
-        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / deleteBatchSize) * deleteBatchSize;
+        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / batchSize) * deleteBatchSize;
       }
     }
   }
@@ -96,11 +101,7 @@ export default class DatabaseRemove {
     if (children.length == 1) {
       return this.deletePath(pathLib.join(path, children[0]));
     }
-    // there is at least two children
-    const deleteSucessful = await this.deleteJobStack.run(() =>
-      this.remote.deleteSubPath(path, children)
-    );
-    if (deleteSucessful) {
+    if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, children))) {
       return Promise.resolve(true);
     }
     const mid = Math.floor(children.length / 2);
