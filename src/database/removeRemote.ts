@@ -31,16 +31,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
   }
 
   deletePath(path: string): Promise<boolean> {
-    const t0 = Date.now();
-    return this.patch(path, null).then((x) => {
-      const dt = Date.now() - t0;
-      if (x) {
-        logger.debug(`[database] Sucessfully removed data at ${path} ${dt}`);
-      } else {
-        logger.debug(`[database] Failed to removed data at ${path} ${dt}`);
-      }
-      return x;
-    });
+    return this.patch(path, null, "all data");
   }
 
   deleteSubPath(path: string, children: string[]): Promise<boolean> {
@@ -48,16 +39,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     for (const c of children) {
       body[c] = null;
     }
-    const t0 = Date.now();
-    return this.patch(path, body).then((x) => {
-      const dt = Date.now() - t0;
-      if (x) {
-        logger.debug(`[database] Sucessfully removed ${children.length} paths at ${path} ${dt}`);
-      } else {
-        logger.debug(`[database] Failed to removed ${children.length} paths at ${path} ${dt}`);
-      }
-      return x;
-    });
+    return this.patch(path, body, `${childrenList.length} subpaths`);
   }
 
   listPath(path: string, numChildren: number): Promise<string[]> {
@@ -110,7 +92,8 @@ export class RTDBRemoveRemote implements RemoveRemote {
       });
   }
 
-  private patch(path: string, body: any): Promise<boolean> {
+  private patch(path: string, body: any, note: string): Promise<boolean> {
+    const t0 = Date.now();
     return new Promise((resolve, reject) => {
       const url =
         utils.addSubdomain(api.realtimeOrigin, this.instance) +
@@ -130,11 +113,15 @@ export class RTDBRemoveRemote implements RemoveRemote {
                 original: err,
               })
             );
-          } else if (res.statusCode >= 400) {
-            //          console.log(res);
-            return resolve(false);
           }
-          return resolve(true);
+          const dt = Date.now() - t0;
+          if (res.statusCode >= 400) {
+            logger.debug(`[database] Failed to remove data at ${path} (${note}) time: ${dt}`);
+            return resolve(false);
+          } else {
+            logger.debug(`[database] Sucessfully removed data at ${path} (${note}) time: ${dt}`);
+            return resolve(true);
+          }
         });
       });
     });
