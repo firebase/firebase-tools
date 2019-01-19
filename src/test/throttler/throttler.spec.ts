@@ -7,9 +7,7 @@ import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
 
 const TEST_ERROR = new Error("foobar");
 
-interface ThrottlerConstructor {
-  new <T, R>(options: ThrottlerOptions<T, R>): Throttler<T, R>;
-}
+type ThrottlerConstructor = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
 
 const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
   it("should have no waiting task after creation", () => {

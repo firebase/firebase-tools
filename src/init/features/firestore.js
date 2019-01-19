@@ -5,13 +5,15 @@ var fs = require("fs");
 
 var FirebaseError = require("../../error");
 var gcp = require("../../gcp");
-var indexes = require("../../firestore/indexes");
+var iv2 = require("../../firestore/indexes");
 var fsutils = require("../../fsutils");
 var prompt = require("../../prompt");
 var logger = require("../../logger");
 var utils = require("../../utils");
 var requireAccess = require("../../requireAccess");
 var scopes = require("../../scopes");
+
+var indexes = new iv2.FirestoreIndexes();
 
 var RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/firestore/firestore.rules",
@@ -141,10 +143,12 @@ var _initIndexes = function(setup, config) {
 };
 
 var _getIndexesFromConsole = function(projectId) {
-  return indexes
-    .list(projectId)
-    .then(function(indexes) {
-      return JSON.stringify({ indexes: indexes }, null, 2);
+  var indexesPromise = indexes.listIndexes(projectId);
+  var fieldOverridesPromise = indexes.listFieldOverrides(projectId);
+
+  return Promise.all([indexesPromise, fieldOverridesPromise])
+    .then(function(res) {
+      return indexes.makeIndexSpec(res[0], res[1]);
     })
     .catch(function(e) {
       if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {

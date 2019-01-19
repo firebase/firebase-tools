@@ -10,7 +10,8 @@ var TRIGGER_PARSER = path.resolve(__dirname, "./triggerParser.js");
 
 module.exports = function(projectId, sourceDir, configValues, firebaseConfig) {
   return new Promise(function(resolve, reject) {
-    var env = { GCLOUD_PROJECT: projectId };
+    var env = _.cloneDeep(process.env);
+    env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(configValues);
       if (configValues.firebase) {

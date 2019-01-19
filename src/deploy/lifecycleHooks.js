@@ -11,13 +11,15 @@ var logger = require("../logger");
 var path = require("path");
 
 function runCommand(command, childOptions) {
+  var escapedCommand = command.replace(/\"/g, '\\"');
   var translatedCommand =
     '"' +
     process.execPath +
     '" "' +
-    path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env.js") +
-    '" ' +
-    command;
+    path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js") +
+    '" "' +
+    escapedCommand +
+    '"';
 
   return new Promise(function(resolve, reject) {
     logger.info("Running command: " + command);

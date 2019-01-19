@@ -7,7 +7,7 @@ var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
 var logger = require("../logger");
 
-var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000 /* ms */;
+var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
 function _fatal(emulator, errorMsg) {
   if (emulator.instance) {
