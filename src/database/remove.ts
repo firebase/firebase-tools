@@ -65,7 +65,7 @@ export default class DatabaseRemove {
       const childrenList = await this.listStack.run(() =>
         this.remote.listPath(path, shallowGetBatchSize)
       );
-      if (childrenList.length == 0) {
+      if (childrenList.length === 0) {
         return Promise.resolve(false);
       }
       const chunks = chunkList(childrenList, batchSize);
@@ -78,27 +78,25 @@ export default class DatabaseRemove {
       // Narrow the batchSize range depending on whether the majority of the chunks are small.
       if (nNoRetry > chunks.length / 2) {
         batchSizeLow = batchSize;
-        batchSize = Math.floor(
-          Math.min(deleteBatchSize * 2, (batchSizeHigh + deleteBatchSize) / 2)
-        );
+        batchSize = Math.floor(Math.min(batchSize * 2, (batchSizeHigh + batchSize) / 2));
       } else {
         batchSizeHigh = batchSize;
-        batchSize = Math.floor((batchSizeLow + deleteBatchSize) / 2);
+        batchSize = Math.floor((batchSizeLow + batchSize) / 2);
       }
       // Start with small number of children to learn about an appropriate batchSize.
       if (shallowGetBatchSize * 2 <= MAX_SHALLOW_GET_SIZE) {
         shallowGetBatchSize = shallowGetBatchSize * 2;
       } else {
-        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / batchSize) * deleteBatchSize;
+        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / batchSize) * batchSize;
       }
     }
   }
 
   private async deleteChildren(path: string, children: string[]): Promise<boolean> {
-    if (children.length == 0) {
+    if (children.length === 0) {
       throw new Error("deleteChildren is called with empty children list");
     }
-    if (children.length == 1) {
+    if (children.length === 1) {
       return this.deletePath(pathLib.join(path, children[0]));
     }
     if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, children))) {

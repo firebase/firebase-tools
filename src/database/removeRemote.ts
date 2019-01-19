@@ -39,7 +39,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     for (const c of children) {
       body[c] = null;
     }
-    return this.patch(path, body, `${childrenList.length} subpaths`);
+    return this.patch(path, body, `${children.length} subpaths`);
   }
 
   listPath(path: string, numChildren: number): Promise<string[]> {
@@ -105,7 +105,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
         json: true,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-        request.patch(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+        request.patch(reqOptionsWithToken, (err: Error, res: Response, resBody: any) => {
           if (err) {
             return reject(
               new FirebaseError(`Unexpected error while removing data at ${path}`, {
