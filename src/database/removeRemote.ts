@@ -115,7 +115,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
       const url =
         utils.addSubdomain(api.realtimeOrigin, this.instance) +
         path +
-        ".json?print=silent&writeTimeout=2000";
+        ".json?print=silent&writeSizeLimit=tiny";
       const reqOptions = {
         url,
         body,
