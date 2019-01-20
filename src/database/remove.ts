@@ -69,14 +69,14 @@ export default class DatabaseRemove {
         return Promise.resolve(false);
       }
       const chunks = chunkList(childrenList, batchSize);
-      let nNoRetry = 0;
+      let nSmallChunks = 0;
       for (const chunk of chunks) {
         if (await this.deleteChildren(path, chunk)) {
-          nNoRetry += 1;
+          nSmallChunks += 1;
         }
       }
       // Narrow the batchSize range depending on whether the majority of the chunks are small.
-      if (nNoRetry > chunks.length / 2) {
+      if (nSmallChunks > chunks.length / 2) {
         batchSizeLow = batchSize;
         batchSize = Math.floor(Math.min(batchSize * 2, (batchSizeHigh + batchSize) / 2));
       } else {
