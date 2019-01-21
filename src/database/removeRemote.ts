@@ -1,5 +1,5 @@
-import { Response } from "request";
 import * as request from "request";
+import { Response } from "request";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
 import * as FirebaseError from "../error";
@@ -47,12 +47,11 @@ export class RTDBRemoveRemote implements RemoveRemote {
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
       `.json?shallow=true&limitToFirst=${numChildren}`;
-    const reqOptions = {
-      url,
-    };
     const t0 = Date.now();
     return api
-      .addRequestHeaders(reqOptions)
+      .addRequestHeaders({
+        url,
+      })
       .then((reqOptionsWithToken) => {
         return new Promise<string[]>((resolve, reject) => {
           request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
@@ -85,10 +84,10 @@ export class RTDBRemoveRemote implements RemoveRemote {
           });
         });
       })
-      .then((x: string[]) => {
+      .then((paths: string[]) => {
         const dt = Date.now() - t0;
-        logger.debug(`[database] Sucessfully fetched ${x.length} path at ${path} ${dt}`);
-        return x;
+        logger.debug(`[database] Sucessfully fetched ${paths.length} path at ${path} ${dt}`);
+        return paths;
       });
   }
 
@@ -99,31 +98,32 @@ export class RTDBRemoveRemote implements RemoveRemote {
         utils.addSubdomain(api.realtimeOrigin, this.instance) +
         path +
         ".json?print=silent&writeSizeLimit=tiny";
-      const reqOptions = {
-        url,
-        body,
-        json: true,
-      };
-      return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-        request.patch(reqOptionsWithToken, (err: Error, res: Response, resBody: any) => {
-          if (err) {
-            return reject(
-              new FirebaseError(`Unexpected error while removing data at ${path}`, {
-                exit: 2,
-                original: err,
-              })
-            );
-          }
-          const dt = Date.now() - t0;
-          if (res.statusCode >= 400) {
-            logger.debug(`[database] Failed to remove data at ${path} (${note}) time: ${dt}`);
-            return resolve(false);
-          } else {
-            logger.debug(`[database] Sucessfully removed data at ${path} (${note}) time: ${dt}`);
-            return resolve(true);
-          }
+      return api
+        .addRequestHeaders({
+          url,
+          body,
+          json: true,
+        })
+        .then((reqOptionsWithToken) => {
+          request.patch(reqOptionsWithToken, (err: Error, res: Response, resBody: any) => {
+            if (err) {
+              return reject(
+                new FirebaseError(`Unexpected error while removing data at ${path}`, {
+                  exit: 2,
+                  original: err,
+                })
+              );
+            }
+            const dt = Date.now() - t0;
+            if (res.statusCode >= 400) {
+              logger.debug(`[database] Failed to remove data at ${path} (${note}) time: ${dt}`);
+              return resolve(false);
+            } else {
+              logger.debug(`[database] Sucessfully removed data at ${path} (${note}) time: ${dt}`);
+              return resolve(true);
+            }
+          });
         });
-      });
     });
   }
 }

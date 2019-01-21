@@ -1,6 +1,4 @@
 import * as pathLib from "path";
-import * as FirebaseError from "../error";
-import * as logger from "../logger";
 
 import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
 import { Stack } from "../throttler/stack";
