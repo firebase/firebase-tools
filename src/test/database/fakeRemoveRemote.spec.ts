@@ -7,6 +7,13 @@ export class FakeRemoveRemote implements RemoveRemote {
   data: any;
   largeThreshold: number;
 
+  /**
+   * @constructor
+   * @param data           the fake database structure. Each leaf is an integer representing the subtree's size.
+   * @param largeThreshold the threshold to determine if a delete exceeds the writeSizeLimit.
+   *                       If the sum of all leaves to delete is larger than largeThreshold,
+   *                       the delete will return false.
+   */
   constructor(data: any, largeThreshold: number = 10) {
     this.data = data;
     this.largeThreshold = largeThreshold;

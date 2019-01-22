@@ -34,18 +34,18 @@ describe("DatabaseRemove", () => {
     });
   });
 
-  function databaseRemoveTestSuit(threshold: number): void {
-    function buildData(branchFactor: number, depth: number): any {
-      if (depth === 0) {
-        return 1;
-      }
-      const d: any = {};
-      for (let i = 0; i < branchFactor; i++) {
-        d[`${i}`] = buildData(branchFactor, depth - 1);
-      }
-      return d;
+  function buildData(branchFactor: number, depth: number): any {
+    if (depth === 0) {
+      return 1;
     }
-    describe(`DatabaseRemove when threshold=${threshold}`, () => {
+    const d: any = {};
+    for (let i = 0; i < branchFactor; i++) {
+      d[`${i}`] = buildData(branchFactor, depth - 1);
+    }
+    return d;
+  }
+  function databaseRemoveTestSuit(threshold: number): void {
+    describe(`DatabaseRemove when largeThreshold=${threshold}`, () => {
       it("should remove nested tree", async () => {
         const fakeDb = new FakeRemoveRemote(buildData(3, 5), threshold);
         const removeOps = new DatabaseRemove("test-nested-tree", "/");
