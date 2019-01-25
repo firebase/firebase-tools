@@ -19,9 +19,9 @@ var visitor = ua(process.env.FIREBASE_ANALYTICS_UA || "UA-29174744-3", anonId, {
   https: true,
 });
 
-visitor.set("cd1", process.platform); # Platform
-visitor.set("cd2", process.version); # NodeVersion
-visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); # FirepitVersion
+visitor.set("cd1", process.platform); // Platform
+visitor.set("cd2", process.version); // NodeVersion
+visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
 
 module.exports = function(action, label, duration) {
   return new Promise(function(resolve) {
