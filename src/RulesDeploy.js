@@ -54,6 +54,9 @@ RulesDeploy.prototype = {
    *
    * If the ruleset to create is identical to the latest existing ruleset,
    * then we record the existing ruleset name instead of creating a duplicate.
+   *
+   * @param {string} service The service to create a ruleset.
+   *    Valid values are "cloud.firestore" and "firebase.storage"
    */
   createRulesets: function(service) {
     var self = this;
