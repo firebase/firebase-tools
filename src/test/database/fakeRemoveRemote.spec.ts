@@ -38,17 +38,17 @@ export class FakeRemoveRemote implements RemoveRemote {
     return Promise.resolve(true);
   }
 
-  deleteSubPath(path: string, children: string[]): Promise<boolean> {
+  deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
     const d = this._dataAtpath(path);
     let size = 0;
-    for (const child of children) {
-      size += this._size(d[child]);
+    for (const p of subPaths) {
+      size += this._size(d[p]);
     }
     if (size > this.largeThreshold) {
       return Promise.resolve(false);
     }
-    for (const child of children) {
-      this.deletePath(`${path}/${child}`);
+    for (const p of subPaths) {
+      this.deletePath(`${path}/${p}`);
     }
     return Promise.resolve(true);
   }
@@ -94,7 +94,7 @@ export class FakeRemoveRemote implements RemoveRemote {
 }
 
 describe("FakeRemoveRemote", () => {
-  it("should return numChildren subpaths", async () => {
+  it("should return limit the number of subpaths returned", async () => {
     const fakeDb = new FakeRemoveRemote({ 1: 1, 2: 2, 3: 3, 4: 4 });
     await expect(fakeDb.listPath("/", 4)).to.eventually.eql(["1", "2", "3", "4"]);
     await expect(fakeDb.listPath("/", 3)).to.eventually.eql(["1", "2", "3"]);

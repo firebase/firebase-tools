@@ -8,17 +8,23 @@ import * as api from "../api";
 
 export interface RemoveRemote {
   /**
-   * @return {Promise<boolean>} true if the deletion is sucessful.
+   * @param path the path to delete
+   * @return false if the deleteion failed because the path exceeds the writeSizeLimit.
    */
   deletePath(path: string): Promise<boolean>;
 
   /**
-   * @return {Promise<boolean>} true if the deletion is sucessful.
+   * @param path the path to delete subpaths from
+   * @param subPaths the subpaths
+   * @return false if the deleteion failed because the the total size of subpaths exceeds the writeSizeLimit.
    */
-  deleteSubPath(path: string, children: string[]): Promise<boolean>;
+  deleteSubPath(path: string, subPaths: string[]): Promise<boolean>;
 
   /**
-   * @return {Promise<string[]>} the list of sub pathes found.
+   * Call the shallow get API with limitToFirst=numChildren.
+   * @param path the path to list
+   * @param numChildren the number of subPaths to fetch.
+   * @return the list of sub pathes found.
    */
   listPath(path: string, numChildren: number): Promise<string[]>;
 }
@@ -34,12 +40,12 @@ export class RTDBRemoveRemote implements RemoveRemote {
     return this.patch(path, null, "all data");
   }
 
-  deleteSubPath(path: string, children: string[]): Promise<boolean> {
+  deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
     const body: any = {};
-    for (const c of children) {
+    for (const c of subPaths) {
       body[c] = null;
     }
-    return this.patch(path, body, `${children.length} subpaths`);
+    return this.patch(path, body, `${subPaths.length} subpaths`);
   }
 
   listPath(path: string, numChildren: number): Promise<string[]> {
@@ -116,12 +122,11 @@ export class RTDBRemoveRemote implements RemoveRemote {
             }
             const dt = Date.now() - t0;
             if (res.statusCode >= 400) {
-              logger.debug(`[database] Failed to remove data at ${path} (${note}) time: ${dt}`);
+              logger.debug(`[database] Failed to remove ${note} at ${path} time: ${dt}`);
               return resolve(false);
-            } else {
-              logger.debug(`[database] Sucessfully removed data at ${path} (${note}) time: ${dt}`);
-              return resolve(true);
             }
+            logger.debug(`[database] Sucessfully removed ${note} at ${path} time: ${dt}`);
+            return resolve(true);
           });
         });
     });

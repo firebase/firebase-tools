@@ -12,8 +12,8 @@ function chunkList<T>(ls: T[], chunkSize: number): T[][] {
 }
 
 const INITIAL_DELETE_BATCH_SIZE = 25;
-const INITIAL_SHALLOW_GET_SIZE = 100;
-const MAX_SHALLOW_GET_SIZE = 204800;
+const INITIAL_LIST_NUM_SUB_PATH = 100;
+const MAX_LIST_NUM_SUB_PATH = 204800;
 
 export default class DatabaseRemove {
   path: string;
@@ -48,28 +48,35 @@ export default class DatabaseRemove {
   }
 
   /**
-   * @return true if this path is small (i.e. can be deleted with a single request with writeSizeLimit=tiny),
+   * First, attempt to delete the path, if the path is big (i.e. exceeds writeSizeLimit of tiny),
+   * it will perform multi-path recursive chunked deletes in rounds.
+   * Each round, it fetches listNumSubPath subPaths and issue batches based on batchSize.
+   * At the end of each round, it adjustes the batchSize based on whether the majority of the batches are small.
+   *
+   * listNumSubPath starts with INITIAL_LIST_NUM_SUB_PATH and grow expontentially until MAX_LIST_NUM_SUB_PATH.
+   *
+   * @return true if this path is small (Does not exceed writeSizeLimit of tiny)
    */
   private async deletePath(path: string): Promise<boolean> {
     if (await this.deleteJobStack.run(() => this.remote.deletePath(path))) {
       return Promise.resolve(true);
     }
-    let shallowGetBatchSize = INITIAL_SHALLOW_GET_SIZE;
+    let listNumSubPath = INITIAL_LIST_NUM_SUB_PATH;
     // The range of batchSize to gradually narrow down.
     let batchSizeLow = 1;
-    let batchSizeHigh = MAX_SHALLOW_GET_SIZE + 1;
+    let batchSizeHigh = MAX_LIST_NUM_SUB_PATH + 1;
     let batchSize = INITIAL_DELETE_BATCH_SIZE;
     while (true) {
-      const childrenList = await this.listStack.run(() =>
-        this.remote.listPath(path, shallowGetBatchSize)
+      const subPathList = await this.listStack.run(() =>
+        this.remote.listPath(path, listNumSubPath)
       );
-      if (childrenList.length === 0) {
+      if (subPathList.length === 0) {
         return Promise.resolve(false);
       }
-      const chunks = chunkList(childrenList, batchSize);
+      const chunks = chunkList(subPathList, batchSize);
       let nSmallChunks = 0;
       for (const chunk of chunks) {
-        if (await this.deleteChildren(path, chunk)) {
+        if (await this.deleteSubPath(path, chunk)) {
           nSmallChunks += 1;
         }
       }
@@ -81,28 +88,35 @@ export default class DatabaseRemove {
         batchSizeHigh = batchSize;
         batchSize = Math.floor((batchSizeLow + batchSize) / 2);
       }
-      // Start with small number of children to learn about an appropriate batchSize.
-      if (shallowGetBatchSize * 2 <= MAX_SHALLOW_GET_SIZE) {
-        shallowGetBatchSize = shallowGetBatchSize * 2;
+      // Start with small number of sub paths to learn about an appropriate batchSize.
+      if (listNumSubPath * 2 <= MAX_LIST_NUM_SUB_PATH) {
+        listNumSubPath = listNumSubPath * 2;
       } else {
-        shallowGetBatchSize = Math.floor(MAX_SHALLOW_GET_SIZE / batchSize) * batchSize;
+        listNumSubPath = Math.floor(MAX_LIST_NUM_SUB_PATH / batchSize) * batchSize;
       }
     }
   }
 
-  private async deleteChildren(path: string, children: string[]): Promise<boolean> {
-    if (children.length === 0) {
-      throw new Error("deleteChildren is called with empty children list");
+  /*
+   * Similar to deletePath, but delete multiple subpaths at once.
+   * If the combined size of subpaths is big, it will divide and conquer.
+   * It fallbacks to deletePath to perform recursive chunked deletes if only one subpath is provided.
+   *
+   * @return true if the combined size is small (Does not exceed writeSizeLimit of tiny)
+   */
+  private async deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
+    if (subPaths.length === 0) {
+      throw new Error("deleteSubPath is called with empty subPaths list");
     }
-    if (children.length === 1) {
-      return this.deletePath(pathLib.join(path, children[0]));
+    if (subPaths.length === 1) {
+      return this.deletePath(pathLib.join(path, subPaths[0]));
     }
-    if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, children))) {
+    if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, subPaths))) {
       return Promise.resolve(true);
     }
-    const mid = Math.floor(children.length / 2);
-    await this.deleteChildren(path, children.slice(0, mid));
-    await this.deleteChildren(path, children.slice(mid));
+    const mid = Math.floor(subPaths.length / 2);
+    await this.deleteSubPath(path, subPaths.slice(0, mid));
+    await this.deleteSubPath(path, subPaths.slice(mid));
     return Promise.resolve(false);
   }
 }

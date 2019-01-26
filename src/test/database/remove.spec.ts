@@ -44,6 +44,7 @@ describe("DatabaseRemove", () => {
     }
     return d;
   }
+
   function databaseRemoveTestSuit(threshold: number): void {
     describe(`DatabaseRemove when largeThreshold=${threshold}`, () => {
       it("should remove nested tree", async () => {
@@ -63,6 +64,7 @@ describe("DatabaseRemove", () => {
       });
     });
   }
+
   databaseRemoveTestSuit(100);
   databaseRemoveTestSuit(10);
   databaseRemoveTestSuit(1);
