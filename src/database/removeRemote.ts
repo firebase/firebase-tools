@@ -21,12 +21,12 @@ export interface RemoveRemote {
   deleteSubPath(path: string, subPaths: string[]): Promise<boolean>;
 
   /**
-   * Call the shallow get API with limitToFirst=numChildren.
+   * Call the shallow get API with limitToFirst=numSubPath.
    * @param path the path to list
-   * @param numChildren the number of subPaths to fetch.
+   * @param numSubPath the number of subPaths to fetch.
    * @return the list of sub pathes found.
    */
-  listPath(path: string, numChildren: number): Promise<string[]>;
+  listPath(path: string, numSubPath: number): Promise<string[]>;
 }
 
 export class RTDBRemoveRemote implements RemoveRemote {
@@ -48,11 +48,11 @@ export class RTDBRemoveRemote implements RemoveRemote {
     return this.patch(path, body, `${subPaths.length} subpaths`);
   }
 
-  listPath(path: string, numChildren: number): Promise<string[]> {
+  listPath(path: string, numSubPath: number): Promise<string[]> {
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
-      `.json?shallow=true&limitToFirst=${numChildren}`;
+      `.json?shallow=true&limitToFirst=${numSubPath}`;
     const t0 = Date.now();
     return api
       .addRequestHeaders({
