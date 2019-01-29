@@ -220,10 +220,11 @@ Config.prototype.askWriteProjectFile = function(p, content) {
 };
 
 Config.load = function(options, allowMissing) {
+  var configPath = options.config || Config.FILENAME;
   var pd = detectProjectRoot(options.cwd);
   if (pd) {
     try {
-      var data = cjson.load(path.join(pd, Config.FILENAME));
+      var data = cjson.load(path.join(pd, configPath));
       return new Config(data, options);
     } catch (e) {
       throw new FirebaseError("There was an error loading firebase.json:\n\n" + e.message, {
