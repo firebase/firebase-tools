@@ -99,4 +99,20 @@ describe("Config", function() {
       expect(config._materialize("rules")).to.deep.equal({ ".read": true });
     });
   });
+
+  describe.only("#load", function() {
+    it("should try to load default config if no config flag is provided", function() {
+      var config = Config.load({ cwd: _fixtureDir("config-imports") });
+      expect(config._src.hosting).to.equal("hosting.json");
+      expect(config._src.rules).to.equal("rules.json");
+    });
+
+    it("should load config from specified path when config flag is provided", function() {
+      var config = Config.load({
+        cwd: _fixtureDir("valid-config"),
+        config: "../valid-config/firebase.json",
+      });
+      expect(config._src.firebase).to.equal("myfirebase");
+    });
+  });
 });
