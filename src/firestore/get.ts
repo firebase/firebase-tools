@@ -57,7 +57,7 @@ export class FirestoreGet {
       })
       .catch((err) => {
         logger.debug(err.message);
-        return utils.reject("Unable to get " + clc.cyan(this.path.getPath()), null);
+        return utils.reject(`Unable to get ${clc.cyan(this.path.getPath())}`, null);
       });
   }
 }

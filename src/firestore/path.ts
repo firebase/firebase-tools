@@ -12,7 +12,7 @@ export class FirestorePath {
       this.path = path.replace(/(^\/+|\/+$)/g, "");
     }
 
-    this.parent = "projects/" + project + "/databases/(default)/documents";
+    this.parent = `projects/${project}/databases/(default)/documents`;
   }
 
   validate(): void {
@@ -54,7 +54,7 @@ export class FirestorePath {
    * projects/{projectId}/databases/{databaseId}/documents/{document_path}
    */
   getResourceName(): string {
-    return this.parent + "/" + this.path;
+    return `${this.parent}/${this.path}`;
   }
 
   /**
