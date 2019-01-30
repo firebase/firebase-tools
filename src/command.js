@@ -144,6 +144,11 @@ Command.prototype._prepare = function(options) {
     logger.transports.console.level = "none";
   }
 
+  var configPath = utils.getInheritedOption(options, "config");
+  if (configPath) {
+    options.config = configPath;
+  }
+
   try {
     options.config = Config.load(options);
   } catch (e) {
