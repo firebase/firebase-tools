@@ -220,7 +220,7 @@ Config.prototype.askWriteProjectFile = function(p, content) {
 };
 
 Config.load = function(options, allowMissing) {
-  var configPath = options.config || Config.FILENAME;
+  var configPath = options.configPath || Config.FILENAME;
   var pd = detectProjectRoot(options.cwd);
   if (pd) {
     try {

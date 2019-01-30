@@ -16,7 +16,7 @@ program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("--interactive", "force interactive shell treatment even when not detected");
 program.option("--debug", "print verbose debug output and keep a debug log file");
-program.option("--config <path>", "path to custom config file (default: Firebase.json)");
+program.option("--config-path <path>", "path to custom config file (default: Firebase.json)");
 // program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
 var client = {};
