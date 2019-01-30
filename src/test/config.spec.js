@@ -100,7 +100,7 @@ describe("Config", function() {
     });
   });
 
-  describe.only("#load", function() {
+  describe("#load", function() {
     it("should try to load default config if no config flag is provided", function() {
       var config = Config.load({ cwd: _fixtureDir("config-imports") });
       expect(config._src.hosting).to.equal("hosting.json");
