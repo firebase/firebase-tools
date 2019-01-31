@@ -1,1 +1,2 @@
+fixed - Prevent Firestore index creation from encountering contention issues.
 fixed - Multi-Site predeploy and postdeploy hooks now trigger
