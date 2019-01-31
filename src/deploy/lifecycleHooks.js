@@ -47,64 +47,74 @@ module.exports = function(target, hook) {
   var exit = hook !== "postdeploy" ? undefined : { exit: 2 };
 
   return function(context, options) {
-    var commands = options.config.get(target + "." + hook);
-
-    if (!commands) {
+    let targetConfigs = options.config.get(target);
+    if (!targetConfigs) {
       return Promise.resolve();
     }
-    if (typeof commands === "string") {
-      commands = [commands];
+    if (!_.isArray(targetConfigs)) {
+      targetConfigs = [targetConfigs];
     }
+    return _.reduce(targetConfigs,
+      function(previousCommands, individualConfig) {
+        let commands = individualConfig[hook];
+        if (!commands) {
+          return Promise.resolve();
+        }
+        if (typeof commands === "string") {
+          commands = [commands];
+        }
 
-    // active project ID
-    var projectId = getProjectId(options);
-    // root directory where firebase.json can be found
-    var projectDir = options.projectRoot;
-    // location of hosting site or functions deploy, defaults project directory
-    var resourceDir;
-    switch (target) {
-      case "hosting":
-        resourceDir = options.config.path(options.config.get("hosting.public"));
-        break;
-      case "functions":
-        resourceDir = options.config.path(options.config.get("functions.source"));
-        break;
-      default:
-        resourceDir = options.config.path(options.config.projectDir);
-    }
-
-    // Copying over environment variables
-    var childEnv = _.assign({}, process.env, {
-      GCLOUD_PROJECT: projectId,
-      PROJECT_DIR: projectDir,
-      RESOURCE_DIR: resourceDir,
-    });
-
-    var childOptions = {
-      cwd: options.config.projectDir,
-      env: childEnv,
-      shell: true,
-      stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
-    };
-
-    var runAllCommands = _.reduce(
-      commands,
-      function(soFar, command) {
-        return soFar.then(function() {
-          return runCommand(command, childOptions);
+        // active project ID
+        var projectId = getProjectId(options);
+        // root directory where firebase.json can be found
+        var projectDir = options.projectRoot;
+        // location of hosting site or functions deploy, defaults project directory
+        var resourceDir;
+        switch (target) {
+          case "hosting":
+            resourceDir = options.config.path(individualConfig["public"]);
+            break;
+          case "functions":
+            resourceDir = options.config.path(individualConfig["source"]);
+            break;
+          default:
+            resourceDir = options.config.path(options.config.projectDir);
+        }
+    
+        // Copying over environment variables
+        var childEnv = _.assign({}, process.env, {
+          GCLOUD_PROJECT: projectId,
+          PROJECT_DIR: projectDir,
+          RESOURCE_DIR: resourceDir,
         });
-      },
-      Promise.resolve()
-    );
-
-    return runAllCommands
-      .then(function() {
-        utils.logSuccess(
-          clc.green.bold(target + ":") + " Finished running " + clc.bold(hook) + " script."
+    
+        var childOptions = {
+          cwd: options.config.projectDir,
+          env: childEnv,
+          shell: true,
+          stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
+        };
+    
+        var runAllCommands = _.reduce(
+          commands,
+          function(soFar, command) {
+            return soFar.then(function() {
+              return runCommand(command, childOptions);
+            });
+          },
+          previousCommands
         );
-      })
-      .catch(function(err) {
-        throw new FirebaseError(target + " " + hook + " error: " + err.message, exit);
-      });
+    
+        return runAllCommands
+          .then(function() {
+            utils.logSuccess(
+              clc.green.bold(target + ":") + " Finished running " + clc.bold(hook) + " script."
+            );
+          })
+          .catch(function(err) {
+            throw new FirebaseError(target + " " + hook + " error: " + err.message, exit);
+          });
+      }, 
+      Promise.resolve());
   };
 };
