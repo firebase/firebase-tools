@@ -5,7 +5,7 @@ import * as utils from "../../utils";
 import * as api from "../../api";
 
 import * as helpers from "../helpers";
-import { NodeSize, RTDBRemoveRemote } from "../../database/removeRemote";
+import { RTDBRemoveRemote } from "../../database/removeRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
@@ -23,52 +23,53 @@ describe("RemoveRemote", () => {
     nock.cleanAll();
   });
 
-  it("listPath should work", () => {
+  it("should return subpaths from shallow get request", () => {
     nock(serverUrl)
       .get("/.json")
-      .query({ shallow: true, limitToFirst: "50000" })
+      .query({ shallow: true, limitToFirst: "1234" })
       .reply(200, {
         a: true,
         x: true,
         f: true,
       });
-    return expect(remote.listPath("/")).to.eventually.eql(["a", "x", "f"]);
+    return expect(remote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
   });
 
-  it("prefetchTest should return empty", () => {
+  it("should return true when patch is small", () => {
     nock(serverUrl)
-      .get("/empty/path.json")
-      .query({ timeout: "100ms" })
-      .reply(200, null);
-    return expect(remote.prefetchTest("/empty/path")).to.eventually.eql(NodeSize.EMPTY);
+      .patch("/a/b.json")
+      .query({ print: "silent", writeSizeLimit: "tiny" })
+      .reply(200, {});
+    return expect(remote.deletePath("/a/b")).to.eventually.eql(true);
   });
 
-  it("prefetchTest should return large", () => {
+  it("should return false whem patch is large", () => {
     nock(serverUrl)
-      .get("/large/path.json")
-      .query({ timeout: "100ms" })
+      .patch("/a/b.json")
+      .query({ print: "silent", writeSizeLimit: "tiny" })
       .reply(400, {
         error:
           "Data requested exceeds the maximum size that can be accessed with a single request.",
       });
-    return expect(remote.prefetchTest("/large/path")).to.eventually.eql(NodeSize.LARGE);
+    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(false);
   });
 
-  it("prefetchTest should return small", () => {
+  it("should return true when multi-path patch is small", () => {
     nock(serverUrl)
-      .get("/small/path.json")
-      .query({ timeout: "100ms" })
-      .reply(200, {
-        x: "some data",
-      });
-    return expect(remote.prefetchTest("/small/path")).to.eventually.eql(NodeSize.SMALL);
-  });
-
-  it("deletePath should work", () => {
-    nock(serverUrl)
-      .delete("/a/b.json")
-      .query({ print: "silent" })
+      .patch("/a/b.json")
+      .query({ print: "silent", writeSizeLimit: "tiny" })
       .reply(200, {});
-    return remote.deletePath("/a/b");
+    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(true);
+  });
+
+  it("should return false when multi-path patch is large", () => {
+    nock(serverUrl)
+      .patch("/a/b.json")
+      .query({ print: "silent", writeSizeLimit: "tiny" })
+      .reply(400, {
+        error:
+          "Data requested exceeds the maximum size that can be accessed with a single request.",
+      });
+    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(false);
   });
 });
