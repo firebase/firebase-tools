@@ -105,14 +105,19 @@ module.exports = function(target, hook) {
           previousCommands
         );
     
+        let logIdentifier = target;
+        if (individualConfig.target) {
+          logIdentifier += `[${individualConfig.target}]`;
+        }
+
         return runAllCommands
           .then(function() {
             utils.logSuccess(
-              clc.green.bold(target + ":") + " Finished running " + clc.bold(hook) + " script."
+              clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
             );
           })
           .catch(function(err) {
-            throw new FirebaseError(target + " " + hook + " error: " + err.message, exit);
+            throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message, exit);
           });
       }, 
       Promise.resolve());
