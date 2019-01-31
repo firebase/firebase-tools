@@ -42,15 +42,7 @@ function runCommand(command, childOptions) {
   });
 }
 
-function runTargetCommands(target, hook, overallOptions, config) {
-  let commands = config[hook];
-  if (!commands) {
-    return Promise.resolve();
-  }
-  if (typeof commands === "string") {
-    commands = [commands];
-  }
-
+function getChildEnvironment(target, overallOptions, config) {
   // active project ID
   var projectId = getProjectId(overallOptions);
   // root directory where firebase.json can be found
@@ -69,15 +61,25 @@ function runTargetCommands(target, hook, overallOptions, config) {
   }
 
   // Copying over environment variables
-  var childEnv = _.assign({}, process.env, {
+  return_.assign({}, process.env, {
     GCLOUD_PROJECT: projectId,
     PROJECT_DIR: projectDir,
     RESOURCE_DIR: resourceDir,
   });
+}
+
+function runTargetCommands(target, hook, overallOptions, config) {
+  let commands = config[hook];
+  if (!commands) {
+    return Promise.resolve();
+  }
+  if (typeof commands === "string") {
+    commands = [commands];
+  }
 
   var childOptions = {
     cwd: overallOptions.config.projectDir,
-    env: childEnv,
+    env: getChildEnvironment(target, overallOptions, config),
     shell: true,
     stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
   };
@@ -121,10 +123,14 @@ module.exports = function(target, hook) {
       targetConfigs = [targetConfigs];
     }
 
-    return _.reduce(targetConfigs, function(previousCommands, individualConfig) {
-      return previousCommands.then(function() {
-        return runTargetCommands(target, hook, options, individualConfig);
-      });
-    }, Promise.resolve());
+    return _.reduce(
+      targetConfigs,
+      function(previousCommands, individualConfig) {
+        return previousCommands.then(function() {
+          return runTargetCommands(target, hook, options, individualConfig);
+        });
+      },
+      Promise.resolve()
+    );
   };
 };
