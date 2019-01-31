@@ -42,10 +42,76 @@ function runCommand(command, childOptions) {
   });
 }
 
-module.exports = function(target, hook) {
-  // Errors in postdeploy script will not exit the process since it's too late to stop the deploy.
-  var exit = hook !== "postdeploy" ? undefined : { exit: 2 };
+function runTargetCommands(target, hook, overallOptions, config) {
+  let commands = config[hook];
+  if (!commands) {
+    return Promise.resolve();
+  }
+  if (typeof commands === "string") {
+    commands = [commands];
+  }
 
+  // active project ID
+  var projectId = getProjectId(overallOptions);
+  // root directory where firebase.json can be found
+  var projectDir = overallOptions.projectRoot;
+  // location of hosting site or functions deploy, defaults project directory
+  var resourceDir;
+  switch (target) {
+    case "hosting":
+      resourceDir = overallOptions.config.path(config["public"]);
+      break;
+    case "functions":
+      resourceDir = overallOptions.config.path(config["source"]);
+      break;
+    default:
+      resourceDir = overallOptions.config.path(overallOptions.config.projectDir);
+  }
+
+  // Copying over environment variables
+  var childEnv = _.assign({}, process.env, {
+    GCLOUD_PROJECT: projectId,
+    PROJECT_DIR: projectDir,
+    RESOURCE_DIR: resourceDir,
+  });
+
+  var childOptions = {
+    cwd: overallOptions.config.projectDir,
+    env: childEnv,
+    shell: true,
+    stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
+  };
+
+  var runAllCommands = _.reduce(
+    commands,
+    function(soFar, command) {
+      return soFar.then(function() {
+        return runCommand(command, childOptions);
+      });
+    },
+    Promise.resolve()
+  );
+
+  // Errors in postdeploy script will not exit the process since it's too late to stop the deploy.
+  const exit = hook !== "postdeploy" ? undefined : { exit: 2 };
+
+  let logIdentifier = target;
+  if (config.target) {
+    logIdentifier += `[${config.target}]`;
+  }
+
+  return runAllCommands
+    .then(function() {
+      utils.logSuccess(
+        clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
+      );
+    })
+    .catch(function(err) {
+      throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message, exit);
+    });
+}
+
+module.exports = function(target, hook) {
   return function(context, options) {
     let targetConfigs = options.config.get(target);
     if (!targetConfigs) {
@@ -54,72 +120,11 @@ module.exports = function(target, hook) {
     if (!_.isArray(targetConfigs)) {
       targetConfigs = [targetConfigs];
     }
-    return _.reduce(targetConfigs,
-      function(previousCommands, individualConfig) {
-        let commands = individualConfig[hook];
-        if (!commands) {
-          return Promise.resolve();
-        }
-        if (typeof commands === "string") {
-          commands = [commands];
-        }
 
-        // active project ID
-        var projectId = getProjectId(options);
-        // root directory where firebase.json can be found
-        var projectDir = options.projectRoot;
-        // location of hosting site or functions deploy, defaults project directory
-        var resourceDir;
-        switch (target) {
-          case "hosting":
-            resourceDir = options.config.path(individualConfig["public"]);
-            break;
-          case "functions":
-            resourceDir = options.config.path(individualConfig["source"]);
-            break;
-          default:
-            resourceDir = options.config.path(options.config.projectDir);
-        }
-    
-        // Copying over environment variables
-        var childEnv = _.assign({}, process.env, {
-          GCLOUD_PROJECT: projectId,
-          PROJECT_DIR: projectDir,
-          RESOURCE_DIR: resourceDir,
-        });
-    
-        var childOptions = {
-          cwd: options.config.projectDir,
-          env: childEnv,
-          shell: true,
-          stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
-        };
-    
-        var runAllCommands = _.reduce(
-          commands,
-          function(soFar, command) {
-            return soFar.then(function() {
-              return runCommand(command, childOptions);
-            });
-          },
-          previousCommands
-        );
-    
-        let logIdentifier = target;
-        if (individualConfig.target) {
-          logIdentifier += `[${individualConfig.target}]`;
-        }
-
-        return runAllCommands
-          .then(function() {
-            utils.logSuccess(
-              clc.green.bold(logIdentifier + ":") + " Finished running " + clc.bold(hook) + " script."
-            );
-          })
-          .catch(function(err) {
-            throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message, exit);
-          });
-      }, 
-      Promise.resolve());
+    return _.reduce(targetConfigs, function(previousCommands, individualConfig) {
+      return previousCommands.then(function() {
+        return runTargetCommands(target, hook, options, individualConfig);
+      });
+    }, Promise.resolve());
   };
 };
