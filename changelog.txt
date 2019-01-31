@@ -1,0 +1,1 @@
+added - update firebase init to use new versions of admin (7.0.0) and functions (2.2.0)
