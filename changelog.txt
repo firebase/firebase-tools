@@ -1,2 +1,0 @@
-fixed - Update firebase init to use new versions of firebase-admin (7.0.0) and firebase-functions (2.2.0).
-fixed - Prevent Firestore index creation from encountering contention issues.
