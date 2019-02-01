@@ -10,14 +10,14 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DatabaseSetting, DATABASE_SETTINGS } from "../database/settings";
+import { DATABASE_SETTINGS, DatabaseSetting } from "../database/settings";
 
 export default new Command("database:settings:get <path>")
   .description(
-    "fetch realtime database setting. The available settings are:\n" +
-    Array.from(DATABASE_SETTINGS.values())
-    .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
-    .join("")
+    "read the realtime database setting. The available settings are:\n" +
+      Array.from(DATABASE_SETTINGS.values())
+        .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
+        .join("")
   )
   .option(
     "--instance <instance>",
@@ -25,11 +25,14 @@ export default new Command("database:settings:get <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .action(function(path: string, options: any) {
+  .action((path: string, options: any) => {
     if (!DATABASE_SETTINGS.has(path)) {
-      return utils.reject(`Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`, {
-        exit: 1,
-      });
+      return utils.reject(
+        `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`,
+        {
+          exit: 1,
+        }
+      );
     }
     return new Promise((resolve, reject) => {
       const url =
@@ -49,9 +52,7 @@ export default new Command("database:settings:get <path>")
           } else if (res.statusCode >= 400) {
             return reject(responseToError(res, body));
           }
-          utils.logSuccess(
-            `For database instance ${options.instance}\n\t ${path} = ${body}`
-          );
+          utils.logSuccess(`For database instance ${options.instance}\n\t ${path} = ${body}`);
           resolve();
         });
       });

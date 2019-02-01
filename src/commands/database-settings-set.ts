@@ -10,25 +10,30 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DATABASE_SETTINGS } from "../database/settings";
+import { DATABASE_SETTINGS, DatabaseSetting } from "../database/settings";
 
 export default new Command("database:settings:set <path> <value>")
   .description(
-    "fetch RTDB config stored at the given path. To view all configs, do database;config:get /"
+    "set the realtime database setting. The available settings are:\n" +
+      Array.from(DATABASE_SETTINGS.values())
+        .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
+        .join("")
   )
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .before(requirePermissions, ["firebasedatabase.instances.get"])
-  //.before(requirePermissions, ["firebasedatabase.instances.update"])
+  .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
-  .action(function(path: string, value: string, options: any) {
+  .action((path: string, value: string, options: any) => {
     const setting = DATABASE_SETTINGS.get(path);
     if (setting === undefined) {
-      return utils.reject(`Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`, {
-        exit: 1,
-      });
+      return utils.reject(
+        `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`,
+        {
+          exit: 1,
+        }
+      );
     }
     const parsedValue = setting.parseInput(value);
     if (parsedValue === undefined) {
@@ -40,7 +45,6 @@ export default new Command("database:settings:set <path> <value>")
       const reqOptions = {
         url,
         body: parsedValue,
-        json: true,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.put(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
