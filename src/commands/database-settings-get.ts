@@ -15,7 +15,9 @@ import { DatabaseSetting, DATABASE_SETTINGS } from "../database/settings";
 export default new Command("database:settings:get <path>")
   .description(
     "fetch realtime database setting. The available settings are:\n" +
-    Array.from(DATABASE_SETTINGS.values()).map((setting: DatabaseSetting) => `${setting.path}\t\t${setting.description}` ).join("\n")
+    Array.from(DATABASE_SETTINGS.values())
+    .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
+    .join("")
   )
   .option(
     "--instance <instance>",
