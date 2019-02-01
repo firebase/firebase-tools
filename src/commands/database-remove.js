@@ -39,11 +39,7 @@ module.exports = new Command("database:remove <path>")
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
-      var removeOps = new DatabaseRemove(path, {
-        concurrency: 20,
-        retries: 5,
-        instance: options.instance,
-      });
+      var removeOps = new DatabaseRemove(options.instance, path);
       return removeOps.execute().then(function() {
         utils.logSuccess("Data removed successfully");
       });
