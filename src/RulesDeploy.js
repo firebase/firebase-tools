@@ -64,12 +64,12 @@ RulesDeploy.prototype = {
     return gcp.rules
       .getLatestRulesetName(self.options.project, service)
       .then(function(retrievedLatestRulesetName) {
-        if (_.isNull(retrievedLatestRulesetName)) {
+        if (!retrievedLatestRulesetName) {
           return null;
-        } else {
-          latestRulesetName = retrievedLatestRulesetName;
-          return gcp.rules.getRulesetContent(latestRulesetName);
         }
+
+        latestRulesetName = retrievedLatestRulesetName;
+        return gcp.rules.getRulesetContent(latestRulesetName);
       })
       .then(function(latestRulesetContent) {
         var promises = [];
