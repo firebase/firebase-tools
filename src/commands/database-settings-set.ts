@@ -44,7 +44,7 @@ export default new Command("database:settings:set <path> <value>")
         utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json";
       const reqOptions = {
         url,
-        body: parsedValue,
+        body: `"${parsedValue}"`,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.put(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
