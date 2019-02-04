@@ -109,10 +109,10 @@ describe("Config", function() {
 
     it("should load config from specified path when config flag is provided", function() {
       var config = Config.load({
-        cwd: _fixtureDir("valid-config"),
-        configPath: "../valid-config/firebase.json",
+        cwd: _fixtureDir("invalid-config"),
+        configPath: "../valid-config/still-valid-firebase.json",
       });
-      expect(config._src.firebase).to.equal("myfirebase");
+      expect(config._src.firebase).to.equal("myfirebasetoo");
     });
   });
 });
