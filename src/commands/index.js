@@ -5,11 +5,10 @@ var previews = require("../previews"); //eslint-disable-line
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require("./" + name);
-    cmd.register(client);
-    return cmd.runner();
-  };
-  var loadTsCommand = function(name) {
-    var cmd = require("./" + name).default;
+    // A hack for loading .ts commands
+    if (cmd.default) {
+      cmd = cmd.default;
+    }
     cmd.register(client);
     return cmd.runner();
   };
@@ -27,8 +26,8 @@ module.exports = function(client) {
     update: loadCommand("database-update"),
     profile: loadCommand("database-profile"),
     settings: {
-      get: loadTsCommand("database-settings-get"),
-      set: loadTsCommand("database-settings-set"),
+      get: loadCommand("database-settings-get"),
+      set: loadCommand("database-settings-set"),
     },
   };
 

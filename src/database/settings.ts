@@ -3,16 +3,21 @@ export interface DatabaseSetting {
    * The path of the flag to set.
    */
   path: string;
+
   /**
-   *
+   * The description of the command.
+   * It should include necessary paddings to be consistent (6 spaces per new line).
    */
   description: string;
+
   /**
-   * The user input to the value.
+   * Parse the user input to the value.
+   * @return undefined if the input is invalid
    */
   parseInput: (input: string) => any | undefined;
+
   /**
-   *
+   * The message to print out if the input is invalid.
    */
   parseInputErrorMessge: string;
 }
@@ -34,7 +39,7 @@ const defaultWriteSizeLimit: DatabaseSetting = {
       case "medium":
       case "large":
       case "unlimited":
-        return input;
+        return `"${input}"`;
       default:
         return undefined;
     }
