@@ -1,18 +1,18 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
 
-var utils = require("../utils");
-var clc = require("cli-color");
-var childProcess = require("child_process");
-var FirebaseError = require("../error");
-var getProjectId = require("../getProjectId");
-var logger = require("../logger");
-var path = require("path");
+const utils = require("../utils");
+const clc = require("cli-color");
+const childProcess = require("child_process");
+const FirebaseError = require("../error");
+const getProjectId = require("../getProjectId");
+const logger = require("../logger");
+const path = require("path");
 
 function runCommand(command, childOptions) {
-  var escapedCommand = command.replace(/\"/g, '\\"');
-  var translatedCommand =
+  const escapedCommand = command.replace(/\"/g, '\\"');
+  const translatedCommand =
     '"' +
     process.execPath +
     '" "' +
@@ -26,7 +26,7 @@ function runCommand(command, childOptions) {
     if (translatedCommand === "") {
       resolve();
     }
-    var child = childProcess.spawn(translatedCommand, [], childOptions);
+    const child = childProcess.spawn(translatedCommand, [], childOptions);
     child.on("error", function(err) {
       reject(err);
     });
@@ -44,11 +44,11 @@ function runCommand(command, childOptions) {
 
 function getChildEnvironment(target, overallOptions, config) {
   // active project ID
-  var projectId = getProjectId(overallOptions);
+  const projectId = getProjectId(overallOptions);
   // root directory where firebase.json can be found
-  var projectDir = overallOptions.projectRoot;
+  const projectDir = overallOptions.projectRoot;
   // location of hosting site or functions deploy, defaults project directory
-  var resourceDir;
+  let resourceDir;
   switch (target) {
     case "hosting":
       resourceDir = overallOptions.config.path(config.public);
@@ -77,14 +77,14 @@ function runTargetCommands(target, hook, overallOptions, config) {
     commands = [commands];
   }
 
-  var childOptions = {
+  const childOptions = {
     cwd: overallOptions.config.projectDir,
     env: getChildEnvironment(target, overallOptions, config),
     shell: true,
     stdio: [0, 1, 2], // Inherit STDIN, STDOUT, and STDERR
   };
 
-  var runAllCommands = _.reduce(
+  const runAllCommands = _.reduce(
     commands,
     function(soFar, command) {
       return soFar.then(function() {
