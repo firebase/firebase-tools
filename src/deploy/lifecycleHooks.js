@@ -51,10 +51,10 @@ function getChildEnvironment(target, overallOptions, config) {
   var resourceDir;
   switch (target) {
     case "hosting":
-      resourceDir = overallOptions.config.path(config["public"]);
+      resourceDir = overallOptions.config.path(config.public);
       break;
     case "functions":
-      resourceDir = overallOptions.config.path(config["source"]);
+      resourceDir = overallOptions.config.path(config.source);
       break;
     default:
       resourceDir = overallOptions.config.path(overallOptions.config.projectDir);
