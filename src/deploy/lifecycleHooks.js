@@ -61,7 +61,7 @@ function getChildEnvironment(target, overallOptions, config) {
   }
 
   // Copying over environment variables
-  return_.assign({}, process.env, {
+  return _.assign({}, process.env, {
     GCLOUD_PROJECT: projectId,
     PROJECT_DIR: projectDir,
     RESOURCE_DIR: resourceDir,
