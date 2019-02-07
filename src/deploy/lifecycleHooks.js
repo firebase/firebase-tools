@@ -94,9 +94,6 @@ function runTargetCommands(target, hook, overallOptions, config) {
     Promise.resolve()
   );
 
-  // Errors in postdeploy script will not exit the process since it's too late to stop the deploy.
-  const exit = hook !== "postdeploy" ? undefined : { exit: 2 };
-
   // We currently use the resource name in info logs in the rest of the deploy.
   // However we don't have access to that here because predeploy hooks will
   // happen before we figure that out.  Internal bug tracking number: 123715324
@@ -112,7 +109,7 @@ function runTargetCommands(target, hook, overallOptions, config) {
       );
     })
     .catch(function(err) {
-      throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message, exit);
+      throw new FirebaseError(logIdentifier + " " + hook + " error: " + err.message);
     });
 }
 
