@@ -45,6 +45,7 @@ export default new Command("database:settings:set <path> <value>")
       const reqOptions = {
         url,
         body: parsedValue,
+        json: true,
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.put(reqOptionsWithToken, (err: Error, res: Response, body: any) => {

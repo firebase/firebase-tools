@@ -39,7 +39,7 @@ const defaultWriteSizeLimit: DatabaseSetting = {
       case "medium":
       case "large":
       case "unlimited":
-        return JSON.stringify(input);
+        return input;
       default:
         return undefined;
     }
