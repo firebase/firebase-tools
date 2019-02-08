@@ -5,7 +5,7 @@ var previews = require("../previews"); //eslint-disable-line
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require("./" + name);
-    // A hack for loading .ts commands
+    // .ts commands export at .default.
     if (cmd.default) {
       cmd = cmd.default;
     }
