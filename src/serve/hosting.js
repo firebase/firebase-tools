@@ -13,9 +13,10 @@ var normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
 var MAX_PORT_ATTEMPTS = 10;
 var _attempts = 0;
+var server;
 
 function _startServer(options, config, port, init) {
-  var server = superstatic({
+  server = superstatic({
     debug: true,
     port: port,
     host: options.host,
@@ -65,6 +66,9 @@ function _startServer(options, config, port, init) {
 }
 
 function _stop() {
+  if (server) {
+    server.close();
+  }
   return Promise.resolve();
 }
 
