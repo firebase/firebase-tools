@@ -25,13 +25,15 @@ export interface DatabaseSetting {
 const defaultWriteSizeLimit: DatabaseSetting = {
   path: "defaultWriteSizeLimit",
   description: `
-      Control the maximum size of write for each request. It can be set to small, medium, large or unlimited.
-      If set to unlimited, any arbitrary write will went through, and you are risking
-      blocking database while this write is being processed. For example, deleting at the root
-      of the database is unrevertible and the database will be unavailable until the delete finished.
-      To avoid block large write, you can set this to small(target=10s), medium(target=30s), large(target=60s).
-      The real time database will esitmate the size of each write and abort the request
-      if it abort the write if the estimate is longer than the target time.
+     Set a limit for the size of each write request: small, medium, large or unlimited.
+      If you choose 'unlimited', any and all write requests will be allowed, potentially
+      blocking subsequent write requests while the database processes any large write
+      requests. For example, deleting data at the database's root
+      can't be reverted and the database will be unavailable until the delete is finished.
+      To avoid blocking large write requests without running the risk of hanging your
+      database, you can set this limit to small (target=10s), medium (target=30s), large (target=60s).
+      Realtime Database estimates the size of each write request and aborts
+      requests that will take longer than the target time.
   `,
   parseInput: (input: string) => {
     switch (input) {
