@@ -1,5 +1,9 @@
 "use strict";
 
+/**
+ * If you make any changes to this file, run the integration test in scripts/test-functions-deploy.js
+ */
+
 var clc = require("cli-color");
 var _ = require("lodash");
 
