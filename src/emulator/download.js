@@ -18,16 +18,16 @@ module.exports = (name) => {
     return validateSize(tmpfile, emulator.expectedSize)
       .then(() => validateChecksum(tmpfile, emulator.expectedChecksum))
       .then(() => {
-          fs.copySync(tmpfile, emulator.localPath);
-          fs.chmodSync(emulator.localPath, 0o755);
+        fs.copySync(tmpfile, emulator.localPath);
+        fs.chmodSync(emulator.localPath, 0o755);
       });
   });
 };
 
 /**
-  * Downloads the resource at `remoteUrl` to a temporary file.
-  * Resolves to the temporary file's name, rejects if there's any error.
-  */
+ * Downloads the resource at `remoteUrl` to a temporary file.
+ * Resolves to the temporary file's name, rejects if there's any error.
+ */
 function downloadToTmp(remoteUrl) {
   return new Promise((resolve, reject) => {
     let tmpfile = tmp.fileSync();
@@ -48,8 +48,8 @@ function downloadToTmp(remoteUrl) {
 }
 
 /**
-  * Checks whether the file at `filepath` has the expected size.
-  */
+ * Checks whether the file at `filepath` has the expected size.
+ */
 function validateSize(filepath, expectedSize) {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
@@ -65,15 +65,15 @@ function validateSize(filepath, expectedSize) {
 }
 
 /**
-  * Checks whether the file at `filepath` has the expected checksum.
-  */
+ * Checks whether the file at `filepath` has the expected checksum.
+ */
 function validateChecksum(filepath, expectedChecksum) {
   return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('md5'),
+    const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);
-    stream.on('data', data => hash.update(data));
-    stream.on('end', () => {
-      const checksum = hash.digest('hex');
+    stream.on("data", data => hash.update(data));
+    stream.on("end", () => {
+      const checksum = hash.digest("hex");
       return checksum === expectedChecksum
         ? resolve()
         : reject(
