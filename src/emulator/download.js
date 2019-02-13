@@ -6,6 +6,7 @@ const tmp = require("tmp");
 const request = require("request");
 const emulatorConstants = require("./constants");
 const utils = require("../utils");
+const crypto = require("crypto");
 
 tmp.setGracefulCleanup();
 
@@ -35,9 +36,24 @@ module.exports = (name) => {
           )
         );
       } else {
-        fs.copySync(tmpFile.name, emulator.localPath);
-        fs.chmodSync(emulator.localPath, 0o755);
-        resolve();
+        const hash = crypto.createHash('md5'),
+        const stream = fs.createReadStream(tmpFile.name);
+        stream.on('data', data => hash.update(data));
+        stream.on('end', function() {
+          const checksum = hash.digest('hex');
+          if (checksum != emulator.expectedHash) {
+            reject(
+              new FirebaseError(
+                `download failed, expected checksum ${emulator.expectedHash} but got ${checksum}`,
+                { exit: 1 }
+              )
+            );
+          } else {
+            fs.copySync(tmpFile.name, emulator.localPath);
+            fs.chmodSync(emulator.localPath, 0o755);
+            resolve();
+          }
+        })
       }
     });
     req.pipe(writeStream);
