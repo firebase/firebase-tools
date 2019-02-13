@@ -14,14 +14,14 @@ module.exports = (name) => {
   const emulator = emulatorConstants.emulators[name];
   utils.logLabeledBullet(name, "downloading emulator...");
   fs.ensureDirSync(emulator.cacheDir);
-  return downloadToTmp(emulator.remoteUrl).then(tmpfile => {
-    return validateSize(tmpfile, emulator.expectedSize)
+  return downloadToTmp(emulator.remoteUrl).then((tmpfile) =>
+    validateSize(tmpfile, emulator.expectedSize)
       .then(() => validateChecksum(tmpfile, emulator.expectedChecksum))
       .then(() => {
         fs.copySync(tmpfile, emulator.localPath);
         fs.chmodSync(emulator.localPath, 0o755);
-      });
-  });
+      })
+  );
 };
 
 /**
@@ -71,7 +71,7 @@ function validateChecksum(filepath, expectedChecksum) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);
-    stream.on("data", data => hash.update(data));
+    stream.on("data", (data) => hash.update(data));
     stream.on("end", () => {
       const checksum = hash.digest("hex");
       return checksum === expectedChecksum
