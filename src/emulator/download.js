@@ -18,7 +18,6 @@ module.exports = (name) => {
     let tmpFile = tmp.fileSync();
     let req = request.get(emulator.remoteUrl);
     let writeStream = fs.createWriteStream(tmpFile.name);
-    let bytesDownloaded = 0;
     req.on("error", (err) => reject(err));
     req.on("response", (response) => {
       if (response.statusCode != 200) {
