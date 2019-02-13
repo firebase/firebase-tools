@@ -57,7 +57,7 @@ export default new Command("database:settings:set <path> <value>")
           }
           utils.logSuccess("Successfully set setting.");
           utils.logSuccess(
-            `For database instance ${options.instance}\n\t ${path} = ${parsedValue}`
+            `For database instance ${options.instance}\n\t ${path} = ${JSON.stringify(parsedValue)}`
           );
           resolve();
         });
