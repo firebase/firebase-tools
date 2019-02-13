@@ -29,7 +29,12 @@ module.exports = (name) => {
       writeStream.close();
       const stat = fs.statSync(tmpFile.name);
       if (stat.size != emulator.expectedSize) {
-        reject(new FirebaseError(`download failed, expected ${emulator.expectedSize} bytes but got ${stat.size}`, { exit: 1 }));
+        reject(
+          new FirebaseError(
+            `download failed, expected ${emulator.expectedSize} bytes but got ${stat.size}`,
+            { exit: 1 }
+          )
+        );
       } else {
         fs.copySync(tmpFile.name, emulator.localPath);
         fs.chmodSync(emulator.localPath, 0o755);
