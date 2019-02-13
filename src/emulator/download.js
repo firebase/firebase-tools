@@ -18,6 +18,7 @@ module.exports = (name) => {
     let tmpFile = tmp.fileSync();
     let req = request.get(emulator.remoteUrl);
     let writeStream = fs.createWriteStream(tmpFile.name);
+    let bytesDownloaded = 0;
     req.on("error", (err) => reject(err));
     req.on("response", (response) => {
       if (response.statusCode != 200) {
@@ -26,9 +27,14 @@ module.exports = (name) => {
     });
     req.on("end", () => {
       writeStream.close();
-      fs.copySync(tmpFile.name, emulator.localPath);
-      fs.chmodSync(emulator.localPath, 0o755);
-      resolve();
+      const stat = fs.statSync(tmpFile.name);
+      if (stat.size != emulator.expectedSize) {
+        reject(new FirebaseError(`download failed, expected ${emulator.expectedSize} bytes but got ${stat.size}`, { exit: 1 }));
+      } else {
+        fs.copySync(tmpFile.name, emulator.localPath);
+        fs.chmodSync(emulator.localPath, 0o755);
+        resolve();
+      }
     });
     req.pipe(writeStream);
   });

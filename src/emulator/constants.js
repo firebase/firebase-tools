@@ -15,6 +15,7 @@ const _emulators = {
     cacheDir: CACHE_DIR,
     remoteUrl:
       "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v3.5.0.jar",
+    expectedSize: 17013124,
     localPath: path.join(CACHE_DIR, "firebase-database-emulator-v3.5.0.jar"),
   },
   firestore: {
@@ -25,6 +26,7 @@ const _emulators = {
     cacheDir: CACHE_DIR,
     remoteUrl:
       "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.3.0.jar",
+    expectedSize: 67825938,
     localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.3.0.jar"),
   },
 };
