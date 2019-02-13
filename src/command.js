@@ -40,6 +40,11 @@ Command.prototype.before = function(fn, args) {
   return this;
 };
 
+Command.prototype.help = function(helpText) {
+  this._help = helpText;
+  return this;
+};
+
 Command.prototype.action = function(fn) {
   this._action = fn;
   return this;
@@ -57,6 +62,12 @@ Command.prototype.register = function(client) {
   this._options.forEach(function(args) {
     cmd.option.apply(cmd, args);
   });
+
+  if (this._help) {
+    cmd.on("--help", () => {
+      console.log(self._help);
+    });
+  }
 
   var self = this;
   cmd.action(function() {

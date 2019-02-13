@@ -10,30 +10,26 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DATABASE_SETTINGS, DatabaseSetting } from "../database/settings";
+import {
+  DATABASE_SETTINGS,
+  DatabaseSetting,
+  HELP_TEXT,
+  INVALID_PATH_ERROR,
+} from "../database/settings";
 
 export default new Command("database:settings:set <path> <value>")
-  .description(
-    "set the realtime database setting. The available settings are:\n" +
-      Array.from(DATABASE_SETTINGS.values())
-        .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
-        .join("")
-  )
+  .description("set the realtime database setting at path.")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
   .action((path: string, value: string, options: any) => {
     const setting = DATABASE_SETTINGS.get(path);
     if (setting === undefined) {
-      return utils.reject(
-        `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`,
-        {
-          exit: 1,
-        }
-      );
+      return utils.reject(INVALID_PATH_ERROR, { exit: 1 });
     }
     const parsedValue = setting.parseInput(value);
     if (parsedValue === undefined) {

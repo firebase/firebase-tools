@@ -25,7 +25,7 @@ export interface DatabaseSetting {
 const defaultWriteSizeLimit: DatabaseSetting = {
   path: "defaultWriteSizeLimit",
   description: `
-     Set a limit for the size of each write request: small, medium, large or unlimited.
+      Set a limit for the size of each write request: small, medium, large or unlimited.
       If you choose 'unlimited', any and all write requests will be allowed, potentially
       blocking subsequent write requests while the database processes any large write
       requests. For example, deleting data at the database's root
@@ -52,3 +52,12 @@ const defaultWriteSizeLimit: DatabaseSetting = {
 
 export const DATABASE_SETTINGS: Map<string, DatabaseSetting> = new Map();
 DATABASE_SETTINGS.set(defaultWriteSizeLimit.path, defaultWriteSizeLimit);
+
+export const HELP_TEXT: string =
+  "\nAvailable Settings:\n" +
+  Array.from(DATABASE_SETTINGS.values())
+    .map((setting: DatabaseSetting) => `  ${setting.path}:${setting.description}`)
+    .join("");
+export const INVALID_PATH_ERROR = `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(
+  ", "
+)}.`;

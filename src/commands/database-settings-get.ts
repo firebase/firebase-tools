@@ -10,29 +10,25 @@ import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import { DATABASE_SETTINGS, DatabaseSetting } from "../database/settings";
+import {
+  DATABASE_SETTINGS,
+  DatabaseSetting,
+  HELP_TEXT,
+  INVALID_PATH_ERROR,
+} from "../database/settings";
 
 export default new Command("database:settings:get <path>")
-  .description(
-    "read the realtime database setting. The available settings are:\n" +
-      Array.from(DATABASE_SETTINGS.values())
-        .map((setting: DatabaseSetting) => `${setting.path}${setting.description}`)
-        .join("")
-  )
+  .description("read the realtime database setting at path")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
+  .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action((path: string, options: any) => {
     if (!DATABASE_SETTINGS.has(path)) {
-      return utils.reject(
-        `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(", ")}.`,
-        {
-          exit: 1,
-        }
-      );
+      return utils.reject(INVALID_PATH_ERROR, { exit: 1 });
     }
     return new Promise((resolve, reject) => {
       const url =
