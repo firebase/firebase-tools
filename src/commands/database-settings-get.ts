@@ -31,7 +31,9 @@ export default new Command("database:settings:get <path>")
       return utils.reject(INVALID_PATH_ERROR, { exit: 1 });
     }
     return new Promise((resolve, reject) => {
-      const url =
+      const reqOptions = {
+        url: utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json",
+      };
         utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json";
       const reqOptions = {
         url,
