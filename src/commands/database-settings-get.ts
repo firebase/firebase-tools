@@ -21,7 +21,7 @@ export default new Command("database:settings:get <path>")
   .description("read the realtime database setting at path")
   .option(
     "--instance <instance>",
-    "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
+    "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
