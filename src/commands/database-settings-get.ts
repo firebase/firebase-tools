@@ -32,7 +32,8 @@ export default new Command("database:settings:get <path>")
     }
     return new Promise((resolve, reject) => {
       const reqOptions = {
-        url: utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json",
+        url:
+          utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json",
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
