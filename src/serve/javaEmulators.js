@@ -23,7 +23,6 @@ function _runBinary(emulator, command, options) {
     const args = command.args.concat(
       _.flatMap(command.flags, (value, flag) => [`--${flag}`, value])
     );
-    console.log(command.binary, args);
     emulator.instance = childProcess.spawn(command.binary, args, {
       stdio: ["inherit", "pipe", "pipe"],
     });
