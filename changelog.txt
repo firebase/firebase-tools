@@ -1,1 +1,2 @@
 fixed - Multi-Site predeploy and postdeploy hooks now trigger
+feature - Added support to set and get feature flag defaultWriteSizeLimit for RTDB.
