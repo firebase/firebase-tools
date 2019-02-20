@@ -1,6 +1,6 @@
 "use strict";
 
-var javaEmulators = require("./javaEmulators");
+const javaEmulators = require("./javaEmulators");
 
 const name = "firestore";
 
@@ -8,8 +8,15 @@ function _stop() {
   return javaEmulators.stop(name);
 }
 
-function _start() {
-  return javaEmulators.start(name);
+function _start(options) {
+  let firestoreOptions = {};
+  if (options.firestoreHost) {
+    options.host = options.firestoreHost;
+  }
+  if (options.firestorePort) {
+    options.port = options.firestorePort;
+  }
+  return javaEmulators.start(name, options);
 }
 
 module.exports = {

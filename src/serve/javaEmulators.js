@@ -6,6 +6,7 @@ var childProcess = require("child_process");
 var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
 var logger = require("../logger");
+const _ = require("lodash");
 
 var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
@@ -16,10 +17,14 @@ function _fatal(emulator, errorMsg) {
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
-function _runBinary(emulator, command) {
+function _runBinary(emulator, command, options) {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(emulator.name + "-debug.log");
-    emulator.instance = childProcess.spawn(command.binary, command.args, {
+    const args = command.args.concat(
+      _.flatMap(command.flags, (value, flag) => [`--${flag}`, value])
+    );
+    console.log(command.binary, args);
+    emulator.instance = childProcess.spawn(command.binary, args, {
       stdio: ["inherit", "pipe", "pipe"],
     });
     emulator.instance.stdout.on("data", (data) => {
@@ -81,12 +86,18 @@ function _stop(targetName) {
   });
 }
 
-function _start(targetName) {
+function _start(targetName, overrides) {
   var emulator = emulatorConstants.emulators[targetName];
   var command = emulatorConstants.commands[targetName];
   if (!fs.existsSync(emulator.localPath)) {
     utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
     return Promise.reject("emulator not found");
+  }
+  if (overrides.host) {
+    command.flags.host = overrides.host;
+  }
+  if (overrides.port) {
+    command.flags.port = overrides.port;
   }
   return _runBinary(emulator, command);
 }

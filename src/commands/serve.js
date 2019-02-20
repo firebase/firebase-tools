@@ -33,6 +33,26 @@ module.exports = new Command("serve")
   .option("-p, --port <port>", "the port on which to listen (default: 5000)", 5000)
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
+    "--firestore-host <hostname>",
+    "the hostname the Firestore emulator should bind to (default: 'localhost')",
+    "localhost"
+  )
+  .option(
+    "--firestore-port <port>",
+    "the port the Firestore emulator should bind to (default: 8080)",
+    8080
+  )
+  .option(
+    "--database-host <hostname>",
+    "the hostname the Realtime Database emulator should bind to (default: 'localhost')",
+    "localhost"
+  )
+  .option(
+    "--database-port <port>",
+    "the port the Realtime Database emulator should bind to (default: 9000)",
+    9000
+  )
+  .option(
     "--only <targets>",
     "only serve specified targets (valid targets are: " +
       _.union(VALID_TARGETS, VALID_EMULATORS).join(", ") +
