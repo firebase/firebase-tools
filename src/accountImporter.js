@@ -178,6 +178,14 @@ var _validateRequiredParameters = function(options) {
     case "SHA1":
     case "SHA256":
     case "SHA512":
+      var roundsNum = parseInt(options.rounds, 10);
+      if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 8192) {
+        return utils.reject(
+          "Must provide valid rounds(0..8192) for hash algorithm " + options.hashAlgo,
+          { exit: 1 }
+        );
+      }
+      return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "PBKDF_SHA1":
     case "PBKDF2_SHA256":
       var roundsNum = parseInt(options.rounds, 10);
