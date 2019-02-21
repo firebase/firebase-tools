@@ -11,12 +11,12 @@ function _stop() {
 function _start(options) {
   let firestoreOptions = {};
   if (options.firestoreHost) {
-    options.host = options.firestoreHost;
+    firestoreOptions.host = options.firestoreHost;
   }
   if (options.firestorePort) {
-    options.port = options.firestorePort;
+    firestoreOptions.port = options.firestorePort;
   }
-  return javaEmulators.start(name, options);
+  return javaEmulators.start(name, firestoreOptions);
 }
 
 module.exports = {

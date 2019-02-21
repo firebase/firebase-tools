@@ -11,12 +11,12 @@ function _stop() {
 function _start(options) {
   let databaseOptions = {};
   if (options.databaseHost) {
-    options.host = options.databaseHost;
+    databaseOptions.host = options.databaseHost;
   }
   if (options.databasePort) {
-    options.port = options.databasePort;
+    databaseOptions.port = options.databasePort;
   }
-  return javaEmulators.start(name, options);
+  return javaEmulators.start(name, databaseOptions);
 }
 
 module.exports = {

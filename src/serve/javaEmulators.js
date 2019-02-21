@@ -17,7 +17,7 @@ function _fatal(emulator, errorMsg) {
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
-function _runBinary(emulator, command, options) {
+function _runBinary(emulator, command) {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(emulator.name + "-debug.log");
     const args = command.args.concat(
