@@ -1,5 +1,0 @@
-fixed - Multi-Site predeploy and postdeploy hooks now trigger
-feature - Added support to set and get feature flag defaultWriteSizeLimit for RTDB.
-feature - Introduced `debug(...)` function to Firestore emulator security rules
-fixed - Simplified how Firestore emulator evaluates rules
-fixed - Importing Auth users with MD5 or SHAs now have correct validation
