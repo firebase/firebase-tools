@@ -137,7 +137,7 @@ Config.prototype._parseFile = function(target, filePath) {
           return fs.readFileSync(fullPath, "utf8");
         } catch (e) {
           if (e.code === "ENOENT") {
-            throw new FirebaseError(`Rules file not found: ${fullPath}`, { original: e });
+            throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
           }
           throw e;
         }
@@ -190,7 +190,7 @@ Config.prototype.readProjectFile = function(p, options) {
       return options.fallback;
     }
     if (e.code === "ENOENT") {
-      throw new FirebaseError(`Rules file not found: ${this.path(p)}`, { original: e });
+      throw new FirebaseError(`File not found: ${this.path(p)}`, { original: e });
     }
     throw e;
   }
