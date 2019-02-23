@@ -72,6 +72,10 @@ module.exports = function(client) {
   client.open = loadCommand("open");
   client.serve = loadCommand("serve");
 
+  client.rules = {
+    list: loadCommand("rules-list"),
+  };
+
   client.setup = {
     web: loadCommand("setup-web"),
     emulators: {

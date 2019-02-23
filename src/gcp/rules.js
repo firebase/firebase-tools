@@ -20,10 +20,35 @@ function _handleErrorResponse(response) {
 }
 
 /**
+ * Lists the ruleset names on the project.
+ * @param {String} projectId Project from which you want to get the ruleset.
+ * @returns {Promise<String[]>} ruleset names
+ */
+function listRulesets(projectId) {
+  return api
+    .request("GET", "/" + API_VERSION + "/projects/" + projectId + "/rulesets", {
+      auth: true,
+      origin: api.rulesOrigin,
+    })
+    .then(function(response) {
+      if (response.status == 200) {
+        console.log(response.body);
+        if (response.body.rulesets && response.body.rulesets.length > 0) {
+          var releases = _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
+          return _.map(releases, function(r) {
+            return r.rulesetName;
+          });
+        }
+      }
+      return _handleErrorResponse(response);
+    });
+}
+
+/**
  * Gets the latest ruleset name on the project.
  * @param {String} projectId Project from which you want to get the ruleset.
  * @param {String} service Service for the ruleset (ex: cloud.firestore or firebase.storage).
- * @returns {String} Name of the latest ruleset.
+ * @returns {Promise<String>} Name of the latest ruleset.
  */
 function getLatestRulesetName(projectId, service) {
   return api
@@ -185,6 +210,7 @@ module.exports = {
   updateRelease: updateRelease,
   updateOrCreateRelease: updateOrCreateRelease,
   testRuleset: testRuleset,
+  listRulesets: listRulesets,
   getLatestRulesetName: getLatestRulesetName,
   getRulesetContent: getRulesetContent,
 };
