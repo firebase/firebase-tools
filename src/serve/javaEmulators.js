@@ -90,7 +90,8 @@ function _start(targetName) {
     return Promise.reject("emulator not found");
   }
 
-  return track("emulators:start", targetName).then(() => _runBinary(emulator, command));
+  track("emulators:start", targetName);
+  return _runBinary(emulator, command);
 }
 
 module.exports = {
