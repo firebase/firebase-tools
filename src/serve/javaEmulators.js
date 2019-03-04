@@ -6,6 +6,7 @@ var childProcess = require("child_process");
 var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
 var logger = require("../logger");
+var track = require("../track");
 
 var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
@@ -88,6 +89,8 @@ function _start(targetName) {
     utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
     return Promise.reject("emulator not found");
   }
+
+  track("emulators:start", targetName);
   return _runBinary(emulator, command);
 }
 

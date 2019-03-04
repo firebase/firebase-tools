@@ -5,6 +5,10 @@ var previews = require("../previews"); //eslint-disable-line
 module.exports = function(client) {
   var loadCommand = function(name) {
     var cmd = require("./" + name);
+    // .ts commands export at .default.
+    if (cmd.default) {
+      cmd = cmd.default;
+    }
     cmd.register(client);
     return cmd.runner();
   };
@@ -21,6 +25,10 @@ module.exports = function(client) {
     remove: loadCommand("database-remove"),
     update: loadCommand("database-update"),
     profile: loadCommand("database-profile"),
+    settings: {
+      get: loadCommand("database-settings-get"),
+      set: loadCommand("database-settings-set"),
+    },
   };
 
   client.firestore = {

@@ -133,7 +133,14 @@ Config.prototype._parseFile = function(target, filePath) {
         this.notes.databaseRules = "json";
       } else if (target === "database.rules") {
         this.notes.databaseRulesFile = filePath;
-        return fs.readFileSync(fullPath, "utf8");
+        try {
+          return fs.readFileSync(fullPath, "utf8");
+        } catch (e) {
+          if (e.code === "ENOENT") {
+            throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
+          }
+          throw e;
+        }
       }
       return loadCJSON(fullPath);
     /* istanbul ignore-next */
@@ -181,6 +188,9 @@ Config.prototype.readProjectFile = function(p, options) {
   } catch (e) {
     if (options.fallback) {
       return options.fallback;
+    }
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${this.path(p)}`, { original: e });
     }
     throw e;
   }

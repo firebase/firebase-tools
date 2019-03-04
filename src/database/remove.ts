@@ -1,99 +1,122 @@
 import * as pathLib from "path";
-import * as FirebaseError from "../error";
-import * as logger from "../logger";
 
-import { NodeSize, RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
+import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
 import { Stack } from "../throttler/stack";
 
-export interface DatabaseRemoveOptions {
-  // RTBD instance ID.
-  instance: string;
-  // Number of concurrent chunk deletes to allow.
-  concurrency: number;
-  // Number of retries for each chunk delete.
-  retries: number;
+function chunkList<T>(ls: T[], chunkSize: number): T[][] {
+  const chunks = [];
+  for (let i = 0; i < ls.length; i += chunkSize) {
+    chunks.push(ls.slice(i, i + chunkSize));
+  }
+  return chunks;
 }
+
+const INITIAL_DELETE_BATCH_SIZE = 25;
+const INITIAL_LIST_NUM_SUB_PATH = 100;
+const MAX_LIST_NUM_SUB_PATH = 204800;
 
 export default class DatabaseRemove {
   path: string;
-  concurrency: number;
-  retries: number;
   remote: RemoveRemote;
-  private jobStack: Stack<string, void>;
-  private waitingPath: Map<string, number>;
+  private deleteJobStack: Stack<() => Promise<boolean>, boolean>;
+  private listStack: Stack<() => Promise<string[]>, string[]>;
 
   /**
    * Construct a new RTDB delete operation.
    *
    * @constructor
+   * @param instance RTBD instance ID.
    * @param path path to delete.
-   * @param options
    */
-  constructor(path: string, options: DatabaseRemoveOptions) {
+  constructor(instance: string, path: string) {
     this.path = path;
-    this.concurrency = options.concurrency;
-    this.retries = options.retries;
-    this.remote = new RTDBRemoveRemote(options.instance);
-    this.waitingPath = new Map();
-    this.jobStack = new Stack<string, void>({
-      name: "long delete stack",
-      concurrency: this.concurrency,
-      handler: this.chunkedDelete.bind(this),
-      retries: this.retries,
+    this.remote = new RTDBRemoveRemote(instance);
+    this.deleteJobStack = new Stack({
+      name: "delete stack",
+      concurrency: 1,
+      retries: 3,
+    });
+    this.listStack = new Stack({
+      name: "list stack",
+      concurrency: 1,
+      retries: 3,
     });
   }
 
-  execute(): Promise<void> {
-    const prom: Promise<void> = this.jobStack.wait();
-    this.jobStack.add(this.path);
-    return prom;
+  async execute(): Promise<void> {
+    await this.deletePath(this.path);
   }
 
-  private chunkedDelete(path: string): Promise<void> {
-    return this.remote
-      .prefetchTest(path)
-      .then((test: NodeSize) => {
-        switch (test) {
-          case NodeSize.SMALL:
-            return this.remote.deletePath(path);
-          case NodeSize.LARGE:
-            return this.remote.listPath(path).then((pathList: string[]) => {
-              if (pathList) {
-                for (const p of pathList) {
-                  this.jobStack.add(pathLib.join(path, p));
-                }
-                this.waitingPath.set(path, pathList.length);
-              }
-              return false;
-            });
-          case NodeSize.EMPTY:
-            return true;
-          default:
-            throw new FirebaseError("Unexpected prefetch test result: " + test, { exit: 3 });
+  /**
+   * First, attempt to delete the path, if the path is big (i.e. exceeds writeSizeLimit of tiny),
+   * it will perform multi-path recursive chunked deletes in rounds.
+   * Each round, it fetches listNumSubPath subPaths and issue batches based on batchSize.
+   * At the end of each round, it adjustes the batchSize based on whether the majority of the batches are small.
+   *
+   * listNumSubPath starts with INITIAL_LIST_NUM_SUB_PATH and grow expontentially until MAX_LIST_NUM_SUB_PATH.
+   *
+   * @return true if this path is small (Does not exceed writeSizeLimit of tiny)
+   */
+  private async deletePath(path: string): Promise<boolean> {
+    if (await this.deleteJobStack.run(() => this.remote.deletePath(path))) {
+      return Promise.resolve(true);
+    }
+    let listNumSubPath = INITIAL_LIST_NUM_SUB_PATH;
+    // The range of batchSize to gradually narrow down.
+    let batchSizeLow = 1;
+    let batchSizeHigh = MAX_LIST_NUM_SUB_PATH + 1;
+    let batchSize = INITIAL_DELETE_BATCH_SIZE;
+    while (true) {
+      const subPathList = await this.listStack.run(() =>
+        this.remote.listPath(path, listNumSubPath)
+      );
+      if (subPathList.length === 0) {
+        return Promise.resolve(false);
+      }
+      const chunks = chunkList(subPathList, batchSize);
+      let nSmallChunks = 0;
+      for (const chunk of chunks) {
+        if (await this.deleteSubPath(path, chunk)) {
+          nSmallChunks += 1;
         }
-      })
-      .then((deleted: boolean) => {
-        if (!deleted) {
-          return;
-        }
-        if (path === this.path) {
-          this.jobStack.close();
-          logger.debug("[database][long delete stack][FINAL]", this.jobStack.stats());
-        } else {
-          const parentPath = pathLib.dirname(path);
-          const prevParentPathReference = this.waitingPath.get(parentPath);
-          if (!prevParentPathReference) {
-            throw new FirebaseError(
-              `Unexpected error: parent path reference is zero for path=${path}`,
-              { exit: 3 }
-            );
-          }
-          this.waitingPath.set(parentPath, prevParentPathReference - 1);
-          if (this.waitingPath.get(parentPath) === 0) {
-            this.jobStack.add(parentPath);
-            this.waitingPath.delete(parentPath);
-          }
-        }
-      });
+      }
+      // Narrow the batchSize range depending on whether the majority of the chunks are small.
+      if (nSmallChunks > chunks.length / 2) {
+        batchSizeLow = batchSize;
+        batchSize = Math.floor(Math.min(batchSize * 2, (batchSizeHigh + batchSize) / 2));
+      } else {
+        batchSizeHigh = batchSize;
+        batchSize = Math.floor((batchSizeLow + batchSize) / 2);
+      }
+      // Start with small number of sub paths to learn about an appropriate batchSize.
+      if (listNumSubPath * 2 <= MAX_LIST_NUM_SUB_PATH) {
+        listNumSubPath = listNumSubPath * 2;
+      } else {
+        listNumSubPath = Math.floor(MAX_LIST_NUM_SUB_PATH / batchSize) * batchSize;
+      }
+    }
+  }
+
+  /*
+   * Similar to deletePath, but delete multiple subpaths at once.
+   * If the combined size of subpaths is big, it will divide and conquer.
+   * It fallbacks to deletePath to perform recursive chunked deletes if only one subpath is provided.
+   *
+   * @return true if the combined size is small (Does not exceed writeSizeLimit of tiny)
+   */
+  private async deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
+    if (subPaths.length === 0) {
+      throw new Error("deleteSubPath is called with empty subPaths list");
+    }
+    if (subPaths.length === 1) {
+      return this.deletePath(pathLib.join(path, subPaths[0]));
+    }
+    if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, subPaths))) {
+      return Promise.resolve(true);
+    }
+    const mid = Math.floor(subPaths.length / 2);
+    await this.deleteSubPath(path, subPaths.slice(0, mid));
+    await this.deleteSubPath(path, subPaths.slice(mid));
+    return Promise.resolve(false);
   }
 }
