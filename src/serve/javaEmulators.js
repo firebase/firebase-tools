@@ -7,6 +7,7 @@ var utils = require("../utils");
 var emulatorConstants = require("../emulator/constants");
 var logger = require("../logger");
 const _ = require("lodash");
+var track = require("../track");
 
 var EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
@@ -98,6 +99,8 @@ function _start(targetName, overrides) {
   if (overrides.port) {
     command.flags.port = overrides.port;
   }
+
+  track("emulators:start", targetName);
   return _runBinary(emulator, command);
 }
 
