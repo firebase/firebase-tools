@@ -1,1 +1,0 @@
-fixed - Prevent Firestore index creation from encountering contention issues.
