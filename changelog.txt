@@ -1,0 +1,1 @@
+- fixes bug in Cloud Firestore emulator where an empty CommitRequest was trigger exceptions
