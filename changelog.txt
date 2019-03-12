@@ -1,1 +1,1 @@
-- fixes bug in Cloud Firestore emulator where an empty CommitRequest would trigger exceptions
+fixed - fixes bug in Cloud Firestore emulator where an empty CommitRequest would trigger exceptions
