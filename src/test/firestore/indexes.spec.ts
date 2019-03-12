@@ -3,6 +3,7 @@ import { FirestoreIndexes } from "../../firestore/indexes";
 import * as FirebaseError from "../../error";
 import * as API from "../../firestore/indexes-api";
 import * as Spec from "../../firestore/indexes-spec";
+import * as util from "../../firestore/util";
 
 const idx = new FirestoreIndexes();
 
@@ -103,7 +104,7 @@ describe("IndexNameParsing", () => {
   it("should parse an index name correctly", () => {
     const name =
       "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123/";
-    expect(idx.parseIndexName(name)).to.eql({
+    expect(util.parseIndexName(name)).to.eql({
       projectId: "myproject",
       collectionGroupId: "collection",
       indexId: "abc123",
@@ -113,7 +114,7 @@ describe("IndexNameParsing", () => {
   it("should parse a field name correctly", () => {
     const name =
       "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123/";
-    expect(idx.parseFieldName(name)).to.eql({
+    expect(util.parseFieldName(name)).to.eql({
       projectId: "myproject",
       collectionGroupId: "collection",
       fieldPath: "abc123",
