@@ -23,8 +23,8 @@ export interface FieldOverride {
  */
 export interface FieldIndex {
   queryScope: API.QueryScope;
-  order: API.Order | undefined;
-  arrayConfig: API.ArrayConfig | undefined;
+  order?: API.Order;
+  arrayConfig?: API.ArrayConfig;
 }
 
 /**
@@ -32,5 +32,5 @@ export interface FieldIndex {
  */
 export interface IndexFile {
   indexes: Index[];
-  fieldOverrides: FieldOverride[] | undefined;
+  fieldOverrides?: FieldOverride[];
 }

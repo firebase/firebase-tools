@@ -31,11 +31,15 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
  *   3) The fields list.
  */
 export function compareApiIndex(a: API.Index, b: API.Index): number {
-  const aName = util.parseIndexName(a.name);
-  const bName = util.parseIndexName(b.name);
+  // When these indexes are used as part of a field override, the name is
+  // not always present or relevant.
+  if (a.name && b.name) {
+    const aName = util.parseIndexName(a.name);
+    const bName = util.parseIndexName(b.name);
 
-  if (aName.collectionGroupId !== bName.collectionGroupId) {
-    return aName.collectionGroupId.localeCompare(bName.collectionGroupId);
+    if (aName.collectionGroupId !== bName.collectionGroupId) {
+      return aName.collectionGroupId.localeCompare(bName.collectionGroupId);
+    }
   }
 
   if (a.queryScope !== b.queryScope) {
