@@ -1,5 +1,3 @@
-"use strict";
-
 import * as _ from "lodash";
 
 import * as api from "../api";
@@ -25,54 +23,55 @@ function _handleErrorResponse(response: any): any {
  * @param service Service for the ruleset (ex: cloud.firestore or firebase.storage).
  * @returns Name of the latest ruleset.
  */
-export function getLatestRulesetName(projectId: string, service: string): Promise<string> {
-  return api
-    .request("GET", "/" + API_VERSION + "/projects/" + projectId + "/releases", {
-      auth: true,
-      origin: api.rulesOrigin,
-    })
-    .then((response) => {
-      if (response.status === 200) {
-        if (response.body.releases && response.body.releases.length > 0) {
-          const releases = _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
+export async function getLatestRulesetName(
+  projectId: string,
+  service: string
+): Promise<string | null> {
+  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
+    auth: true,
+    origin: api.rulesOrigin,
+  });
+  if (response.status === 200) {
+    if (response.body.releases && response.body.releases.length > 0) {
+      const releases = _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
 
-          const prefix = "projects/" + projectId + "/releases/" + service;
-          const release = _.find(releases, (r) => {
-            return r.name.indexOf(prefix) === 0;
-          });
+      const prefix = "projects/" + projectId + "/releases/" + service;
+      const release = _.find(releases, (r) => {
+        return r.name.indexOf(prefix) === 0;
+      });
 
-          if (!release) {
-            return null;
-          }
-          return release.rulesetName;
-        }
-
-        // In this case it's likely that Firestore has not been used on this project before.
+      if (!release) {
         return null;
       }
+      return release.rulesetName;
+    }
 
-      return _handleErrorResponse(response);
-    });
+    // In this case it's likely that Firestore has not been used on this project before.
+    return null;
+  }
+
+  return _handleErrorResponse(response);
 }
 
+export interface RulesetFile {
+  name: string;
+  content: string;
+}
 /**
  * Gets the full contents of a ruleset.
  * @param name Name of the ruleset.
- * @return {Array<Object>} Array of files in the ruleset. Each entry has form { content, name }.
+ * @return Array of files in the ruleset. Each entry has form { content, name }.
  */
-export function getRulesetContent(name: string): Promise<object[]> {
-  return api
-    .request("GET", "/" + API_VERSION + "/" + name, {
-      auth: true,
-      origin: api.rulesOrigin,
-    })
-    .then((response) => {
-      if (response.status === 200) {
-        return response.body.source.files;
-      }
+export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
+  const response = await api.request("GET", `/${API_VERSION}/${name}`, {
+    auth: true,
+    origin: api.rulesOrigin,
+  });
+  if (response.status === 200) {
+    return response.body.source.files;
+  }
 
-      return _handleErrorResponse(response);
-    });
+  return _handleErrorResponse(response);
 }
 
 /**
@@ -80,23 +79,20 @@ export function getRulesetContent(name: string): Promise<object[]> {
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export function createRuleset(projectId: string, files: string): Promise<any> {
+export async function createRuleset(projectId: string, files: string): Promise<any> {
   const payload = { source: { files } };
 
-  return api
-    .request("POST", "/" + API_VERSION + "/projects/" + projectId + "/rulesets", {
-      auth: true,
-      data: payload,
-      origin: api.rulesOrigin,
-    })
-    .then((response) => {
-      if (response.status === 200) {
-        logger.debug("[rules] created ruleset", response.body.name);
-        return response.body.name;
-      }
+  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/rulesets`, {
+    auth: true,
+    data: payload,
+    origin: api.rulesOrigin,
+  });
+  if (response.status === 200) {
+    logger.debug("[rules] created ruleset", response.body.name);
+    return response.body.name;
+  }
 
-      return _handleErrorResponse(response);
-    });
+  return _handleErrorResponse(response);
 }
 
 /**
@@ -105,30 +101,27 @@ export function createRuleset(projectId: string, files: string): Promise<any> {
  * @param rulesetName The unique identifier for the ruleset you want to release.
  * @param releaseName The name (e.g. `firebase.storage`) of the release you want to create.
  */
-export function createRelease(
+export async function createRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
 ): Promise<any> {
   const payload = {
-    name: "projects/" + projectId + "/releases/" + releaseName,
+    name: `projects/${projectId}/releases/${releaseName}`,
     rulesetName,
   };
 
-  return api
-    .request("POST", "/" + API_VERSION + "/projects/" + projectId + "/releases", {
-      auth: true,
-      data: payload,
-      origin: api.rulesOrigin,
-    })
-    .then((response) => {
-      if (response.status === 200) {
-        logger.debug("[rules] created release", response.body.name);
-        return response.body.name;
-      }
+  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/releases`, {
+    auth: true,
+    data: payload,
+    origin: api.rulesOrigin,
+  });
+  if (response.status === 200) {
+    logger.debug("[rules] created release", response.body.name);
+    return response.body.name;
+  }
 
-      return _handleErrorResponse(response);
-    });
+  return _handleErrorResponse(response);
 }
 
 /**
@@ -137,35 +130,36 @@ export function createRelease(
  * @param rulesetName The unique identifier for the ruleset you want to release.
  * @param releaseName The name (e.g. `firebase.storage`) of the release you want to update.
  */
-export function updateRelease(
+export async function updateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
 ): Promise<any> {
   const payload = {
     release: {
-      name: "projects/" + projectId + "/releases/" + releaseName,
+      name: `projects/${projectId}/releases/${releaseName}`,
       rulesetName,
     },
   };
 
-  return api
-    .request("PATCH", "/" + API_VERSION + "/projects/" + projectId + "/releases/" + releaseName, {
+  const response = await api.request(
+    "PATCH",
+    `/${API_VERSION}/projects/${projectId}/releases/${releaseName}`,
+    {
       auth: true,
       data: payload,
       origin: api.rulesOrigin,
-    })
-    .then((response) => {
-      if (response.status === 200) {
-        logger.debug("[rules] updated release", response.body.name);
-        return response.body.name;
-      }
+    }
+  );
+  if (response.status === 200) {
+    logger.debug("[rules] updated release", response.body.name);
+    return response.body.name;
+  }
 
-      return _handleErrorResponse(response);
-    });
+  return _handleErrorResponse(response);
 }
 
-export function updateOrCreateRelease(
+export async function updateOrCreateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
@@ -178,15 +172,11 @@ export function updateOrCreateRelease(
 }
 
 export function testRuleset(projectId: string, files: any): Promise<any> {
-  return api.request(
-    "POST",
-    "/" + API_VERSION + "/projects/" + encodeURIComponent(projectId) + ":test",
-    {
-      origin: api.rulesOrigin,
-      data: {
-        source: { files },
-      },
-      auth: true,
-    }
-  );
+  return api.request("POST", `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`, {
+    origin: api.rulesOrigin,
+    data: {
+      source: { files },
+    },
+    auth: true,
+  });
 }
