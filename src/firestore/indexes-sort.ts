@@ -2,6 +2,16 @@ import * as API from "./indexes-api";
 import * as Spec from "./indexes-spec";
 import * as util from "./util";
 
+const QUERY_SCOPE_SEQUENCE = [
+  API.QueryScope.COLLECTION_GROUP,
+  API.QueryScope.COLLECTION,
+  undefined,
+];
+
+const ORDER_SEQUENCE = [API.Order.ASCENDING, API.Order.DESCENDING, undefined];
+
+const ARRAY_CONFIG_SEQUENCE = [API.ArrayConfig.CONTAINS, undefined];
+
 /**
  * Compare two Index spec entries for sorting.
  *
@@ -133,21 +143,15 @@ function compareFieldIndex(a: Spec.FieldIndex, b: Spec.FieldIndex): number {
 }
 
 function compareQueryScope(a: API.QueryScope, b: API.QueryScope): number {
-  const sequence = [API.QueryScope.COLLECTION_GROUP, API.QueryScope.COLLECTION, undefined];
-
-  return sequence.indexOf(a) - sequence.indexOf(b);
+  return QUERY_SCOPE_SEQUENCE.indexOf(a) - QUERY_SCOPE_SEQUENCE.indexOf(b);
 }
 
 function compareOrder(a?: API.Order, b?: API.Order): number {
-  const sequence = [API.Order.ASCENDING, API.Order.DESCENDING, undefined];
-
-  return sequence.indexOf(a) - sequence.indexOf(b);
+  return ORDER_SEQUENCE.indexOf(a) - ORDER_SEQUENCE.indexOf(b);
 }
 
 function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {
-  const sequence = [API.ArrayConfig.CONTAINS, undefined];
-
-  return sequence.indexOf(a) - sequence.indexOf(b);
+  return ARRAY_CONFIG_SEQUENCE.indexOf(a) - ARRAY_CONFIG_SEQUENCE.indexOf(b);
 }
 
 /**
