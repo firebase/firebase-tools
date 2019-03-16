@@ -60,6 +60,10 @@ module.exports = function(client) {
     },
   };
 
+  client.rules = {
+    list: loadCommand("rules-list"),
+  };
+
   client.help = loadCommand("help");
 
   client.init = loadCommand("init");
