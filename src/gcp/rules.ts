@@ -74,6 +74,8 @@ export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
   return _handleErrorResponse(response);
 }
 
+const MAX_RULESET_PAGE_SIZE = 100;
+
 /**
  * Lists the ruleset names on the project.
  * @param projectId Project from which you want to get the ruleset.
@@ -84,6 +86,7 @@ export async function listRulesets(projectId: string, pageToken?: string): Promi
     auth: true,
     origin: api.rulesOrigin,
     query: {
+      pageSize: MAX_RULESET_PAGE_SIZE,
       pageToken,
     },
   });
