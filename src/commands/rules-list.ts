@@ -12,8 +12,8 @@ module.exports = new Command("rules:list")
     let page: PageOfRulesets = { rulesets: [] };
     do {
       page = await gcp.rules.listRulesets(options.project, page.nextPageToken);
-      for (let item of page.rulesets) {
-        console.log(JSON.stringify(item));
+      for (const item of page.rulesets) {
+        logger.info(JSON.stringify(item));
       }
     } while (page.nextPageToken);
   });

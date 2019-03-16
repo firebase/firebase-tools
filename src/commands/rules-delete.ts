@@ -9,7 +9,6 @@ module.exports = new Command("rules:delete <ruleset_name>")
   .description("Delete a ruleset from your project.")
   .before(requirePermissions, ["firebaserules.rulesets.delete"])
   .action(async (rulesetName: string, options: any) => {
-    console.log(`deleting ruleset ${rulesetName}...`);
+    logger.info(`deleting ruleset ${rulesetName}...`);
     await gcp.rules.deleteRuleset(options.project, rulesetName);
-    console.log("done");
   });
