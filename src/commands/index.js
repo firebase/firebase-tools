@@ -61,6 +61,7 @@ module.exports = function(client) {
   };
 
   client.rules = {
+    delete: loadCommand("rules-delete"),
     list: loadCommand("rules-list"),
   };
 
