@@ -9,7 +9,7 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node" : "6"
+    "node" : "8"
   },
   "dependencies": {
     "firebase-admin": "~7.0.0",
