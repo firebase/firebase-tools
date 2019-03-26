@@ -77,9 +77,7 @@ export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
 const MAX_RULESET_PAGE_SIZE = 100;
 
 /**
- * Lists the ruleset names on the project.
- * @param projectId Project from which you want to get the ruleset.
- * @returns ruleset names
+ * Lists the rulesets for the given project.
  */
 export async function listRulesets(projectId: string, pageToken?: string): Promise<PageOfRulesets> {
   const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/rulesets`, {
@@ -104,14 +102,11 @@ export interface PageOfRulesets {
 /**
  * Delete the ruleset from the given project. If the ruleset is referenced
  * by a release, the operation will fail.
- *
- * @param projectId Project from which you want to get the ruleset.
- * @returns
  */
-export async function deleteRuleset(projectId: string, name: string): Promise<void> {
+export async function deleteRuleset(projectId: string, id: string): Promise<void> {
   const response = await api.request(
     "DELETE",
-    `/${API_VERSION}/projects/${projectId}/rulesets/${name}`,
+    `/${API_VERSION}/projects/${projectId}/rulesets/${id}`,
     {
       auth: true,
       origin: api.rulesOrigin,
