@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 var clc = require("cli-color");
-var open = require("open");
+var open = require("opn");
 
 var api = require("../api");
 var Command = require("../command");
