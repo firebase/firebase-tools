@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import opn = require("opn");
+import open = require("open");
 import * as qs from "querystring";
 
 import * as Command from "../command";
@@ -33,7 +33,7 @@ module.exports = new Command("functions:log")
         const url = `https://console.developers.google.com/logs/viewer?advancedFilter=${qs.escape(
           apiFilter
         )}&project=${projectId}`;
-        opn(url);
+        open(url);
         return;
       }
       const entries = await gcp.cloudlogging.listEntries(
