@@ -26,10 +26,10 @@ const _emulators = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.4.2.jar",
-    expectedSize: 56199868,
-    expectedChecksum: "b77ea7c917f07c81e89a176a49d75f3b",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.4.2.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.4.3.jar",
+    expectedSize: 56842642,
+    expectedChecksum: "27cd1dbf20e7ded5e6b90ecf23cbed2b",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.4.3.jar"),
   },
 };
 
