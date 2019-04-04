@@ -6,7 +6,6 @@ var logger = require("./logger");
 var utils = require("./utils");
 var FirebaseError = require("./error");
 var clc = require("cli-color");
-var ansiStrip = require("cli-color/strip");
 var getProjectId = require("./getProjectId");
 var RC = require("./rc");
 var Config = require("./config");
@@ -119,7 +118,6 @@ Command.prototype.register = function(client) {
         }
         var duration = Date.now() - start;
         var errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
-        var projectId = getProjectId(options, true);
 
         return Promise.all([
           track(self._name, "error", duration),
