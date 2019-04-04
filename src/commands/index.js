@@ -31,6 +31,10 @@ module.exports = function(client) {
     },
   };
 
+  client.emulators = {
+    start: loadCommand("emulators-start")
+  };
+
   client.firestore = {
     delete: loadCommand("firestore-delete"),
     indexes: loadCommand("firestore-indexes-list"),
@@ -71,7 +75,6 @@ module.exports = function(client) {
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.serve = loadCommand("serve");
-
   client.setup = {
     web: loadCommand("setup-web"),
     emulators: {
