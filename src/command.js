@@ -6,7 +6,6 @@ var logger = require("./logger");
 var utils = require("./utils");
 var FirebaseError = require("./error");
 var clc = require("cli-color");
-var getProjectId = require("./getProjectId");
 var RC = require("./rc");
 var Config = require("./config");
 var detectProjectRoot = require("./detectProjectRoot");
