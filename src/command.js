@@ -120,11 +120,10 @@ Command.prototype.register = function(client) {
         var duration = Date.now() - start;
         var errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
         var projectId = getProjectId(options, true);
-        var preppedMessage = ansiStrip(err.message || "").replace(projectId, "<namespace>");
 
         return Promise.all([
           track(self._name, "error", duration),
-          track(errorEvent, preppedMessage, duration),
+          track(errorEvent, "", duration),
         ]).then(function() {
           client.errorOut(err);
         });
