@@ -36,27 +36,30 @@ const _emulators = {
 const _commands = {
   database: {
     binary: "java",
-    args: [
-      "-Duser.language=en",
-      "-jar",
-      _emulators.database.localPath,
-      "--port",
-      _emulators.database.port,
-    ],
+    args: ["-Duser.language=en", "-jar", _emulators.database.localPath],
   },
   firestore: {
     binary: "java",
-    args: [
-      "-Duser.language=en",
-      "-jar",
-      _emulators.firestore.localPath,
-      "--port",
-      _emulators.firestore.port,
-    ],
+    args: ["-Duser.language=en", "-jar", _emulators.firestore.localPath],
   },
 };
+
+function _getCommand(emulator, port) {
+  var baseCmd = _commands[emulator];
+
+  var defaultPort = _emulators[emulator].port;
+  var port = port || defaultPort;
+
+  var args = baseCmd.args.concat(["--port", port]);
+
+  return {
+    binary: baseCmd.binary,
+    args,
+  };
+}
 
 module.exports = {
   emulators: _emulators,
   commands: _commands,
+  getCommand: _getCommand,
 };

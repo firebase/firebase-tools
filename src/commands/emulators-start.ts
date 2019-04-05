@@ -1,6 +1,7 @@
 "use strict";
 
 import * as _ from "lodash";
+import * as url from "url";
 
 import * as Command from "../command";
 import * as logger from "../logger";
@@ -8,6 +9,25 @@ import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
 
 const VALID_EMULATORS = ["database", "firestore", "functions"];
+
+interface Address {
+  host: string;
+  port: number;
+}
+
+function parseAddress(address: string): Address {
+  let normalized = address;
+  if (!normalized.startsWith("http")) {
+    normalized = `http://${normalized}`;
+  }
+
+  const u = url.parse(normalized);
+  const host = u.hostname || "localhost";
+  const portStr = u.port || "8080";
+  const port = parseInt(portStr);
+
+  return { host, port };
+}
 
 module.exports = new Command("emulators:start")
   .description("start the local Firebase emulators")
@@ -37,10 +57,13 @@ module.exports = new Command("emulators:start")
     // TODO(samstern): Parse address options and pass ports to the emulators
 
     if (targets.indexOf("firestore") >= 0) {
-      const address = options.config.get("emulators.firestore.address", "localhost:8080");
-      logger.debug(`Starting firestore emulator at ${address}`);
+      const addressStr = options.config.get("emulators.firestore.address", "localhost:8080");
+      const { host, port } = parseAddress(addressStr);
 
-      await javaEmulator.start("firestore");
+      logger.debug(`Starting firestore emulator at ${host}:${port}`);
+
+      // TODO(samstern): Use the host somehow
+      await javaEmulator.start("firestore", port);
     }
 
     if (targets.indexOf("functions") >= 0) {

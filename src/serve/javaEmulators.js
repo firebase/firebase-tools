@@ -82,9 +82,9 @@ function _stop(targetName) {
   });
 }
 
-function _start(targetName) {
+function _start(targetName, port) {
   var emulator = emulatorConstants.emulators[targetName];
-  var command = emulatorConstants.commands[targetName];
+  var command = emulatorConstants.getCommand(targetName, port);
   if (!fs.existsSync(emulator.localPath)) {
     utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
     return Promise.reject("emulator not found");
