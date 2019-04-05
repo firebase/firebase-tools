@@ -32,7 +32,7 @@ module.exports = function(client) {
   };
 
   client.emulators = {
-    start: loadCommand("emulators-start")
+    start: loadCommand("emulators-start"),
   };
 
   client.firestore = {
