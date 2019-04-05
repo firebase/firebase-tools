@@ -37,17 +37,17 @@ module.exports = new Command("emulators:start")
     // TODO(samstern): Parse address options and pass ports to the emulators
 
     if (targets.indexOf("firestore") >= 0) {
-      logger.debug("Starting firestore emulator...");
+      const address = options.config.get("emulators.firestore.address", "localhost:8080");
+      logger.debug(`Starting firestore emulator at ${address}`);
+
       await javaEmulator.start("firestore");
     }
 
     if (targets.indexOf("functions") >= 0) {
-      logger.debug("Starting functions emulator...");
       // TODO(rpb): start the functions emulator
     }
 
     if (targets.indexOf("database") >= 0) {
-      logger.debug("Starting database emulator...");
       // TODO(rpb): start the database emulator
     }
   });
