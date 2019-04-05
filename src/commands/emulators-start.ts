@@ -1,16 +1,13 @@
 "use strict";
 
-var clc = require("cli-color");
-var _ = require("lodash");
+import * as _ from "lodash";
 
-var Command = require("../command");
-var logger = require("../logger");
-var utils = require("../utils");
-var requireConfig = require("../requireConfig");
-var javaEmulator = require("../serve/javaEmulators");
-var filterTargets = require("../filterTargets");
+import * as Command from "../command";
+import * as logger from "../logger";
+import * as javaEmulator from "../serve/javaEmulators";
+import * as filterTargets from "../filterTargets";
 
-var VALID_EMULATORS = ["database", "firestore", "functions"];
+const VALID_EMULATORS = ["database", "firestore", "functions"];
 
 module.exports = new Command("emulators:start")
   .description("start the local Firebase emulators")
@@ -21,7 +18,7 @@ module.exports = new Command("emulators:start")
       "Valid options are: " +
       JSON.stringify(VALID_EMULATORS)
   )
-  .action(async (options) => {
+  .action(async (options: any) => {
     // Emulators config is specified in firebase.json as:
     // "emulators": {
     //   "firestore": {
@@ -35,7 +32,7 @@ module.exports = new Command("emulators:start")
     // The list of emulators to start is filtered two ways:
     // 1) The service must have a top-level entry in firebase.json
     // 2) If the --only flag is passed, then this list is the intersection
-    const targets = filterTargets(options, VALID_EMULATORS);
+    const targets: string[] = filterTargets(options, VALID_EMULATORS);
 
     // TODO(samstern): Parse address options and pass ports to the emulators
 
