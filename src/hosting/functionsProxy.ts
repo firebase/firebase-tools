@@ -57,69 +57,72 @@ export default function(
         rewrite.function
       }`;
     }
-    return await ((req: Request, res: Response, next: () => void): any => {
-      logger.info(`[hosting] Rewriting ${req.url} to ${destLabel} function ${rewrite.function}`);
-      // Extract the __session cookie from headers to forward it to the functions
-      // cookie is not a string[].
-      const cookie = (req.headers.cookie as string) || "";
-      const sessionCookie = cookie.split(/; ?/).find((c: string) => {
-        return c.trim().indexOf("__session=") === 0;
-      });
 
-      const proxied = request({
-        method: req.method,
-        qs: req.query,
-        url: url + req.url,
-        headers: {
-          "X-Forwarded-Host": req.headers.host,
-          "X-Original-Url": req.url,
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache, no-store",
-          // forward the parsed __session cookie if any
-          Cookie: sessionCookie,
-        },
-        followRedirect: false,
-        timeout: 60000,
-      });
+    return await proxyRequestHandler(url, `Function ${rewrite.function}`);
+  };
+}
 
-      req.pipe(proxied);
+function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
+  return (req: Request, res: Response, next: () => void): any => {
+    logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
+    // Extract the __session cookie from headers to forward it to the
+    // functions cookie is not a string[].
+    const cookie = (req.headers.cookie as string) || "";
+    const sessionCookie = cookie.split(/; ?/).find((c: string) => {
+      return c.trim().indexOf("__session=") === 0;
+    });
 
-      // err here is `any` in order to check `.code`
-      proxied.on("error", (err: any) => {
-        if (err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT") {
-          res.statusCode = 504;
-          return res.end("Timed out waiting for function to respond.");
+    const proxied = request({
+      method: req.method,
+      qs: req.query,
+      url: url + req.url,
+      headers: {
+        "X-Forwarded-Host": req.headers.host,
+        "X-Original-Url": req.url,
+        Pragma: "no-cache",
+        "Cache-Control": "no-cache, no-store",
+        // forward the parsed __session cookie if any
+        Cookie: sessionCookie,
+      },
+      followRedirect: false,
+      timeout: 60000,
+    });
+
+    req.pipe(proxied);
+
+    // err here is `any` in order to check `.code`
+    proxied.on("error", (err: any) => {
+      if (err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT") {
+        res.statusCode = 504;
+        return res.end("Timed out waiting for function to respond.");
+      }
+
+      res.statusCode = 500;
+      res.end(`An internal error occurred while proxying for ${rewriteIdentifier}`);
+    });
+
+    proxied.on("response", (response) => {
+      if (response.statusCode === 404) {
+        // x-cascade is not a string[].
+        const cascade = response.headers["x-cascade"] as string;
+        if (cascade && cascade.toUpperCase() === "PASS") {
+          return next();
         }
+      }
 
-        res.statusCode = 500;
-        res.end(
-          `An internal error occurred while connecting to Cloud Function "${rewrite.function}"`
-        );
-      });
+      // default to private cache
+      if (!response.headers["cache-control"]) {
+        response.headers["cache-control"] = "private";
+      }
 
-      proxied.on("response", (response) => {
-        if (response.statusCode === 404) {
-          // x-cascade is not a string[].
-          const cascade = response.headers["x-cascade"] as string;
-          if (cascade && cascade.toUpperCase() === "PASS") {
-            return next();
-          }
-        }
+      // don't allow cookies to be set on non-private cached responses
+      if (response.headers["cache-control"].indexOf("private") < 0) {
+        delete response.headers["set-cookie"];
+      }
 
-        // default to private cache
-        if (!response.headers["cache-control"]) {
-          response.headers["cache-control"] = "private";
-        }
+      response.headers.vary = makeVary(response.headers.vary);
 
-        // don't allow cookies to be set on non-private cached responses
-        if (response.headers["cache-control"].indexOf("private") < 0) {
-          delete response.headers["set-cookie"];
-        }
-
-        response.headers.vary = makeVary(response.headers.vary);
-
-        proxied.pipe(res);
-      });
+      proxied.pipe(res);
     });
   };
 }
