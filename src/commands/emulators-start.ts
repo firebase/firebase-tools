@@ -7,6 +7,9 @@ import * as Command from "../command";
 import * as logger from "../logger";
 import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
+import * as utils from "../utils";
+
+import * as pf from "portfinder";
 
 const VALID_EMULATORS = ["database", "firestore", "functions"];
 
@@ -27,6 +30,28 @@ function parseAddress(address: string): Address {
   const port = parseInt(portStr);
 
   return { host, port };
+}
+
+async function checkPortOpen(port: number) {
+  try {
+    await pf.getPortPromise({ port: port, stopPort: port });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function waitForPortClosed(port: number) {
+  return new Promise(async (res, rej) => {
+    const intId = setInterval(async function() {
+      const open = await checkPortOpen(port);
+      if (!open) {
+        // If the port is NOT open that means the emulator is running
+        clearInterval(intId);
+        res();
+      }
+    }, 250);
+  });
 }
 
 module.exports = new Command("emulators:start")
@@ -58,12 +83,16 @@ module.exports = new Command("emulators:start")
 
     if (targets.indexOf("firestore") >= 0) {
       const addressStr = options.config.get("emulators.firestore.address", "localhost:8080");
-      const { host, port } = parseAddress(addressStr);
+      const addr = parseAddress(addressStr);
 
-      logger.debug(`Starting firestore emulator at ${host}:${port}`);
-
-      // TODO(samstern): Use the host somehow
-      await javaEmulator.start("firestore", port);
+      utils.logBullet(`Starting firestore emulator at ${addr.host}:${addr.port}`);
+      const portOpen = await checkPortOpen(addr.port);
+      if (!portOpen) {
+        return utils.reject(`Port ${addr.port} is not open, could not start emulator.`, {});
+      }
+      await javaEmulator.start("firestore", addr.port);
+      await waitForPortClosed(addr.port);
+      utils.logSuccess(`Firestore emulator running.`);
     }
 
     if (targets.indexOf("functions") >= 0) {
