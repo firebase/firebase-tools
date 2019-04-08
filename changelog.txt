@@ -1,0 +1,2 @@
+fixed - fixes bug in Cloud Firestore emulator where rulesets with no-op writes would modify a document's updated_at timestamp
+changed - reduced lock contention in Cloud Firestore emulator during concurrent writes to a document
