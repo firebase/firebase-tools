@@ -42,16 +42,42 @@ async function checkPortOpen(port: number) {
 }
 
 async function waitForPortClosed(port: number) {
+  const interval = 250;
+  const timeout = 30000;
+
   return new Promise(async (res, rej) => {
+    let elapsed = 0;
     const intId = setInterval(async function() {
       const open = await checkPortOpen(port);
       if (!open) {
         // If the port is NOT open that means the emulator is running
         clearInterval(intId);
         res();
+        return;
       }
-    }, 250);
+
+      // After a timeout, stop waiting for the emulator.
+      elapsed += interval;
+      if (elapsed > timeout) {
+        clearInterval(intId);
+
+        // TODO(samstern): This should be FirebaseError
+        rej(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
+      }
+    }, interval);
   });
+}
+
+async function startEmulator(name: string, addr: Address, startFn: () => Promise<any>) {
+  const portOpen = await checkPortOpen(addr.port);
+  if (!portOpen) {
+    return utils.reject(`Port ${addr.port} is not open, could not start ${name} emulator.`, {});
+  }
+
+  utils.logBullet(`Starting ${name} emulator at ${addr.host}:${addr.port}`);
+  await startFn();
+  await waitForPortClosed(addr.port);
+  utils.logSuccess(`${name} emulator running.`);
 }
 
 module.exports = new Command("emulators:start")
@@ -71,32 +97,37 @@ module.exports = new Command("emulators:start")
     //   },
     //   // ...
     // }
-    const emulatorsConfig = options.config.get("emulators");
-    logger.debug("Emulators config: " + JSON.stringify(emulatorsConfig));
-
     // The list of emulators to start is filtered two ways:
     // 1) The service must have a top-level entry in firebase.json
     // 2) If the --only flag is passed, then this list is the intersection
     const targets: string[] = filterTargets(options, VALID_EMULATORS);
+    utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
 
-    // TODO(samstern): Parse address options and pass ports to the emulators
+    // TODO(samstern): Decide on emulator default addresses
+    const functionsAddr = parseAddress(
+      options.config.get("emulators.functions.address", "localhost:8080")
+    );
+    const firestoreAddr = parseAddress(
+      options.config.get("emulators.firestore.address", "localhost:8081")
+    );
+    const rtdbAddr = parseAddress(
+      options.config.get("emulators.functions.address", "localhost:8082")
+    );
 
-    if (targets.indexOf("firestore") >= 0) {
-      const addressStr = options.config.get("emulators.firestore.address", "localhost:8080");
-      const addr = parseAddress(addressStr);
-
-      utils.logBullet(`Starting firestore emulator at ${addr.host}:${addr.port}`);
-      const portOpen = await checkPortOpen(addr.port);
-      if (!portOpen) {
-        return utils.reject(`Port ${addr.port} is not open, could not start emulator.`, {});
-      }
-      await javaEmulator.start("firestore", addr.port);
-      await waitForPortClosed(addr.port);
-      utils.logSuccess(`Firestore emulator running.`);
+    // The Functions emulator MUST be started first so that triggers can be
+    // set up correctly.
+    if (targets.indexOf("functions") >= 0) {
+      await startEmulator("functions", functionsAddr, () => {
+        // TODO: Don't start the firestore emulator twice, actually start functions
+        return javaEmulator.start("firestore", functionsAddr.port);
+      });
     }
 
-    if (targets.indexOf("functions") >= 0) {
-      // TODO(rpb): start the functions emulator
+    if (targets.indexOf("firestore") >= 0) {
+      await startEmulator("firestore", firestoreAddr, () => {
+        // TODO: Pass in the address of the functions emulator
+        return javaEmulator.start("firestore", firestoreAddr.port);
+      });
     }
 
     if (targets.indexOf("database") >= 0) {
