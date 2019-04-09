@@ -12,7 +12,6 @@ import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
-import { EventContext } from "firebase-functions";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
@@ -207,7 +206,7 @@ class FunctionsEmulator {
           params,
           auth: {},
           authType: "UNAUTHENTICATED",
-        } as EventContext;
+        };
 
         const func = trigger.getWrappedFunction();
         const log = console.log;
