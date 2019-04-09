@@ -61,25 +61,29 @@ class FunctionsEmulator {
       sslCreds: grpc.credentials.createInsecure(),
     });
 
-    const adminResolve = require.resolve("firebase-admin", {
-      paths: [path.join(functionsDir, "node_modules")],
-    });
-    const adminMock = {
-      initializeApp(): admin.app.App {
-        if (!initializeAppWarned) {
-          utils.logWarning(
-            'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
-          );
-          initializeAppWarned = true;
-        }
-        return app;
-      },
-    };
+    try {
+      const adminResolve = require.resolve("firebase-admin", {
+        paths: [path.join(functionsDir, "node_modules")],
+      });
+      const adminMock = {
+        initializeApp(): admin.app.App {
+          if (!initializeAppWarned) {
+            utils.logWarning(
+              'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
+            );
+            initializeAppWarned = true;
+          }
+          return app;
+        },
+      };
 
-    (adminMock as any).default = adminMock;
-    require.cache[adminResolve] = {
-      exports: adminMock,
-    };
+      (adminMock as any).default = adminMock;
+      require.cache[adminResolve] = {
+        exports: adminMock,
+      };
+    } catch (err) {
+      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
+    }
 
     let triggers;
     try {
@@ -102,24 +106,24 @@ class FunctionsEmulator {
           const oldFunction = _.get(require(functionsDir), trigger.entryPoint);
           delete require.cache[require.resolve(functionsDir)];
           const module = require(functionsDir);
-
           const newFunction = _.get(module, trigger.entryPoint);
 
-          const oldStr = oldFunction.run.toString();
-          const newStr = newFunction.run.toString();
+          if (newFunction.run && oldFunction.run) {
+            const oldStr = oldFunction.run.toString();
+            const newStr = newFunction.run.toString();
 
-          if (oldStr !== newStr) {
-            logger.debug(`[functions] Function "${trigger.name}" changed. Diff:`);
+            if (oldStr !== newStr) {
+              logger.debug(`[functions] Function "${trigger.name}" changed. Diff:`);
 
-            const diff = jsdiff.diffChars(oldStr, newStr);
+              const diff = jsdiff.diffChars(oldStr, newStr);
 
-            diff.forEach((part: any) => {
-              const color = part.added ? "green" : part.removed ? "red" : "blackBright";
-              process.stderr.write((clc as any)[color](part.value));
-            });
-            process.stderr.write("\n");
+              diff.forEach((part: any) => {
+                const color = part.added ? "green" : part.removed ? "red" : "blackBright";
+                process.stderr.write((clc as any)[color](part.value));
+              });
+              process.stderr.write("\n");
+            }
           }
-
           logger.debug(`[functions] Function "${trigger.name}" will be invoked. Logs:`);
           return newFunction;
         };
@@ -202,9 +206,9 @@ class FunctionsEmulator {
         } as EventContext;
 
         const func = trigger.getWrappedFunction();
-        const log = logger.debug;
+        const log = console.log;
 
-        logger.debug = (...messages: any[]) => {
+        console.log = (...messages: any[]) => {
           log(clc.blackBright(">"), ...messages);
         };
 
@@ -214,7 +218,7 @@ class FunctionsEmulator {
         } catch (err) {
           caughtErr = err;
         }
-        logger.debug = log;
+        console.log = log;
 
         if (caughtErr) {
           const lines = caughtErr.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
@@ -229,36 +233,38 @@ class FunctionsEmulator {
 
     this.server = hub.listen(port, () => {
       logger.debug(`[functions] Functions emulator is live on port ${port}`);
+      logger.info(
+        `[functions] Attempting to contact Firestore emulator on port ${firestorePort}`
+      );
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
-        if (!trigger.eventTrigger) {
-          return;
+        if (trigger.httpsTrigger) {
+          const url = `http://localhost:${port}/functions/projects/${projectId}/triggers/${name}`;
+          logger.info(`[functions] HTTP trigger initialized at "${url}"`)
         }
+        if (trigger.eventTrigger) {
+          const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
+          logger.info(`[functions] Attempting to set up firestore trigger "${name}"`);
 
-        const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
-        logger.debug(
-          `[functions] Attempting to contact Firestore emulator on port ${firestorePort}`
-        );
-        logger.debug(`[functions] Attempting to set up firestore trigger "${name}"`);
+          request.put(
+            `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
+            {
+              body: bundle,
+            },
+            (err, res, body) => {
+              if (err) {
+                console.warn(body);
+                return;
+              }
 
-        request.put(
-          `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
-          {
-            body: bundle,
-          },
-          (err, res, body) => {
-            if (err) {
-              console.warn(body);
-              return;
+              if (JSON.stringify(JSON.parse(body)) === "{}") {
+                logger.debug(
+                  `[functions] Trigger "${name}" has been acknowledged by the Firestore emulator`
+                );
+              }
             }
-
-            if (JSON.stringify(JSON.parse(body)) === "{}") {
-              logger.debug(
-                `[functions] Trigger "${name}" has been acknowledged by the Firestore emulator`
-              );
-            }
-          }
-        );
+          );
+        }
       });
     });
   }
