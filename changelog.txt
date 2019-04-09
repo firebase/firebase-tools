@@ -1,1 +1,3 @@
+fixed - Fixes a bug in Cloud Firestore emulator where rulesets with no-op writes would modify a document's updated_at timestamp.
+fixed - Reduced lock contention in Cloud Firestore emulator during concurrent writes to a document.
 feature - Serving Hosting locally can now proxy to the live Cloud Run service.
