@@ -15,7 +15,7 @@ module.exports = function(options) {
   var emulator = new FunctionsEmulator(options);
 
   return emulator
-    .start(true)
+    .start()
     .then(function() {
       if (emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");

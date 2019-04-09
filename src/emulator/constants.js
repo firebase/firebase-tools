@@ -44,17 +44,30 @@ const _commands = {
   },
 };
 
-function _getCommand(emulator, port) {
+/**
+ * Get a command to start the an emulator.
+ * @param emulator - string identifier for the emulator to start.
+ * @param args - map<string,string> of addittional args
+ */
+function _getCommand(emulator, args) {
   var baseCmd = _commands[emulator];
 
   var defaultPort = _emulators[emulator].port;
-  var port = port || defaultPort;
+  if (!args["port"]) {
+    args["port"] = defaultPort;
+  }
 
-  var args = baseCmd.args.concat(["--port", port]);
+  var cmdLineArgs = baseCmd.args.slice();
+  Object.keys(args).forEach((key) => {
+    var argKey = "--" + key;
+    var argVal = args[key];
+
+    cmdLineArgs.push(argKey, argVal);
+  });
 
   return {
     binary: baseCmd.binary,
-    args,
+    args: cmdLineArgs,
   };
 }
 

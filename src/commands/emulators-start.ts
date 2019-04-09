@@ -134,7 +134,10 @@ module.exports = new Command("emulators:start")
       const functionsEmu = new FunctionsEmulator(options);
 
       await startEmulator("functions", functionsAddr, () => {
-        return functionsEmu.start();
+        return functionsEmu.start({
+          port: functionsAddr.port,
+          firestorePort: firestoreAddr.port,
+        });
       });
 
       stopFunctions.push(() => {
@@ -145,8 +148,10 @@ module.exports = new Command("emulators:start")
 
     if (targets.indexOf("firestore") >= 0) {
       await startEmulator("firestore", firestoreAddr, () => {
-        // TODO: Pass in the address of the functions emulator
-        return javaEmulator.start("firestore", firestoreAddr.port);
+        return javaEmulator.start("firestore", {
+          port: firestoreAddr.port,
+          functions_emulator: `${functionsAddr.host}:${functionsAddr.port}`,
+        });
       });
 
       stopFunctions.push(() => {

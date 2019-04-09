@@ -24,7 +24,15 @@ class FunctionsEmulator {
 
   constructor(private options: any) {}
 
-  async start(...args: any[]): Promise<any> {
+  async start(args: any): Promise<any> {
+    if (!args) {
+      args = {};
+    }
+
+    // TODO: Centralize these defaults
+    const port = args["port"] || 5000;
+    const firestorePort = args["firestorePort"] || 8080;
+
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(
       this.options.config.projectDir,
@@ -45,7 +53,7 @@ class FunctionsEmulator {
     // TODO: This needs to point at the running Firestore emulator
     app.firestore().settings({
       projectId,
-      port: 8080,
+      port: firestorePort,
       servicePath: "localhost",
       service: "firestore.googleapis.com",
       sslCreds: grpc.credentials.createInsecure(),
@@ -217,10 +225,8 @@ class FunctionsEmulator {
       }
     });
 
-    // TODO: This needs to take a port argument
-    // TODO: All of the logger.debug() statements need to be moved to logger statements
-    this.server = hub.listen(5000, () => {
-      logger.debug(`[functions] Emulator hub is live on port :5000`);
+    this.server = hub.listen(port, () => {
+      logger.debug(`[functions] Functions emulator is live on port ${port}`);
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
         if (!trigger.eventTrigger) {
@@ -228,10 +234,13 @@ class FunctionsEmulator {
         }
 
         const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
+        logger.debug(
+          `[functions] Attempting to contact Firestore emulator on port ${firestorePort}`
+        );
         logger.debug(`[functions] Attempting to set up firestore trigger "${name}"`);
 
         request.put(
-          `http://localhost:8080/emulator/v1/projects/${projectId}/triggers/${name}`,
+          `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
           {
             body: bundle,
           },
