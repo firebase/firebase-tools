@@ -5,7 +5,6 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as express from "express";
 import * as fft from "firebase-functions-test";
-import { Change, EventContext } from "firebase-functions";
 import * as request from "request";
 
 import * as getProjectId from "./getProjectId";
@@ -13,10 +12,10 @@ import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
+import { EventContext } from "firebase-functions";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
-const emulatorConstants = require("./emulator/constants");
 
 class FunctionsEmulator {
   private server: any;
@@ -24,6 +23,9 @@ class FunctionsEmulator {
   constructor(private options: any) {}
 
   async start(args: any): Promise<any> {
+    // We do this in start to avoid attempting to initialize admin on require
+    const { Change } = require("firebase-functions");
+
     if (!args) {
       // TODO: This should probably be fatal
       args = {};
@@ -49,7 +51,6 @@ class FunctionsEmulator {
     process.env.GCLOUD_PROJECT = projectId;
 
     let app: any;
-
     try {
       const adminResolve = require.resolve("firebase-admin", {
         paths: [path.join(functionsDir, "node_modules")],
