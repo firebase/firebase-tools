@@ -8,8 +8,10 @@ import * as logger from "../logger";
 import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
-
 import * as pf from "portfinder";
+
+// TODO: This should be a TS import
+const FunctionsEmulator = require("../functionsEmulator");
 
 const VALID_EMULATORS = ["database", "firestore", "functions"];
 
@@ -105,21 +107,22 @@ module.exports = new Command("emulators:start")
 
     // TODO(samstern): Decide on emulator default addresses
     const functionsAddr = parseAddress(
-      options.config.get("emulators.functions.address", "localhost:8080")
+      options.config.get("emulators.functions.address", "localhost:5000")
     );
     const firestoreAddr = parseAddress(
-      options.config.get("emulators.firestore.address", "localhost:8081")
+      options.config.get("emulators.firestore.address", "localhost:8080")
     );
     const rtdbAddr = parseAddress(
-      options.config.get("emulators.functions.address", "localhost:8082")
+      options.config.get("emulators.functions.address", "localhost:8081")
     );
 
     // The Functions emulator MUST be started first so that triggers can be
     // set up correctly.
     if (targets.indexOf("functions") >= 0) {
       await startEmulator("functions", functionsAddr, () => {
-        // TODO: Don't start the firestore emulator twice, actually start functions
-        return javaEmulator.start("firestore", functionsAddr.port);
+        // TODO: Pass in port and other options
+        const functionsEmu = new FunctionsEmulator(options);
+        return functionsEmu.start();
       });
     }
 
