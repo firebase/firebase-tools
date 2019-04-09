@@ -11,7 +11,10 @@ export interface CloudRunProxyOptions {
 }
 
 export interface CloudRunProxyRewrite {
-  run: { serviceId: string; region?: string };
+  run: {
+    serviceId: string;
+    region?: string;
+  };
 }
 
 const cloudRunCache: { [s: string]: string } = {};

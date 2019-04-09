@@ -106,7 +106,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 export function errorRequestHandler(error: string): RequestHandler {
   return (req: Request, res: Response, next: () => void): any => {
     res.statusCode = 500;
-    const out = `A problem occured while trying to handle a Cloud Run rewrite: ${error}`;
+    const out = `A problem occurred while trying to handle a proxied rewrite: ${error}`;
     logger.error(out);
     res.end(out);
   };
