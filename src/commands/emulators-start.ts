@@ -72,7 +72,11 @@ async function waitForPortClosed(port: number): Promise<void> {
   });
 }
 
-async function startEmulator(name: string, addr: Address, startFn: () => Promise<any>): Promise<void> {
+async function startEmulator(
+  name: string,
+  addr: Address,
+  startFn: () => Promise<any>
+): Promise<void> {
   const portOpen = await checkPortOpen(addr.port);
   if (!portOpen) {
     return utils.reject(`Port ${addr.port} is not open, could not start ${name} emulator.`, {});
@@ -119,14 +123,23 @@ module.exports = new Command("emulators:start")
       options.config.get("emulators.functions.address", "localhost:8081")
     );
 
+    // Array of functions to be called in order to stop all running emulators.
+    // Each should invoke a promise.
+    const stopFunctions: Function[] = [];
+
     // The Functions emulator MUST be started first so that triggers can be
     // set up correctly.
     if (targets.indexOf("functions") >= 0) {
+      // TODO: Pass in port and other options
+      const functionsEmu = new FunctionsEmulator(options);
+
       await startEmulator("functions", functionsAddr, () => {
-        // TODO: Pass in port and other options
-        // TODO: We need to hang until the emulator is closed...
-        const functionsEmu = new FunctionsEmulator(options);
         return functionsEmu.start();
+      });
+
+      stopFunctions.push(() => {
+        utils.logBullet("Stopping functions emulator.");
+        return functionsEmu.stop();
       });
     }
 
@@ -135,9 +148,29 @@ module.exports = new Command("emulators:start")
         // TODO: Pass in the address of the functions emulator
         return javaEmulator.start("firestore", firestoreAddr.port);
       });
+
+      stopFunctions.push(() => {
+        utils.logBullet("Stopping firestore emulator.");
+        javaEmulator.stop("firestore");
+      });
     }
 
     if (targets.indexOf("database") >= 0) {
       // TODO(rpb): start the database emulator
     }
+
+    // Hang until explicitly killed
+    return new Promise((res, rej) => {
+      process.on("SIGINT", () => {
+        // TODO: First stop all emulators.
+        const stopPromises: Promise<any>[] = [];
+        stopFunctions.forEach((fn) => {
+          stopPromises.push(fn());
+        });
+
+        Promise.all(stopPromises)
+          .then(res)
+          .catch(res);
+      });
+    });
   });

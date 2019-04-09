@@ -57,10 +57,8 @@ class FunctionsEmulator {
     const adminMock = {
       initializeApp(): admin.app.App {
         if (!initializeAppWarned) {
-          console.log(
-            `${clc.yellow(
-              "[HUB]"
-            )} Your code attempted to use "admin.initializeApp()" we've ignored your options and provided an emulated app instead.`
+          utils.logWarning(
+            'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
           );
           initializeAppWarned = true;
         }
@@ -78,7 +76,7 @@ class FunctionsEmulator {
       triggers = await parseTriggers(projectId, functionsDir, {}, JSON.stringify(firebaseConfig));
     } catch (e) {
       utils.logWarning(
-        clc.yellow("functions:") +
+        "[functions]" +
           " Failed to load functions source code. " +
           "Ensure that you have the latest SDK by running " +
           clc.bold("npm i --save firebase-functions") +
@@ -101,11 +99,7 @@ class FunctionsEmulator {
           const newStr = newFunction.run.toString();
 
           if (oldStr !== newStr) {
-            console.log(
-              `${clc.blue("[FUNCTION:FIRESTORE]")} Your function "${
-                trigger.name
-              }" has been changed, here's the diff...`
-            );
+            logger.debug(`[functions] Function "${trigger.name}" changed. Diff:`);
 
             const diff = jsdiff.diffChars(oldStr, newStr);
 
@@ -116,11 +110,7 @@ class FunctionsEmulator {
             process.stderr.write("\n");
           }
 
-          console.log(
-            `${clc.blue("[FUNCTION:FIRESTORE]")} Your function "${
-              trigger.name
-            }" will be invoked, here's the logs...`
-          );
+          logger.debug(`[functions] Function "${trigger.name}" will be invoked. Logs:`);
           return newFunction;
         };
         trigger.getWrappedFunction = () => {
@@ -150,11 +140,7 @@ class FunctionsEmulator {
     });
 
     hub.get("/functions/projects/:project_id/triggers/:trigger_name", (req, res) => {
-      console.log(
-        `${clc.blue("[FUNCTION:HTTP]")} GET request to function ${
-          req.params.trigger_name
-        } accepted.`
-      );
+      logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
       const trigger = triggersByName[req.params.trigger_name];
       if (trigger.httpsTrigger) {
         trigger.getRawFunction()(req, res);
@@ -170,7 +156,7 @@ class FunctionsEmulator {
       const trigger = triggersByName[req.params.trigger_name];
 
       if (trigger.httpsTrigger) {
-        console.log(`${clc.blue("[FUNCTION:HTTP]")} POST request to function rejected`);
+        logger.debug(`[functions] POST request to function rejected`);
       } else {
         const body = (req as any).rawBody;
         const proto = JSON.parse(body);
@@ -206,9 +192,9 @@ class FunctionsEmulator {
         } as EventContext;
 
         const func = trigger.getWrappedFunction();
-        const log = console.log;
+        const log = logger.debug;
 
-        console.log = (...messages: any[]) => {
+        logger.debug = (...messages: any[]) => {
           log(clc.blackBright(">"), ...messages);
         };
 
@@ -218,23 +204,23 @@ class FunctionsEmulator {
         } catch (err) {
           caughtErr = err;
         }
-        console.log = log;
+        logger.debug = log;
 
         if (caughtErr) {
           const lines = caughtErr.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
 
-          console.log(`${clc.blackBright("> ")}${lines}`);
+          logger.debug(`${clc.blackBright("> ")}${lines}`);
         }
 
-        console.log(`${clc.blue("[FUNCTION:FIRESTORE]")} Function execution done!`);
+        logger.debug(`[functions] Function execution complete.`);
         res.json({ status: "success" });
       }
     });
 
     // TODO: This needs to take a port argument
-    // TODO: All of the console.log() statements need to be moved to logger statements
+    // TODO: All of the logger.debug() statements need to be moved to logger statements
     this.server = hub.listen(5000, () => {
-      console.log(`${clc.yellow("[HUB]")} Functions emulator hub is live on port :5000`);
+      logger.debug(`[functions] Emulator hub is live on port :5000`);
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
         if (!trigger.eventTrigger) {
@@ -242,7 +228,7 @@ class FunctionsEmulator {
         }
 
         const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
-        console.log(`${clc.green("[FIRESTORE]")} Attempting to set up trigger "${name}"`);
+        logger.debug(`[functions] Attempting to set up firestore trigger "${name}"`);
 
         request.put(
           `http://localhost:8080/emulator/v1/projects/${projectId}/triggers/${name}`,
@@ -256,10 +242,8 @@ class FunctionsEmulator {
             }
 
             if (JSON.stringify(JSON.parse(body)) === "{}") {
-              console.log(
-                `${clc.green(
-                  "[FIRESTORE]"
-                )} Trigger "${name}" has been acknowledged by the Firestore emulator`
+              logger.debug(
+                `[functions] Trigger "${name}" has been acknowledged by the Firestore emulator`
               );
             }
           }
