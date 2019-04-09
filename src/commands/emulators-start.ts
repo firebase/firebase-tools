@@ -14,6 +14,7 @@ import requireAuth = require("../requireAuth");
 
 // TODO: This should be a TS import
 const FunctionsEmulator = require("../functionsEmulator");
+const emulatorConstants = require("../emulator/constants");
 
 const VALID_EMULATORS = ["database", "firestore", "functions"];
 
@@ -112,39 +113,28 @@ module.exports = new Command("emulators:start")
     const targets: string[] = filterTargets(options, VALID_EMULATORS);
     utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
 
-    // TODO(samstern): Decide on emulator default addresses
     const functionsAddr = parseAddress(
-      options.config.get("emulators.functions.address", "localhost:5000")
+      options.config.get(
+        "emulators.functions.address",
+        `localhost:${emulatorConstants.getDefaultPort("functions")}`
+      )
     );
     const firestoreAddr = parseAddress(
-      options.config.get("emulators.firestore.address", "localhost:8080")
+      options.config.get(
+        "emulators.firestore.address",
+        `localhost:${emulatorConstants.getDefaultPort("firestore")}`
+      )
     );
-    const rtdbAddr = parseAddress(
-      options.config.get("emulators.functions.address", "localhost:8081")
+    const databaseAddr = parseAddress(
+      options.config.get(
+        "emulators.functions.address",
+        `localhost:${emulatorConstants.getDefaultPort("database")}`
+      )
     );
 
     // Array of functions to be called in order to stop all running emulators.
     // Each should invoke a promise.
     const stopFunctions: Function[] = [];
-
-    // The Functions emulator MUST be started first so that triggers can be
-    // set up correctly.
-    if (targets.indexOf("functions") >= 0) {
-      // TODO: Pass in port and other options
-      const functionsEmu = new FunctionsEmulator(options);
-
-      await startEmulator("functions", functionsAddr, () => {
-        return functionsEmu.start({
-          port: functionsAddr.port,
-          firestorePort: firestoreAddr.port,
-        });
-      });
-
-      stopFunctions.push(() => {
-        utils.logBullet("Stopping functions emulator.");
-        return functionsEmu.stop();
-      });
-    }
 
     if (targets.indexOf("firestore") >= 0) {
       await startEmulator("firestore", firestoreAddr, () => {
@@ -164,10 +154,28 @@ module.exports = new Command("emulators:start")
       // TODO(rpb): start the database emulator
     }
 
+    // The Functions emulator MUST be started last so that triggers can be
+    // set up correctly.
+    if (targets.indexOf("functions") >= 0) {
+      // TODO: Pass in port and other options
+      const functionsEmu = new FunctionsEmulator(options);
+
+      await startEmulator("functions", functionsAddr, () => {
+        return functionsEmu.start({
+          port: functionsAddr.port,
+          firestorePort: firestoreAddr.port,
+        });
+      });
+
+      stopFunctions.push(() => {
+        utils.logBullet("Stopping functions emulator.");
+        return functionsEmu.stop();
+      });
+    }
+
     // Hang until explicitly killed
     return new Promise((res, rej) => {
       process.on("SIGINT", () => {
-        // TODO: First stop all emulators.
         const stopPromises: Promise<any>[] = [];
         stopFunctions.forEach((fn) => {
           stopPromises.push(fn());

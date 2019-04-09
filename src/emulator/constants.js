@@ -6,11 +6,16 @@ var path = require("path");
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(userHome, ".cache", "firebase", "emulators");
 
+const DEFAULT_PORTS = {
+  database: 9000,
+  firestore: 8080,
+  functions: 5000,
+};
+
 const _emulators = {
   database: {
     name: "database",
     instance: null,
-    port: 9000,
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
@@ -22,7 +27,6 @@ const _emulators = {
   firestore: {
     name: "firestore",
     instance: null,
-    port: 8080,
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
@@ -44,6 +48,10 @@ const _commands = {
   },
 };
 
+function _getDefaultPort(emulator) {
+  return DEFAULT_PORTS[emulator];
+}
+
 /**
  * Get a command to start the an emulator.
  * @param emulator - string identifier for the emulator to start.
@@ -52,7 +60,7 @@ const _commands = {
 function _getCommand(emulator, args) {
   var baseCmd = _commands[emulator];
 
-  var defaultPort = _emulators[emulator].port;
+  var defaultPort = DEFAULT_PORTS[emulator];
   if (!args["port"]) {
     args["port"] = defaultPort;
   }
@@ -75,4 +83,5 @@ module.exports = {
   emulators: _emulators,
   commands: _commands,
   getCommand: _getCommand,
+  getDefaultPort: _getDefaultPort,
 };

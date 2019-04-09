@@ -18,6 +18,7 @@ import * as parseTriggers from "./parseTriggers";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
+const emulatorConstants = require("./emulator/constants");
 
 class FunctionsEmulator {
   private server: any;
@@ -26,12 +27,13 @@ class FunctionsEmulator {
 
   async start(args: any): Promise<any> {
     if (!args) {
+      // TODO: This should probably be fatal
       args = {};
     }
 
-    // TODO: Centralize these defaults
-    const port = args["port"] || 5000;
-    const firestorePort = args["firestorePort"] || 8080;
+    // TODO: What about the situation where firestore is not present?
+    const port = args.port;
+    const firestorePort = args.firestorePort;
 
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(
