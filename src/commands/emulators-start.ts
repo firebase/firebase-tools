@@ -10,6 +10,8 @@ import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
 import * as pf from "portfinder";
 
+import requireAuth = require("../requireAuth");
+
 // TODO: This should be a TS import
 const FunctionsEmulator = require("../functionsEmulator");
 
@@ -29,27 +31,27 @@ function parseAddress(address: string): Address {
   const u = url.parse(normalized);
   const host = u.hostname || "localhost";
   const portStr = u.port || "8080";
-  const port = parseInt(portStr);
+  const port = parseInt(portStr, 10);
 
   return { host, port };
 }
 
-async function checkPortOpen(port: number) {
+async function checkPortOpen(port: number): Promise<boolean> {
   try {
-    await pf.getPortPromise({ port: port, stopPort: port });
+    await pf.getPortPromise({ port, stopPort: port });
     return true;
   } catch (e) {
     return false;
   }
 }
 
-async function waitForPortClosed(port: number) {
+async function waitForPortClosed(port: number): Promise<void> {
   const interval = 250;
   const timeout = 30000;
 
   return new Promise(async (res, rej) => {
     let elapsed = 0;
-    const intId = setInterval(async function() {
+    const intId = setInterval(async () => {
       const open = await checkPortOpen(port);
       if (!open) {
         // If the port is NOT open that means the emulator is running
@@ -70,7 +72,7 @@ async function waitForPortClosed(port: number) {
   });
 }
 
-async function startEmulator(name: string, addr: Address, startFn: () => Promise<any>) {
+async function startEmulator(name: string, addr: Address, startFn: () => Promise<any>): Promise<void> {
   const portOpen = await checkPortOpen(addr.port);
   if (!portOpen) {
     return utils.reject(`Port ${addr.port} is not open, could not start ${name} emulator.`, {});
@@ -83,6 +85,7 @@ async function startEmulator(name: string, addr: Address, startFn: () => Promise
 }
 
 module.exports = new Command("emulators:start")
+  .before(requireAuth)
   .description("start the local Firebase emulators")
   .option(
     "--only <list>",
@@ -121,6 +124,7 @@ module.exports = new Command("emulators:start")
     if (targets.indexOf("functions") >= 0) {
       await startEmulator("functions", functionsAddr, () => {
         // TODO: Pass in port and other options
+        // TODO: We need to hang until the emulator is closed...
         const functionsEmu = new FunctionsEmulator(options);
         return functionsEmu.start();
       });

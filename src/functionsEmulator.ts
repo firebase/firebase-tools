@@ -4,31 +4,37 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
 import * as express from "express";
-import * as getProjectId from "./getProjectId";
-import * as functionsConfig from "./functionsConfig";
-import * as utils from "./utils";
-import * as logger from "./logger";
-import * as parseTriggers from "./parseTriggers";
 import * as fft from "firebase-functions-test";
 import { Change, EventContext } from "firebase-functions";
 import * as request from "request";
 import * as grpc from "grpc";
 import * as admin from "firebase-admin";
+
+import * as getProjectId from "./getProjectId";
+import * as functionsConfig from "./functionsConfig";
+import * as utils from "./utils";
+import * as logger from "./logger";
+import * as parseTriggers from "./parseTriggers";
+
+// TODO: Should be a TS import
 const jsdiff = require("diff");
 
 class FunctionsEmulator {
   private server: any;
 
-  public constructor(private options: any) {}
+  constructor(private options: any) {}
 
-  async start(...args: any[]) {
+  async start(...args: any[]): Promise<any> {
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(
       this.options.config.projectDir,
       this.options.config.get("functions.source")
     );
+
+    // TODO: This call requires authentication, which we should remove eventually
     const firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-    var initializeAppWarned = false;
+
+    let initializeAppWarned = false;
 
     process.env.FIREBASE_CONFIG = JSON.stringify(firebaseConfig);
     process.env.FIREBASE_PROJECT = projectId;
@@ -45,11 +51,11 @@ class FunctionsEmulator {
       sslCreds: grpc.credentials.createInsecure(),
     });
 
-    const admin_resolve = require.resolve("firebase-admin", {
+    const adminResolve = require.resolve("firebase-admin", {
       paths: [path.join(functionsDir, "node_modules")],
     });
-    const admin_mock = {
-      initializeApp() {
+    const adminMock = {
+      initializeApp(): admin.app.App {
         if (!initializeAppWarned) {
           console.log(
             `${clc.yellow(
@@ -62,9 +68,9 @@ class FunctionsEmulator {
       },
     };
 
-    (admin_mock as any).default = admin_mock;
-    require.cache[admin_resolve] = {
-      exports: admin_mock,
+    (adminMock as any).default = adminMock;
+    require.cache[adminResolve] = {
+      exports: adminMock,
     };
 
     let triggers;
@@ -83,27 +89,27 @@ class FunctionsEmulator {
     }
 
     const triggersByName = triggers.reduce(
-      (triggersByName: { [trigger_name: string]: any }, trigger: any) => {
+      (triggersByName: { [triggerName: string]: any }, trigger: any) => {
         trigger.getRawFunction = () => {
-          const old_function = _.get(require(functionsDir), trigger.entryPoint);
+          const oldFunction = _.get(require(functionsDir), trigger.entryPoint);
           delete require.cache[require.resolve(functionsDir)];
           const module = require(functionsDir);
 
-          const new_function = _.get(module, trigger.entryPoint);
+          const newFunction = _.get(module, trigger.entryPoint);
 
-          const old_str = old_function.run.toString();
-          const new_str = new_function.run.toString();
+          const oldStr = oldFunction.run.toString();
+          const newStr = newFunction.run.toString();
 
-          if (old_str !== new_str) {
+          if (oldStr !== newStr) {
             console.log(
               `${clc.blue("[FUNCTION:FIRESTORE]")} Your function "${
                 trigger.name
               }" has been changed, here's the diff...`
             );
 
-            const diff = jsdiff.diffChars(old_str, new_str);
+            const diff = jsdiff.diffChars(oldStr, newStr);
 
-            diff.forEach(function(part: any) {
+            diff.forEach((part: any) => {
               const color = part.added ? "green" : part.removed ? "red" : "blackBright";
               process.stderr.write((clc as any)[color](part.value));
             });
@@ -115,7 +121,7 @@ class FunctionsEmulator {
               trigger.name
             }" will be invoked, here's the logs...`
           );
-          return new_function;
+          return newFunction;
         };
         trigger.getWrappedFunction = () => {
           return fft().wrap(trigger.getRawFunction());
@@ -128,12 +134,12 @@ class FunctionsEmulator {
 
     const hub = express();
 
-    hub.use(function(req, res, next) {
+    hub.use((req, res, next) => {
       let data = "";
-      req.on("data", function(chunk) {
+      req.on("data", (chunk: any) => {
         data += chunk;
       });
-      req.on("end", function() {
+      req.on("end", () => {
         (req as any).rawBody = data;
         next();
       });
@@ -205,16 +211,17 @@ class FunctionsEmulator {
         console.log = (...messages: any[]) => {
           log(clc.blackBright(">"), ...messages);
         };
-        var _err;
+
+        let caughtErr;
         try {
           func(data, ctx);
         } catch (err) {
-          _err = err;
+          caughtErr = err;
         }
         console.log = log;
 
-        if (_err) {
-          const lines = _err.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
+        if (caughtErr) {
+          const lines = caughtErr.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
 
           console.log(`${clc.blackBright("> ")}${lines}`);
         }
@@ -248,7 +255,7 @@ class FunctionsEmulator {
               return;
             }
 
-            if (JSON.stringify(JSON.parse(body)) == "{}") {
+            if (JSON.stringify(JSON.parse(body)) === "{}") {
               console.log(
                 `${clc.green(
                   "[FIRESTORE]"
@@ -261,13 +268,14 @@ class FunctionsEmulator {
     });
   }
 
-  stop() {
+  stop(): any {
     this.server.close();
   }
 }
 
 const wildcardRegex = new RegExp("{[^/{}]*}", "g");
-function _extractParamsFromPath(wildcardPath: string, snapshotPath: string) {
+
+function _extractParamsFromPath(wildcardPath: string, snapshotPath: string): any {
   if (!_isValidWildcardMatch(wildcardPath, snapshotPath)) {
     return {};
   }
@@ -278,7 +286,7 @@ function _extractParamsFromPath(wildcardPath: string, snapshotPath: string) {
   return wildcardChunks
     .slice(-snapshotChucks.length)
     .reduce((params: { [key: string]: string }, chunk, index) => {
-      let match = wildcardKeyRegex.exec(chunk);
+      const match = wildcardKeyRegex.exec(chunk);
       if (match) {
         const wildcardKey = match[1];
         const potentialWildcardValue = snapshotChucks[index];
@@ -290,7 +298,7 @@ function _extractParamsFromPath(wildcardPath: string, snapshotPath: string) {
     }, {});
 }
 
-function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string) {
+function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
   const wildcardChunks = _trimSlashes(wildcardPath).split("/");
   const snapshotChucks = _trimSlashes(snapshotPath).split("/");
 
@@ -305,7 +313,7 @@ function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string) {
   return !mismatchedChunks.length;
 }
 
-export function _trimSlashes(path: string) {
+export function _trimSlashes(path: string): string {
   return path
     .split("/")
     .filter((c) => c)
