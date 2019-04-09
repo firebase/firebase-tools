@@ -27,12 +27,8 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
 
   const path = `/v1alpha1/projects/${projectId}/locations/${rewrite.run.region ||
     "us-central1"}/services/${rewrite.run.serviceId}`;
-  const requestOptions = {
-    origin: cloudRunApiOrigin,
-    auth: true,
-  };
   logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
-  return apiRequest("GET", path, requestOptions)
+  return apiRequest("GET", path, { origin: cloudRunApiOrigin, auth: true })
     .then((res) => {
       const url = get(res, "body.status.address.hostname");
       if (!url) {
