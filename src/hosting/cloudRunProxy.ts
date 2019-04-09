@@ -4,7 +4,7 @@ import { get } from "lodash";
 import { errorRequestHandler, proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
-import { request as apiRequest } from "../api";
+import { request as apiRequest, cloudRunApiOrigin } from "../api";
 
 export interface CloudRunProxyOptions {
   project?: string;
@@ -28,7 +28,7 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
   const path = `/v1alpha1/projects/${projectId}/locations/${rewrite.run.region ||
     "us-central1"}/services/${rewrite.run.serviceId}`;
   const requestOptions = {
-    origin: "https://run.googleapis.com",
+    origin: cloudRunApiOrigin,
     auth: true,
   };
   logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
