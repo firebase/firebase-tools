@@ -7,8 +7,6 @@ import * as express from "express";
 import * as fft from "firebase-functions-test";
 import { Change, EventContext } from "firebase-functions";
 import * as request from "request";
-import * as grpc from "grpc";
-import * as admin from "firebase-admin";
 
 import * as getProjectId from "./getProjectId";
 import * as functionsConfig from "./functionsConfig";
@@ -50,23 +48,29 @@ class FunctionsEmulator {
     process.env.FIREBASE_PROJECT = projectId;
     process.env.GCLOUD_PROJECT = projectId;
 
-    const app = admin.initializeApp({ projectId });
-
-    // TODO: This needs to point at the running Firestore emulator
-    app.firestore().settings({
-      projectId,
-      port: firestorePort,
-      servicePath: "localhost",
-      service: "firestore.googleapis.com",
-      sslCreds: grpc.credentials.createInsecure(),
-    });
+    let app: any;
 
     try {
       const adminResolve = require.resolve("firebase-admin", {
         paths: [path.join(functionsDir, "node_modules")],
       });
-      const adminMock = {
-        initializeApp(): admin.app.App {
+      const grpc = require(require.resolve("grpc", {
+        paths: [path.join(functionsDir, "node_modules")],
+      }));
+
+      const admin = require(adminResolve);
+      app = admin.initializeApp({ projectId });
+
+      app.firestore().settings({
+        projectId,
+        port: firestorePort,
+        servicePath: "localhost",
+        service: "firestore.googleapis.com",
+        sslCreds: grpc.credentials.createInsecure(),
+      });
+
+      admin.initializeApp = () => {
+        {
           if (!initializeAppWarned) {
             utils.logWarning(
               'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
@@ -74,12 +78,11 @@ class FunctionsEmulator {
             initializeAppWarned = true;
           }
           return app;
-        },
+        }
       };
 
-      (adminMock as any).default = adminMock;
       require.cache[adminResolve] = {
-        exports: adminMock,
+        exports: admin,
       };
     } catch (err) {
       utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
