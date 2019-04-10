@@ -82,7 +82,9 @@ class FunctionsEmulator {
         exports: adminMock,
       };
     } catch (err) {
-      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
+      utils.logWarning(
+        `Could not initialize your functions code, did you forget to "npm install"?`
+      );
     }
 
     let triggers;
@@ -233,14 +235,12 @@ class FunctionsEmulator {
 
     this.server = hub.listen(port, () => {
       logger.debug(`[functions] Functions emulator is live on port ${port}`);
-      logger.info(
-        `[functions] Attempting to contact Firestore emulator on port ${firestorePort}`
-      );
+      logger.info(`[functions] Attempting to contact Firestore emulator on port ${firestorePort}`);
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
         if (trigger.httpsTrigger) {
           const url = `http://localhost:${port}/functions/projects/${projectId}/triggers/${name}`;
-          logger.info(`[functions] HTTP trigger initialized at "${url}"`)
+          logger.info(`[functions] HTTP trigger initialized at "${url}"`);
         }
         if (trigger.eventTrigger) {
           const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });

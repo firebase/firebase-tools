@@ -1,6 +1,8 @@
 "use strict";
 
 import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as pf from "portfinder";
 import * as url from "url";
 
 import * as Command from "../command";
@@ -8,7 +10,6 @@ import * as logger from "../logger";
 import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
-import * as pf from "portfinder";
 
 import requireAuth = require("../requireAuth");
 
@@ -80,7 +81,17 @@ async function startEmulator(
 ): Promise<void> {
   const portOpen = await checkPortOpen(addr.port);
   if (!portOpen) {
-    return utils.reject(`Port ${addr.port} is not open, could not start ${name} emulator.`, {});
+    utils.logWarning(`Port ${addr.port} is not open, could not start ${name} emulator.`);
+    utils.logBullet(`To select a different port for the emulator, update your "firebase.json":
+    {
+      // ...
+      "emulators": {
+        "${name}": {
+          "address": "localhost:${clc.yellow("PORT")}"
+        }
+      }
+    }`);
+    return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
   utils.logBullet(`Starting ${name} emulator at ${addr.host}:${addr.port}`);
