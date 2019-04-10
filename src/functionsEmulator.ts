@@ -20,6 +20,8 @@ import * as parseTriggers from "./parseTriggers";
 const jsdiff = require("diff");
 const emulatorConstants = require("./emulator/constants");
 
+const SUPPORTED_SERVICES = ["firestore.googleapis.com"];
+
 class FunctionsEmulator {
   private server: any;
 
@@ -52,7 +54,6 @@ class FunctionsEmulator {
 
     const app = admin.initializeApp({ projectId });
 
-    // TODO: This needs to point at the running Firestore emulator
     app.firestore().settings({
       projectId,
       port: firestorePort,
@@ -235,16 +236,34 @@ class FunctionsEmulator {
 
     this.server = hub.listen(port, () => {
       logger.debug(`[functions] Functions emulator is live on port ${port}`);
-      logger.info(`[functions] Attempting to contact Firestore emulator on port ${firestorePort}`);
+      utils.logLabeledBullet(
+        "functions",
+        `Attempting to contact firestore emulator on port ${firestorePort}`
+      );
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
         if (trigger.httpsTrigger) {
           const url = `http://localhost:${port}/functions/projects/${projectId}/triggers/${name}`;
-          logger.info(`[functions] HTTP trigger initialized at "${url}"`);
+          utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
+          return;
         }
-        if (trigger.eventTrigger) {
+
+        const isSupported =
+          trigger.eventTrigger && SUPPORTED_SERVICES.indexOf(trigger.eventTrigger.service) >= 0;
+        if (!isSupported) {
+          logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
+
+          const service = trigger.eventTrigger.service;
+          utils.logWarning(
+            `Trigger ${name} not emulated because the service "${service}" is not yet supported.`
+          );
+          return;
+        }
+
+        // TODO: This currently assumes Firestore. Need to support other trigger types/services.
+        if (isSupported) {
           const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
-          logger.info(`[functions] Attempting to set up firestore trigger "${name}"`);
+          utils.logLabeledBullet("functions", `Setting up firestore trigger "${name}"`);
 
           request.put(
             `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
@@ -258,8 +277,9 @@ class FunctionsEmulator {
               }
 
               if (JSON.stringify(JSON.parse(body)) === "{}") {
-                logger.debug(
-                  `[functions] Trigger "${name}" has been acknowledged by the Firestore emulator`
+                utils.logLabeledSuccess(
+                  "functions",
+                  `Trigger "${name}" has been acknowledged by the firestore emulator.`
                 );
               }
             }

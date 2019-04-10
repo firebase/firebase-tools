@@ -19,6 +19,10 @@ const emulatorConstants = require("../emulator/constants");
 
 const VALID_EMULATORS = ["database", "firestore", "functions"];
 
+// Array of functions to be called in order to stop all running emulators.
+// Each should invoke a promise.
+const stopFns: Function[] = [];
+
 interface Address {
   host: string;
   port: number;
@@ -91,13 +95,26 @@ async function startEmulator(
         }
       }
     }`);
+
+    await cleanShutdown();
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
-  utils.logBullet(`Starting ${name} emulator at ${addr.host}:${addr.port}`);
+  utils.logLabeledBullet(name, `Starting emulator at ${addr.host}:${addr.port}`);
   await startFn();
   await waitForPortClosed(addr.port);
-  utils.logSuccess(`${name} emulator running.`);
+  utils.logLabeledSuccess(name, "Emulator running.");
+}
+
+async function cleanShutdown() {
+  utils.logBullet("Shutting down emulators.");
+
+  const stopPromises: Promise<any>[] = [];
+  stopFns.forEach((fn) => {
+    stopPromises.push(fn());
+  });
+
+  return Promise.all(stopPromises);
 }
 
 module.exports = new Command("emulators:start")
@@ -138,14 +155,10 @@ module.exports = new Command("emulators:start")
     );
     const databaseAddr = parseAddress(
       options.config.get(
-        "emulators.functions.address",
+        "emulators.database.address",
         `localhost:${emulatorConstants.getDefaultPort("database")}`
       )
     );
-
-    // Array of functions to be called in order to stop all running emulators.
-    // Each should invoke a promise.
-    const stopFunctions: Function[] = [];
 
     if (targets.indexOf("firestore") >= 0) {
       await startEmulator("firestore", firestoreAddr, () => {
@@ -155,14 +168,27 @@ module.exports = new Command("emulators:start")
         });
       });
 
-      stopFunctions.push(() => {
-        utils.logBullet("Stopping firestore emulator.");
+      stopFns.push(() => {
         javaEmulator.stop("firestore");
       });
     }
 
     if (targets.indexOf("database") >= 0) {
-      // TODO(rpb): start the database emulator
+      await startEmulator("database", databaseAddr, () => {
+        return javaEmulator.start("database", {
+          port: databaseAddr.port,
+        });
+      });
+
+      // TODO: When the database emulator is integrated with the Functions
+      //       emulator, we will need to pass the port in and remove this warning
+      utils.logWarning(
+        `Note: the database emulator is not currently integrated with the functions emulator.`
+      );
+
+      stopFns.push(() => {
+        javaEmulator.stop("database");
+      });
     }
 
     // The Functions emulator MUST be started last so that triggers can be
@@ -178,8 +204,7 @@ module.exports = new Command("emulators:start")
         });
       });
 
-      stopFunctions.push(() => {
-        utils.logBullet("Stopping functions emulator.");
+      stopFns.push(() => {
         return functionsEmu.stop();
       });
     }
@@ -187,12 +212,7 @@ module.exports = new Command("emulators:start")
     // Hang until explicitly killed
     return new Promise((res, rej) => {
       process.on("SIGINT", () => {
-        const stopPromises: Promise<any>[] = [];
-        stopFunctions.forEach((fn) => {
-          stopPromises.push(fn());
-        });
-
-        Promise.all(stopPromises)
+        cleanShutdown()
           .then(res)
           .catch(res);
       });
