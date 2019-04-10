@@ -163,6 +163,7 @@ module.exports = new Command("emulators:start")
     if (targets.indexOf("firestore") >= 0) {
       await startEmulator("firestore", firestoreAddr, () => {
         return javaEmulator.start("firestore", {
+          host: firestoreAddr.host,
           port: firestoreAddr.port,
           functions_emulator: `${functionsAddr.host}:${functionsAddr.port}`,
         });
@@ -176,6 +177,7 @@ module.exports = new Command("emulators:start")
     if (targets.indexOf("database") >= 0) {
       await startEmulator("database", databaseAddr, () => {
         return javaEmulator.start("database", {
+          host: databaseAddr.host,
           port: databaseAddr.port,
         });
       });
