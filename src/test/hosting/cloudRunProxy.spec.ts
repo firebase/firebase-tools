@@ -18,6 +18,7 @@ describe("cloudRunProxy", () => {
   const fakeRewrite: CloudRunProxyRewrite = { run: { serviceId: "helloworld" } };
 
   const cloudRunServiceOrigin = "https://helloworld-hash-uc.a.run.app";
+  const cloudRunServiceOriginAsia = "https://helloworld-hash-as.a.run.app";
 
   before(() => {
     nock(cloudRunApiOrigin)
@@ -55,10 +56,65 @@ describe("cloudRunProxy", () => {
     nock(cloudRunServiceOrigin)
       .get("/sockettimeout")
       .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });
+
+    nock(cloudRunApiOrigin)
+      .get("/v1alpha1/projects/project-foo/locations/asia-southeast1/services/helloworld")
+      .reply(200, { status: { address: { hostname: cloudRunServiceOriginAsia } } });
+
+    nock(cloudRunServiceOriginAsia)
+      .get("/")
+      .reply(200, "live version");
+
+    nock(cloudRunApiOrigin)
+      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/empty")
+      .reply(404, { error: "service doesn't exist" });
+
+    nock(cloudRunApiOrigin)
+      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/badService")
+      .reply(200, { status: { address: {} } });
   });
 
   after(() => {
     nock.cleanAll();
+  });
+
+  it("should error when not provided a valid Cloud Run service ID", async () => {
+    const mwGenerator = await cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator({ run: { serviceId: "" } });
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(500, /Cloud Run rewrites must supply a service ID/g)
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should error when the Cloud Run service doesn't exist", async () => {
+    const mwGenerator = await cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator({ run: { serviceId: "empty" } });
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(500, /service doesn't exist/g)
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should error when the Cloud Run service doesn't exist", async () => {
+    const mwGenerator = await cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator({ run: { serviceId: "badService" } });
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(500, /Cloud Run URL doesn't exist/g)
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
   });
 
   it("should resolve a function returns middleware that proxies to the live version", async () => {
@@ -72,6 +128,62 @@ describe("cloudRunProxy", () => {
       .then(() => {
         expect(spyMw.calledOnce).to.be.true;
       });
+  });
+
+  it("should resolve to a live version in another region", async () => {
+    const mwGenerator = await cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator({ run: { serviceId: "helloworld", region: "asia-southeast1" } });
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(200, "live version")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should cache calls to look up Cloud Run service URLs", async () => {
+    const multiCallOrigin = "https://multiLookup-hash-uc.a.run.app";
+    const multiNock = nock(cloudRunApiOrigin)
+      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .reply(200, { status: { address: { hostname: multiCallOrigin } } });
+    nock(multiCallOrigin)
+      .persist() // Gets called multiple times
+      .get("/")
+      .reply(200, "live version");
+
+    const mwGenerator = await cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator({ run: { serviceId: "multiLookup" } });
+    const spyMw = sinon.spy(mw);
+
+    await supertest(spyMw)
+      .get("/")
+      .expect(200, "live version");
+    await expect(spyMw.calledOnce).to.be.true;
+    await expect(multiNock.isDone()).to.be.true;
+
+    // New rewrite for the same Cloud Run service
+    const failMultiNock = nock(cloudRunApiOrigin)
+      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .reply(500, "should not happen");
+
+    const mw2Generator = await cloudRunProxy(fakeOptions);
+    const mw2 = await mw2Generator({ run: { serviceId: "multiLookup" } });
+    const spyMw2 = sinon.spy(mw2);
+
+    await supertest(spyMw2)
+      .get("/")
+      .expect(200, "live version");
+    await expect(spyMw2.calledOnce).to.be.true;
+    await expect(failMultiNock.isDone()).to.be.false;
+
+    // Second hit to the same path
+    await supertest(spyMw2)
+      .get("/")
+      .expect(200, "live version");
+    await expect(spyMw2.calledTwice).to.be.true;
+    await expect(failMultiNock.isDone()).to.be.false;
   });
 
   it("should pass through normal 404 errors", async () => {
