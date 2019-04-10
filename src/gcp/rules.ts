@@ -79,7 +79,10 @@ const MAX_RULESET_PAGE_SIZE = 100;
 /**
  * Lists the rulesets for the given project.
  */
-export async function listRulesets(projectId: string, pageToken?: string): Promise<PageOfRulesets> {
+export async function listRulesets(
+  projectId: string,
+  pageToken?: string
+): Promise<ListRulesetsResponse> {
   const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/rulesets`, {
     auth: true,
     origin: api.rulesOrigin,
@@ -94,7 +97,7 @@ export async function listRulesets(projectId: string, pageToken?: string): Promi
   return _handleErrorResponse(response);
 }
 
-export interface PageOfRulesets {
+export interface ListRulesetsResponse {
   rulesets: object[];
   nextPageToken?: string;
 }
