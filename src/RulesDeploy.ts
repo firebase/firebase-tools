@@ -7,13 +7,21 @@ import logger = require("./logger");
 import FirebaseError = require("./error");
 import utils = require("./utils");
 
+// The status code the Firebase Rules backend sends to indicate too many rulesets.
+const QUOTA_EXCEEDED_STATUS_CODE = 429;
+
+// How many old rulesets is enough to cause problems?
+const RULESET_COUNT_LIMIT = 1000;
+
+// how many old rulesets should we delete to free up quota?
+const RULESETS_TO_GC = 10;
+
 export class RulesDeploy {
   type: any;
   options: any;
   project: any;
   rulesFiles: any;
   rulesetNames: any;
-
   constructor(options: any, type: any) {
     this.type = type;
     this.options = options;
@@ -66,7 +74,30 @@ export class RulesDeploy {
         })
       );
     });
-    return Promise.all(promises);
+    return Promise.all(promises).catch(async (err) => {
+      if (err.status === QUOTA_EXCEEDED_STATUS_CODE) {
+        utils.logBullet(
+          clc.bold.yellow(this.type + ":") + " quota exceeded error while uploading rules"
+        );
+        const history = await gcp.rules.listAllRulesets(this.options.project);
+        if (history.length > RULESET_COUNT_LIMIT) {
+          clc.yellow(
+            `too many rulesets (${history.length}), deleting some old ones to free up space...`
+          );
+          utils.logBullet(
+            clc.bold.yellow(this.type + ":") +
+              ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
+          );
+          for (const entry of history.reverse().slice(0, RULESETS_TO_GC)) {
+            const rulesetId = entry.name.split("/").pop()!;
+            await gcp.rules.deleteRuleset(this.options.project, rulesetId);
+          }
+          utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
+          return this.createRulesets();
+        }
+      }
+      throw err;
+    });
   }
 
   release(filename: any, resourceName: any): Promise<any> {
