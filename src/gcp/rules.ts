@@ -97,6 +97,22 @@ export async function listRulesets(
   return _handleErrorResponse(response);
 }
 
+/**
+ * Lists all the rulesets for the given project. May require many network requests.
+ */
+export async function listAllRulesets(
+  projectId: string,
+): Promise<object[]> {
+  let pageToken = undefined;
+  let rulesets: object[] = [];
+  do {
+    const response: ListRulesetsResponse = await listRulesets(projectId, pageToken);
+    rulesets = rulesets.concat(response.rulesets);
+    pageToken = response.nextPageToken;
+  } while (pageToken);
+  return rulesets;
+}
+
 export interface ListRulesetsResponse {
   rulesets: object[];
   nextPageToken?: string;

@@ -63,9 +63,27 @@ RulesDeploy.prototype = {
       );
       promises.push(
         gcp.rules.createRuleset(self.options.project, files)
-        .catch(err => {
+        .catch(async err => {
           if (err.status === QUOTA_EXCEEDED) {
-            console.log("too many rulesets, we should delete some and then retry!");
+            utils.logBullet(
+              clc.bold.yellow(self.type + ":") + " quota exceeded error while uploading rules"
+            );
+            const history = await gcp.rules.listAllRulesets(self.options.project);
+            if (history.length > 1000) {
+              clc.yellow(`too many rulesets (${history.length}), deleting some old ones to free up space...`);
+              utils.logBullet(
+                clc.bold.yellow(self.type + ":") + ` deleting 10 oldest rules (of ${history.length})`
+              );
+              for (let entry of history.reverse().slice(0, 10)) {
+                const rulesetId = entry.name.split('/').pop();
+                await gcp.rules.deleteRuleset(self.options.project, rulesetId);
+              }
+              clc.blue('deleted 10 old rulesets, retrying upload...');
+              utils.logBullet(
+                clc.bold.cyan(self.type + ":") + " retrying upload for " + clc.bold(filename) + "..."
+              );
+              return gcp.rules.createRuleset(self.options.project, files);
+            }
           }
           throw err;
         }).then(function(rulesetName) {
