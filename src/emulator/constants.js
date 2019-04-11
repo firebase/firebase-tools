@@ -9,7 +9,7 @@ const CACHE_DIR =
 const DEFAULT_PORTS = {
   database: 9000,
   firestore: 8080,
-  functions: 5000,
+  functions: 8088,
 };
 
 const _emulators = {
