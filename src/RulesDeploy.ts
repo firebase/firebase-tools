@@ -8,13 +8,13 @@ import FirebaseError = require("./error");
 import utils = require("./utils");
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
-private const QUOTA_EXCEEDED_STATUS_CODE = 429;
+const QUOTA_EXCEEDED_STATUS_CODE = 429;
 
 // How many old rulesets is enough to cause problems?
-private const RULESET_COUNT_LIMIT = 1000;
+const RULESET_COUNT_LIMIT = 1000;
 
 // how many old rulesets should we delete to free up quota?
-private const RULESETS_TO_GC = 10;
+const RULESETS_TO_GC = 10;
 
 export class RulesDeploy {
   type: any;
@@ -88,7 +88,7 @@ export class RulesDeploy {
             clc.bold.yellow(this.type + ":") +
               ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
           );
-          for (let entry of history.reverse().slice(0, RULESETS_TO_GC)) {
+          for (const entry of history.reverse().slice(0, RULESETS_TO_GC)) {
             const rulesetId = entry.name.split("/").pop()!;
             await gcp.rules.deleteRuleset(this.options.project, rulesetId);
           }

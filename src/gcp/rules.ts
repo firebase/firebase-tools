@@ -101,18 +101,18 @@ export async function listRulesets(
  * Lists all the rulesets for the given project. May require many network requests.
  */
 export async function listAllRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
-  let pageToken = undefined;
+  let pageToken;
   let rulesets: ListRulesetsEntry[] = [];
   do {
     const response: ListRulesetsResponse = await listRulesets(projectId, pageToken);
-    rulesets = rulesets.concat(response.entries);
+    rulesets = rulesets.concat(response.rulesets);
     pageToken = response.nextPageToken;
   } while (pageToken);
   return rulesets;
 }
 
 export interface ListRulesetsResponse {
-  entries: ListRulesetsEntry[];
+  rulesets: ListRulesetsEntry[];
   nextPageToken?: string;
 }
 
