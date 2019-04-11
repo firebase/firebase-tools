@@ -74,6 +74,53 @@ export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
   return _handleErrorResponse(response);
 }
 
+const MAX_RULESET_PAGE_SIZE = 100;
+
+/**
+ * Lists the rulesets for the given project.
+ */
+export async function listRulesets(
+  projectId: string,
+  pageToken?: string
+): Promise<ListRulesetsResponse> {
+  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/rulesets`, {
+    auth: true,
+    origin: api.rulesOrigin,
+    query: {
+      pageSize: MAX_RULESET_PAGE_SIZE,
+      pageToken,
+    },
+  });
+  if (response.status === 200) {
+    return response.body;
+  }
+  return _handleErrorResponse(response);
+}
+
+export interface ListRulesetsResponse {
+  rulesets: object[];
+  nextPageToken?: string;
+}
+
+/**
+ * Delete the ruleset from the given project. If the ruleset is referenced
+ * by a release, the operation will fail.
+ */
+export async function deleteRuleset(projectId: string, id: string): Promise<void> {
+  const response = await api.request(
+    "DELETE",
+    `/${API_VERSION}/projects/${projectId}/rulesets/${id}`,
+    {
+      auth: true,
+      origin: api.rulesOrigin,
+    }
+  );
+  if (response.status === 200) {
+    return;
+  }
+  return _handleErrorResponse(response);
+}
+
 /**
  * Creates a new ruleset which can then be associated with a release.
  * @param projectId Project on which you want to create the ruleset.
