@@ -16,23 +16,34 @@ import * as parseTriggers from "./parseTriggers";
 // TODO: Should be a TS import
 const jsdiff = require("diff");
 
+const SERVICE_FIRESTORE = "firestore.googleapis.com";
+const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
+
+interface FunctionsEmulatorArgs {
+  port?: number;
+  firestorePort?: number;
+}
+
 class FunctionsEmulator {
   private server: any;
 
+  private port: number = emulatorConstants.getDefaultPort("functions");
+  private firestorePort: number = -1;
+
   constructor(private options: any) {}
 
-  async start(args: any): Promise<any> {
+  async start(args: FunctionsEmulatorArgs = {}): Promise<any> {
     // We do this in start to avoid attempting to initialize admin on require
     const { Change } = require("firebase-functions");
 
-    if (!args) {
-      // TODO: This should probably be fatal
-      args = {};
+
+    if (args.port) {
+      this.port = args.port;
     }
 
-    // TODO: What about the situation where firestore is not present?
-    const port = args.port;
-    const firestorePort = args.firestorePort;
+    if (args.firestorePort) {
+      this.firestorePort = args.firestorePort;
+    }
 
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(
@@ -49,7 +60,18 @@ class FunctionsEmulator {
     process.env.FIREBASE_PROJECT = projectId;
     process.env.GCLOUD_PROJECT = projectId;
 
-    let app: any;
+    const app = admin.initializeApp({ projectId });
+
+    if (this.firestorePort > 0) {
+      app.firestore().settings({
+        projectId,
+        port: this.firestorePort,
+        servicePath: "localhost",
+        service: "firestore.googleapis.com",
+        sslCreds: grpc.credentials.createInsecure(),
+      });
+    }
+
     try {
       const adminResolve = require.resolve("firebase-admin", {
         paths: [path.join(functionsDir, "node_modules")],
@@ -85,7 +107,9 @@ class FunctionsEmulator {
         exports: admin,
       };
     } catch (err) {
-      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
+      utils.logWarning(
+        `Could not initialize your functions code, did you forget to "npm install"?`
+      );
     }
 
     let triggers;
@@ -234,42 +258,66 @@ class FunctionsEmulator {
       }
     });
 
-    this.server = hub.listen(port, () => {
-      logger.debug(`[functions] Functions emulator is live on port ${port}`);
-      logger.info(
-        `[functions] Attempting to contact Firestore emulator on port ${firestorePort}`
-      );
+    this.server = hub.listen(this.port, () => {
+      logger.debug(`[functions] Functions emulator is live on port ${this.port}`);
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
         if (trigger.httpsTrigger) {
-          const url = `http://localhost:${port}/functions/projects/${projectId}/triggers/${name}`;
-          logger.info(`[functions] HTTP trigger initialized at "${url}"`)
+          const url = `http://localhost:${
+            this.port
+          }/functions/projects/${projectId}/triggers/${name}`;
+          utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
+          return;
         }
-        if (trigger.eventTrigger) {
-          const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
-          logger.info(`[functions] Attempting to set up firestore trigger "${name}"`);
 
-          request.put(
-            `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
-            {
-              body: bundle,
-            },
-            (err, res, body) => {
-              if (err) {
-                console.warn(body);
-                return;
-              }
-
-              if (JSON.stringify(JSON.parse(body)) === "{}") {
-                logger.debug(
-                  `[functions] Trigger "${name}" has been acknowledged by the Firestore emulator`
-                );
-              }
-            }
-          );
+        let service: string = _.get(trigger, "eventTrigger.service", "unknown");
+        switch (service) {
+          case SERVICE_FIRESTORE:
+            this.addFirestoreTrigger(projectId, name, trigger);
+            break;
+          default:
+            logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
+            utils.logWarning(
+              `Ignpring trigger "${name}" because the service "${service}" is not yet supported.`
+            );
+            break;
         }
       });
     });
+  }
+
+  addFirestoreTrigger(projectId: string, name: string, trigger: any) {
+    if (this.firestorePort <= 0) {
+      utils.logWarning(`Ignoring trigger "${name}" because the Firestore emulator is not running.`);
+      return;
+    }
+
+    const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
+    utils.logLabeledBullet("functions", `Setting up firestore trigger "${name}"`);
+
+    utils.logLabeledBullet(
+      "functions",
+      `Attempting to contact firestore emulator on port ${this.firestorePort}`
+    );
+    request.put(
+      `http://localhost:${this.firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
+      {
+        body: bundle,
+      },
+      (err, res, body) => {
+        if (err) {
+          utils.logWarning("Error adding trigger: " + err);
+          return;
+        }
+
+        if (JSON.stringify(JSON.parse(body)) === "{}") {
+          utils.logLabeledSuccess(
+            "functions",
+            `Trigger "${name}" has been acknowledged by the firestore emulator.`
+          );
+        }
+      }
+    );
   }
 
   stop(): any {
