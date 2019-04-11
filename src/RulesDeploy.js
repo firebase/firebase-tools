@@ -17,6 +17,8 @@ function RulesDeploy(options, type) {
   this.rulesetNames = {};
 }
 
+const QUOTA_EXCEEDED = 429;
+
 RulesDeploy.prototype = {
   /**
    * Adds a new project-relative file to be included in compilation and
@@ -60,7 +62,13 @@ RulesDeploy.prototype = {
         clc.bold.cyan(self.type + ":") + " uploading rules " + clc.bold(filename) + "..."
       );
       promises.push(
-        gcp.rules.createRuleset(self.options.project, files).then(function(rulesetName) {
+        gcp.rules.createRuleset(self.options.project, files)
+        .catch(err => {
+          if (err.status === QUOTA_EXCEEDED) {
+            console.log("too many rulesets, we should delete some and then retry!");
+          }
+          throw err;
+        }).then(function(rulesetName) {
           self.rulesetNames[filename] = rulesetName;
         })
       );
