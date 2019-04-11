@@ -36,7 +36,7 @@ function parseAddress(address: string): Address {
 
   const u = url.parse(normalized);
   const host = u.hostname || "localhost";
-  const portStr = u.port || "8080";
+  const portStr = u.port || "-1";
   const port = parseInt(portStr, 10);
 
   return { host, port };
