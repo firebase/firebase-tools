@@ -12,6 +12,8 @@ import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
+import * as emulatorConstants from "./emulator/constants";
+import { Change } from "firebase-functions";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
@@ -60,18 +62,8 @@ class FunctionsEmulator {
     process.env.FIREBASE_PROJECT = projectId;
     process.env.GCLOUD_PROJECT = projectId;
 
-    const app = admin.initializeApp({ projectId });
 
-    if (this.firestorePort > 0) {
-      app.firestore().settings({
-        projectId,
-        port: this.firestorePort,
-        servicePath: "localhost",
-        service: "firestore.googleapis.com",
-        sslCreds: grpc.credentials.createInsecure(),
-      });
-    }
-
+    let app: any;
     try {
       const adminResolve = require.resolve("firebase-admin", {
         paths: [path.join(functionsDir, "node_modules")],
@@ -83,13 +75,16 @@ class FunctionsEmulator {
       const admin = require(adminResolve);
       app = admin.initializeApp({ projectId });
 
-      app.firestore().settings({
-        projectId,
-        port: firestorePort,
-        servicePath: "localhost",
-        service: "firestore.googleapis.com",
-        sslCreds: grpc.credentials.createInsecure(),
-      });
+      if (this.firestorePort > 0) {
+        app.firestore().settings({
+          projectId,
+          port: this.firestorePort,
+          servicePath: "localhost",
+          service: "firestore.googleapis.com",
+          sslCreds: grpc.credentials.createInsecure(),
+        });
+      }
+
 
       admin.initializeApp = () => {
         {
@@ -107,9 +102,7 @@ class FunctionsEmulator {
         exports: admin,
       };
     } catch (err) {
-      utils.logWarning(
-        `Could not initialize your functions code, did you forget to "npm install"?`
-      );
+      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
     }
 
     let triggers;
