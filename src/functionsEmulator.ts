@@ -5,20 +5,18 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as express from "express";
 import * as fft from "firebase-functions-test";
-import { Change, EventContext } from "firebase-functions";
 import * as request from "request";
-import * as grpc from "grpc";
-import * as admin from "firebase-admin";
 
 import * as getProjectId from "./getProjectId";
 import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
+import * as emulatorConstants from "./emulator/constants";
+import { Change } from "firebase-functions";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
-const emulatorConstants = require("./emulator/constants");
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
@@ -37,6 +35,10 @@ class FunctionsEmulator {
   constructor(private options: any) {}
 
   async start(args: FunctionsEmulatorArgs = {}): Promise<any> {
+    // We do this in start to avoid attempting to initialize admin on require
+    const { Change } = require("firebase-functions");
+
+
     if (args.port) {
       this.port = args.port;
     }
@@ -60,24 +62,32 @@ class FunctionsEmulator {
     process.env.FIREBASE_PROJECT = projectId;
     process.env.GCLOUD_PROJECT = projectId;
 
-    const app = admin.initializeApp({ projectId });
 
-    if (this.firestorePort > 0) {
-      app.firestore().settings({
-        projectId,
-        port: this.firestorePort,
-        servicePath: "localhost",
-        service: "firestore.googleapis.com",
-        sslCreds: grpc.credentials.createInsecure(),
-      });
-    }
-
+    let app: any;
     try {
       const adminResolve = require.resolve("firebase-admin", {
         paths: [path.join(functionsDir, "node_modules")],
       });
-      const adminMock = {
-        initializeApp(): admin.app.App {
+      const grpc = require(require.resolve("grpc", {
+        paths: [path.join(functionsDir, "node_modules")],
+      }));
+
+      const admin = require(adminResolve);
+      app = admin.initializeApp({ projectId });
+
+      if (this.firestorePort > 0) {
+        app.firestore().settings({
+          projectId,
+          port: this.firestorePort,
+          servicePath: "localhost",
+          service: "firestore.googleapis.com",
+          sslCreds: grpc.credentials.createInsecure(),
+        });
+      }
+
+
+      admin.initializeApp = () => {
+        {
           if (!initializeAppWarned) {
             utils.logWarning(
               'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
@@ -85,17 +95,14 @@ class FunctionsEmulator {
             initializeAppWarned = true;
           }
           return app;
-        },
+        }
       };
 
-      (adminMock as any).default = adminMock;
       require.cache[adminResolve] = {
-        exports: adminMock,
+        exports: admin,
       };
     } catch (err) {
-      utils.logWarning(
-        `Could not initialize your functions code, did you forget to "npm install"?`
-      );
+      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
     }
 
     let triggers;
@@ -216,7 +223,7 @@ class FunctionsEmulator {
           params,
           auth: {},
           authType: "UNAUTHENTICATED",
-        } as EventContext;
+        };
 
         const func = trigger.getWrappedFunction();
         const log = console.log;
