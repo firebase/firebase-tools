@@ -4,7 +4,7 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var loadCJSON = require("../../loadCJSON");
-var RulesDeploy = require("../../RulesDeploy");
+var RulesDeploy = require("../../RulesDeploy").RulesDeploy;
 var utils = require("../../utils");
 
 function _prepareRules(context, options) {

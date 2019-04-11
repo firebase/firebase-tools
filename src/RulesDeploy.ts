@@ -1,5 +1,3 @@
-"use strict";
-
 import _ = require("lodash");
 import clc = require("cli-color");
 import fs = require("fs");
@@ -9,7 +7,7 @@ import logger = require("./logger");
 import FirebaseError = require("./error");
 import utils = require("./utils");
 
-class RulesDeploy {
+export class RulesDeploy {
   type: any;
   options: any;
   project: any;
@@ -45,10 +43,9 @@ class RulesDeploy {
    * compilation error.
    */
   compile(): Promise<any> {
-    const self = this;
     const promises: any[] = [];
     _.forEach(this.rulesFiles, (files: any, filename: any) => {
-      promises.push(self._compileRuleset(filename, files));
+      promises.push(this._compileRuleset(filename, files));
     });
     return Promise.all(promises);
   }
@@ -58,15 +55,14 @@ class RulesDeploy {
    * the name for use in the release process later.
    */
   createRulesets(): Promise<any> {
-    const self = this;
-    const promises: any = [];
+    const promises: any[] = [];
     _.forEach(this.rulesFiles, (files: any, filename: any) => {
       utils.logBullet(
-        clc.bold.cyan(self.type + ":") + " uploading rules " + clc.bold(filename) + "..."
+        clc.bold.cyan(this.type + ":") + " uploading rules " + clc.bold(filename) + "..."
       );
       promises.push(
-        gcp.rules.createRuleset(self.options.project, files).then((rulesetName: any) => {
-          self.rulesetNames[filename] = rulesetName;
+        gcp.rules.createRuleset(this.options.project, files).then((rulesetName: any) => {
+          this.rulesetNames[filename] = rulesetName;
         })
       );
     });
@@ -74,12 +70,11 @@ class RulesDeploy {
   }
 
   release(filename: any, resourceName: any): Promise<any> {
-    const self = this;
     return gcp.rules
       .updateOrCreateRelease(this.options.project, this.rulesetNames[filename], resourceName)
       .then(() => {
         utils.logSuccess(
-          clc.bold.green(self.type + ": ") +
+          clc.bold.green(this.type + ": ") +
             "released rules " +
             clc.bold(filename) +
             " to " +
@@ -88,18 +83,17 @@ class RulesDeploy {
       });
   }
 
-  _compileRuleset(filename: any, files: any): Promise<any> {
+  private _compileRuleset(filename: any, files: any): Promise<any> {
     utils.logBullet(
       clc.bold.cyan(this.type + ":") +
         " checking " +
         clc.bold(filename) +
         " for compilation errors..."
     );
-    const self = this;
-    return gcp.rules.testRuleset(self.options.project, files).then((response: any) => {
+    return gcp.rules.testRuleset(this.options.project, files).then((response: any) => {
       if (response.body && response.body.issues && response.body.issues.length > 0) {
-        const warnings: any = [];
-        const errors: any = [];
+        const warnings: any[] = [];
+        const errors: any[] = [];
         response.body.issues.forEach((issue: any) => {
           const issueMessage =
             "[" +
@@ -133,7 +127,7 @@ class RulesDeploy {
       }
 
       utils.logSuccess(
-        clc.bold.green(self.type + ":") +
+        clc.bold.green(this.type + ":") +
           " rules file " +
           clc.bold(filename) +
           " compiled successfully"
@@ -142,5 +136,3 @@ class RulesDeploy {
     });
   }
 }
-
-export = RulesDeploy;
