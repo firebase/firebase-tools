@@ -72,33 +72,32 @@ RulesDeploy.prototype = {
         gcp.rules.createRuleset(self.options.project, files).then(function(rulesetName) {
           self.rulesetNames[filename] = rulesetName;
         })
-
       );
     });
-    return Promise.all(promises)
-        .catch(async err => {
-          if (err.status === QUOTA_EXCEEDED_STATUS_CODE) {
-            utils.logBullet(
-              clc.bold.yellow(self.type + ":") + " quota exceeded error while uploading rules"
-            );
-            const history = await gcp.rules.listAllRulesets(self.options.project);
-            if (history.length > RULESET_COUNT_LIMIT) {
-              clc.yellow(`too many rulesets (${history.length}), deleting some old ones to free up space...`);
-              utils.logBullet(
-                clc.bold.yellow(self.type + ":") + ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
-              );
-              for (let entry of history.reverse().slice(0, RULESETS_TO_GC)) {
-                const rulesetId = entry.name.split('/').pop();
-                await gcp.rules.deleteRuleset(self.options.project, rulesetId);
-              }
-              utils.logBullet(
-                clc.bold.yellow(self.type + ":") + " retrying rules upload"
-              );
-              return self.createRulesets();
-            }
+    return Promise.all(promises).catch(async (err) => {
+      if (err.status === QUOTA_EXCEEDED_STATUS_CODE) {
+        utils.logBullet(
+          clc.bold.yellow(self.type + ":") + " quota exceeded error while uploading rules"
+        );
+        const history = await gcp.rules.listAllRulesets(self.options.project);
+        if (history.length > RULESET_COUNT_LIMIT) {
+          clc.yellow(
+            `too many rulesets (${history.length}), deleting some old ones to free up space...`
+          );
+          utils.logBullet(
+            clc.bold.yellow(self.type + ":") +
+              ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
+          );
+          for (let entry of history.reverse().slice(0, RULESETS_TO_GC)) {
+            const rulesetId = entry.name.split("/").pop();
+            await gcp.rules.deleteRuleset(self.options.project, rulesetId);
           }
-          throw err;
-        });
+          utils.logBullet(clc.bold.yellow(self.type + ":") + " retrying rules upload");
+          return self.createRulesets();
+        }
+      }
+      throw err;
+    });
   },
 
   release: function(filename, resourceName) {

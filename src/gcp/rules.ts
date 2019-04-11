@@ -100,9 +100,7 @@ export async function listRulesets(
 /**
  * Lists all the rulesets for the given project. May require many network requests.
  */
-export async function listAllRulesets(
-  projectId: string,
-): Promise<object[]> {
+export async function listAllRulesets(projectId: string): Promise<object[]> {
   let pageToken = undefined;
   let rulesets: object[] = [];
   do {
