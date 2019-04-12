@@ -3,42 +3,24 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as pf from "portfinder";
-import * as url from "url";
 
 import * as Command from "../command";
 import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
 import * as track from "../track";
-
+import * as serveHosting from "../serve/hosting";
 import requireAuth = require("../requireAuth");
+import requireConfig = require("../requireConfig");
+import getProjectNumber = require("../getProjectNumber");
 import { EmulatorRegistry } from "../emulator/registry";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators, Address } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 
 // TODO: This should come from the enum
-const VALID_EMULATORS = ["database", "firestore", "functions"];
-
-interface Address {
-  host: string;
-  port: number;
-}
-
-function parseAddress(address: string): Address {
-  let normalized = address;
-  if (!normalized.startsWith("http")) {
-    normalized = `http://${normalized}`;
-  }
-
-  const u = url.parse(normalized);
-  const host = u.hostname || "localhost";
-  const portStr = u.port || "-1";
-  const port = parseInt(portStr, 10);
-
-  return { host, port };
-}
+const VALID_EMULATORS = ["database", "firestore", "functions", "hosting"];
 
 async function checkPortOpen(port: number): Promise<boolean> {
   try {
@@ -143,8 +125,81 @@ async function cleanShutdown(): Promise<boolean> {
   return true;
 }
 
+async function startAll(options: any) {
+  // Emulators config is specified in firebase.json as:
+  // "emulators": {
+  //   "firestore": {
+  //     "address": "localhost:9005"
+  //   },
+  //   // ...
+  // }
+  //
+  // The list of emulators to start is filtered two ways:
+  // 1) The service must have a top-level entry in firebase.json
+  // 2) If the --only flag is passed, then this list is the intersection
+  //
+  // Emulators must be started in this order:
+  // 1) Firestore / Database --> no dependencies
+  // 2) Functions --> must be started after any emulators which expose triggers
+  // 3) Hosting --> must be started after Functions to enable redirects
+  const targets: string[] = filterTargets(options, VALID_EMULATORS);
+  utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
+
+  if (targets.includes("firestore")) {
+    const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
+    await startEmulator(
+      Emulators.FIRESTORE,
+      firestoreAddr,
+      new FirestoreEmulator({
+        host: firestoreAddr.host,
+        port: firestoreAddr.port,
+      })
+    );
+  }
+
+  if (targets.includes("database")) {
+    const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
+    await startEmulator(
+      Emulators.DATABASE,
+      databaseAddr,
+      new DatabaseEmulator({
+        host: databaseAddr.host,
+        port: databaseAddr.port,
+      })
+    );
+
+    // TODO: When the database emulator is integrated with the Functions
+    //       emulator, we will need to pass the port in and remove this warning
+    utils.logWarning(
+      `Note: the database emulator is not currently integrated with the functions emulator.`
+    );
+  }
+
+  if (targets.includes("functions")) {
+    const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
+    await startEmulator(
+      Emulators.FUNCTIONS,
+      functionsAddr,
+      new FunctionsEmulator(options, {
+        host: functionsAddr.host,
+        port: functionsAddr.port,
+      })
+    );
+  }
+
+  if (targets.includes("hosting")) {
+    const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
+    // TODO: Start hosting
+    utils.logWarning("Hosting emulator not currently implemented.");
+  }
+}
+
 module.exports = new Command("emulators:start")
-  .before(requireAuth)
+  .before(async (options: any) => {
+    await requireConfig(options);
+    await requireAuth(options);
+    await getProjectNumber(options);
+  })
   .description("start the local Firebase emulators")
   .option(
     "--only <list>",
@@ -154,77 +209,11 @@ module.exports = new Command("emulators:start")
       JSON.stringify(VALID_EMULATORS)
   )
   .action(async (options: any) => {
-    // Emulators config is specified in firebase.json as:
-    // "emulators": {
-    //   "firestore": {
-    //     "address": "localhost:9005"
-    //   },
-    //   // ...
-    // }
-    // The list of emulators to start is filtered two ways:
-    // 1) The service must have a top-level entry in firebase.json
-    // 2) If the --only flag is passed, then this list is the intersection
-    const targets: string[] = filterTargets(options, VALID_EMULATORS);
-    utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
-
-    const functionsAddr = parseAddress(
-      options.config.get(
-        "emulators.functions.address",
-        `localhost:${Constants.getDefaultPort(Emulators.FUNCTIONS)}`
-      )
-    );
-    const firestoreAddr = parseAddress(
-      options.config.get(
-        "emulators.firestore.address",
-        `localhost:${Constants.getDefaultPort(Emulators.FIRESTORE)}`
-      )
-    );
-    const databaseAddr = parseAddress(
-      options.config.get(
-        "emulators.database.address",
-        `localhost:${Constants.getDefaultPort(Emulators.DATABASE)}`
-      )
-    );
-
-    if (targets.indexOf("firestore") >= 0) {
-      await startEmulator(
-        Emulators.FIRESTORE,
-        firestoreAddr,
-        new FirestoreEmulator({
-          host: firestoreAddr.host,
-          port: firestoreAddr.port,
-          functions_emulator: `${functionsAddr.host}:${functionsAddr.port}`,
-        })
-      );
-    }
-
-    if (targets.indexOf("database") >= 0) {
-      await startEmulator(
-        Emulators.DATABASE,
-        databaseAddr,
-        new DatabaseEmulator({ host: databaseAddr.host, port: databaseAddr.port })
-      );
-
-      // TODO: When the database emulator is integrated with the Functions
-      //       emulator, we will need to pass the port in and remove this warning
-      utils.logWarning(
-        `Note: the database emulator is not currently integrated with the functions emulator.`
-      );
-    }
-
-    // The Functions emulator MUST be started last so that triggers can be
-    // set up correctly.
-    if (targets.indexOf("functions") >= 0) {
-      // TODO: Should not have to pass in the Firestore port, it should be
-      //       fetched from the registry.
-      await startEmulator(
-        Emulators.FUNCTIONS,
-        functionsAddr,
-        new FunctionsEmulator(options, {
-          port: functionsAddr.port,
-          firestorePort: firestoreAddr.port,
-        })
-      );
+    try {
+      await startAll(options);
+    } catch (e) {
+      await cleanShutdown();
+      throw e;
     }
 
     // Hang until explicitly killed

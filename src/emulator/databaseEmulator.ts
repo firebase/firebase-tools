@@ -1,14 +1,19 @@
 import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorInstance, Emulators } from "../emulator/types";
 
-export class DatabaseEmulator implements EmulatorInstance {
-  constructor(private args: any) {}
+interface DatabaseEmulatorArgs {
+  port?: number;
+  host?: string;
+}
 
-  start(): Promise<void> {
+export class DatabaseEmulator implements EmulatorInstance {
+  constructor(private args: DatabaseEmulatorArgs) {}
+
+  start(): Promise<any> {
     return javaEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  stop(): Promise<void> {
+  stop(): Promise<any> {
     return javaEmulators.stop(Emulators.DATABASE);
   }
 }

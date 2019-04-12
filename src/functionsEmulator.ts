@@ -15,13 +15,14 @@ import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
 import { Constants } from "./emulator/constants";
 import { EmulatorInstance, Emulators } from "./emulator/types";
+import { EmulatorRegistry } from "./emulator/registry";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
 
 interface FunctionsEmulatorArgs {
   port?: number;
-  firestorePort?: number;
+  host?: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -39,9 +40,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.port = this.args.port;
     }
 
-    if (this.args.firestorePort) {
-      this.firestorePort = this.args.firestorePort;
-    }
+    // Get the port where Firestore is running (or -1);
+    this.firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
 
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(

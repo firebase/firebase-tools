@@ -1,14 +1,15 @@
 import { ChildProcess } from "child_process";
 
-export interface EmulatorInstance {
-  start(): Promise<any>;
-  stop(): Promise<any>;
-}
-
-export enum Emulators {
+export const enum Emulators {
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
+  HOSTING = "hosting",
+}
+
+export interface EmulatorInstance {
+  start(): Promise<any>;
+  stop(): Promise<any>;
 }
 
 export interface EmulatorInfo {
@@ -31,4 +32,9 @@ export interface JavaEmulatorDetails {
   expectedSize: number;
   expectedChecksum: string;
   localPath: string;
+}
+
+export interface Address {
+  host: string;
+  port: number;
 }
