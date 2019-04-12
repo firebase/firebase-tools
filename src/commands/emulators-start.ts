@@ -6,22 +6,22 @@ import * as pf from "portfinder";
 import * as url from "url";
 
 import * as Command from "../command";
-import * as logger from "../logger";
 import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
+import * as track from "../track";
 
 import requireAuth = require("../requireAuth");
+import { EmulatorRegistry } from "../emulator/registry";
+import { EmulatorInfo, Emulators, EmulatorInstance } from "../emulator/types";
+import { Constants } from "../emulator/constants";
+import { FunctionsEmulator } from "../functionsEmulator";
+import { DatabaseEmulator } from "../emulator/databaseEmulator";
+import { database } from "firebase-admin";
+import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 
-// TODO: This should be a TS import
-const FunctionsEmulator = require("../functionsEmulator");
-const emulatorConstants = require("../emulator/constants");
-
+// TODO: This should come from the enum
 const VALID_EMULATORS = ["database", "firestore", "functions"];
-
-// Array of functions to be called in order to stop all running emulators.
-// Each should invoke a promise.
-const stopFns: Function[] = [];
 
 interface Address {
   host: string;
@@ -79,10 +79,13 @@ async function waitForPortClosed(port: number): Promise<void> {
 }
 
 async function startEmulator(
-  name: string,
+  name: Emulators,
   addr: Address,
-  startFn: () => Promise<any>
+  instance: EmulatorInstance
 ): Promise<void> {
+  // Log the command for analytics
+  track("emulators:start", name);
+
   const portOpen = await checkPortOpen(addr.port);
   if (!portOpen) {
     utils.logWarning(`Port ${addr.port} is not open, could not start ${name} emulator.`);
@@ -101,20 +104,45 @@ async function startEmulator(
   }
 
   utils.logLabeledBullet(name, `Starting emulator at ${addr.host}:${addr.port}`);
-  await startFn();
+
+  // Start the emulator, wait for it to grab its port, and then mark it as started
+  // in the registry.
+  await instance.start();
   await waitForPortClosed(addr.port);
+
+  const info: EmulatorInfo = {
+    host: addr.host,
+    port: addr.port,
+    instance,
+  };
+  EmulatorRegistry.setInfo(name, info);
+
   utils.logLabeledSuccess(name, "Emulator running.");
+}
+
+function stopEmulator(name: Emulators): Promise<any> {
+  if (!EmulatorRegistry.isRunning(name)) {
+    return Promise.resolve();
+  }
+
+  const instance = EmulatorRegistry.getInstance(name);
+  if (!instance) {
+    return Promise.resolve();
+  }
+
+  return instance.stop();
 }
 
 async function cleanShutdown() {
   utils.logBullet("Shutting down emulators.");
 
-  const stopPromises: Promise<any>[] = [];
-  stopFns.forEach((fn) => {
-    stopPromises.push(fn());
-  });
+  for (const name of EmulatorRegistry.listRunning()) {
+    utils.logBullet(`Stopping ${name} emulator`);
+    await stopEmulator(name);
+    EmulatorRegistry.clearInfo(name);
+  }
 
-  return Promise.all(stopPromises);
+  return true;
 }
 
 module.exports = new Command("emulators:start")
@@ -144,71 +172,61 @@ module.exports = new Command("emulators:start")
     const functionsAddr = parseAddress(
       options.config.get(
         "emulators.functions.address",
-        `localhost:${emulatorConstants.getDefaultPort("functions")}`
+        `localhost:${Constants.getDefaultPort(Emulators.FUNCTIONS)}`
       )
     );
     const firestoreAddr = parseAddress(
       options.config.get(
         "emulators.firestore.address",
-        `localhost:${emulatorConstants.getDefaultPort("firestore")}`
+        `localhost:${Constants.getDefaultPort(Emulators.FIRESTORE)}`
       )
     );
     const databaseAddr = parseAddress(
       options.config.get(
         "emulators.database.address",
-        `localhost:${emulatorConstants.getDefaultPort("database")}`
+        `localhost:${Constants.getDefaultPort(Emulators.DATABASE)}`
       )
     );
 
     if (targets.indexOf("firestore") >= 0) {
-      await startEmulator("firestore", firestoreAddr, () => {
-        return javaEmulator.start("firestore", {
+      await startEmulator(
+        Emulators.FIRESTORE,
+        firestoreAddr,
+        new FirestoreEmulator({
           host: firestoreAddr.host,
           port: firestoreAddr.port,
           functions_emulator: `${functionsAddr.host}:${functionsAddr.port}`,
-        });
-      });
-
-      stopFns.push(() => {
-        javaEmulator.stop("firestore");
-      });
+        })
+      );
     }
 
     if (targets.indexOf("database") >= 0) {
-      await startEmulator("database", databaseAddr, () => {
-        return javaEmulator.start("database", {
-          host: databaseAddr.host,
-          port: databaseAddr.port,
-        });
-      });
+      await startEmulator(
+        Emulators.DATABASE,
+        databaseAddr,
+        new DatabaseEmulator({ host: databaseAddr.host, port: databaseAddr.port })
+      );
 
       // TODO: When the database emulator is integrated with the Functions
       //       emulator, we will need to pass the port in and remove this warning
       utils.logWarning(
         `Note: the database emulator is not currently integrated with the functions emulator.`
       );
-
-      stopFns.push(() => {
-        javaEmulator.stop("database");
-      });
     }
 
     // The Functions emulator MUST be started last so that triggers can be
     // set up correctly.
     if (targets.indexOf("functions") >= 0) {
-      // TODO: Pass in port and other options
-      const functionsEmu = new FunctionsEmulator(options);
-
-      await startEmulator("functions", functionsAddr, () => {
-        return functionsEmu.start({
+      // TODO: Should not have to pass in the Firestore port, it should be
+      //       fetched from the registry.
+      await startEmulator(
+        Emulators.FUNCTIONS,
+        functionsAddr,
+        new FunctionsEmulator(options, {
           port: functionsAddr.port,
           firestorePort: firestoreAddr.port,
-        });
-      });
-
-      stopFns.push(() => {
-        return functionsEmu.stop();
-      });
+        })
+      );
     }
 
     // Hang until explicitly killed

@@ -1,17 +1,22 @@
 "use strict";
 
-const FirebaseError = require("../error");
-const crypto = require("crypto");
-const emulatorConstants = require("./constants");
-const fs = require("fs-extra");
-const request = require("request");
+import * as crypto from "crypto";
+import * as request from "request";
+
+import * as FirebaseError from "../error";
+import * as utils from "../utils";
+import { Emulators } from "./types";
+import * as javaEmulators from "../serve/javaEmulators";
+
 const tmp = require("tmp");
-const utils = require("../utils");
+const fs = require("fs-extra");
 
 tmp.setGracefulCleanup();
 
-module.exports = (name) => {
-  const emulator = emulatorConstants.emulators[name];
+type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE;
+
+module.exports = (name: DownloadableEmulator) => {
+  const emulator = javaEmulators.get(name);
   utils.logLabeledBullet(name, "downloading emulator...");
   fs.ensureDirSync(emulator.cacheDir);
   return downloadToTmp(emulator.remoteUrl).then((tmpfile) =>
@@ -28,12 +33,12 @@ module.exports = (name) => {
  * Downloads the resource at `remoteUrl` to a temporary file.
  * Resolves to the temporary file's name, rejects if there's any error.
  */
-function downloadToTmp(remoteUrl) {
+function downloadToTmp(remoteUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let tmpfile = tmp.fileSync();
     let req = request.get(remoteUrl);
     let writeStream = fs.createWriteStream(tmpfile.name);
-    req.on("error", (err) => reject(err));
+    req.on("error", (err: any) => reject(err));
     req.on("response", (response) => {
       if (response.statusCode !== 200) {
         reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
@@ -50,7 +55,7 @@ function downloadToTmp(remoteUrl) {
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-function validateSize(filepath, expectedSize) {
+function validateSize(filepath: string, expectedSize: number) {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -67,11 +72,11 @@ function validateSize(filepath, expectedSize) {
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-function validateChecksum(filepath, expectedChecksum) {
+function validateChecksum(filepath: string, expectedChecksum: string) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);
-    stream.on("data", (data) => hash.update(data));
+    stream.on("data", (data: any) => hash.update(data));
     stream.on("end", () => {
       const checksum = hash.digest("hex");
       return checksum === expectedChecksum

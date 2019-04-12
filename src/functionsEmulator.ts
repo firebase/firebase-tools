@@ -12,8 +12,8 @@ import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
-import * as emulatorConstants from "./emulator/constants";
-import { Change } from "firebase-functions";
+import { Constants } from "./emulator/constants";
+import { Emulators, EmulatorInstance } from "./emulator/types";
 
 // TODO: Should be a TS import
 const jsdiff = require("diff");
@@ -26,25 +26,23 @@ interface FunctionsEmulatorArgs {
   firestorePort?: number;
 }
 
-class FunctionsEmulator {
+export class FunctionsEmulator implements EmulatorInstance {
+  private port: number = Constants.getDefaultPort(Emulators.FUNCTIONS);
+  private firestorePort: number = -1;
   private server: any;
 
-  private port: number = emulatorConstants.getDefaultPort("functions");
-  private firestorePort: number = -1;
+  constructor(private options: any, private args: FunctionsEmulatorArgs) {}
 
-  constructor(private options: any) {}
-
-  async start(args: FunctionsEmulatorArgs = {}): Promise<any> {
+  async start(): Promise<any> {
     // We do this in start to avoid attempting to initialize admin on require
     const { Change } = require("firebase-functions");
 
-
-    if (args.port) {
-      this.port = args.port;
+    if (this.args.port) {
+      this.port = this.args.port;
     }
 
-    if (args.firestorePort) {
-      this.firestorePort = args.firestorePort;
+    if (this.args.firestorePort) {
+      this.firestorePort = this.args.firestorePort;
     }
 
     const projectId = getProjectId(this.options, false);
@@ -61,7 +59,6 @@ class FunctionsEmulator {
     process.env.FIREBASE_CONFIG = JSON.stringify(firebaseConfig);
     process.env.FIREBASE_PROJECT = projectId;
     process.env.GCLOUD_PROJECT = projectId;
-
 
     let app: any;
     try {
@@ -85,7 +82,6 @@ class FunctionsEmulator {
         });
       }
 
-
       admin.initializeApp = () => {
         {
           if (!initializeAppWarned) {
@@ -102,7 +98,9 @@ class FunctionsEmulator {
         exports: admin,
       };
     } catch (err) {
-      utils.logWarning(`Could not initialize your functions code, did you forget to "npm install"?`)
+      utils.logWarning(
+        `Could not initialize your functions code, did you forget to "npm install"?`
+      );
     }
 
     let triggers;
@@ -313,8 +311,8 @@ class FunctionsEmulator {
     );
   }
 
-  stop(): any {
-    this.server.close();
+  stop(): Promise<any> {
+    return Promise.resolve(this.server.close());
   }
 }
 
@@ -358,11 +356,9 @@ function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): bool
   return !mismatchedChunks.length;
 }
 
-export function _trimSlashes(path: string): string {
+function _trimSlashes(path: string): string {
   return path
     .split("/")
     .filter((c) => c)
     .join("/");
 }
-
-module.exports = FunctionsEmulator;
