@@ -83,8 +83,7 @@ export class RulesDeploy {
           clc.bold.yellow(this.type + ":") + " quota exceeded error while uploading rules"
         );
 
-        const rulesets: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
-        const history = _.sortBy(rulesets, (entry) => entry.createTime);
+        const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
         if (history.length > RULESET_COUNT_LIMIT) {
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
@@ -99,13 +98,10 @@ export class RulesDeploy {
             default: false,
           });
           if (shouldContinue) {
-            const entriesToDelete = _.sortBy(unreleased, (entry) => entry.createTime).slice(
-              0,
-              RULESETS_TO_GC
-            );
+            // Find the oldest unreleased rulesets. They're sorted chronlogically.
+            const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
             for (const entry of entriesToDelete) {
-              const rulesetId = entry.name.split("/").pop()!;
-              await gcp.rules.deleteRuleset(this.options.project, rulesetId);
+              await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
             }
             utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
             return this.createRulesets();

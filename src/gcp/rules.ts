@@ -133,7 +133,7 @@ export async function listRulesets(
 }
 
 /**
- * Lists all the rulesets for the given project.
+ * Lists all the rulesets for the given project, in reverse chronological order.
  *
  * May require many network requests.
  */
@@ -145,7 +145,7 @@ export async function listAllRulesets(projectId: string): Promise<ListRulesetsEn
     rulesets = rulesets.concat(response.rulesets);
     pageToken = response.nextPageToken;
   } while (pageToken);
-  return rulesets;
+  return _.orderBy(rulesets, ["createTime"], ["desc"]);
 }
 
 export interface ListRulesetsResponse {
@@ -156,6 +156,11 @@ export interface ListRulesetsResponse {
 export interface ListRulesetsEntry {
   name: string;
   createTime: string; // ISO 8601 format
+}
+
+export function getRulesetId(ruleset: ListRulesetsEntry): string {
+  // Ruleset names looks like "projects/<project>/rulesets/<ruleset_id>"
+  return ruleset.name.split("/").pop()!;
 }
 
 /**
