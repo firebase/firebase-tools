@@ -7,6 +7,8 @@ import logger = require("./logger");
 import FirebaseError = require("./error");
 import utils = require("./utils");
 
+import * as prompt from "./prompt";
+
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
 
@@ -81,19 +83,24 @@ export class RulesDeploy {
         );
         const history = await gcp.rules.listAllRulesets(this.options.project);
         if (history.length > RULESET_COUNT_LIMIT) {
-          clc.yellow(
-            `too many rulesets (${history.length}), deleting some old ones to free up space...`
-          );
           utils.logBullet(
             clc.bold.yellow(this.type + ":") +
               ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
           );
-          for (const entry of history.reverse().slice(0, RULESETS_TO_GC)) {
-            const rulesetId = entry.name.split("/").pop()!;
-            await gcp.rules.deleteRuleset(this.options.project, rulesetId);
+          const shouldContinue = await prompt.once({
+            type: "confirm",
+            message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+            default: false,
+          });
+          if (shouldContinue) {
+            const entriesToDelete = _.sortBy(history, entry => entry.createTime).slice(0, RULESETS_TO_GC);
+            for (const entry of entriesToDelete) {
+              const rulesetId = entry.name.split("/").pop()!;
+              await gcp.rules.deleteRuleset(this.options.project, rulesetId);
+            }
+            utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
+            return this.createRulesets();
           }
-          utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
-          return this.createRulesets();
         }
       }
       throw err;
