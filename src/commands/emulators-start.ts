@@ -6,7 +6,6 @@ import * as pf from "portfinder";
 import * as url from "url";
 
 import * as Command from "../command";
-import * as javaEmulator from "../serve/javaEmulators";
 import * as filterTargets from "../filterTargets";
 import * as utils from "../utils";
 import * as track from "../track";
@@ -17,7 +16,6 @@ import { EmulatorInfo, Emulators, EmulatorInstance } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
-import { database } from "firebase-admin";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 
 // TODO: This should come from the enum

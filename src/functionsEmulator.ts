@@ -155,9 +155,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     );
 
     const networking_modules = [
-      {module: require("http").globalAgent, method:"createConnection"}, // Handles HTTP
-      {module: require("tls"), method: "connect"}, // Handles HTTPs
-      {module: require("net"), method:"connect"},
+      { module: require("http").globalAgent, method: "createConnection" }, // Handles HTTP
+      { module: require("tls"), method: "connect" }, // Handles HTTPs
+      { module: require("net"), method: "connect" },
       //require("http2").connect
       //require("google-gax").GrpcClient
     ];
@@ -165,17 +165,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     networking_modules.forEach((bundle) => {
       const mod = bundle.module;
       const original = mod[bundle.method].bind(mod);
-      mod[bundle.method] = ((...args: any[]) => {
+      mod[bundle.method] = (...args: any[]) => {
         const hrefs = args.map((arg) => arg.href).filter((href) => href);
         const href = hrefs.length && hrefs[0];
         if (href.indexOf("googleapis.com") !== -1) {
-          logger.info(`Your emulated function is attempting to access a production API "${href}".`)
+          logger.info(`Your emulated function is attempting to access a production API "${href}".`);
         } else {
-          logger.info(`Your emulator function has accessed the URL "${href}".`)
+          logger.info(`Your emulator function has accessed the URL "${href}".`);
         }
 
         return original(...args);
-      });
+      };
     });
 
     const hub = express();
