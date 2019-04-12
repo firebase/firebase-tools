@@ -68,7 +68,7 @@ export interface Release {
 }
 
 export interface ListReleasesResponse {
-  releases: Release[];
+  releases?: Release[];
   nextPageToken?: string;
 }
 
@@ -82,7 +82,9 @@ export async function listAllReleases(projectId: string): Promise<Release[]> {
   let releases: Release[] = [];
   do {
     const response: ListReleasesResponse = await listReleases(projectId, pageToken);
-    releases = releases.concat(response.releases);
+    if (response.releases && response.releases.length > 0) {
+      releases = releases.concat(response.releases);
+    }
     pageToken = response.nextPageToken;
   } while (pageToken);
   return _.orderBy(releases, ["createTime"], ["desc"]);
@@ -142,14 +144,16 @@ export async function listAllRulesets(projectId: string): Promise<ListRulesetsEn
   let rulesets: ListRulesetsEntry[] = [];
   do {
     const response: ListRulesetsResponse = await listRulesets(projectId, pageToken);
-    rulesets = rulesets.concat(response.rulesets);
+    if (response.rulesets) {
+      rulesets = rulesets.concat(response.rulesets);
+    }
     pageToken = response.nextPageToken;
   } while (pageToken);
   return _.orderBy(rulesets, ["createTime"], ["desc"]);
 }
 
 export interface ListRulesetsResponse {
-  rulesets: ListRulesetsEntry[];
+  rulesets?: ListRulesetsEntry[];
   nextPageToken?: string;
 }
 
