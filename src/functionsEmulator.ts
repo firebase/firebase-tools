@@ -1,4 +1,3 @@
-/* tslint:disable:no-console */
 "use strict";
 
 import * as _ from "lodash";
@@ -15,6 +14,11 @@ import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
 import { Constants } from "./emulator/constants";
 import { EmulatorInstance, Emulators } from "./emulator/types";
+import * as prompt from "./prompt";
+
+import * as spawn from "cross-spawn";
+import { spawnSync } from "child_process";
+import { FunctionsRuntimeBundle, getTriggers } from "./functionsShared";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
@@ -32,9 +36,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   constructor(private options: any, private args: FunctionsEmulatorArgs) {}
 
   async start(): Promise<any> {
-    // We do this in start to avoid attempting to initialize admin on require
-    const { Change } = require("firebase-functions");
-
     if (this.args.port) {
       this.port = this.args.port;
     }
@@ -49,129 +50,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.options.config.get("functions.source")
     );
 
+    const nodePath = await _askInstallNodeVersion(functionsDir);
+
     // TODO: This call requires authentication, which we should remove eventually
     const firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-
-    let initializeAppWarned = false;
-
-    process.env.FIREBASE_CONFIG = JSON.stringify(firebaseConfig);
-    process.env.FIREBASE_PROJECT = projectId;
-    process.env.GCLOUD_PROJECT = projectId;
-
-    let app: any;
-    try {
-      const adminResolve = require.resolve("firebase-admin", {
-        paths: [path.join(functionsDir, "node_modules")],
-      });
-      const grpc = require(require.resolve("grpc", {
-        paths: [path.join(functionsDir, "node_modules")],
-      }));
-
-      const admin = require(adminResolve);
-      app = admin.initializeApp({ projectId });
-
-      if (this.firestorePort > 0) {
-        app.firestore().settings({
-          projectId,
-          port: this.firestorePort,
-          servicePath: "localhost",
-          service: "firestore.googleapis.com",
-          sslCreds: grpc.credentials.createInsecure(),
-        });
-      }
-
-      admin.initializeApp = () => {
-        {
-          if (!initializeAppWarned) {
-            utils.logWarning(
-              'Your code attempted to use "admin.initializeApp()" we\'ve ' +
-                "ignored your options and provided an emulated app instead."
-            );
-            initializeAppWarned = true;
-          }
-          return app;
-        }
-      };
-
-      require.cache[adminResolve] = {
-        exports: admin,
-      };
-    } catch (err) {
-      utils.logWarning(
-        `Could not initialize your functions code, did you forget to "npm install"?`
-      );
-    }
-
-    let triggers;
-    try {
-      triggers = await parseTriggers(projectId, functionsDir, {}, JSON.stringify(firebaseConfig));
-    } catch (e) {
-      utils.logWarning(
-        "[functions]" +
-          " Failed to load functions source code. " +
-          "Ensure that you have the latest SDK by running " +
-          clc.bold("npm i --save firebase-functions") +
-          " inside the functions directory."
-      );
-      logger.debug("Error during trigger parsing: ", e.message);
-      throw e;
-    }
-
-    const triggersByName = triggers.reduce((obj: { [triggerName: string]: any }, trigger: any) => {
-      trigger.getRawFunction = () => {
-        const oldFunction = _.get(require(functionsDir), trigger.entryPoint);
-        delete require.cache[require.resolve(functionsDir)];
-        const module = require(functionsDir);
-        const newFunction = _.get(module, trigger.entryPoint);
-
-        if (newFunction.run && oldFunction.run) {
-          const oldStr = oldFunction.run.toString();
-          const newStr = newFunction.run.toString();
-
-          if (oldStr !== newStr) {
-            logger.debug(`[functions] Function "${trigger.name}" has been updated.`);
-            // const diff = jsdiff.diffChars(oldStr, newStr);
-            //
-            // diff.forEach((part: any) => {
-            //   const color = part.added ? "green" : part.removed ? "red" : "blackBright";
-            //   process.stderr.write((clc as any)[color](part.value));
-            // });
-            // process.stderr.write("\n");
-          }
-        }
-        logger.debug(`[functions] Function "${trigger.name}" will be invoked. Logs:`);
-        return newFunction;
-      };
-      trigger.getWrappedFunction = () => {
-        return fft().wrap(trigger.getRawFunction());
-      };
-      obj[trigger.name] = trigger;
-      return obj;
-    }, {});
-
-    const networkingModules = [
-      { module: require("http").globalAgent, method: "createConnection" }, // Handles HTTP
-      { module: require("tls"), method: "connect" }, // Handles HTTPs
-      { module: require("net"), method: "connect" },
-      // require("http2").connect
-      // require("google-gax").GrpcClient
-    ];
-
-    networkingModules.forEach((bundle) => {
-      const mod = bundle.module;
-      const original = mod[bundle.method].bind(mod);
-      mod[bundle.method] = (...args: any[]) => {
-        const hrefs = args.map((arg) => arg.href).filter((v) => v);
-        const href = hrefs.length && hrefs[0];
-        if (href.indexOf("googleapis.com") !== -1) {
-          logger.info(`Your emulated function is attempting to access a production API "${href}".`);
-        } else {
-          logger.info(`Your emulator function has accessed the URL "${href}".`);
-        }
-
-        return original(...args);
-      };
-    });
 
     const hub = express();
 
@@ -186,14 +68,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
     });
 
-    hub.get("/", (req, res) => {
-      res.json(triggersByName);
+    hub.get("/", async (req, res) => {
+      res.send(JSON.stringify(await getTriggers(projectId, functionsDir, firebaseConfig), null, 2));
     });
 
-    hub.get("/functions/projects/:project_id/triggers/:trigger_name", (req, res) => {
+    // TODO: This is trash, I write trash
+    hub.get("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
       logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
+      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
       const trigger = triggersByName[req.params.trigger_name];
-      if (trigger.httpsTrigger) {
+      if (trigger.raw.httpsTrigger) {
         trigger.getRawFunction()(req, res);
       } else {
         res.json({
@@ -203,76 +87,39 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     });
 
-    hub.post("/functions/projects/:project_id/triggers/:trigger_name", (req, res) => {
+    hub.post("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
+      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
       const trigger = triggersByName[req.params.trigger_name];
 
-      if (trigger.httpsTrigger) {
+      if (trigger.raw.httpsTrigger) {
         logger.debug(`[functions] POST request to function rejected`);
-      } else {
-        const body = (req as any).rawBody;
-        const proto = JSON.parse(body);
-
-        const newSnap =
-          proto.data.value &&
-          (app.firestore() as any).snapshot_(proto.data.value, new Date().toISOString(), "json");
-        const oldSnap =
-          proto.data.oldValue &&
-          (app.firestore() as any).snapshot_(proto.data.oldValue, new Date().toISOString(), "json");
-
-        let data;
-        switch (proto.context.eventType) {
-          case "providers/cloud.firestore/eventTypes/document.write":
-            data = Change.fromObjects(oldSnap, newSnap);
-            break;
-          case "providers/cloud.firestore/eventTypes/document.delete":
-            data = Change.fromObjects(oldSnap, newSnap);
-            break;
-          default:
-            data = newSnap && oldSnap ? Change.fromObjects(oldSnap, newSnap) : newSnap;
-        }
-
-        const resourcePath = proto.context.resource.name;
-        const params = _extractParamsFromPath(trigger.eventTrigger.resource, resourcePath);
-
-        const ctx = {
-          eventId: proto.context.eventId,
-          timestamp: proto.context.timestamp,
-          params,
-          auth: {},
-          authType: "UNAUTHENTICATED",
-        };
-
-        const func = trigger.getWrappedFunction();
-        const log = console.log;
-
-        console.log = (...messages: any[]) => {
-          log(clc.blackBright(">"), ...messages);
-        };
-
-        let caughtErr;
-        try {
-          func(data, ctx);
-        } catch (err) {
-          caughtErr = err;
-        }
-        console.log = log;
-
-        if (caughtErr) {
-          const lines = caughtErr.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
-
-          logger.debug(`${clc.blackBright("> ")}${lines}`);
-        }
-
-        logger.debug(`[functions] Function execution complete.`);
-        res.json({ status: "success" });
+        return res.json({ status: "rejected" });
       }
+
+      const frb = {
+        ports: {
+          firestore: this.firestorePort,
+        },
+        cwd: functionsDir,
+        proto: JSON.parse((req as any).rawBody),
+        triggerId: req.params.trigger_name,
+        projectId,
+      } as FunctionsRuntimeBundle;
+
+      const runtime = spawnSync(nodePath, [
+        path.join(__dirname, "functionsRuntime.js"),
+        JSON.stringify(frb),
+      ]);
+      logger.info(runtime.stdout.toString(), runtime.stderr.toString());
+      res.json({ status: "acknowledged" });
     });
 
-    this.server = hub.listen(this.port, () => {
+    this.server = hub.listen(this.port, async () => {
       logger.debug(`[functions] Functions emulator is live on port ${this.port}`);
+      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
       Object.keys(triggersByName).forEach((name) => {
         const trigger = triggersByName[name];
-        if (trigger.httpsTrigger) {
+        if (trigger.raw.httpsTrigger) {
           const url = `http://localhost:${
             this.port
           }/functions/projects/${projectId}/triggers/${name}`;
@@ -280,7 +127,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           return;
         }
 
-        const service: string = _.get(trigger, "eventTrigger.service", "unknown");
+        const service: string = _.get(trigger.raw, "eventTrigger.service", "unknown");
         switch (service) {
           case SERVICE_FIRESTORE:
             this.addFirestoreTrigger(projectId, name, trigger);
@@ -288,7 +135,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           default:
             logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
             utils.logWarning(
-              `Ignpring trigger "${name}" because the service "${service}" is not yet supported.`
+              `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
             );
             break;
         }
@@ -302,7 +149,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    const bundle = JSON.stringify({ eventTrigger: trigger.eventTrigger });
+    const bundle = JSON.stringify({ eventTrigger: trigger.raw.eventTrigger });
     utils.logLabeledBullet("functions", `Setting up firestore trigger "${name}"`);
 
     utils.logLabeledBullet(
@@ -335,49 +182,97 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 }
 
-const wildcardRegex = new RegExp("{[^/{}]*}", "g");
+async function _askInstallNodeVersion(cwd: string): Promise<string> {
+  const pkg = require(path.join(cwd, "package.json"));
 
-function _extractParamsFromPath(wildcardPath: string, snapshotPath: string): any {
-  if (!_isValidWildcardMatch(wildcardPath, snapshotPath)) {
-    return {};
+  // If the developer hasn't specified a Node to use, inform them that it's an option and use default
+  if (!pkg.engines || !pkg.engines.node) {
+    utils.logWarning(
+      "Your functions directory does not specify a Node version. " +
+        "Learn more https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
+    );
+    return process.execPath;
   }
 
-  const wildcardKeyRegex = /{(.+)}/;
-  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
-  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
-  return wildcardChunks
-    .slice(-snapshotChucks.length)
-    .reduce((params: { [key: string]: string }, chunk, index) => {
-      const match = wildcardKeyRegex.exec(chunk);
-      if (match) {
-        const wildcardKey = match[1];
-        const potentialWildcardValue = snapshotChucks[index];
-        if (!wildcardKeyRegex.exec(potentialWildcardValue)) {
-          params[wildcardKey] = potentialWildcardValue;
-        }
+  const hostMajorVersion = process.versions.node.split(".")[0];
+  const requestedMajorVersion = pkg.engines.node;
+  let localMajorVersion = "0";
+  const localNodePath = path.join(cwd, "node_modules/.bin/node");
+
+  // Next check if we have a Node install in the node_modules folder
+  try {
+    const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
+    localMajorVersion = localNodeOutput.slice(1).split(".")[0];
+  } catch (err) {
+    // Will happen if we haven't asked about local version yet
+  }
+
+  // If the requested version is the same as the host, let's use that
+  if (requestedMajorVersion === hostMajorVersion) {
+    utils.logSuccess(`Using node@${requestedMajorVersion} from host.`);
+    return process.execPath;
+  }
+
+  // If the requested version is already locally available, let's use that
+  if (localMajorVersion === requestedMajorVersion) {
+    utils.logSuccess(`Using node@${requestedMajorVersion} from local cache.`);
+    return localNodePath;
+  }
+
+  /*
+    Otherwise we'll begin the conversational flow to install the correct version locally
+   */
+
+  utils.logWarning(
+    `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
+  );
+  utils.logBullet(
+    `We can install node@${requestedMajorVersion} to the "node_modules" without impacting your global "node" install`
+  );
+  const response = await prompt({}, [
+    {
+      name: "node_install",
+      type: "confirm",
+      message: ` Would you like to setup Node ${requestedMajorVersion} for these functions?`,
+      default: true,
+    },
+  ]);
+
+  // If they say yes, install their requested major version locally
+  if (response.node_install) {
+    await _spawnAsPromise("npm", ["install", `node@${requestedMajorVersion}`, "--save-dev"], {
+      cwd,
+      stdio: "inherit",
+    });
+    // TODO: Switching Node versions results in node-gyp errors, run a rebuild after switching versions
+
+    return localNodePath;
+  }
+
+  // If they say no, just warn them about using host version and continue on.
+  utils.logWarning(`Using node@${requestedMajorVersion} from host.`);
+
+  return process.execPath;
+}
+
+async function _spawnAsPromise(
+  command: string,
+  args: string[],
+  options?: { [s: string]: string }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const bin = spawn(command, args, options);
+
+    bin.on("error", (err) => {
+      logger.debug(err.stack);
+      reject(err);
+    });
+
+    bin.on("close", (code) => {
+      if (code === 0) {
+        return resolve();
       }
-      return params;
-    }, {});
-}
-
-function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
-  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
-  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
-
-  if (snapshotChucks.length > wildcardChunks.length) {
-    return false;
-  }
-
-  const mismatchedChunks = wildcardChunks.slice(-snapshotChucks.length).filter((chunk, index) => {
-    return !(wildcardRegex.exec(chunk) || chunk === snapshotChucks[index]);
+      return reject();
+    });
   });
-
-  return !mismatchedChunks.length;
-}
-
-function _trimSlashes(str: string): string {
-  return str
-    .split("/")
-    .filter((c) => c)
-    .join("/");
 }

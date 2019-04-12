@@ -228,7 +228,7 @@ module.exports = new Command("emulators:start")
     }
 
     // Hang until explicitly killed
-    return new Promise((res, rej) => {
+    await new Promise((res, rej) => {
       process.on("SIGINT", () => {
         cleanShutdown()
           .then(res)
