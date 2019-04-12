@@ -86,10 +86,6 @@ export class RulesDeploy {
         const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
         if (history.length > RULESET_COUNT_LIMIT) {
-          const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
-          const isReleased = (ruleset: ListRulesetsEntry) =>
-            !!_.find(releases, (r) => r.rulesetName === ruleset.name);
-          const unreleased: ListRulesetsEntry[] = _.reject(history, isReleased);
           const shouldContinue = await prompt.once({
             type: "confirm",
             message: `You have ${
@@ -98,7 +94,11 @@ export class RulesDeploy {
             default: false,
           });
           if (shouldContinue) {
-            // Find the oldest unreleased rulesets. They're sorted chronlogically.
+            // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
+            const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
+            const isReleased = (ruleset: ListRulesetsEntry) =>
+              !!_.find(releases, (release) => release.rulesetName === ruleset.name);
+            const unreleased: ListRulesetsEntry[] = _.reject(history, isReleased);
             const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
             for (const entry of entriesToDelete) {
               await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
