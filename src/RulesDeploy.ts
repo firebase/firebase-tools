@@ -8,6 +8,7 @@ import FirebaseError = require("./error");
 import utils = require("./utils");
 
 import * as prompt from "./prompt";
+import { ListRulesetsEntry, Release } from "./gcp/rules";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
@@ -81,19 +82,30 @@ export class RulesDeploy {
         utils.logBullet(
           clc.bold.yellow(this.type + ":") + " quota exceeded error while uploading rules"
         );
-        const history = await gcp.rules.listAllRulesets(this.options.project);
+        const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
         if (history.length > RULESET_COUNT_LIMIT) {
-          utils.logBullet(
-            clc.bold.yellow(this.type + ":") +
-              ` deleting ${RULESETS_TO_GC} oldest rules (of ${history.length})`
+          const releases: Release[] = await gcp.rules.listReleases(this.options.project);
+          const isReleased = (ruleset: ListRulesetsEntry) =>
+            !!_.find(releases, (r) => r.rulesetName === ruleset.name);
+          const unreleasedRulesets: ListRulesetsEntry[] = _.reject(history, isReleased);
+          console.log(
+            `eliding ${history.length -
+              unreleasedRulesets.length} rulesets because they're released`
           );
+
+          console.log(releases);
           const shouldContinue = await prompt.once({
             type: "confirm",
-            message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+            message: `You have ${
+              history.length
+            } rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
             default: false,
           });
           if (shouldContinue) {
-            const entriesToDelete = _.sortBy(history, entry => entry.createTime).slice(0, RULESETS_TO_GC);
+            const entriesToDelete = _.sortBy(unreleasedRulesets, (entry) => entry.createTime).slice(
+              0,
+              RULESETS_TO_GC
+            );
             for (const entry of entriesToDelete) {
               const rulesetId = entry.name.split("/").pop()!;
               await gcp.rules.deleteRuleset(this.options.project, rulesetId);

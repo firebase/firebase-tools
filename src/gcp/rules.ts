@@ -53,6 +53,29 @@ export async function getLatestRulesetName(
   return _handleErrorResponse(response);
 }
 
+/**
+ * Lists the releases for the given project.
+ */
+export async function listReleases(projectId: string): Promise<Release[]> {
+  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
+    auth: true,
+    origin: api.rulesOrigin,
+  });
+  if (response.status === 200) {
+    if (response.body.releases && response.body.releases.length > 0) {
+      return _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
+    }
+  }
+  return _handleErrorResponse(response);
+}
+
+export interface Release {
+  name: string;
+  rulesetName: string;
+  createTime: string;
+  updateTime: string;
+}
+
 export interface RulesetFile {
   name: string;
   content: string;
@@ -98,7 +121,9 @@ export async function listRulesets(
 }
 
 /**
- * Lists all the rulesets for the given project. May require many network requests.
+ * Lists all the rulesets for the given project.
+ *
+ * May require many network requests.
  */
 export async function listAllRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
   let pageToken;
@@ -119,6 +144,19 @@ export interface ListRulesetsResponse {
 export interface ListRulesetsEntry {
   name: string;
   createTime: string; // ISO 8601 format
+}
+
+/**
+ * Lists all the rulesets that are not referenced by any release for the given project.
+ *
+ *  May require many network requests.
+ */
+export async function listAllOrphanedRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
+  const releases = await listReleases(projectId);
+  const isReleased = (ruleset: ListRulesetsEntry) =>
+    !!_.find(releases, (r) => r.rulesetName == ruleset.name);
+  const rulesets = await listAllRulesets(projectId);
+  return _.reject(rulesets, isReleased);
 }
 
 /**
