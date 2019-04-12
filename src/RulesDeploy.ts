@@ -110,7 +110,7 @@ export class RulesDeploy {
             const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
             for (const entry of entriesToDelete) {
               await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
-              logger.debug(`[rules] Deleted ${entry.name}`)
+              logger.debug(`[rules] Deleted ${entry.name}`);
             }
             utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
             return this.createRulesets();
