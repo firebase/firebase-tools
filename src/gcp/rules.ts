@@ -27,44 +27,35 @@ export async function getLatestRulesetName(
   projectId: string,
   service: string
 ): Promise<string | null> {
-  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
-    auth: true,
-    origin: api.rulesOrigin,
-  });
-  if (response.status === 200) {
-    if (response.body.releases && response.body.releases.length > 0) {
-      const releases = _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
+  const releases = await listAllReleases(projectId);
+  const prefix = "projects/" + projectId + "/releases/" + service;
+  const release = _.find(releases, (r) => r.name.indexOf(prefix) === 0);
 
-      const prefix = "projects/" + projectId + "/releases/" + service;
-      const release = _.find(releases, (r) => {
-        return r.name.indexOf(prefix) === 0;
-      });
-
-      if (!release) {
-        return null;
-      }
-      return release.rulesetName;
-    }
-
-    // In this case it's likely that Firestore has not been used on this project before.
+  if (!release) {
     return null;
   }
-
-  return _handleErrorResponse(response);
+  return release.rulesetName;
 }
+
+const MAX_RELEASES_PAGE_SIZE = 10;
 
 /**
  * Lists the releases for the given project.
  */
-export async function listReleases(projectId: string): Promise<Release[]> {
+export async function listReleases(
+  projectId: string,
+  pageToken?: string
+): Promise<ListReleasesResponse> {
   const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
     auth: true,
     origin: api.rulesOrigin,
+    query: {
+      pageSize: MAX_RELEASES_PAGE_SIZE,
+      pageToken,
+    },
   });
   if (response.status === 200) {
-    if (response.body.releases && response.body.releases.length > 0) {
-      return _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
-    }
+    return response.body;
   }
   return _handleErrorResponse(response);
 }
@@ -74,6 +65,27 @@ export interface Release {
   rulesetName: string;
   createTime: string;
   updateTime: string;
+}
+
+export interface ListReleasesResponse {
+  releases: Release[];
+  nextPageToken?: string;
+}
+
+/**
+ * Lists all the releases for the given project, in reverse chronological order.
+ *
+ * May require many network requests.
+ */
+export async function listAllReleases(projectId: string): Promise<Release[]> {
+  let pageToken;
+  let releases: Release[] = [];
+  do {
+    const response: ListReleasesResponse = await listReleases(projectId, pageToken);
+    releases = releases.concat(response.releases);
+    pageToken = response.nextPageToken;
+  } while (pageToken);
+  return _.orderBy(releases, ["createTime"], ["desc"]);
 }
 
 export interface RulesetFile {
@@ -144,19 +156,6 @@ export interface ListRulesetsResponse {
 export interface ListRulesetsEntry {
   name: string;
   createTime: string; // ISO 8601 format
-}
-
-/**
- * Lists all the rulesets that are not referenced by any release for the given project.
- *
- *  May require many network requests.
- */
-export async function listAllOrphanedRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
-  const releases = await listReleases(projectId);
-  const isReleased = (ruleset: ListRulesetsEntry) =>
-    !!_.find(releases, (r) => r.rulesetName == ruleset.name);
-  const rulesets = await listAllRulesets(projectId);
-  return _.reject(rulesets, isReleased);
 }
 
 /**
