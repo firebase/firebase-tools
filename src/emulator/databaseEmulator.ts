@@ -4,11 +4,11 @@ import { EmulatorInstance, Emulators } from "../emulator/types";
 export class DatabaseEmulator implements EmulatorInstance {
   constructor(private args: any) {}
 
-  start() {
+  start(): Promise<void> {
     return javaEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  stop() {
+  stop(): Promise<void> {
     return javaEmulators.stop(Emulators.DATABASE);
   }
 }

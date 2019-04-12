@@ -1,17 +1,16 @@
 "use strict";
 
-import { JavaEmulatorDetails, JavaEmulatorCommand, Emulators } from "../emulator/types";
+import { Emulators, JavaEmulatorCommand, JavaEmulatorDetails } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 
 import * as FirebaseError from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import * as track from "../track";
 
-const userHome = require("user-home");
-const path = require("path");
-const fs = require("fs-extra");
+import * as fs from "fs-extra";
+import * as path from "path";
+import * as userHome from "user-home";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
@@ -20,7 +19,7 @@ type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(userHome, ".cache", "firebase", "emulators");
 
-const _emulators: { [s in JavaEmulators]: JavaEmulatorDetails } = {
+const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
   database: {
     name: "database",
     instance: null,
@@ -45,14 +44,14 @@ const _emulators: { [s in JavaEmulators]: JavaEmulatorDetails } = {
   },
 };
 
-const _commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
+const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", _emulators.database.localPath],
+    args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", _emulators.firestore.localPath],
+    args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
   },
 };
 
@@ -61,12 +60,12 @@ const _commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
  * @param emulator - string identifier for the emulator to start.
  * @param args - map<string,string> of addittional args
  */
-function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }) {
-  const baseCmd = _commands[emulator];
+function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaEmulatorCommand {
+  const baseCmd = Commands[emulator];
 
   const defaultPort = Constants.getDefaultPort(emulator);
-  if (!args["port"]) {
-    args["port"] = defaultPort;
+  if (!args.port) {
+    args.port = defaultPort;
   }
 
   const cmdLineArgs = baseCmd.args.slice();
@@ -83,14 +82,17 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }) {
   };
 }
 
-function _fatal(emulator: JavaEmulatorDetails, errorMsg: string) {
+function _fatal(emulator: JavaEmulatorDetails, errorMsg: string): void {
   if (emulator.instance) {
     emulator.instance.kill("SIGINT");
   }
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
-function _runBinary(emulator: JavaEmulatorDetails, command: JavaEmulatorCommand) {
+async function _runBinary(
+  emulator: JavaEmulatorDetails,
+  command: JavaEmulatorCommand
+): Promise<void> {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(emulator.name + "-debug.log");
     emulator.instance = childProcess.spawn(command.binary, command.args, {
@@ -111,7 +113,7 @@ function _runBinary(emulator: JavaEmulatorDetails, command: JavaEmulatorCommand)
     });
 
     emulator.instance.on("error", (err: any) => {
-      if (err.path == "java" && err.code == "ENOENT") {
+      if (err.path === "java" && err.code === "ENOENT") {
         _fatal(
           emulator,
           "emulator has exited because java is not installed, you can install it from https://openjdk.java.net/install/"
@@ -136,23 +138,23 @@ function _runBinary(emulator: JavaEmulatorDetails, command: JavaEmulatorCommand)
   });
 }
 
-export function get(emulator: JavaEmulators) {
-  return _emulators[emulator];
+export function get(emulator: JavaEmulators): JavaEmulatorDetails {
+  return EmulatorDetails[emulator];
 }
 
-export function stop(targetName: JavaEmulators) {
-  const emulator = _emulators[targetName];
-  return new Promise(function(resolve, reject) {
+export async function stop(targetName: JavaEmulators): Promise<void> {
+  const emulator = EmulatorDetails[targetName];
+  return new Promise((resolve, reject) => {
     utils.logLabeledSuccess(emulator.name, "shutting down");
     if (emulator.instance) {
-      const killTimeout = setTimeout(function() {
+      const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg = emulator.name + ": Unable to terminate emulator process (PID=" + pid + ")";
         logger.debug(errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
 
-      emulator.instance.once("exit", function() {
+      emulator.instance.once("exit", () => {
         clearTimeout(killTimeout);
         resolve();
       });
@@ -163,8 +165,8 @@ export function stop(targetName: JavaEmulators) {
   });
 }
 
-export function start(targetName: JavaEmulators, args: any) {
-  const emulator = _emulators[targetName];
+export async function start(targetName: JavaEmulators, args: any): Promise<void> {
+  const emulator = EmulatorDetails[targetName];
   const command = _getCommand(targetName, args);
   if (!fs.existsSync(emulator.localPath)) {
     utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);

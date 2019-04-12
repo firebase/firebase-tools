@@ -7,9 +7,8 @@ import * as FirebaseError from "../error";
 import * as utils from "../utils";
 import { Emulators } from "./types";
 import * as javaEmulators from "../serve/javaEmulators";
-
-const tmp = require("tmp");
-const fs = require("fs-extra");
+import * as tmp from "tmp";
+import * as fs from "fs-extra";
 
 tmp.setGracefulCleanup();
 
@@ -35,9 +34,9 @@ module.exports = (name: DownloadableEmulator) => {
  */
 function downloadToTmp(remoteUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    let tmpfile = tmp.fileSync();
-    let req = request.get(remoteUrl);
-    let writeStream = fs.createWriteStream(tmpfile.name);
+    const tmpfile = tmp.fileSync();
+    const req = request.get(remoteUrl);
+    const writeStream = fs.createWriteStream(tmpfile.name);
     req.on("error", (err: any) => reject(err));
     req.on("response", (response) => {
       if (response.statusCode !== 200) {
@@ -55,7 +54,7 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-function validateSize(filepath: string, expectedSize: number) {
+async function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -72,7 +71,7 @@ function validateSize(filepath: string, expectedSize: number) {
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-function validateChecksum(filepath: string, expectedChecksum: string) {
+async function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);

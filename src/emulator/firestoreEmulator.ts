@@ -4,11 +4,11 @@ import { EmulatorInstance, Emulators } from "../emulator/types";
 export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: any) {}
 
-  start() {
+  start(): Promise<void> {
     return javaEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
-  stop() {
+  stop(): Promise<void> {
     return javaEmulators.stop(Emulators.FIRESTORE);
   }
 }

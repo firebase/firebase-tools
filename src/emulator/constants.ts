@@ -9,7 +9,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
 };
 
 export class Constants {
-  static getDefaultPort(emulator: Emulators) {
+  static getDefaultPort(emulator: Emulators): number {
     return DEFAULT_PORTS[emulator];
   }
 }

@@ -1,3 +1,4 @@
+/* tslint:disable:no-console */
 "use strict";
 
 import * as _ from "lodash";
@@ -13,10 +14,7 @@ import * as utils from "./utils";
 import * as logger from "./logger";
 import * as parseTriggers from "./parseTriggers";
 import { Constants } from "./emulator/constants";
-import { Emulators, EmulatorInstance } from "./emulator/types";
-
-// TODO: Should be a TS import
-const jsdiff = require("diff");
+import { EmulatorInstance, Emulators } from "./emulator/types";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
@@ -86,7 +84,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         {
           if (!initializeAppWarned) {
             utils.logWarning(
-              'Your code attempted to use "admin.initializeApp()" we\'ve ignored your options and provided an emulated app instead.'
+              'Your code attempted to use "admin.initializeApp()" we\'ve ' +
+                "ignored your options and provided an emulated app instead."
             );
             initializeAppWarned = true;
           }
@@ -118,55 +117,51 @@ export class FunctionsEmulator implements EmulatorInstance {
       throw e;
     }
 
-    const triggersByName = triggers.reduce(
-      (triggersByName: { [triggerName: string]: any }, trigger: any) => {
-        trigger.getRawFunction = () => {
-          const oldFunction = _.get(require(functionsDir), trigger.entryPoint);
-          delete require.cache[require.resolve(functionsDir)];
-          const module = require(functionsDir);
-          const newFunction = _.get(module, trigger.entryPoint);
+    const triggersByName = triggers.reduce((obj: { [triggerName: string]: any }, trigger: any) => {
+      trigger.getRawFunction = () => {
+        const oldFunction = _.get(require(functionsDir), trigger.entryPoint);
+        delete require.cache[require.resolve(functionsDir)];
+        const module = require(functionsDir);
+        const newFunction = _.get(module, trigger.entryPoint);
 
-          if (newFunction.run && oldFunction.run) {
-            const oldStr = oldFunction.run.toString();
-            const newStr = newFunction.run.toString();
+        if (newFunction.run && oldFunction.run) {
+          const oldStr = oldFunction.run.toString();
+          const newStr = newFunction.run.toString();
 
-            if (oldStr !== newStr) {
-              logger.debug(`[functions] Function "${trigger.name}" changed. Diff:`);
-
-              const diff = jsdiff.diffChars(oldStr, newStr);
-
-              diff.forEach((part: any) => {
-                const color = part.added ? "green" : part.removed ? "red" : "blackBright";
-                process.stderr.write((clc as any)[color](part.value));
-              });
-              process.stderr.write("\n");
-            }
+          if (oldStr !== newStr) {
+            logger.debug(`[functions] Function "${trigger.name}" has been updated.`);
+            // const diff = jsdiff.diffChars(oldStr, newStr);
+            //
+            // diff.forEach((part: any) => {
+            //   const color = part.added ? "green" : part.removed ? "red" : "blackBright";
+            //   process.stderr.write((clc as any)[color](part.value));
+            // });
+            // process.stderr.write("\n");
           }
-          logger.debug(`[functions] Function "${trigger.name}" will be invoked. Logs:`);
-          return newFunction;
-        };
-        trigger.getWrappedFunction = () => {
-          return fft().wrap(trigger.getRawFunction());
-        };
-        triggersByName[trigger.name] = trigger;
-        return triggersByName;
-      },
-      {}
-    );
+        }
+        logger.debug(`[functions] Function "${trigger.name}" will be invoked. Logs:`);
+        return newFunction;
+      };
+      trigger.getWrappedFunction = () => {
+        return fft().wrap(trigger.getRawFunction());
+      };
+      obj[trigger.name] = trigger;
+      return obj;
+    }, {});
 
-    const networking_modules = [
+    const networkingModules = [
       { module: require("http").globalAgent, method: "createConnection" }, // Handles HTTP
       { module: require("tls"), method: "connect" }, // Handles HTTPs
       { module: require("net"), method: "connect" },
-      //require("http2").connect
-      //require("google-gax").GrpcClient
+      // require("http2").connect
+      // require("google-gax").GrpcClient
     ];
 
-    networking_modules.forEach((bundle) => {
+    networkingModules.forEach((bundle) => {
       const mod = bundle.module;
       const original = mod[bundle.method].bind(mod);
       mod[bundle.method] = (...args: any[]) => {
-        const hrefs = args.map((arg) => arg.href).filter((href) => href);
+        const hrefs = args.map((arg) => arg.href).filter((v) => v);
         const href = hrefs.length && hrefs[0];
         if (href.indexOf("googleapis.com") !== -1) {
           logger.info(`Your emulated function is attempting to access a production API "${href}".`);
@@ -236,8 +231,8 @@ export class FunctionsEmulator implements EmulatorInstance {
             data = newSnap && oldSnap ? Change.fromObjects(oldSnap, newSnap) : newSnap;
         }
 
-        const path = proto.context.resource.name;
-        const params = _extractParamsFromPath(trigger.eventTrigger.resource, path);
+        const resourcePath = proto.context.resource.name;
+        const params = _extractParamsFromPath(trigger.eventTrigger.resource, resourcePath);
 
         const ctx = {
           eventId: proto.context.eventId,
@@ -285,7 +280,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           return;
         }
 
-        let service: string = _.get(trigger, "eventTrigger.service", "unknown");
+        const service: string = _.get(trigger, "eventTrigger.service", "unknown");
         switch (service) {
           case SERVICE_FIRESTORE:
             this.addFirestoreTrigger(projectId, name, trigger);
@@ -301,7 +296,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
-  addFirestoreTrigger(projectId: string, name: string, trigger: any) {
+  addFirestoreTrigger(projectId: string, name: string, trigger: any): void {
     if (this.firestorePort <= 0) {
       utils.logWarning(`Ignoring trigger "${name}" because the Firestore emulator is not running.`);
       return;
@@ -380,8 +375,8 @@ function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): bool
   return !mismatchedChunks.length;
 }
 
-function _trimSlashes(path: string): string {
-  return path
+function _trimSlashes(str: string): string {
+  return str
     .split("/")
     .filter((c) => c)
     .join("/");

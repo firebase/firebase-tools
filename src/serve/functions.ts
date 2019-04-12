@@ -5,14 +5,14 @@ import { FunctionsEmulator } from "../functionsEmulator";
 module.exports = {
   emulatorInstance: undefined,
 
-  start: function(options: any) {
+  start(options: any): Promise<void> {
     this.emulatorInstance = new FunctionsEmulator(options, {});
     return this.emulatorInstance.start();
   },
-  stop: function() {
+  stop(): Promise<void> {
     return this.emulatorInstance.stop();
   },
-  get() {
+  get(): FunctionsEmulator {
     return this.emulatorInstance;
   },
 };

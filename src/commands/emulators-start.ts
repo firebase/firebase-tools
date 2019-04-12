@@ -12,7 +12,7 @@ import * as track from "../track";
 
 import requireAuth = require("../requireAuth");
 import { EmulatorRegistry } from "../emulator/registry";
-import { EmulatorInfo, Emulators, EmulatorInstance } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
@@ -131,7 +131,7 @@ function stopEmulator(name: Emulators): Promise<any> {
   return instance.stop();
 }
 
-async function cleanShutdown() {
+async function cleanShutdown(): Promise<boolean> {
   utils.logBullet("Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {

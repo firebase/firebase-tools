@@ -1,10 +1,6 @@
-import { Emulators, EmulatorInfo, EmulatorInstance } from "./types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 
 export class EmulatorRegistry {
-  private static ALL = [Emulators.FUNCTIONS, Emulators.FIRESTORE, Emulators.DATABASE];
-
-  private static INFO: Map<Emulators, EmulatorInfo> = new Map();
-
   static setInfo(emulator: Emulators, info: EmulatorInfo): void {
     this.INFO.set(emulator, info);
   }
@@ -46,4 +42,7 @@ export class EmulatorRegistry {
 
     return info.port;
   }
+  private static ALL = [Emulators.FUNCTIONS, Emulators.FIRESTORE, Emulators.DATABASE];
+
+  private static INFO: Map<Emulators, EmulatorInfo> = new Map();
 }
