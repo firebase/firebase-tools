@@ -3,6 +3,8 @@ import { RequestHandler } from "express";
 
 import { proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
+import { EmulatorRegistry } from "../emulator/registry";
+import { Emulators } from "../emulator/types";
 
 export interface FunctionsProxyOptions {
   port: number;
@@ -29,7 +31,15 @@ export default function(
     let destLabel = "live";
     if (includes(options.targets, "functions")) {
       destLabel = "local";
-      url = `http://localhost:${options.port + 1}/${getProjectId(options, false)}/us-central1/${
+
+      // If the functions emulator is running we know the port, otherwise
+      // we guess it is our port + 1
+      let functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
+      if (functionsPort < 0) {
+        functionsPort = options.port + 1;
+      }
+
+      url = `http://localhost:${functionsPort}/${getProjectId(options, false)}/us-central1/${
         rewrite.function
       }`;
     }

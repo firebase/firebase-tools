@@ -8,11 +8,11 @@ import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./function
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [
-    { module: "http", path: ["globalAgent", "createConnection"]}, // Handles HTTP
+    { module: "http", path: ["globalAgent", "createConnection"] }, // Handles HTTP
     { module: "tls", path: ["connect"] }, // Handles HTTPs
     { module: "net", path: ["connect"] }, // Handles... uhm, low level stuff?
     { module: "http2", path: ["connect"] }, // Handles http2
-    { module: "google-gax", path: ["GrpcClient"] } // Handles Google Cloud GRPC Apis
+    { module: "google-gax", path: ["GrpcClient"] }, // Handles Google Cloud GRPC Apis
   ];
 
   const results = networkingModules.map((bundle) => {
@@ -139,7 +139,6 @@ async function _ProcessSingleInvocation(
     auth: {},
     authType: "UNAUTHENTICATED",
   };
-
 
   const func = trigger.getWrappedFunction();
   const log = console.log;

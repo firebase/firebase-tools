@@ -1,17 +1,14 @@
 "use strict";
 
 import * as _ from "lodash";
-import * as clc from "cli-color";
 import * as path from "path";
 import * as express from "express";
-import * as fft from "firebase-functions-test";
 import * as request from "request";
 
 import * as getProjectId from "./getProjectId";
 import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
-import * as parseTriggers from "./parseTriggers";
 import { Constants } from "./emulator/constants";
 import { EmulatorInstance, Emulators } from "./emulator/types";
 import * as prompt from "./prompt";
@@ -19,13 +16,14 @@ import * as prompt from "./prompt";
 import * as spawn from "cross-spawn";
 import { spawnSync } from "child_process";
 import { FunctionsRuntimeBundle, getTriggers } from "./functionsShared";
+import { EmulatorRegistry } from "./emulator/registry";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
 
 interface FunctionsEmulatorArgs {
   port?: number;
-  firestorePort?: number;
+  host?: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -40,9 +38,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.port = this.args.port;
     }
 
-    if (this.args.firestorePort) {
-      this.firestorePort = this.args.firestorePort;
-    }
+    // Get the port where Firestore is running (or -1);
+    this.firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
 
     const projectId = getProjectId(this.options, false);
     const functionsDir = path.join(
