@@ -11,7 +11,7 @@ interface FirestoreEmulatorArgs {
 export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: FirestoreEmulatorArgs) {}
 
-  start(): Promise<any> {
+  start(): Promise<void> {
     const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
     if (functionsPort >= 0) {
       this.args.functions_emulator = `localhost:${functionsPort}`;
@@ -20,7 +20,11 @@ export class FirestoreEmulator implements EmulatorInstance {
     return javaEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
-  stop(): Promise<any> {
+  async connect(): Promise<void> {
+    return;
+  }
+
+  stop(): Promise<void> {
     return javaEmulators.stop(Emulators.FIRESTORE);
   }
 }

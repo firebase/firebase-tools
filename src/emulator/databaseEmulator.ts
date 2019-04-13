@@ -9,11 +9,15 @@ interface DatabaseEmulatorArgs {
 export class DatabaseEmulator implements EmulatorInstance {
   constructor(private args: DatabaseEmulatorArgs) {}
 
-  start(): Promise<any> {
+  async start(): Promise<void> {
     return javaEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  stop(): Promise<any> {
+  async connect(): Promise<void> {
+    return;
+  }
+
+  stop(): Promise<void> {
     return javaEmulators.stop(Emulators.DATABASE);
   }
 }

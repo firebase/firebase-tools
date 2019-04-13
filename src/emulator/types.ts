@@ -8,8 +8,9 @@ export const enum Emulators {
 }
 
 export interface EmulatorInstance {
-  start(): Promise<any>;
-  stop(): Promise<any>;
+  start(): Promise<void>; // Called to begin emulator process
+  connect(): Promise<void>; // Called once all sibling emulators are start()'d
+  stop(): Promise<void>; // Called to kill emulator process
 }
 
 export interface EmulatorInfo {

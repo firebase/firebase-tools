@@ -28,29 +28,28 @@ interface FunctionsEmulatorArgs {
 
 export class FunctionsEmulator implements EmulatorInstance {
   private port: number = Constants.getDefaultPort(Emulators.FUNCTIONS);
-  private firestorePort: number = -1;
   private server: any;
+  private firebaseConfig: any;
+  private projectId: string = "";
+  private functionsDir: string = "";
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {}
 
-  async start(): Promise<any> {
+  async start(): Promise<void> {
     if (this.args.port) {
       this.port = this.args.port;
     }
 
-    // Get the port where Firestore is running (or -1);
-    this.firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
-
-    const projectId = getProjectId(this.options, false);
-    const functionsDir = path.join(
+    this.projectId = getProjectId(this.options, false);
+    this.functionsDir = path.join(
       this.options.config.projectDir,
       this.options.config.get("functions.source")
     );
 
-    const nodePath = await _askInstallNodeVersion(functionsDir);
+    const nodePath = await _askInstallNodeVersion(this.functionsDir);
 
     // TODO: This call requires authentication, which we should remove eventually
-    const firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
+    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
     const hub = express();
 
@@ -66,13 +65,23 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     hub.get("/", async (req, res) => {
-      res.send(JSON.stringify(await getTriggers(projectId, functionsDir, firebaseConfig), null, 2));
+      res.send(
+        JSON.stringify(
+          await getTriggers(this.projectId, this.functionsDir, this.firebaseConfig),
+          null,
+          2
+        )
+      );
     });
 
     // TODO: This is trash, I write trash
     hub.get("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
       logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
-      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
+      const triggersByName = await getTriggers(
+        this.projectId,
+        this.functionsDir,
+        this.firebaseConfig
+      );
       const trigger = triggersByName[req.params.trigger_name];
       if (trigger.raw.httpsTrigger) {
         trigger.getRawFunction()(req, res);
@@ -85,7 +94,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     hub.post("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
-      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
+      const triggersByName = await getTriggers(
+        this.projectId,
+        this.functionsDir,
+        this.firebaseConfig
+      );
       const trigger = triggersByName[req.params.trigger_name];
 
       if (trigger.raw.httpsTrigger) {
@@ -95,12 +108,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const frb = {
         ports: {
-          firestore: this.firestorePort,
+          firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         },
-        cwd: functionsDir,
+        cwd: this.functionsDir,
         proto: JSON.parse((req as any).rawBody),
         triggerId: req.params.trigger_name,
-        projectId,
+        projectId: this.projectId,
       } as FunctionsRuntimeBundle;
 
       const runtime = spawnSync(nodePath, [
@@ -113,35 +126,43 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.server = hub.listen(this.port, async () => {
       logger.debug(`[functions] Functions emulator is live on port ${this.port}`);
-      const triggersByName = await getTriggers(projectId, functionsDir, firebaseConfig);
-      Object.keys(triggersByName).forEach((name) => {
-        const trigger = triggersByName[name];
-        if (trigger.raw.httpsTrigger) {
-          const url = `http://localhost:${
-            this.port
-          }/functions/projects/${projectId}/triggers/${name}`;
-          utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
-          return;
-        }
+    });
+  }
 
-        const service: string = _.get(trigger.raw, "eventTrigger.service", "unknown");
-        switch (service) {
-          case SERVICE_FIRESTORE:
-            this.addFirestoreTrigger(projectId, name, trigger);
-            break;
-          default:
-            logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
-            utils.logWarning(
-              `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
-            );
-            break;
-        }
-      });
+  async connect(): Promise<void> {
+    const triggersByName = await getTriggers(
+      this.projectId,
+      this.functionsDir,
+      this.firebaseConfig
+    );
+    Object.keys(triggersByName).forEach((name) => {
+      const trigger = triggersByName[name];
+      if (trigger.raw.httpsTrigger) {
+        const url = `http://localhost:${
+          this.port
+        }/functions/projects/${this.projectId}/triggers/${name}`;
+        utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
+        return;
+      }
+
+      const service: string = _.get(trigger.raw, "eventTrigger.service", "unknown");
+      switch (service) {
+        case SERVICE_FIRESTORE:
+          this.addFirestoreTrigger(this.projectId, name, trigger);
+          break;
+        default:
+          logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
+          utils.logWarning(
+            `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
+          );
+          break;
+      }
     });
   }
 
   addFirestoreTrigger(projectId: string, name: string, trigger: any): void {
-    if (this.firestorePort <= 0) {
+    const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
+    if (firestorePort <= 0) {
       utils.logWarning(`Ignoring trigger "${name}" because the Firestore emulator is not running.`);
       return;
     }
@@ -151,10 +172,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     utils.logLabeledBullet(
       "functions",
-      `Attempting to contact firestore emulator on port ${this.firestorePort}`
+      `Attempting to contact firestore emulator on port ${firestorePort}`
     );
     request.put(
-      `http://localhost:${this.firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
+      `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
       {
         body: bundle,
       },
@@ -174,7 +195,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     );
   }
 
-  stop(): Promise<any> {
+  stop(): Promise<void> {
     return Promise.resolve(this.server.close());
   }
 }
