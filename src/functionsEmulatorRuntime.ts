@@ -4,7 +4,7 @@ import * as path from "path";
 import * as utils from "./utils";
 import * as clc from "cli-color";
 import * as admin from "firebase-admin";
-import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./functionsShared";
+import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [

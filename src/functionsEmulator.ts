@@ -15,7 +15,7 @@ import * as prompt from "./prompt";
 
 import * as spawn from "cross-spawn";
 import { spawnSync } from "child_process";
-import { FunctionsRuntimeBundle, getTriggers } from "./functionsShared";
+import { FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./emulator/registry";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
@@ -262,7 +262,8 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
       cwd,
       stdio: "inherit",
     });
-    // TODO: Switching Node versions results in node-gyp errors, run a rebuild after switching versions
+    /* TODO: Switching Node versions can result in node-gyp errors, run a rebuild after switching
+      versions and probably on exit to original node version */
 
     return localNodePath;
   }
