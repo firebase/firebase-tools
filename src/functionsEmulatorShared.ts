@@ -51,9 +51,9 @@ export async function getTriggers(
   try {
     triggers = await parseTriggers(projectId, functionsDir, {}, JSON.stringify(firebaseConfig));
   } catch (e) {
-    utils.logWarning(`[functions] Failed to load functions source code.`);
-    logger.debug("Error during trigger parsing: ", e.message);
-    throw e;
+    utils.logWarning(`Failed to load functions source code.`);
+    logger.info(e.message);
+    return {};
   }
 
   return triggers.reduce((obj: { [triggerName: string]: any }, trigger: any) => {

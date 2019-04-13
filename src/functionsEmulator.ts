@@ -10,7 +10,7 @@ import * as functionsConfig from "./functionsConfig";
 import * as utils from "./utils";
 import * as logger from "./logger";
 import { Constants } from "./emulator/constants";
-import { EmulatorInstance, Emulators } from "./emulator/types";
+import { EmulatorInstance, EmulatorLog, Emulators } from "./emulator/types";
 import * as prompt from "./prompt";
 
 import * as spawn from "cross-spawn";
@@ -116,17 +116,32 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.projectId,
       } as FunctionsRuntimeBundle;
 
-      const runtime = spawnSync(nodePath, [
-        path.join(__dirname, "functionsEmulatorRuntime.js"),
-        JSON.stringify(frb),
-      ]);
-      logger.info(runtime.stdout.toString(), runtime.stderr.toString());
+      await new Promise((resolve) => {
+        const runtime = spawn(nodePath, [
+          path.join(__dirname, "functionsEmulatorRuntime.js"),
+          JSON.stringify(frb),
+        ]);
+
+        let data = "";
+        runtime.stdout.on("data", (buf) => {
+          data += buf;
+          const lines = data.split("\n");
+
+          if (lines.length > 1) {
+            lines.slice(0, -1).forEach((line) => {
+              logger.info(EmulatorLog.fromJSON(line));
+            });
+          }
+
+          data = lines[lines.length - 1];
+        });
+
+        runtime.on("exit", resolve);
+      });
       res.json({ status: "acknowledged" });
     });
 
-    this.server = hub.listen(this.port, async () => {
-      logger.debug(`[functions] Functions emulator is live on port ${this.port}`);
-    });
+    this.server = hub.listen(this.port);
   }
 
   async connect(): Promise<void> {
@@ -138,9 +153,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     Object.keys(triggersByName).forEach((name) => {
       const trigger = triggersByName[name];
       if (trigger.raw.httpsTrigger) {
-        const url = `http://localhost:${
-          this.port
-        }/functions/projects/${this.projectId}/triggers/${name}`;
+        const url = `http://localhost:${this.port}/functions/projects/${
+          this.projectId
+        }/triggers/${name}`;
         utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
         return;
       }
@@ -264,6 +279,7 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
     });
     /* TODO: Switching Node versions can result in node-gyp errors, run a rebuild after switching
       versions and probably on exit to original node version */
+    // TODO: Certain npm commands appear to mess up npm globally, maybe remove node_modules/.bin/node to avoid this?
 
     return localNodePath;
   }

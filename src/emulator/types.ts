@@ -48,7 +48,7 @@ export class EmulatorLog {
   }
 
   constructor(
-    public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM",
+    public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
     public text: string,
     public data?: any,
     public timestamp?: string
@@ -75,6 +75,6 @@ export class EmulatorLog {
   }
 
   log(): void {
-    console.log(this.toString());
+    process.stdout.write(`${this.toString()}\n`);
   }
 }

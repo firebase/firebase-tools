@@ -1,4 +1,3 @@
-/* tslint:disable:no-console */
 import * as path from "path";
 import * as admin from "firebase-admin";
 import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
@@ -28,7 +27,10 @@ function _InitializeNetworkFiltering(): void {
 
     const method = bundle.path.slice(-1)[0];
     const original = obj[method].bind(mod);
-    mod[method] = (...args: any[]) => {
+
+    /* tslint:disable:only-arrow-functions */
+    // This object needs to be new'able so it can't be a fat arrow
+    mod[method] = function(...args: any[]): any {
       const hrefs = args.map((arg) => arg.href).filter((v) => v);
       const href = hrefs.length && hrefs[0];
       if (href.indexOf("googleapis.com") !== -1) {
@@ -133,10 +135,11 @@ async function _ProcessSingleInvocation(
   };
 
   const func = trigger.getWrappedFunction();
-  const log = console.log;
 
+  /* tslint:disable:no-console */
+  const log = console.log;
   console.log = (...messages: any[]) => {
-    new EmulatorLog("DEBUG", messages.join(" "), {}).log();
+    new EmulatorLog("USER", messages.join(" ")).log();
   };
 
   let caughtErr;
@@ -149,10 +152,10 @@ async function _ProcessSingleInvocation(
   console.log = log;
 
   if (caughtErr) {
-    new EmulatorLog("WARN", caughtErr.stack, {}).log();
+    new EmulatorLog("WARN", caughtErr.stack).log();
   }
 
-  new EmulatorLog("INFO", "Functions execution finished!", {}).log();
+  new EmulatorLog("INFO", "Functions execution finished!").log();
 }
 
 const wildcardRegex = new RegExp("{[^/{}]*}", "g");
