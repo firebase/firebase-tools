@@ -117,7 +117,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       } as FunctionsRuntimeBundle;
 
       const runtime = spawnSync(nodePath, [
-        path.join(__dirname, "functionsRuntime.js"),
+        path.join(__dirname, "functionsEmulatorRuntime.js"),
         JSON.stringify(frb),
       ]);
       logger.info(runtime.stdout.toString(), runtime.stderr.toString());

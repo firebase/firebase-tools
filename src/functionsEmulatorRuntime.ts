@@ -1,10 +1,8 @@
 /* tslint:disable:no-console */
-import * as logger from "./logger";
 import * as path from "path";
-import * as utils from "./utils";
-import * as clc from "cli-color";
 import * as admin from "firebase-admin";
 import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
+import { EmulatorLog } from "./emulator/types";
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [
@@ -34,9 +32,9 @@ function _InitializeNetworkFiltering(): void {
       const hrefs = args.map((arg) => arg.href).filter((v) => v);
       const href = hrefs.length && hrefs[0];
       if (href.indexOf("googleapis.com") !== -1) {
-        logger.info(`Your emulated function is attempting to access a production API "${href}".`);
+        new EmulatorLog("SYSTEM", "googleapis-network-access", { href }).log();
       } else {
-        logger.info(`Your emulator function has accessed the URL "${href}".`);
+        new EmulatorLog("SYSTEM", "unidentified-network-access", { href }).log();
       }
 
       return original(...args);
@@ -45,7 +43,7 @@ function _InitializeNetworkFiltering(): void {
     return { bundle, status: "mocked" };
   });
 
-  logger.info(results);
+  new EmulatorLog("DEBUG", "Outgoing network have been stubbed.", results).log();
 }
 
 function _InitializeFirebaseAdminStubs(
@@ -77,16 +75,10 @@ function _InitializeFirebaseAdminStubs(
   localAdminModule.initializeApp = (opts: any, name: string) => {
     {
       if (name) {
-        utils.logWarning(`Your code has initialized a non-default "firebase-admin" app.`);
-        utils.logWarning(
-          `The app ${name} will NOT be mocked. It *will* contact production resources.`
-        );
+        new EmulatorLog("SYSTEM", "non-default-admin-app-used", { name }).log();
         return originalInitializeApp(opts, name);
       }
-      utils.logWarning(
-        'Your code attempted to use "admin.initializeApp()" we\'ve ' +
-          "ignored your options and provided an emulated app instead."
-      );
+      new EmulatorLog("SYSTEM", "default-admin-app-used").log();
       return validApp;
     }
   };
@@ -144,7 +136,7 @@ async function _ProcessSingleInvocation(
   const log = console.log;
 
   console.log = (...messages: any[]) => {
-    log(clc.blackBright(">"), ...messages);
+    new EmulatorLog("DEBUG", messages.join(" "), {}).log();
   };
 
   let caughtErr;
@@ -157,12 +149,10 @@ async function _ProcessSingleInvocation(
   console.log = log;
 
   if (caughtErr) {
-    const lines = caughtErr.stack.split("\n").join(`\n${clc.blackBright("> ")}`);
-
-    logger.debug(`${clc.blackBright("> ")}${lines}`);
+    new EmulatorLog("WARN", caughtErr.stack, {}).log();
   }
 
-  logger.debug(`[functions] Function execution complete.`);
+  new EmulatorLog("INFO", "Functions execution finished!", {}).log();
 }
 
 const wildcardRegex = new RegExp("{[^/{}]*}", "g");
@@ -213,11 +203,13 @@ function _trimSlashes(str: string): string {
 }
 
 async function main(): Promise<void> {
-  console.log(`----- Welcome to the Cloud Functions runtime -----`);
-  console.log(`We're in ${process.cwd()} with node@${process.versions.node}`);
+  new EmulatorLog("INFO", "Functions runtime initialized.", {
+    cwd: process.cwd(),
+    node_version: process.versions.node,
+  }).log();
 
   const frb = JSON.parse(process.argv[2] || "{}") as FunctionsRuntimeBundle;
-  logger.debug(JSON.stringify(frb, null, 2));
+  new EmulatorLog("DEBUG", "FunctionsRuntimeBundle parsed", frb).log();
 
   _InitializeNetworkFiltering();
   _InitializeEnvironmentalVariables(frb.projectId);
@@ -228,7 +220,8 @@ async function main(): Promise<void> {
   );
 
   if (!stubbedAdminApp) {
-    throw new Error("Something went wrong.");
+    new EmulatorLog("FATAL", "Could not initialize stubbed admin app.").log();
+    return process.exit();
   }
   // TODO: Figure out what the right thing to do with FIREBASE_CONFIG is
   const triggers = await getTriggers(
