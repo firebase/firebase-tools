@@ -6,11 +6,12 @@ import {
   getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
 import { EmulatorLog } from "./types";
+import { URL } from "url";
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [
-    { module: "http", path: ["globalAgent", "createConnection"] }, // Handles HTTP
-    { module: "tls", path: ["connect"] }, // Handles HTTPs
+    { module: "http", path: ["request"] }, // Handles HTTP, HTTPS
+    { module: "http", path: ["get"] }, // Handles HTTP, HTTPS
     { module: "net", path: ["connect"] }, // Handles... uhm, low level stuff?
     // { module: "http2", path: ["connect"] }, // Handles http2
     { module: "google-gax", path: ["GrpcClient"] }, // Handles Google Cloud GRPC Apis
@@ -33,14 +34,34 @@ function _InitializeNetworkFiltering(): void {
     const original = obj[method].bind(mod);
 
     /* tslint:disable:only-arrow-functions */
-    // This object needs to be new'able so it can't be a fat arrow
     mod[method] = function(...args: any[]): any {
-      const hrefs = args.map((arg) => arg.href).filter((v) => v);
-      const href = hrefs.length && hrefs[0];
+      const hrefs = args
+        .map((arg) => {
+          if (typeof arg === "string") {
+            try {
+              const _ = new URL(arg);
+              return arg;
+            } catch (err) {
+              return;
+            }
+          } else if (typeof arg === "object") {
+            return arg.href;
+          } else {
+            return;
+          }
+        })
+        .filter((v) => v);
+      const href = (hrefs.length && hrefs[0]) || "";
       if (href.indexOf("googleapis.com") !== -1) {
-        new EmulatorLog("SYSTEM", "googleapis-network-access", { href }).log();
+        new EmulatorLog("SYSTEM", "googleapis-network-access", {
+          href,
+          module: bundle.module,
+        }).log();
       } else {
-        new EmulatorLog("SYSTEM", "unidentified-network-access", { href }).log();
+        new EmulatorLog("SYSTEM", "unidentified-network-access", {
+          href,
+          module: bundle.module,
+        }).log();
       }
 
       return original(...args);

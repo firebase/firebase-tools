@@ -117,7 +117,17 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.projectId,
       } as FunctionsRuntimeBundle;
 
-      await InvokeRuntime(nodeBinary, frb);
+      const runtime = InvokeRuntime(nodeBinary, frb);
+
+      runtime.events.on("log", (log: EmulatorLog) => {
+        if (["SYSTEM", "DEBUG"].indexOf(log.level) >= 0) {
+          // Handle system interrupts
+          return;
+        } else {
+          logger.info(`${log.level}: ${log.text}`);
+        }
+      });
+      await runtime.exit;
       res.json({ status: "acknowledged" });
     });
 
