@@ -1,6 +1,10 @@
 import * as path from "path";
 import * as admin from "firebase-admin";
-import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggersFromDirectory } from "./functionsEmulatorShared";
+import {
+  EmulatedTrigger,
+  FunctionsRuntimeBundle,
+  getTriggersFromDirectory,
+} from "./functionsEmulatorShared";
 import { EmulatorLog } from "./types";
 
 function _InitializeNetworkFiltering(): void {
