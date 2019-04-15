@@ -238,6 +238,22 @@ var publishPubsub = function(topic) {
     });
 };
 
+var triggerSchedule = function(job) {
+  // we can't pass along a uuid thru scheduler to test the full trigger, s
+  // so instead we run the job to make sure that the scheduler job and pub sub topic were created correctly
+  return api
+    .request("POST", `/v1/projects/${projectId}/locations/us-central1/jobs/${job}:run`, {
+      auth: true,
+      data: {},
+      origin: "https://cloudscheduler.googleapis.com",
+    })
+    .then(function(resp) {
+      expect(resp.status).to.equal(200);
+      return Promise.resolve(uuid);
+    });
+};
+
+
 var saveToStorage = function() {
   var uuid = getUuid();
   var contentLength = Buffer.byteLength(uuid, "utf8");
@@ -274,12 +290,16 @@ var testFunctionsTrigger = function() {
   var checkGcsAction = saveToStorage().then(function(uuid) {
     return waitForAck(uuid, "storage triggered function");
   });
+  var checkScheduleAction = triggerSchedule("firebase-schedule-pubsubScheduleAction-us-central1").then(function(uuid) {
+    return true;
+  });
   return Promise.all([
     checkDbAction,
     checkNestedDbAction,
     checkHttpsAction,
     checkPubsubAction,
     checkGcsAction,
+    checkScheduleAction,
   ]);
 };
 
