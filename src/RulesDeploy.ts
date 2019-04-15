@@ -7,13 +7,24 @@ import logger = require("./logger");
 import FirebaseError = require("./error");
 import utils = require("./utils");
 
+import * as prompt from "./prompt";
+import { ListRulesetsEntry, Release } from "./gcp/rules";
+
+// The status code the Firebase Rules backend sends to indicate too many rulesets.
+const QUOTA_EXCEEDED_STATUS_CODE = 429;
+
+// How many old rulesets is enough to cause problems?
+const RULESET_COUNT_LIMIT = 1000;
+
+// how many old rulesets should we delete to free up quota?
+const RULESETS_TO_GC = 10;
+
 export class RulesDeploy {
   type: any;
   options: any;
   project: any;
   rulesFiles: any;
   rulesetNames: any;
-
   constructor(options: any, type: any) {
     this.type = type;
     this.options = options;
@@ -66,7 +77,48 @@ export class RulesDeploy {
         })
       );
     });
-    return Promise.all(promises);
+    return Promise.all(promises).catch(async (err) => {
+      if (err.status === QUOTA_EXCEEDED_STATUS_CODE) {
+        utils.logBullet(
+          clc.bold.yellow(this.type + ":") + " quota exceeded error while uploading rules"
+        );
+
+        const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
+
+        if (history.length > RULESET_COUNT_LIMIT) {
+          const answers = await prompt(
+            {
+              confirm: !!this.options.force,
+            },
+            [
+              {
+                type: "confirm",
+                name: "confirm",
+                message: `You have ${
+                  history.length
+                } rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+                default: false,
+              },
+            ]
+          );
+          if (answers.confirm) {
+            // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
+            const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
+            const isReleased = (ruleset: ListRulesetsEntry) =>
+              !!releases.find((release) => release.rulesetName === ruleset.name);
+            const unreleased: ListRulesetsEntry[] = _.reject(history, isReleased);
+            const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
+            for (const entry of entriesToDelete) {
+              await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
+              logger.debug(`[rules] Deleted ${entry.name}`);
+            }
+            utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
+            return this.createRulesets();
+          }
+        }
+      }
+      throw err;
+    });
   }
 
   release(filename: any, resourceName: any): Promise<any> {
