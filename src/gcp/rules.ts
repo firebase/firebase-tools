@@ -28,7 +28,7 @@ export async function getLatestRulesetName(
   service: string
 ): Promise<string | null> {
   const releases = await listAllReleases(projectId);
-  const prefix = "projects/" + projectId + "/releases/" + service;
+  const prefix = `projects/${projectId}/releases/${service}`;
   const release = _.find(releases, (r) => r.name.indexOf(prefix) === 0);
 
   if (!release) {
