@@ -39,7 +39,7 @@ module.exports = function(options) {
         text: "0 operations recorded. Press [enter] to stop",
         color: "yellow",
       });
-      var outputFormat = options.raw ? "RAW" : options.parent.json ? "JSON" : "TXT"; // eslint-disable-line no-nested-ternary
+      var outputFormat = options.definition ? "RAW" : options.parent.json ? "JSON" : "TXT"; // eslint-disable-line no-nested-ternary
       var erroring;
       var errorResponse = "";
       var response;

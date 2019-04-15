@@ -17,7 +17,7 @@ module.exports = new Command("database:profile")
     "-d, --duration <seconds>",
     "collect database usage information for the specified number of seconds"
   )
-  .option("--raw", "output the raw stats collected as newline delimited json")
+  .option("--definition", "output the definition stats collected as newline delimited json")
   .option("--no-collapse", "prevent collapsing similar paths into $wildcard locations")
   .option(
     "-i, --input <filename>",
@@ -32,12 +32,12 @@ module.exports = new Command("database:profile")
   .before(requireInstance)
   .action(function(options) {
     // Validate options
-    if (options.raw && options.input) {
-      return utils.reject("Cannot specify both an input file and raw format", {
+    if (options.definition && options.input) {
+      return utils.reject("Cannot specify both an input file and definition format", {
         exit: 1,
       });
-    } else if (options.parent.json && options.raw) {
-      return utils.reject("Cannot output raw data in json format", { exit: 1 });
+    } else if (options.parent.json && options.definition) {
+      return utils.reject("Cannot output definition data in json format", { exit: 1 });
     } else if (options.input && _.has(options, "duration")) {
       return utils.reject("Cannot specify a duration for input files", {
         exit: 1,

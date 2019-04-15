@@ -43,8 +43,16 @@ export interface Address {
 
 export class EmulatorLog {
   static fromJSON(json: string): EmulatorLog {
-    const log = JSON.parse(json);
-    return new EmulatorLog(log.level, log.text, log.data, log.timestamp);
+    let parsedLog;
+    try {
+      parsedLog = JSON.parse(json);
+    } catch (err) {
+      parsedLog = {
+        level: "ERROR",
+        text: json,
+      };
+    }
+    return new EmulatorLog(parsedLog.level, parsedLog.text, parsedLog.data, parsedLog.timestamp);
   }
 
   constructor(
@@ -53,9 +61,8 @@ export class EmulatorLog {
     public data?: any,
     public timestamp?: string
   ) {
-    if (!this.timestamp) {
-      this.timestamp = new Date().toString();
-    }
+    this.timestamp = this.timestamp || new Date().toString();
+    this.data = this.data || {};
   }
 
   toString(): string {

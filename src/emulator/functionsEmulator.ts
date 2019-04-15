@@ -5,18 +5,19 @@ import * as path from "path";
 import * as express from "express";
 import * as request from "request";
 
-import * as getProjectId from "./getProjectId";
-import * as functionsConfig from "./functionsConfig";
-import * as utils from "./utils";
-import * as logger from "./logger";
-import { Constants } from "./emulator/constants";
-import { EmulatorInstance, EmulatorLog, Emulators } from "./emulator/types";
-import * as prompt from "./prompt";
+import * as getProjectId from "../getProjectId";
+import * as functionsConfig from "../functionsConfig";
+import * as utils from "../utils";
+import * as logger from "../logger";
+import { Constants } from "./constants";
+import { EmulatorInstance, EmulatorLog, Emulators } from "./types";
+import * as prompt from "../prompt";
 
 import * as spawn from "cross-spawn";
 import { spawnSync } from "child_process";
-import { FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
-import { EmulatorRegistry } from "./emulator/registry";
+import { FunctionsRuntimeBundle, getTriggersFromDirectory } from "./functionsEmulatorShared";
+import { EmulatorRegistry } from "./registry";
+import { EventEmitter } from "events";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
@@ -46,7 +47,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.options.config.get("functions.source")
     );
 
-    const nodePath = await _askInstallNodeVersion(this.functionsDir);
+    const nodeBinary = await _askInstallNodeVersion(this.functionsDir);
 
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
@@ -67,7 +68,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     hub.get("/", async (req, res) => {
       res.send(
         JSON.stringify(
-          await getTriggers(this.projectId, this.functionsDir, this.firebaseConfig),
+          await getTriggersFromDirectory(this.projectId, this.functionsDir, this.firebaseConfig),
           null,
           2
         )
@@ -77,13 +78,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     // TODO: This is trash, I write trash
     hub.get("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
       logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
-      const triggersByName = await getTriggers(
+      const triggersByName = await getTriggersFromDirectory(
         this.projectId,
         this.functionsDir,
         this.firebaseConfig
       );
       const trigger = triggersByName[req.params.trigger_name];
-      if (trigger.raw.httpsTrigger) {
+      if (trigger.definition.httpsTrigger) {
         trigger.getRawFunction()(req, res);
       } else {
         res.json({
@@ -94,14 +95,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     hub.post("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
-      const triggersByName = await getTriggers(
+      const triggersByName = await getTriggersFromDirectory(
         this.projectId,
         this.functionsDir,
         this.firebaseConfig
       );
       const trigger = triggersByName[req.params.trigger_name];
 
-      if (trigger.raw.httpsTrigger) {
+      if (trigger.definition.httpsTrigger) {
         logger.debug(`[functions] POST request to function rejected`);
         return res.json({ status: "rejected" });
       }
@@ -116,28 +117,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.projectId,
       } as FunctionsRuntimeBundle;
 
-      await new Promise((resolve) => {
-        const runtime = spawn(nodePath, [
-          path.join(__dirname, "functionsEmulatorRuntime.js"),
-          JSON.stringify(frb),
-        ]);
-
-        let data = "";
-        runtime.stdout.on("data", (buf) => {
-          data += buf;
-          const lines = data.split("\n");
-
-          if (lines.length > 1) {
-            lines.slice(0, -1).forEach((line) => {
-              logger.info(EmulatorLog.fromJSON(line));
-            });
-          }
-
-          data = lines[lines.length - 1];
-        });
-
-        runtime.on("exit", resolve);
-      });
+      await InvokeRuntime(nodeBinary, frb);
       res.json({ status: "acknowledged" });
     });
 
@@ -145,14 +125,14 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    const triggersByName = await getTriggers(
+    const triggersByName = await getTriggersFromDirectory(
       this.projectId,
       this.functionsDir,
       this.firebaseConfig
     );
     Object.keys(triggersByName).forEach((name) => {
       const trigger = triggersByName[name];
-      if (trigger.raw.httpsTrigger) {
+      if (trigger.definition.httpsTrigger) {
         const url = `http://localhost:${this.port}/functions/projects/${
           this.projectId
         }/triggers/${name}`;
@@ -160,7 +140,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
 
-      const service: string = _.get(trigger.raw, "eventTrigger.service", "unknown");
+      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
       switch (service) {
         case SERVICE_FIRESTORE:
           this.addFirestoreTrigger(this.projectId, name, trigger);
@@ -182,7 +162,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    const bundle = JSON.stringify({ eventTrigger: trigger.raw.eventTrigger });
+    const bundle = JSON.stringify({ eventTrigger: trigger.definition.eventTrigger });
     utils.logLabeledBullet("functions", `Setting up firestore trigger "${name}"`);
 
     utils.logLabeledBullet(
@@ -213,6 +193,52 @@ export class FunctionsEmulator implements EmulatorInstance {
   stop(): Promise<void> {
     return Promise.resolve(this.server.close());
   }
+}
+
+export function InvokeRuntime(
+  nodeBinary: string,
+  frb: FunctionsRuntimeBundle,
+  serializedTriggers?: string
+): { exit: Promise<number>; events: EventEmitter } {
+  const emitter = new EventEmitter();
+
+  const runtime = spawn(nodeBinary, [
+    path.join(__dirname, "functionsEmulatorRuntime.js"),
+    JSON.stringify(frb),
+    serializedTriggers || "",
+  ]);
+
+  let stderr = "";
+  runtime.stderr.on("data", (buf) => {
+    stderr += buf.toString();
+  });
+
+  let stdout = "";
+  runtime.stdout.on("data", (buf) => {
+    stdout += buf;
+    const lines = stdout.split("\n");
+
+    if (lines.length > 1) {
+      lines.slice(0, -1).forEach((line) => {
+        emitter.emit("log", EmulatorLog.fromJSON(line));
+      });
+    }
+
+    stdout = lines[lines.length - 1];
+  });
+
+  return {
+    exit: new Promise<number>((resolve, reject) => {
+      runtime.on("exit", (code) => {
+        if (code === 0) {
+          resolve(code);
+        } else {
+          reject(stderr);
+        }
+      });
+    }),
+    events: emitter,
+  };
 }
 
 async function _askInstallNodeVersion(cwd: string): Promise<string> {

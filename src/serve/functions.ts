@@ -1,6 +1,6 @@
 "use strict";
 
-import { FunctionsEmulator } from "../functionsEmulator";
+import { FunctionsEmulator } from "../emulator/functionsEmulator";
 
 module.exports = {
   emulatorInstance: undefined,

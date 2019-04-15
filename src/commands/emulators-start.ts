@@ -13,7 +13,7 @@ import * as filterTargets from "../filterTargets";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Address, EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
-import { FunctionsEmulator } from "../functionsEmulator";
+import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 

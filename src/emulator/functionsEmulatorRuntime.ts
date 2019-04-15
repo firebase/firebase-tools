@@ -1,14 +1,14 @@
 import * as path from "path";
 import * as admin from "firebase-admin";
-import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggers } from "./functionsEmulatorShared";
-import { EmulatorLog } from "./emulator/types";
+import { EmulatedTrigger, FunctionsRuntimeBundle, getTriggersFromDirectory } from "./functionsEmulatorShared";
+import { EmulatorLog } from "./types";
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [
     { module: "http", path: ["globalAgent", "createConnection"] }, // Handles HTTP
     { module: "tls", path: ["connect"] }, // Handles HTTPs
     { module: "net", path: ["connect"] }, // Handles... uhm, low level stuff?
-    { module: "http2", path: ["connect"] }, // Handles http2
+    // { module: "http2", path: ["connect"] }, // Handles http2
     { module: "google-gax", path: ["GrpcClient"] }, // Handles Google Cloud GRPC Apis
   ];
 
@@ -104,6 +104,7 @@ async function _ProcessSingleInvocation(
   trigger: EmulatedTrigger
 ): Promise<void> {
   const { Change } = require("firebase-functions");
+
   const newSnap =
     proto.data.value &&
     (app.firestore() as any).snapshot_(proto.data.value, new Date().toISOString(), "json");
@@ -124,7 +125,7 @@ async function _ProcessSingleInvocation(
   }
 
   const resourcePath = proto.context.resource.name;
-  const params = _extractParamsFromPath(trigger.raw.eventTrigger.resource, resourcePath);
+  const params = _extractParamsFromPath(trigger.definition.eventTrigger.resource, resourcePath);
 
   const ctx = {
     eventId: proto.context.eventId,
@@ -134,6 +135,7 @@ async function _ProcessSingleInvocation(
     authType: "UNAUTHENTICATED",
   };
 
+  new EmulatorLog("DEBUG", `Requesting a wrapped function.`).log();
   const func = trigger.getWrappedFunction();
 
   /* tslint:disable:no-console */
@@ -206,12 +208,15 @@ function _trimSlashes(str: string): string {
 }
 
 async function main(): Promise<void> {
+  const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
+  const serializedFunctionTrigger = process.argv[3];
+
   new EmulatorLog("INFO", "Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   }).log();
 
-  const frb = JSON.parse(process.argv[2] || "{}") as FunctionsRuntimeBundle;
+  const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
   new EmulatorLog("DEBUG", "FunctionsRuntimeBundle parsed", frb).log();
 
   _InitializeNetworkFiltering();
@@ -226,15 +231,51 @@ async function main(): Promise<void> {
     new EmulatorLog("FATAL", "Could not initialize stubbed admin app.").log();
     return process.exit();
   }
-  // TODO: Figure out what the right thing to do with FIREBASE_CONFIG is
-  const triggers = await getTriggers(
-    frb.projectId,
-    frb.cwd,
-    JSON.parse(process.env.FIREBASE_CONFIG || "{}")
-  );
+
+  let triggers: { [id: string]: EmulatedTrigger };
+
+  if (serializedFunctionTrigger) {
+    /* tslint:disable:no-eval */
+    const triggerModule = eval(serializedFunctionTrigger);
+    triggers = {
+      [frb.triggerId]: EmulatedTrigger.fromModule(
+        {
+          entryPoint: frb.triggerId,
+          name: frb.triggerId,
+          eventTrigger: { resource: frb.proto.context.resource.name },
+        },
+        triggerModule()
+      ),
+    };
+  } else {
+    // TODO: Figure out what the right thing to do with FIREBASE_CONFIG is
+    triggers = await getTriggersFromDirectory(
+      frb.projectId,
+      frb.cwd,
+      JSON.parse(process.env.FIREBASE_CONFIG || "{}")
+    );
+  }
+
+  if (!triggers[frb.triggerId]) {
+    new EmulatorLog(
+      "FATAL",
+      `Could not find trigger "${frb.triggerId}" in your functions directory.`
+    ).log();
+    return;
+  } else {
+    new EmulatorLog(
+      "DEBUG",
+      `Trigger "${frb.triggerId}" has been found, beginning invocation!`
+    ).log();
+  }
+
   await _ProcessSingleInvocation(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
 }
 
 if (require.main === module) {
   main();
+} else {
+  throw new Error(
+    "functionsEmulatorRuntime.js should not be required/imported. It should only be spawned via InvokeRuntime()"
+  );
 }
