@@ -52,14 +52,21 @@ export class EmulatorLog {
         text: json,
       };
     }
-    return new EmulatorLog(parsedLog.level, parsedLog.text, parsedLog.data, parsedLog.timestamp);
+    return new EmulatorLog(
+      parsedLog.level,
+      parsedLog.type,
+      parsedLog.text,
+      parsedLog.data,
+      parsedLog.timestamp
+    );
   }
 
   constructor(
     public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
+    public type: string,
     public text: string,
     public data?: any,
-    public timestamp?: string
+    public timestamp?: string,
   ) {
     this.timestamp = this.timestamp || new Date().toString();
     this.data = this.data || {};
@@ -71,6 +78,7 @@ export class EmulatorLog {
       level: this.level,
       text: this.text,
       data: this.data,
+      type: this.type,
     });
   }
 

@@ -38,7 +38,10 @@ const FunctionRuntimeBundles = {
   },
 };
 
-async function _countLogEntries(runtime: { exit: Promise<number>; events: EventEmitter }): Promise<{ [key: string]: number }> {
+async function _countLogEntries(runtime: {
+  exit: Promise<number>;
+  events: EventEmitter;
+}): Promise<{ [key: string]: number }> {
   const counts: { [key: string]: number } = {
     "unidentified-network-access": 0,
     "googleapis-network-access": 0,
@@ -48,7 +51,7 @@ async function _countLogEntries(runtime: { exit: Promise<number>; events: EventE
     if (el.level === "WARN") {
       process.stdout.write(el.text + " " + JSON.stringify(el.data) + "\n");
     }
-    counts[el.text] = (counts[el.text] || 0) + 1;
+    counts[el.type] = (counts[el.type] || 0) + 1;
   });
 
   await runtime.exit;
@@ -123,5 +126,26 @@ describe("FuncitonsEmulatorRuntime", () => {
       expect(logs["non-default-admin-app-used"]).to.eq(1);
     });
   });
-});
 
+  describe("_InitializeFunctionsConfigHelper()", () => {
+    it("should tell the user if they've accessed a non-existent function field", async () => {
+      const serializedTriggers = (() => {
+        return {
+          function_id: require("firebase-functions")
+            .firestore.document("test/test")
+            .onCreate(async () => {
+              /* tslint:disable:no-console */
+              console.log(require("firebase-functions").config().hello.world);
+              console.log(require("firebase-functions").config().cat.hat);
+            }),
+        };
+      }).toString();
+
+      const logs = await _countLogEntries(
+        InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, serializedTriggers)
+      );
+
+      expect(logs["functions-config-missing-value"]).to.eq(2);
+    });
+  });
+});

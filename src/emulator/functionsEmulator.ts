@@ -212,11 +212,15 @@ export function InvokeRuntime(
 ): { exit: Promise<number>; events: EventEmitter } {
   const emitter = new EventEmitter();
 
-  const runtime = spawn(nodeBinary, [
-    path.join(__dirname, "functionsEmulatorRuntime.js"),
-    JSON.stringify(frb),
-    serializedTriggers || "",
-  ]);
+  const runtime = spawn(
+    nodeBinary,
+    [
+      path.join(__dirname, "functionsEmulatorRuntime.js"),
+      JSON.stringify(frb),
+      serializedTriggers || "",
+    ],
+    {}
+  );
 
   let stderr = "";
   runtime.stderr.on("data", (buf) => {

@@ -1,5 +1,8 @@
 import * as path from "path";
+import * as fs from "fs";
+import { spawnSync } from "child_process";
 import * as admin from "firebase-admin";
+
 import {
   EmulatedTrigger,
   FunctionsRuntimeBundle,
@@ -7,6 +10,50 @@ import {
 } from "./functionsEmulatorShared";
 import { EmulatorLog } from "./types";
 import { URL } from "url";
+
+const resolve = require.resolve;
+function _requireResolvePolyfill(moduleName: string, opts: { paths: string[] }): string {
+  /*
+  It's a story as old as time. Girl meets boy named Node 8 and things are great. Boy's
+  older brother Node 6 is rude and refuses to resolve modules outside it's current folder
+  hierarchy, but the girl *needs* modules to be resolved to an external folder's modules
+  in order to mock them properly in require's cache.
+
+  So girl goes and implements a polyfill which places a temporary script into the tree
+  in the correct place so the older boy's resolution will take place in there, thus
+  allowing the girl's primary process to resolve the package manually and mock it as
+  intended before cleaning up the temporary script and moving on.
+   */
+  if (process.versions.node.startsWith("6.")) {
+    const resolverScript = path.join(path.resolve(opts.paths[0]), ".resolve_polyfill.js");
+    const resolver = `console.log(require.resolve(process.argv[2]))`;
+
+    fs.writeFileSync(resolverScript, resolver);
+    const result = spawnSync(process.execPath, [resolverScript, moduleName]);
+    fs.unlinkSync(resolverScript);
+
+    const filepath = result.stdout.toString();
+    const hierarchy = filepath.split("/");
+
+    for (let i = 1; i < hierarchy.length; i++) {
+      try {
+        const packagePath = path.join(hierarchy.slice(0, -i).join("/"), "package.json");
+        const serializedPackage = fs.readFileSync(packagePath).toString();
+        if (JSON.parse(serializedPackage).name === moduleName) {
+          return hierarchy.slice(0, -i).join("/");
+        }
+        break;
+      } catch (err) {
+        /**/
+      }
+    }
+
+    return "";
+  } else {
+    return resolve(moduleName, opts);
+  }
+}
+require.resolve = _requireResolvePolyfill as RequireResolve;
 
 function _InitializeNetworkFiltering(): void {
   const networkingModules = [
@@ -53,12 +100,12 @@ function _InitializeNetworkFiltering(): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
       if (href.indexOf("googleapis.com") !== -1) {
-        new EmulatorLog("SYSTEM", "googleapis-network-access", {
+        new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
           href,
           module: bundle.module,
         }).log();
       } else {
-        new EmulatorLog("SYSTEM", "unidentified-network-access", {
+        new EmulatorLog("SYSTEM", "unidentified-network-access", "", {
           href,
           module: bundle.module,
         }).log();
@@ -70,7 +117,7 @@ function _InitializeNetworkFiltering(): void {
     return { bundle, status: "mocked" };
   });
 
-  new EmulatorLog("DEBUG", "Outgoing network have been stubbed.", results).log();
+  new EmulatorLog("DEBUG", "runtime-status", "Outgoing network have been stubbed.", results).log();
 }
 
 function _InitializeFirebaseAdminStubs(
@@ -78,14 +125,15 @@ function _InitializeFirebaseAdminStubs(
   functionsDir: string,
   firestorePort: number
 ): admin.app.App | void {
-  const adminResolve = require.resolve("firebase-admin", {
+  const adminResolution = require.resolve("firebase-admin", {
     paths: [path.join(functionsDir, "node_modules")],
   });
+
   const grpc = require(require.resolve("grpc", {
     paths: [path.join(functionsDir, "node_modules")],
   }));
 
-  const localAdminModule = require(adminResolve);
+  const localAdminModule = require(adminResolution);
   const validApp = localAdminModule.initializeApp({ projectId });
 
   if (firestorePort > 0) {
@@ -102,15 +150,15 @@ function _InitializeFirebaseAdminStubs(
   localAdminModule.initializeApp = (opts: any, name: string) => {
     {
       if (name) {
-        new EmulatorLog("SYSTEM", "non-default-admin-app-used", { name }).log();
+        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "",{ name }).log();
         return originalInitializeApp(opts, name);
       }
-      new EmulatorLog("SYSTEM", "default-admin-app-used").log();
+      new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
       return validApp;
     }
   };
 
-  require.cache[adminResolve] = {
+  require.cache[adminResolution] = {
     exports: localAdminModule,
   };
 
@@ -121,6 +169,51 @@ function _InitializeEnvironmentalVariables(projectId: string): void {
   process.env.FIREBASE_CONFIG = JSON.stringify({ projectId });
   process.env.FIREBASE_PROJECT = projectId;
   process.env.GCLOUD_PROJECT = projectId;
+}
+
+function _InitializeFunctionsConfigHelper(functionsDir: string): void {
+  const functionsResolution = require.resolve("firebase-functions", {
+    paths: [path.join(functionsDir, "node_modules")],
+  });
+
+  const ff = require(functionsResolution);
+
+  const config = ff.config();
+  new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
+    config: ff.config(),
+  }).log();
+
+  const serviceProxy = new Proxy(config, {
+    get(target, name): any {
+      const proxyPath = [name.toString()];
+      return new Proxy(
+        {},
+        {
+          get(ftarget, fname): any {
+            proxyPath.push(fname.toString());
+            const value =
+              typeof config[proxyPath[0]] === "object" && config[proxyPath[0]][proxyPath[1]];
+            if (value) {
+              return value;
+            } else {
+              new EmulatorLog(
+                "WARN",
+                "functions-config-missing-value",
+                `You attempted to read a non-existent config() value "${proxyPath.join(
+                  "."
+                )}" for information on how to set runtime configuration values in the emulator, \
+see https://firebase.google.com/docs/functions/local-emulator`,
+                {}
+              ).log();
+              return undefined;
+            }
+          },
+        }
+      );
+    },
+  });
+
+  (ff as any).config = () => serviceProxy;
 }
 
 async function _ProcessSingleInvocation(
@@ -160,13 +253,13 @@ async function _ProcessSingleInvocation(
     authType: "UNAUTHENTICATED",
   };
 
-  new EmulatorLog("DEBUG", `Requesting a wrapped function.`).log();
+  new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
   const func = trigger.getWrappedFunction();
 
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
-    new EmulatorLog("USER", messages.join(" ")).log();
+    new EmulatorLog("USER", "function-log", messages.join(" ")).log();
   };
 
   let caughtErr;
@@ -179,10 +272,10 @@ async function _ProcessSingleInvocation(
   console.log = log;
 
   if (caughtErr) {
-    new EmulatorLog("WARN", caughtErr.stack).log();
+    new EmulatorLog("WARN", "function-log", caughtErr.stack).log();
   }
 
-  new EmulatorLog("INFO", "Functions execution finished!").log();
+  new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
 }
 
 const wildcardRegex = new RegExp("{[^/{}]*}", "g");
@@ -236,16 +329,17 @@ async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
 
-  new EmulatorLog("INFO", "Functions runtime initialized.", {
+  new EmulatorLog("INFO", "runtime-status", "Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   }).log();
 
   const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
-  new EmulatorLog("DEBUG", "FunctionsRuntimeBundle parsed", frb).log();
+  new EmulatorLog("DEBUG", "runtime-status", "FunctionsRuntimeBundle parsed", frb).log();
 
   _InitializeNetworkFiltering();
   _InitializeEnvironmentalVariables(frb.projectId);
+  _InitializeFunctionsConfigHelper(frb.cwd);
   const stubbedAdminApp = _InitializeFirebaseAdminStubs(
     frb.projectId,
     frb.cwd,
@@ -253,7 +347,7 @@ async function main(): Promise<void> {
   );
 
   if (!stubbedAdminApp) {
-    new EmulatorLog("FATAL", "Could not initialize stubbed admin app.").log();
+    new EmulatorLog("FATAL", "runtime-status", "Could not initialize stubbed admin app.").log();
     return process.exit();
   }
 
@@ -284,12 +378,14 @@ async function main(): Promise<void> {
   if (!triggers[frb.triggerId]) {
     new EmulatorLog(
       "FATAL",
+      "runtime-status",
       `Could not find trigger "${frb.triggerId}" in your functions directory.`
     ).log();
     return;
   } else {
     new EmulatorLog(
       "DEBUG",
+      "runtime-status",
       `Trigger "${frb.triggerId}" has been found, beginning invocation!`
     ).log();
   }
