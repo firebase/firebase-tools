@@ -143,7 +143,6 @@ async function startAll(options: any): Promise<void> {
   // 2) Firestore / Database --> must be started before Functions (requires Functions port)
   // 3) Hosting --> must be started after Functions to enable redirects
   const targets: string[] = filterTargets(options, VALID_EMULATORS);
-  const emulators: EmulatorInstance[] = [];
   utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
 
   if (targets.indexOf("functions") > -1) {
@@ -153,7 +152,6 @@ async function startAll(options: any): Promise<void> {
       port: functionsAddr.port,
     });
     await startEmulator(Emulators.FUNCTIONS, functionsAddr, functionsEmulator);
-    emulators.push(functionsEmulator);
   }
 
   if (targets.indexOf("firestore") > -1) {
@@ -163,7 +161,6 @@ async function startAll(options: any): Promise<void> {
       port: firestoreAddr.port,
     });
     await startEmulator(Emulators.FIRESTORE, firestoreAddr, firestoreEmulator);
-    emulators.push(firestoreEmulator);
   }
 
   if (targets.indexOf("database") > -1) {
@@ -173,7 +170,6 @@ async function startAll(options: any): Promise<void> {
       port: databaseAddr.port,
     });
     await startEmulator(Emulators.DATABASE, databaseAddr, databaseEmulator);
-    emulators.push(databaseEmulator);
 
     // TODO: When the database emulator is integrated with the Functions
     //       emulator, we will need to pass the port in and remove this warning
@@ -188,7 +184,13 @@ async function startAll(options: any): Promise<void> {
     utils.logWarning("Hosting emulator not currently implemented.");
   }
 
-  emulators.forEach((emulator) => emulator.connect());
+  const running = EmulatorRegistry.listRunning();
+  for (const name of running) {
+    const instance = EmulatorRegistry.getInstance(name);
+    if (instance) {
+      await instance.connect();
+    }
+  }
 }
 
 module.exports = new Command("emulators:start")
