@@ -144,7 +144,7 @@ async function startAll(options: any): Promise<void> {
   const emulators: EmulatorInstance[] = [];
   utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
 
-  if (targets.includes("functions")) {
+  if (targets.indexOf("functions") > -1) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
     const functionsEmulator = new FunctionsEmulator(options, {
       host: functionsAddr.host,
@@ -154,7 +154,7 @@ async function startAll(options: any): Promise<void> {
     emulators.push(functionsEmulator);
   }
 
-  if (targets.includes("firestore")) {
+  if (targets.indexOf("firestore") > -1) {
     const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
     const firestoreEmulator = new FirestoreEmulator({
       host: firestoreAddr.host,
@@ -164,7 +164,7 @@ async function startAll(options: any): Promise<void> {
     emulators.push(firestoreEmulator);
   }
 
-  if (targets.includes("database")) {
+  if (targets.indexOf("database") > -1) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
     const databaseEmulator = new DatabaseEmulator({
       host: databaseAddr.host,
@@ -180,7 +180,7 @@ async function startAll(options: any): Promise<void> {
     );
   }
 
-  if (targets.includes("hosting")) {
+  if (targets.indexOf("hosting") > -1) {
     const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
     // TODO: Start hosting
     utils.logWarning("Hosting emulator not currently implemented.");
