@@ -1,5 +1,6 @@
 "use strict";
 
+import * as childProcess from "child_process";
 import * as clc from "cli-color";
 import * as pf from "portfinder";
 
@@ -124,6 +125,45 @@ async function cleanShutdown(): Promise<boolean> {
   return true;
 }
 
+async function runScript(script: string) {
+  utils.logBullet(`Running script: ${clc.bold(script)}`);
+
+  // TODO(samstern): How does this work on Windows?
+  const proc = childProcess.spawn("/bin/sh", ["-c", script], {
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+
+  proc.stdout.on("data", (data) => {
+    process.stdout.write(data.toString());
+  });
+
+  proc.stderr.on("data", (data) => {
+    process.stderr.write(data.toString());
+  });
+
+  return new Promise((resolve, reject) => {
+    proc.on("error", (err: any) => {
+      utils.logWarning(`There was an error running the script: ${JSON.stringify(err)}`);
+      reject();
+    });
+
+    proc.once("exit", (code, signal) => {
+      if (signal) {
+        utils.logWarning(`Script exited with signal: ${signal}`);
+        reject();
+      }
+
+      if (code === 0) {
+        utils.logSuccess(`Script exited successfully (code 0)`);
+        resolve();
+      } else {
+        utils.logWarning(`Script exited unsuccessfully (code ${code})`);
+        resolve();
+      }
+    });
+  });
+}
+
 async function startAll(options: any): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -207,12 +247,25 @@ module.exports = new Command("emulators:start")
       "Valid options are: " +
       JSON.stringify(VALID_EMULATORS)
   )
+  .option(
+    "--script <string>",
+    "Run a specific testing script once the emulators have started up. " +
+      "The command will start the emulators, run the script, and then exit."
+  )
   .action(async (options: any) => {
     try {
       await startAll(options);
     } catch (e) {
       await cleanShutdown();
       throw e;
+    }
+
+    // If the 'script' option is passed then we just run the script
+    // and exit.
+    if (options.script) {
+      return runScript(options.script)
+        .then(cleanShutdown)
+        .catch(cleanShutdown);
     }
 
     // Hang until explicitly killed

@@ -140,7 +140,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.functionsDir,
       this.firebaseConfig
     );
-    Object.keys(triggersByName).forEach((name) => {
+
+    const triggerNames = Object.keys(triggersByName);
+    for (const name of triggerNames) {
       const trigger = triggersByName[name];
       if (trigger.definition.httpsTrigger) {
         const url = `http://localhost:${this.port}/functions/projects/${
@@ -153,7 +155,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
       switch (service) {
         case SERVICE_FIRESTORE:
-          this.addFirestoreTrigger(this.projectId, name, trigger);
+          await this.addFirestoreTrigger(this.projectId, name, trigger);
           break;
         default:
           logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
@@ -162,14 +164,14 @@ export class FunctionsEmulator implements EmulatorInstance {
           );
           break;
       }
-    });
+    }
   }
 
-  addFirestoreTrigger(projectId: string, name: string, trigger: any): void {
+  addFirestoreTrigger(projectId: string, name: string, trigger: any): Promise<any> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (firestorePort <= 0) {
       utils.logWarning(`Ignoring trigger "${name}" because the Firestore emulator is not running.`);
-      return;
+      return Promise.reject();
     }
 
     const bundle = JSON.stringify({ eventTrigger: trigger.definition.eventTrigger });
@@ -179,25 +181,31 @@ export class FunctionsEmulator implements EmulatorInstance {
       "functions",
       `Attempting to contact firestore emulator on port ${firestorePort}`
     );
-    request.put(
-      `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
-      {
-        body: bundle,
-      },
-      (err, res, body) => {
-        if (err) {
-          utils.logWarning("Error adding trigger: " + err);
-          return;
-        }
 
-        if (JSON.stringify(JSON.parse(body)) === "{}") {
-          utils.logLabeledSuccess(
-            "functions",
-            `Trigger "${name}" has been acknowledged by the firestore emulator.`
-          );
+    return new Promise((resolve, reject) => {
+      request.put(
+        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${name}`,
+        {
+          body: bundle,
+        },
+        (err, res, body) => {
+          if (err) {
+            utils.logWarning("Error adding trigger: " + err);
+            reject();
+            return;
+          }
+
+          if (JSON.stringify(JSON.parse(body)) === "{}") {
+            utils.logLabeledSuccess(
+              "functions",
+              `Trigger "${name}" has been acknowledged by the firestore emulator.`
+            );
+          }
+
+          resolve();
         }
-      }
-    );
+      );
+    });
   }
 
   stop(): Promise<void> {
