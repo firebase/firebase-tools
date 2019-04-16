@@ -150,7 +150,7 @@ function _InitializeFirebaseAdminStubs(
   localAdminModule.initializeApp = (opts: any, name: string) => {
     {
       if (name) {
-        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "",{ name }).log();
+        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { name }).log();
         return originalInitializeApp(opts, name);
       }
       new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();

@@ -66,7 +66,7 @@ export class EmulatorLog {
     public type: string,
     public text: string,
     public data?: any,
-    public timestamp?: string,
+    public timestamp?: string
   ) {
     this.timestamp = this.timestamp || new Date().toString();
     this.data = this.data || {};

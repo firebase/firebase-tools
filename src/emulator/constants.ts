@@ -11,6 +11,8 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
 };
 
+const DEFAULT_HOST = "localhost";
+
 const NAMES: { [s in Emulators]: string } = {
   database: "database",
   firestore: "firestore",
@@ -23,30 +25,31 @@ export class Constants {
     return DEFAULT_PORTS[emulator];
   }
 
-  static getAddressKey(emulator: Emulators): string {
-    return `emulators.${NAMES[emulator]}.address`;
+  static getHostKey(emulator: Emulators): string {
+    return `emulators.${NAMES[emulator]}.host`;
+  }
+
+  static getPortKey(emulator: Emulators): string {
+    return `emulators.${NAMES[emulator]}.port`;
   }
 
   static getAddress(emulator: Emulators, options: any): Address {
-    const key = this.getAddressKey(emulator);
-    const addr = this.parseAddress(
-      options.config.get(key, `localhost:${this.getDefaultPort(emulator)}`)
-    );
+    const hostVal = options.config.get(this.getHostKey(emulator), DEFAULT_HOST);
+    const portVal = options.config.get(this.getPortKey(emulator), this.getDefaultPort(emulator));
 
-    return addr;
+    const host = this.normalizeHost(hostVal);
+    const port = parseInt(portVal, 10);
+
+    return { host, port };
   }
 
-  private static parseAddress(address: string): Address {
-    let normalized = address;
+  private static normalizeHost(host: string): string {
+    let normalized = host;
     if (!normalized.startsWith("http")) {
       normalized = `http://${normalized}`;
     }
 
     const u = url.parse(normalized);
-    const host = u.hostname || "localhost";
-    const portStr = u.port || "-1";
-    const port = parseInt(portStr, 10);
-
-    return { host, port };
+    return u.hostname || DEFAULT_HOST;
   }
 }

@@ -64,6 +64,7 @@ async function startEmulator(
   // Log the command for analytics
   track("emulators:start", name);
 
+  // TODO(samstern): This check should only occur when the host is localhost
   const portOpen = await checkPortOpen(addr.port);
   if (!portOpen) {
     utils.logWarning(`Port ${addr.port} is not open, could not start ${name} emulator.`);
@@ -72,7 +73,7 @@ async function startEmulator(
       // ...
       "emulators": {
         "${name}": {
-          "address": "localhost:${clc.yellow("PORT")}"
+          "port": "${clc.yellow("PORT")}"
         }
       }
     }`);
@@ -127,7 +128,8 @@ async function startAll(options: any): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
-  //     "address": "localhost:9005"
+  //     "host": "localhost",
+  //     "port": "9005"
   //   },
   //   // ...
   // }
