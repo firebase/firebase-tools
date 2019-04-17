@@ -29,7 +29,7 @@ const _emulators = {
       "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.4.5.jar",
     expectedSize: 56840576,
     expectedChecksum: "7fa4ebe4615650038c79ea260b0e7bf6",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.4.4.jar"),
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.4.5.jar"),
   },
 };
 
