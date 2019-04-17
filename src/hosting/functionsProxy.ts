@@ -5,6 +5,7 @@ import { proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Emulators } from "../emulator/types";
+import { FunctionsEmulator } from "../emulator/functionsEmulator";
 
 export interface FunctionsProxyOptions {
   port: number;
@@ -29,19 +30,16 @@ export default function(
       rewrite.function
     }`;
     let destLabel = "live";
+
     if (includes(options.targets, "functions")) {
       destLabel = "local";
 
       // If the functions emulator is running we know the port, otherwise
       // we guess it is our port + 1
-      let functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
-      if (functionsPort < 0) {
-        functionsPort = options.port + 1;
+      const functionsEmu = EmulatorRegistry.getInstance(Emulators.FUNCTIONS) as FunctionsEmulator;
+      if (functionsEmu) {
+        url = functionsEmu.getHttpFunctionUrl(rewrite.function);
       }
-
-      url = `http://localhost:${functionsPort}/${getProjectId(options, false)}/us-central1/${
-        rewrite.function
-      }`;
     }
 
     return await proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`);

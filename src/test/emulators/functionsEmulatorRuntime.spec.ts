@@ -58,7 +58,7 @@ async function _countLogEntries(runtime: {
   return counts;
 }
 
-describe("FuncitonsEmulatorRuntime", () => {
+describe("FunctionsEmulatorRuntime", () => {
   describe("_InitializeNetworkFiltering(...)", () => {
     it("should log outgoing HTTPS requests", async () => {
       const serializedTriggers = (() => {

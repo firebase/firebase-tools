@@ -10,6 +10,7 @@ import * as utils from "../utils";
 import * as track from "../track";
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
+import serveHosting = require("../serve/hosting");
 import * as filterTargets from "../filterTargets";
 import { EmulatorRegistry } from "../emulator/registry";
 import { Address, EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
@@ -17,6 +18,7 @@ import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { HostingEmulator } from "../emulator/hostingEmulator";
 
 // TODO: This should come from the enum
 const VALID_EMULATORS = ["database", "firestore", "functions", "hosting"];
@@ -128,9 +130,10 @@ async function cleanShutdown(): Promise<boolean> {
 async function runScript(script: string): Promise<void> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  // TODO(samstern): How does this work on Windows?
-  const proc = childProcess.spawn("/bin/sh", ["-c", script], {
+  const proc = childProcess.spawn(script, {
     stdio: ["inherit", "pipe", "pipe"],
+    shell: true,
+    windowsHide: true,
   });
 
   proc.stdout.on("data", (data) => {
@@ -183,6 +186,8 @@ async function startAll(options: any): Promise<void> {
   // 2) Firestore / Database --> must be started before Functions (requires Functions port)
   // 3) Hosting --> must be started after Functions to enable redirects
   const targets: string[] = filterTargets(options, VALID_EMULATORS);
+  options.targets = targets;
+
   utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
 
   if (targets.indexOf("functions") > -1) {
@@ -220,8 +225,13 @@ async function startAll(options: any): Promise<void> {
 
   if (targets.indexOf("hosting") > -1) {
     const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
-    // TODO: Start hosting
-    utils.logWarning("Hosting emulator not currently implemented.");
+    const hostingEmulator = new HostingEmulator({
+      host: hostingAddr.host,
+      port: hostingAddr.port,
+      options,
+    });
+
+    await startEmulator(Emulators.HOSTING, hostingAddr, hostingEmulator);
   }
 
   const running = EmulatorRegistry.listRunning();

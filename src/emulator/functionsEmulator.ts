@@ -76,7 +76,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     // TODO: This is trash, I write trash
-    hub.get("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
+    const functionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
+    const functionRoutes = [functionRoute, `${functionRoute}/*`];
+
+    hub.get(functionRoutes, async (req, res) => {
       logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
       const triggersByName = await getTriggersFromDirectory(
         this.projectId,
@@ -165,6 +168,10 @@ export class FunctionsEmulator implements EmulatorInstance {
           break;
       }
     }
+  }
+
+  getHttpFunctionUrl(name: string): string {
+    return `http://localhost:${this.port}/functions/projects/${this.projectId}/triggers/${name}`;
   }
 
   addFirestoreTrigger(projectId: string, name: string, trigger: any): Promise<any> {
