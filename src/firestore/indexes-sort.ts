@@ -79,7 +79,11 @@ export function compareApiField(a: API.Field, b: API.Field): number {
     return aName.fieldPath.localeCompare(bName.fieldPath);
   }
 
-  return compareArrays(a.indexConfig.indexes || [], b.indexConfig.indexes || [], compareApiIndex);
+  return compareArraysSorted(
+    a.indexConfig.indexes || [],
+    b.indexConfig.indexes || [],
+    compareApiIndex
+  );
 }
 
 /**
@@ -99,7 +103,7 @@ export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverrid
     return a.fieldPath.localeCompare(b.fieldPath);
   }
 
-  return compareArrays(a.indexes, b.indexes, compareFieldIndex);
+  return compareArraysSorted(a.indexes, b.indexes, compareFieldIndex);
 }
 
 /**
@@ -155,23 +159,34 @@ function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {
 }
 
 /**
+ * Compare two arrays of objects by looking for the first
+ * non-equal element and comparing them.
+ *
+ * If the shorter array is a perfect prefix of the longer array,
+ * then the shorter array is sorted first.
+ */
+function compareArrays<T>(a: T[], b: T[], fn: (x: T, y: T) => number): number {
+  const minFields = Math.min(a.length, b.length);
+  for (let i = 0; i < minFields; i++) {
+    const cmp = fn(a[i], b[i]);
+    if (cmp !== 0) {
+      return cmp;
+    }
+  }
+
+  return a.length - b.length;
+}
+
+/**
  * Compare two arrays of objects by first sorting each array, then
  * looking for the first non-equal element and comparing them.
  *
  * If the shorter array is a perfect prefix of the longer array,
  * then the shorter array is sorted first.
  */
-function compareArrays<T>(a: T[], b: T[], fn: (x: T, y: T) => number): number {
+function compareArraysSorted<T>(a: T[], b: T[], fn: (x: T, y: T) => number): number {
   const aSorted = a.sort(fn);
   const bSorted = b.sort(fn);
 
-  const minFields = Math.min(aSorted.length, bSorted.length);
-  for (let i = 0; i < minFields; i++) {
-    const cmp = fn(aSorted[i], bSorted[i]);
-    if (cmp !== 0) {
-      return cmp;
-    }
-  }
-
-  return aSorted.length - bSorted.length;
+  return compareArrays(aSorted, bSorted, fn);
 }
