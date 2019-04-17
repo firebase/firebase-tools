@@ -125,7 +125,7 @@ async function cleanShutdown(): Promise<boolean> {
   return true;
 }
 
-async function runScript(script: string) {
+async function runScript(script: string): Promise<void> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   // TODO(samstern): How does this work on Windows?
