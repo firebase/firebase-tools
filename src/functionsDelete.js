@@ -48,9 +48,9 @@ var printTooManyOps = function(projectId) {
   deletes = []; // prevents analytics tracking of deployments
 };
 
-module.exports = function(functionsToDelete, projectId) {
+module.exports = function(functionsToDelete, projectId, appEngineLocation) {
   deletes = _.map(functionsToDelete, function(name) {
-    var scheduleName = helper.getScheduleName(name);
+    var scheduleName = helper.getScheduleName(name, appEngineLocation);
     var topicName = helper.getTopicName(name);
     return {
       name: name,

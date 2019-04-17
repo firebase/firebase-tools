@@ -12,7 +12,8 @@ interface ScheduleTrigger {
 export async function createOrUpdateSchedulesAndTopics(
   projectId: string,
   triggers: ScheduleTrigger[],
-  exisitingScheduledFunctions: string[]
+  existingScheduledFunctions: string[],
+  appEngineLocation: string
 ): Promise<void> {
   const triggersWithSchedules = triggers.filter((t) => !!t.schedule);
   let schedulerEnabled = false;
@@ -27,10 +28,10 @@ export async function createOrUpdateSchedulesAndTopics(
   }
   for (const trigger of triggers) {
     const [, , , region, , functionName] = trigger.name.split("/");
-    const scheduleName = getScheduleName(trigger.name);
+    const scheduleName = getScheduleName(trigger.name, appEngineLocation);
     const topicName = getTopicName(trigger.name);
     if (!trigger.schedule) {
-      if (schedulerEnabled && _.includes(exisitingScheduledFunctions, trigger.name)) {
+      if (schedulerEnabled && _.includes(existingScheduledFunctions, trigger.name)) {
         // we need to delete any schedules that exist for functions that are being deployed without a schedule
         try {
           await deleteJob(scheduleName);
@@ -54,7 +55,7 @@ export async function createOrUpdateSchedulesAndTopics(
     } else {
       await createOrReplaceJob(
         Object.assign(trigger.schedule as { schedule: string }, {
-          name: `projects/${projectId}/locations/us-central1/jobs/firebase-schedule-${functionName}-${region}`,
+          name: `projects/${projectId}/locations/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`,
           pubsubTarget: {
             topicName: `projects/${projectId}/topics/firebase-schedule-${functionName}-${region}`,
             attributes: {

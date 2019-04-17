@@ -13,6 +13,7 @@ var logger = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
+var { getAppEngineLocation } = require("../../functionsConfig");
 var prompt = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
 
@@ -115,6 +116,8 @@ module.exports = function(context, options, payload) {
 
   var projectId = context.projectId;
   var sourceUrl = context.uploadUrl;
+  var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
+  utils.logWarning("appEngineLocation " + appEngineLocation);
   // Used in CLI releases v3.4.0 to v3.17.6
   var legacySourceUrlTwo =
     "gs://" + "staging." + context.firebaseConfig.storageBucket + "/firebase-functions-source";
@@ -352,7 +355,7 @@ module.exports = function(context, options, payload) {
         }
         functionsToDelete.forEach(function(name) {
           var functionName = helper.getFunctionName(name);
-          var scheduleName = helper.getScheduleName(name);
+          var scheduleName = helper.getScheduleName(name, appEngineLocation);
           var topicName = helper.getTopicName(name);
           var region = helper.getRegion(name);
 
@@ -433,7 +436,8 @@ module.exports = function(context, options, payload) {
       return createOrUpdateSchedulesAndTopics(
         context.projectId,
         functionsInDeploy,
-        existingScheduledFunctions
+        existingScheduledFunctions,
+        appEngineLocation
       );
     })
     .then(function() {

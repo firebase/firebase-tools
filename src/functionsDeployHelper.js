@@ -140,9 +140,9 @@ function getFunctionName(fullName) {
 ** If you change this pattern, Firebase console will stop displaying schedule descriptions
 ** and schedules created under the old pattern will no longer be cleaned up correctly
 */
-function getScheduleName(fullName) {
+function getScheduleName(fullName, appEngineLocation) {
   var [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
-  return `${projectsPrefix}/${project}/${regionsPrefix}/us-central1/jobs/firebase-schedule-${functionName}-${region}`;
+  return `${projectsPrefix}/${project}/${regionsPrefix}/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`;
 }
 
 /*
