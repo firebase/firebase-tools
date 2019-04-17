@@ -133,11 +133,11 @@ function getReleventConfigs(target, options) {
   }
 
   onlyTargets = onlyTargets
-    .filter(function(anOnly) {
-      return anOnly.indexOf(`${target}:`) === 0;
+    .filter(function(individualOnly) {
+      return individualOnly.indexOf(`${target}:`) === 0;
     })
-    .map(function(anOnly) {
-      return anOnly.replace(`${target}:`, "");
+    .map(function(individualOnly) {
+      return individualOnly.replace(`${target}:`, "");
     });
 
   return targetConfigs.filter(function(config) {
