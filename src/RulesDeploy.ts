@@ -23,7 +23,7 @@ export class RulesDeploy {
   type: any;
   options: any;
   project: any;
-  rulesFiles: {[path: string]: RulesetFile[]};
+  rulesFiles: { [path: string]: RulesetFile[] };
   rulesetNames: any;
   constructor(options: any, type: any) {
     this.type = type;
