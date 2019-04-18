@@ -25,7 +25,7 @@ const INDEXES_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
-async function _initRules(setup: any, config: any): Promise<any> {
+async function initRules(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore Security Rules allow you to define how and when to allow");
   logger.info("requests. You can keep these rules in your project directory");
@@ -63,13 +63,13 @@ async function _initRules(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
-      return _getRulesFromConsole(setup.projectId).then((contents: any) => {
+      return getRulesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.rules, contents);
       });
     });
 }
 
-async function _getRulesFromConsole(projectId: string): Promise<any> {
+async function getRulesFromConsole(projectId: string): Promise<any> {
   return gcp.rules
     .getLatestRulesetName(projectId, "cloud.firestore")
     .then((name) => {
@@ -97,7 +97,7 @@ async function _getRulesFromConsole(projectId: string): Promise<any> {
     });
 }
 
-async function _initIndexes(setup: any, config: any): Promise<any> {
+async function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
   logger.info("maintaining performance that scales with the size of the result");
@@ -134,13 +134,13 @@ async function _initIndexes(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
-      return _getIndexesFromConsole(setup.projectId).then((contents: any) => {
+      return getIndexesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });
     });
 }
 
-async function _getIndexesFromConsole(projectId: any): Promise<any> {
+async function getIndexesFromConsole(projectId: any): Promise<any> {
   const indexesPromise = indexes.listIndexes(projectId);
   const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
 
@@ -162,11 +162,11 @@ async function _getIndexesFromConsole(projectId: any): Promise<any> {
 export async function doSetup(setup: any, config: any): Promise<any> {
   setup.config.firestore = {};
 
-  return requireAccess({ project: setup.projectId }) // TODO(rpb): what is this: [scopes.CLOUD_PLATFORM])
+  return requireAccess({ project: setup.projectId })
     .then(() => {
-      return _initRules(setup, config);
+      return initRules(setup, config);
     })
     .then(() => {
-      return _initIndexes(setup, config);
+      return initIndexes(setup, config);
     });
 }
