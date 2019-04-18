@@ -27,36 +27,78 @@ export async function getLatestRulesetName(
   projectId: string,
   service: string
 ): Promise<string | null> {
+  const releases = await listAllReleases(projectId);
+  const prefix = `projects/${projectId}/releases/${service}`;
+  const release = _.find(releases, (r) => r.name.indexOf(prefix) === 0);
+
+  if (!release) {
+    return null;
+  }
+  return release.rulesetName;
+}
+
+const MAX_RELEASES_PAGE_SIZE = 10;
+
+/**
+ * Lists the releases for the given project.
+ */
+export async function listReleases(
+  projectId: string,
+  pageToken?: string
+): Promise<ListReleasesResponse> {
   const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
     auth: true,
     origin: api.rulesOrigin,
+    query: {
+      pageSize: MAX_RELEASES_PAGE_SIZE,
+      pageToken,
+    },
   });
   if (response.status === 200) {
-    if (response.body.releases && response.body.releases.length > 0) {
-      const releases = _.orderBy(response.body.releases, ["updateTime"], ["desc"]);
-
-      const prefix = "projects/" + projectId + "/releases/" + service;
-      const release = _.find(releases, (r) => {
-        return r.name.indexOf(prefix) === 0;
-      });
-
-      if (!release) {
-        return null;
-      }
-      return release.rulesetName;
-    }
-
-    // In this case it's likely that Firestore has not been used on this project before.
-    return null;
+    return response.body;
   }
-
   return _handleErrorResponse(response);
+}
+
+export interface Release {
+  name: string;
+  rulesetName: string;
+  createTime: string;
+  updateTime: string;
+}
+
+export interface ListReleasesResponse {
+  releases?: Release[];
+  nextPageToken?: string;
+}
+
+/**
+ * Lists all the releases for the given project, in reverse chronological order.
+ *
+ * May require many network requests.
+ */
+export async function listAllReleases(projectId: string): Promise<Release[]> {
+  let pageToken;
+  let releases: Release[] = [];
+  do {
+    const response: ListReleasesResponse = await listReleases(projectId, pageToken);
+    if (response.releases && response.releases.length > 0) {
+      releases = releases.concat(response.releases);
+    }
+    pageToken = response.nextPageToken;
+  } while (pageToken);
+  return _.orderBy(releases, ["createTime"], ["desc"]);
 }
 
 export interface RulesetFile {
   name: string;
   content: string;
 }
+
+export interface RulesetSource {
+  files: RulesetFile[];
+}
+
 /**
  * Gets the full contents of a ruleset.
  * @param name Name of the ruleset.
@@ -68,7 +110,8 @@ export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
     origin: api.rulesOrigin,
   });
   if (response.status === 200) {
-    return response.body.source.files;
+    const source: RulesetSource = response.body.source;
+    return source.files;
   }
 
   return _handleErrorResponse(response);
@@ -97,9 +140,37 @@ export async function listRulesets(
   return _handleErrorResponse(response);
 }
 
+/**
+ * Lists all the rulesets for the given project, in reverse chronological order.
+ *
+ * May require many network requests.
+ */
+export async function listAllRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
+  let pageToken;
+  let rulesets: ListRulesetsEntry[] = [];
+  do {
+    const response: ListRulesetsResponse = await listRulesets(projectId, pageToken);
+    if (response.rulesets) {
+      rulesets = rulesets.concat(response.rulesets);
+    }
+    pageToken = response.nextPageToken;
+  } while (pageToken);
+  return _.orderBy(rulesets, ["createTime"], ["desc"]);
+}
+
 export interface ListRulesetsResponse {
-  rulesets: object[];
+  rulesets?: ListRulesetsEntry[];
   nextPageToken?: string;
+}
+
+export interface ListRulesetsEntry {
+  name: string;
+  createTime: string; // ISO 8601 format
+}
+
+export function getRulesetId(ruleset: ListRulesetsEntry): string {
+  // Ruleset names looks like "projects/<project>/rulesets/<ruleset_id>"
+  return ruleset.name.split("/").pop()!;
 }
 
 /**
@@ -126,7 +197,7 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: string): Promise<any> {
+export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
   const payload = { source: { files } };
 
   const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/rulesets`, {
@@ -152,7 +223,7 @@ export async function createRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   const payload = {
     name: `projects/${projectId}/releases/${releaseName}`,
     rulesetName,
@@ -181,7 +252,7 @@ export async function updateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   const payload = {
     release: {
       name: `projects/${projectId}/releases/${releaseName}`,
@@ -210,7 +281,7 @@ export async function updateOrCreateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   logger.debug("[rules] releasing", releaseName, "with ruleset", rulesetName);
   return updateRelease(projectId, rulesetName, releaseName).catch(() => {
     logger.debug("[rules] ruleset update failed, attempting to create instead");
@@ -218,7 +289,7 @@ export async function updateOrCreateRelease(
   });
 }
 
-export function testRuleset(projectId: string, files: any): Promise<any> {
+export function testRuleset(projectId: string, files: RulesetFile[]): Promise<any> {
   return api.request("POST", `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`, {
     origin: api.rulesOrigin,
     data: {
