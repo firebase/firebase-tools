@@ -10,6 +10,7 @@ import logger = require("../../logger");
 import utils = require("../../utils");
 import requireAccess = require("../../requireAccess");
 import scopes = require("../../scopes");
+import { RulesetSource } from "../../gcp/rules";
 
 const indexes = new iv2.FirestoreIndexes();
 
@@ -19,6 +20,10 @@ const RULES_TEMPLATE = fs.readFileSync(
 );
 
 const DEFAULT_RULES_FILE = "firestore.rules";
+
+const DEFAULT_RULESET: RulesetSource = {
+  files: [{ name: DEFAULT_RULES_FILE, content: RULES_TEMPLATE }],
+};
 
 const INDEXES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/firestore/firestore.indexes.json",
@@ -72,28 +77,28 @@ async function initRules(setup: any, config: any): Promise<any> {
 async function getRulesFromConsole(projectId: string): Promise<any> {
   return gcp.rules
     .getLatestRulesetName(projectId, "cloud.firestore")
-    .then((name) => {
+    .then((name: string | null) => {
       if (!name) {
         logger.debug("No rulesets found, using default.");
-        return [{ name: DEFAULT_RULES_FILE, content: RULES_TEMPLATE }];
+        return DEFAULT_RULESET;
       }
 
       logger.debug("Found ruleset: " + name);
       return gcp.rules.getRulesetContent(name);
     })
-    .then((rules: any[]) => {
-      if (rules.length <= 0) {
+    .then(async (source: RulesetSource) => {
+      if (source.files.length <= 0) {
         return utils.reject("Ruleset has no files", { exit: 1 });
       }
 
-      if (rules.length > 1) {
-        return utils.reject("Ruleset has too many files: " + rules.length, { exit: 1 });
+      if (source.files.length > 1) {
+        return utils.reject("Ruleset has too many files: " + source.files.length, { exit: 1 });
       }
 
       // Even though the rules API allows for multi-file rulesets, right
       // now both the console and the CLI are built on the single-file
       // assumption.
-      return rules[0].content;
+      return source.files[0].content;
     });
 }
 

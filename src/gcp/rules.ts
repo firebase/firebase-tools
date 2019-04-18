@@ -102,16 +102,14 @@ export interface RulesetSource {
 /**
  * Gets the full contents of a ruleset.
  * @param name Name of the ruleset.
- * @return Array of files in the ruleset. Each entry has form { content, name }.
  */
-export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
+export async function getRulesetContent(name: string): Promise<RulesetSource> {
   const response = await api.request("GET", `/${API_VERSION}/${name}`, {
     auth: true,
     origin: api.rulesOrigin,
   });
   if (response.status === 200) {
-    const source: RulesetSource = response.body.source;
-    return source.files;
+    return response.body.source;
   }
 
   return _handleErrorResponse(response);
@@ -197,12 +195,10 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
-  const payload = { source: { files } };
-
+export async function createRuleset(projectId: string, source: RulesetSource): Promise<string> {
   const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/rulesets`, {
     auth: true,
-    data: payload,
+    data: { source },
     origin: api.rulesOrigin,
   });
   if (response.status === 200) {
@@ -289,12 +285,10 @@ export async function updateOrCreateRelease(
   });
 }
 
-export function testRuleset(projectId: string, files: RulesetFile[]): Promise<any> {
+export function testRuleset(projectId: string, source: RulesetSource): Promise<any> {
   return api.request("POST", `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`, {
     origin: api.rulesOrigin,
-    data: {
-      source: { files },
-    },
+    data: { source },
     auth: true,
   });
 }

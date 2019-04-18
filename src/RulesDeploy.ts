@@ -8,7 +8,7 @@ import FirebaseError = require("./error");
 import utils = require("./utils");
 
 import * as prompt from "./prompt";
-import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
+import { ListRulesetsEntry, Release, RulesetSource } from "./gcp/rules";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
@@ -23,7 +23,7 @@ export class RulesDeploy {
   type: any;
   options: any;
   project: any;
-  rulesFiles: { [path: string]: RulesetFile[] };
+  rulesFiles: { [path: string]: RulesetSource };
   rulesetNames: any;
   constructor(options: any, type: any) {
     this.type = type;
@@ -46,17 +46,17 @@ export class RulesDeploy {
       throw new FirebaseError("Error reading rules file " + clc.bold(path));
     }
 
-    this.rulesFiles[path] = [{ name: path, content: src }];
+    this.rulesFiles[path] = { files: [{ name: path, content: src }] };
   }
 
   /**
    * Compile all rulesets tied to this deploy, rejecting on first
    * compilation error.
    */
-  compile(): Promise<any> {
+  compile(): Promise<any[]> {
     const promises: any[] = [];
-    _.forEach(this.rulesFiles, (files: RulesetFile[], filename: string) => {
-      promises.push(this._compileRuleset(filename, files));
+    _.forEach(this.rulesFiles, (source: RulesetSource, filename: string) => {
+      promises.push(this.compileRuleset(filename, source));
     });
     return Promise.all(promises);
   }
@@ -67,12 +67,12 @@ export class RulesDeploy {
    */
   createRulesets(): Promise<any> {
     const promises: any[] = [];
-    _.forEach(this.rulesFiles, (files: RulesetFile[], filename: any) => {
+    _.forEach(this.rulesFiles, (source: RulesetSource, filename: string) => {
       utils.logBullet(
         clc.bold.cyan(this.type + ":") + " uploading rules " + clc.bold(filename) + "..."
       );
       promises.push(
-        gcp.rules.createRuleset(this.options.project, files).then((rulesetName: any) => {
+        gcp.rules.createRuleset(this.options.project, source).then((rulesetName: any) => {
           this.rulesetNames[filename] = rulesetName;
         })
       );
@@ -135,14 +135,14 @@ export class RulesDeploy {
       });
   }
 
-  private _compileRuleset(filename: string, files: RulesetFile[]): Promise<any> {
+  private compileRuleset(filename: string, source: RulesetSource): Promise<any> {
     utils.logBullet(
       clc.bold.cyan(this.type + ":") +
         " checking " +
         clc.bold(filename) +
         " for compilation errors..."
     );
-    return gcp.rules.testRuleset(this.options.project, files).then((response: any) => {
+    return gcp.rules.testRuleset(this.options.project, source).then((response: any) => {
       if (response.body && response.body.issues && response.body.issues.length > 0) {
         const warnings: any[] = [];
         const errors: any[] = [];
