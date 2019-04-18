@@ -4,6 +4,7 @@ import * as _ from "lodash";
 import * as path from "path";
 import * as express from "express";
 import * as request from "request";
+import * as clc from "cli-color";
 
 import * as getProjectId from "../getProjectId";
 import * as functionsConfig from "../functionsConfig";
@@ -147,25 +148,25 @@ export class FunctionsEmulator implements EmulatorInstance {
     const triggerNames = Object.keys(triggersByName);
     for (const name of triggerNames) {
       const trigger = triggersByName[name];
+
       if (trigger.definition.httpsTrigger) {
         const url = `http://localhost:${this.port}/functions/projects/${
           this.projectId
         }/triggers/${name}`;
-        utils.logLabeledBullet("functions", `HTTP trigger initialized at "${url}"`);
-        return;
-      }
-
-      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
-      switch (service) {
-        case SERVICE_FIRESTORE:
-          await this.addFirestoreTrigger(this.projectId, name, trigger);
-          break;
-        default:
-          logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
-          utils.logWarning(
-            `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
-          );
-          break;
+        utils.logLabeledBullet("functions", `HTTP trigger initialized at ${clc.bold(url)}`);
+      } else {
+        const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
+        switch (service) {
+          case SERVICE_FIRESTORE:
+            await this.addFirestoreTrigger(this.projectId, name, trigger);
+            break;
+          default:
+            logger.debug(`Unsupported trigger: ${JSON.stringify(trigger)}`);
+            utils.logWarning(
+              `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
+            );
+            break;
+        }
       }
     }
   }
@@ -178,7 +179,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (firestorePort <= 0) {
       utils.logWarning(`Ignoring trigger "${name}" because the Firestore emulator is not running.`);
-      return Promise.reject();
+      return Promise.resolve();
     }
 
     const bundle = JSON.stringify({ eventTrigger: trigger.definition.eventTrigger });

@@ -148,18 +148,23 @@ async function runScript(script: string): Promise<void> {
       reject();
     });
 
+    // Due to the async nature of the node child_process library, sometimes
+    // we can get the "exit" callback before all "data" has been read from
+    // from the script's output streams. To make the logs look cleaner, we
+    // add a short delay before resolving/rejecting this promise after an
+    // exit.
     proc.once("exit", (code, signal) => {
       if (signal) {
         utils.logWarning(`Script exited with signal: ${signal}`);
-        reject();
+        setTimeout(reject, 500);
       }
 
       if (code === 0) {
         utils.logSuccess(`Script exited successfully (code 0)`);
-        resolve();
+        setTimeout(resolve, 500);
       } else {
         utils.logWarning(`Script exited unsuccessfully (code ${code})`);
-        resolve();
+        setTimeout(resolve, 500);
       }
     });
   });
