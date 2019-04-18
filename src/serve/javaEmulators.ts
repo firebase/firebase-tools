@@ -8,6 +8,7 @@ import * as childProcess from "child_process";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
+import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as userHome from "user-home";
@@ -55,6 +56,10 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   },
 };
 
+function _getLogFileName(name: string): string {
+  return `${name}-debug.log`;
+}
+
 /**
  * Get a command to start the an emulator.
  * @param emulator - string identifier for the emulator to start.
@@ -94,7 +99,7 @@ async function _runBinary(
   command: JavaEmulatorCommand
 ): Promise<void> {
   return new Promise((resolve) => {
-    emulator.stdout = fs.createWriteStream(emulator.name + "-debug.log");
+    emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
     emulator.instance = childProcess.spawn(command.binary, command.args, {
       stdio: ["inherit", "pipe", "pipe"],
     });
@@ -104,11 +109,15 @@ async function _runBinary(
       return;
     }
 
+    utils.logLabeledBullet(emulator.name, `Logging to ${clc.bold(_getLogFileName(emulator.name))}`);
+
     emulator.instance.stdout.on("data", (data) => {
-      process.stdout.write(data.toString());
+      // TODO: Enable this if --debug is passed
+      // process.stdout.write(data.toString());
       emulator.stdout.write(data.toString());
     });
     emulator.instance.stderr.on("data", (data) => {
+      emulator.stdout.write(data.toString());
       utils.logWarning(emulator.name + ": " + data.toString());
     });
 
@@ -124,14 +133,9 @@ async function _runBinary(
     });
     emulator.instance.once("exit", (code, signal) => {
       if (signal) {
-        utils.logLabeledBullet(
-          emulator.name,
-          "emulator has exited upon receiving signal: " + signal
-        );
+        utils.logWarning(`${emulator.name} emulator has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        _fatal(emulator, "emulator has exited with code: " + code);
-      } else {
-        utils.logLabeledBullet(emulator.name, "emulator has exited");
+        _fatal(emulator, `emulator has exited with code: ${code}`);
       }
     });
     resolve();
@@ -145,7 +149,6 @@ export function get(emulator: JavaEmulators): JavaEmulatorDetails {
 export async function stop(targetName: JavaEmulators): Promise<void> {
   const emulator = EmulatorDetails[targetName];
   return new Promise((resolve, reject) => {
-    utils.logLabeledSuccess(emulator.name, "shutting down");
     if (emulator.instance) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;

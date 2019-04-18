@@ -297,13 +297,13 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
 
   // If the requested version is the same as the host, let's use that
   if (requestedMajorVersion === hostMajorVersion) {
-    utils.logSuccess(`Using node@${requestedMajorVersion} from host.`);
+    utils.logLabeledSuccess("functions", `Using node@${requestedMajorVersion} from host.`);
     return process.execPath;
   }
 
   // If the requested version is already locally available, let's use that
   if (localMajorVersion === requestedMajorVersion) {
-    utils.logSuccess(`Using node@${requestedMajorVersion} from local cache.`);
+    utils.logLabeledSuccess("functions", `Using node@${requestedMajorVersion} from local cache.`);
     return localNodePath;
   }
 

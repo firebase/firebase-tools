@@ -85,8 +85,6 @@ async function startEmulator(
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
-  utils.logLabeledBullet(name, `Starting emulator at ${addr.host}:${addr.port}`);
-
   // Start the emulator, wait for it to grab its port, and then mark it as started
   // in the registry.
   await instance.start();
@@ -99,7 +97,7 @@ async function startEmulator(
   };
   EmulatorRegistry.setInfo(name, info);
 
-  utils.logLabeledSuccess(name, "Emulator running.");
+  utils.logLabeledSuccess(name, `Emulator running at ${clc.bold(addr.host + ":" + addr.port)}.`);
 }
 
 function stopEmulator(name: Emulators): Promise<any> {
