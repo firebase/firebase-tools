@@ -4,3 +4,4 @@ feature - Serving Hosting locally can now proxy to the live Cloud Run service.
 fixed - Fixes a bug where fields in Cloud Firestore indexes would be sorted alphabetically for display.
 fixed - Fixes a bug in Firestore Emulator REST API that caused 404s to root collections.
 fixed - Firestore Emulator now accepts secure JWTs from Android/iOS SDK with warnings.
+fixed - Lifecycle hooks will respect a single multi-resource deploy.
