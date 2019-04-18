@@ -8,7 +8,7 @@ import FirebaseError = require("./error");
 import utils = require("./utils");
 
 import * as prompt from "./prompt";
-import { ListRulesetsEntry, Release } from "./gcp/rules";
+import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
 const QUOTA_EXCEEDED_STATUS_CODE = 429;
@@ -23,7 +23,7 @@ export class RulesDeploy {
   type: any;
   options: any;
   project: any;
-  rulesFiles: any;
+  rulesFiles: {[path: string]: RulesetFile[]};
   rulesetNames: any;
   constructor(options: any, type: any) {
     this.type = type;
@@ -36,7 +36,7 @@ export class RulesDeploy {
    * Adds a new project-relative file to be included in compilation and
    * deployment for this RulesDeploy.
    */
-  addFile(path: any): void {
+  addFile(path: string): void {
     const fullPath = this.options.config.path(path);
     let src;
     try {
@@ -55,7 +55,7 @@ export class RulesDeploy {
    */
   compile(): Promise<any> {
     const promises: any[] = [];
-    _.forEach(this.rulesFiles, (files: any, filename: any) => {
+    _.forEach(this.rulesFiles, (files: RulesetFile[], filename: string) => {
       promises.push(this._compileRuleset(filename, files));
     });
     return Promise.all(promises);
@@ -67,7 +67,7 @@ export class RulesDeploy {
    */
   createRulesets(): Promise<any> {
     const promises: any[] = [];
-    _.forEach(this.rulesFiles, (files: any, filename: any) => {
+    _.forEach(this.rulesFiles, (files: RulesetFile[], filename: any) => {
       utils.logBullet(
         clc.bold.cyan(this.type + ":") + " uploading rules " + clc.bold(filename) + "..."
       );
@@ -135,7 +135,7 @@ export class RulesDeploy {
       });
   }
 
-  private _compileRuleset(filename: any, files: any): Promise<any> {
+  private _compileRuleset(filename: string, files: RulesetFile[]): Promise<any> {
     utils.logBullet(
       clc.bold.cyan(this.type + ":") +
         " checking " +
