@@ -94,6 +94,11 @@ export interface RulesetFile {
   name: string;
   content: string;
 }
+
+export interface RulesetSource {
+  files: RulesetFile[];
+}
+
 /**
  * Gets the full contents of a ruleset.
  * @param name Name of the ruleset.
@@ -105,7 +110,8 @@ export async function getRulesetContent(name: string): Promise<RulesetFile[]> {
     origin: api.rulesOrigin,
   });
   if (response.status === 200) {
-    return response.body.source.files;
+    const source: RulesetSource = response.body.source;
+    return source.files;
   }
 
   return _handleErrorResponse(response);
@@ -191,7 +197,7 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: string): Promise<any> {
+export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
   const payload = { source: { files } };
 
   const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/rulesets`, {
@@ -217,7 +223,7 @@ export async function createRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   const payload = {
     name: `projects/${projectId}/releases/${releaseName}`,
     rulesetName,
@@ -246,7 +252,7 @@ export async function updateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   const payload = {
     release: {
       name: `projects/${projectId}/releases/${releaseName}`,
@@ -275,7 +281,7 @@ export async function updateOrCreateRelease(
   projectId: string,
   rulesetName: string,
   releaseName: string
-): Promise<any> {
+): Promise<string> {
   logger.debug("[rules] releasing", releaseName, "with ruleset", rulesetName);
   return updateRelease(projectId, rulesetName, releaseName).catch(() => {
     logger.debug("[rules] ruleset update failed, attempting to create instead");
@@ -283,7 +289,7 @@ export async function updateOrCreateRelease(
   });
 }
 
-export function testRuleset(projectId: string, files: any): Promise<any> {
+export function testRuleset(projectId: string, files: RulesetFile[]): Promise<any> {
   return api.request("POST", `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`, {
     origin: api.rulesOrigin,
     data: {
