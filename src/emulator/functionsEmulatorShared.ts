@@ -95,7 +95,7 @@ export async function getTriggersFromDirectory(
 // This bundle gets passed from hub -> runtime as a CLI arg
 export interface FunctionsRuntimeBundle {
   projectId: string;
-  proto: any;
+  proto?: any;
   triggerId: any;
   ports: {
     firestore: number;

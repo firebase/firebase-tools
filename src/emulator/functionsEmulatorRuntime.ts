@@ -2,6 +2,9 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawnSync } from "child_process";
 import * as admin from "firebase-admin";
+import * as http from "http";
+import * as express from "express";
+import * as pf from "portfinder";
 
 import {
   EmulatedTrigger,
@@ -218,6 +221,27 @@ see https://firebase.google.com/docs/functions/local-emulator`,
   (ff as any).config = () => serviceProxy;
 }
 
+async function _ServeOneRequest(trigger: EmulatedTrigger): Promise<http.Server> {
+  const internalPort = await pf.getPortPromise({ port: 9500, stopPort: 9999 });
+
+  return new Promise((resolveFn, rejectFn) => {
+    const hub = express();
+
+    hub.get("/", (req, res, next) => {
+      try {
+        trigger.getRawFunction()(req, res);
+      } catch (e) {
+        // Don't care, it's a one-shot process.
+      }
+      resolveFn();
+    });
+
+    const server = hub.listen(internalPort);
+    new EmulatorLog("SYSTEM", "server-ready", "Server is ready", { port: internalPort }).log();
+    return server;
+  });
+}
+
 async function _ProcessSingleInvocation(
   app: admin.app.App,
   proto: any,
@@ -345,7 +369,13 @@ async function main(): Promise<void> {
     ).log();
   }
 
-  await _ProcessSingleInvocation(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
+  const trigger = triggers[frb.triggerId];
+  if (trigger.definition.httpsTrigger) {
+    const server = await _ServeOneRequest(triggers[frb.triggerId]);
+    server.close();
+  } else {
+    await _ProcessSingleInvocation(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
+  }
 }
 
 if (require.main === module) {

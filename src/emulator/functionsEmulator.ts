@@ -28,6 +28,11 @@ interface FunctionsEmulatorArgs {
   host?: string;
 }
 
+interface FunctionsRuntimeInstance {
+  exit: Promise<number>;
+  events: EventEmitter;
+}
+
 export class FunctionsEmulator implements EmulatorInstance {
   private port: number = Constants.getDefaultPort(Emulators.FUNCTIONS);
   private server: any;
@@ -61,6 +66,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         data += chunk;
       });
       req.on("end", () => {
+        // TODO(abehaskins): Why do we have to cast the request to 'any'?
         (req as any).rawBody = data;
         next();
       });
@@ -76,66 +82,98 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     });
 
-    // TODO: This is trash, I write trash
+    // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const functionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
     const functionRoutes = [functionRoute, `${functionRoute}/*`];
 
     hub.get(functionRoutes, async (req, res) => {
-      logger.debug(`[functions] GET request to function ${req.params.trigger_name} accepted.`);
+      const triggerName = req.params.trigger_name;
+
       const triggersByName = await getTriggersFromDirectory(
         this.projectId,
         this.functionsDir,
         this.firebaseConfig
       );
-      const trigger = triggersByName[req.params.trigger_name];
-      if (trigger.definition.httpsTrigger) {
-        trigger.getRawFunction()(req, res);
-      } else {
+      const trigger = triggersByName[triggerName];
+
+      if (!trigger.definition.httpsTrigger) {
+        logger.debug(`[functions] GET request to non-HTTPS function ${triggerName} rejected.`);
         res.json({
           status: "error",
           message: "non-HTTPS trigger must be invoked with POST request",
         });
+        return;
       }
+
+      logger.debug(`[functions] GET request to HTPS function ${triggerName} accepted.`);
+
+      const runtime = this.startFunctionRuntime(nodeBinary, triggerName, undefined);
+      runtime.events.on("log", (log: EmulatorLog) => {
+        if (log.level === "SYSTEM" && log.type === "server-ready") {
+          logger.debug(`Subprocess server ready at port ${log.data.port}`);
+          res.status(301).redirect(`http://localhost:${log.data.port}/`);
+        }
+      });
+
+      await runtime.exit;
     });
 
-    hub.post("/functions/projects/:project_id/triggers/:trigger_name", async (req, res) => {
+    hub.post(functionRoutes, async (req, res) => {
+      const triggerName = req.params.trigger_name;
+
       const triggersByName = await getTriggersFromDirectory(
         this.projectId,
         this.functionsDir,
         this.firebaseConfig
       );
-      const trigger = triggersByName[req.params.trigger_name];
+      const trigger = triggersByName[triggerName];
 
       if (trigger.definition.httpsTrigger) {
         logger.debug(`[functions] POST request to function rejected`);
         return res.json({ status: "rejected" });
       }
 
-      const frb = {
-        ports: {
-          firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        },
-        cwd: this.functionsDir,
-        proto: JSON.parse((req as any).rawBody),
-        triggerId: req.params.trigger_name,
-        projectId: this.projectId,
-      } as FunctionsRuntimeBundle;
-
-      const runtime = InvokeRuntime(nodeBinary, frb);
-
-      runtime.events.on("log", (log: EmulatorLog) => {
-        if (["SYSTEM", "DEBUG"].indexOf(log.level) >= 0) {
-          // Handle system interrupts
-          return;
-        } else {
-          logger.info(`${log.level}: ${log.text}`);
-        }
-      });
+      const runtime = this.startFunctionRuntime(
+        nodeBinary,
+        triggerName,
+        JSON.parse((req as any).rawBody)
+      );
       await runtime.exit;
       res.json({ status: "acknowledged" });
     });
 
     this.server = hub.listen(this.port);
+  }
+
+  startFunctionRuntime(
+    nodeBinary: string,
+    triggerName: string,
+    proto?: any
+  ): FunctionsRuntimeInstance {
+    const runtimeBundle: FunctionsRuntimeBundle = {
+      ports: {
+        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
+      },
+      proto,
+      cwd: this.functionsDir,
+      triggerId: triggerName,
+      projectId: this.projectId,
+    };
+
+    const runtime = InvokeRuntime(nodeBinary, runtimeBundle);
+    runtime.events.on("log", this.logRuntimeEvent);
+    return runtime;
+  }
+
+  logRuntimeEvent(log: EmulatorLog): void {
+    if (log.level === "SYSTEM") {
+      // Handle system interrupts
+      return;
+    } else if (log.level === "INFO" || log.level === "DEBUG") {
+      logger.debug(log.text);
+    } else {
+      logger.info(`${log.level}: ${log.text}`);
+    }
   }
 
   async connect(): Promise<void> {
@@ -150,9 +188,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const trigger = triggersByName[name];
 
       if (trigger.definition.httpsTrigger) {
-        const url = `http://localhost:${this.port}/functions/projects/${
-          this.projectId
-        }/triggers/${name}`;
+        const url = this.getHttpFunctionUrl(name);
         utils.logLabeledBullet("functions", `HTTP trigger initialized at ${clc.bold(url)}`);
       } else {
         const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
@@ -225,7 +261,7 @@ export function InvokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
   serializedTriggers?: string
-): { exit: Promise<number>; events: EventEmitter } {
+): FunctionsRuntimeInstance {
   const emitter = new EventEmitter();
 
   const runtime = spawn(
@@ -271,6 +307,9 @@ export function InvokeRuntime(
   };
 }
 
+/**
+ * Returns the path to a "node" executable to use.
+ */
 async function _askInstallNodeVersion(cwd: string): Promise<string> {
   const pkg = require(path.join(cwd, "package.json"));
 
@@ -316,7 +355,7 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
     `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
   );
   utils.logBullet(
-    `We can install node@${requestedMajorVersion} to the "node_modules" without impacting your global "node" install`
+    `We can install node@${requestedMajorVersion} to "node_modules" without impacting your global "node" install`
   );
   const response = await prompt({}, [
     {
@@ -333,9 +372,10 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
       cwd,
       stdio: "inherit",
     });
-    /* TODO: Switching Node versions can result in node-gyp errors, run a rebuild after switching
-      versions and probably on exit to original node version */
-    // TODO: Certain npm commands appear to mess up npm globally, maybe remove node_modules/.bin/node to avoid this?
+    // TODO(abehaskins): Switching Node versions can result in node-gyp errors, run a rebuild after switching
+    //                   versions and probably on exit to original node version
+    // TODO(abehaskins): Certain npm commands appear to mess up npm globally, maybe
+    //                   remove node_modules/.bin/node to avoid this?
 
     return localNodePath;
   }
