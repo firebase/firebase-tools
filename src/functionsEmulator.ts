@@ -318,7 +318,7 @@ class FunctionsEmulator {
   }
 }
 
-const wildcardRegex = new RegExp("{[^/{}]*}", "g");
+const wildcardRegex = new RegExp("{[^/{}]*}");
 
 function _extractParamsFromPath(wildcardPath: string, snapshotPath: string): any {
   if (!_isValidWildcardMatch(wildcardPath, snapshotPath)) {
