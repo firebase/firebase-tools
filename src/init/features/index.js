@@ -2,7 +2,7 @@
 
 module.exports = {
   database: require("./database"),
-  firestore: require("./firestore"),
+  firestore: require("./firestore").doSetup,
   functions: require("./functions"),
   hosting: require("./hosting"),
   storage: require("./storage"),

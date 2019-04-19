@@ -5,6 +5,7 @@ var _ = require("lodash");
 var Command = require("../command");
 var clc = require("cli-color");
 var cloudfunctions = require("../gcp/cloudfunctions");
+var functionsConfig = require("../functionsConfig");
 var functionsDelete = require("../functionsDelete");
 var getProjectId = require("../getProjectId");
 var helper = require("../functionsDeployHelper");
@@ -27,58 +28,65 @@ module.exports = new Command("functions:delete [filters...]")
     }
 
     var projectId = getProjectId(options);
+    var appEngineLocation;
     var functionsToDelete = [];
 
     // Dot notation can be used to indicate function inside of a group
     var filterChunks = _.map(filters, function(filter) {
       return filter.split(".");
     });
-
-    return cloudfunctions
-      .listAll(projectId)
-      .then(function(result) {
-        var allFunctions = _.map(result, "name");
-        return _.filter(allFunctions, function(name) {
-          var regionMatches = options.region ? helper.getRegion(name) === options.region : true;
-          var nameMatches = _.some(
-            _.map(filterChunks, function(chunk) {
-              return helper.functionMatchesGroup(name, chunk);
-            })
-          );
-          return regionMatches && nameMatches;
-        });
+    return functionsConfig
+      .getFirebaseConfig(options)
+      .then((config) => {
+        appEngineLocation = functionsConfig.getAppEngineLocation(config);
       })
-      .then(function(result) {
-        functionsToDelete = result;
-        if (functionsToDelete.length === 0) {
-          return utils.reject(
-            "The specified filters do not match any existing functions in project " +
-              clc.bold(projectId) +
-              ".",
-            { exit: 1 }
-          );
-        }
-        var deleteList = _.map(functionsToDelete, function(func) {
-          return "\t" + helper.getFunctionLabel(func);
-        }).join("\n");
-        if (!options.force) {
-          return prompt(options, [
-            {
-              type: "confirm",
-              name: "confirm",
-              default: false,
-              message:
-                "You are about to delete the following Cloud Functions:\n" +
-                deleteList +
-                "\n  Are you sure?",
-            },
-          ]);
-        }
-      })
-      .then(function() {
-        if (!(options.confirm || options.force)) {
-          return utils.reject("Command aborted.", { exit: 1 });
-        }
-        return functionsDelete(functionsToDelete, projectId);
+      .then(() => {
+        return cloudfunctions
+          .listAll(projectId)
+          .then(function(result) {
+            var allFunctions = _.map(result, "name");
+            return _.filter(allFunctions, function(name) {
+              var regionMatches = options.region ? helper.getRegion(name) === options.region : true;
+              var nameMatches = _.some(
+                _.map(filterChunks, function(chunk) {
+                  return helper.functionMatchesGroup(name, chunk);
+                })
+              );
+              return regionMatches && nameMatches;
+            });
+          })
+          .then(function(result) {
+            functionsToDelete = result;
+            if (functionsToDelete.length === 0) {
+              return utils.reject(
+                "The specified filters do not match any existing functions in project " +
+                  clc.bold(projectId) +
+                  ".",
+                { exit: 1 }
+              );
+            }
+            var deleteList = _.map(functionsToDelete, function(func) {
+              return "\t" + helper.getFunctionLabel(func);
+            }).join("\n");
+            if (!options.force) {
+              return prompt(options, [
+                {
+                  type: "confirm",
+                  name: "confirm",
+                  default: false,
+                  message:
+                    "You are about to delete the following Cloud Functions:\n" +
+                    deleteList +
+                    "\n  Are you sure?",
+                },
+              ]);
+            }
+          })
+          .then(function() {
+            if (!(options.confirm || options.force)) {
+              return utils.reject("Command aborted.", { exit: 1 });
+            }
+            return functionsDelete(functionsToDelete, projectId, appEngineLocation);
+          });
       });
   });
