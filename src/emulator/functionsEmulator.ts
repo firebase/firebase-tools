@@ -141,10 +141,19 @@ export class FunctionsEmulator implements EmulatorInstance {
           res.end();
         });
       });
-      req.pipe(
-        connector,
-        { end: true }
-      );
+
+      connector.on("error", () => {
+        res.end();
+      });
+
+      req
+        .pipe(
+          connector,
+          { end: true }
+        )
+        .on("error", () => {
+          res.end();
+        });
 
       await runtime.exit;
     });
@@ -188,7 +197,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (log.level === "SYSTEM") {
       // Handle system interrupts
       return;
-    } else if (log.level === "INFO" || log.level === "DEBUG") {
+    } else if (log.level === "DEBUG") {
       logger.debug(log.text);
     } else {
       logger.info(`${log.level}: ${log.text}`);

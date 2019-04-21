@@ -238,22 +238,25 @@ see https://firebase.google.com/docs/functions/local-emulator`,
 }
 
 async function _ProcessHTTPS(trigger: EmulatedTrigger): Promise<void> {
-  const ephemeralServer = require("express")();
+  const ephemeralServer = express();
   const socketPath = getTemporarySocketPath(process.pid);
 
-  ephemeralServer.get("/", async (req: express.Request, res: express.Response) => {
-    new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
-    const func = trigger.getRawFunction();
+  return new Promise((resolveEphemeralServer) => {
+    ephemeralServer.get("/", async (req: express.Request, res: express.Response) => {
+      new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
+      const func = trigger.getRawFunction();
 
-    await RunWithStubbedConsoleLog([req, res], func);
-    process.nextTick(() => {
-      fs.unlinkSync(socketPath);
-      process.exit();
+      res.on("finish", () => {
+        instance.close();
+        resolveEphemeralServer();
+      });
+
+      await Run([req, res], func);
     });
-  });
 
-  ephemeralServer.listen(socketPath, () => {
-    new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
+    const instance = ephemeralServer.listen(socketPath, () => {
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
+    });
   });
 }
 
@@ -298,15 +301,11 @@ async function _ProcessBackground(
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
   const func = trigger.getWrappedFunction();
 
-  await RunWithStubbedConsoleLog([data, ctx], func);
-  new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
+  await Run([data, ctx], func);
 }
 
 // TODO(abehaskins): This signature could probably use work lol
-async function RunWithStubbedConsoleLog(
-  args: any[],
-  func: (a: any, b: any) => Promise<any>
-): Promise<any> {
+async function Run(args: any[], func: (a: any, b: any) => Promise<any>): Promise<any> {
   if (args.length < 2) {
     throw new Error("Function must be passed 2 args.");
   }
@@ -404,6 +403,22 @@ async function main(): Promise<void> {
     ).log();
   }
 
+  const trigger = triggers[frb.triggerId];
+  let seconds = 0;
+  const timerId = setInterval(() => {
+    seconds++;
+  }, 1000);
+
+  const timeoutId = setTimeout(() => {
+    new EmulatorLog(
+      "WARN",
+      "runtime-status",
+      `Your function timed out after ~${trigger.definition.timeout}. To configure this timeout, see
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+    ).log();
+    process.exit();
+  }, trigger.timeout);
+
   switch (frb.mode) {
     case "BACKGROUND":
       await _ProcessBackground(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
@@ -412,6 +427,10 @@ async function main(): Promise<void> {
       await _ProcessHTTPS(triggers[frb.triggerId]);
       break;
   }
+
+  clearTimeout(timeoutId);
+  clearInterval(timerId);
+  new EmulatorLog("INFO", "runtime-status", `Functions finished in ~${seconds}s.`).log();
 }
 
 if (require.main === module) {

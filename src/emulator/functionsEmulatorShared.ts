@@ -36,6 +36,10 @@ export class EmulatedTrigger {
   private module: string | void = undefined;
   constructor(public definition: EmulatedTriggerDefinition) {}
 
+  get timeout(): number {
+    return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
+  }
+
   getRawFunction(): CloudFunction<any> {
     if (this.directory) {
       const module = require(this.directory);
