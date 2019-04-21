@@ -11,14 +11,14 @@ import * as logger from "../logger";
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
-import * as userHome from "user-home";
+import * as os from "os";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
 type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
 
 const CACHE_DIR =
-  process.env.FIREBASE_EMULATORS_PATH || path.join(userHome, ".cache", "firebase", "emulators");
+  process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
 const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
   database: {

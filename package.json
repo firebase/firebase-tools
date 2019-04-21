@@ -102,7 +102,6 @@
     "tmp": "0.0.33",
     "universal-analytics": "^0.4.16",
     "update-notifier": "^2.5.0",
-    "user-home": "^2.0.0",
     "uuid": "^3.0.0",
     "winston": "^1.0.1"
   },
@@ -124,7 +123,6 @@
     "@types/sinon": "^5.0.5",
     "@types/supertest": "^2.0.6",
     "@types/tmp": "^0.1.0",
-    "@types/user-home": "^2.0.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.1",
