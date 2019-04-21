@@ -12,6 +12,7 @@ import {
 import { EmulatorLog } from "./types";
 import { URL } from "url";
 import * as express from "express";
+import { _extractParamsFromPath } from "./functionsEmulatorUtils";
 
 const resolve = require.resolve;
 function _requireResolvePolyfill(moduleName: string, opts: { paths: string[] }): string {
@@ -318,53 +319,6 @@ async function _ProcessBackground(
   new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
 }
 
-const wildcardRegex = new RegExp("{[^/{}]*}", "g");
-
-function _extractParamsFromPath(wildcardPath: string, snapshotPath: string): any {
-  if (!_isValidWildcardMatch(wildcardPath, snapshotPath)) {
-    return {};
-  }
-
-  const wildcardKeyRegex = /{(.+)}/;
-  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
-  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
-  return wildcardChunks
-    .slice(-snapshotChucks.length)
-    .reduce((params: { [key: string]: string }, chunk, index) => {
-      const match = wildcardKeyRegex.exec(chunk);
-      if (match) {
-        const wildcardKey = match[1];
-        const potentialWildcardValue = snapshotChucks[index];
-        if (!wildcardKeyRegex.exec(potentialWildcardValue)) {
-          params[wildcardKey] = potentialWildcardValue;
-        }
-      }
-      return params;
-    }, {});
-}
-
-function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
-  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
-  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
-
-  if (snapshotChucks.length > wildcardChunks.length) {
-    return false;
-  }
-
-  const mismatchedChunks = wildcardChunks.slice(-snapshotChucks.length).filter((chunk, index) => {
-    return !(wildcardRegex.exec(chunk) || chunk === snapshotChucks[index]);
-  });
-
-  return !mismatchedChunks.length;
-}
-
-function _trimSlashes(str: string): string {
-  return str
-    .split("/")
-    .filter((c) => c)
-    .join("/");
-}
-
 async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
@@ -377,9 +331,15 @@ async function main(): Promise<void> {
   const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
   new EmulatorLog("DEBUG", "runtime-status", "FunctionsRuntimeBundle parsed", frb).log();
 
-  _InitializeNetworkFiltering();
   _InitializeEnvironmentalVariables(frb.projectId);
-  _InitializeFunctionsConfigHelper(frb.cwd);
+  if (frb.disabled_features && !!frb.disabled_features.network_filtering) {
+    _InitializeNetworkFiltering();
+  }
+
+  if (frb.disabled_features && !!frb.disabled_features.functions_config_helper) {
+    _InitializeFunctionsConfigHelper(frb.cwd);
+  }
+
   const stubbedAdminApp = _InitializeFirebaseAdminStubs(
     frb.projectId,
     frb.cwd,

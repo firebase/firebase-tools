@@ -34,29 +34,10 @@ export class EmulatedTrigger {
   private module: string | void = undefined;
   constructor(public definition: EmulatedTriggerDefinition) {}
 
-  // TODO: Optimize this, it reloads the cache for every function
   getRawFunction(): CloudFunction<any> {
     if (this.directory) {
-      const oldFunction = _.get(require(this.directory), this.definition.entryPoint);
-      delete require.cache[require.resolve(this.directory)];
       const module = require(this.directory);
       const newFunction = _.get(module, this.definition.entryPoint);
-
-      if (newFunction.run && oldFunction.run) {
-        const oldStr = oldFunction.run.toString();
-        const newStr = newFunction.run.toString();
-
-        if (oldStr !== newStr) {
-          logger.debug(`[functions] Function "${this.definition.name}" has been updated.`);
-          // const diff = jsdiff.diffChars(oldStr, newStr);
-          //
-          // diff.forEach((part: any) => {
-          //   const color = part.added ? "green" : part.removed ? "red" : "blackBright";
-          //   process.stderr.write((clc as any)[color](part.value));
-          // });
-          // process.stderr.write("\n");
-        }
-      }
       logger.debug(`[functions] Function "${this.definition.name}" will be invoked. Logs:`);
       return newFunction;
     } else if (this.module) {
@@ -107,8 +88,9 @@ export interface FunctionsRuntimeBundle {
   ports: {
     firestore: number;
   };
-  features?: {
-    // An option object of flags for individual runtime features
+  disabled_features?: {
+    functions_config_helper?: boolean;
+    network_filtering?: boolean;
   };
   cwd: string;
 }

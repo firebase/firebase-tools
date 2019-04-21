@@ -88,7 +88,13 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const functionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
-    const functionRoutes = [functionRoute, `${functionRoute}/*`];
+    const shortFunctionRoute = "/f/p/:project_id/t/:trigger_name";
+    const functionRoutes = [
+      functionRoute,
+      `${functionRoute}/*`,
+      shortFunctionRoute,
+      `${shortFunctionRoute}/*`,
+    ];
 
     hub.get(functionRoutes, async (req, res) => {
       const triggerName = req.params.trigger_name;
@@ -221,7 +227,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getHttpFunctionUrl(name: string): string {
-    return `http://localhost:${this.port}/functions/projects/${this.projectId}/triggers/${name}`;
+    return `http://localhost:${this.port}/f/p/${this.projectId}/t/${name}`;
   }
 
   addFirestoreTrigger(projectId: string, name: string, trigger: any): Promise<any> {
@@ -393,7 +399,7 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
 
   // If they say yes, install their requested major version locally
   if (response.node_install) {
-    await _spawnAsPromise("npm", ["install", `node@${requestedMajorVersion}`, "--save-dev"], {
+    await spawnSync("npm", ["install", `node@${requestedMajorVersion}`, "--save-dev"], {
       cwd,
       stdio: "inherit",
     });
@@ -409,26 +415,4 @@ async function _askInstallNodeVersion(cwd: string): Promise<string> {
   utils.logWarning(`Using node@${requestedMajorVersion} from host.`);
 
   return process.execPath;
-}
-
-async function _spawnAsPromise(
-  command: string,
-  args: string[],
-  options?: { [s: string]: string }
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const bin = spawn(command, args, options);
-
-    bin.on("error", (err) => {
-      logger.debug(err.stack);
-      reject(err);
-    });
-
-    bin.on("close", (code) => {
-      if (code === 0) {
-        return resolve();
-      }
-      return reject();
-    });
-  });
 }
