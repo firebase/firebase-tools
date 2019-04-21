@@ -49,7 +49,9 @@ const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 };
 
-async function _countLogEntries(runtime: FunctionsRuntimeInstance): Promise<{ [key: string]: number }> {
+async function _countLogEntries(
+  runtime: FunctionsRuntimeInstance
+): Promise<{ [key: string]: number }> {
   const counts: { [key: string]: number } = {};
 
   runtime.events.on("log", (el: EmulatorLog) => {
@@ -86,7 +88,9 @@ describe("FuncitonsEmulatorRuntime", () => {
           };
         }).toString();
 
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, { serializedTriggers });
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
         const logs = await _countLogEntries(runtime);
 
         // In Node 6 we get 4 events here, Node 8+ gets 3 because of changes to

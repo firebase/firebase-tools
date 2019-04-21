@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import { _extractParamsFromPath, _isValidWildcardMatch } from "../../emulator/functionsEmulatorUtils";
+import {
+  _extractParamsFromPath,
+  _isValidWildcardMatch,
+} from "../../emulator/functionsEmulatorUtils";
 
 describe("FunctionsEmulatorUtils", () => {
   describe("_extractParamsFromPath", () => {

@@ -76,8 +76,8 @@ function _InitializeNetworkFiltering(): void {
   const networkingModules = [
     { module: "http", path: ["request"] },
     { module: "http", path: ["get"] },
-    { module: "https", path: ["request"]},
-    { module: "https", path: ["get"]},
+    { module: "https", path: ["request"] },
+    { module: "https", path: ["get"] },
     { module: "net", path: ["connect"] },
     { module: "http2", path: ["connect"] },
     { module: "google-gax", path: ["GrpcClient"] },
