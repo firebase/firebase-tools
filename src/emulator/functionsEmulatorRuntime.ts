@@ -6,6 +6,7 @@ import * as admin from "firebase-admin";
 import {
   EmulatedTrigger,
   FunctionsRuntimeBundle,
+  FunctionsRuntimeFeatures,
   getTemporarySocketPath,
   getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
@@ -332,6 +333,13 @@ async function Run(args: any[], func: (a: any, b: any) => Promise<any>): Promise
   return;
 }
 
+function isFeatureEnabled(
+  frb: FunctionsRuntimeBundle,
+  feature: keyof FunctionsRuntimeFeatures
+): boolean {
+  return frb.disabled_features ? frb.disabled_features[feature] || false : true;
+}
+
 async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
@@ -345,11 +353,11 @@ async function main(): Promise<void> {
   new EmulatorLog("DEBUG", "runtime-status", "FunctionsRuntimeBundle parsed", frb).log();
 
   _InitializeEnvironmentalVariables(frb.projectId);
-  if (frb.disabled_features && !!frb.disabled_features.network_filtering) {
+  if (isFeatureEnabled(frb, "network_filtering")) {
     _InitializeNetworkFiltering();
   }
 
-  if (frb.disabled_features && !!frb.disabled_features.functions_config_helper) {
+  if (isFeatureEnabled(frb, "functions_config_helper")) {
     _InitializeFunctionsConfigHelper(frb.cwd);
   }
 
@@ -409,15 +417,20 @@ async function main(): Promise<void> {
     seconds++;
   }, 1000);
 
-  const timeoutId = setTimeout(() => {
-    new EmulatorLog(
-      "WARN",
-      "runtime-status",
-      `Your function timed out after ~${trigger.definition.timeout}. To configure this timeout, see
+  let timeoutId;
+  if (isFeatureEnabled(frb, "timeout")) {
+    timeoutId = setTimeout(() => {
+      new EmulatorLog(
+        "WARN",
+        "runtime-status",
+        `Your function timed out after ~${
+          trigger.definition.timeout
+        }. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
-    ).log();
-    process.exit();
-  }, trigger.timeout);
+      ).log();
+      process.exit();
+    }, trigger.timeout);
+  }
 
   switch (frb.mode) {
     case "BACKGROUND":
@@ -428,7 +441,9 @@ async function main(): Promise<void> {
       break;
   }
 
-  clearTimeout(timeoutId);
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
   clearInterval(timerId);
   new EmulatorLog("INFO", "runtime-status", `Functions finished in ~${seconds}s.`).log();
 }

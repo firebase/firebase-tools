@@ -11,11 +11,19 @@ import * as path from "path";
 interface EmulatedTriggerDefinition {
   entryPoint: string;
   name: string;
-  timeout?: string; // Like "3s" for some reason lol
-  availableMemoryMb?: number;
+  timeout?: string | number; // Can be "3s" for some reason lol
+  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
   eventTrigger?: any;
 }
+
+const memoryLookup = {
+  "128MB": 128,
+  "256MB": 256,
+  "512MB": 512,
+  "1GB": 1024,
+  "2GB": 2048,
+};
 
 export class EmulatedTrigger {
   static fromDirectory(definition: EmulatedTriggerDefinition, directory: string): EmulatedTrigger {
@@ -36,8 +44,16 @@ export class EmulatedTrigger {
   private module: string | void = undefined;
   constructor(public definition: EmulatedTriggerDefinition) {}
 
+  get memoryLimit(): number {
+    return memoryLookup[this.definition.availableMemoryMb || "128MB"] * 1024 * 1024;
+  }
+
   get timeout(): number {
-    return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
+    if (typeof this.definition.timeout === "number") {
+      return this.definition.timeout * 1000;
+    } else {
+      return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
+    }
   }
 
   getRawFunction(): CloudFunction<any> {
@@ -94,9 +110,13 @@ export interface FunctionsRuntimeBundle {
   ports: {
     firestore: number;
   };
-  disabled_features?: {
-    functions_config_helper?: boolean;
-    network_filtering?: boolean;
-  };
+  disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
+}
+
+export interface FunctionsRuntimeFeatures {
+  functions_config_helper?: boolean;
+  network_filtering?: boolean;
+  timeout?: boolean;
+  memory_limiting?: boolean;
 }
