@@ -35,6 +35,10 @@ client.getCommand = function(name) {
 
 require("./commands")(client);
 
+function suggestCommands(cmd, cmdList) {
+  return didYouMean(cmd, cmdList);
+}
+
 var commandNames = program.commands.map(function(cmd) {
   return cmd._name;
 });
@@ -63,11 +67,14 @@ program.action(function(cmd, cmd2) {
       "instead"
     );
   } else {
-    var suggestion = didYouMean(cmd, commandNames);
-    suggestion = suggestion || didYouMean([cmd, cmd2].join(":"), commandNames);
+    if (!suggestCommands(cmd, commandNames)) {
+      cmd = [cmd, cmd2].join(":");
+    }
+
+    var suggestion = suggestCommands(cmd, commandNames);
     if (suggestion) {
       logger.error();
-      logger.error("Did you mean", clc.bold(suggestion) + "?");
+      logger.error("Did you mean " + clc.bold(suggestion) + "?");
     }
   }
 
