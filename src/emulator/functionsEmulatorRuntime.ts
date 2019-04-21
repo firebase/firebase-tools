@@ -241,10 +241,11 @@ async function _ProcessHTTPS(trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = require("express")();
   const socketPath = getTemporarySocketPath(process.pid);
 
-  ephemeralServer.get("/", (req: express.Request, res: express.Response) => {
+  ephemeralServer.get("/", async (req: express.Request, res: express.Response) => {
     new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
+    const func = trigger.getRawFunction();
 
-    trigger.getRawFunction()(req, res);
+    await RunWithStubbedConsoleLog([req, res], func);
     process.nextTick(() => {
       fs.unlinkSync(socketPath);
       process.exit();
@@ -297,6 +298,19 @@ async function _ProcessBackground(
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
   const func = trigger.getWrappedFunction();
 
+  await RunWithStubbedConsoleLog([data, ctx], func);
+  new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
+}
+
+// TODO(abehaskins): This signature could probably use work lol
+async function RunWithStubbedConsoleLog(
+  args: any[],
+  func: (a: any, b: any) => Promise<any>
+): Promise<any> {
+  if (args.length < 2) {
+    throw new Error("Function must be passed 2 args.");
+  }
+
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
@@ -305,7 +319,7 @@ async function _ProcessBackground(
 
   let caughtErr;
   try {
-    await func(data, ctx);
+    await func(args[0], args[1]);
   } catch (err) {
     caughtErr = err;
     console.warn(caughtErr);
@@ -316,7 +330,7 @@ async function _ProcessBackground(
     new EmulatorLog("WARN", "function-log", caughtErr.stack).log();
   }
 
-  new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
+  return;
 }
 
 async function main(): Promise<void> {

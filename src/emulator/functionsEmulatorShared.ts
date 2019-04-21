@@ -11,6 +11,8 @@ import * as path from "path";
 interface EmulatedTriggerDefinition {
   entryPoint: string;
   name: string;
+  timeout?: string; // Like "3s" for some reason lol
+  availableMemoryMb?: number;
   httpsTrigger?: any;
   eventTrigger?: any;
 }
