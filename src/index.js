@@ -35,6 +35,15 @@ client.getCommand = function(name) {
 
 require("./commands")(client);
 
+function suggestCommands(cmd, cmdList) {
+  var suggestion = didYouMean(cmd, cmdList);
+  if (suggestion) {
+    logger.error();
+    logger.error("Did you mean", clc.bold(suggestion) + "?");
+    process.exit(1);
+  }
+}
+
 var commandNames = program.commands.map(function(cmd) {
   return cmd._name;
 });
@@ -53,6 +62,7 @@ var RENAMED_COMMANDS = {
 };
 
 program.action(function(cmd, cmd2) {
+  suggestCommands(cmd, commandNames);
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -63,12 +73,10 @@ program.action(function(cmd, cmd2) {
       "instead"
     );
   } else {
-    var suggestion = didYouMean(cmd, commandNames);
-    suggestion = suggestion || didYouMean([cmd, cmd2].join(":"), commandNames);
-    if (suggestion) {
-      logger.error();
-      logger.error("Did you mean", clc.bold(suggestion) + "?");
+    if (!didYouMean(cmd, commandNames)) {
+      cmd = [cmd, cmd2].join(":");
     }
+    suggestCommands(cmd, commandNames);
   }
 
   process.exit(1);
