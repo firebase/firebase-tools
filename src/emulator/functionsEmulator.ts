@@ -27,6 +27,10 @@ interface FunctionsEmulatorArgs {
   host?: string;
 }
 
+interface RequestWithRawBody extends express.Request {
+  rawBody: string;
+}
+
 export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   ready: Promise<void>;
@@ -67,7 +71,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         data += chunk;
       });
       req.on("end", () => {
-        (req as any).rawBody = data;
+        (req as RequestWithRawBody).rawBody = data;
         next();
       });
     });
@@ -144,7 +148,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtime = this.startFunctionRuntime(
         nodeBinary,
         triggerName,
-        JSON.parse((req as any).rawBody)
+        JSON.parse((req as RequestWithRawBody).rawBody)
       );
       await runtime.exit;
       res.json({ status: "acknowledged" });
