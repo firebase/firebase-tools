@@ -2,19 +2,16 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawnSync } from "child_process";
 import * as admin from "firebase-admin";
-import * as http from "http";
-import * as express from "express";
-import * as pf from "portfinder";
 
 import {
   EmulatedTrigger,
   FunctionsRuntimeBundle,
+  getTemporarySocketPath,
   getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
 import { EmulatorLog } from "./types";
 import { URL } from "url";
-
-import { _extractParamsFromPath, _trimSlashes } from "./functionsEmulatorUtils";
+import * as express from "express";
 
 const resolve = require.resolve;
 function _requireResolvePolyfill(moduleName: string, opts: { paths: string[] }): string {
@@ -61,12 +58,29 @@ function _requireResolvePolyfill(moduleName: string, opts: { paths: string[] }):
 require.resolve = _requireResolvePolyfill as RequireResolve;
 
 function _InitializeNetworkFiltering(): void {
+  /*
+    We mock out a ton of different paths that we can take to network I/O. It doesn't matter if they
+    overlap (like TLS and HTTPS) because the dev will either whitelist, block, or allow for one
+    invocation on the first prompt, so we can be aggressive here.
+
+    Sadly, these vary a lot between Node versions and it will always be possible to route around
+    this, it's not security - just a helper. A good example of something difficult to catch is
+    any I/O done via node-gyp (https://github.com/nodejs/node-gyp) since that I/O will be done in
+    C, we have to catch it before then (which is how the google-gax blocker works). As of this note,
+    GRPC uses a native extension to do I/O (I think because old node lacks native HTTP2?), so that's
+    a place to keep an eye on. Luckily, mostly only Google uses GRPC and most Google APIs go via
+    google-gax, but still.
+
+    So yeah, we'll try our best and hopefully we can catch 90% of requests.
+   */
   const networkingModules = [
-    { module: "http", path: ["request"] }, // Handles HTTP, HTTPS
-    { module: "http", path: ["get"] }, // Handles HTTP, HTTPS
-    { module: "net", path: ["connect"] }, // Handles... uhm, low level stuff?
-    // { module: "http2", path: ["connect"] }, // Handles http2
-    { module: "google-gax", path: ["GrpcClient"] }, // Handles Google Cloud GRPC Apis
+    { module: "http", path: ["request"] },
+    { module: "http", path: ["get"] },
+    { module: "https", path: ["request"]},
+    { module: "https", path: ["get"]},
+    { module: "net", path: ["connect"] },
+    { module: "http2", path: ["connect"] },
+    { module: "google-gax", path: ["GrpcClient"] },
   ];
 
   const results = networkingModules.map((bundle) => {
@@ -86,6 +100,7 @@ function _InitializeNetworkFiltering(): void {
     const original = obj[method].bind(mod);
 
     /* tslint:disable:only-arrow-functions */
+    // This can't be an arrow function because it needs to be new'able
     mod[method] = function(...args: any[]): any {
       const hrefs = args
         .map((arg) => {
@@ -221,32 +236,31 @@ see https://firebase.google.com/docs/functions/local-emulator`,
   (ff as any).config = () => serviceProxy;
 }
 
-async function _ServeOneRequest(trigger: EmulatedTrigger): Promise<http.Server> {
-  const internalPort = await pf.getPortPromise({ port: 9500, stopPort: 9999 });
+async function _ProcessHTTPS(trigger: EmulatedTrigger): Promise<void> {
+  const ephemeralServer = require("express")();
+  const socketPath = getTemporarySocketPath(process.pid);
 
-  return new Promise((resolveFn, rejectFn) => {
-    const hub = express();
+  ephemeralServer.get("/", (req: express.Request, res: express.Response) => {
+    new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
 
-    hub.get("/", (req, res, next) => {
-      try {
-        trigger.getRawFunction()(req, res);
-      } catch (e) {
-        // Don't care, it's a one-shot process.
-      }
-      resolveFn();
+    trigger.getRawFunction()(req, res);
+    process.nextTick(() => {
+      fs.unlinkSync(socketPath);
+      process.exit();
     });
+  });
 
-    const server = hub.listen(internalPort);
-    new EmulatorLog("SYSTEM", "server-ready", "Server is ready", { port: internalPort }).log();
-    return server;
+  ephemeralServer.listen(socketPath, () => {
+    new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
   });
 }
 
-async function _ProcessSingleInvocation(
+async function _ProcessBackground(
   app: admin.app.App,
   proto: any,
   trigger: EmulatedTrigger
 ): Promise<void> {
+  new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
   const { Change } = require("firebase-functions");
 
   const newSnap =
@@ -304,6 +318,53 @@ async function _ProcessSingleInvocation(
   new EmulatorLog("INFO", "runtime-status", "Functions execution finished!").log();
 }
 
+const wildcardRegex = new RegExp("{[^/{}]*}", "g");
+
+function _extractParamsFromPath(wildcardPath: string, snapshotPath: string): any {
+  if (!_isValidWildcardMatch(wildcardPath, snapshotPath)) {
+    return {};
+  }
+
+  const wildcardKeyRegex = /{(.+)}/;
+  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
+  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
+  return wildcardChunks
+    .slice(-snapshotChucks.length)
+    .reduce((params: { [key: string]: string }, chunk, index) => {
+      const match = wildcardKeyRegex.exec(chunk);
+      if (match) {
+        const wildcardKey = match[1];
+        const potentialWildcardValue = snapshotChucks[index];
+        if (!wildcardKeyRegex.exec(potentialWildcardValue)) {
+          params[wildcardKey] = potentialWildcardValue;
+        }
+      }
+      return params;
+    }, {});
+}
+
+function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
+  const wildcardChunks = _trimSlashes(wildcardPath).split("/");
+  const snapshotChucks = _trimSlashes(snapshotPath).split("/");
+
+  if (snapshotChucks.length > wildcardChunks.length) {
+    return false;
+  }
+
+  const mismatchedChunks = wildcardChunks.slice(-snapshotChucks.length).filter((chunk, index) => {
+    return !(wildcardRegex.exec(chunk) || chunk === snapshotChucks[index]);
+  });
+
+  return !mismatchedChunks.length;
+}
+
+function _trimSlashes(str: string): string {
+  return str
+    .split("/")
+    .filter((c) => c)
+    .join("/");
+}
+
 async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
@@ -340,7 +401,7 @@ async function main(): Promise<void> {
         {
           entryPoint: frb.triggerId,
           name: frb.triggerId,
-          eventTrigger: { resource: frb.proto.context.resource.name },
+          eventTrigger: frb.proto ? { resource: frb.proto.context.resource.name } : {},
         },
         triggerModule()
       ),
@@ -369,17 +430,20 @@ async function main(): Promise<void> {
     ).log();
   }
 
-  const trigger = triggers[frb.triggerId];
-  if (trigger.definition.httpsTrigger) {
-    const server = await _ServeOneRequest(triggers[frb.triggerId]);
-    server.close();
-  } else {
-    await _ProcessSingleInvocation(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
+  switch (frb.mode) {
+    case "BACKGROUND":
+      await _ProcessBackground(stubbedAdminApp, frb.proto, triggers[frb.triggerId]);
+      break;
+    case "HTTPS":
+      await _ProcessHTTPS(triggers[frb.triggerId]);
+      break;
   }
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    throw err;
+  });
 } else {
   throw new Error(
     "functionsEmulatorRuntime.js should not be required/imported. It should only be spawned via InvokeRuntime()"

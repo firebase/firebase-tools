@@ -5,6 +5,8 @@ import * as parseTriggers from "../parseTriggers";
 import * as utils from "../utils";
 import { WrappedFunction } from "firebase-functions-test/lib/main";
 import { CloudFunction } from "firebase-functions";
+import * as os from "os";
+import * as path from "path";
 
 interface EmulatedTriggerDefinition {
   entryPoint: string;
@@ -92,13 +94,21 @@ export async function getTriggersFromDirectory(
   }, {});
 }
 
+export function getTemporarySocketPath(pid: number): string {
+  return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+}
+
 // This bundle gets passed from hub -> runtime as a CLI arg
 export interface FunctionsRuntimeBundle {
+  mode: "HTTPS" | "BACKGROUND";
   projectId: string;
   proto?: any;
   triggerId: any;
   ports: {
     firestore: number;
+  };
+  features?: {
+    // An option object of flags for individual runtime features
   };
   cwd: string;
 }

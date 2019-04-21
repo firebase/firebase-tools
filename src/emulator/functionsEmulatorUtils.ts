@@ -22,7 +22,7 @@ export function _extractParamsFromPath(wildcardPath: string, snapshotPath: strin
     }, {});
 }
 
-function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
+export function _isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
   const wildcardChunks = _trimSlashes(wildcardPath).split("/");
   const snapshotChucks = _trimSlashes(snapshotPath).split("/");
 

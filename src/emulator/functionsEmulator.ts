@@ -1,10 +1,9 @@
-"use strict";
-
 import * as _ from "lodash";
 import * as path from "path";
 import * as express from "express";
 import * as request from "request";
 import * as clc from "cli-color";
+import * as http from "http";
 
 import * as getProjectId from "../getProjectId";
 import * as functionsConfig from "../functionsConfig";
@@ -28,8 +27,10 @@ interface FunctionsEmulatorArgs {
   host?: string;
 }
 
-interface FunctionsRuntimeInstance {
+export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
+  ready: Promise<void>;
+  metadata: { [key: string]: any };
   events: EventEmitter;
 }
 
@@ -66,7 +67,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         data += chunk;
       });
       req.on("end", () => {
-        // TODO(abehaskins): Why do we have to cast the request to 'any'?
         (req as any).rawBody = data;
         next();
       });
@@ -105,34 +105,42 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
 
-      logger.debug(`[functions] GET request to HTPS function ${triggerName} accepted.`);
+      logger.debug(`[functions] GET request to HTTPS function ${triggerName} accepted.`);
 
-      const runtime = this.startFunctionRuntime(nodeBinary, triggerName, undefined);
-      runtime.events.on("log", (log: EmulatorLog) => {
-        if (log.level === "SYSTEM" && log.type === "server-ready") {
-          logger.debug(`Subprocess server ready at port ${log.data.port}`);
-          res.status(301).redirect(`http://localhost:${log.data.port}/`);
-        }
+      const runtime = this.startFunctionRuntime(nodeBinary, triggerName);
+
+      logger.debug(`[functions] Waiting for runtime to be ready!`);
+
+      await runtime.ready;
+
+      logger.debug(
+        `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
+      );
+
+      /*
+        We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
+        situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
+        consuming yet another port which is probably faster as well.
+       */
+      const connector = http.request({ socketPath: runtime.metadata.socketPath }, (runtimeRes) => {
+        runtimeRes.on("data", (buf) => {
+          res.write(buf);
+        });
+
+        runtimeRes.on("close", () => {
+          res.end();
+        });
       });
+      req.pipe(
+        connector,
+        { end: true }
+      );
 
       await runtime.exit;
     });
 
     hub.post(functionRoutes, async (req, res) => {
       const triggerName = req.params.trigger_name;
-
-      const triggersByName = await getTriggersFromDirectory(
-        this.projectId,
-        this.functionsDir,
-        this.firebaseConfig
-      );
-      const trigger = triggersByName[triggerName];
-
-      if (trigger.definition.httpsTrigger) {
-        logger.debug(`[functions] POST request to function rejected`);
-        return res.json({ status: "rejected" });
-      }
-
       const runtime = this.startFunctionRuntime(
         nodeBinary,
         triggerName,
@@ -151,6 +159,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     proto?: any
   ): FunctionsRuntimeInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
+      mode: proto ? "BACKGROUND" : "HTTPS",
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
       },
@@ -260,38 +269,48 @@ export class FunctionsEmulator implements EmulatorInstance {
 export function InvokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
-  serializedTriggers?: string
+  opts?: { serializedTriggers?: string; env?: { [key: string]: string } }
 ): FunctionsRuntimeInstance {
+  opts = opts || {};
+
   const emitter = new EventEmitter();
+  const metadata: { [key: string]: any } = {};
+  let readyResolve: (value?: void | PromiseLike<void>) => void;
+  const ready = new Promise<void>((resolve) => (readyResolve = resolve));
 
   const runtime = spawn(
     nodeBinary,
     [
       path.join(__dirname, "functionsEmulatorRuntime.js"),
       JSON.stringify(frb),
-      serializedTriggers || "",
+      opts.serializedTriggers || "",
     ],
-    {}
+    { env: opts.env || {} }
   );
 
-  let stderr = "";
-  runtime.stderr.on("data", (buf) => {
-    stderr += buf.toString();
-  });
+  const buffers: { [pipe: string]: string } = { stderr: "", stdout: "" };
+  for (const pipe in buffers) {
+    if (buffers.hasOwnProperty(pipe)) {
+      (runtime as any)[pipe].on("data", (buf: Buffer) => {
+        buffers[pipe] += buf;
+        const lines = buffers[pipe].split("\n");
 
-  let stdout = "";
-  runtime.stdout.on("data", (buf) => {
-    stdout += buf;
-    const lines = stdout.split("\n");
+        if (lines.length > 1) {
+          lines.slice(0, -1).forEach((line: string) => {
+            const log = EmulatorLog.fromJSON(line);
+            emitter.emit("log", log);
 
-    if (lines.length > 1) {
-      lines.slice(0, -1).forEach((line) => {
-        emitter.emit("log", EmulatorLog.fromJSON(line));
+            if (log.level === "SYSTEM" && log.type === "runtime-status" && log.text === "ready") {
+              metadata.socketPath = log.data.socketPath;
+              readyResolve();
+            }
+          });
+        }
+
+        buffers[pipe] = lines[lines.length - 1];
       });
     }
-
-    stdout = lines[lines.length - 1];
-  });
+  }
 
   return {
     exit: new Promise<number>((resolve, reject) => {
@@ -299,10 +318,12 @@ export function InvokeRuntime(
         if (code === 0) {
           resolve(code);
         } else {
-          reject(stderr);
+          reject(buffers.stderr);
         }
       });
     }),
+    ready,
+    metadata,
     events: emitter,
   };
 }
