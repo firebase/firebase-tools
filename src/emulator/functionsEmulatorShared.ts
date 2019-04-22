@@ -7,6 +7,7 @@ import { WrappedFunction } from "firebase-functions-test/lib/main";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
+import * as express from "express";
 
 interface EmulatedTriggerDefinition {
   entryPoint: string;
@@ -99,6 +100,19 @@ export async function getTriggersFromDirectory(
 
 export function getTemporarySocketPath(pid: number): string {
   return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+}
+
+export function waitForBody(req: express.Request): Promise<string> {
+  let data = "";
+  return new Promise((res, rej) => {
+    req.on("data", (chunk: any) => {
+      data += chunk;
+    });
+
+    req.on("end", () => {
+      res(data);
+    });
+  });
 }
 
 // This bundle gets passed from hub -> runtime as a CLI arg
