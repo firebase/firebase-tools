@@ -117,7 +117,7 @@ module.exports = function(context, options, payload) {
   var projectId = context.projectId;
   var sourceUrl = context.uploadUrl;
   var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
-  utils.logWarning("appEngineLocation " + appEngineLocation);
+  logger.debug(`appEngineLocation: ${appEngineLocation}`);
   // Used in CLI releases v3.4.0 to v3.17.6
   var legacySourceUrlTwo =
     "gs://" + "staging." + context.firebaseConfig.storageBucket + "/firebase-functions-source";
