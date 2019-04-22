@@ -133,7 +133,11 @@ function _InitializeNetworkFiltering(): void {
         }).log();
       }
 
-      return original(...args);
+      try {
+        return original(...args);
+      } catch (e) {
+        return new original(...args);
+      }
     };
 
     return { bundle, status: "mocked" };
