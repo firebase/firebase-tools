@@ -228,7 +228,9 @@ describe("FunctionsEmulatorRuntime", () => {
         };
       }).toString();
 
-      const onRequestCopy = JSON.parse(JSON.stringify(FunctionRuntimeBundles.onRequest)) as FunctionsRuntimeBundle;
+      const onRequestCopy = JSON.parse(
+        JSON.stringify(FunctionRuntimeBundles.onRequest)
+      ) as FunctionsRuntimeBundle;
       onRequestCopy.ports.firestore = 80800; // Set the port to something crazy to avoid conflict with live emulator
       const runtime = InvokeRuntime(process.execPath, onRequestCopy, {
         serializedTriggers,
