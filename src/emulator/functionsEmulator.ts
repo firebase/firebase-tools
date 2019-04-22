@@ -237,13 +237,21 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   logRuntimeEvent(log: EmulatorLog): void {
-    if (log.level === "SYSTEM") {
-      // Handle system interrupts
-      return;
-    } else if (log.level === "DEBUG") {
-      logger.debug(log.text);
-    } else {
-      logger.info(`${log.level}: ${log.text}`);
+    switch (log.level) {
+      case "SYSTEM":
+        // Ignore these for now...
+        break;
+      case "USER":
+        logger.info(`${clc.blackBright("> ")} ${log.text}`);
+        break;
+      case "DEBUG":
+        logger.debug(log.text);
+        break;
+      case "INFO":
+        utils.logLabeledBullet("functions", log.text);
+      default:
+        logger.info(`${log.level}: ${log.text}`);
+        break;
     }
   }
 

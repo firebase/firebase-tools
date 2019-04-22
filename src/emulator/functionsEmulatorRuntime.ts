@@ -371,7 +371,7 @@ async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
 
-  new EmulatorLog("INFO", "runtime-status", "Functions runtime initialized.", {
+  new EmulatorLog("DEBUG", "runtime-status", "Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   }).log();
@@ -472,7 +472,11 @@ async function main(): Promise<void> {
     clearTimeout(timeoutId);
   }
   clearInterval(timerId);
-  new EmulatorLog("INFO", "runtime-status", `Functions finished in ~${seconds}s.`).log();
+  new EmulatorLog(
+    "INFO",
+    "runtime-status",
+    `function ${frb.triggerId} finished in ~${seconds}s.`
+  ).log();
 }
 
 if (require.main === module) {
