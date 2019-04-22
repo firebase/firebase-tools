@@ -140,6 +140,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         runtimeRes.on("close", () => {
           res.end();
         });
+
+        runtimeRes.on("end", () => {
+          res.end();
+        });
       });
 
       connector.on("error", () => {

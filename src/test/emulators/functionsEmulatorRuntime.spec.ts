@@ -68,7 +68,7 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
   });
 }
 
-describe("FuncitonsEmulatorRuntime", () => {
+describe("FunctionsEmulatorRuntime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
@@ -175,6 +175,49 @@ describe("FuncitonsEmulatorRuntime", () => {
           function_id: require("firebase-functions").https.onRequest(async (req: any, res: any) => {
             /* tslint:disable:no-console */
             res.json({ from_trigger: true });
+          }),
+        };
+      }).toString();
+
+      const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+        serializedTriggers,
+      });
+
+      await runtime.ready;
+
+      await new Promise((resolve) => {
+        request(
+          {
+            socketPath: runtime.metadata.socketPath,
+            path: "/",
+          },
+          (res) => {
+            let data = "";
+            res.on("data", (chunk) => (data += chunk));
+            res.on("end", () => {
+              expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
+              resolve();
+            });
+          }
+        ).end();
+      });
+
+      await runtime.exit;
+    });
+
+    it("should handle a simple write to Firestore", async () => {
+      const serializedTriggers = (() => {
+        return {
+          function_id: require("firebase-functions").https.onRequest(async (req: any, res: any) => {
+            /* tslint:disable:no-console */
+            const admin = require('firebase-admin');
+            admin.initializeApp();
+            try {
+              await admin.firestore().collection('test').add({ date: new Date() });
+              res.json({ from_trigger: true });
+            } catch (e) {
+              res.json({ error: true });
+            }
           }),
         };
       }).toString();
