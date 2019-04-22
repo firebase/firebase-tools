@@ -1,0 +1,1 @@
+fixed - fixes bug where projects without a CloudResourceLocation were unable to deploy any functions
