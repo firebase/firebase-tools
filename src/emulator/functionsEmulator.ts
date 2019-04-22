@@ -31,6 +31,8 @@ interface RequestWithRawBody extends express.Request {
   rawBody: string;
 }
 
+type FunctionsRuntimeMode = "BACKGROUND" | "HTTPS";
+
 export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   ready: Promise<void>;
@@ -66,6 +68,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const hub = express();
 
     hub.use((req, res, next) => {
+      // Allow CORS to facilitate easier testing.
+      // Source: https://enable-cors.org/server_expressjs.html
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+
       let data = "";
       req.on("data", (chunk: any) => {
         data += chunk;
@@ -86,17 +93,29 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     });
 
-    // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
+    // The full trigger URL for the function
     const functionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
+
+    // A short URL, convenient for local testing
+    // TODO(abehaskins): Come up with something more permanent here
     const shortFunctionRoute = "/f/p/:project_id/t/:trigger_name";
+
+    // A URL for compatibility with test scripts that used the old functions emulator.
+    // TODO(samstern): Get the function's actual region, do not hardcode us-central.
+    const oldFunctionRoute = `/:project_id/us-central1/:trigger_name`;
+
+    // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const functionRoutes = [
       functionRoute,
       `${functionRoute}/*`,
       shortFunctionRoute,
       `${shortFunctionRoute}/*`,
+      oldFunctionRoute,
     ];
 
-    hub.get(functionRoutes, async (req, res) => {
+    // Define a common handler function to use for GET and POST requests.
+    const handler: express.RequestHandler = async (req, res) => {
+      const method = req.method;
       const triggerName = req.params.trigger_name;
 
       const triggersByName = await getTriggersFromDirectory(
@@ -106,7 +125,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       const trigger = triggersByName[triggerName];
 
-      if (!trigger.definition.httpsTrigger) {
+      const isGetRequest = method === "GET";
+      const isHttpsTrigger = trigger.definition.httpsTrigger ? true : false;
+
+      if (isGetRequest && !isHttpsTrigger) {
         logger.debug(`[functions] GET request to non-HTTPS function ${triggerName} rejected.`);
         res.json({
           status: "error",
@@ -115,63 +137,79 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
 
-      logger.debug(`[functions] GET request to HTTPS function ${triggerName} accepted.`);
+      logger.debug(`[functions] ${method} request to function ${triggerName} accepted.`);
 
-      const runtime = this.startFunctionRuntime(nodeBinary, triggerName);
+      const mode = isHttpsTrigger ? "HTTPS" : "BACKGROUND";
+      const reqBody = (req as RequestWithRawBody).rawBody;
+      const proto = reqBody ? JSON.parse(reqBody) : undefined;
+      const runtime = this.startFunctionRuntime(nodeBinary, triggerName, mode, proto);
 
-      logger.debug(`[functions] Waiting for runtime to be ready!`);
+      if (isHttpsTrigger) {
+        logger.debug(`[functions] Waiting for runtime to be ready!`);
+        await runtime.ready;
 
-      await runtime.ready;
+        logger.debug(
+          `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
+        );
 
-      logger.debug(
-        `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
-      );
+        /*
+          We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
+          situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
+          consuming yet another port which is probably faster as well.
+         */
+        const runtimeReq = http.request(
+          {
+            method,
+            path: req.url, // 'url' includes the query params
+            headers: req.headers,
+            socketPath: runtime.metadata.socketPath,
+          },
+          (runtimeRes: http.IncomingMessage) => {
+            runtimeRes.on("data", (buf) => {
+              res.write(buf);
+            });
 
-      /*
-        We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
-        situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
-        consuming yet another port which is probably faster as well.
-       */
-      const connector = http.request({ socketPath: runtime.metadata.socketPath }, (runtimeRes) => {
-        runtimeRes.on("data", (buf) => {
-          res.write(buf);
-        });
+            runtimeRes.on("close", () => {
+              res.end();
+            });
 
-        runtimeRes.on("close", () => {
+            runtimeRes.on("end", () => {
+              res.end();
+            });
+          }
+        );
+
+        runtimeReq.on("error", () => {
           res.end();
         });
 
-        runtimeRes.on("end", () => {
-          res.end();
-        });
-      });
+        // If the original request had a body, forward that over the connection.
+        // TODO: Why is this not handled by the pipe?
+        if (reqBody) {
+          runtimeReq.write(reqBody);
+          runtimeReq.end();
+        }
 
-      connector.on("error", () => {
-        res.end();
-      });
+        // Pipe the incoming request over the socket.
+        req
+          .pipe(
+            runtimeReq,
+            { end: true }
+          )
+          .on("error", () => {
+            res.end();
+          });
 
-      req
-        .pipe(
-          connector,
-          { end: true }
-        )
-        .on("error", () => {
-          res.end();
-        });
+        await runtime.exit;
+      } else {
+        // Background functions just wait and then ACK
+        await runtime.exit;
+        res.json({ status: "acknowledged" });
+      }
+    };
 
-      await runtime.exit;
-    });
-
-    hub.post(functionRoutes, async (req, res) => {
-      const triggerName = req.params.trigger_name;
-      const runtime = this.startFunctionRuntime(
-        nodeBinary,
-        triggerName,
-        JSON.parse((req as RequestWithRawBody).rawBody)
-      );
-      await runtime.exit;
-      res.json({ status: "acknowledged" });
-    });
+    hub.get(functionRoutes, handler);
+    hub.post(functionRoutes, handler);
 
     this.server = hub.listen(this.port);
   }
@@ -179,10 +217,11 @@ export class FunctionsEmulator implements EmulatorInstance {
   startFunctionRuntime(
     nodeBinary: string,
     triggerName: string,
+    mode: FunctionsRuntimeMode,
     proto?: any
   ): FunctionsRuntimeInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
-      mode: proto ? "BACKGROUND" : "HTTPS",
+      mode,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
       },

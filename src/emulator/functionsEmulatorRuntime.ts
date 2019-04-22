@@ -2,6 +2,8 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawnSync } from "child_process";
 import * as admin from "firebase-admin";
+import { URL } from "url";
+import * as express from "express";
 
 import {
   EmulatedTrigger,
@@ -9,10 +11,9 @@ import {
   FunctionsRuntimeFeatures,
   getTemporarySocketPath,
   getTriggersFromDirectory,
+  waitForBody,
 } from "./functionsEmulatorShared";
 import { EmulatorLog } from "./types";
-import { URL } from "url";
-import * as express from "express";
 import { _extractParamsFromPath } from "./functionsEmulatorUtils";
 
 const resolve = require.resolve;
@@ -66,10 +67,14 @@ function _InitializeNetworkFiltering(): void {
     invocation on the first prompt, so we can be aggressive here.
 
     Sadly, these vary a lot between Node versions and it will always be possible to route around
-    this, it's not security - just a helper. A good example of something difficult to catch is
-    any I/O done via node-gyp (https://github.com/nodejs/node-gyp) since that I/O will be done in
-    C, we have to catch it before then (which is how the google-gax blocker works). As of this note,
-    GRPC uses a native extension to do I/O (I think because old node lacks native HTTP2?), so that's
+    this, it's not security - just a helper. A good example of somet  SimpleBodyParser,
+hing difficult to catch is
+    any I/O done via node-gyp (https://github.com/nodejs/node-gyp) s  SimpleBodyParser,
+ince that I/O will be done in
+    C, we have to catch it before then (which is how the google-gax   SimpleBodyParser,
+blocker works). As of this note,
+    GRPC uses a native extension to do I/O (I think because old node  SimpleBodyParser,
+ lacks native HTTP2?), so that's
     a place to keep an eye on. Luckily, mostly only Google uses GRPC and most Google APIs go via
     google-gax, but still.
 
@@ -247,7 +252,7 @@ async function _ProcessHTTPS(trigger: EmulatedTrigger): Promise<void> {
   const socketPath = getTemporarySocketPath(process.pid);
 
   return new Promise((resolveEphemeralServer) => {
-    ephemeralServer.get("/", async (req: express.Request, res: express.Response) => {
+    const handler = async (req: express.Request, res: express.Response) => {
       new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
       const func = trigger.getRawFunction();
 
@@ -256,8 +261,26 @@ async function _ProcessHTTPS(trigger: EmulatedTrigger): Promise<void> {
         resolveEphemeralServer();
       });
 
+      // Read data and manually set the request body
+      const dataStr = await waitForBody(req);
+      if (dataStr && dataStr.length > 0) {
+        if (req.is("application/json")) {
+          new EmulatorLog(
+            "DEBUG",
+            "runtime-status",
+            `Detected JSON request body: ${dataStr}`
+          ).log();
+          req.body = JSON.parse(dataStr);
+        } else {
+          req.body = dataStr;
+        }
+      }
+
       await Run([req, res], func);
-    });
+    };
+
+    ephemeralServer.get("/*", handler);
+    ephemeralServer.post("/*", handler);
 
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();

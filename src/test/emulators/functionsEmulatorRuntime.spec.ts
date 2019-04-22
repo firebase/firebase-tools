@@ -253,5 +253,51 @@ describe("FunctionsEmulatorRuntime", () => {
 
       await runtime.exit;
     });
+
+    it("should handle a simple write to Firestore", async () => {
+      const serializedTriggers = (() => {
+        return {
+          function_id: require("firebase-functions").https.onRequest(async (req: any, res: any) => {
+            /* tslint:disable:no-console */
+            const admin = require("firebase-admin");
+            admin.initializeApp();
+            try {
+              await admin
+                .firestore()
+                .collection("test")
+                .add({ date: new Date() });
+              res.json({ from_trigger: true });
+            } catch (e) {
+              res.json({ error: true });
+            }
+          }),
+        };
+      }).toString();
+
+      const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+        serializedTriggers,
+      });
+
+      await runtime.ready;
+
+      await new Promise((resolve) => {
+        request(
+          {
+            socketPath: runtime.metadata.socketPath,
+            path: "/",
+          },
+          (res) => {
+            let data = "";
+            res.on("data", (chunk) => (data += chunk));
+            res.on("end", () => {
+              expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
+              resolve();
+            });
+          }
+        ).end();
+      });
+
+      await runtime.exit;
+    });
   });
 });
