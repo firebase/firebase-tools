@@ -47,11 +47,11 @@ exports.idsToVarName = function(projectId, configId, varId) {
 
 exports.getAppEngineLocation = function(config) {
   var appEngineLocation = config.cloudResourceLocation;
-  if (appEngineLocation.match(/[^\d]$/)) {
+  if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
     // For some regions, such as us-central1, the cloudResourceLocation has the trailing digit cut off
     appEngineLocation = appEngineLocation + "1";
   }
-  return appEngineLocation;
+  return appEngineLocation || "us-central1";
 };
 
 exports.getFirebaseConfig = function(options) {
