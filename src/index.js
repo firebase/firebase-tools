@@ -40,7 +40,7 @@ function suggestCommands(cmd, cmdList) {
   if (suggestion) {
     logger.error();
     logger.error("Did you mean", clc.bold(suggestion) + "?");
-    process.exit(1);
+    return;
   }
 }
 
@@ -62,7 +62,6 @@ var RENAMED_COMMANDS = {
 };
 
 program.action(function(cmd, cmd2) {
-  suggestCommands(cmd, commandNames);
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -76,9 +75,9 @@ program.action(function(cmd, cmd2) {
     if (!didYouMean(cmd, commandNames)) {
       cmd = [cmd, cmd2].join(":");
     }
-    suggestCommands(cmd, commandNames);
   }
 
+  suggestCommands(cmd, commandNames);
   process.exit(1);
 });
 
