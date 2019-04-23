@@ -4,6 +4,8 @@ var _ = require("lodash");
 var clc = require("cli-color");
 
 var cloudfunctions = require("./gcp/cloudfunctions");
+var cloudscheduler = require("./gcp/cloudscheduler");
+var pubsub = require("./gcp/pubsub");
 var helper = require("./functionsDeployHelper");
 var logger = require("./logger");
 var track = require("./track");
@@ -46,16 +48,45 @@ var printTooManyOps = function(projectId) {
   deletes = []; // prevents analytics tracking of deployments
 };
 
-module.exports = function(functionsToDelete, projectId) {
+module.exports = function(functionsToDelete, projectId, appEngineLocation) {
   deletes = _.map(functionsToDelete, function(name) {
+    var scheduleName = helper.getScheduleName(name, appEngineLocation);
+    var topicName = helper.getTopicName(name);
     return {
       name: name,
       retryFunction: function() {
-        return cloudfunctions.delete({
-          projectId: projectId,
-          region: helper.getRegion(name),
-          functionName: helper.getFunctionName(name),
-        });
+        return cloudscheduler
+          .deleteJob(scheduleName)
+          .catch((err) => {
+            // if err.status is 404, the schedule doesnt exist, so catch the error
+            // if err.status is 403, the project doesnt have the api enabled and there are no schedules to delete, so catch the error
+            if (err.context.response.statusCode != 404 && err.context.response.statusCode != 403) {
+              throw new FirebaseError(
+                `Failed to delete schedule for ${functionName} with status ${err.status}`,
+                err
+              );
+            }
+          })
+          .then(() => {
+            return pubsub.deleteTopic(topicName);
+          })
+          .catch((err) => {
+            // if err.status is 404, the topic doesnt exist, so catch the error
+            // if err.status is 403, the project doesnt have the api enabled and there are no topics to delete, so catch the error
+            if (err.context.response.statusCode != 404 && err.context.response.statusCode != 403) {
+              throw new FirebaseError(
+                `Failed to delete topic for ${functionName} with status ${err.status}`,
+                err
+              );
+            }
+          })
+          .then(() => {
+            return cloudfunctions.delete({
+              projectId: projectId,
+              region: helper.getRegion(name),
+              functionName: helper.getFunctionName(name),
+            });
+          });
       },
     };
   });

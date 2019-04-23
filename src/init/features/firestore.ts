@@ -1,33 +1,31 @@
-"use strict";
+import clc = require("cli-color");
+import fs = require("fs");
 
-var clc = require("cli-color");
-var fs = require("fs");
+import FirebaseError = require("../../error");
+import gcp = require("../../gcp");
+import iv2 = require("../../firestore/indexes");
+import fsutils = require("../../fsutils");
+import prompt = require("../../prompt");
+import logger = require("../../logger");
+import utils = require("../../utils");
+import requireAccess = require("../../requireAccess");
+import scopes = require("../../scopes");
 
-var FirebaseError = require("../../error");
-var gcp = require("../../gcp");
-var iv2 = require("../../firestore/indexes");
-var fsutils = require("../../fsutils");
-var prompt = require("../../prompt");
-var logger = require("../../logger");
-var utils = require("../../utils");
-var requireAccess = require("../../requireAccess");
-var scopes = require("../../scopes");
+const indexes = new iv2.FirestoreIndexes();
 
-var indexes = new iv2.FirestoreIndexes();
-
-var RULES_TEMPLATE = fs.readFileSync(
+const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/firestore/firestore.rules",
   "utf8"
 );
 
-var DEFAULT_RULES_FILE = "firestore.rules";
+const DEFAULT_RULES_FILE = "firestore.rules";
 
-var INDEXES_TEMPLATE = fs.readFileSync(
+const INDEXES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/firestore/firestore.indexes.json",
   "utf8"
 );
 
-var _initRules = function(setup, config) {
+async function initRules(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore Security Rules allow you to define how and when to allow");
   logger.info("requests. You can keep these rules in your project directory");
@@ -42,11 +40,11 @@ var _initRules = function(setup, config) {
       default: DEFAULT_RULES_FILE,
     },
   ])
-    .then(function() {
-      var filename = setup.config.firestore.rules;
+    .then(() => {
+      const filename = setup.config.firestore.rules;
 
       if (fsutils.fileExistsSync(filename)) {
-        var msg =
+        const msg =
           "File " +
           clc.bold(filename) +
           " already exists." +
@@ -60,21 +58,21 @@ var _initRules = function(setup, config) {
 
       return Promise.resolve(true);
     })
-    .then(function(overwrite) {
+    .then((overwrite) => {
       if (!overwrite) {
         return Promise.resolve();
       }
 
-      return _getRulesFromConsole(setup.projectId).then(function(contents) {
+      return getRulesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.rules, contents);
       });
     });
-};
+}
 
-var _getRulesFromConsole = function(projectId) {
+async function getRulesFromConsole(projectId: string): Promise<any> {
   return gcp.rules
     .getLatestRulesetName(projectId, "cloud.firestore")
-    .then(function(name) {
+    .then((name) => {
       if (!name) {
         logger.debug("No rulesets found, using default.");
         return [{ name: DEFAULT_RULES_FILE, content: RULES_TEMPLATE }];
@@ -83,7 +81,7 @@ var _getRulesFromConsole = function(projectId) {
       logger.debug("Found ruleset: " + name);
       return gcp.rules.getRulesetContent(name);
     })
-    .then(function(rules) {
+    .then((rules: any[]) => {
       if (rules.length <= 0) {
         return utils.reject("Ruleset has no files", { exit: 1 });
       }
@@ -97,9 +95,9 @@ var _getRulesFromConsole = function(projectId) {
       // assumption.
       return rules[0].content;
     });
-};
+}
 
-var _initIndexes = function(setup, config) {
+async function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
   logger.info("maintaining performance that scales with the size of the result");
@@ -115,10 +113,10 @@ var _initIndexes = function(setup, config) {
       default: "firestore.indexes.json",
     },
   ])
-    .then(function() {
-      var filename = setup.config.firestore.indexes;
+    .then(() => {
+      const filename = setup.config.firestore.indexes;
       if (fsutils.fileExistsSync(filename)) {
-        var msg =
+        const msg =
           "File " +
           clc.bold(filename) +
           " already exists." +
@@ -131,26 +129,26 @@ var _initIndexes = function(setup, config) {
       }
       return Promise.resolve(true);
     })
-    .then(function(overwrite) {
+    .then((overwrite) => {
       if (!overwrite) {
         return Promise.resolve();
       }
 
-      return _getIndexesFromConsole(setup.projectId).then(function(contents) {
+      return getIndexesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });
     });
-};
+}
 
-var _getIndexesFromConsole = function(projectId) {
-  var indexesPromise = indexes.listIndexes(projectId);
-  var fieldOverridesPromise = indexes.listFieldOverrides(projectId);
+async function getIndexesFromConsole(projectId: any): Promise<any> {
+  const indexesPromise = indexes.listIndexes(projectId);
+  const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
 
   return Promise.all([indexesPromise, fieldOverridesPromise])
-    .then(function(res) {
+    .then((res) => {
       return indexes.makeIndexSpec(res[0], res[1]);
     })
-    .catch(function(e) {
+    .catch((e) => {
       if (e.message.indexOf("is not a Cloud Firestore enabled project") >= 0) {
         return INDEXES_TEMPLATE;
       }
@@ -159,16 +157,16 @@ var _getIndexesFromConsole = function(projectId) {
         original: e,
       });
     });
-};
+}
 
-module.exports = function(setup, config) {
+export async function doSetup(setup: any, config: any): Promise<any> {
   setup.config.firestore = {};
 
-  return requireAccess({ project: setup.projectId }, [scopes.CLOUD_PLATFORM])
-    .then(function() {
-      return _initRules(setup, config);
+  return requireAccess({ project: setup.projectId })
+    .then(() => {
+      return initRules(setup, config);
     })
-    .then(function() {
-      return _initIndexes(setup, config);
+    .then(() => {
+      return initIndexes(setup, config);
     });
-};
+}

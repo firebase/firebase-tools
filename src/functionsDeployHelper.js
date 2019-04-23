@@ -103,8 +103,9 @@ function getFunctionsInfo(parsedTriggers, projectId) {
     // SDK exports list of regions for each function to be deployed to, need to add a new entry
     // to functionsInfo for each region.
     _.forEach(trigger.regions, function(region) {
+      var triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
       functionsInfo.push(
-        _.chain(trigger)
+        _.chain(triggerDeepCopy)
           .omit("regions")
           .assign({
             name: ["projects", projectId, "locations", region, "functions", trigger.name].join("/"),
@@ -129,6 +130,30 @@ function getFunctionTrigger(functionInfo) {
 
 function getFunctionName(fullName) {
   return fullName.split("/")[5];
+}
+
+/*
+** getScheduleName transforms a full function name (projects/blah/locations/blah/functions/blah)
+** into a job name for cloud scheduler
+** DANGER: We use the pattern defined here to deploy and delete schedules,
+** and to display scheduled functions in the Firebase console
+** If you change this pattern, Firebase console will stop displaying schedule descriptions
+** and schedules created under the old pattern will no longer be cleaned up correctly
+*/
+function getScheduleName(fullName, appEngineLocation) {
+  var [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
+  return `${projectsPrefix}/${project}/${regionsPrefix}/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`;
+}
+
+/*
+** getTopicName transforms a full function name (projects/blah/locations/blah/functions/blah)
+** into a topic name for pubsub
+** DANGER: We use the pattern defined here to deploy and delete topics
+** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
+*/
+function getTopicName(fullName) {
+  var [projectsPrefix, project, , region, , functionName] = fullName.split("/");
+  return `${projectsPrefix}/${project}/topics/firebase-schedule-${functionName}-${region}`;
 }
 
 function getRegion(fullName) {
@@ -238,6 +263,8 @@ module.exports = {
   getFunctionTrigger: getFunctionTrigger,
   getFunctionName: getFunctionName,
   getRegion: getRegion,
+  getScheduleName: getScheduleName,
+  getTopicName: getTopicName,
   functionMatchesGroup: functionMatchesGroup,
   getFunctionLabel: getFunctionLabel,
   pollDeploys: pollDeploys,

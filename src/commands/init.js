@@ -126,7 +126,7 @@ module.exports = new Command("init [feature]")
             type: "checkbox",
             name: "features",
             message:
-              "Which Firebase CLI features do you want to setup for this folder? " +
+              "Which Firebase CLI features do you want to set up for this folder? " +
               "Press Space to select features, then Enter to confirm your choices.",
             choices: prompt.convertLabeledListChoices(choices),
           },

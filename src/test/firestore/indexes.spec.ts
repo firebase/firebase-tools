@@ -296,13 +296,28 @@ describe("IndexSorting", () => {
       queryScope: API.QueryScope.COLLECTION,
       fields: [
         {
-          fieldPath: "fieldA",
-          order: API.Order.DESCENDING,
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
         },
       ],
     };
 
-    expect([b, a, d, c].sort(sort.compareSpecIndex)).to.eql([a, b, c, d]);
+    const e: Spec.Index = {
+      collectionGroup: "collectionB",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
+        },
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    expect([b, a, e, d, c].sort(sort.compareSpecIndex)).to.eql([a, b, c, d, e]);
   });
 
   it("should correcty sort an array of Spec field overrides", () => {

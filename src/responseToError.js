@@ -49,5 +49,6 @@ module.exports = function(response, body) {
       response: response,
     },
     exit: exitCode,
+    status: response.statusCode,
   });
 };
