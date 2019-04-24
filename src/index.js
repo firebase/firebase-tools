@@ -40,7 +40,6 @@ function suggestCommands(cmd, cmdList) {
   if (suggestion) {
     logger.error();
     logger.error("Did you mean", clc.bold(suggestion) + "?");
-    return;
   }
 }
 
@@ -72,7 +71,7 @@ program.action(function(cmd, cmd2) {
       "instead"
     );
   } else {
-    if (!didYouMean(cmd, commandNames)) {
+    if (!suggestCommands(cmd, commandNames)) {
       cmd = [cmd, cmd2].join(":");
     }
   }
