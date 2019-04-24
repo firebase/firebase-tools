@@ -1,5 +1,3 @@
-"use strict";
-
 import * as FirebaseError from "../../error";
 import * as _ from "lodash";
 import * as path from "path";
@@ -12,7 +10,12 @@ import * as fsutils from "../../fsutils";
 // tslint:disable-next-line
 const cjson = require("cjson");
 
-// Check that functions directory exists
+/**
+ * Check that functions directory exists.
+ * @param cwd Working directory.
+ * @param sourceDirName Relative path to source directory.
+ * @throws { FirebaseError } Functions directory must exist.
+ */
 export function functionsDirectoryExists(cwd: string, sourceDirName: string): void {
   if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(cwd, sourceDirName))) {
     const msg =
@@ -22,7 +25,11 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
   }
 }
 
-// Validate function names only contain lower case letters, numbers, and dashes
+/**
+ * Validate function names only contain lower case letters, numbers, and dashes.
+ * @param functionNames List of function names.
+ * @throws { FirebaseError } Function names must be valid.
+ */
 export function functionNamesAreValid(functionNames: string[]): void {
   const validFunctionNameRegex = /^[a-z][a-zA-Z0-9_-]{1,62}$/i;
   const invalidNames = _.reject(
@@ -39,10 +46,17 @@ export function functionNamesAreValid(functionNames: string[]): void {
   }
 }
 
-// Validate contents of package.json - main file present and engines specified
+/**
+ * Validate contents of package.json to ensure main file is present.
+ * Throws an error if package.json is not found, main file not found, or
+ * @param sourceDirName Name of source directory.
+ * @param sourceDir Relative path of source directory.
+ * @param projectDir Relative path of project directory.
+ * @throws { FirebaseError } Package.json must be present and valid.
+ */
 export function packageJsonIsValid(
   sourceDirName: string,
-  sourceDir: any,
+  sourceDir: string,
   projectDir: string
 ): void {
   const packageJsonFile = path.join(sourceDir, "package.json");

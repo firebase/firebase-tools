@@ -9,7 +9,7 @@ const deploymentTool = require("../../deploymentTool");
 const FirebaseError = require("../../error");
 const fsutils = require("../../fsutils");
 const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
-const projectPath = require("../../projectPath");
+const { resolveProjectPath } = require("../../projectPath");
 
 module.exports = function(context, options) {
   // Allow the public directory to be overridden by the --public flag
@@ -55,7 +55,7 @@ module.exports = function(context, options) {
       throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
     }
 
-    if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options.cwd, cfg.public))) {
+    if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {
       throw new FirebaseError(
         `Specified public directory '${cfg.public}' does not exist, ` +
           `can't deploy hosting to site ${deploy.site}`,

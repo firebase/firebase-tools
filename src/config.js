@@ -12,7 +12,7 @@ var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
 var parseBoltRules = require("./parseBoltRules");
 var prompt = require("./prompt");
-var projectPath = require("./projectPath");
+var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
 var Config = function(src, options) {
@@ -119,7 +119,7 @@ Config.prototype._materialize = function(target) {
 };
 
 Config.prototype._parseFile = function(target, filePath) {
-  var fullPath = projectPath.resolveProjectPath(this.options.cwd, filePath);
+  var fullPath = resolveProjectPath(this.options.cwd, filePath);
   var ext = path.extname(filePath);
   if (!fsutils.fileExistsSync(fullPath)) {
     throw new FirebaseError("Parse Error: Imported file " + filePath + " does not exist", {
