@@ -39,7 +39,7 @@ function suggestCommands(cmd, cmdList) {
   var suggestion = didYouMean(cmd, cmdList);
   if (suggestion) {
     logger.error();
-    logger.error("Did you mean", clc.bold(suggestion) + "?");
+    logger.error("Did you mean "  + clc.bold(suggestion) + "?");
   }
 }
 
