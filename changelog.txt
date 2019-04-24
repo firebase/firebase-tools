@@ -1,0 +1,1 @@
+fixed - Functions lifecycle hooks should trigger for individual deploys.
