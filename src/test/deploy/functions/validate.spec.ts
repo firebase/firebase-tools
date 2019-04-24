@@ -17,7 +17,7 @@ describe("validate", () => {
       const listDir = sinon.stub(fsutils, "dirExistsSync");
       listDir.returns(true);
 
-      expect(validate.functionsDirectoryExists("hi", "there")).to.not.throw;
+      expect(validate.functionsDirectoryExists("cwd", "sourceDirName")).to.not.throw;
       sinon.restore();
     });
 
@@ -27,7 +27,7 @@ describe("validate", () => {
       const listDir = sinon.stub(fsutils, "dirExistsSync");
       listDir.returns(false);
       expect(() => {
-        validate.functionsDirectoryExists("hi", "there");
+        validate.functionsDirectoryExists("cwd", "sourceDirName");
       }).to.throw(FirebaseError);
       sinon.restore();
     });
@@ -48,14 +48,14 @@ describe("validate", () => {
       }).to.throw(FirebaseError);
     });
 
-    it("should throw if some function names are improperly formatted", () => {
+    it("should throw error if some function names are improperly formatted", () => {
       const properNames = ["my-function-1", "my-FUNCTION!@#$"];
       expect(() => {
         validate.functionNamesAreValid(properNames);
       }).to.throw(FirebaseError);
     });
 
-    it("should throw on empty function name", () => {
+    it("should throw error on empty function name", () => {
       const properNames = [""];
       expect(() => {
         validate.functionNamesAreValid(properNames);
