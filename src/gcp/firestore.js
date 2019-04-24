@@ -78,8 +78,29 @@ var _deleteDocuments = function(project, docs) {
     });
 };
 
+/**
+ * Get a single Firestore document.
+ *
+ * For document format see:
+ * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/Document
+ *
+ * @param {object} doc the Document to get.
+ * @return {Promise} a promise for the get operation.
+ */
+var _getDocument = function(doc) {
+  return api
+    .request("GET", _API_ROOT + doc.name, {
+      auth: true,
+      origin: api.firestoreOrigin,
+    })
+    .then(function(res) {
+      return res.body;
+    });
+};
+
 module.exports = {
   deleteDocument: _deleteDocument,
   deleteDocuments: _deleteDocuments,
   listCollectionIds: _listCollectionIds,
+  getDocument: _getDocument,
 };

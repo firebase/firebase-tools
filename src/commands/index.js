@@ -34,6 +34,7 @@ module.exports = function(client) {
   client.firestore = {
     delete: loadCommand("firestore-delete"),
     indexes: loadCommand("firestore-indexes-list"),
+    get: loadCommand("firestore-get"),
   };
 
   client.deploy = loadCommand("deploy");
