@@ -77,6 +77,8 @@ export function packageJsonIsValid(
       }`;
       throw new FirebaseError(msg);
     }
+    // This else if block seems to be legacy behavior of Cloud Functions defaulting to functions.js if
+    // no package.json.
   } else if (!fsutils.fileExistsSync(path.join(sourceDir, "function.js"))) {
     const msg = `No npm package found in functions source directory. Please run 'npm init' inside ${sourceDirName}`;
     throw new FirebaseError(msg);
