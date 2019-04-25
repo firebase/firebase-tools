@@ -96,7 +96,7 @@ describe("validate", () => {
     });
 
     it("should throw error if functions source file is missing", () => {
-      cjsonLoadStub.returns({ name: "my-project", engines: { node: "8"}});
+      cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" } });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/index.js").returns(false);
 
@@ -106,7 +106,7 @@ describe("validate", () => {
     });
 
     it("should throw error if main is defined and that file is missing", () => {
-      cjsonLoadStub.returns({ name: "my-project", main: "src/main.js", engines: { node: "8" }});
+      cjsonLoadStub.returns({ name: "my-project", main: "src/main.js", engines: { node: "8" } });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/srcmain.js").returns(false);
 
@@ -116,7 +116,7 @@ describe("validate", () => {
     });
 
     it.skip("should not throw error if package.json, functions file exists and engines present", () => {
-      cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" }});
+      cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" } });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
