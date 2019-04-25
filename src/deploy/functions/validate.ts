@@ -48,7 +48,6 @@ export function functionNamesAreValid(functionNames: string[]): void {
 
 /**
  * Validate contents of package.json to ensure main file is present.
- * Throws an error if package.json is not found, main file not found, or
  * @param sourceDirName Name of source directory.
  * @param sourceDir Relative path of source directory.
  * @param projectDir Relative path of project directory.
