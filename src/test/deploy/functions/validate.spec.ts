@@ -10,30 +10,39 @@ import * as sinon from "sinon";
 const cjson = require("cjson");
 
 describe("validate", () => {
-  describe(".functionsDirectoryExists", () => {
-    it("should not throw error if functions directory is present", () => {
-      const ppath = sinon.stub(projectPath, "resolveProjectPath");
-      ppath.returns("some/path/to/project");
-      const listDir = sinon.stub(fsutils, "dirExistsSync");
-      listDir.returns(true);
+  describe("functionsDirectoryExists", () => {
+    let sandbox: sinon.SinonSandbox;
+    let resolvePpathStub: sinon.SinonStub;
+    let dirExistsStub: sinon.SinonStub;
 
-      expect(validate.functionsDirectoryExists("cwd", "sourceDirName")).to.not.throw;
-      sinon.restore();
+    beforeEach(() => {
+      sandbox = sinon.sandbox.create();
+      resolvePpathStub = sandbox.stub(projectPath, "resolveProjectPath");
+      dirExistsStub = sandbox.stub(fsutils, "dirExistsSync");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should not throw error if functions directory is present", () => {
+      resolvePpathStub.returns("some/path/to/project");
+      dirExistsStub.returns(true);
+      expect(() => {
+        validate.functionsDirectoryExists("cwd", "sourceDirName");
+      }).to.not.throw;
     });
 
     it("should throw error if the functions directory does not exist", () => {
-      const ppath = sinon.stub(projectPath, "resolveProjectPath");
-      ppath.returns("some/path/to/project");
-      const listDir = sinon.stub(fsutils, "dirExistsSync");
-      listDir.returns(false);
+      resolvePpathStub.returns("some/path/to/project");
+      dirExistsStub.returns(false);
       expect(() => {
         validate.functionsDirectoryExists("cwd", "sourceDirName");
       }).to.throw(FirebaseError);
-      sinon.restore();
     });
   });
 
-  describe(".functionNamesAreValid", () => {
+  describe("functionNamesAreValid", () => {
     it("should allow properly formatted function names", () => {
       const properNames = ["my-function-1", "my-function-2"];
       expect(() => {
@@ -63,57 +72,57 @@ describe("validate", () => {
     });
   });
 
-  describe(".packageJsonIsValid", () => {
+  describe("packageJsonIsValid", () => {
+    let sandbox: sinon.SinonSandbox;
+    let cjsonLoadStub: sinon.SinonStub;
+    let fileExistsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.sandbox.create();
+      fileExistsStub = sandbox.stub(fsutils, "fileExistsSync");
+      cjsonLoadStub = sandbox.stub(cjson, "load");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
     it("should throw error if package.json file is missing", () => {
-      const fileExists = sinon.stub(fsutils, "fileExistsSync");
-      fileExists.withArgs("sourceDir/package.json").returns(false);
+      fileExistsStub.withArgs("sourceDir/package.json").returns(false);
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
       }).to.throw(FirebaseError, "No npm package found");
-      sinon.restore();
     });
 
     it("should throw error if functions source file is missing", () => {
-      const cjsonStub = sinon.stub(cjson, "load");
-      cjsonStub.returns({ name: "my-project" });
-
-      const fileExists = sinon.stub(fsutils, "fileExistsSync");
-      fileExists.withArgs("sourceDir/package.json").returns(true);
-      fileExists.withArgs("sourceDir/index.js").returns(false);
+      cjsonLoadStub.returns({ name: "my-project" });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/index.js").returns(false);
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
       }).to.throw(FirebaseError, "does not exist, can't deploy Firebase Functions");
-      sinon.restore();
     });
 
     it("should throw error if main is defined and that file is missing", () => {
-      const cjsonStub = sinon.stub(cjson, "load");
-      cjsonStub.returns({ name: "my-project", main: "src/main.js" });
-
-      const fileExists = sinon.stub(fsutils, "fileExistsSync");
-      fileExists.withArgs("sourceDir/package.json").returns(true);
-      fileExists.withArgs("sourceDir/srcmain.js").returns(false);
+      cjsonLoadStub.returns({ name: "my-project", main: "src/main.js" });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/srcmain.js").returns(false);
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
       }).to.throw(FirebaseError, "does not exist, can't deploy Firebase Functions");
-      sinon.restore();
     });
 
     it("should not throw error if package.json and functions file exist", () => {
-      const cjsonStub = sinon.stub(cjson, "load");
-      cjsonStub.returns({ name: "my-project" });
-
-      const fileExists = sinon.stub(fsutils, "fileExistsSync");
-      fileExists.withArgs("sourceDir/package.json").returns(true);
-      fileExists.withArgs("sourceDir/index.js").returns(true);
+      cjsonLoadStub.returns({ name: "my-project" });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
       }).to.not.throw;
-      sinon.restore();
     });
   });
 });
