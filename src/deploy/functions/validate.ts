@@ -63,14 +63,8 @@ export function packageJsonIsValid(
     try {
       const data = cjson.load(packageJsonFile);
       logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
-      const indexJsFile = path.join(sourceDir, data.main || "index.js");
-      if (!fsutils.fileExistsSync(indexJsFile)) {
-        const msg = `${path.relative(
-          projectDir,
-          indexJsFile
-        )} does not exist, can't deploy Firebase Functions`;
-        throw new FirebaseError(msg);
-      }
+      _functionsSourceIsPresent(data, sourceDir, projectDir);
+      // _enginesFieldIsPresent(data, sourceDirName);
     } catch (e) {
       const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${
         e.message
@@ -85,3 +79,26 @@ export function packageJsonIsValid(
     throw new FirebaseError(msg);
   }
 }
+
+function _functionsSourceIsPresent(data: any, sourceDir: string, projectDir: string): void {
+  const indexJsFile = path.join(sourceDir, data.main || "index.js");
+  if (!fsutils.fileExistsSync(indexJsFile)) {
+    const msg = `${path.relative(
+      projectDir,
+      indexJsFile
+    )} does not exist, can't deploy Firebase Functions`;
+    throw new FirebaseError(msg);
+  }
+}
+
+// function _enginesFieldIsPresent(data: any, sourceDirName: string): void {
+//   if (!data.engines || !data.engines.node) {
+//     const msg =
+//       `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
+//       `Add the following lines to your package.json to fix this:
+//       "engines": {
+//         "node": "8"
+//       }`;
+//     throw new FirebaseError(msg);
+//   }
+// }
