@@ -27,10 +27,10 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
 
 /**
  * Validate function names only contain lower case letters, numbers, and dashes.
- * @param functionNames List of function names.
+ * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
-export function functionNamesAreValid(functionNames: string[]): void {
+export function functionNamesAreValid(functionNames: {}): void {
   const validFunctionNameRegex = /^[a-z][a-zA-Z0-9_-]{1,62}$/i;
   const invalidNames = _.reject(
     _.keys(functionNames),
@@ -79,6 +79,7 @@ export function packageJsonIsValid(
     }
     // This else if block seems to be legacy behavior of Cloud Functions defaulting to functions.js if
     // no package.json.
+    // TODO: verify if Cloud Functions no longer supports this behavior, then remove this block.
   } else if (!fsutils.fileExistsSync(path.join(sourceDir, "function.js"))) {
     const msg = `No npm package found in functions source directory. Please run 'npm init' inside ${sourceDirName}`;
     throw new FirebaseError(msg);
