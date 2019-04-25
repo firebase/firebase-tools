@@ -124,7 +124,27 @@ describe("validate", () => {
       }).to.throw(FirebaseError, "does not exist, can't deploy Firebase Functions");
     });
 
-    it.skip("should not throw error if package.json, functions file exists and engines present", () => {
+    it("should throw error if engines field is not set", () => {
+      cjsonLoadStub.returns({ name: "my-project" });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+      expect(() => {
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+      }).to.throw(FirebaseError, "Engines field is required but was not found");
+    });
+
+    it("should throw error if engines field is set but node field missing", () => {
+      cjsonLoadStub.returns({ name: "my-project", engines: {} });
+      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+      expect(() => {
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+      }).to.throw(FirebaseError, "Engines field is required but was not found");
+    });
+
+    it("should not throw error if package.json, functions file exists and engines present", () => {
       cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" } });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/index.js").returns(true);

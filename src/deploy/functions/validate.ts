@@ -64,9 +64,9 @@ export function packageJsonIsValid(
       const data = cjson.load(packageJsonFile);
       logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
       _functionsSourceIsPresent(data, sourceDir, projectDir);
-      // _enginesFieldIsPresent(data, sourceDirName);
+      _enginesFieldIsPresent(data, sourceDirName);
     } catch (e) {
-      const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${
+      const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n${
         e.message
       }`;
       throw new FirebaseError(msg);
@@ -91,14 +91,14 @@ function _functionsSourceIsPresent(data: any, sourceDir: string, projectDir: str
   }
 }
 
-// function _enginesFieldIsPresent(data: any, sourceDirName: string): void {
-//   if (!data.engines || !data.engines.node) {
-//     const msg =
-//       `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
-//       `Add the following lines to your package.json to fix this:
-//       "engines": {
-//         "node": "8"
-//       }`;
-//     throw new FirebaseError(msg);
-//   }
-// }
+function _enginesFieldIsPresent(data: any, sourceDirName: string): void {
+  if (!data.engines || !data.engines.node) {
+    const msg =
+      `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
+      `Add the following lines to your package.json to fix this: \n
+      "engines": {
+        "node": "8"
+      }\n`;
+    throw new FirebaseError(msg);
+  }
+}
