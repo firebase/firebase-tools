@@ -4,7 +4,6 @@ import * as clc from "cli-color";
 import * as semver from "semver";
 
 import * as FirebaseError from "./error";
-import * as logger from "./logger";
 import * as utils from "./utils";
 
 // have to require this because no @types/cjson available
@@ -47,11 +46,6 @@ function _handleNode8(): string {
   return "nodejs8";
 }
 function _handleNode10(): string {
-  utils.logWarning(
-    clc.bold.yellow("functions: ") +
-      "Deploying functions to Node 10 runtime which is in Beta. " +
-      "Please note that Node 8 is also available and is the recommended runtime."
-  );
   return "nodejs10";
 }
 

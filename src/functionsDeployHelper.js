@@ -216,14 +216,9 @@ function getRuntimeName(runtime) {
     return "Node.js 6";
   }
   if (runtime === "nodejs10") {
-    return "Node.js 10";
+    return "Node.js 10 (beta)";
   }
   return runtime;
-}
-
-// TODO: default behavior is no longer supported, so remove this
-function getDefaultRuntime() {
-  return "nodejs6";
 }
 
 module.exports = {
@@ -240,5 +235,4 @@ module.exports = {
   getFunctionLabel: getFunctionLabel,
   pollDeploys: pollDeploys,
   getRuntimeName: getRuntimeName,
-  getDefaultRuntime: getDefaultRuntime,
 };
