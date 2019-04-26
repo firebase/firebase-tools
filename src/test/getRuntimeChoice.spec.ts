@@ -9,7 +9,7 @@ chai.use(sinonchai);
 // tslint:disable-next-line
 const cjson = require("cjson");
 
-describe.only("getRuntimeChoice", () => {
+describe("getRuntimeChoice", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let cjsonStub: sinon.SinonStub;
   let utilSpy: sinon.SinonSpy;
