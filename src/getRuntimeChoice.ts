@@ -4,28 +4,31 @@ import * as clc from "cli-color";
 import * as semver from "semver";
 
 import * as FirebaseError from "./error";
+import * as logger from "./logger";
 import * as utils from "./utils";
+
+// have to require this because no @types/cjson available
+// tslint:disable-next-line
+var cjson = require("cjson");
 
 export function getRuntimeChoice(sourceDir: string): any {
   const packageJsonPath = path.join(sourceDir, "package.json");
-  const loaded = require(packageJsonPath);
+  const loaded = cjson.load(packageJsonPath);
   const choice = loaded.engines;
   if (!choice) {
     return null;
   }
 
-  function nodeVersion(version: number): boolean {
-    return _.isEqual(choice, { node: version.toString() });
+  function nodeVersion(version: string): boolean {
+    return _.isEqual(choice, { node: version });
   }
 
-  if (nodeVersion(6)) {
+  if (nodeVersion("6")) {
     return _handleNode6();
-  }
-  if (nodeVersion(8)) {
+  } else if (nodeVersion("8")) {
     _checkFunctionsSDKVersion(loaded);
     return _handleNode8();
-  }
-  if (nodeVersion(10)) {
+  } else if (nodeVersion("10")) {
     _checkFunctionsSDKVersion(loaded);
     return _handleNode10();
   }
