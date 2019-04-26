@@ -170,7 +170,7 @@ module.exports = function(context, options, payload) {
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
           var region = helper.getRegion(name);
-          var runtime = context.runtimeChoice || helper.getDefaultRuntime(options);
+          var runtime = context.runtimeChoice;
           utils.logBullet(
             clc.bold.cyan("functions: ") +
               "creating " +

@@ -215,43 +215,14 @@ function getRuntimeName(runtime) {
   if (runtime === "nodejs6") {
     return "Node.js 6";
   }
+  if (runtime === "nodejs10") {
+    return "Node.js 10";
+  }
   return runtime;
 }
 
+// TODO: default behavior is no longer supported, so remove this
 function getDefaultRuntime() {
-  // TODO uncomment when Node.js v8 is the default.
-  /**
-function getDefaultRuntime(options)
-  var packageJsonPath = path.join(
-    options.config.path(options.config.get("functions.source")),
-    "package.json"
-  );
-  var loaded = require(packageJsonPath);
-  var SDKRange = _.get(loaded, "dependencies.firebase-functions");
-  try {
-    if (!semver.intersects(SDKRange, ">=2")) {
-      utils.logWarning(
-        clc.bold.yellow("functions: ") +
-          "Deploying functions to Node 6 runtime. Please note that Node 8 is also available and is the recommended runtime. " +
-          "However, you must have a " +
-          clc.bold("firebase-functions") +
-          " version that is at least 2.0.0. Please run " +
-          clc.bold("npm i --save firebase-functions@latest") +
-          " in the functions folder and add an " +
-          clc.bold("engines") +
-          " field to " +
-          clc.bold("functions/package.json") +
-          " with the value " +
-          clc.bold('{"node": "8"}')
-      );
-      return "nodejs6";
-    }
-    return "nodejs8";
-  } catch (e) {
-    // semver check will fail if a URL is used instead of a version number, in that case stay safe and return Node 6 as default.
-    return "nodejs6";
-  }
-  **/
   return "nodejs6";
 }
 
