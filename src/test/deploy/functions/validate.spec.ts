@@ -117,7 +117,7 @@ describe("validate", () => {
     it("should throw error if main is defined and that file is missing", () => {
       cjsonLoadStub.returns({ name: "my-project", main: "src/main.js" });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
-      fileExistsStub.withArgs("sourceDir/srcmain.js").returns(false);
+      fileExistsStub.withArgs("sourceDir/src/main.js").returns(false);
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
