@@ -33,6 +33,13 @@ export function deleteJob(name: string): Promise<void> {
   });
 }
 
+export function getJob(name: string): Promise<any> {
+  return api.request("GET", `/${VERSION}/${name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+  });
+}
+
 export async function createOrReplaceJob(schedule: Schedule): Promise<void> {
   const jobName = `${schedule.name.split("/")[5]}`;
   try {
@@ -42,8 +49,13 @@ export async function createOrReplaceJob(schedule: Schedule): Promise<void> {
     if (e.context.response.statusCode !== 409) {
       throw e;
     }
-    logLabeledBullet("functions", `re-creating scheduler job ${jobName}`);
-    await deleteJob(schedule.name);
-    return createJob(schedule);
+    const existingJob = await getJob(schedule.name);
+    if (existingJob.body.schedule !== schedule.schedule) {
+      logLabeledBullet("functions", `re-creating scheduler job ${jobName}`);
+      await deleteJob(schedule.name);
+      return createJob(schedule);
+    } else {
+      logLabeledBullet("functions", `keeping scheduler job ${jobName} since it has not changed`);
+    }
   }
 }
