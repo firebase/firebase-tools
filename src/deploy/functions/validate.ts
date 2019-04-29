@@ -95,7 +95,7 @@ function _enginesFieldIsPresent(data: any, sourceDirName: string): void {
   if (!data.engines || !data.engines.node) {
     const msg =
       `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
-      `Add the following lines to your package.json to fix this: \n
+      `To fix this, add the following lines to your package.json: \n
       "engines": {
         "node": "8"
       }\n`;
