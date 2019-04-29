@@ -26,7 +26,8 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
 }
 
 /**
- * Validate function names only contain letters, numbers, underscores, and hyphens.
+ * Validate function names only contain letters, numbers, underscores, and hyphens
+ * and not exceed 62 characters in length.
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
@@ -39,9 +40,9 @@ export function functionNamesAreValid(functionNames: {}): void {
     }
   );
   if (!_.isEmpty(invalidNames)) {
-    const msg = `${invalidNames.join(
-      ", "
-    )} function name(s) must be a valid subdomain (letters, numbers, dashes, underscores)`;
+    const msg =
+      `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
+      `numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
 }
