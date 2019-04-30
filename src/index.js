@@ -36,11 +36,7 @@ client.getCommand = function(name) {
 require("./commands")(client);
 
 function suggestCommands(cmd, cmdList) {
-  var suggestion = didYouMean(cmd, cmdList);
-  if (suggestion) {
-    logger.error();
-    logger.error("Did you mean " + clc.bold(suggestion) + "?");
-  }
+  return didYouMean(cmd, cmdList);
 }
 
 var commandNames = program.commands.map(function(cmd) {
@@ -74,9 +70,14 @@ program.action(function(cmd, cmd2) {
     if (!suggestCommands(cmd, commandNames)) {
       cmd = [cmd, cmd2].join(":");
     }
+
+    var suggestion = suggestCommands(cmd, commandNames);
+    if (suggestion) {
+      logger.error();
+      logger.error("Did you mean " + clc.bold(suggestion) + "?");
+    }
   }
 
-  suggestCommands(cmd, commandNames);
   process.exit(1);
 });
 
