@@ -26,12 +26,13 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
 }
 
 /**
- * Validate function names only contain lower case letters, numbers, and dashes.
+ * Validate function names only contain letters, numbers, underscores, and hyphens
+ * and not exceed 62 characters in length.
  * @param functionNames Object containing function names as keys.
  * @throws { FirebaseError } Function names must be valid.
  */
 export function functionNamesAreValid(functionNames: {}): void {
-  const validFunctionNameRegex = /^[a-z][a-zA-Z0-9_-]{1,62}$/i;
+  const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
   const invalidNames = _.reject(
     _.keys(functionNames),
     (name: string): boolean => {
@@ -39,9 +40,9 @@ export function functionNamesAreValid(functionNames: {}): void {
     }
   );
   if (!_.isEmpty(invalidNames)) {
-    const msg = `${invalidNames.join(
-      ", "
-    )} function name(s) must be a valid subdomain (lowercase letters, numbers and dashes)`;
+    const msg =
+      `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
+      `numbers, hyphens, and not exceed 62 characters in length`;
     throw new FirebaseError(msg);
   }
 }
