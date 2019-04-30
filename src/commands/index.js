@@ -25,6 +25,10 @@ module.exports = function(client) {
     remove: loadCommand("database-remove"),
     update: loadCommand("database-update"),
     profile: loadCommand("database-profile"),
+    instances: {
+      create: loadCommand("database-instances-create"),
+      list: loadCommand("database-instances-list")
+    },
     settings: {
       get: loadCommand("database-settings-get"),
       set: loadCommand("database-settings-set"),
