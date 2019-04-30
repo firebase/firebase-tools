@@ -1,11 +1,9 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as chai from "chai";
-import * as sinonchai from "sinon-chai";
 import * as utils from "../utils";
 import * as runtime from "../runtimeChoiceSelector";
 import * as FirebaseError from "../error";
-chai.use(sinonchai);
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
 const cjson = require("cjson");
