@@ -17,8 +17,6 @@ module.exports = new Command("database:instances:create <instanceName>")
     });
   });
 
-
-
 function createDatabaseInstance(options, instanceName) {
   return getProjectNumber(options)
     .then(function(projectNumber) {
@@ -26,11 +24,11 @@ function createDatabaseInstance(options, instanceName) {
         auth: true,
         origin: api.firedataOrigin,
         json: {
-          instance: instanceName
-        }
+          instance: instanceName,
+        },
       });
     })
     .then(function(response) {
       return response.body.instance;
     });
-};
+}

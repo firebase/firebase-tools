@@ -27,7 +27,7 @@ module.exports = function(client) {
     profile: loadCommand("database-profile"),
     instances: {
       create: loadCommand("database-instances-create"),
-      list: loadCommand("database-instances-list")
+      list: loadCommand("database-instances-list"),
     },
     settings: {
       get: loadCommand("database-settings-get"),

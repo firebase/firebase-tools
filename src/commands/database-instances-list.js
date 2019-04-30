@@ -20,8 +20,6 @@ module.exports = new Command("database:instances:list")
     });
   });
 
-
-
 function getDatabaseInstances(options) {
   return getProjectNumber(options)
     .then(function(projectNumber) {
@@ -31,6 +29,6 @@ function getDatabaseInstances(options) {
       });
     })
     .then(function(response) {
-      return response.body.instance.map(info => info.instance);
+      return response.body.instance.map((info) => info.instance);
     });
-};
+}
