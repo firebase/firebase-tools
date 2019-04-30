@@ -111,7 +111,7 @@ describe("validate", () => {
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
-      }).to.throw(FirebaseError, "does not exist, can't deploy Firebase Functions");
+      }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
     it("should throw error if main is defined and that file is missing", () => {
@@ -121,7 +121,7 @@ describe("validate", () => {
 
       expect(() => {
         validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
-      }).to.throw(FirebaseError, "does not exist, can't deploy Firebase Functions");
+      }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
     it("should not throw error if package.json and functions file exist", () => {
