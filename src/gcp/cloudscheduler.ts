@@ -3,6 +3,7 @@ import * as api from "../api";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";
+const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
 export interface Job {
   name: string;
@@ -21,10 +22,11 @@ export interface Job {
     maxDoublings?: number;
   };
 }
+
 /*
-* createJob creates a cloudScheduler job
-* @returns a response from the cloud scheduler api
-* If another job with that name already exists, this will return a 409
+* Creates a cloudScheduler job.
+* If another job with that name already exists, this will return a 409.
+* @param job: The job to create
 */
 export function createJob(job: Job): Promise<void> {
   // the replace below removes the portion of the schedule name after the last /
@@ -34,14 +36,14 @@ export function createJob(job: Job): Promise<void> {
   return api.request("POST", `/${VERSION}/${strippedName}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
-    data: Object.assign({ timeZone: "America/Los_Angeles" }, job),
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
   });
 }
 
 /*
-* createJob delete a cloudScheduler job with the given name
-* @returns a response from the cloud scheduler api
-* If no job with that name exists, this will return a 404
+* Deletes a cloudScheduler job with the given name.
+* Returns a 404 if no job with that name exists.
+* @param name: The name of the job to delete
 */
 export function deleteJob(name: string): Promise<void> {
   return api.request("DELETE", `/${VERSION}/${name}`, {
@@ -51,9 +53,9 @@ export function deleteJob(name: string): Promise<void> {
 }
 
 /*
-* getJob gets a cloudScheduler job with the given name
-* @returns a response from the cloud scheduler api
-* If no job with that name exists, this will return a 404
+* Gets a cloudScheduler job with the given name.
+* If no job with that name exists, this will return a 404.
+* @param name: The name of the job to get
 */
 export function getJob(name: string): Promise<any> {
   return api.request("GET", `/${VERSION}/${name}`, {
@@ -63,23 +65,24 @@ export function getJob(name: string): Promise<any> {
 }
 
 /*
-* updateJob updates a cloudScheduler job
-* @returns a response from the cloud scheduler api
-* If no job with that name exists, this will return a 404
+* Updates a cloudScheduler job.
+* Returns a 404 if no job with that name exists.
+* @param job: A job to update. Note that name cannot be updated.
 */
 export function updateJob(job: Job): Promise<any> {
   return api.request("PATCH", `/${VERSION}/${job.name}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
-    data: Object.assign({ timeZone: "America/Los_Angeles" }, job),
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
   });
 }
 
 /*
-* createOrReplaceJob checks for a existing job with the given name
-* if none is found, it creates a new job
-* if one is found, and it is identical to the job parameter, it does nothing
-* otherwise, if one is found and it is different from the job param, it updates the job
+* Checks for a existing job with the given name.
+* If none is found, it creates a new job.
+* If one is found, and it is identical to the job parameter, it does nothing.
+* Otherwise, if one is found and it is different from the job param, it updates the job.
+* @param job: A job to check for and create, replace, or leave as appropriate
 */
 export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = `${job.name.split("/")[5]}`;
@@ -87,10 +90,10 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     const existingJob = await getJob(job.name);
     if (!job.timeZone) {
       // We set this here to avoid recreating schedules that use the default timeZone
-      job.timeZone = "America/Los_Angeles";
+      job.timeZone = DEFAULT_TIME_ZONE;
     }
 
-    if (_isIdentical(existingJob.body, job)) {
+    if (isIdentical(existingJob.body, job)) {
       logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
       return;
     } else {
@@ -109,9 +112,11 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
 }
 
 /*
-* _isIdentical is a helper function to check if 2 jobs are funcitonally equivalent
+* Check if 2 jobs are functionally equivalent
+* @param existingJob: a job to compare
+* @param newJob: a job to compare
 */
-function _isIdentical(existingJob: Job, newJob: Job): boolean {
+function isIdentical(existingJob: Job, newJob: Job): boolean {
   return (
     existingJob &&
     existingJob.schedule === newJob.schedule &&
