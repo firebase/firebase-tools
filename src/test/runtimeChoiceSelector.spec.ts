@@ -3,12 +3,18 @@ import { expect } from "chai";
 import * as chai from "chai";
 import * as sinonchai from "sinon-chai";
 import * as utils from "../utils";
-import * as runtime from "../getRuntimeChoice";
+import * as runtime from "../runtimeChoiceSelector";
 import * as FirebaseError from "../error";
 chai.use(sinonchai);
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
 const cjson = require("cjson");
+
+describe("getRuntimeName", () => {
+  it("should properly convert raw runtime to human friendly runtime", () => {
+    expect(runtime.getHumanFriendlyRuntimeName("nodejs6")).to.contain("Node.js");
+  });
+});
 
 describe("getRuntimeChoice", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -64,7 +70,8 @@ describe("getRuntimeChoice", () => {
     expect(warningSpy).not.called;
   });
 
-  it("should throw error if package.json engines field is not set", () => {
+  // TODO: Add this test back in when we remove runtime default behavior
+  it.skip("should throw error if package.json engines field is not set", () => {
     cjsonStub.returns({ dependencies: { "firebase-functions": "2.0.0" } });
 
     expect(() => {
@@ -72,7 +79,8 @@ describe("getRuntimeChoice", () => {
     }).to.throw(FirebaseError, runtime.ENGINES_FIELD_REQUIRED_MSG);
   });
 
-  it("should throw error if package.json engines field is set but missing node field", () => {
+  // TODO: Add this test back in when we remove runtime default behavior
+  it.skip("should throw error if package.json engines field is set but missing node field", () => {
     cjsonStub.returns({
       engines: {},
       dependencies: { "firebase-functions": "2.0.0" },

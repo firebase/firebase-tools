@@ -208,17 +208,14 @@ function pollDeploys(operations, printSuccess, printFail, printTooManyOps, proje
     });
 }
 
-function getRuntimeName(runtime) {
-  if (runtime === "nodejs8") {
-    return "Node.js 8";
-  }
-  if (runtime === "nodejs6") {
-    return "Node.js 6";
-  }
-  if (runtime === "nodejs10") {
-    return "Node.js 10 (beta)";
-  }
-  return runtime;
+function getDefaultRuntime() {
+  utils.logWarning(
+    clc.bold.red(
+      "functions: WARNING! NO ENGINES FIELD FOUND IN PACKAGE.JSON. DEFAULTING TO NODE 6 RUNTIME. " +
+        "Starting June 1, 2019 deployments will be blocked if no engines field is specified in package.json."
+    )
+  );
+  return "nodejs6";
 }
 
 module.exports = {
@@ -234,5 +231,5 @@ module.exports = {
   functionMatchesGroup: functionMatchesGroup,
   getFunctionLabel: getFunctionLabel,
   pollDeploys: pollDeploys,
-  getRuntimeName: getRuntimeName,
+  getDefaultRuntime: getDefaultRuntime,
 };

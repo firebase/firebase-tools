@@ -10,6 +10,12 @@ import * as utils from "./utils";
 // tslint:disable-next-line
 var cjson = require("cjson");
 
+const MESSAGE_FRIENDLY_RUNTIMES: any = {
+  nodejs6: "Node.js 6 (Deprecated)",
+  nodejs8: "Node.js 8",
+  nodejs10: "Node.js 10 (Beta)",
+};
+
 const ENGINE_RUNTIMES: any = {
   6: "nodejs6",
   8: "nodejs8",
@@ -38,6 +44,15 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   " in the functions folder.";
 
 /**
+ * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
+ * for example. If no friendly name for runtime is found, returns back the raw runtime.
+ * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
+ */
+export function getHumanFriendlyRuntimeName(runtime: string): string {
+  return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
+}
+
+/**
  * Returns the Node.js version to be used for the function(s) as defined in the
  * package.json.
  * @param sourceDir directory where the functions are defined.
@@ -47,7 +62,9 @@ export function getRuntimeChoice(sourceDir: string): any {
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
   if (!engines || !engines.node) {
-    throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
+    return null;
+    // uncomment below when we make package.json engines required:
+    // throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
   if (!runtime) {
