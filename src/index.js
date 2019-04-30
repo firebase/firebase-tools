@@ -35,6 +35,13 @@ client.getCommand = function(name) {
 
 require("./commands")(client);
 
+/**
+ * Checks to see if there is a different command similar to the provided one.
+ * This prints the suggestion and returns it if there is one.
+ * @param {string} cmd The command as provided by the user.
+ * @param {[]string} cmdList List of commands available in the CLI.
+ * @return {string|undefined} Returns the suggested command; undefined if none.
+ */
 function suggestCommands(cmd, cmdList) {
   var suggestion = didYouMean(cmd, cmdList);
   if (suggestion) {
