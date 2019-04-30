@@ -72,7 +72,10 @@ program.action(function(cmd, cmd2) {
       "instead"
     );
   } else {
+    // Check if the first argument is close to a command.
     if (!suggestCommands(cmd, commandNames)) {
+      // Check to see if combining the two arguments comes close to a command.
+      // e.g. `firebase hosting disable` may suggest `hosting:disable`.
       suggestCommands([cmd, cmd2].join(":"), commandNames);
     }
   }
