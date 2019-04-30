@@ -1,9 +1,6 @@
 "use strict";
 
-var fs = require("fs");
-
 var Command = require("../command");
-var logger = require("../logger");
 var requirePermissions = require("../requirePermissions");
 var getProjectNumber = require("../getProjectNumber");
 var api = require("../api");
