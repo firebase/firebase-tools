@@ -10,67 +10,69 @@ import * as utils from "./utils";
 // tslint:disable-next-line
 var cjson = require("cjson");
 
+const ENGINE_RUNTIMES: any = {
+  6: "nodejs6",
+  8: "nodejs8",
+  10: "nodejs10",
+};
+
+export const ENGINES_FIELD_REQUIRED_MSG = clc.bold(
+  "Engines field is required in package.json but none was found."
+);
+export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
+  `package.json in functions directory has an engines field which is unsupported. ` +
+    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}. ` +
+    `Note that Node.js 6 is now deprecated.`
+);
+export const DEPRECATION_WARNING_MSG =
+  clc.bold.yellow("functions: ") +
+  "Deploying functions to Node 6 runtime, which is deprecated. Node 8 is available " +
+  "and is the recommended runtime.";
+
+export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
+  clc.bold.yellow("functions: ") +
+  "You must have a " +
+  clc.bold("firebase-functions") +
+  " version that is at least 2.0.0. Please run " +
+  clc.bold("npm i --save firebase-functions@latest") +
+  " in the functions folder.";
+
+/**
+ * Returns the Node.js version to be used for the function(s) as defined in the
+ * package.json.
+ * @param sourceDir directory where the functions are defined.
+ */
 export function getRuntimeChoice(sourceDir: string): any {
   const packageJsonPath = path.join(sourceDir, "package.json");
   const loaded = cjson.load(packageJsonPath);
-  const choice = loaded.engines;
-  if (!choice) {
-    return null;
+  const engines = loaded.engines;
+  if (!engines || !engines.node) {
+    throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
+  }
+  const runtime = ENGINE_RUNTIMES[engines.node];
+  if (!runtime) {
+    throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   }
 
-  function nodeVersion(version: string): boolean {
-    return _.isEqual(choice, { node: version });
+  if (runtime === "nodejs6") {
+    utils.logWarning(DEPRECATION_WARNING_MSG);
+  } else {
+    // for any other runtime (8 or 10)
+    if (functionsSDKTooOld(loaded)) {
+      utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+    }
   }
-
-  if (nodeVersion("6")) {
-    return _handleNode6();
-  } else if (nodeVersion("8")) {
-    _checkFunctionsSDKVersion(loaded);
-    return _handleNode8();
-  } else if (nodeVersion("10")) {
-    _checkFunctionsSDKVersion(loaded);
-    return _handleNode10();
-  }
-
-  const msg = clc.bold(
-    `package.json in functions directory has an engines field which is unsupported. ` +
-      `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold(
-        '{"node": "10"}'
-      )}. ` +
-      `Note that Node.js 6 is now deprecated.`
-  );
-  throw new FirebaseError(msg, { exit: 1 });
+  return runtime;
 }
 
-function _handleNode8(): string {
-  return "nodejs8";
-}
-function _handleNode10(): string {
-  return "nodejs10";
-}
-
-function _handleNode6(): string {
-  utils.logWarning(
-    clc.bold.yellow("functions: ") +
-      "Deploying functions to Node 6 runtime, which is deprecated. Node 8 is available and is the recommended runtime. "
-  );
-  return "nodejs6";
-}
-
-function _checkFunctionsSDKVersion(loaded: any): void {
+function functionsSDKTooOld(loaded: any): boolean {
   const SDKRange = _.get(loaded, "dependencies.firebase-functions");
   try {
     if (!semver.intersects(SDKRange, ">=2")) {
-      utils.logWarning(
-        clc.bold.yellow("functions: ") +
-          "You must have a " +
-          clc.bold("firebase-functions") +
-          " version that is at least 2.0.0. Please run " +
-          clc.bold("npm i --save firebase-functions@latest") +
-          " in the functions folder."
-      );
+      return true;
     }
   } catch (e) {
     // do nothing
   }
+  return false;
 }
