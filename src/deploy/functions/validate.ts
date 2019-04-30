@@ -60,23 +60,20 @@ export function packageJsonIsValid(
   projectDir: string
 ): void {
   const packageJsonFile = path.join(sourceDir, "package.json");
-  if (fsutils.fileExistsSync(packageJsonFile)) {
-    try {
-      const data = cjson.load(packageJsonFile);
-      logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
-      assertFunctionsSourcePresent(data, sourceDir, projectDir);
-      assertEnginesFieldPresent(data, sourceDirName);
-    } catch (e) {
-      const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n${
-        e.message
-      }`;
-      throw new FirebaseError(msg);
-    }
-    // This else if block seems to be legacy behavior of Cloud Functions defaulting to functions.js if
-    // no package.json.
-    // TODO: verify if Cloud Functions no longer supports this behavior, then remove this block.
-  } else if (!fsutils.fileExistsSync(path.join(sourceDir, "function.js"))) {
+  if (!fsutils.fileExistsSync(packageJsonFile)) {
     const msg = `No npm package found in functions source directory. Please run 'npm init' inside ${sourceDirName}`;
+    throw new FirebaseError(msg);
+  }
+
+  try {
+    const data = cjson.load(packageJsonFile);
+    logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
+    assertFunctionsSourcePresent(data, sourceDir, projectDir);
+    assertEnginesFieldPresent(data, sourceDirName);
+  } catch (e) {
+    const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${
+      e.message
+    }`;
     throw new FirebaseError(msg);
   }
 }
@@ -94,7 +91,7 @@ function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: 
     const msg = `${path.relative(
       projectDir,
       indexJsFile
-    )} does not exist, can't deploy Firebase Functions`;
+    )} does not exist, can't deploy Cloud Functions`;
     throw new FirebaseError(msg);
   }
 }
