@@ -140,8 +140,9 @@ ProfileReport.prototype.collectSpeed = function(data, path, opType) {
   node.times += 1;
   /*
    * If `millis` is not present, we assume that the operation is fast
-   * in-memory request that is not timed on the server-side. Such a
-   * request may have non-trivial `pendingTime`.
+   * in-memory request that is not timed on the server-side (e.g.
+   * connects, disconnects, listens, unlistens). Such a request may
+   * have non-trivial `pendingTime`.
    */
   if (data.hasOwnProperty("millis")) {
     node.millis += data.millis;
@@ -383,7 +384,7 @@ ProfileReport.prototype.renderIncomingBandwidth = function() {
 };
 
 ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
-  var head = ["Path", "Count", "Average Execution Speed", "Pending Count", "Average Pending Time"];
+  var head = ["Path", "Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
   }
@@ -418,7 +419,6 @@ ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
       path,
       speed.times,
       ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
-      speed.pendingCount,
       ProfileReport.formatNumber(
         speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
       ) + " ms",
