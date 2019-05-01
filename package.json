@@ -97,7 +97,6 @@
     "tmp": "0.0.33",
     "universal-analytics": "^0.4.16",
     "update-notifier": "^2.5.0",
-    "user-home": "^2.0.0",
     "uuid": "^3.0.0",
     "winston": "^1.0.1"
   },
