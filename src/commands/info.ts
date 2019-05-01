@@ -7,7 +7,7 @@ import * as Command from "../command";
 export default new Command("info")
   .description("Prints debugging information about the environment")
   .action(() => {
-    logger.info(clc.bold.white("Compound Indexes"));
+    logger.info(clc.bold.white("\nEnvironment Info"));
     envinfo
       .run(
         {
