@@ -35,6 +35,22 @@ client.getCommand = function(name) {
 
 require("./commands")(client);
 
+/**
+ * Checks to see if there is a different command similar to the provided one.
+ * This prints the suggestion and returns it if there is one.
+ * @param {string} cmd The command as provided by the user.
+ * @param {string[]} cmdList List of commands available in the CLI.
+ * @return {string|undefined} Returns the suggested command; undefined if none.
+ */
+function suggestCommands(cmd, cmdList) {
+  var suggestion = didYouMean(cmd, cmdList);
+  if (suggestion) {
+    logger.error();
+    logger.error("Did you mean " + clc.bold(suggestion) + "?");
+    return suggestion;
+  }
+}
+
 var commandNames = program.commands.map(function(cmd) {
   return cmd._name;
 });
@@ -63,11 +79,11 @@ program.action(function(cmd, cmd2) {
       "instead"
     );
   } else {
-    var suggestion = didYouMean(cmd, commandNames);
-    suggestion = suggestion || didYouMean([cmd, cmd2].join(":"), commandNames);
-    if (suggestion) {
-      logger.error();
-      logger.error("Did you mean", clc.bold(suggestion) + "?");
+    // Check if the first argument is close to a command.
+    if (!suggestCommands(cmd, commandNames)) {
+      // Check to see if combining the two arguments comes close to a command.
+      // e.g. `firebase hosting disable` may suggest `hosting:disable`.
+      suggestCommands([cmd, cmd2].join(":"), commandNames);
     }
   }
 

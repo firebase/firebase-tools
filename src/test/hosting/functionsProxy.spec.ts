@@ -19,49 +19,15 @@ describe("functionsProxy", () => {
 
   const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
 
-  before(() => {
-    nock("http://localhost:7778")
-      .get("/project-foo/us-central1/bar/")
-      .reply(200, "local version");
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/")
-      .reply(200, "live version");
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/vary")
-      .reply(200, "live vary version", { vary: "Other, Authorization" });
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/cached")
-      .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/404.html")
-      .reply(404, "normal 404");
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/404-cascade.html")
-      .reply(404, "normal 404 with cascade", { "x-cascade": "pass" });
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/500")
-      .replyWithError({ message: "normal error" });
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/timeout")
-      .replyWithError({ message: "ahh", code: "ETIMEDOUT" });
-
-    nock("https://us-central1-project-foo.cloudfunctions.net")
-      .get("/bar/sockettimeout")
-      .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });
-  });
-
-  after(() => {
+  afterEach(() => {
     nock.cleanAll();
   });
 
   it("should resolve a function returns middleware that proxies to the live version", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/")
+      .reply(200, "live version");
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -75,6 +41,10 @@ describe("functionsProxy", () => {
   });
 
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(200, "local version");
+
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
     const mwGenerator = await functionsProxy(options);
@@ -90,6 +60,10 @@ describe("functionsProxy", () => {
   });
 
   it("should pass through normal 404 errors", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/404.html")
+      .reply(404, "normal 404");
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -103,6 +77,10 @@ describe("functionsProxy", () => {
   });
 
   it("should do nothing on 404 errors with x-cascade", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/404-cascade.html")
+      .reply(404, "normal 404 with cascade", { "x-cascade": "pass" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -123,6 +101,10 @@ describe("functionsProxy", () => {
   });
 
   it("should remove cookies on non-private cached responses", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/cached")
+      .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -137,6 +119,10 @@ describe("functionsProxy", () => {
   });
 
   it("should add required Vary headers to the response", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/vary")
+      .reply(200, "live vary version", { vary: "Other, Authorization" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -151,6 +137,10 @@ describe("functionsProxy", () => {
   });
 
   it("should respond with a 500 error if an error occurs calling the function", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/500")
+      .replyWithError({ message: "normal error" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -164,6 +154,10 @@ describe("functionsProxy", () => {
   });
 
   it("should respond with a 504 error if a timeout error occurs calling the function", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/timeout")
+      .replyWithError({ message: "ahh", code: "ETIMEDOUT" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
@@ -177,6 +171,10 @@ describe("functionsProxy", () => {
   });
 
   it("should respond with a 504 error if a sockettimeout error occurs calling the function", async () => {
+    nock("https://us-central1-project-foo.cloudfunctions.net")
+      .get("/bar/sockettimeout")
+      .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });
+
     const mwGenerator = await functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);

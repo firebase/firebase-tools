@@ -21,6 +21,8 @@ module.exports = function(config) {
         vRewrite.function = rewrite.function;
       } else if (rewrite.dynamicLinks) {
         vRewrite.dynamicLinks = rewrite.dynamicLinks;
+      } else if (rewrite.run) {
+        vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
       return vRewrite;
     });
