@@ -68,7 +68,7 @@
         "1"
       ]
     ],
-    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it starts being handled."
+    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   },
   "writeSpeed": {
     "legend": [
@@ -198,7 +198,7 @@
         "0"
       ]
     ],
-    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it starts being handled."
+    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   },
   "broadcastSpeed": {
     "legend": [
@@ -419,7 +419,7 @@
 				"2 ms"
 			]
 		],
-    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it starts being handled."
+    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   },
   "disconnectPendingTime": {
 		"legend": [
@@ -434,7 +434,7 @@
 				"3 ms"
 			]
 		],
-    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it starts being handled."
+    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   },
   "unlistenPendingTime": {
 		"legend": [
@@ -449,6 +449,6 @@
 				"1 ms"
 			]
 		],
-    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it starts being handled."
+    "note": "NOTE: Pending times are reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   }
 }

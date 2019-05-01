@@ -24,7 +24,7 @@ var SPEED_NOTE =
 var PENDING_TIME_NOTE =
   "NOTE: Pending times are reported at millisecond resolution." +
   " They approximate the interval of time between the instant" +
-  " a request is received and the instant it starts being handled.";
+  " a request is received and the instant it executes.";
 
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
