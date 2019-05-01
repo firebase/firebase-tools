@@ -13,6 +13,7 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.info = loadCommand("info");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
