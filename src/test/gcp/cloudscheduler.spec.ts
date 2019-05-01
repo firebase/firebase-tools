@@ -40,16 +40,22 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(200, mockJobResp);
+
       const response = await cloudscheduler.createOrReplaceJob(testJob);
+
       expect(response.body).to.deep.equal(mockJobResp);
+      expect(nock.isDone());
     });
 
     it("should do nothing if an identical job exists", async () => {
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(200, testJob);
+
       const response = await cloudscheduler.createOrReplaceJob(testJob);
+
       expect(response).to.be.undefined;
+      expect(nock.isDone());
     });
 
     it("should do update if a job exists with the same name and a different schedule", async () => {
@@ -62,8 +68,11 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
         .reply(200, mockJobResp);
+
       const response = await cloudscheduler.createOrReplaceJob(testJob);
+
       expect(response.body).to.deep.equal(mockJobResp);
+      expect(nock.isDone());
     });
 
     it("should do update if a job exists with the same name and a different timeZone", async () => {
@@ -76,8 +85,11 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
         .reply(200, mockJobResp);
+
       const response = await cloudscheduler.createOrReplaceJob(testJob);
+
       expect(response.body).to.deep.equal(mockJobResp);
+      expect(nock.isDone());
     });
 
     it("should do update if a job exists with the same name and a different schedule", async () => {
@@ -90,8 +102,11 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
         .reply(200, mockJobResp);
+
       const response = await cloudscheduler.createOrReplaceJob(testJob);
+
       expect(response.body).to.deep.equal(mockJobResp);
+      expect(nock.isDone());
     });
   });
 });
