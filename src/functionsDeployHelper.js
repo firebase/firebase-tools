@@ -209,12 +209,18 @@ function pollDeploys(operations, printSuccess, printFail, printTooManyOps, proje
 }
 
 function getDefaultRuntime() {
+  logger.info();
   utils.logWarning(
-    clc.bold.red(
-      "functions: WARNING! NO ENGINES FIELD FOUND IN PACKAGE.JSON. DEFAULTING TO NODE 6 RUNTIME. " +
-        "Starting June 1, 2019 deployments will be blocked if no engines field is specified in package.json."
+    clc.bold.yellow(
+      `functions: WARNING! NO ENGINES FIELD FOUND IN PACKAGE.JSON. DEFAULTING TO NODE 6 RUNTIME. ` +
+        `Starting June 1, 2019 deployments will be blocked if no engines field is specified in package.json. ` +
+        `To fix this, add the following lines to your package.json: \n
+         "engines": {
+           "node": "6"
+         }`
     )
   );
+  logger.info();
   return "nodejs6";
 }
 
