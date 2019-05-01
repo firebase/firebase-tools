@@ -1,6 +1,5 @@
 import * as _ from "lodash";
 import { expect } from "chai";
-import * as sinon from "sinon";
 import * as nock from "nock";
 import * as api from "../../api";
 
@@ -20,15 +19,8 @@ const testJob = {
 };
 
 describe("cloudscheduler", () => {
-  let sandbox: sinon.SinonSandbox;
-
   describe("createOrUpdateJob", () => {
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-    });
-
     afterEach(() => {
-      sandbox.restore();
       nock.cleanAll();
     });
 
