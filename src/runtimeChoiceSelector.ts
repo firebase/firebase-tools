@@ -10,13 +10,13 @@ import * as utils from "./utils";
 // tslint:disable-next-line
 var cjson = require("cjson");
 
-const MESSAGE_FRIENDLY_RUNTIMES: any = {
+const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
   nodejs8: "Node.js 8",
   nodejs10: "Node.js 10 (Beta)",
 };
 
-const ENGINE_RUNTIMES: any = {
+const ENGINE_RUNTIMES: { [key: string]: string } = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
