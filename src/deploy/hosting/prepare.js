@@ -9,7 +9,7 @@ const deploymentTool = require("../../deploymentTool");
 const FirebaseError = require("../../error");
 const fsutils = require("../../fsutils");
 const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
-const resolveProjectPath = require("../../resolveProjectPath");
+const { resolveProjectPath } = require("../../projectPath");
 
 module.exports = function(context, options) {
   // Allow the public directory to be overridden by the --public flag
