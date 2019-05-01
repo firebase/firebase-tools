@@ -1,41 +1,97 @@
+import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
-import * as utils from "../../utils";
 import * as api from "../../api";
 
-import * as helpers from "../helpers";
 import { cloudscheduler } from "../../gcp/";
 
+const VERSION = "v1beta1";
+
 const testJob = {
-  name: "test",
+  name: "projects/test-project/locations/us-east1/jobs/test",
   schedule: "every 5 minutes",
+  timeZone: "America/Los_Angeles",
   httpTarget: {
     uri: "https://afakeone.come",
-    httpMethod: "POST"
-  }
-}
+    httpMethod: "POST",
+  },
+  retryConfig: {},
+};
 describe("cloudscheduler", () => {
   let sandbox: sinon.SinonSandbox;
 
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-  });
+  describe("createOrUpdateJob", () => {
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
 
-  afterEach(() => {
-    sandbox.restore();
-    nock.cleanAll();
-  });
+    afterEach(() => {
+      sandbox.restore();
+      nock.cleanAll();
+    });
 
-  it("should return subpaths from shallow get request", () => {
-    nock(api.cloudschedulerOrigin)
-      .get("/.json")
-      .query({ shallow: true, limitToFirst: "1234" })
-      .reply(200, {
-        a: true,
-        x: true,
-        f: true,
-      });
-    return expect(cloudscheduler.createJob);
+    it("should create a job if none exists", async () => {
+      /*tslint:disable*/
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${testJob.name}`)
+        .reply(404, { context: { response: { statusCode: 404 } } });
+      const mockJobResp = { schedule: "every 5 minutes" };
+      nock(api.cloudschedulerOrigin)
+        .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
+        .reply(200, mockJobResp);
+      const response = await cloudscheduler.createOrReplaceJob(testJob);
+      expect(response.body).to.deep.equal(mockJobResp);
+    });
+
+    it("should do nothing if an identical job exists", async () => {
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${testJob.name}`)
+        .reply(200, testJob);
+      const response = await cloudscheduler.createOrReplaceJob(testJob);
+      expect(response).to.be.undefined;
+    });
+
+    it("should do update if a job exists with the same name and a different schedule", async () => {
+      const otherJob = _.cloneDeep(testJob);
+      otherJob.schedule = "every 6 minutes";
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${testJob.name}`)
+        .reply(200, otherJob);
+      const mockJobResp = { schedule: "every 6 minutes" };
+      nock(api.cloudschedulerOrigin)
+        .patch(`/${VERSION}/${testJob.name}`)
+        .reply(200, mockJobResp);
+      const response = await cloudscheduler.createOrReplaceJob(testJob);
+      expect(response.body).to.deep.equal(mockJobResp);
+    });
+
+    it("should do update if a job exists with the same name and a different timeZone", async () => {
+      const otherJob = _.cloneDeep(testJob);
+      otherJob.timeZone = "America/New_York";
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${testJob.name}`)
+        .reply(200, otherJob);
+      const mockJobResp = { timeZone: "America/New_York" };
+      nock(api.cloudschedulerOrigin)
+        .patch(`/${VERSION}/${testJob.name}`)
+        .reply(200, mockJobResp);
+      const response = await cloudscheduler.createOrReplaceJob(testJob);
+      expect(response.body).to.deep.equal(mockJobResp);
+    });
+
+    it("should do update if a job exists with the same name and a different schedule", async () => {
+      const otherJob = _.cloneDeep(testJob);
+      otherJob.retryConfig = { maxDoublings: 10 };
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${testJob.name}`)
+        .reply(200, otherJob);
+      const mockJobResp = { retryConfig: { maxDoublings: 10 } };
+      nock(api.cloudschedulerOrigin)
+        .patch(`/${VERSION}/${testJob.name}`)
+        .reply(200, mockJobResp);
+      const response = await cloudscheduler.createOrReplaceJob(testJob);
+      expect(response.body).to.deep.equal(mockJobResp);
+    });
   });
 });
