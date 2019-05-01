@@ -18,6 +18,7 @@ const testJob = {
   },
   retryConfig: {},
 };
+
 describe("cloudscheduler", () => {
   let sandbox: sinon.SinonSandbox;
 
@@ -32,7 +33,6 @@ describe("cloudscheduler", () => {
     });
 
     it("should create a job if none exists", async () => {
-      /*tslint:disable*/
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(404, { context: { response: { statusCode: 404 } } });

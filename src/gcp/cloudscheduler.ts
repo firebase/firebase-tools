@@ -83,7 +83,7 @@ export function updateJob(job: Job): Promise<any> {
 * If one is found, and it is identical to the job parameter, it does nothing.
 * Otherwise, if one is found and it is different from the job param, it updates the job.
 * @param job: A job to check for and create, replace, or leave as appropriate.
-* @throws FirebaseError if an error respnse other than 404 is recieved on the GET call
+* @throws { FirebaseError } if an error respnse other than 404 is recieved on the GET call.
 */
 export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = `${job.name.split("/")[5]}`;
