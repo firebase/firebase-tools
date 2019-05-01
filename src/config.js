@@ -12,7 +12,7 @@ var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
 var parseBoltRules = require("./parseBoltRules");
 var prompt = require("./prompt");
-var resolveProjectPath = require("./resolveProjectPath");
+var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
 var Config = function(src, options) {
