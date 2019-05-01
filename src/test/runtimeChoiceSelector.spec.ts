@@ -68,7 +68,7 @@ describe("getRuntimeChoice", () => {
     expect(warningSpy).not.called;
   });
 
-  // TODO: Add this test back in when we remove runtime default behavior
+  // TODO(b/129422952): Add this test back in when we remove runtime default behavior.
   it.skip("should throw error if package.json engines field is not set", () => {
     cjsonStub.returns({ dependencies: { "firebase-functions": "2.0.0" } });
 
@@ -77,7 +77,7 @@ describe("getRuntimeChoice", () => {
     }).to.throw(FirebaseError, runtime.ENGINES_FIELD_REQUIRED_MSG);
   });
 
-  // TODO: Add this test back in when we remove runtime default behavior
+  // TODO(b/129422952): Add this test back in when we remove runtime default behavior.
   it.skip("should throw error if package.json engines field is set but missing node field", () => {
     cjsonStub.returns({
       engines: {},

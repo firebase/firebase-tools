@@ -63,7 +63,8 @@ export function getRuntimeChoice(sourceDir: string): any {
   const engines = loaded.engines;
   if (!engines || !engines.node) {
     return null;
-    // uncomment below when we make package.json engines required:
+    // TODO(b/129422952): Change to throw error instead of returning null
+    // when engines field in package.json becomes required:
     // throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
