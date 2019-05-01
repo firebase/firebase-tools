@@ -77,7 +77,7 @@ export function updateJob(job: Job): Promise<any> {
   });
 }
 
-/** 
+/**
  * Checks for a existing job with the given name.
  * If none is found, it creates a new job.
  * If one is found, and it is identical to the job parameter, it does nothing.
