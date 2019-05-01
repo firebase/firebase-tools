@@ -245,13 +245,13 @@
       "Average Pending Time"
     ],
     "data": [
-			[
-				"/",
-				1,
-				"0 ms",
-				1,
-				"1 ms"
-			]
+      [
+        "/",
+        1,
+        "0 ms",
+        1,
+        "1 ms"
+      ]
     ],
     "note": "NOTE: Speeds are reported at millisecond resolution and are not the latencies that clients will see. Pending times are also reported at millisecond resolution. They approximate the interval of time between the instant a request is received and the instant it executes."
   },
