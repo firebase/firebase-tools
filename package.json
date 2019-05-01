@@ -62,7 +62,6 @@
     ]
   },
   "dependencies": {
-    "@types/semver": "^6.0.0",
     "JSONStream": "^1.2.1",
     "archiver": "^2.1.1",
     "cjson": "^0.3.1",
@@ -114,6 +113,7 @@
     "@types/node": "^10.12.0",
     "@types/opn": "~5.1.0",
     "@types/request": "^2.48.1",
+    "@types/semver": "^6.0.0",
     "@types/sinon": "^5.0.5",
     "@types/sinon-chai": "^3.2.2",
     "@types/supertest": "^2.0.6",
