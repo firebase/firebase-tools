@@ -1,6 +1,6 @@
 "use strict";
 
-var userHome = require("user-home");
+var userHome = require("os").homedir();
 var path = require("path");
 
 const CACHE_DIR =
