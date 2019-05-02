@@ -2,7 +2,7 @@
 
 var clc = require("cli-color");
 var fs = require("fs");
-var homeDir = require("user-home");
+var homeDir = require("os").homedir();
 var path = require("path");
 
 var Command = require("../command");
