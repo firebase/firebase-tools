@@ -6,10 +6,12 @@ import * as api from "../../api";
 
 import * as helpers from "../helpers";
 import { RTDBRemoveRemote } from "../../database/removeRemote";
+import { RTDBListRemote } from "../../database/listRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
   const remote = new RTDBRemoveRemote(instance);
+  const listRemote = new RTDBListRemote(instance);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
   let sandbox: sinon.SinonSandbox;
 
@@ -32,7 +34,7 @@ describe("RemoveRemote", () => {
         x: true,
         f: true,
       });
-    return expect(remote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
+    return expect(listRemote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
   });
 
   it("should return true when patch is small", () => {
