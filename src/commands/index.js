@@ -25,6 +25,7 @@ module.exports = function(client) {
   client.database.settings = {};
   client.database.settings.get = loadCommand("database-settings-get");
   client.database.settings.set = loadCommand("database-settings-set");
+  client.database.size = loadCommand("database-size");
   client.database.update = loadCommand("database-update");
   client.deploy = loadCommand("deploy");
   client.experimental = {};
