@@ -1,20 +1,18 @@
 import * as pathLib from "path";
 
 import { ListRemote, RTDBListRemote } from "./listRemote";
-import { GetRemote, RTDBGetRemote } from "./getRemote";
 import { Stack } from "../throttler/stack";
 
 const INITIAL_LIST_BATCH_SIZE = 100;
 const INITIAL_READ_BATCH_SIZE = 25;
 
-const DEFAULT_TIMEOUT = 5;
+const DEFAULT_TIMEOUT = 5000;
 
 export default class DatabaseSize {
   path: string;
   timeLeft: number;
 
   listRemote: ListRemote;
-  getRemote: GetRemote;
 
   private listStack: Stack<() => Promise<string[]>, string[]>;
 
@@ -22,7 +20,6 @@ export default class DatabaseSize {
     this.path = path;
     this.timeLeft = timeout || DEFAULT_TIMEOUT;
     this.listRemote = new RTDBListRemote(instance);
-    this.getRemote = new RTDBGetRemote(instance);
     this.listStack = new Stack({
       name: "list stack",
       concurrency: 1,
@@ -47,30 +44,16 @@ export default class DatabaseSize {
       );
       this.timeLeft -= Date.now() - start;
 
-      if (this.timeLeft <= 0) {
+      sizeEstimate += Buffer.byteLength(subPaths.join());
+
+      if (this.timeLeft <= 0 || subPaths.length === 0) {
         return Promise.resolve(sizeEstimate);
       }
 
-      /*
-       * We have no children, use as much time as we want.
-       */
-      if (subPaths.length === 0) {
-        return sizeEstimate + (await this.getRemote.getPath(path, this.timeLeft));
-      }
-
-      /*
-       * Start next listing at the end of the current one.
-       * TODO: Verify that batches don't overlap here.
-       */
       offset = subPaths[subPaths.length - 1];
 
-      let size = 0;
-
       for (const subPath of subPaths) {
-        size = await this.getSubtreeSize(pathLib.join(path, subPath));
-        if (size) {
-          sizeEstimate += size;
-        }
+        sizeEstimate += await this.getSubtreeSize(pathLib.join(path, subPath));
         if (this.timeLeft <= 0) {
           break;
         }

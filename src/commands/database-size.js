@@ -24,7 +24,7 @@ module.exports = new Command("database:size <path>")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    var sizeOps = new DatabaseSize(options.instance, path, options.timeout);
+    let sizeOps = new DatabaseSize(options.instance, path, options.timeout);
     return sizeOps.execute().then(function(bytes) {
       utils.logSuccess(path + " is approximately " + bytes + " bytes.");
     });

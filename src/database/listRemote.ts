@@ -24,12 +24,13 @@ export class RTDBListRemote implements ListRemote {
   }
 
   listPath(path: string, numSubPath: number, offset?: string): Promise<string[]> {
-    const offsetSuffix = offset ? "startAt" + offset : "";
+    const offsetSuffix = offset ? "&startAt" + offset : "";
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
       `.json?shallow=true&limitToFirst=${numSubPath}` +
       offsetSuffix;
+
     const t0 = Date.now();
     return api
       .addRequestHeaders({
@@ -60,8 +61,7 @@ export class RTDBListRemote implements ListRemote {
               );
             }
             if (data) {
-              const keyList = Object.keys(data);
-              return resolve(keyList);
+              return resolve(Object.keys(data));
             }
             resolve([]);
           });
