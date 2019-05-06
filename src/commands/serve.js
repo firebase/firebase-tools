@@ -13,8 +13,8 @@ var serve = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
 
-var VALID_EMULATORS = ["database", "firestore"];
-var VALID_TARGETS = ["functions", "hosting"];
+var VALID_EMULATORS = ["functions", "database", "firestore"];
+var VALID_TARGETS = ["hosting"];
 
 var filterOnlyEmulators = (only) => {
   if (!only) {
