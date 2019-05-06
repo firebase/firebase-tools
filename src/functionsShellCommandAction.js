@@ -6,18 +6,18 @@ var _ = require("lodash");
 var request = require("request");
 var util = require("util");
 
-var FunctionsEmulator = require("./functionsEmulator");
+var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var logger = require("./logger");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
-  var emulator = new FunctionsEmulator(options);
 
-  return emulator
-    .start(true)
+  return serveFunctions
+    .start(options)
     .then(function() {
-      if (emulator.emulatedFunctions.length === 0) {
+      const emulator = serveFunctions.get();
+      if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
         process.exit();
       }
@@ -51,7 +51,7 @@ module.exports = function(options) {
     .then(function() {
       return new Promise(function(resolve) {
         process.on("SIGINT", function() {
-          return emulator
+          return serveFunctions
             .stop()
             .then(resolve)
             .catch(resolve);
