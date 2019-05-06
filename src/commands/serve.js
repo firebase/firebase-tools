@@ -44,7 +44,11 @@ module.exports = new Command("serve")
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .before((options) => {
-    if (filterOnly(REQUIRES_AUTH, options.only).length === 0) {
+    if (
+      options.only &&
+      options.only.length > 0 &&
+      filterOnly(REQUIRES_AUTH, options.only).length === 0
+    ) {
       return Promise.resolve();
     }
     return requireConfig(options)
