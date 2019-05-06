@@ -1,4 +1,4 @@
-// This is an indepedently executed script that parses triggers
+// This is an independently executed script that parses triggers
 // from a functions package directory.
 "use strict";
 

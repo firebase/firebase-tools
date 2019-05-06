@@ -9,6 +9,10 @@ import functionsProxy, {
   FunctionProxyRewrite,
   FunctionsProxyOptions,
 } from "../../hosting/functionsProxy";
+import { FunctionsEmulator } from "../../emulator/functionsEmulator";
+import { EmulatorRegistry } from "../../emulator/registry";
+import { Emulators } from "../../emulator/types";
+import { FakeEmulator } from "../emulators/fakeEmulator";
 
 describe("functionsProxy", () => {
   const fakeOptions: FunctionsProxyOptions = {
@@ -19,8 +23,14 @@ describe("functionsProxy", () => {
 
   const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
 
-  afterEach(() => {
+  beforeEach(async () => {
+    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
+    await EmulatorRegistry.start(fakeFunctionsEmulator);
+  });
+
+  afterEach(async () => {
     nock.cleanAll();
+    await EmulatorRegistry.stopAll();
   });
 
   it("should resolve a function returns middleware that proxies to the live version", async () => {
@@ -47,6 +57,7 @@ describe("functionsProxy", () => {
 
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
+
     const mwGenerator = await functionsProxy(options);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
