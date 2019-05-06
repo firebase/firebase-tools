@@ -14,11 +14,7 @@ import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import * as FirebaseError from "../error";
 
-// For string enums, this is safe.
-// https://github.com/Microsoft/TypeScript/issues/17198
-export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS.map((key: string) => {
-  return Emulators[key as any];
-});
+export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
 async function checkPortOpen(port: number): Promise<boolean> {
   try {
