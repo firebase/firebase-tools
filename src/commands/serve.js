@@ -15,13 +15,14 @@ var getProjectNumber = require("../getProjectNumber");
 
 var VALID_EMULATORS = ["functions", "database", "firestore"];
 var VALID_TARGETS = ["hosting"];
+var REQUIRES_AUTH = ["hosting", "functions"];
 
-var filterOnlyEmulators = (only) => {
+var filterOnly = (list, only) => {
   if (!only) {
     return [];
   }
   return _.intersection(
-    VALID_EMULATORS,
+    list,
     only.split(",").map((opt) => {
       return opt.split(":")[0];
     })
@@ -43,7 +44,7 @@ module.exports = new Command("serve")
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .before((options) => {
-    if (filterOnlyEmulators(options.only).length > 0) {
+    if (filterOnly(REQUIRES_AUTH, options.only).length === 0) {
       return Promise.resolve();
     }
     return requireConfig(options)
@@ -52,7 +53,7 @@ module.exports = new Command("serve")
       .then(() => getProjectNumber(options));
   })
   .action((options) => {
-    options.targets = filterOnlyEmulators(options.only);
+    options.targets = filterOnly(VALID_EMULATORS, options.only);
     if (options.targets.length > 0) {
       return serve(options);
     }
