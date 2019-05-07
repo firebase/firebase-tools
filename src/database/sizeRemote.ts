@@ -39,7 +39,6 @@ export class RTDBSizeRemote implements SizeRemote {
         let errorResponse = "";
         let payload = "";
         let erroring = false;
-        let size = 0;
 
         request
           .get(reqOptionsWithToken)
@@ -53,7 +52,6 @@ export class RTDBSizeRemote implements SizeRemote {
             if (erroring) {
               errorResponse += chunk;
             } else {
-              size += Buffer.byteLength(chunk);
               payload += chunk;
             }
           })
@@ -73,8 +71,11 @@ export class RTDBSizeRemote implements SizeRemote {
               }
             } else {
               try {
-                data = JSON.parse(payload);
-                resolve(size);
+                /*
+                 * This parsing is strictly for validation.
+                 */
+                JSON.parse(payload);
+                resolve(Buffer.byteLength(payload));
               } catch (e) {
                 return reject(
                   new FirebaseError("Malformed JSON response", {

@@ -4,7 +4,12 @@ import { ListRemote, RTDBListRemote } from "./listRemote";
 import { RTDBSizeRemote, SizeRemote } from "./sizeRemote";
 import { Queue } from "../throttler/queue";
 
-const INITIAL_LIST_BATCH_SIZE = 100;
+/*
+ * For flat objects, performance suffers due to "slow-start"
+ * shallow gets. We set a generous initial list batch size
+ * to mitigate this.
+ */
+const INITIAL_LIST_BATCH_SIZE = 32000;
 const MAX_LIST_BATCH_SIZE = 204800;
 
 const DEFAULT_TIMEOUT = 1000;
@@ -54,7 +59,8 @@ export default class DatabaseSize {
       if (!attempt) {
         throw new Error("Skip direct size operation.");
       }
-      this.sizeEstimate += await this.sizeRemote.sizeNode(path, timeout);
+      const size = await this.sizeRemote.sizeNode(path, timeout);
+      this.sizeEstimate += size;
       quick = true;
     } catch (e) {
       let subPaths = [];
