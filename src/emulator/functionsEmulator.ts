@@ -188,15 +188,22 @@ export class FunctionsEmulator implements EmulatorInstance {
           socketPath: runtime.metadata.socketPath,
         },
         (runtimeRes: http.IncomingMessage) => {
+          function forwardStatus() {
+            return res.status(runtimeRes.statusCode || 200);
+          }
+
           runtimeRes.on("data", (buf) => {
+            forwardStatus();
             res.write(buf);
           });
 
           runtimeRes.on("close", () => {
+            forwardStatus();
             res.end();
           });
 
           runtimeRes.on("end", () => {
+            forwardStatus();
             res.end();
           });
         }
