@@ -181,7 +181,6 @@ describe("FunctionsEmulatorRuntime", () => {
               .firestore.document("test/test")
               .onCreate(async () => {
                 /* tslint:disable:no-console */
-                console.log((require as any).resolveOriginal("firebase-admin"));
                 require("firebase-admin").initializeApp();
               }),
           };

@@ -17,40 +17,15 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 
-(require as any).resolveOriginal = require.resolve;
+function slowRequireResolve(moduleName: string, opts?: { paths: string[] }): string {
+  opts = opts || { paths: [] };
+  const resolver = `console.log(require.resolve("${moduleName}"))`;
+  const result = spawnSync(process.execPath, ["-e", resolver], {
+    cwd: path.resolve(opts.paths.length ? opts.paths[0] : process.cwd()),
+  });
 
-/*
-    It's a story as old as time. Girl meets boy named Node 8 and things are great. Boy's
-    older brother Node 6 is rude and refuses to resolve modules outside it's current folder
-    hierarchy, but the girl *needs* modules to be resolved to an external folder's modules
-    in order to mock them properly in require's cache.
-
-    So girl goes and implements a polyfill which places a temporary script into the tree
-    in the correct place so the older boy's resolution will take place in there, thus
-    allowing the girl's primary process to resolve the package manually and mock it as
-    intended before cleaning up the temporary script and moving on.
-     */
-function requireResolvePolyfill(moduleName: string, opts: { paths: string[] }): string {
-  if (process.versions.node.startsWith("6.")) {
-    const resolver = `console.log(require.resolve("${moduleName}"))`;
-    const result = spawnSync(process.execPath, ["-e", resolver], {
-      cwd: path.resolve(opts.paths[0]),
-    });
-
-    return result.stdout.toString().trim();
-  } else {
-    return (require as any).resolveOriginal(moduleName, opts);
-  }
+  return result.stdout.toString().trim();
 }
-
-require.resolve = requireResolvePolyfill as RequireResolve;
-
-const gcFirestore = findModuleRoot(
-  "@google-cloud/firestore",
-  require.resolve("@google-cloud/firestore")
-);
-// tslint:disable-next-line:no-console
-console.log(require.resolve("google-gax", { paths: [gcFirestore] }));
 
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
@@ -189,8 +164,8 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
     let modResolution: string;
     try {
-      modResolution = require.resolve(modBundle.name, {
-        paths: [path.join(functionsDir, "node_modules")],
+      modResolution = slowRequireResolve(modBundle.name, {
+        paths: [path.join(functionsDir)],
       });
     } catch (err) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
@@ -242,7 +217,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     let modResolution: string;
     let mod: any;
     try {
-      modResolution = require.resolve(bundle.module, { paths: [frb.cwd] });
+      modResolution = slowRequireResolve(bundle.module, { paths: [frb.cwd] });
     } catch (error) {
       return { bundle, status: "error", error };
     }
@@ -321,8 +296,8 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
-  const firebaseFunctionsResolution = require.resolve("firebase-functions", {
-    paths: [path.join(functionsDir, "node_modules")],
+  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", {
+    paths: [path.join(functionsDir)],
   });
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
@@ -368,12 +343,12 @@ function InitializeFirebaseAdminStubs(
   functionsDir: string,
   firestorePort: number
 ): typeof admin {
-  const adminResolution = require.resolve("firebase-admin", {
-    paths: [path.join(functionsDir, "node_modules")],
+  const adminResolution = slowRequireResolve("firebase-admin", {
+    paths: [functionsDir],
   });
 
-  const grpc = require(require.resolve("grpc", {
-    paths: [path.join(functionsDir, "node_modules")],
+  const grpc = require(slowRequireResolve("grpc", {
+    paths: [functionsDir],
   }));
 
   const localAdminModule = require(adminResolution);
@@ -457,8 +432,8 @@ function InitializeEnvironmentalVariables(projectId: string): void {
 }
 
 function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = require.resolve("firebase-functions", {
-    paths: [path.join(functionsDir, "node_modules")],
+  const functionsResolution = slowRequireResolve("firebase-functions", {
+    paths: [functionsDir],
   });
 
   const ff = require(functionsResolution);
@@ -601,8 +576,8 @@ async function ProcessBackground(
 
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
 
-  const fftResolution = require.resolve("firebase-functions-test", {
-    paths: [path.join(frb.cwd, "node_modules")],
+  const fftResolution = slowRequireResolve("firebase-functions-test", {
+    paths: [frb.cwd],
   });
 
   const func = trigger.getWrappedFunction(require(fftResolution));
