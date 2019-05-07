@@ -5,3 +5,4 @@ fixed - Adds a devDependency on firebase-functions-test to the default functions
 fixed - Fixes issue where the Firestore + RTDB emulators were starting on ports 5002/3 instead of 8080/9000
 fixed - Adds a log message when emulators have successfully started.
 fixed - Fixes error when using multiple @google-cloud APIs
+fixed - Disable some advanced Functions emulator features when run through "firebase serve".

@@ -20,6 +20,7 @@ import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   FunctionsRuntimeBundle,
+  FunctionsRuntimeFeatures,
   getFunctionRegion,
   getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
@@ -34,6 +35,7 @@ const SERVICE_FIRESTORE = "firestore.googleapis.com";
 interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
+  disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
 }
 
 interface RequestWithRawBody extends express.Request {
@@ -256,6 +258,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: this.functionsDir,
       triggerId: triggerName,
       projectId: this.projectId,
+      disabled_features: this.args.disabledRuntimeFeatures,
     };
 
     const runtime = InvokeRuntime(this.nodeBinary, runtimeBundle);
@@ -380,6 +383,7 @@ You can probably fix this by running "npm install ${
       projectId: this.projectId,
       triggerId: "",
       ports: {},
+      disabled_features: this.args.disabledRuntimeFeatures,
     };
 
     // TODO(abehaskins): Gracefully handle removal of deleted function definitions
