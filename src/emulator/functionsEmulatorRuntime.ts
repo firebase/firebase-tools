@@ -209,6 +209,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     { module: "https", path: ["request"] },
     { module: "https", path: ["get"] },
     { module: "net", path: ["connect"] },
+    { module: "google-gax", path: ["GrpcClient"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
 
@@ -273,7 +274,17 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        return new original(...args);
+        const newed = new original(...args);
+
+        if (bundle.module === "google-gax") {
+          const cs = newed.constructSettings;
+          newed.constructSettings = (...csArgs: any[]) => {
+            (csArgs[3] as any).authorization = "Bearer owner";
+            return cs.bind(newed)(...csArgs);
+          };
+        }
+
+        return newed;
       }
     };
 
