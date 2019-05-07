@@ -3,6 +3,9 @@ import { RequestHandler } from "express";
 
 import { proxyRequestHandler } from "./proxy";
 import * as getProjectId from "../getProjectId";
+import { EmulatorRegistry } from "../emulator/registry";
+import { Emulators } from "../emulator/types";
+import { FunctionsEmulator } from "../emulator/functionsEmulator";
 
 export interface FunctionsProxyOptions {
   port: number;
@@ -23,15 +26,27 @@ export default function(
   options: FunctionsProxyOptions
 ): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
   return async (rewrite: FunctionProxyRewrite) => {
-    let url = `https://us-central1-${getProjectId(options, false)}.cloudfunctions.net/${
-      rewrite.function
-    }`;
+    // TODO(samstern): This proxy assumes all functions are in the default region, but this is
+    //                 not a safe assumption.
+    const projectId = getProjectId(options, false);
+    let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
     let destLabel = "live";
+
     if (includes(options.targets, "functions")) {
       destLabel = "local";
-      url = `http://localhost:${options.port + 1}/${getProjectId(options, false)}/us-central1/${
-        rewrite.function
-      }`;
+
+      // If the functions emulator is running we know the port, otherwise
+      // things still point to production.
+      const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
+      if (functionsEmu) {
+        const port = functionsEmu.getInfo().port;
+        url = FunctionsEmulator.getHttpFunctionUrl(
+          port,
+          projectId,
+          rewrite.function,
+          "us-central1"
+        );
+      }
     }
 
     return await proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`);

@@ -60,7 +60,14 @@ var Config = function(src, options) {
 };
 
 Config.FILENAME = "firebase.json";
-Config.MATERIALIZE_TARGETS = ["database", "functions", "hosting", "storage", "firestore"];
+Config.MATERIALIZE_TARGETS = [
+  "database",
+  "emulators",
+  "firestore",
+  "functions",
+  "hosting",
+  "storage",
+];
 Config.LEGACY_HOSTING_KEYS = [
   "public",
   "rewrites",
