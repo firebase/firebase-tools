@@ -15,5 +15,8 @@
     "firebase-admin": "~7.0.0",
     "firebase-functions": "^2.3.0"
   },
+  "devDependencies": {
+    "firebase-functions-test": "^0.1.6"
+  },
   "private": true
 }
