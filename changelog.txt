@@ -1,1 +1,0 @@
-feature - Adds new offline emulator suite with hot-reloading and support for triggering Cloud Firestore and HTTPS functions (https://firebase.google.com/docs/functions/local-emulator)
