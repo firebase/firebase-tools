@@ -244,7 +244,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const runtime = InvokeRuntime(this.nodeBinary, runtimeBundle);
-    runtime.events.on("log", this.handleRuntimeLog);
+    runtime.events.on("log", this.handleRuntimeLog.bind(this));
     return runtime;
   }
 
@@ -324,7 +324,6 @@ You can probably fix this by running "npm install ${
     if (ignore.indexOf(log.level) >= 0) {
       return;
     }
-
     switch (log.level) {
       case "SYSTEM":
         this.handleSystemLog(log);
