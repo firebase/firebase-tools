@@ -52,7 +52,7 @@ export default class DatabaseSize {
 
     try {
       if (!attempt) {
-        throw new Error("don't attempt");
+        throw new Error("Skip direct size operation.");
       }
       this.sizeEstimate += await this.sizeRemote.sizeNode(path, timeout);
       quick = true;
