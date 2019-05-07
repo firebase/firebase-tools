@@ -45,6 +45,13 @@ function requireResolvePolyfill(moduleName: string, opts: { paths: string[] }): 
 
 require.resolve = requireResolvePolyfill as RequireResolve;
 
+const gcFirestore = findModuleRoot(
+  "@google-cloud/firestore",
+  require.resolve("@google-cloud/firestore")
+);
+// tslint:disable-next-line:no-console
+console.log(require.resolve("google-gax", { paths: [gcFirestore] }));
+
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
   by allowing us to easily overide some or all of an objects methods. When placed back into require's
@@ -213,10 +220,10 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
       Sadly, these vary a lot between Node versions and it will always be possible to route around
       this, it's not security - just a helper. A good example of something difficult to catch is
       any I/O done via node-gyp (https://github.com/nodejs/node-gyp) since that I/O will be done in
-      C, we have to catch it before then (which is how the google-gax blocker works). As of this note,
+      C, we have to catch it before then (which is how the google-gax blocker could work). As of this note,
       GRPC uses a native extension to do I/O (I think because old node lacks native HTTP2?), so that's
       a place to keep an eye on. Luckily, mostly only Google uses GRPC and most Google APIs go via
-      google-gax, but still.
+      google-gax which is mocked elsewhere, but still.
 
       So yeah, we'll try our best and hopefully we can catch 90% of requests.
      */
@@ -227,7 +234,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     { module: "https", path: ["request"] },
     { module: "https", path: ["get"] },
     { module: "net", path: ["connect"] },
-    { module: "google-gax", path: ["GrpcClient"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
 
@@ -240,6 +246,8 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     } catch (error) {
       return { bundle, status: "error", error };
     }
+
+    new EmulatorLog("DEBUG", "runtime-status", modResolution).log();
 
     mod = require(modResolution);
 
@@ -290,17 +298,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        const newed = new original(...args);
-
-        if (bundle.module === "google-gax") {
-          const cs = newed.constructSettings;
-          newed.constructSettings = (...csArgs: any[]) => {
-            (csArgs[3] as any).authorization = "Bearer owner";
-            return cs.bind(newed)(...csArgs);
-          };
-        }
-
-        return newed;
+        return new original(...args);
       }
     };
 
@@ -448,8 +446,11 @@ function InitializeFirebaseAdminStubs(
   fallback for situations where a stub does not properly redirect to the emulator and we attempt to
   access a production resource. By removing the auth fields, we help reduce the risk of this situation.
    */
-function InitializeEnvironmentalVariables(projectId: string): void {
+function ProtectEnvironmentalVariables(): void {
   process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
+}
+
+function InitializeEnvironmentalVariables(projectId: string): void {
   process.env.FIREBASE_CONFIG = JSON.stringify({ projectId });
   process.env.FIREBASE_PROJECT = projectId;
   process.env.GCLOUD_PROJECT = projectId;
@@ -673,6 +674,10 @@ async function main(): Promise<void> {
   }
 
   InitializeEnvironmentalVariables(frb.projectId);
+  if (isFeatureEnabled(frb, "protect_env")) {
+    ProtectEnvironmentalVariables();
+  }
+
   if (isFeatureEnabled(frb, "network_filtering")) {
     InitializeNetworkFiltering(frb);
   }
