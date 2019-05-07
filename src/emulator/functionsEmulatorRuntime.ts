@@ -164,9 +164,7 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
     let modResolution: string;
     try {
-      modResolution = slowRequireResolve(modBundle.name, {
-        paths: [path.join(functionsDir)],
-      });
+      modResolution = require.resolve(modBundle.name);
     } catch (err) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
@@ -204,40 +202,45 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
 function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   const networkingModules = [
-    { module: "http", path: ["request"] },
-    { module: "http", path: ["get"] },
-    { module: "https", path: ["request"] },
-    { module: "https", path: ["get"] },
-    { module: "net", path: ["connect"] },
-    { module: "google-gax", path: ["GrpcClient"] },
+    { name: "http", module: require("http"), path: ["request"] },
+    { name: "http", module: require("http"), path: ["get"] },
+    { name: "https", module: require("https"), path: ["request"] },
+    { name: "https", module: require("https"), path: ["get"] },
+    { name: "net", module: require("net"), path: ["connect"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
 
+  try {
+    const gcFirestore = findModuleRoot(
+      "@google-cloud/firestore",
+      slowRequireResolve("@google-cloud/firestore", { paths: [frb.cwd] })
+    );
+    const gaxPath = slowRequireResolve("google-gax", { paths: [gcFirestore] });
+    const gaxModule = {
+      module: require(gaxPath),
+      path: ["GrpcClient"],
+      name: "google-gax",
+    };
+
+    networkingModules.push(gaxModule);
+    new EmulatorLog("DEBUG", "runtime-status", `Found google-gax at ${gaxPath}`).log();
+  } catch (err) {
+    new EmulatorLog("DEBUG", "runtime-status", `Couldn't find google-cloud/firestore`).log();
+  }
+
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {
-    let modResolution: string;
-    let mod: any;
-    try {
-      modResolution = slowRequireResolve(bundle.module, { paths: [frb.cwd] });
-    } catch (error) {
-      return { bundle, status: "error", error };
-    }
-
-    new EmulatorLog("DEBUG", "runtime-status", modResolution).log();
-
-    mod = require(modResolution);
-
-    let obj = mod;
+    let obj = bundle.module;
     for (const field of bundle.path.slice(0, -1)) {
       obj = obj[field];
     }
 
     const method = bundle.path.slice(-1)[0];
-    const original = obj[method].bind(mod);
+    const original = obj[method].bind(bundle.module);
 
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
-    mod[method] = function(...args: any[]): any {
+    obj[method] = function(...args: any[]): any {
       const hrefs = args
         .map((arg) => {
           if (typeof arg === "string") {
@@ -261,12 +264,12 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
             href,
-            module: bundle.module,
+            module: bundle.name,
           }).log();
         } else {
           new EmulatorLog("SYSTEM", "unidentified-network-access", "", {
             href,
-            module: bundle.module,
+            module: bundle.name,
           }).log();
         }
       }
@@ -275,8 +278,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         return original(...args);
       } catch (e) {
         const newed = new original(...args);
-
-        if (bundle.module === "google-gax") {
+        if (bundle.name === "google-gax") {
           const cs = newed.constructSettings;
           newed.constructSettings = (...csArgs: any[]) => {
             (csArgs[3] as any).authorization = "Bearer owner";
@@ -288,7 +290,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       }
     };
 
-    return { bundle, status: "mocked" };
+    return { name: bundle.name, status: "mocked" };
   });
 
   new EmulatorLog("DEBUG", "runtime-status", "Outgoing network have been stubbed.", results).log();
@@ -308,7 +310,7 @@ https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10f
    */
 function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
   const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", {
-    paths: [path.join(functionsDir)],
+    paths: [functionsDir],
   });
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
@@ -354,13 +356,8 @@ function InitializeFirebaseAdminStubs(
   functionsDir: string,
   firestorePort: number
 ): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", {
-    paths: [functionsDir],
-  });
-
-  const grpc = require(slowRequireResolve("grpc", {
-    paths: [functionsDir],
-  }));
+  const adminResolution = slowRequireResolve("firebase-admin", { paths: [functionsDir] });
+  const grpc = require(slowRequireResolve("grpc", { paths: [functionsDir] }));
 
   const localAdminModule = require(adminResolution);
   const validApp = localAdminModule.initializeApp({ projectId });
@@ -443,9 +440,7 @@ function InitializeEnvironmentalVariables(projectId: string): void {
 }
 
 function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = slowRequireResolve("firebase-functions", {
-    paths: [functionsDir],
-  });
+  const functionsResolution = slowRequireResolve("firebase-functions", { paths: [functionsDir] });
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -587,10 +582,7 @@ async function ProcessBackground(
 
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
 
-  const fftResolution = slowRequireResolve("firebase-functions-test", {
-    paths: [frb.cwd],
-  });
-
+  const fftResolution = require.resolve("firebase-functions-test");
   const func = trigger.getWrappedFunction(require(fftResolution));
 
   await Run([data, ctx], func);

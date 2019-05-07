@@ -515,7 +515,7 @@ export function InvokeRuntime(
       JSON.stringify(frb),
       opts.serializedTriggers || "",
     ],
-    { env: { node: nodeBinary, ...opts.env } }
+    { env: { node: nodeBinary, ...opts.env }, cwd: frb.cwd }
   );
 
   const buffers: {

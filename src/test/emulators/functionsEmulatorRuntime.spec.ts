@@ -136,7 +136,7 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
 const TIMEOUT_LONG = 10000;
 const TIMEOUT_MED = 5000;
 
-describe("FunctionsEmulatorRuntime", () => {
+describe.only("FunctionsEmulatorRuntime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
