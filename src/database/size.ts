@@ -1,24 +1,26 @@
 import * as pathLib from "path";
 
 import { ListRemote, RTDBListRemote } from "./listRemote";
+import { RTDBSizeRemote, SizeRemote } from "./sizeRemote";
 import { Stack } from "../throttler/stack";
 
 const INITIAL_LIST_BATCH_SIZE = 100;
-const INITIAL_READ_BATCH_SIZE = 25;
 
-const DEFAULT_TIMEOUT = 5000;
+const DEFAULT_TIMEOUT = 1000;
 
 export default class DatabaseSize {
   path: string;
   timeLeft: number;
 
   listRemote: ListRemote;
+  sizeRemote: SizeRemote;
 
   private listStack: Stack<() => Promise<string[]>, string[]>;
 
   constructor(instance: string, path: string, timeout?: number) {
     this.path = path;
     this.timeLeft = timeout || DEFAULT_TIMEOUT;
+    this.sizeRemote = new RTDBSizeRemote(instance);
     this.listRemote = new RTDBListRemote(instance);
     this.listStack = new Stack({
       name: "list stack",
@@ -36,30 +38,25 @@ export default class DatabaseSize {
     let offset: string;
 
     const listBatchSize = INITIAL_LIST_BATCH_SIZE;
+    const timeout = DEFAULT_TIMEOUT;
 
-    while (this.timeLeft > 0) {
-      const start = Date.now();
-      const subPaths = await this.listStack.run(() =>
-        this.listRemote.listPath(path, listBatchSize, offset)
-      );
-      this.timeLeft -= Date.now() - start;
+    try {
+      sizeEstimate = await this.sizeRemote.sizeNode(path, timeout);
+    } catch (e) {
+      let subPaths = [];
 
-      sizeEstimate += Buffer.byteLength(subPaths.join());
-
-      if (this.timeLeft <= 0 || subPaths.length === 0) {
-        return Promise.resolve(sizeEstimate);
-      }
-
-      offset = subPaths[subPaths.length - 1];
-
-      for (const subPath of subPaths) {
-        sizeEstimate += await this.getSubtreeSize(pathLib.join(path, subPath));
-        if (this.timeLeft <= 0) {
-          break;
+      sizeEstimate += 2;
+      do {
+        subPaths = await this.listStack.run(() =>
+          this.listRemote.listPath(path, listBatchSize, offset)
+        );
+        offset = subPaths[subPaths.length - 1];
+        for (const subPath of subPaths) {
+          sizeEstimate +=
+            Buffer.byteLength(subPath) + (await this.getSubtreeSize(pathLib.join(path, subPath)));
         }
-      }
+      } while (subPaths.length > 0);
     }
-
     return Promise.resolve(sizeEstimate);
   }
 }

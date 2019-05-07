@@ -24,7 +24,7 @@ export class RTDBListRemote implements ListRemote {
   }
 
   listPath(path: string, numSubPath: number, offset?: string): Promise<string[]> {
-    const offsetSuffix = offset ? "&startAt" + offset : "";
+    const offsetSuffix = offset ? "&startAfter=" + offset : "";
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
