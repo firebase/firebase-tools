@@ -225,7 +225,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     networkingModules.push(gaxModule);
     new EmulatorLog("DEBUG", "runtime-status", `Found google-gax at ${gaxPath}`).log();
   } catch (err) {
-    new EmulatorLog("DEBUG", "runtime-status", `Couldn't find google-cloud/firestore`).log();
+    new EmulatorLog("DEBUG", "runtime-status", `Couldn't find google-cloud/firestore or google-gax`).log();
   }
 
   const history: { [href: string]: boolean } = {};
