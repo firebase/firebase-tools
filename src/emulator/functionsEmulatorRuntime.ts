@@ -220,7 +220,7 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
 
       So yeah, we'll try our best and hopefully we can catch 90% of requests.
      */
-function InitializeNetworkFiltering(): void {
+function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   const networkingModules = [
     { module: "http", path: ["request"] },
     { module: "http", path: ["get"] },
@@ -233,12 +233,15 @@ function InitializeNetworkFiltering(): void {
 
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {
+    let modResolution: string;
     let mod: any;
     try {
-      mod = require(bundle.module);
+      modResolution = require.resolve(bundle.module, { paths: [frb.cwd] });
     } catch (error) {
       return { bundle, status: "error", error };
     }
+
+    mod = require(modResolution);
 
     let obj = mod;
     for (const field of bundle.path.slice(0, -1)) {
@@ -269,7 +272,7 @@ function InitializeNetworkFiltering(): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (!history[href]) {
+      if (href && !history[href]) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -287,7 +290,13 @@ function InitializeNetworkFiltering(): void {
       try {
         return original(...args);
       } catch (e) {
-        return new original(...args);
+        const newed = new original(...args);
+        const cs = newed.constructSettings;
+        newed.constructSettings = (...csArgs: any[]) => {
+          (csArgs[3] as any).authorization = "Bearer owner";
+          return cs.bind(newed)(...csArgs);
+        }
+        return newed;
       }
     };
 
@@ -661,7 +670,7 @@ async function main(): Promise<void> {
 
   InitializeEnvironmentalVariables(frb.projectId);
   if (isFeatureEnabled(frb, "network_filtering")) {
-    InitializeNetworkFiltering();
+    InitializeNetworkFiltering(frb);
   }
 
   if (isFeatureEnabled(frb, "functions_config_helper")) {
