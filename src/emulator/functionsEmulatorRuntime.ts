@@ -392,7 +392,7 @@ function InitializeFirebaseAdminStubs(
         sslCreds: grpc.credentials.createInsecure(),
         ...userSettings,
       });
-    } else {
+    } else if (firestorePort < 0) {
       new EmulatorLog(
         "WARN",
         "runtime-status",
