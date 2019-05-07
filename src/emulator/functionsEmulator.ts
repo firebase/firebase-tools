@@ -26,6 +26,7 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
+import { ObjectBuilder } from "firebase-functions/lib/providers/storage";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -188,22 +189,30 @@ export class FunctionsEmulator implements EmulatorInstance {
           socketPath: runtime.metadata.socketPath,
         },
         (runtimeRes: http.IncomingMessage) => {
-          function forwardStatus() {
-            return res.status(runtimeRes.statusCode || 200);
+          function forwardStatusAndHeaders(): void {
+            res.status(runtimeRes.statusCode || 200);
+            if (!res.headersSent) {
+              Object.keys(runtimeRes.headers).forEach((key) => {
+                const val = runtimeRes.headers[key];
+                if (val) {
+                  res.setHeader(key, val);
+                }
+              });
+            }
           }
 
           runtimeRes.on("data", (buf) => {
-            forwardStatus();
+            forwardStatusAndHeaders();
             res.write(buf);
           });
 
           runtimeRes.on("close", () => {
-            forwardStatus();
+            forwardStatusAndHeaders();
             res.end();
           });
 
           runtimeRes.on("end", () => {
-            forwardStatus();
+            forwardStatusAndHeaders();
             res.end();
           });
         }
