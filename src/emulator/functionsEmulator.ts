@@ -404,7 +404,9 @@ You can probably fix this by running "npm install ${
             default:
               logger.debug(`Unsupported trigger: ${JSON.stringify(definition)}`);
               utils.logWarning(
-                `Ignoring trigger "${name}" because the service "${service}" is not yet supported.`
+                `Ignoring trigger "${
+                  definition.name
+                }" because the service "${service}" is not yet supported.`
               );
               break;
           }
