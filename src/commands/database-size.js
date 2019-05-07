@@ -2,6 +2,7 @@
 
 var Command = require("../command");
 var requireInstance = require("../requireInstance");
+var requireTimeout = require("../requireTimeout");
 var requirePermissions = require("../requirePermissions");
 var DatabaseSize = require("../database/size").default;
 var utils = require("../utils");
@@ -20,6 +21,7 @@ module.exports = new Command("database:size <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(requireTimeout)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });

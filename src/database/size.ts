@@ -2,7 +2,7 @@ import * as pathLib from "path";
 
 import { ListRemote, RTDBListRemote } from "./listRemote";
 import { RTDBSizeRemote, SizeRemote } from "./sizeRemote";
-import { Stack } from "../throttler/stack";
+import { Queue } from "../throttler/queue";
 
 const INITIAL_LIST_BATCH_SIZE = 100;
 const MAX_LIST_BATCH_SIZE = 204800;
@@ -11,21 +11,21 @@ const DEFAULT_TIMEOUT = 1000;
 
 export default class DatabaseSize {
   path: string;
-  timeLeft: number;
+  timeout: number;
   sizeEstimate: number;
 
   listRemote: ListRemote;
   sizeRemote: SizeRemote;
 
-  private listStack: Stack<() => Promise<string[]>, string[]>;
+  private listQueue: Queue<() => Promise<string[]>, string[]>;
 
   constructor(instance: string, path: string, timeout?: number) {
     this.path = path;
-    this.timeLeft = timeout || DEFAULT_TIMEOUT;
+    this.timeout = timeout || DEFAULT_TIMEOUT;
     this.sizeEstimate = 0;
     this.sizeRemote = new RTDBSizeRemote(instance);
     this.listRemote = new RTDBListRemote(instance);
-    this.listStack = new Stack({
+    this.listQueue = new Queue({
       name: "list stack",
       concurrency: 1,
       retries: 3,
@@ -48,7 +48,7 @@ export default class DatabaseSize {
     let listBatchSizeLow = 1;
     let listBatchSizeHigh = MAX_LIST_BATCH_SIZE + 1;
 
-    const timeout = DEFAULT_TIMEOUT;
+    const timeout = this.timeout;
 
     try {
       if (!attempt) {
@@ -67,9 +67,12 @@ export default class DatabaseSize {
        */
       this.sizeEstimate += 2;
       do {
-        subPaths = await this.listStack.run(() =>
+        subPaths = await this.listQueue.run(() =>
           this.listRemote.listPath(path, listBatchSize, offset)
         );
+        if (subPaths.length === 0) {
+          break;
+        }
         offset = subPaths[subPaths.length - 1];
 
         const promises: { [index: string]: Promise<boolean> } = {};
@@ -82,6 +85,10 @@ export default class DatabaseSize {
           promises[subPath] = this.getSubtreeSizeHelper(pathLib.join(path, subPath), tryChildren);
         }
 
+        /*
+         * Join recursive sizing calls and count the number
+         * we were able to do with a simple get (no listing).
+         */
         for (const subPath of subPaths) {
           const fast = await promises[subPath];
           this.sizeEstimate += Buffer.byteLength(subPath);
