@@ -2,3 +2,4 @@ fixed - Fixes issue where functions for unsupported services caused a ReferenceE
 fixed - Fixes issue where headers and response codes for HTTP functions were lost.
 fixed - Fixes issue where firebase serve does not properly start the Functions emulator.
 fixed - Adds a devDependency on firebase-functions-test to the default functions init template to prevent emulator issues.
+fixed - Adds a log message when emulators have successfully started.

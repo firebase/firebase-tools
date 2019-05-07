@@ -16,10 +16,6 @@ export class EmulatorServer {
 
     const name = this.instance.getName();
     const info = this.instance.getInfo();
-    utils.logLabeledSuccess(
-      name,
-      `Emulator running at ${clc.bold.underline("http://" + info.host + ":" + info.port)}`
-    );
   }
 
   async connect(): Promise<void> {
