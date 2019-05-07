@@ -16,6 +16,7 @@ import { extractParamsFromPath } from "./functionsEmulatorUtils";
 import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
+import { logger } from "..";
 
 (require as any).resolveOriginal = require.resolve;
 
@@ -660,6 +661,12 @@ async function main(): Promise<void> {
       frb,
     }).log();
   }
+
+  new EmulatorLog(
+    "DEBUG",
+    "runtime-status",
+    `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
+  ).log();
 
   const verified = verifyDeveloperNodeModules(frb.cwd);
   if (!verified) {
