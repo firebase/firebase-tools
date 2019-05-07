@@ -188,15 +188,30 @@ export class FunctionsEmulator implements EmulatorInstance {
           socketPath: runtime.metadata.socketPath,
         },
         (runtimeRes: http.IncomingMessage) => {
+          function forwardStatusAndHeaders(): void {
+            res.status(runtimeRes.statusCode || 200);
+            if (!res.headersSent) {
+              Object.keys(runtimeRes.headers).forEach((key) => {
+                const val = runtimeRes.headers[key];
+                if (val) {
+                  res.setHeader(key, val);
+                }
+              });
+            }
+          }
+
           runtimeRes.on("data", (buf) => {
+            forwardStatusAndHeaders();
             res.write(buf);
           });
 
           runtimeRes.on("close", () => {
+            forwardStatusAndHeaders();
             res.end();
           });
 
           runtimeRes.on("end", () => {
+            forwardStatusAndHeaders();
             res.end();
           });
         }
