@@ -168,7 +168,7 @@ describe("FunctionsEmulatorRuntime", () => {
         // HTTP libraries, either is fine because we'll whitelist / deny the request
         // after the first prompt.
 
-        expect(logs["unidentified-network-access"]).to.gte(4);
+        expect(logs["unidentified-network-access"]).to.gte(3);
         expect(logs["googleapis-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
     });
