@@ -661,6 +661,12 @@ async function main(): Promise<void> {
     }).log();
   }
 
+  new EmulatorLog(
+    "DEBUG",
+    "runtime-status",
+    `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
+  ).log();
+
   const verified = verifyDeveloperNodeModules(frb.cwd);
   if (!verified) {
     // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
