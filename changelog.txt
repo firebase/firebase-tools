@@ -1,1 +1,3 @@
 fixed - Fixes issue where functions for unsupported services caused a ReferenceError.
+fixed - Fixes an issue where firebase serve does not properly start the Functions emulator.
+fixed - Adds a devDependency on firebase-functions-test to the default functions init template to prevent emulator issues.
