@@ -26,7 +26,6 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { ObjectBuilder } from "firebase-functions/lib/providers/storage";
 
 const EVENT_INVOKE = "functions:invoke";
 
