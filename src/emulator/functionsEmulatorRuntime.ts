@@ -16,7 +16,6 @@ import { extractParamsFromPath } from "./functionsEmulatorUtils";
 import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
-import { logger } from "..";
 
 (require as any).resolveOriginal = require.resolve;
 
