@@ -22,6 +22,10 @@ export class EmulatorServer {
     );
   }
 
+  async connect(): Promise<void> {
+    await this.instance.connect();
+  }
+
   async stop(): Promise<void> {
     await EmulatorRegistry.stop(this.instance.getName());
   }

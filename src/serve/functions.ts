@@ -11,8 +11,12 @@ module.exports = {
     await this.emulatorServer.start();
   },
 
+  async connect(): Promise<void> {
+    await this.emulatorServer.connect();
+  },
+
   async stop(): Promise<void> {
-    await this.emulatorServer().stop();
+    await this.emulatorServer.stop();
   },
 
   get(): FunctionsEmulator {
