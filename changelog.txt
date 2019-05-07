@@ -1,2 +1,2 @@
 fixed - Fixes issue where functions for unsupported services caused a ReferenceError.
-fixed - Fixes issue where non-200 response codes for HTTP functions were lost.
+fixed - Fixes issue where headers and response codes for HTTP functions were lost.
