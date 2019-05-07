@@ -291,11 +291,15 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         return original(...args);
       } catch (e) {
         const newed = new original(...args);
-        const cs = newed.constructSettings;
-        newed.constructSettings = (...csArgs: any[]) => {
-          (csArgs[3] as any).authorization = "Bearer owner";
-          return cs.bind(newed)(...csArgs);
+
+        if (bundle.module === "google-gax") {
+          const cs = newed.constructSettings;
+          newed.constructSettings = (...csArgs: any[]) => {
+            (csArgs[3] as any).authorization = "Bearer owner";
+            return cs.bind(newed)(...csArgs);
+          };
         }
+
         return newed;
       }
     };
