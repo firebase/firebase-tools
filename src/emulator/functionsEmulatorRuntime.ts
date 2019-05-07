@@ -355,29 +355,25 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
     failing in some way and admin is attempting to access prod resources. This error isn't pretty,
     but it's hard to catch and better than accidentally talking to prod.
    */
-function InitializeFirebaseAdminStubs(
-  projectId: string,
-  functionsDir: string,
-  firestorePort: number
-): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", { paths: [functionsDir] });
-  const grpc = require(slowRequireResolve("grpc", { paths: [functionsDir] }));
+function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin {
+  const adminResolution = slowRequireResolve("firebase-admin", { paths: [frb.cwd] });
+  const grpc = require(slowRequireResolve("grpc", { paths: [frb.cwd] }));
 
   const localAdminModule = require(adminResolution);
-  const validApp = localAdminModule.initializeApp({ projectId });
+  const validApp = localAdminModule.initializeApp({ projectId: frb.projectId });
 
   let hasInitializedSettings = false;
   const initializeSettings = (app: admin.app.App, userSettings: any) => {
-    if (!hasInitializedSettings && firestorePort > 0) {
+    if (!hasInitializedSettings && frb.ports.firestore) {
       app.firestore().settings({
-        projectId,
-        port: firestorePort,
+        projectId: frb.projectId,
+        port: frb.ports.firestore,
         servicePath: "localhost",
         service: "firestore.googleapis.com",
         sslCreds: grpc.credentials.createInsecure(),
         ...userSettings,
       });
-    } else if (firestorePort < 0) {
+    } else if (!frb.ports.firestore && frb.triggerId) {
       new EmulatorLog(
         "WARN",
         "runtime-status",
@@ -675,11 +671,7 @@ async function main(): Promise<void> {
   }
 
   InitializeFirebaseFunctionsStubs(frb.cwd);
-  const stubbedAdminModule = InitializeFirebaseAdminStubs(
-    frb.projectId,
-    frb.cwd,
-    frb.ports.firestore || -1
-  );
+  const stubbedAdminModule = InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
