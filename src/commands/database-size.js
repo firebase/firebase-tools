@@ -9,7 +9,10 @@ var utils = require("../utils");
 var _ = require("lodash");
 
 module.exports = new Command("database:size <path>")
-  .description("esimate the size of the Firebase subtree rooted at the specified path")
+  .description(
+    "esimate the size of the Firebase subtree rooted at the specified path " +
+      "by recursively listing the sub-tree rooted at <path>"
+  )
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
