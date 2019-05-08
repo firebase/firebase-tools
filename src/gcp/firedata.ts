@@ -58,5 +58,5 @@ export async function listDatabaseInstances(projectNumber: number): Promise<Data
 export interface DatabaseInstance {
   // The globally unique name of the Database instance.
   // Required to be URL safe.  ex: 'red-ant'
-  instance: string,
+  instance: string;
 }
