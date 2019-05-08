@@ -69,7 +69,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
 
-  public readonly projectId: string = "";
+  readonly projectId: string = "";
 
   private readonly port: number;
   private server?: http.Server;

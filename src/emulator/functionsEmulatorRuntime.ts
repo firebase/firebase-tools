@@ -537,7 +537,6 @@ async function ProcessBackground(
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
   const proto = frb.proto;
-
   stubbedAdminModule.firestore().settings({});
   const snapshot_ = (stubbedAdminModule.firestore() as any).snapshot_;
 
