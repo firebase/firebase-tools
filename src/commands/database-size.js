@@ -2,7 +2,6 @@
 
 var Command = require("../command");
 var requireInstance = require("../requireInstance");
-var requireTimeout = require("../requireTimeout");
 var requirePermissions = require("../requirePermissions");
 var DatabaseSize = require("../database/size").default;
 var utils = require("../utils");
@@ -15,18 +14,13 @@ module.exports = new Command("database:size <path>")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
-  .option(
-    "--timeout <milliseconds>",
-    "time before request is cancelled (if omitted, no limit is imposed)"
-  )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .before(requireTimeout)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    let sizeOps = new DatabaseSize(options.instance, path, options.timeout);
+    let sizeOps = new DatabaseSize(options.instance, path);
     return sizeOps.execute().then(function(bytes) {
       utils.logSuccess(path + " is approximately " + bytes + " bytes.");
     });
