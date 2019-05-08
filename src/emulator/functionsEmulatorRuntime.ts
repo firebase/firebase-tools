@@ -666,8 +666,8 @@ async function main(): Promise<void> {
     return;
   }
 
+  InitializeEnvironmentalVariables(frb.projectId);
   if (isFeatureEnabled(frb, "protect_env")) {
-    InitializeEnvironmentalVariables(frb.projectId);
     ProtectEnvironmentalVariables();
   }
 
