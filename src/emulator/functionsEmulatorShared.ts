@@ -42,6 +42,7 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
   memory_limiting?: boolean;
   protect_env?: boolean;
+  admin_stubs?: boolean;
 }
 
 const memoryLookup = {
