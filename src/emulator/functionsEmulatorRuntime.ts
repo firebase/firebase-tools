@@ -369,6 +369,7 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
     if (!isEnabled) {
       if (!hasInitializedSettings) {
         app.firestore().settings(userSettings);
+        hasInitializedSettings = true;
       }
       return;
     }
