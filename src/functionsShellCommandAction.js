@@ -9,6 +9,7 @@ var util = require("util");
 var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var logger = require("./logger");
+var shell = require("./emulator/functionsEmulatorShell");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
@@ -19,7 +20,9 @@ module.exports = function(options) {
       return serveFunctions.connect();
     })
     .then(function() {
-      const emulator = serveFunctions.get();
+      const instance = serveFunctions.get();
+      const emulator = new shell.FunctionsEmulatorShell(instance);
+
       if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
         process.exit();

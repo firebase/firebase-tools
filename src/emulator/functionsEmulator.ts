@@ -31,6 +31,7 @@ import * as stream from "stream";
 const EVENT_INVOKE = "functions:invoke";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
+const SUPPORTED_SERVICES = [ SERVICE_FIRESTORE ];
 
 interface FunctionsEmulatorArgs {
   port?: number;
@@ -55,6 +56,15 @@ export interface FunctionsRuntimeInstance {
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
+  static isTriggerSupported(definition: EmulatedTriggerDefinition): boolean {
+    if (definition.httpsTrigger) {
+      return true;
+    }
+
+    const service: string = _.get(definition, "eventTrigger.service", "unknown");
+    return (SUPPORTED_SERVICES.indexOf(service) >= 0);
+  }
+
   static getHttpFunctionUrl(port: number, projectId: string, name: string, region: string): string {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
@@ -66,6 +76,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   private firebaseConfig: any;
   private functionsDir: string = "";
   private nodeBinary: string = "";
+
+  private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
@@ -367,6 +379,10 @@ You can probably fix this by running "npm install ${
     }
   }
 
+  getTriggers(): EmulatedTriggerDefinition[] {
+    return this.triggers;
+  }
+
   async connect(): Promise<void> {
     utils.logLabeledBullet("functions", `Watching "${this.functionsDir}" for Cloud Functions...`);
 
@@ -401,6 +417,8 @@ You can probably fix this by running "npm install ${
       const toSetup = triggerDefinitions.filter(
         (definition) => !this.knownTriggerIDs[definition.name]
       );
+
+      this.triggers = triggerDefinitions;
 
       for (const definition of toSetup) {
         if (definition.httpsTrigger) {
