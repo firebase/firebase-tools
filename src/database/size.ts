@@ -11,7 +11,7 @@ import { Queue } from "../throttler/queue";
  * to mitigate this.
  */
 const LIST_BATCH_SIZE = 2000;
-const TIMEOUT = 100;
+const TIMEOUT = 50;
 
 export default class DatabaseSize {
   path: string;
