@@ -13,7 +13,7 @@ export interface ListRemote {
    * @param numSubPath the number of subPaths to fetch.
    * @return the list of sub pathes found.
    */
-  listPath(path: string, numSubPath: number, offset?: string): Promise<string[]>;
+  listPath(path: string, numSubPath: number, offset?: string, timeout?: number): Promise<string[]>;
 }
 
 export class RTDBListRemote implements ListRemote {
@@ -23,13 +23,15 @@ export class RTDBListRemote implements ListRemote {
     this.instance = instance;
   }
 
-  listPath(path: string, numSubPath: number, offset?: string): Promise<string[]> {
+  listPath(path: string, numSubPath: number, offset?: string, timeout?: number): Promise<string[]> {
     const offsetSuffix = offset ? "&startAfter=" + offset : "";
+    const timeoutSuffix = timeout ? "&timeout=" + timeout + "ms" : "";
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
       `.json?shallow=true&limitToFirst=${numSubPath}` +
-      offsetSuffix;
+      offsetSuffix +
+      timeoutSuffix;
 
     const t0 = Date.now();
     return api

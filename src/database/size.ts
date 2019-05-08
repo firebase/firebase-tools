@@ -10,8 +10,8 @@ import { Queue } from "../throttler/queue";
  * shallow gets. We set a generous initial list batch size
  * to mitigate this.
  */
-const LIST_BATCH_SIZE = 32000;
-const TIMEOUT = 50;
+const LIST_BATCH_SIZE = 2000;
+const TIMEOUT = 100;
 
 export default class DatabaseSize {
   path: string;
@@ -46,23 +46,21 @@ export default class DatabaseSize {
       if (e.status !== 400) {
         logger.debug(`Unexpected error: '${e.message}' when sizing node ${path}. Ignoring.`);
       }
-      let subPaths = [];
+      let subPaths: string[] = [];
       let offset: string;
 
       /*
        * Alot a single byte for the open and close braces
        * in the root JSON object.
        */
-      sizeEstimate += 2;
       do {
         subPaths = await this.listQueue.run(() =>
-          this.listRemote.listPath(path, LIST_BATCH_SIZE, offset)
+          this.listRemote.listPath(path, LIST_BATCH_SIZE, offset, TIMEOUT)
         );
         if (subPaths.length === 0) {
           break;
         }
         offset = subPaths[subPaths.length - 1];
-
         const promises: { [index: string]: Promise<number> } = {};
 
         /*
