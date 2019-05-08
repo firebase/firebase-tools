@@ -31,7 +31,7 @@ import * as stream from "stream";
 const EVENT_INVOKE = "functions:invoke";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
-const SUPPORTED_SERVICES = [ SERVICE_FIRESTORE ];
+const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
 
 interface FunctionsEmulatorArgs {
   port?: number;
@@ -62,16 +62,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const service: string = _.get(definition, "eventTrigger.service", "unknown");
-    return (SUPPORTED_SERVICES.indexOf(service) >= 0);
+    return SUPPORTED_SERVICES.indexOf(service) >= 0;
   }
 
   static getHttpFunctionUrl(port: number, projectId: string, name: string, region: string): string {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
 
-  private readonly port: number;
-  private readonly projectId: string = "";
+  public readonly projectId: string = "";
 
+  private readonly port: number;
   private server?: http.Server;
   private firebaseConfig: any;
   private functionsDir: string = "";

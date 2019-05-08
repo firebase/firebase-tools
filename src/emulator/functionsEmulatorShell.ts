@@ -1,22 +1,37 @@
 import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition } from "./functionsEmulatorShared";
+import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 
-// TODO: Real call
 class FunctionsController {
+  constructor(private emu: FunctionsEmulator) {}
+
+  // TODO: Stronger types
   call(name: string, data: any, options: any): void {
-    console.log("CALLING " + name);
+    const proto = {
+      context: {
+        resource: {
+          name: options.resource
+        }
+      },
+      data
+    }
+
+    console.log("options\n\t", JSON.stringify(options));
+    console.log("proto\n\t", JSON.stringify(proto));
+    this.emu.startFunctionRuntime(name, proto);
   }
 }
 
 export class FunctionsEmulatorShell {
-
-  public emulatedFunctions: string[];
-  public triggers: EmulatedTriggerDefinition[];
-  public urls: { [name:string]: string } = {};
   public controller: FunctionsController;
-  
-  // TODO: Disable a lot of flags
+  public triggers: EmulatedTriggerDefinition[];
+  public emulatedFunctions: string[];
+  public urls: { [name: string]: string } = {};
+
+  // TODO:
+  //  * Disable some advanced emulator features
+  //  * Quiet some logging
   constructor(private emu: FunctionsEmulator) {
+    this.controller = new FunctionsController(this.emu);
     this.triggers = emu.getTriggers().filter(FunctionsEmulator.isTriggerSupported);
     this.emulatedFunctions = this.triggers.map((t) => {
       return t.name;
@@ -25,12 +40,13 @@ export class FunctionsEmulatorShell {
     for (const t of this.triggers) {
       if (t.httpsTrigger) {
         const name = t.name;
-
-        // TODO: Real stuff
-        this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(this.emu.getInfo().port, "FAKE-PROJ-ID", name, "us-central1");
+        this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
+          this.emu.getInfo().port,
+          this.emu.projectId,
+          name,
+          getFunctionRegion(t)
+        );
       }
     }
-
-    this.controller = new FunctionsController();
   }
 }
