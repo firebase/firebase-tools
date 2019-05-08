@@ -13,39 +13,13 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-<<<<<<< HEAD
-  client.auth = {
-    upload: loadCommand("auth-import"),
-    export: loadCommand("auth-export"),
-  };
-
-  client.database = {
-    get: loadCommand("database-get"),
-    push: loadCommand("database-push"),
-    set: loadCommand("database-set"),
-    remove: loadCommand("database-remove"),
-    update: loadCommand("database-update"),
-    profile: loadCommand("database-profile"),
-    instances: {
-      create: loadCommand("database-instances-create"),
-      list: loadCommand("database-instances-list"),
-    },
-    settings: {
-      get: loadCommand("database-settings-get"),
-      set: loadCommand("database-settings-set"),
-    },
-  };
-
-  client.firestore = {
-    delete: loadCommand("firestore-delete"),
-    indexes: loadCommand("firestore-indexes-list"),
-  };
-
-=======
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
   client.database = {};
+  client.database.instances = {};
+  client.database.instances.create = loadCommand("database-instances-create");
+  client.database.instances.list = loadCommand("database-instances-list");
   client.database.get = loadCommand("database-get");
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
@@ -55,7 +29,6 @@ module.exports = function(client) {
   client.database.settings.get = loadCommand("database-settings-get");
   client.database.settings.set = loadCommand("database-settings-set");
   client.database.update = loadCommand("database-update");
->>>>>>> master
   client.deploy = loadCommand("deploy");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
