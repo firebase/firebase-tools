@@ -16,6 +16,9 @@ module.exports = function(options) {
   return serveFunctions
     .start(options)
     .then(function() {
+      return serveFunctions.connect();
+    })
+    .then(function() {
       const emulator = serveFunctions.get();
       if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
