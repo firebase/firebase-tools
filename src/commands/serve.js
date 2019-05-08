@@ -13,15 +13,16 @@ var serve = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
 
-var VALID_EMULATORS = ["database", "firestore"];
-var VALID_TARGETS = ["functions", "hosting"];
+var VALID_EMULATORS = ["database", "firestore", "functions", "hosting"];
+var VALID_TARGETS = ["hosting", "functions"];
+var REQUIRES_AUTH = ["hosting", "functions"];
 
-var filterOnlyEmulators = (only) => {
+var filterOnly = (list, only) => {
   if (!only) {
     return [];
   }
   return _.intersection(
-    VALID_EMULATORS,
+    list,
     only.split(",").map((opt) => {
       return opt.split(":")[0];
     })
@@ -43,7 +44,11 @@ module.exports = new Command("serve")
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .before((options) => {
-    if (filterOnlyEmulators(options.only).length > 0) {
+    if (
+      options.only &&
+      options.only.length > 0 &&
+      filterOnly(REQUIRES_AUTH, options.only).length === 0
+    ) {
       return Promise.resolve();
     }
     return requireConfig(options)
@@ -52,7 +57,7 @@ module.exports = new Command("serve")
       .then(() => getProjectNumber(options));
   })
   .action((options) => {
-    options.targets = filterOnlyEmulators(options.only);
+    options.targets = filterOnly(VALID_EMULATORS, options.only);
     if (options.targets.length > 0) {
       return serve(options);
     }
