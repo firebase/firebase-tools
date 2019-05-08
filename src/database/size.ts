@@ -11,10 +11,20 @@ import { Queue } from "../throttler/queue";
  * to mitigate this.
  */
 const LIST_BATCH_SIZE = 2000;
+
+/*
+ * Top-level GET requests for large subtrees will likely
+ * fail, so there are some probable gains to be had from
+ * performing shallow gets first. This constant controls
+ * how deep to search in the tree before attempting large
+ * GETs.
+ */
+const SKIP_DEPTH = 2;
 const TIMEOUT = 50;
 
 export default class DatabaseSize {
   path: string;
+  skipDepth: number;
   sizeEstimate: number;
 
   listRemote: ListRemote;
@@ -22,8 +32,9 @@ export default class DatabaseSize {
 
   private listQueue: Queue<() => Promise<string[]>, string[]>;
 
-  constructor(instance: string, path: string) {
+  constructor(instance: string, path: string, depth?: number) {
     this.path = path;
+    this.skipDepth = depth || SKIP_DEPTH;
     this.sizeEstimate = 0;
     this.sizeRemote = new RTDBSizeRemote(instance);
     this.listRemote = new RTDBListRemote(instance);
@@ -35,12 +46,15 @@ export default class DatabaseSize {
   }
 
   async execute(): Promise<number> {
-    return this.getSubtreeSize(this.path);
+    return this.getSubtreeSize(this.path, 0);
   }
 
-  private async getSubtreeSize(path: string): Promise<number> {
+  private async getSubtreeSize(path: string, depth: number): Promise<number> {
     let sizeEstimate = 0;
     try {
+      if (depth < this.skipDepth) {
+        throw new Error("Skip full get attempt");
+      }
       sizeEstimate = await this.sizeRemote.sizeNode(path, TIMEOUT);
     } catch (e) {
       if (e.status !== 400) {
@@ -67,7 +81,7 @@ export default class DatabaseSize {
          * Kick off asynchronous recursive calls.
          */
         for (const subPath of subPaths) {
-          promises[subPath] = this.getSubtreeSize(pathLib.join(path, subPath));
+          promises[subPath] = this.getSubtreeSize(pathLib.join(path, subPath), depth + 1);
         }
 
         /*
