@@ -137,7 +137,7 @@ const TIMEOUT_LONG = 10000;
 const TIMEOUT_MED = 5000;
 
 describe("FunctionsEmulatorRuntime", () => {
-  describe.only("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
+  describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
         const serializedTriggers = (() => {
@@ -352,7 +352,7 @@ describe("FunctionsEmulatorRuntime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
-      it.only("should merge .initializeApp arguments from user", async () => {
+      it("should merge .initializeApp arguments from user", async () => {
         const serializedTriggers = (() => {
           const admin = require("firebase-admin");
           admin.initializeApp({
