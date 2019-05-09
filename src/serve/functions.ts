@@ -1,4 +1,4 @@
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
+import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
@@ -6,22 +6,24 @@ import { EmulatorServer } from "../emulator/emulatorServer";
 module.exports = {
   emulatorServer: undefined,
 
-  async start(options: any): Promise<void> {
-    this.emulatorServer = new EmulatorServer(
-      new FunctionsEmulator(options, {
-        // When running the functions emulator through 'firebase serve' we disable some
-        // of the more adventurous features that could be breaking/unexpected behavior
-        // for those used to the legacy emulator.
-        disabledRuntimeFeatures: {
-          functions_config_helper: true,
-          network_filtering: true,
-          timeout: true,
-          memory_limiting: true,
-          protect_env: true,
-          admin_stubs: true,
-        },
-      })
-    );
+  async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
+    args = args || {};
+
+    if (!args.disabledRuntimeFeatures) {
+      // When running the functions emulator through 'firebase serve' we disable some
+      // of the more adventurous features that could be breaking/unexpected behavior
+      // for those used to the legacy emulator.
+      args.disabledRuntimeFeatures = {
+        functions_config_helper: true,
+        network_filtering: true,
+        timeout: true,
+        memory_limiting: true,
+        protect_env: true,
+        admin_stubs: true,
+      };
+    }
+
+    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, args));
     await this.emulatorServer.start();
   },
 

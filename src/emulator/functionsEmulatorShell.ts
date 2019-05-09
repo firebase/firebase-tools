@@ -16,7 +16,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   //  * Disable some advanced emulator features
   //  * Quiet some logging
   constructor(private emu: FunctionsEmulator) {
-    this.triggers = emu.getTriggers().filter(FunctionsEmulator.isTriggerSupported);
+    this.triggers = emu.getTriggers();
     this.emulatedFunctions = this.triggers.map((t) => {
       return t.name;
     });

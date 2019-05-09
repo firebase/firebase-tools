@@ -33,9 +33,10 @@ const EVENT_INVOKE = "functions:invoke";
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
 
-interface FunctionsEmulatorArgs {
+export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
+  quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
 }
 
@@ -279,6 +280,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   handleSystemLog(systemLog: EmulatorLog): void {
+    if (this.args.quiet) {
+      return;
+    }
+
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
@@ -354,6 +359,12 @@ You can probably fix this by running "npm install ${
     if (ignore.indexOf(log.level) >= 0) {
       return;
     }
+
+    // TODO: Are these the right conditions?
+    if (this.args.quiet && log.level !== "USER") {
+      return;
+    }
+
     switch (log.level) {
       case "SYSTEM":
         this.handleSystemLog(log);
@@ -431,6 +442,7 @@ You can probably fix this by running "npm install ${
             definition.name,
             region
           );
+
           utils.logLabeledBullet("functions", `HTTP trigger initialized at ${clc.bold(url)}`);
         } else {
           const service: string = _.get(definition, "eventTrigger.service", "unknown");
