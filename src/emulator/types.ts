@@ -117,14 +117,18 @@ export class EmulatorLog {
     this.data = this.data || {};
   }
 
-  toString(): string {
-    return JSON.stringify({
-      timestamp: this.timestamp,
-      level: this.level,
-      text: this.text,
-      data: this.data,
-      type: this.type,
-    });
+  toString(pretty = false): string {
+    return JSON.stringify(
+      {
+        timestamp: this.timestamp,
+        level: this.level,
+        text: this.text,
+        data: this.data,
+        type: this.type,
+      },
+      undefined,
+      pretty ? 2 : 0
+    );
   }
 
   get date(): Date {

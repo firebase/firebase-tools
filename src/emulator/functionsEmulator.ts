@@ -333,6 +333,17 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
+      case "missing-package-json":
+        utils.logWarning(
+          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
+        );
+        break;
+      case "admin-not-initialized":
+        utils.logWarning(
+          "The Firebase Admin module has not been initialized early enough. Make sure you run " +
+            '"admin.initializeApp()" outside of any function and at the top of your code'
+        );
+        break;
       default:
       // Silence
     }

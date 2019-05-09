@@ -129,7 +129,7 @@ async function _countLogEntries(
 
 function _is_verbose(runtime: FunctionsRuntimeInstance): void {
   runtime.events.on("log", (el: EmulatorLog) => {
-    process.stdout.write(el.toString() + "\n");
+    process.stdout.write(el.toString(true) + "\n");
   });
 }
 
@@ -137,10 +137,11 @@ const TIMEOUT_LONG = 10000;
 const TIMEOUT_MED = 5000;
 
 describe("FunctionsEmulatorRuntime", () => {
-  describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
+  describe.only("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -176,12 +177,12 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("_InitializeFirebaseAdminStubs(...)", () => {
       it("should provide stubbed default app from initializeApp", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                /* tslint:disable:no-console */
-                require("firebase-admin").initializeApp();
+                /* */
               }),
           };
         }).toString();
@@ -197,11 +198,12 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp({}, "non-default");
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                require("firebase-admin").initializeApp({}, "non-default");
+                /* */
               }),
           };
         }).toString();
@@ -213,8 +215,33 @@ describe("FunctionsEmulatorRuntime", () => {
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
+      it("should alert when the app is not initialized", async () => {
+        const serializedTriggers = (() => {
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                /* tslint:disable:no-console */
+                require("firebase-admin")
+                  .firestore()
+                  .doc("a/b")
+                  .get();
+              }),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+
+        const logs = await _countLogEntries(runtime);
+
+        expect(logs["admin-not-initialized"]).to.eq(1);
+      }).timeout(TIMEOUT_MED);
+
       it("should route all sub-fields accordingly", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -299,16 +326,18 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should merge .settings() with emulator settings", async () => {
         const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp();
+          console.log(admin.firestore().settings.toString());
+          admin.firestore().settings({
+            timestampsInSnapshots: true,
+          });
+
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async (snap: any, ctx: any) => {
-                /* tslint:disable:no-console */
-                const admin = require("firebase-admin");
-                admin.initializeApp();
-                admin.firestore().settings({
-                  timestampsInSnapshots: true,
-                });
+                /* */
               }),
           };
         }).toString();
@@ -328,6 +357,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("_InitializeFunctionsConfigHelper()", () => {
       it("should tell the user if they've accessed a non-existent function field", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")

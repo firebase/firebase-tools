@@ -17,6 +17,9 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 
+let app: admin.app.App;
+let adminModuleProxy: typeof admin;
+
 function slowRequireResolve(moduleName: string, opts?: { paths: string[] }): string {
   opts = opts || { paths: [] };
   const resolver = `console.log(require.resolve("${moduleName}"))`;
@@ -360,11 +363,15 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
   const grpc = require(slowRequireResolve("grpc", { paths: [frb.cwd] }));
 
   const localAdminModule = require(adminResolution);
-  const validApp = localAdminModule.initializeApp({ projectId: frb.projectId });
 
   let hasInitializedSettings = false;
-  const initializeSettings = (app: admin.app.App, userSettings: any) => {
+  const initializeSettings = (userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
+
+    if (!app) {
+      new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
+      return;
+    }
 
     if (!isEnabled) {
       if (!hasInitializedSettings) {
@@ -394,14 +401,15 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
     hasInitializedSettings = true;
   };
 
-  const adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
     .when("initializeApp", (adminModuleTarget) => (opts: any, appName: any) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
       }
       new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
-      return validApp;
+      app = adminModuleTarget.initializeApp({ projectId: frb.projectId, ...opts });
+      return app;
     })
     .when("firestore", (adminModuleTarget) => {
       const proxied = new Proxied<typeof admin.firestore>(adminModuleTarget.firestore);
@@ -410,11 +418,11 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
           return new Proxied(adminModuleTarget.firestore())
             .when("settings", () => {
               return (settings: any) => {
-                initializeSettings(adminModuleTarget.app(), settings);
+                initializeSettings(settings);
               };
             })
             .any((target, field) => {
-              initializeSettings(adminModuleTarget.app(), {});
+              initializeSettings({});
               return proxied.getOriginal(target, field);
             })
             .finalize();
@@ -530,40 +538,44 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
 async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
-  stubbedAdminModule: typeof admin,
   trigger: EmulatedTrigger
 ): Promise<void> {
   const { Change } = require("firebase-functions");
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
+  if (!app) {
+    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
+    return;
+  }
+
   const proto = frb.proto;
 
-  stubbedAdminModule.firestore().settings({});
-  const snapshot_ = (stubbedAdminModule.firestore() as any).snapshot_;
+  adminModuleProxy.firestore().settings({});
+  const makeFirestoreSnapshot = (app.firestore() as any).snapshot_.bind(app.firestore());
 
   const resourcePath = proto.context.resource.name;
   const params = extractParamsFromPath(trigger.definition.eventTrigger.resource, resourcePath);
 
   /*
-  We use an internal Firestore method snapshot_ to generate Snapshots which we pass to firebase-function's
+  We use an internal Firestore method makeFirestoreSnapshot to generate Snapshots which we pass to firebase-function's
   Change object. If we have a value for new / old snap, then we create a valid snapshot, otherwise we
-  invoke snapshot_ with a different signature describe here...
+  invoke makeFirestoreSnapshot with a different signature describe here...
   https://github.com/googleapis/nodejs-firestore/blob/114de25d1af3fc7441da3242f6bc8cc8354ffa09/dev/test/index.ts#L574
   To create a snapshot where .exists() fails.
    */
 
   let newSnap;
   if (proto.data.value) {
-    newSnap = snapshot_(proto.data.value, new Date().toISOString(), "json");
+    newSnap = makeFirestoreSnapshot(proto.data.value, new Date().toISOString(), "json");
   } else {
-    newSnap = snapshot_(resourcePath, new Date().toISOString(), "json");
+    newSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
   }
 
   let oldSnap;
   if (proto.data.oldValue) {
-    oldSnap = snapshot_(proto.data.oldValue, new Date().toISOString(), "json");
+    oldSnap = makeFirestoreSnapshot(proto.data.oldValue, new Date().toISOString(), "json");
   } else {
-    oldSnap = snapshot_(resourcePath, new Date().toISOString(), "json");
+    oldSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
   }
 
   let data;
@@ -681,7 +693,7 @@ async function main(): Promise<void> {
   }
 
   InitializeFirebaseFunctionsStubs(frb.cwd);
-  const stubbedAdminModule = InitializeFirebaseAdminStubs(frb);
+  InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
@@ -748,7 +760,7 @@ async function main(): Promise<void> {
 
   switch (mode) {
     case "BACKGROUND":
-      await ProcessBackground(frb, stubbedAdminModule, triggers[frb.triggerId]);
+      await ProcessBackground(frb, triggers[frb.triggerId]);
       break;
     case "HTTPS":
       await ProcessHTTPS(frb, triggers[frb.triggerId]);
