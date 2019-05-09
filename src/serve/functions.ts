@@ -7,7 +7,21 @@ module.exports = {
   emulatorServer: undefined,
 
   async start(options: any): Promise<void> {
-    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, {}));
+    this.emulatorServer = new EmulatorServer(
+      new FunctionsEmulator(options, {
+        // When running the functions emulator through 'firebase serve' we disable some
+        // of the more adventurous features that could be breaking/unexpected behavior
+        // for those used to the legacy emulator.
+        disabledRuntimeFeatures: {
+          functions_config_helper: true,
+          network_filtering: true,
+          timeout: true,
+          memory_limiting: true,
+          protect_env: true,
+          admin_stubs: true,
+        },
+      })
+    );
     await this.emulatorServer.start();
   },
 

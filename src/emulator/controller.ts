@@ -13,6 +13,7 @@ import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import * as FirebaseError from "../error";
+import * as path from "path";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
@@ -122,7 +123,7 @@ export async function startAll(options: any): Promise<void> {
 
   if (targets.indexOf(Emulators.FIRESTORE) > -1) {
     const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
-    const rules = options.config.get("firestore.rules");
+    const rules = path.join(options.projectRoot, options.config.get("firestore.rules"));
 
     const firestoreEmulator = new FirestoreEmulator({
       host: firestoreAddr.host,
