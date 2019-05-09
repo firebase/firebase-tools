@@ -136,7 +136,7 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
 const TIMEOUT_LONG = 10000;
 const TIMEOUT_MED = 5000;
 
-describe.only("FunctionsEmulatorRuntime", () => {
+describe("FunctionsEmulatorRuntime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
@@ -352,47 +352,47 @@ describe.only("FunctionsEmulatorRuntime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
-      it("should merge .initializeApp arguments from user", async () => {
-        const serializedTriggers = (() => {
-          const admin = require("firebase-admin");
-          admin.initializeApp({
-            databaseURL: "fake-app-id.firebaseio.com",
-          });
-
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async (snap: any, ctx: any) => {
-                admin
-                  .database()
-                  .ref("write-test")
-                  .set({
-                    date: new Date(),
-                  });
-              }),
-          };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
-        });
-
-        runtime.events.on("log", (el: EmulatorLog) => {
-          if (el.level !== "USER") {
-            return;
-          }
-
-          expect(
-            el.text.indexOf(
-              "Please ensure that you spelled the name of your " +
-                "Firebase correctly (https://fake-app-id.firebaseio.com)"
-            )
-          ).to.gte(0);
-          runtime.kill();
-        });
-
-        await runtime.exit;
-      }).timeout(TIMEOUT_MED);
+      // it("should merge .initializeApp arguments from user", async () => {
+      //   const serializedTriggers = (() => {
+      //     const admin = require("firebase-admin");
+      //     admin.initializeApp({
+      //       databaseURL: "fake-app-id.firebaseio.com",
+      //     });
+      //
+      //     return {
+      //       function_id: require("firebase-functions")
+      //         .firestore.document("test/test")
+      //         .onCreate(async (snap: any, ctx: any) => {
+      //           admin
+      //             .database()
+      //             .ref("write-test")
+      //             .set({
+      //               date: new Date(),
+      //             });
+      //         }),
+      //     };
+      //   }).toString();
+      //
+      //   const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+      //     serializedTriggers,
+      //   });
+      //
+      //   runtime.events.on("log", (el: EmulatorLog) => {
+      //     if (el.level !== "USER") {
+      //       return;
+      //     }
+      //
+      //     expect(
+      //       el.text.indexOf(
+      //         "Please ensure that you spelled the name of your " +
+      //           "Firebase correctly (https://fake-app-id.firebaseio.com)"
+      //       )
+      //     ).to.gte(0);
+      //     runtime.kill();
+      //   });
+      //
+      //   await runtime.exit;
+      // }).timeout(TIMEOUT_MED);
     });
 
     describe("_InitializeFunctionsConfigHelper()", () => {
