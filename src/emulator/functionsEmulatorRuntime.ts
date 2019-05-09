@@ -20,11 +20,10 @@ import * as admin from "firebase-admin";
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
 
-function slowRequireResolve(moduleName: string, opts?: { paths: string[] }): string {
-  opts = opts || { paths: [] };
+function slowRequireResolve(moduleName: string, cwd?: string): string {
   const resolver = `console.log(require.resolve("${moduleName}"))`;
   const result = spawnSync(process.execPath, ["-e", resolver], {
-    cwd: path.resolve(opts.paths.length ? opts.paths[0] : process.cwd()),
+    cwd: path.resolve(cwd || process.cwd()),
   });
 
   return result.stdout.toString().trim();
@@ -134,10 +133,10 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-function verifyDeveloperNodeModules(functionsDir: string): boolean {
+function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
   let pkg;
   try {
-    pkg = require(`${functionsDir}/package.json`);
+    pkg = require(`${frb.cwd}/package.json`);
   } catch (err) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     return false;
@@ -167,7 +166,7 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
     let modResolution: string;
     try {
-      modResolution = slowRequireResolve(modBundle.name, { paths: [functionsDir] });
+      modResolution = slowRequireResolve(modBundle.name, frb.cwd);
     } catch (err) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
@@ -216,9 +215,9 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   try {
     const gcFirestore = findModuleRoot(
       "@google-cloud/firestore",
-      slowRequireResolve("@google-cloud/firestore", { paths: [frb.cwd] })
+      slowRequireResolve("@google-cloud/firestore", frb.cwd)
     );
-    const gaxPath = slowRequireResolve("google-gax", { paths: [gcFirestore] });
+    const gaxPath = slowRequireResolve("google-gax", gcFirestore);
     const gaxModule = {
       module: require(gaxPath),
       path: ["GrpcClient"],
@@ -316,9 +315,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
-  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", {
-    paths: [functionsDir],
-  });
+  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", functionsDir);
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -359,8 +356,8 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
     but it's hard to catch and better than accidentally talking to prod.
    */
 function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", { paths: [frb.cwd] });
-  const grpc = require(slowRequireResolve("grpc", { paths: [frb.cwd] }));
+  const adminResolution = slowRequireResolve("firebase-admin", frb.cwd);
+  const grpc = require(slowRequireResolve("grpc", frb.cwd));
 
   const localAdminModule = require(adminResolution);
 
@@ -458,7 +455,7 @@ function InitializeEnvironmentalVariables(projectId: string): void {
 }
 
 function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = slowRequireResolve("firebase-functions", { paths: [functionsDir] });
+  const functionsResolution = slowRequireResolve("firebase-functions", functionsDir);
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -604,7 +601,7 @@ async function ProcessBackground(
 
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
 
-  const fftResolution = slowRequireResolve("firebase-functions-test", { paths: [frb.cwd] });
+  const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
   const func = trigger.getWrappedFunction(require(fftResolution));
 
   await Run([data, ctx], func);
@@ -668,7 +665,7 @@ async function main(): Promise<void> {
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
 
-  const verified = verifyDeveloperNodeModules(frb.cwd);
+  const verified = verifyDeveloperNodeModules(frb);
   if (!verified) {
     // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
     new EmulatorLog(
