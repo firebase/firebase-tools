@@ -50,7 +50,7 @@ describe("cloudscheduler", () => {
       expect(nock.isDone());
     });
 
-    it("should do update if a job exists with the same name and a different schedule", async () => {
+    it("should update if a job exists with the same name and a different schedule", async () => {
       const otherJob = _.cloneDeep(testJob);
       otherJob.schedule = "every 6 minutes";
       nock(api.cloudschedulerOrigin)
@@ -67,7 +67,7 @@ describe("cloudscheduler", () => {
       expect(nock.isDone());
     });
 
-    it("should do update if a job exists with the same name and a different timeZone", async () => {
+    it("should update if a job exists with the same name but a different timeZone", async () => {
       const otherJob = _.cloneDeep(testJob);
       otherJob.timeZone = "America/New_York";
       nock(api.cloudschedulerOrigin)
@@ -84,7 +84,7 @@ describe("cloudscheduler", () => {
       expect(nock.isDone());
     });
 
-    it("should do update if a job exists with the same name and a different schedule", async () => {
+    it("should update if a job exists with the same name but a different schedule", async () => {
       const otherJob = _.cloneDeep(testJob);
       otherJob.retryConfig = { maxDoublings: 10 };
       nock(api.cloudschedulerOrigin)

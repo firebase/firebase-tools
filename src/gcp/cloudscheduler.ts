@@ -1,4 +1,4 @@
-import { isEqual } from "lodash";
+import * as _ from "lodash";
 import * as api from "../api";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
@@ -32,7 +32,7 @@ export function createJob(job: Job): Promise<any> {
   // the replace below removes the portion of the schedule name after the last /
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
-  const strippedName = job.name.replace(/\/[^\/]+$/, "");
+  const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
   return api.request("POST", `/${VERSION}/${strippedName}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
@@ -83,10 +83,10 @@ export function updateJob(job: Job): Promise<any> {
  * If one is found, and it is identical to the job parameter, it does nothing.
  * Otherwise, if one is found and it is different from the job param, it updates the job.
  * @param job A job to check for and create, replace, or leave as appropriate.
- * @throws { FirebaseError } if an error respnse other than 404 is recieved on the GET call.
+ * @throws { FirebaseError } if an error response other than 404 is received on the GET call.
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
-  const jobName = `${job.name.split("/")[5]}`;
+  const jobName = `${job.name.split("/").slice(-1)}`;
   try {
     const existingJob = await getJob(job.name);
     if (!job.timeZone) {
@@ -124,6 +124,6 @@ function isIdentical(existingJob: Job, newJob: Job): boolean {
     existingJob &&
     existingJob.schedule === newJob.schedule &&
     existingJob.timeZone === newJob.timeZone &&
-    isEqual(existingJob.retryConfig, newJob.retryConfig)
+    _.isEqual(existingJob.retryConfig, newJob.retryConfig)
   );
 }
