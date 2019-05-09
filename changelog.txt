@@ -1,0 +1,3 @@
+fixed - Firebase Emulator could not find "firebase-admin"
+fixed - Firebase Emulator could not find "package.json" on Windows
+fixed - Firebase Emulator could not find databaseUrl
