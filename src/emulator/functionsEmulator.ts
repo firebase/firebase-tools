@@ -52,6 +52,8 @@ export interface FunctionsRuntimeInstance {
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
+  // A function to manually kill the child process
+  kill: (signal?: string) => void;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -580,6 +582,10 @@ export function InvokeRuntime(
     ready,
     metadata,
     events: emitter,
+    kill: (signal?: string) => {
+      runtime.kill(signal);
+      emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+    },
   };
 }
 

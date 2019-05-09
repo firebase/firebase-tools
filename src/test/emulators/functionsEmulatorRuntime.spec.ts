@@ -328,7 +328,6 @@ describe("FunctionsEmulatorRuntime", () => {
         const serializedTriggers = (() => {
           const admin = require("firebase-admin");
           admin.initializeApp();
-          console.log(admin.firestore().settings.toString());
           admin.firestore().settings({
             timestampsInSnapshots: true,
           });
@@ -348,6 +347,48 @@ describe("FunctionsEmulatorRuntime", () => {
 
         runtime.events.on("log", (el: EmulatorLog) => {
           expect(el.text.indexOf("You can only call settings() once")).to.eq(-1);
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it.only("should merge .initializeApp arguments from user", async () => {
+        const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp({
+            databaseURL: "fake-app-id.firebaseio.com",
+          });
+
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async (snap: any, ctx: any) => {
+                admin
+                  .database()
+                  .ref("write-test")
+                  .set({
+                    date: new Date(),
+                  });
+              }),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+
+        runtime.events.on("log", (el: EmulatorLog) => {
+          if (el.level !== "USER") {
+            return;
+          }
+
+          expect(
+            el.text.indexOf(
+              "Please ensure that you spelled the name of your " +
+                "Firebase correctly (https://fake-app-id.firebaseio.com)"
+            )
+          ).to.gte(0);
+          runtime.kill();
         });
 
         await runtime.exit;
