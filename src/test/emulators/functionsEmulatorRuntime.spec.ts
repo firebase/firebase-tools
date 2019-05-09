@@ -136,7 +136,7 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
 const TIMEOUT_LONG = 10000;
 const TIMEOUT_MED = 5000;
 
-describe("FunctionsEmulatorRuntime", () => {
+describe.only("FunctionsEmulatorRuntime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
@@ -468,6 +468,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -500,6 +501,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide Change for firestore.onUpdate()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -532,6 +534,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide DocumentSnapshot for firestore.onDelete()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -563,6 +566,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide DocumentSnapshot for firestore.onCreate()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
