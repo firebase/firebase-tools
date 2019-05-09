@@ -364,6 +364,16 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
 
   let hasInitializedSettings = false;
   const initializeSettings = (app: admin.app.App, userSettings: any) => {
+    const isEnabled = isFeatureEnabled(frb, "admin_stubs");
+
+    if (!isEnabled) {
+      if (!hasInitializedSettings) {
+        app.firestore().settings(userSettings);
+        hasInitializedSettings = true;
+      }
+      return;
+    }
+
     if (!hasInitializedSettings && frb.ports.firestore) {
       app.firestore().settings({
         projectId: frb.projectId,
@@ -620,7 +630,7 @@ function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
 ): boolean {
-  return frb.disabled_features ? frb.disabled_features[feature] || false : true;
+  return frb.disabled_features ? !frb.disabled_features[feature] : true;
 }
 
 async function main(): Promise<void> {
