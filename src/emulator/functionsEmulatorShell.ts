@@ -12,9 +12,6 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   emulatedFunctions: string[];
   urls: { [name: string]: string } = {};
 
-  // TODO:
-  //  * Disable some advanced emulator features
-  //  * Quiet some logging
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggers();
     this.emulatedFunctions = this.triggers.map((t) => {
@@ -35,8 +32,6 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   }
 
   call(name: string, data: any, opts: any): void {
-    // TODO: How do I tell what type of function it is?
-
     // TODO: How can I not stuff the name in so many places?
     if (data.value) {
       data.value.name = opts.resource;
@@ -50,12 +45,14 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       context: {
         resource: {
           name: opts.resource,
+          // TODO: How do I tell what type of function it is?
           service: "firestore.googleapis.com",
         },
       },
       data,
     };
 
+    // TODO: delete these logs
     logger.debug("options\n\t", JSON.stringify(opts));
     logger.debug("proto\n\t", JSON.stringify(proto, undefined, 2));
     this.emu.startFunctionRuntime(name, proto);
