@@ -167,7 +167,7 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
     let modResolution: string;
     try {
-      modResolution = require.resolve(modBundle.name);
+      modResolution = slowRequireResolve(modBundle.name, { paths: [functionsDir] });
     } catch (err) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
@@ -604,7 +604,7 @@ async function ProcessBackground(
 
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
 
-  const fftResolution = require.resolve("firebase-functions-test");
+  const fftResolution = slowRequireResolve("firebase-functions-test", { paths: [frb.cwd] });
   const func = trigger.getWrappedFunction(require(fftResolution));
 
   await Run([data, ctx], func);
