@@ -13,7 +13,12 @@ export interface ListRemote {
    * @param numSubPath the number of subPaths to fetch.
    * @return the list of sub pathes found.
    */
-  listPath(path: string, numSubPath: number, offset?: string, timeout?: number): Promise<string[]>;
+  listPath(
+    path: string,
+    numSubPath: number,
+    startAfter?: string,
+    timeout?: number
+  ): Promise<string[]>;
 }
 
 export class RTDBListRemote implements ListRemote {
@@ -23,56 +28,55 @@ export class RTDBListRemote implements ListRemote {
     this.instance = instance;
   }
 
-  listPath(path: string, numSubPath: number, offset?: string, timeout?: number): Promise<string[]> {
-    const offsetSuffix = offset ? "&startAfter=" + offset : "";
+  async listPath(
+    path: string,
+    numSubPath: number,
+    startAfter?: string,
+    timeout?: number
+  ): Promise<string[]> {
+    const startAfterSuffix = startAfter ? "&startAfter=" + startAfter : "";
     const timeoutSuffix = timeout ? "&timeout=" + timeout + "ms" : "";
     const url =
       utils.addSubdomain(api.realtimeOrigin, this.instance) +
       path +
       `.json?shallow=true&limitToFirst=${numSubPath}` +
-      offsetSuffix +
+      startAfterSuffix +
       timeoutSuffix;
 
     const t0 = Date.now();
-    return api
-      .addRequestHeaders({
-        url,
-      })
-      .then((reqOptionsWithToken) => {
-        return new Promise<string[]>((resolve, reject) => {
-          request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
-            if (err) {
-              return reject(
-                new FirebaseError("Unexpected error while listing subtrees", {
-                  exit: 2,
-                  original: err,
-                })
-              );
-            } else if (res.statusCode >= 400) {
-              return reject(responseToError(res, body));
-            }
-            let data = {};
-            try {
-              data = JSON.parse(body);
-            } catch (e) {
-              return reject(
-                new FirebaseError("Malformed JSON response in shallow get ", {
-                  exit: 2,
-                  original: e,
-                })
-              );
-            }
-            if (data) {
-              return resolve(Object.keys(data));
-            }
-            resolve([]);
-          });
-        });
-      })
-      .then((paths: string[]) => {
-        const dt = Date.now() - t0;
-        logger.debug(`[database] Sucessfully fetched ${paths.length} path at ${path} ${dt}`);
-        return paths;
+    const reqOptionsWithToken = await api.addRequestHeaders({ url });
+    const paths = await new Promise<string[]>((resolve, reject) => {
+      request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+        if (err) {
+          return reject(
+            new FirebaseError("Unexpected error while listing subtrees", {
+              exit: 2,
+              original: err,
+            })
+          );
+        } else if (res.statusCode >= 400) {
+          return reject(responseToError(res, body));
+        }
+        let data = {};
+        try {
+          data = JSON.parse(body);
+        } catch (e) {
+          return reject(
+            new FirebaseError("Malformed JSON response in shallow get ", {
+              exit: 2,
+              original: e,
+            })
+          );
+        }
+        if (data) {
+          return resolve(Object.keys(data));
+        }
+        resolve([]);
       });
+    });
+    const dt = Date.now() - t0;
+
+    logger.debug(`[database] Sucessfully fetched ${paths.length} path at ${path} ${dt}`);
+    return Promise.resolve(paths);
   }
 }
