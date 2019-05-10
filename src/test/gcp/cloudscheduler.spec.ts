@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as nock from "nock";
 import * as api from "../../api";
 
-import { cloudscheduler } from "../../gcp/";
+import { cloudscheduler } from "../../gcp";
 
 const VERSION = "v1beta1";
 
