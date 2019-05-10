@@ -32,14 +32,10 @@ const EVENT_INVOKE = "functions:invoke";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 
-interface FunctionsEmulatorArgs {
+export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
-}
-
-interface RequestWithRawBody extends express.Request {
-  rawBody: string;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -52,6 +48,12 @@ export interface FunctionsRuntimeInstance {
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
+  // A function to manually kill the child process
+  kill: (signal?: string) => void;
+}
+
+interface RequestWithRawBody extends express.Request {
+  rawBody: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -333,6 +335,17 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
+      case "missing-package-json":
+        utils.logWarning(
+          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
+        );
+        break;
+      case "admin-not-initialized":
+        utils.logWarning(
+          "The Firebase Admin module has not been initialized early enough. Make sure you run " +
+            '"admin.initializeApp()" outside of any function and at the top of your code'
+        );
+        break;
       default:
       // Silence
     }
@@ -569,6 +582,10 @@ export function InvokeRuntime(
     ready,
     metadata,
     events: emitter,
+    kill: (signal?: string) => {
+      runtime.kill(signal);
+      emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+    },
   };
 }
 

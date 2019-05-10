@@ -17,11 +17,40 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 
-function slowRequireResolve(moduleName: string, opts?: { paths: string[] }): string {
-  opts = opts || { paths: [] };
+let app: admin.app.App;
+let adminModuleProxy: typeof admin;
+
+/*
+  This method is a hacky way of "resolving" Node modules. Normally, when you "require()" a package,
+  Node looks for that package in a set of locations or paths. The logic varies slightly between
+  Nodejs versions and there's no consistent way to make sure the exact same resolution is happening
+  all the time.
+
+  Since functionsEmulatorRuntime.js lives inside the firebase-tools installation, it's always tempted
+  to resolve from the same places that firebase-tools gets it's modules. Normally this is fine, but
+  in order to provide mocks to a developer's functions we need to resolve modules as if we were in the
+  same filesystem location as the user's code. Some versions of Node let us do this by calling
+  require.resolve() with a list of paths to look in, but that's not a fix for all versions.
+
+  slowRequireResolve works around this by spinning up another node process which doesn't have a
+  file path to look at for resolutions (code is passed via -e flag) so it uses the cwd instead.
+  This allows us to easily resolve modules as if we had code in that folder. Sadly, this is incredibly
+  sllooooow. It's about 100-200ms per resolution, which means the majority of time spent on a
+  Cloud Function invocation is spent right here.
+
+  It's made even worse because we occasionally need to resolve a dependency as if we were a different
+  depedency, so that requires two slowRequireResolves - it's bad.
+
+  For the initial release of the emulator, we went for consistency and simplicity over execution speed
+  going forward, there's many paths to look into for optimization, for example we could cache results
+  in an inter-process memory store, look into ways to help node believe our runtime is in the user's
+  code directory, or move to native require.resolve on newer node versions and deal with the inconsistencies
+  between versions.
+ */
+function slowRequireResolve(moduleName: string, cwd?: string): string {
   const resolver = `console.log(require.resolve("${moduleName}"))`;
   const result = spawnSync(process.execPath, ["-e", resolver], {
-    cwd: path.resolve(opts.paths.length ? opts.paths[0] : process.cwd()),
+    cwd: path.resolve(cwd || process.cwd()),
   });
 
   return result.stdout.toString().trim();
@@ -131,10 +160,10 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-function verifyDeveloperNodeModules(functionsDir: string): boolean {
+function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
   let pkg;
   try {
-    pkg = require(`${functionsDir}/package.json`);
+    pkg = require(`${frb.cwd}/package.json`);
   } catch (err) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     return false;
@@ -164,7 +193,7 @@ function verifyDeveloperNodeModules(functionsDir: string): boolean {
      */
     let modResolution: string;
     try {
-      modResolution = require.resolve(modBundle.name);
+      modResolution = slowRequireResolve(modBundle.name, frb.cwd);
     } catch (err) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
@@ -213,9 +242,9 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   try {
     const gcFirestore = findModuleRoot(
       "@google-cloud/firestore",
-      slowRequireResolve("@google-cloud/firestore", { paths: [frb.cwd] })
+      slowRequireResolve("@google-cloud/firestore", frb.cwd)
     );
-    const gaxPath = slowRequireResolve("google-gax", { paths: [gcFirestore] });
+    const gaxPath = slowRequireResolve("google-gax", gcFirestore);
     const gaxModule = {
       module: require(gaxPath),
       path: ["GrpcClient"],
@@ -313,9 +342,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
-  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", {
-    paths: [functionsDir],
-  });
+  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", functionsDir);
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -356,14 +383,13 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
     but it's hard to catch and better than accidentally talking to prod.
    */
 function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", { paths: [frb.cwd] });
-  const grpc = require(slowRequireResolve("grpc", { paths: [frb.cwd] }));
+  const adminResolution = slowRequireResolve("firebase-admin", frb.cwd);
+  const grpc = require(slowRequireResolve("grpc", frb.cwd));
 
   const localAdminModule = require(adminResolution);
-  const validApp = localAdminModule.initializeApp({ projectId: frb.projectId });
 
   let hasInitializedSettings = false;
-  const initializeSettings = (app: admin.app.App, userSettings: any) => {
+  const initializeSettings = (userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
 
     if (!isEnabled) {
@@ -394,14 +420,15 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
     hasInitializedSettings = true;
   };
 
-  const adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
     .when("initializeApp", (adminModuleTarget) => (opts: any, appName: any) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
       }
       new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
-      return validApp;
+      app = adminModuleTarget.initializeApp({ projectId: frb.projectId, ...opts });
+      return app;
     })
     .when("firestore", (adminModuleTarget) => {
       const proxied = new Proxied<typeof admin.firestore>(adminModuleTarget.firestore);
@@ -410,11 +437,11 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
           return new Proxied(adminModuleTarget.firestore())
             .when("settings", () => {
               return (settings: any) => {
-                initializeSettings(adminModuleTarget.app(), settings);
+                initializeSettings(settings);
               };
             })
             .any((target, field) => {
-              initializeSettings(adminModuleTarget.app(), {});
+              initializeSettings({});
               return proxied.getOriginal(target, field);
             })
             .finalize();
@@ -450,7 +477,7 @@ function InitializeEnvironmentalVariables(projectId: string): void {
 }
 
 function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = slowRequireResolve("firebase-functions", { paths: [functionsDir] });
+  const functionsResolution = slowRequireResolve("firebase-functions", functionsDir);
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -530,7 +557,6 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
 async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
-  stubbedAdminModule: typeof admin,
   trigger: EmulatedTrigger
 ): Promise<void> {
   const { Change } = require("firebase-functions");
@@ -538,32 +564,32 @@ async function ProcessBackground(
 
   const proto = frb.proto;
 
-  stubbedAdminModule.firestore().settings({});
-  const snapshot_ = (stubbedAdminModule.firestore() as any).snapshot_;
+  adminModuleProxy.firestore().settings({});
+  const makeFirestoreSnapshot = (app.firestore() as any).snapshot_.bind(app.firestore());
 
   const resourcePath = proto.context.resource.name;
   const params = extractParamsFromPath(trigger.definition.eventTrigger.resource, resourcePath);
 
   /*
-  We use an internal Firestore method snapshot_ to generate Snapshots which we pass to firebase-function's
+  We use an internal Firestore method makeFirestoreSnapshot to generate Snapshots which we pass to firebase-function's
   Change object. If we have a value for new / old snap, then we create a valid snapshot, otherwise we
-  invoke snapshot_ with a different signature describe here...
+  invoke makeFirestoreSnapshot with a different signature describe here...
   https://github.com/googleapis/nodejs-firestore/blob/114de25d1af3fc7441da3242f6bc8cc8354ffa09/dev/test/index.ts#L574
   To create a snapshot where .exists() fails.
    */
 
   let newSnap;
   if (proto.data.value) {
-    newSnap = snapshot_(proto.data.value, new Date().toISOString(), "json");
+    newSnap = makeFirestoreSnapshot(proto.data.value, new Date().toISOString(), "json");
   } else {
-    newSnap = snapshot_(resourcePath, new Date().toISOString(), "json");
+    newSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
   }
 
   let oldSnap;
   if (proto.data.oldValue) {
-    oldSnap = snapshot_(proto.data.oldValue, new Date().toISOString(), "json");
+    oldSnap = makeFirestoreSnapshot(proto.data.oldValue, new Date().toISOString(), "json");
   } else {
-    oldSnap = snapshot_(resourcePath, new Date().toISOString(), "json");
+    oldSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
   }
 
   let data;
@@ -592,7 +618,7 @@ async function ProcessBackground(
 
   new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
 
-  const fftResolution = require.resolve("firebase-functions-test");
+  const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
   const func = trigger.getWrappedFunction(require(fftResolution));
 
   await Run([data, ctx], func);
@@ -656,7 +682,7 @@ async function main(): Promise<void> {
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
 
-  const verified = verifyDeveloperNodeModules(frb.cwd);
+  const verified = verifyDeveloperNodeModules(frb);
   if (!verified) {
     // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
     new EmulatorLog(
@@ -681,7 +707,7 @@ async function main(): Promise<void> {
   }
 
   InitializeFirebaseFunctionsStubs(frb.cwd);
-  const stubbedAdminModule = InitializeFirebaseAdminStubs(frb);
+  InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
@@ -727,6 +753,11 @@ async function main(): Promise<void> {
 
   new EmulatorLog("DEBUG", "runtime-status", `Running ${frb.triggerId} in mode ${mode}`).log();
 
+  if (!app) {
+    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
+    return;
+  }
+
   let seconds = 0;
   const timerId = setInterval(() => {
     seconds++;
@@ -748,7 +779,7 @@ async function main(): Promise<void> {
 
   switch (mode) {
     case "BACKGROUND":
-      await ProcessBackground(frb, stubbedAdminModule, triggers[frb.triggerId]);
+      await ProcessBackground(frb, triggers[frb.triggerId]);
       break;
     case "HTTPS":
       await ProcessHTTPS(frb, triggers[frb.triggerId]);
