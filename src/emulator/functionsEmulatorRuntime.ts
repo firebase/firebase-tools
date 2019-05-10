@@ -20,6 +20,33 @@ import * as admin from "firebase-admin";
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
 
+/*
+  This method is a hacky way of "resolving" Node modules. Normally, when you "require()" a package,
+  Node looks for that package in a set of locations or paths. The logic varies slightly between
+  Nodejs versions and there's no consistent way to make sure the exact same resolution is happening
+  all the time.
+
+  Since functionsEmulatorRuntime.js lives inside the firebase-tools installation, it's always tempted
+  to resolve from the same places that firebase-tools gets it's modules. Normally this is fine, but
+  in order to provide mocks to a developer's functions we need to resolve modules as if we were in the
+  same filesystem location as the user's code. Some versions of Node let us do this by calling
+  require.resolve() with a list of paths to look in, but that's not a fix for all versions.
+
+  slowRequireResolve works around this by spinning up another node process which doesn't have a
+  file path to look at for resolutions (code is passed via -e flag) so it uses the cwd instead.
+  This allows us to easily resolve modules as if we had code in that folder. Sadly, this is incredibly
+  sllooooow. It's about 100-200ms per resolution, which means the majority of time spent on a
+  Cloud Function invocation is spent right here.
+
+  It's made even worse because we occasionally need to resolve a dependency as if we were a different
+  depedency, so that requires two slowRequireResolves - it's bad.
+
+  For the initial release of the emulator, we went for consistency and simplicity over execution speed
+  going forward, there's many paths to look into for optimization, for example we could cache results
+  in an inter-process memory store, look into ways to help node believe our runtime is in the user's
+  code directory, or move to native require.resolve on newer node versions and deal with the inconsistencies
+  between versions.
+ */
 function slowRequireResolve(moduleName: string, cwd?: string): string {
   const resolver = `console.log(require.resolve("${moduleName}"))`;
   const result = spawnSync(process.execPath, ["-e", resolver], {
@@ -540,11 +567,6 @@ async function ProcessBackground(
   const { Change } = require("firebase-functions");
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
-  if (!app) {
-    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
-    return;
-  }
-
   const proto = frb.proto;
 
   adminModuleProxy.firestore().settings({});
@@ -753,6 +775,11 @@ async function main(): Promise<void> {
       ).log();
       process.exit();
     }, trigger.timeoutMs);
+  }
+
+  if (!app) {
+    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
+    return;
   }
 
   switch (mode) {

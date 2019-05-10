@@ -129,7 +129,7 @@ async function _countLogEntries(
 
 function _is_verbose(runtime: FunctionsRuntimeInstance): void {
   runtime.events.on("log", (el: EmulatorLog) => {
-    process.stdout.write(el.toString(true) + "\n");
+    process.stdout.write(el.toPrettyString() + "\n");
   });
 }
 
@@ -181,9 +181,8 @@ describe("FunctionsEmulatorRuntime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                /* */
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
@@ -221,7 +220,6 @@ describe("FunctionsEmulatorRuntime", () => {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                /* tslint:disable:no-console */
                 require("firebase-admin")
                   .firestore()
                   .doc("a/b")
@@ -335,9 +333,8 @@ describe("FunctionsEmulatorRuntime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async (snap: any, ctx: any) => {
-                /* */
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
@@ -352,47 +349,50 @@ describe("FunctionsEmulatorRuntime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
-      // it("should merge .initializeApp arguments from user", async () => {
-      //   const serializedTriggers = (() => {
-      //     const admin = require("firebase-admin");
-      //     admin.initializeApp({
-      //       databaseURL: "fake-app-id.firebaseio.com",
-      //     });
-      //
-      //     return {
-      //       function_id: require("firebase-functions")
-      //         .firestore.document("test/test")
-      //         .onCreate(async (snap: any, ctx: any) => {
-      //           admin
-      //             .database()
-      //             .ref("write-test")
-      //             .set({
-      //               date: new Date(),
-      //             });
-      //         }),
-      //     };
-      //   }).toString();
-      //
-      //   const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-      //     serializedTriggers,
-      //   });
-      //
-      //   runtime.events.on("log", (el: EmulatorLog) => {
-      //     if (el.level !== "USER") {
-      //       return;
-      //     }
-      //
-      //     expect(
-      //       el.text.indexOf(
-      //         "Please ensure that you spelled the name of your " +
-      //           "Firebase correctly (https://fake-app-id.firebaseio.com)"
-      //       )
-      //     ).to.gte(0);
-      //     runtime.kill();
-      //   });
-      //
-      //   await runtime.exit;
-      // }).timeout(TIMEOUT_MED);
+      it("should merge .initializeApp arguments from user", async () => {
+        // This test causes very odd behavior in Travis, for now we'll disable it in CI until we can investigate
+        if (process.env.CI) { return; }
+
+        const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp({
+            databaseURL: "fake-app-id.firebaseio.com",
+          });
+
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async (snap: any, ctx: any) => {
+                admin
+                  .database()
+                  .ref("write-test")
+                  .set({
+                    date: new Date(),
+                  });
+              }),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+
+        runtime.events.on("log", (el: EmulatorLog) => {
+          if (el.level !== "USER") {
+            return;
+          }
+
+          expect(
+            el.text.indexOf(
+              "Please ensure that you spelled the name of your " +
+                "Firebase correctly (https://fake-app-id.firebaseio.com)"
+            )
+          ).to.gte(0);
+          runtime.kill();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
     });
 
     describe("_InitializeFunctionsConfigHelper()", () => {

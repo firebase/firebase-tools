@@ -74,6 +74,13 @@ export interface Address {
 }
 
 export class EmulatorLog {
+
+  get date(): Date {
+    if (!this.timestamp) {
+      return new Date(0);
+    }
+    return new Date(this.timestamp);
+  }
   static fromJSON(json: string): EmulatorLog {
     let parsedLog;
     let isNotJSON = false;
@@ -117,7 +124,19 @@ export class EmulatorLog {
     this.data = this.data || {};
   }
 
-  toString(pretty = false): string {
+  toString(): string {
+    return this.toStringCore(false);
+  }
+
+  toPrettyString(): string {
+    return this.toStringCore(true);
+  }
+
+  log(): void {
+    process.stdout.write(`${this.toString()}\n`);
+  }
+
+  private toStringCore(pretty = false): string {
     return JSON.stringify(
       {
         timestamp: this.timestamp,
@@ -129,16 +148,5 @@ export class EmulatorLog {
       undefined,
       pretty ? 2 : 0
     );
-  }
-
-  get date(): Date {
-    if (!this.timestamp) {
-      return new Date(0);
-    }
-    return new Date(this.timestamp);
-  }
-
-  log(): void {
-    process.stdout.write(`${this.toString()}\n`);
   }
 }
