@@ -201,9 +201,8 @@ describe("FunctionsEmulatorRuntime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                /* */
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
@@ -351,7 +350,9 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should merge .initializeApp arguments from user", async () => {
         // This test causes very odd behavior in Travis, for now we'll disable it in CI until we can investigate
-        if (process.env.CI) { return; }
+        if (process.env.CI) {
+          return;
+        }
 
         const serializedTriggers = (() => {
           const admin = require("firebase-admin");
