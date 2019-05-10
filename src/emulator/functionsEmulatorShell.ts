@@ -12,6 +12,8 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   emulatedFunctions: string[];
   urls: { [name: string]: string } = {};
 
+  private triggerMap: { [name:string]: EmulatedTriggerDefinition } = {};
+
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggers();
     this.emulatedFunctions = this.triggers.map((t) => {
@@ -19,8 +21,10 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     });
 
     for (const t of this.triggers) {
+      const name = t.name;
+      this.triggerMap[name] = t;
+
       if (t.httpsTrigger) {
-        const name = t.name;
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().port,
           this.emu.projectId,
@@ -32,7 +36,14 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   }
 
   call(name: string, data: any, opts: any): void {
-    // TODO: How can I not stuff the name in so many places?
+    const trigger = this.triggerMap[name];
+    
+    let service = undefined;
+    if (trigger.eventTrigger) {
+      service = trigger.eventTrigger.service;
+    }
+
+    // TODO: How can I not manually stuff the name in so many places?
     if (data.value) {
       data.value.name = opts.resource;
     }
@@ -45,8 +56,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       context: {
         resource: {
           name: opts.resource,
-          // TODO: How do I tell what type of function it is?
-          service: "firestore.googleapis.com",
+          service,
         },
       },
       data,

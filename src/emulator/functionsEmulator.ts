@@ -37,7 +37,7 @@ interface RequestWithRawBody extends express.Request {
   rawBody: string;
 }
 
-type LogType = "DEBUG" | "INFO" | "BULLET" | "WARN" | "SUCCESS";
+type LogType = "DEBUG" | "INFO" | "USER" | "BULLET" | "WARN" | "SUCCESS";
 
 export interface FunctionsEmulatorArgs {
   port?: number;
@@ -283,10 +283,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   handleSystemLog(systemLog: EmulatorLog): void {
-    if (this.args.quiet) {
-      return;
-    }
-
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
@@ -365,22 +361,13 @@ You can probably fix this by running "npm install ${
     }
   }
 
-  handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
-    if (ignore.indexOf(log.level) >= 0) {
-      return;
-    }
-
-    // TODO: Are these the right conditions?
-    if (this.args.quiet && log.level !== "USER") {
-      return;
-    }
-
+  handleRuntimeLog(log: EmulatorLog): void {
     switch (log.level) {
       case "SYSTEM":
         this.handleSystemLog(log);
         break;
       case "USER":
-        this.log("INFO", `${clc.blackBright("> ")} ${log.text}`);
+        this.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
         this.log("DEBUG", log.text);
@@ -614,7 +601,7 @@ You can probably fix this by running "npm install ${
    * so that we can respect the "quiet" flag.
    */
   log(type: LogType, text: string): void {
-    if (this.args.quiet) {
+    if (this.args.quiet && type !== "USER") {
       logger.debug(text);
       return;
     }
@@ -624,6 +611,9 @@ You can probably fix this by running "npm install ${
         logger.debug(text);
         break;
       case "INFO":
+        logger.info(text);
+        break;
+      case "USER":
         logger.info(text);
         break;
       case "BULLET":
