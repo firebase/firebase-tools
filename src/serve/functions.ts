@@ -8,7 +8,7 @@ module.exports = {
 
   async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
     args = args || {};
-
+    
     if (!args.disabledRuntimeFeatures) {
       // When running the functions emulator through 'firebase serve' we disable some
       // of the more adventurous features that could be breaking/unexpected behavior
@@ -21,6 +21,17 @@ module.exports = {
         protect_env: true,
         admin_stubs: true,
       };
+    };
+
+    // If hosting emulator is not being served but Functions is,
+    // we can use the port argument. Otherwise it goes to hosting and
+    // we use port + 1.
+    if (this.options.port) {
+      if (this.options.targets && this.options.targets.indexOf("hosting") < 0) {
+        args.port = this.options.port;
+      } else {
+        args.port = this.options.port + 1;
+      }
     }
 
     this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, args));

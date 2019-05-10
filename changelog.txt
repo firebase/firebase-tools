@@ -1,0 +1,5 @@
+fixed - Firebase Emulator could not find "firebase-admin"
+fixed - Firebase Emulator could not find "package.json" on Windows
+fixed - Firebase Emulator could not find databaseUrl
+feature - Realtime Database profiler now exposes pending time for some requests.
+fixed - Make firebase serve respect the --port command in all scenarios.
