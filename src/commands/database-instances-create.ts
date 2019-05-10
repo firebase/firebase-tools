@@ -11,4 +11,5 @@ export default new Command("database:instances:create <instanceName>")
     const projectNumber = await getProjectNumber(options);
     const instance = await firedata.createDatabaseInstance(projectNumber, instanceName);
     logger.info(`created database instance ${instance.instance}`);
+    return instance;
   });

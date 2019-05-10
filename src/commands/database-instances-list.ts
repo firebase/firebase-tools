@@ -13,4 +13,6 @@ export default new Command("database:instances:list")
     for (const instance of instances) {
       logger.info(instance.instance);
     }
+    logger.info(`Project ${options.project} has ${instances.length} database instances`);
+    return instances;
   });
