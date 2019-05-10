@@ -753,6 +753,11 @@ async function main(): Promise<void> {
 
   new EmulatorLog("DEBUG", "runtime-status", `Running ${frb.triggerId} in mode ${mode}`).log();
 
+  if (!app) {
+    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
+    return;
+  }
+
   let seconds = 0;
   const timerId = setInterval(() => {
     seconds++;
@@ -770,11 +775,6 @@ async function main(): Promise<void> {
       ).log();
       process.exit();
     }, trigger.timeoutMs);
-  }
-
-  if (!app) {
-    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
-    return;
   }
 
   switch (mode) {

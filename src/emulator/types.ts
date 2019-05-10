@@ -74,7 +74,6 @@ export interface Address {
 }
 
 export class EmulatorLog {
-
   get date(): Date {
     if (!this.timestamp) {
       return new Date(0);
