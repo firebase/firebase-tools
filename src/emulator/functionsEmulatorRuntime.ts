@@ -389,13 +389,8 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
   const localAdminModule = require(adminResolution);
 
   let hasInitializedSettings = false;
-  const initializeSettings = (userSettings: any) => {
+  const initializeSettings = (app: admin.app.App, userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
-
-    if (!app) {
-      new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
-      return;
-    }
 
     if (!isEnabled) {
       if (!hasInitializedSettings) {
