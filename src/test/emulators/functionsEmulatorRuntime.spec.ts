@@ -129,7 +129,7 @@ async function _countLogEntries(
 
 function _is_verbose(runtime: FunctionsRuntimeInstance): void {
   runtime.events.on("log", (el: EmulatorLog) => {
-    process.stdout.write(el.toString() + "\n");
+    process.stdout.write(el.toPrettyString() + "\n");
   });
 }
 
@@ -141,6 +141,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -176,14 +177,12 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("_InitializeFirebaseAdminStubs(...)", () => {
       it("should provide stubbed default app from initializeApp", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                /* tslint:disable:no-console */
-                console.log((require as any).resolveOriginal("firebase-admin"));
-                require("firebase-admin").initializeApp();
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
@@ -198,28 +197,54 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp(); // We still need to initialize default for snapshots
+          require("firebase-admin").initializeApp({}, "non-default");
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                require("firebase-admin").initializeApp({}, "non-default");
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
-        const logs = await _countLogEntries(
-          InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, { serializedTriggers })
-        );
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+        const logs = await _countLogEntries(runtime);
 
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should route all sub-fields accordingly", async () => {
+      it("should alert when the app is not initialized", async () => {
         const serializedTriggers = (() => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
+                require("firebase-admin")
+                  .firestore()
+                  .doc("a/b")
+                  .get();
+              }),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+        const logs = await _countLogEntries(runtime);
+
+        expect(logs["admin-not-initialized"]).to.eq(1);
+      }).timeout(TIMEOUT_MED);
+
+      it("should route all sub-fields accordingly", async () => {
+        const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                // tslint:disable-next-line:no-console
                 console.log(
                   JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
                 );
@@ -244,13 +269,12 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should redirect Firestore write to emulator", async () => {
         const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp();
+
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
-                /* tslint:disable:no-console */
-                const admin = require("firebase-admin");
-                admin.initializeApp();
-
                 try {
                   await admin
                     .firestore()
@@ -300,17 +324,17 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should merge .settings() with emulator settings", async () => {
         const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp();
+          admin.firestore().settings({
+            timestampsInSnapshots: true,
+          });
+
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async (snap: any, ctx: any) => {
-                /* tslint:disable:no-console */
-                const admin = require("firebase-admin");
-                admin.initializeApp();
-                admin.firestore().settings({
-                  timestampsInSnapshots: true,
-                });
-              }),
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
           };
         }).toString();
 
@@ -324,11 +348,59 @@ describe("FunctionsEmulatorRuntime", () => {
 
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
+
+      it("should merge .initializeApp arguments from user", async () => {
+        // This test causes very odd behavior in Travis, for now we'll disable it in CI until we can investigate
+        if (process.env.CI) {
+          return;
+        }
+
+        const serializedTriggers = (() => {
+          const admin = require("firebase-admin");
+          admin.initializeApp({
+            databaseURL: "fake-app-id.firebaseio.com",
+          });
+
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async (snap: any, ctx: any) => {
+                admin
+                  .database()
+                  .ref("write-test")
+                  .set({
+                    date: new Date(),
+                  });
+              }),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
+          serializedTriggers,
+        });
+
+        runtime.events.on("log", (el: EmulatorLog) => {
+          if (el.level !== "USER") {
+            return;
+          }
+
+          expect(
+            el.text.indexOf(
+              "Please ensure that you spelled the name of your " +
+                "Firebase correctly (https://fake-app-id.firebaseio.com)"
+            )
+          ).to.gte(0);
+          runtime.kill();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
     });
 
     describe("_InitializeFunctionsConfigHelper()", () => {
       it("should tell the user if they've accessed a non-existent function field", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -358,6 +430,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("HTTPS", () => {
       it("should handle a single invocation", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
@@ -398,6 +471,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -430,6 +504,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide Change for firestore.onUpdate()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -462,6 +537,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide DocumentSnapshot for firestore.onDelete()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -493,6 +569,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("should provide DocumentSnapshot for firestore.onCreate()", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -526,6 +603,7 @@ describe("FunctionsEmulatorRuntime", () => {
     describe("Error handling", () => {
       it("Should handle regular functions for Express handlers", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               (global as any)["not a thing"]();
@@ -562,6 +640,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("Should handle async functions for Express handlers", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
@@ -600,6 +679,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
       it("Should handle async/runWith functions for Express handlers", async () => {
         const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .runWith({})

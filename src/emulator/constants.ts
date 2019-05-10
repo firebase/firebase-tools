@@ -5,8 +5,8 @@ import { Address, Emulators } from "./types";
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
-  firestore: 5002,
-  database: 5003,
+  firestore: 8080,
+  database: 9000,
 };
 
 const DEFAULT_HOST = "localhost";

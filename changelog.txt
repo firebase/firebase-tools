@@ -1,5 +1,5 @@
-fixed - Fixes issue where functions for unsupported services caused a ReferenceError.
-fixed - Fixes issue where headers and response codes for HTTP functions were lost.
-fixed - Fixes issue where firebase serve does not properly start the Functions emulator.
-fixed - Adds a devDependency on firebase-functions-test to the default functions init template to prevent emulator issues.
-fixed - Adds a log message when emulators have successfully started.
+fixed - Firebase Emulator could not find "firebase-admin"
+fixed - Firebase Emulator could not find "package.json" on Windows
+fixed - Firebase Emulator could not find databaseUrl
+feature - Realtime Database profiler now exposes pending time for some requests.
+fixed - Make firebase serve respect the --port command in all scenarios.

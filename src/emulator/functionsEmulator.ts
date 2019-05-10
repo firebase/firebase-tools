@@ -20,6 +20,7 @@ import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
   FunctionsRuntimeBundle,
+  FunctionsRuntimeFeatures,
   getFunctionRegion,
   getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
@@ -31,13 +32,10 @@ const EVENT_INVOKE = "functions:invoke";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 
-interface FunctionsEmulatorArgs {
+export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
-}
-
-interface RequestWithRawBody extends express.Request {
-  rawBody: string;
+  disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -50,6 +48,12 @@ export interface FunctionsRuntimeInstance {
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
+  // A function to manually kill the child process
+  kill: (signal?: string) => void;
+}
+
+interface RequestWithRawBody extends express.Request {
+  rawBody: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -256,6 +260,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       cwd: this.functionsDir,
       triggerId: triggerName,
       projectId: this.projectId,
+      disabled_features: this.args.disabledRuntimeFeatures,
     };
 
     const runtime = InvokeRuntime(this.nodeBinary, runtimeBundle);
@@ -330,6 +335,17 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
+      case "missing-package-json":
+        utils.logWarning(
+          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
+        );
+        break;
+      case "admin-not-initialized":
+        utils.logWarning(
+          "The Firebase Admin module has not been initialized early enough. Make sure you run " +
+            '"admin.initializeApp()" outside of any function and at the top of your code'
+        );
+        break;
       default:
       // Silence
     }
@@ -380,6 +396,7 @@ You can probably fix this by running "npm install ${
       projectId: this.projectId,
       triggerId: "",
       ports: {},
+      disabled_features: this.args.disabledRuntimeFeatures,
     };
 
     // TODO(abehaskins): Gracefully handle removal of deleted function definitions
@@ -515,7 +532,7 @@ export function InvokeRuntime(
       JSON.stringify(frb),
       opts.serializedTriggers || "",
     ],
-    { env: { node: nodeBinary, ...opts.env } }
+    { env: { node: nodeBinary, ...opts.env, ...process.env }, cwd: frb.cwd }
   );
 
   const buffers: {
@@ -565,6 +582,10 @@ export function InvokeRuntime(
     ready,
     metadata,
     events: emitter,
+    kill: (signal?: string) => {
+      runtime.kill(signal);
+      emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+    },
   };
 }
 

@@ -41,6 +41,8 @@ export interface FunctionsRuntimeFeatures {
   network_filtering?: boolean;
   timeout?: boolean;
   memory_limiting?: boolean;
+  protect_env?: boolean;
+  admin_stubs?: boolean;
 }
 
 const memoryLookup = {
@@ -144,7 +146,7 @@ export function waitForBody(req: express.Request): Promise<string> {
 }
 
 export function findModuleRoot(moduleName: string, filepath: string): string {
-  const hierarchy = filepath.split("/");
+  const hierarchy = filepath.split(path.sep);
 
   for (let i = 0; i < hierarchy.length; i++) {
     try {
@@ -154,7 +156,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
       } else {
         chunks = hierarchy;
       }
-      const packagePath = path.join(chunks.join("/"), "package.json");
+      const packagePath = path.join(chunks.join(path.sep), "package.json");
       const serializedPackage = fs.readFileSync(packagePath).toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");
