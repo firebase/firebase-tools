@@ -32,14 +32,10 @@ const EVENT_INVOKE = "functions:invoke";
 
 const SERVICE_FIRESTORE = "firestore.googleapis.com";
 
-interface FunctionsEmulatorArgs {
+export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
-}
-
-interface RequestWithRawBody extends express.Request {
-  rawBody: string;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -54,6 +50,10 @@ export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   // A function to manually kill the child process
   kill: (signal?: string) => void;
+}
+
+interface RequestWithRawBody extends express.Request {
+  rawBody: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
