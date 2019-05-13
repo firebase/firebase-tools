@@ -1,0 +1,1 @@
+fixed - Functions emulator no longer watches node_modules files.
