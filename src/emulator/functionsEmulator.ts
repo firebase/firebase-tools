@@ -95,9 +95,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       //  * https://stackoverflow.com/a/37228330/324977
       res.header("Access-Control-Allow-Origin", "*");
 
-      // For callable functions there are the default headers allowed.
-      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-      res.header("Access-Control-Allow-Credentials", "true");
+      // Callable functions send "Authorization" and "Content-Type".
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Origin, X-Requested-With, Content-Type, Authorization, Accept"
+      );
       res.header("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
 
       let data = "";
