@@ -428,13 +428,12 @@ describe("FunctionsEmulatorRuntime", () => {
 
   describe("Runtime", () => {
     describe("HTTPS", () => {
-      it("should handle a single invocation", async () => {
+      it("should handle a GET request", async () => {
         const serializedTriggers = (() => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
-                /* tslint:disable:no-console */
                 res.json({ from_trigger: true });
               }
             ),
@@ -462,6 +461,191 @@ describe("FunctionsEmulatorRuntime", () => {
               });
             }
           ).end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with form data", async () => {
+        const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+          serializedTriggers,
+        });
+
+        await runtime.ready;
+
+        await new Promise((resolve) => {
+          const reqData = "name=sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with JSON data", async () => {
+        const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+          serializedTriggers,
+        });
+
+        await runtime.ready;
+
+        await new Promise((resolve) => {
+          const reqData = '{"name": "sparky"}';
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with text data", async () => {
+        const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+          serializedTriggers,
+        });
+
+        await runtime.ready;
+
+        await new Promise((resolve) => {
+          const reqData = "name is sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "text/plain",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal("name is sparky");
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with any other type", async () => {
+        const serializedTriggers = (() => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        }).toString();
+
+        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
+          serializedTriggers,
+        });
+
+        await runtime.ready;
+
+        await new Promise((resolve) => {
+          const reqData = "name is sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "gibber/ish",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data).type).to.deep.equal("Buffer");
+                expect(JSON.parse(data).data.length).to.deep.equal(14);
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
         });
 
         await runtime.exit;

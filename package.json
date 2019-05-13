@@ -64,6 +64,7 @@
   "dependencies": {
     "JSONStream": "^1.2.1",
     "archiver": "^2.1.1",
+    "body-parser": "^1.19.0",
     "chokidar": "^2.1.5",
     "cjson": "^0.3.1",
     "cli-color": "^1.2.0",
@@ -103,6 +104,7 @@
     "winston": "^1.0.1"
   },
   "devDependencies": {
+    "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.1.6",
     "@types/chai-as-promised": "^7.1.0",
     "@types/cli-color": "^0.3.29",
