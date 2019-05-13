@@ -67,9 +67,10 @@ export function getJob(name: string): Promise<any> {
 /**
  * Updates a cloudScheduler job.
  * Returns a 404 if no job with that name exists.
- * @param job A job to update. Note that name cannot be updated.
+ * @param job A job to update.
  */
 export function updateJob(job: Job): Promise<any> {
+  // Note that name cannot be updated.
   return api.request("PATCH", `/${VERSION}/${job.name}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
@@ -86,7 +87,7 @@ export function updateJob(job: Job): Promise<any> {
  * @throws { FirebaseError } if an error response other than 404 is received on the GET call.
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
-  const jobName = `${job.name.split("/").slice(-1)}`;
+  const jobName = `${job.name.split("/").pop()}`;
   try {
     const existingJob = await getJob(job.name);
     if (!job.timeZone) {
@@ -97,15 +98,14 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     if (isIdentical(existingJob.body, job)) {
       logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
       return;
-    } else {
-      const updatedJob = await updateJob(job);
-      logLabeledBullet("functions", `updated scheduler job ${jobName}`);
-      return updatedJob;
     }
+    const updatedJob = await updateJob(job);
+    logLabeledBullet("functions", `updated scheduler job ${jobName}`);
+    return updatedJob;
   } catch (e) {
     // If the error status is 404, no job exists, so we can create one
     // If it is anything else, we should error out
-    if (e && e.context && e.context.response && e.context.response.statusCode !== 404) {
+    if (_.get(e, "context.response.statusCode") !== 404) {
       throw e;
     }
     const newJob = await createJob(job);
@@ -116,14 +116,15 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
 
 /**
  * Check if two jobs are functionally equivalent.
- * @param existingJob a job to compare.
- * @param newJob a job to compare.
+ * @param job a job to compare.
+ * @param otherJob a job to compare.
  */
-function isIdentical(existingJob: Job, newJob: Job): boolean {
+function isIdentical(job: Job, otherJob: Job): boolean {
   return (
-    existingJob &&
-    existingJob.schedule === newJob.schedule &&
-    existingJob.timeZone === newJob.timeZone &&
-    _.isEqual(existingJob.retryConfig, newJob.retryConfig)
+    job &&
+    otherJob &&
+    job.schedule === otherJob.schedule &&
+    job.timeZone === otherJob.timeZone &&
+    _.isEqual(job.retryConfig, otherJob.retryConfig)
   );
 }
