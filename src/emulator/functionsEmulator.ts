@@ -89,28 +89,22 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const internalRoute = "/functions/projects/:project_id/triggers/:trigger_name";
+    const backgroundFunctionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
-    const externalRoute = `/:project_id/:region/:trigger_name`;
+    const httpsFunctionRoute = `/:project_id/:region/:trigger_name`;
 
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
-    const functionRoutes = [
-      internalRoute,
-      `${internalRoute}/*`,
-      externalRoute,
-      `${externalRoute}/*`,
-    ];
+    const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
-    // Define a common handler function to use for GET and POST requests.
-    const handler: express.RequestHandler = async (req, res) => {
+    const backgroundHandler = async (req: express.Request, res: express.Response) => {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
       logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = reqBody ? JSON.parse(reqBody) : undefined;
+      const proto = JSON.parse(reqBody);
 
       const runtime = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
@@ -137,21 +131,36 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
       const trigger = triggerMap[triggerId];
-      const isHttpsTrigger = !!trigger.definition.httpsTrigger;
+      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
+      track(EVENT_INVOKE, service);
 
-      // Log each invocation and the service type.
-      if (isHttpsTrigger) {
-        track(EVENT_INVOKE, "https");
-      } else {
-        const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
-        track(EVENT_INVOKE, service);
-      }
+      await runtime.exit;
+      return res.json({ status: "acknowledged" });
+    };
 
-      if (!isHttpsTrigger) {
-        // Background functions just wait and then ACK
-        await runtime.exit;
-        return res.json({ status: "acknowledged" });
-      }
+    // Define a common handler function to use for GET and POST requests.
+    const httpsHandler: express.RequestHandler = async (
+      req: express.Request,
+      res: express.Response
+    ) => {
+      const method = req.method;
+      const triggerId = req.params.trigger_name;
+
+      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
+
+      const reqBody = (req as RequestWithRawBody).rawBody;
+
+      const runtime = FunctionsEmulator.startFunctionRuntime(bundleTemplate, triggerId, nodeBinary);
+
+      runtime.events.on("log", (el: EmulatorLog) => {
+        if (el.level === "FATAL") {
+          res.send(el.text);
+        }
+      });
+
+      await runtime.ready;
+      logger.debug(JSON.stringify(runtime.metadata));
+      track(EVENT_INVOKE, "https");
 
       logger.debug(
         `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
@@ -165,7 +174,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path: req.url, // 'url' includes the query params
+          path:
+            "/" +
+            req.url
+              .split("/")
+              .slice(4)
+              .join("/"), // 'url' includes the query params
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -223,8 +237,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtime.exit;
     };
 
-    hub.get(functionRoutes, handler);
-    hub.post(functionRoutes, handler);
+    hub.get(httpsFunctionRoutes, httpsHandler);
+    hub.post(httpsFunctionRoutes, httpsHandler);
+    hub.post(backgroundFunctionRoute, backgroundHandler);
 
     return hub;
   }
@@ -528,7 +543,10 @@ You can probably fix this by running "npm install ${
   }
 }
 
-export interface InvokeRuntimeOpts { serializedTriggers?: string; env?: { [key: string]: string } }
+export interface InvokeRuntimeOpts {
+  serializedTriggers?: string;
+  env?: { [key: string]: string };
+}
 export function InvokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
