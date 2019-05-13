@@ -50,7 +50,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_MED);
+  }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:trigger_id", async () => {
     UseFunctions(() => {
@@ -72,7 +72,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
       });
-  }).timeout(TIMEOUT_MED);
+  }).timeout(TIMEOUT_LONG);
 
   it("should route request body", async () => {
     UseFunctions(() => {
@@ -95,7 +95,7 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_MED);
+  }).timeout(TIMEOUT_LONG);
 
   it("should route query parameters", async () => {
     UseFunctions(() => {
@@ -117,5 +117,5 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
       });
-  }).timeout(TIMEOUT_MED);
+  }).timeout(TIMEOUT_LONG);
 });
