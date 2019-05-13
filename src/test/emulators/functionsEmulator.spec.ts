@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { FunctionsEmulator, FunctionsRuntimeInstance } from "../../emulator/functionsEmulator";
 import * as supertest from "supertest";
-import { FunctionRuntimeBundles, TIMEOUT_MED } from "./fixtures";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 import * as logger from "../../logger";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
