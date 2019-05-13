@@ -2,118 +2,10 @@ import { expect } from "chai";
 import { FunctionsRuntimeInstance, InvokeRuntime } from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
 import { request } from "http";
-import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-import * as supertest from "supertest";
-const cwd = findModuleRoot("firebase-tools", __dirname);
-
-const FunctionRuntimeBundles = {
-  onCreate: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.create",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onWrite: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.write",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onDelete: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        oldValue: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.delete",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onRequest: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-};
+import { FunctionRuntimeBundles } from "./fixtures";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
@@ -424,12 +316,6 @@ describe("FunctionsEmulatorRuntime", () => {
         const logs = await _countLogEntries(runtime);
         expect(logs["functions-config-missing-value"]).to.eq(2);
       }).timeout(TIMEOUT_MED);
-    });
-  });
-
-  describe("Hub", () => {
-    it("should route requests to /:project_id/:trigger_id to HTTPS Function", async () => {
-      // supertest()
     });
   });
 
