@@ -426,8 +426,12 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
       }
+
       new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
-      app = adminModuleTarget.initializeApp({ projectId: frb.projectId, ...opts });
+      app = adminModuleTarget.initializeApp({
+        ...JSON.parse(process.env.FIREBASE_CONFIG || "{}"),
+        ...opts,
+      });
       return app;
     })
     .when("firestore", (adminModuleTarget) => {
@@ -471,9 +475,16 @@ function ProtectEnvironmentalVariables(): void {
 }
 
 function InitializeEnvironmentalVariables(projectId: string): void {
-  process.env.FIREBASE_CONFIG = JSON.stringify({ projectId });
-  process.env.FIREBASE_PROJECT = projectId;
   process.env.GCLOUD_PROJECT = projectId;
+  /*
+    Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
+    https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
+   */
+  process.env.FIREBASE_CONFIG = JSON.stringify({
+    databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
+    storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
+    projectId: process.env.GCLOUD_PROJECT,
+  });
 }
 
 function InitializeFunctionsConfigHelper(functionsDir: string): void {
