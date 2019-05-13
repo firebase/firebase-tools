@@ -90,9 +90,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     hub.use((req, res, next) => {
       // Allow CORS to facilitate easier testing.
-      // Source: https://enable-cors.org/server_expressjCannot understand what targets to deploys.html
+      // Sources:
+      //  * https://enable-cors.org/server_expressjCannot understand what targets to deploys.html
+      //  * https://stackoverflow.com/a/37228330/324977
       res.header("Access-Control-Allow-Origin", "*");
-      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      res.header(
+        "Access-Control-Allow-Headers",
+        "Access-Control-Allow-Headers, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Access-Control-Request-Headers"
+      );
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
 
       let data = "";
       req.on("data", (chunk: any) => {
