@@ -2,6 +2,8 @@ import * as _ from "lodash";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 import * as logger from "../logger";
+import * as utils from "../utils";
+import { Constants } from "./constants";
 
 interface FunctionsShellController {
   call(name: string, data: any, opts: any): void;
@@ -19,6 +21,8 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     this.emulatedFunctions = this.triggers.map((t) => {
       return t.name;
     });
+
+    utils.logLabeledBullet("functions", `Loaded functions: ${this.emulatedFunctions.join(", ")}`);
 
     for (const t of this.triggers) {
       const name = t.name;
@@ -43,13 +47,18 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       service = trigger.eventTrigger.service;
     }
 
-    // TODO: How can I not manually stuff the name in so many places?
-    if (data.value) {
-      data.value.name = opts.resource;
-    }
+    if (service === Constants.SERVICE_FIRESTORE) {
+      // TODO(samstern): We should not have to stuff this name in manually,
+      // we are probably doing something wrong when we create the Firestore
+      // snapshot in the emulator.
+      const resourceName = opts.resource;
+      if (data.value) {
+        data.value.name = resourceName;
+      }
 
-    if (data.oldValue) {
-      data.oldValue.name = opts.resource;
+      if (data.oldValue) {
+        data.oldValue.name = resourceName;
+      }
     }
 
     const proto = {

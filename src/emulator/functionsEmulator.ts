@@ -30,8 +30,7 @@ import * as stream from "stream";
 
 const EVENT_INVOKE = "functions:invoke";
 
-const SERVICE_FIRESTORE = "firestore.googleapis.com";
-const SUPPORTED_SERVICES = [SERVICE_FIRESTORE];
+const SUPPORTED_SERVICES = [Constants.SERVICE_FIRESTORE];
 
 export interface FunctionsEmulatorArgs {
   port?: number;
@@ -457,7 +456,7 @@ You can probably fix this by running "npm install ${
         } else {
           const service: string = _.get(definition, "eventTrigger.service", "unknown");
           switch (service) {
-            case SERVICE_FIRESTORE:
+            case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
             default:
