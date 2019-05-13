@@ -519,7 +519,6 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await runtime.ready;
         await new Promise((resolve) => {
-          const reqData = "name is sparky";
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
@@ -535,7 +534,6 @@ describe("FunctionsEmulator-Runtime", () => {
               });
             }
           );
-          req.write(reqData);
           req.end();
         });
 
