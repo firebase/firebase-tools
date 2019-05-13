@@ -10,6 +10,7 @@ import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
+import * as express from "express";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
@@ -493,6 +494,43 @@ describe("FunctionsEmulator-Runtime", () => {
               res.on("end", () => {
                 expect(JSON.parse(data).type).to.deep.equal("Buffer");
                 expect(JSON.parse(data).data.length).to.deep.equal(14);
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should forward request to Express app", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          const app = require("express")();
+          app.get("/", (req: express.Request, res: express.Response) => {
+            res.json(req.query);
+          });
+          return {
+            function_id: require("firebase-functions").https.onRequest(app),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = "name is sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/?hello=world",
+              method: "get",
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
                 resolve();
               });
             }

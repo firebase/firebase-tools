@@ -7,11 +7,11 @@ import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
 
 // Uncomment this to enable --debug logging!
-logger.add(require("winston").transports.Console, {
-  level: "debug",
-  showLevel: false,
-  colorize: true,
-});
+// logger.add(require("winston").transports.Console, {
+//   level: "debug",
+//   showLevel: false,
+//   colorize: true,
+// });
 
 const startFunctionRuntime = FunctionsEmulator.startFunctionRuntime;
 function UseFunctions(triggers: () => {}): void {
@@ -29,7 +29,7 @@ function UseFunctions(triggers: () => {}): void {
   };
 }
 
-describe.only("FunctionsEmulator-Hub", () => {
+describe("FunctionsEmulator-Hub", () => {
   it("should route requests to /:project_id/:trigger_id to HTTPS Function", async () => {
     UseFunctions(() => {
       require("firebase-admin").initializeApp();
@@ -71,6 +71,51 @@ describe.only("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
+      });
+  }).timeout(TIMEOUT_MED);
+
+  it("should route request body", async () => {
+    UseFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json(req.body);
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .post("/fake-project-id/us-central-1f/function_id/sub/route/a")
+      .send({ hello: "world" })
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({ hello: "world" });
+      });
+  }).timeout(TIMEOUT_MED);
+
+  it("should route query parameters", async () => {
+    UseFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json(req.query);
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/fake-project-id/us-central-1f/function_id/sub/route/a?hello=world")
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({ hello: "world" });
       });
   }).timeout(TIMEOUT_MED);
 });
