@@ -2,6 +2,12 @@ import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
 
+export interface DatabaseInstance {
+  // The globally unique name of the Database instance.
+  // Required to be URL safe.  ex: 'red-ant'
+  instance: string;
+}
+
 function _handleErrorResponse(response: any): any {
   if (response.body && response.body.error) {
     return utils.reject(response.body.error, { code: 2 });
@@ -49,10 +55,4 @@ export async function listDatabaseInstances(projectNumber: number): Promise<Data
     return response.body.instance;
   }
   return _handleErrorResponse(response);
-}
-
-export interface DatabaseInstance {
-  // The globally unique name of the Database instance.
-  // Required to be URL safe.  ex: 'red-ant'
-  instance: string;
 }
