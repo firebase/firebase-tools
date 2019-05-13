@@ -5,6 +5,7 @@ import { request } from "http";
 import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import * as supertest from "supertest";
 const cwd = findModuleRoot("firebase-tools", __dirname);
 
 const FunctionRuntimeBundles = {
@@ -423,6 +424,12 @@ describe("FunctionsEmulatorRuntime", () => {
         const logs = await _countLogEntries(runtime);
         expect(logs["functions-config-missing-value"]).to.eq(2);
       }).timeout(TIMEOUT_MED);
+    });
+  });
+
+  describe("Hub", () => {
+    it("should route requests to /:project_id/:trigger_id to HTTPS Function", async () => {
+      // supertest()
     });
   });
 

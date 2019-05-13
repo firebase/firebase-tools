@@ -61,31 +61,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
 
-  private readonly port: number;
-  private readonly projectId: string = "";
-
-  private server?: http.Server;
-  private firebaseConfig: any;
-  private functionsDir: string = "";
-  private nodeBinary: string = "";
-  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-
-  constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
-    this.projectId = getProjectId(this.options, false);
-  }
-
-  async start(): Promise<void> {
-    this.functionsDir = path.join(
-      this.options.config.projectDir,
-      this.options.config.get("functions.source")
-    );
-
-    this.nodeBinary = await askInstallNodeVersion(this.functionsDir);
-
-    // TODO: This call requires authentication, which we should remove eventually
-    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-
+  static createHubServer(
+    bundleTemplate: FunctionsRuntimeBundle,
+    nodeBinary: string
+  ): express.Application {
     const hub = express();
 
     hub.use((req, res, next) => {
@@ -105,13 +84,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     hub.get("/", async (req, res) => {
-      res.send(
-        JSON.stringify(
-          await getTriggersFromDirectory(this.projectId, this.functionsDir, this.firebaseConfig),
-          null,
-          2
-        )
-      );
+      res.json({ status: "alive" });
     });
 
     // The URL for the function that the other emulators (Firestore, etc) use.
@@ -132,14 +105,19 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Define a common handler function to use for GET and POST requests.
     const handler: express.RequestHandler = async (req, res) => {
       const method = req.method;
-      const triggerName = req.params.trigger_name;
+      const triggerId = req.params.trigger_name;
 
-      logger.debug(`[functions] ${method} request to function ${triggerName} accepted.`);
+      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = reqBody ? JSON.parse(reqBody) : undefined;
 
-      const runtime = this.startFunctionRuntime(triggerName, proto);
+      const runtime = FunctionsEmulator.startFunctionRuntime(
+        bundleTemplate,
+        triggerId,
+        nodeBinary,
+        proto
+      );
 
       runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
@@ -158,8 +136,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggerLog = await triggerLogPromise;
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
-      const trigger = triggerMap[triggerName];
-      const isHttpsTrigger = trigger.definition.httpsTrigger ? true : false;
+      const trigger = triggerMap[triggerId];
+      const isHttpsTrigger = !!trigger.definition.httpsTrigger;
 
       // Log each invocation and the service type.
       if (isHttpsTrigger) {
@@ -248,27 +226,30 @@ export class FunctionsEmulator implements EmulatorInstance {
     hub.get(functionRoutes, handler);
     hub.post(functionRoutes, handler);
 
-    this.server = hub.listen(this.port);
+    return hub;
   }
 
-  startFunctionRuntime(triggerName: string, proto?: any): FunctionsRuntimeInstance {
+  static startFunctionRuntime(
+    bundleTemplate: FunctionsRuntimeBundle,
+    triggerId: string,
+    nodeBinary: string,
+    proto?: any
+  ): FunctionsRuntimeInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
+      ...bundleTemplate,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
       },
       proto,
-      cwd: this.functionsDir,
-      triggerId: triggerName,
-      projectId: this.projectId,
-      disabled_features: this.args.disabledRuntimeFeatures,
+      triggerId,
     };
 
-    const runtime = InvokeRuntime(this.nodeBinary, runtimeBundle);
-    runtime.events.on("log", this.handleRuntimeLog.bind(this));
+    const runtime = InvokeRuntime(nodeBinary, runtimeBundle);
+    runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
     return runtime;
   }
 
-  handleSystemLog(systemLog: EmulatorLog): void {
+  static handleSystemLog(systemLog: EmulatorLog): void {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
@@ -351,13 +332,13 @@ You can probably fix this by running "npm install ${
     }
   }
 
-  handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
+  static handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
     if (ignore.indexOf(log.level) >= 0) {
       return;
     }
     switch (log.level) {
       case "SYSTEM":
-        this.handleSystemLog(log);
+        FunctionsEmulator.handleSystemLog(log);
         break;
       case "USER":
         logger.info(`${clc.blackBright("> ")} ${log.text}`);
@@ -380,6 +361,45 @@ You can probably fix this by running "npm install ${
     }
   }
 
+  private readonly port: number;
+  private readonly projectId: string = "";
+
+  private server?: http.Server;
+  private firebaseConfig: any;
+  private functionsDir: string = "";
+  private nodeBinary: string = "";
+  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
+  private bundleTemplate: FunctionsRuntimeBundle;
+
+  constructor(private options: any, private args: FunctionsEmulatorArgs) {
+    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
+    this.projectId = getProjectId(this.options, false);
+
+    this.functionsDir = path.join(
+      this.options.config.projectDir,
+      this.options.config.get("functions.source")
+    );
+
+    this.bundleTemplate = {
+      cwd: this.functionsDir,
+      projectId: this.projectId,
+      triggerId: "",
+      ports: {},
+      disabled_features: this.args.disabledRuntimeFeatures,
+    };
+  }
+
+  async start(): Promise<void> {
+    this.nodeBinary = await askInstallNodeVersion(this.functionsDir);
+
+    // TODO: This call requires authentication, which we should remove eventually
+    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
+
+    this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
+      this.port
+    );
+  }
+
   async connect(): Promise<void> {
     utils.logLabeledBullet("functions", `Watching "${this.functionsDir}" for Cloud Functions...`);
 
@@ -391,20 +411,12 @@ You can probably fix this by running "npm install ${
       persistent: true,
     });
 
-    const diagnosticBundle: FunctionsRuntimeBundle = {
-      cwd: this.functionsDir,
-      projectId: this.projectId,
-      triggerId: "",
-      ports: {},
-      disabled_features: this.args.disabledRuntimeFeatures,
-    };
-
     // TODO(abehaskins): Gracefully handle removal of deleted function definitions
     const loadTriggers = async () => {
-      const runtime = InvokeRuntime(this.nodeBinary, diagnosticBundle);
+      const runtime = InvokeRuntime(this.nodeBinary, this.bundleTemplate);
 
       runtime.events.on("log", (el: EmulatorLog) => {
-        this.handleRuntimeLog(el);
+        FunctionsEmulator.handleRuntimeLog(el);
       });
 
       const triggerParseEvent = await waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
