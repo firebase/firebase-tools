@@ -9,7 +9,7 @@ import { request } from "http";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-import { FunctionRuntimeBundles } from "./fixtures";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
@@ -42,9 +42,6 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
     process.stdout.write(el.toPrettyString() + "\n");
   });
 }
-
-const TIMEOUT_LONG = 10000;
-const TIMEOUT_MED = 5000;
 
 describe("FunctionsEmulator-Runtime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
