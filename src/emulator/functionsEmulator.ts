@@ -233,7 +233,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
     nodeBinary: string,
-    proto?: any
+    proto?: any,
+    runtimeOpts?: InvokeRuntimeOpts
   ): FunctionsRuntimeInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
@@ -244,7 +245,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       triggerId,
     };
 
-    const runtime = InvokeRuntime(nodeBinary, runtimeBundle);
+    const runtime = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
     runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
     return runtime;
   }
@@ -527,10 +528,11 @@ You can probably fix this by running "npm install ${
   }
 }
 
+export interface InvokeRuntimeOpts { serializedTriggers?: string; env?: { [key: string]: string } }
 export function InvokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
-  opts?: { serializedTriggers?: string; env?: { [key: string]: string } }
+  opts?: InvokeRuntimeOpts
 ): FunctionsRuntimeInstance {
   opts = opts || {};
 
