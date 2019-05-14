@@ -14,7 +14,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   emulatedFunctions: string[];
   urls: { [name: string]: string } = {};
 
-  private triggerMap: { [name:string]: EmulatedTriggerDefinition } = {};
+  private triggerMap: { [name: string]: EmulatedTriggerDefinition } = {};
 
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggers();
@@ -41,7 +41,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
   call(name: string, data: any, opts: any): void {
     const trigger = this.triggerMap[name];
-    
+
     let service = undefined;
     if (trigger.eventTrigger) {
       service = trigger.eventTrigger.service;

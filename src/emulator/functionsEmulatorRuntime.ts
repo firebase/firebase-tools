@@ -16,6 +16,7 @@ import { extractParamsFromPath } from "./functionsEmulatorUtils";
 import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
+import { WrappedFunction } from "firebase-functions-test/lib/main";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -570,69 +571,36 @@ async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  const { Change } = require("firebase-functions");
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
+  // new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
+  // const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
+  // const func = trigger.getWrappedFunction(require(fftResolution));
+
   const proto = frb.proto;
+  await RunBackground(trigger.getRawFunction(), proto);
+}
 
-  adminModuleProxy.firestore().settings({});
-  const makeFirestoreSnapshot = (app.firestore() as any).snapshot_.bind(app.firestore());
-
-  const resourcePath = proto.context.resource.name;
-  const params = extractParamsFromPath(trigger.definition.eventTrigger.resource, resourcePath);
-
-  /*
-  We use an internal Firestore method makeFirestoreSnapshot to generate Snapshots which we pass to firebase-function's
-  Change object. If we have a value for new / old snap, then we create a valid snapshot, otherwise we
-  invoke makeFirestoreSnapshot with a different signature describe here...
-  https://github.com/googleapis/nodejs-firestore/blob/114de25d1af3fc7441da3242f6bc8cc8354ffa09/dev/test/index.ts#L574
-  To create a snapshot where .exists() fails.
-   */
-
-  let newSnap;
-  if (proto.data.value) {
-    newSnap = makeFirestoreSnapshot(proto.data.value, new Date().toISOString(), "json");
-  } else {
-    newSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
-  }
-
-  let oldSnap;
-  if (proto.data.oldValue) {
-    oldSnap = makeFirestoreSnapshot(proto.data.oldValue, new Date().toISOString(), "json");
-  } else {
-    oldSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
-  }
-
-  let data;
-  switch (trigger.definition.eventTrigger.eventType) {
-    case "providers/cloud.firestore/eventTypes/document.write":
-      data = Change.fromObjects(oldSnap, newSnap);
-      break;
-    case "providers/cloud.firestore/eventTypes/document.update":
-      data = Change.fromObjects(oldSnap, newSnap);
-      break;
-    case "providers/cloud.firestore/eventTypes/document.delete":
-      data = oldSnap;
-      break;
-    case "providers/cloud.firestore/eventTypes/document.create":
-      data = newSnap;
-      break;
-  }
-
-  const ctx = {
-    eventId: proto.context.eventId,
-    timestamp: proto.context.timestamp,
-    params,
-    auth: {},
-    authType: "UNAUTHENTICATED",
+// TODO: Unify this with the HTTPS one (just Run())
+async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
+  /* tslint:disable:no-console */
+  const log = console.log;
+  console.log = (...messages: any[]) => {
+    new EmulatorLog("USER", "function-log", messages.join(" ")).log();
   };
 
-  new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
+  let caughtErr;
+  try {
+    await func(proto);
+  } catch (err) {
+    caughtErr = err;
+  }
+  console.log = log;
 
-  const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
-  const func = trigger.getWrappedFunction(require(fftResolution));
-
-  await Run([data, ctx], func);
+  new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server survived.`).log();
+  if (caughtErr) {
+    throw caughtErr;
+  }
 }
 
 // TODO(abehaskins): This signature could probably use work lol

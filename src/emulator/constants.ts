@@ -12,7 +12,6 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
-
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
 
   static getDefaultHost(emulator: Emulators): string {
