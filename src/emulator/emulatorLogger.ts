@@ -3,6 +3,8 @@ import * as logger from "../logger";
 
 type LogType = "DEBUG" | "INFO" | "USER" | "BULLET" | "WARN" | "SUCCESS";
 
+const NEVER_QUIET: LogType[] = ["USER", "WARN"];
+
 export class EmulatorLogger {
   static quiet: boolean = false;
 
@@ -11,8 +13,8 @@ export class EmulatorLogger {
    * so that we can respect the "quiet" flag.
    */
   static log(type: LogType, text: string): void {
-    if (EmulatorLogger.quiet && type !== "USER") {
-      logger.debug(text);
+    if (EmulatorLogger.shouldSupress(type)) {
+      logger.debug(`${type}: ${text}`);
       return;
     }
 
@@ -43,7 +45,7 @@ export class EmulatorLogger {
    * so that we can respect the "quiet" flag.
    */
   static logLabeled(type: LogType, label: string, text: string): void {
-    if (EmulatorLogger.quiet) {
+    if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`[${label}] ${text}`);
       return;
     }
@@ -56,5 +58,9 @@ export class EmulatorLogger {
         utils.logLabeledSuccess(label, text);
         break;
     }
+  }
+
+  private static shouldSupress(type: LogType): boolean {
+    return EmulatorLogger.quiet && NEVER_QUIET.indexOf(type) < 0;
   }
 }

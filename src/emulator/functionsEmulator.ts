@@ -316,7 +316,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "default-admin-app-used":
-        EmulatorLogger.log("WARN", `Default "firebase-admin" instance created!`);
+        EmulatorLogger.log("INFO", `Default "firebase-admin" instance created!`);
         break;
       case "non-default-admin-app-used":
         EmulatorLogger.log(
@@ -520,7 +520,7 @@ You can probably fix this by running "npm install ${
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               EmulatorLogger.log(
-                "WARN",
+                "INFO",
                 `Ignoring trigger "${
                   definition.name
                 }" because the service "${service}" is not yet supported.`
@@ -545,7 +545,7 @@ You can probably fix this by running "npm install ${
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
       EmulatorLogger.log(
-        "WARN",
+        "INFO",
         `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
       );
       return Promise.resolve();

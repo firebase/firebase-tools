@@ -15,6 +15,7 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import { EmulatorLogger } from "./emulatorLogger";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -570,7 +571,11 @@ async function ProcessBackground(
   // https://github.com/firebase/firebase-tools/issues/1288
   if (service === "firestore.googleapis.com") {
     if (proto.context) {
-      if (typeof proto.context.resource == "object") {
+      if (typeof proto.context.resource === "object") {
+        EmulatorLogger.log(
+          "DEBUG",
+          `[firestore] got resource ${proto.context.resource}, replacing with "name"`
+        );
         proto.context.resource = proto.context.resource.name;
       }
     }

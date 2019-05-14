@@ -1,8 +1,10 @@
 import * as _ from "lodash";
+import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import * as FirebaseError from "../error";
 import { Constants } from "./constants";
 
 interface FunctionsShellController {
@@ -37,58 +39,27 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   }
 
   call(name: string, data: any, opts: any): void {
+    const trigger = this.getTrigger(name);
+    logger.debug(`shell:${name}: trigger=${JSON.stringify(trigger)}`);
     logger.debug(`shell:${name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`);
 
-    const trigger = this.getTrigger(name);
-    const service = trigger.eventTrigger ? trigger.eventTrigger.service : "unknown";
+    if (!trigger.eventTrigger) {
+      throw new FirebaseError(`Function ${name} is not a background function`);
+    }
 
-    // THIS:
-    const myCtx = {
-      authType: "USER",
-      auth: {
-        uid: "abc",
-        token: {},
-      },
-      params: {
-        doc: "a",
-      },
-      resource: {
-        name: "projects/_/instances/fir-dumpster/refs/foo/a",
-        service: "firebaseio.com",
-      },
-    };
-
-    // PROD:
-    const prodCtx = {
-      // THESE THREE THINGS MISSING
-      eventId: "f56d14e9-8ce6-47fc-a9dd-f03f19cc5dc9",
-      timestamp: "2019-05-14T19:35:52.839Z",
-      eventType: "google.firebase.database.ref.write",
-
-      authType: "USER",
-      auth: {
-        uid: "abc",
-        token: {},
-      },
-      params: {
-        doc: "a",
-      },
-      resource: {
-        service: "firebaseio.com",
-        name: "projects/_/instances/fir-dumpster/refs/foo/a",
-      },
-    };
-
-    const resourceName = opts.resource;
-    const resource = {
-      name: resourceName,
-      service,
-    };
+    const service = trigger.eventTrigger.service;
+    const eventType = trigger.eventTrigger.eventType;
+    const resource = opts.resource;
 
     const proto = {
       context: {
-        ...opts,
+        eventId: uuid.v4(),
+        timestamp: new Date().toISOString(),
+        eventType,
         resource,
+        params: opts.params,
+        auth: opts.auth,
+        authType: opts.authType,
       },
       data,
     };
@@ -112,9 +83,15 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     );
   }
 
-  private getTrigger(name: string) {
-    return this.triggers.filter((def) => {
+  private getTrigger(name: string): EmulatedTriggerDefinition {
+    const trig = this.triggers.find((def) => {
       return def.name === name;
-    })[0];
+    });
+
+    if (!trig) {
+      throw new FirebaseError(`Could not find trigger ${name}`);
+    }
+
+    return trig;
   }
 }

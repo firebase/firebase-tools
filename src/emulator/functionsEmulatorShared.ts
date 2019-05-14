@@ -17,7 +17,13 @@ export interface EmulatedTriggerDefinition {
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
-  eventTrigger?: any;
+  eventTrigger?: EventTrigger;
+}
+
+export interface EventTrigger {
+  resource: string;
+  service: string;
+  eventType: string;
 }
 
 export interface EmulatedTriggerMap {
