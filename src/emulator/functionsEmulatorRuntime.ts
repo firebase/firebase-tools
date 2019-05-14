@@ -588,6 +588,8 @@ async function ProcessBackground(
 
 // TODO: Unify this with the HTTPS one (just Run())
 async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
+  new EmulatorLog("DEBUG", "runtime-status", `${JSON.stringify(proto)}`).log();
+
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {

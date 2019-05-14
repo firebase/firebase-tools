@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 import * as utils from "../utils";
+import { Constants } from "./constants";
 
 interface FunctionsShellController {
   call(name: string, data: any, opts: any): void;
@@ -42,6 +43,26 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
+    const trigger = this.getTrigger(name);
+    const service = trigger.eventTrigger ? trigger.eventTrigger.service : "unknown";
+
+    // TODO: This should NOT be necessary!
+    if (service === Constants.SERVICE_FIRESTORE) {
+      if (proto.data.value) {
+        proto.data.value.name = proto.context.resource;
+      }
+
+      if (proto.data.oldValue) {
+        proto.data.oldValue.name = proto.context.resource;
+      }
+    }
+
     this.emu.startFunctionRuntime(name, proto);
+  }
+
+  private getTrigger(name: string) {
+    return this.triggers.filter((def) => {
+      return def.name === name;
+    })[0];
   }
 }
