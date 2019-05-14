@@ -22,11 +22,11 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
-  getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
+import { removePathSegments } from "./functionsEmulatorUtils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -60,6 +60,8 @@ interface RequestWithRawBody extends express.Request {
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
+  static quiet: boolean = false;
+
   static isTriggerSupported(definition: EmulatedTriggerDefinition): boolean {
     if (definition.httpsTrigger) {
       return true;
@@ -73,33 +75,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
 
-  readonly projectId: string = "";
-
-  private readonly port: number;
-  private server?: http.Server;
-  private firebaseConfig: any;
-  private functionsDir: string = "";
-  private nodeBinary: string = "";
-
-  private triggers: EmulatedTriggerDefinition[] = [];
-  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-
-  constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
-    this.projectId = getProjectId(this.options, false);
-  }
-
-  async start(): Promise<void> {
-    this.functionsDir = path.join(
-      this.options.config.projectDir,
-      this.options.config.get("functions.source")
-    );
-
-    this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
-
-    // TODO: This call requires authentication, which we should remove eventually
-    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-
+  static createHubServer(
+    bundleTemplate: FunctionsRuntimeBundle,
+    nodeBinary: string
+  ): express.Application {
     const hub = express();
 
     hub.use((req, res, next) => {
@@ -127,41 +106,34 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     hub.get("/", async (req, res) => {
-      res.send(
-        JSON.stringify(
-          await getTriggersFromDirectory(this.projectId, this.functionsDir, this.firebaseConfig),
-          null,
-          2
-        )
-      );
+      res.json({ status: "alive" });
     });
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const internalRoute = "/functions/projects/:project_id/triggers/:trigger_name";
+    const backgroundFunctionRoute = "/functions/projects/:project_id/triggers/:trigger_name";
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
-    const externalRoute = `/:project_id/:region/:trigger_name`;
+    const httpsFunctionRoute = `/:project_id/:region/:trigger_name`;
 
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
-    const functionRoutes = [
-      internalRoute,
-      `${internalRoute}/*`,
-      externalRoute,
-      `${externalRoute}/*`,
-    ];
+    const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
-    // Define a common handler function to use for GET and POST requests.
-    const handler: express.RequestHandler = async (req, res) => {
+    const backgroundHandler = async (req: express.Request, res: express.Response) => {
       const method = req.method;
-      const triggerName = req.params.trigger_name;
+      const triggerId = req.params.trigger_name;
 
-      this.log("DEBUG", `[functions] ${method} request to function ${triggerName} accepted.`);
+      FunctionsEmulator.log("DEBUG", `[functions] ${method} request to function ${triggerId} accepted.`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = reqBody ? JSON.parse(reqBody) : undefined;
+      const proto = JSON.parse(reqBody);
 
-      const runtime = this.startFunctionRuntime(triggerName, proto);
+      const runtime = FunctionsEmulator.startFunctionRuntime(
+        bundleTemplate,
+        triggerId,
+        nodeBinary,
+        proto
+      );
 
       runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
@@ -173,31 +145,46 @@ export class FunctionsEmulator implements EmulatorInstance {
       // this log entry to happen during the readying.
       const triggerLogPromise = waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
 
-      this.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
+      FunctionsEmulator.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
       await runtime.ready;
-      this.log("DEBUG", JSON.stringify(runtime.metadata));
+      FunctionsEmulator.log("DEBUG", JSON.stringify(runtime.metadata));
 
       const triggerLog = await triggerLogPromise;
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
-      const trigger = triggerMap[triggerName];
-      const isHttpsTrigger = trigger.definition.httpsTrigger ? true : false;
+      const trigger = triggerMap[triggerId];
+      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
+      track(EVENT_INVOKE, service);
 
-      // Log each invocation and the service type.
-      if (isHttpsTrigger) {
-        track(EVENT_INVOKE, "https");
-      } else {
-        const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
-        track(EVENT_INVOKE, service);
-      }
+      await runtime.exit;
+      return res.json({ status: "acknowledged" });
+    };
 
-      if (!isHttpsTrigger) {
-        // Background functions just wait and then ACK
-        await runtime.exit;
-        return res.json({ status: "acknowledged" });
-      }
+    // Define a common handler function to use for GET and POST requests.
+    const httpsHandler: express.RequestHandler = async (
+      req: express.Request,
+      res: express.Response
+    ) => {
+      const method = req.method;
+      const triggerId = req.params.trigger_name;
 
-      this.log(
+      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
+
+      const reqBody = (req as RequestWithRawBody).rawBody;
+
+      const runtime = FunctionsEmulator.startFunctionRuntime(bundleTemplate, triggerId, nodeBinary);
+
+      runtime.events.on("log", (el: EmulatorLog) => {
+        if (el.level === "FATAL") {
+          res.status(500).send(el.text);
+        }
+      });
+
+      await runtime.ready;
+      logger.debug(JSON.stringify(runtime.metadata));
+      track(EVENT_INVOKE, "https");
+
+      FunctionsEmulator.log(
         "DEBUG",
         `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
       );
@@ -210,7 +197,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path: req.url, // 'url' includes the query params
+          path: "/" + removePathSegments(req.url, 3), // Remove the first 4 url paths like /X/X/X/a/b/c/
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -268,38 +255,43 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtime.exit;
     };
 
-    hub.get(functionRoutes, handler);
-    hub.post(functionRoutes, handler);
+    hub.get(httpsFunctionRoutes, httpsHandler);
+    hub.post(httpsFunctionRoutes, httpsHandler);
+    hub.post(backgroundFunctionRoute, backgroundHandler);
 
-    this.server = hub.listen(this.port);
+    return hub;
   }
 
-  startFunctionRuntime(triggerName: string, proto?: any): FunctionsRuntimeInstance {
+  static startFunctionRuntime(
+    bundleTemplate: FunctionsRuntimeBundle,
+    triggerId: string,
+    nodeBinary: string,
+    proto?: any,
+    runtimeOpts?: InvokeRuntimeOpts
+  ): FunctionsRuntimeInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
+      ...bundleTemplate,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
       },
       proto,
-      cwd: this.functionsDir,
-      triggerId: triggerName,
-      projectId: this.projectId,
-      disabled_features: this.args.disabledRuntimeFeatures,
+      triggerId,
     };
 
-    const runtime = InvokeRuntime(this.nodeBinary, runtimeBundle);
-    runtime.events.on("log", this.handleRuntimeLog.bind(this));
+    const runtime = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
+    runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
     return runtime;
   }
 
-  handleSystemLog(systemLog: EmulatorLog): void {
+  static handleSystemLog(systemLog: EmulatorLog): void {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          this.log("WARN", `Your function was killed because it raised an unhandled error.`);
+          FunctionsEmulator.log("WARN", `Your function was killed because it raised an unhandled error.`);
         }
         break;
       case "googleapis-network-access":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `Google API requested!\n   - URL: "${
             systemLog.data.href
@@ -307,10 +299,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "unidentified-network-access":
-        this.log("WARN", `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`);
+        FunctionsEmulator.log("WARN", `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`);
         break;
       case "functions-config-missing-value":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `Non-existent functions.config() value requested!\n   - Path: "${
             systemLog.data.valuePath
@@ -318,17 +310,17 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "default-admin-app-used":
-        this.log("WARN", `Default "firebase-admin" instance created!`);
+        FunctionsEmulator.log("WARN", `Default "firebase-admin" instance created!`);
         break;
       case "non-default-admin-app-used":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
             `- This instance will *not* be mocked and will access production resources.`
         );
         break;
       case "missing-module":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -340,7 +332,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "uninstalled-module":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -349,7 +341,7 @@ You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -360,7 +352,7 @@ You can probably fix this by running "npm install ${
         );
         break;
       case "missing-package-json":
-        this.log(
+        FunctionsEmulator.log(
           "WARN",
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
@@ -381,34 +373,80 @@ You can probably fix this by running "npm install ${
     }
   }
 
-  handleRuntimeLog(log: EmulatorLog): void {
+  static handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
+    if (ignore.indexOf(log.level) >= 0) {
+      return;
+    }
     switch (log.level) {
       case "SYSTEM":
-        this.handleSystemLog(log);
+        FunctionsEmulator.handleSystemLog(log);
         break;
       case "USER":
-        this.log("USER", `${clc.blackBright("> ")} ${log.text}`);
+        FunctionsEmulator.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        this.log("DEBUG", log.text);
+        FunctionsEmulator.log("DEBUG", log.text);
         break;
       case "INFO":
-        this.logLabeled("BULLET", "functions", log.text);
+        FunctionsEmulator.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        this.log("WARN", log.text);
+        FunctionsEmulator.log("WARN", log.text);
         break;
       case "FATAL":
-        this.log("WARN", log.text);
+        FunctionsEmulator.log("WARN", log.text);
         break;
       default:
-        this.log("INFO", `${log.level}: ${log.text}`);
+        FunctionsEmulator.log("INFO", `${log.level}: ${log.text}`);
         break;
     }
   }
 
+  readonly projectId: string = "";
+  readonly bundleTemplate: FunctionsRuntimeBundle;
+  nodeBinary: string = "";
+
+  private readonly port: number;
+  private server?: http.Server;
+  private firebaseConfig: any;
+  private functionsDir: string = "";
+  private triggers: EmulatedTriggerDefinition[] = [];
+  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
+
+  constructor(private options: any, private args: FunctionsEmulatorArgs) {
+    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
+    this.projectId = getProjectId(this.options, false);
+
+    this.functionsDir = path.join(
+      this.options.config.projectDir,
+      this.options.config.get("functions.source")
+    );
+
+    this.bundleTemplate = {
+      cwd: this.functionsDir,
+      projectId: this.projectId,
+      triggerId: "",
+      ports: {},
+      disabled_features: this.args.disabledRuntimeFeatures,
+    };
+
+    // TODO: Would prefer not to have static state but here we are!
+    FunctionsEmulator.quiet = this.args.quiet || false;
+  }
+
+  async start(): Promise<void> {
+    this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
+
+    // TODO: This call requires authentication, which we should remove eventually
+    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
+
+    this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
+      this.port
+    );
+  }
+
   async connect(): Promise<void> {
-    this.logLabeled(
+    FunctionsEmulator.logLabeled(
       "BULLET",
       "functions",
       `Watching "${this.functionsDir}" for Cloud Functions...`
@@ -423,20 +461,21 @@ You can probably fix this by running "npm install ${
       persistent: true,
     });
 
-    const diagnosticBundle: FunctionsRuntimeBundle = {
-      cwd: this.functionsDir,
-      projectId: this.projectId,
-      triggerId: "",
-      ports: {},
-      disabled_features: this.args.disabledRuntimeFeatures,
-    };
-
     // TODO(abehaskins): Gracefully handle removal of deleted function definitions
     const loadTriggers = async () => {
-      const runtime = InvokeRuntime(this.nodeBinary, diagnosticBundle);
+      /*
+      When a user changes their code, we need to look for triggers defined in their updates sources.
+      To do this, we spin up a "diagnostic" runtime invocation. In other words, we pretend we're
+      going to invoke a cloud function in the emulator, but stop short of actually running a function.
+      Instead, we set up the environment and catch a special "triggers-parsed" log from the runtime
+      then exit out.
+
+      A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
+       */
+      const runtime = InvokeRuntime(this.nodeBinary, this.bundleTemplate);
 
       runtime.events.on("log", (el: EmulatorLog) => {
-        this.handleRuntimeLog(el);
+        FunctionsEmulator.handleRuntimeLog(el);
       });
 
       const triggerParseEvent = await waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
@@ -461,7 +500,7 @@ You can probably fix this by running "npm install ${
             region
           );
 
-          this.logLabeled("BULLET", "functions", `HTTP trigger initialized at ${clc.bold(url)}`);
+          FunctionsEmulator.logLabeled("BULLET", "functions", `HTTP trigger initialized at ${clc.bold(url)}`);
         } else {
           const service: string = _.get(definition, "eventTrigger.service", "unknown");
           switch (service) {
@@ -469,8 +508,8 @@ You can probably fix this by running "npm install ${
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
             default:
-              this.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
-              this.log(
+              FunctionsEmulator.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+              FunctionsEmulator.log(
                 "WARN",
                 `Ignoring trigger "${
                   definition.name
@@ -485,7 +524,7 @@ You can probably fix this by running "npm install ${
 
     const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
     watcher.on("change", (filePath) => {
-      this.log("DEBUG", `File ${filePath} changed, reloading triggers`);
+      FunctionsEmulator.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
 
@@ -495,7 +534,7 @@ You can probably fix this by running "npm install ${
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
-      this.log(
+      FunctionsEmulator.log(
         "WARN",
         `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
       );
@@ -503,7 +542,7 @@ You can probably fix this by running "npm install ${
     }
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
-    this.logLabeled(
+    FunctionsEmulator.logLabeled(
       "BULLET",
       "functions",
       `Setting up Cloud Firestore trigger "${definition.name}"`
@@ -520,13 +559,13 @@ You can probably fix this by running "npm install ${
         },
         (err, res, body) => {
           if (err) {
-            this.log("WARN", "Error adding trigger: " + err);
+            FunctionsEmulator.log("WARN", "Error adding trigger: " + err);
             reject();
             return;
           }
 
           if (JSON.stringify(JSON.parse(body)) === "{}") {
-            this.logLabeled(
+            FunctionsEmulator.logLabeled(
               "SUCCESS",
               "functions",
               `Trigger "${definition.name}" has been acknowledged by the Cloud Firestore emulator.`
@@ -569,7 +608,7 @@ You can probably fix this by running "npm install ${
 
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if (!pkg.engines || !pkg.engines.node) {
-      this.log(
+      FunctionsEmulator.log(
         "WARN",
         "Your functions directory does not specify a Node version.\n   " +
           "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
@@ -592,13 +631,13 @@ You can probably fix this by running "npm install ${
 
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
-      this.logLabeled("SUCCESS", "functions", `Using node@${requestedMajorVersion} from host.`);
+      FunctionsEmulator.logLabeled("SUCCESS", "functions", `Using node@${requestedMajorVersion} from host.`);
       return process.execPath;
     }
 
     // If the requested version is already locally available, let's use that
     if (localMajorVersion === requestedMajorVersion) {
-      this.logLabeled(
+      FunctionsEmulator.logLabeled(
         "SUCCESS",
         "functions",
         `Using node@${requestedMajorVersion} from local cache.`
@@ -610,7 +649,7 @@ You can probably fix this by running "npm install ${
     Otherwise we'll begin the conversational flow to install the correct version locally
    */
 
-    this.log(
+    FunctionsEmulator.log(
       "WARN",
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
     );
@@ -622,8 +661,8 @@ You can probably fix this by running "npm install ${
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
    */
-  log(type: LogType, text: string): void {
-    if (this.args.quiet && type !== "USER") {
+  static log(type: LogType, text: string): void {
+    if (FunctionsEmulator.quiet && type !== "USER") {
       logger.debug(text);
       return;
     }
@@ -654,8 +693,8 @@ You can probably fix this by running "npm install ${
    * Within this file, utils.logLabeldFoo() should not be called directly,
    * so that we can respect the "quiet" flag.
    */
-  logLabeled(type: LogType, label: string, text: string): void {
-    if (this.args.quiet) {
+  static logLabeled(type: LogType, label: string, text: string): void {
+    if (FunctionsEmulator.quiet) {
       logger.debug(`[${label}] ${text}`);
       return;
     }
@@ -671,10 +710,14 @@ You can probably fix this by running "npm install ${
   }
 }
 
+export interface InvokeRuntimeOpts {
+  serializedTriggers?: string;
+  env?: { [key: string]: string };
+}
 export function InvokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
-  opts?: { serializedTriggers?: string; env?: { [key: string]: string } }
+  opts?: InvokeRuntimeOpts
 ): FunctionsRuntimeInstance {
   opts = opts || {};
 

@@ -104,7 +104,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       }
     }
 
-    this.emu.startFunctionRuntime(name, proto);
+    FunctionsEmulator.startFunctionRuntime(this.emu.bundleTemplate, name, this.emu.nodeBinary, proto);
   }
 
   private getTrigger(name: string) {
