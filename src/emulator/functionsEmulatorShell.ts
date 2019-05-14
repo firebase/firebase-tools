@@ -47,26 +47,9 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       service = trigger.eventTrigger.service;
     }
 
-    if (service === Constants.SERVICE_FIRESTORE) {
-      // TODO(samstern): We should not have to stuff this name in manually,
-      // we are probably doing something wrong when we create the Firestore
-      // snapshot in the emulator.
-      const resourceName = opts.resource;
-      if (data.value) {
-        data.value.name = resourceName;
-      }
-
-      if (data.oldValue) {
-        data.oldValue.name = resourceName;
-      }
-    }
-
     const proto = {
       context: {
-        resource: {
-          name: opts.resource,
-          service,
-        },
+        resource: opts.resource,
       },
       data,
     };

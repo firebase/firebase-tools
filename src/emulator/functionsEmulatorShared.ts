@@ -73,10 +73,6 @@ export class EmulatedTrigger {
     }
   }
 
-  getModule() {
-    return this.module;
-  }
-
   getRawFunction(): CloudFunction<any> {
     if (!this.module) {
       throw new Error("EmulatedTrigger has not been provided a module.");

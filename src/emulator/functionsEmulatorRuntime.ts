@@ -17,6 +17,7 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import { WrappedFunction } from "firebase-functions-test/lib/main";
+import { consoleUrl } from "../utils";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -572,17 +573,15 @@ async function ProcessBackground(
   trigger: EmulatedTrigger
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
-
-  // new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
-  // const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
-  // const func = trigger.getWrappedFunction(require(fftResolution));
-
   const proto = frb.proto;
   await RunBackground(trigger.getRawFunction(), proto);
 }
 
 // TODO: Unify this with the HTTPS one (just Run())
 async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
+  // TODO: Remove this
+  console.warn("RunBackground", proto, JSON.stringify(proto));
+
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
