@@ -7,6 +7,7 @@ import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
+  // tslint:disable-next-line:no-var-requires
   logger.add(require("winston").transports.Console, {
     level: "debug",
     showLevel: false,
