@@ -27,6 +27,7 @@ import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { removePathSegments } from "./functionsEmulatorUtils";
+import { EmulatorLogger } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -53,15 +54,11 @@ export interface FunctionsRuntimeInstance {
   kill: (signal?: string) => void;
 }
 
-type LogType = "DEBUG" | "INFO" | "USER" | "BULLET" | "WARN" | "SUCCESS";
-
 interface RequestWithRawBody extends express.Request {
   rawBody: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
-  static quiet: boolean = false;
-
   static isTriggerSupported(definition: EmulatedTriggerDefinition): boolean {
     if (definition.httpsTrigger) {
       return true;
@@ -123,7 +120,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
-      FunctionsEmulator.log("DEBUG", `[functions] ${method} request to function ${triggerId} accepted.`);
+      EmulatorLogger.log(
+        "DEBUG",
+        `[functions] ${method} request to function ${triggerId} accepted.`
+      );
 
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody);
@@ -145,9 +145,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       // this log entry to happen during the readying.
       const triggerLogPromise = waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
 
-      FunctionsEmulator.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
+      EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
       await runtime.ready;
-      FunctionsEmulator.log("DEBUG", JSON.stringify(runtime.metadata));
+      EmulatorLogger.log("DEBUG", JSON.stringify(runtime.metadata));
 
       const triggerLog = await triggerLogPromise;
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
@@ -184,7 +184,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(JSON.stringify(runtime.metadata));
       track(EVENT_INVOKE, "https");
 
-      FunctionsEmulator.log(
+      EmulatorLogger.log(
         "DEBUG",
         `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
       );
@@ -287,11 +287,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          FunctionsEmulator.log("WARN", `Your function was killed because it raised an unhandled error.`);
+          EmulatorLogger.log(
+            "WARN",
+            `Your function was killed because it raised an unhandled error.`
+          );
         }
         break;
       case "googleapis-network-access":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `Google API requested!\n   - URL: "${
             systemLog.data.href
@@ -299,10 +302,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "unidentified-network-access":
-        FunctionsEmulator.log("WARN", `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`);
+        EmulatorLogger.log(
+          "WARN",
+          `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`
+        );
         break;
       case "functions-config-missing-value":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `Non-existent functions.config() value requested!\n   - Path: "${
             systemLog.data.valuePath
@@ -310,17 +316,17 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "default-admin-app-used":
-        FunctionsEmulator.log("WARN", `Default "firebase-admin" instance created!`);
+        EmulatorLogger.log("WARN", `Default "firebase-admin" instance created!`);
         break;
       case "non-default-admin-app-used":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
             `- This instance will *not* be mocked and will access production resources.`
         );
         break;
       case "missing-module":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -332,7 +338,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "uninstalled-module":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -341,7 +347,7 @@ You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -352,7 +358,7 @@ You can probably fix this by running "npm install ${
         );
         break;
       case "missing-package-json":
-        FunctionsEmulator.log(
+        EmulatorLogger.log(
           "WARN",
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
@@ -382,22 +388,22 @@ You can probably fix this by running "npm install ${
         FunctionsEmulator.handleSystemLog(log);
         break;
       case "USER":
-        FunctionsEmulator.log("USER", `${clc.blackBright("> ")} ${log.text}`);
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        FunctionsEmulator.log("DEBUG", log.text);
+        EmulatorLogger.log("DEBUG", log.text);
         break;
       case "INFO":
-        FunctionsEmulator.logLabeled("BULLET", "functions", log.text);
+        EmulatorLogger.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        FunctionsEmulator.log("WARN", log.text);
+        EmulatorLogger.log("WARN", log.text);
         break;
       case "FATAL":
-        FunctionsEmulator.log("WARN", log.text);
+        EmulatorLogger.log("WARN", log.text);
         break;
       default:
-        FunctionsEmulator.log("INFO", `${log.level}: ${log.text}`);
+        EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
         break;
     }
   }
@@ -431,7 +437,7 @@ You can probably fix this by running "npm install ${
     };
 
     // TODO: Would prefer not to have static state but here we are!
-    FunctionsEmulator.quiet = this.args.quiet || false;
+    EmulatorLogger.quiet = this.args.quiet || false;
   }
 
   async start(): Promise<void> {
@@ -446,7 +452,7 @@ You can probably fix this by running "npm install ${
   }
 
   async connect(): Promise<void> {
-    FunctionsEmulator.logLabeled(
+    EmulatorLogger.logLabeled(
       "BULLET",
       "functions",
       `Watching "${this.functionsDir}" for Cloud Functions...`
@@ -500,7 +506,11 @@ You can probably fix this by running "npm install ${
             region
           );
 
-          FunctionsEmulator.logLabeled("BULLET", "functions", `HTTP trigger initialized at ${clc.bold(url)}`);
+          EmulatorLogger.logLabeled(
+            "BULLET",
+            "functions",
+            `HTTP trigger initialized at ${clc.bold(url)}`
+          );
         } else {
           const service: string = _.get(definition, "eventTrigger.service", "unknown");
           switch (service) {
@@ -508,8 +518,8 @@ You can probably fix this by running "npm install ${
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
             default:
-              FunctionsEmulator.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
-              FunctionsEmulator.log(
+              EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+              EmulatorLogger.log(
                 "WARN",
                 `Ignoring trigger "${
                   definition.name
@@ -524,7 +534,7 @@ You can probably fix this by running "npm install ${
 
     const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
     watcher.on("change", (filePath) => {
-      FunctionsEmulator.log("DEBUG", `File ${filePath} changed, reloading triggers`);
+      EmulatorLogger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
 
@@ -534,7 +544,7 @@ You can probably fix this by running "npm install ${
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
-      FunctionsEmulator.log(
+      EmulatorLogger.log(
         "WARN",
         `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
       );
@@ -542,7 +552,7 @@ You can probably fix this by running "npm install ${
     }
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
-    FunctionsEmulator.logLabeled(
+    EmulatorLogger.logLabeled(
       "BULLET",
       "functions",
       `Setting up Cloud Firestore trigger "${definition.name}"`
@@ -559,13 +569,13 @@ You can probably fix this by running "npm install ${
         },
         (err, res, body) => {
           if (err) {
-            FunctionsEmulator.log("WARN", "Error adding trigger: " + err);
+            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
             reject();
             return;
           }
 
           if (JSON.stringify(JSON.parse(body)) === "{}") {
-            FunctionsEmulator.logLabeled(
+            EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",
               `Trigger "${definition.name}" has been acknowledged by the Cloud Firestore emulator.`
@@ -608,7 +618,7 @@ You can probably fix this by running "npm install ${
 
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if (!pkg.engines || !pkg.engines.node) {
-      FunctionsEmulator.log(
+      EmulatorLogger.log(
         "WARN",
         "Your functions directory does not specify a Node version.\n   " +
           "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
@@ -631,13 +641,17 @@ You can probably fix this by running "npm install ${
 
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
-      FunctionsEmulator.logLabeled("SUCCESS", "functions", `Using node@${requestedMajorVersion} from host.`);
+      EmulatorLogger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from host.`
+      );
       return process.execPath;
     }
 
     // If the requested version is already locally available, let's use that
     if (localMajorVersion === requestedMajorVersion) {
-      FunctionsEmulator.logLabeled(
+      EmulatorLogger.logLabeled(
         "SUCCESS",
         "functions",
         `Using node@${requestedMajorVersion} from local cache.`
@@ -649,64 +663,12 @@ You can probably fix this by running "npm install ${
     Otherwise we'll begin the conversational flow to install the correct version locally
    */
 
-    FunctionsEmulator.log(
+    EmulatorLogger.log(
       "WARN",
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
     );
 
     return process.execPath;
-  }
-
-  /**
-   * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
-   * so that we can respect the "quiet" flag.
-   */
-  static log(type: LogType, text: string): void {
-    if (FunctionsEmulator.quiet && type !== "USER") {
-      logger.debug(text);
-      return;
-    }
-
-    switch (type) {
-      case "DEBUG":
-        logger.debug(text);
-        break;
-      case "INFO":
-        logger.info(text);
-        break;
-      case "USER":
-        logger.info(text);
-        break;
-      case "BULLET":
-        utils.logBullet(text);
-        break;
-      case "WARN":
-        utils.logWarning(text);
-        break;
-      case "SUCCESS":
-        utils.logSuccess(text);
-        break;
-    }
-  }
-
-  /**
-   * Within this file, utils.logLabeldFoo() should not be called directly,
-   * so that we can respect the "quiet" flag.
-   */
-  static logLabeled(type: LogType, label: string, text: string): void {
-    if (FunctionsEmulator.quiet) {
-      logger.debug(`[${label}] ${text}`);
-      return;
-    }
-
-    switch (type) {
-      case "BULLET":
-        utils.logLabeledBullet(label, text);
-        break;
-      case "SUCCESS":
-        utils.logLabeledSuccess(label, text);
-        break;
-    }
   }
 }
 
