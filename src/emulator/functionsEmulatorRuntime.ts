@@ -575,11 +575,17 @@ async function ProcessBackground(
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
   const proto = frb.proto;
 
+  const service = trigger.definition.eventTrigger
+    ? trigger.definition.eventTrigger.service
+    : "unknown";
+
   // TODO: This is a workaround for
   // https://github.com/firebase/firebase-tools/issues/1288
-  if (proto.context) {
-    if (typeof proto.context.resource == "object") {
-      proto.context.resource = proto.context.resource.name;
+  if (service === "firestore.googleapis.com") {
+    if (proto.context) {
+      if (typeof proto.context.resource == "object") {
+        proto.context.resource = proto.context.resource.name;
+      }
     }
   }
 
