@@ -6,12 +6,13 @@ import * as logger from "../../logger";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
 
-// Uncomment this to enable --debug logging!
-// logger.add(require("winston").transports.Console, {
-//   level: "debug",
-//   showLevel: false,
-//   colorize: true,
-// });
+if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
+  logger.add(require("winston").transports.Console, {
+    level: "debug",
+    showLevel: false,
+    colorize: true,
+  });
+}
 
 const startFunctionRuntime = FunctionsEmulator.startFunctionRuntime;
 function UseFunctions(triggers: () => {}): void {

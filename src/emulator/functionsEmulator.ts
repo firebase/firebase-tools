@@ -22,11 +22,11 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
-  getTriggersFromDirectory,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
+import { removePathSegments } from "./functionsEmulatorUtils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -162,7 +162,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
-          res.send(el.text);
+          res.status(500).send(el.text);
         }
       });
 
@@ -182,12 +182,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path:
-            "/" +
-            req.url
-              .split("/")
-              .slice(4)
-              .join("/"), // 'url' includes the query params
+          path: "/" + removePathSegments(req.url, 3), // Remove the first 4 url paths like /X/X/X/a/b/c/
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -438,6 +433,15 @@ You can probably fix this by running "npm install ${
 
     // TODO(abehaskins): Gracefully handle removal of deleted function definitions
     const loadTriggers = async () => {
+      /*
+      When a user changes their code, we need to look for triggers defined in their updates sources.
+      To do this, we spin up a "diagnostic" runtime invocation. In other words, we pretend we're
+      going to invoke a cloud function in the emulator, but stop short of actually running a function.
+      Instead, we set up the environment and catch a special "triggers-parsed" log from the runtime
+      then exit out.
+
+      A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
+       */
       const runtime = InvokeRuntime(this.nodeBinary, this.bundleTemplate);
 
       runtime.events.on("log", (el: EmulatorLog) => {
