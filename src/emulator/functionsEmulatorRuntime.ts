@@ -574,14 +574,20 @@ async function ProcessBackground(
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
   const proto = frb.proto;
+
+  // TODO: This is a workaround for
+  // https://github.com/firebase/firebase-tools/issues/1288
+  if (proto.context) {
+    if (typeof proto.context.resource == "object") {
+      proto.context.resource = proto.context.resource.name;
+    }
+  }
+
   await RunBackground(trigger.getRawFunction(), proto);
 }
 
 // TODO: Unify this with the HTTPS one (just Run())
 async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
-  // TODO: Remove this
-  console.warn("RunBackground", proto, JSON.stringify(proto));
-
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {

@@ -509,6 +509,7 @@ You can probably fix this by running "npm install ${
       `Setting up Cloud Firestore trigger "${definition.name}"`
     );
 
+    logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
       request.put(
         `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
