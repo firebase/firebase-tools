@@ -16,6 +16,7 @@ import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EmulatorLogger } from "./emulatorLogger";
+import { EventUtils } from "./events/types";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -561,7 +562,7 @@ async function ProcessBackground(
   trigger: EmulatedTrigger
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
-  const proto = frb.proto;
+  let proto = frb.proto;
 
   const service = trigger.definition.eventTrigger
     ? trigger.definition.eventTrigger.service
@@ -570,14 +571,12 @@ async function ProcessBackground(
   // TODO: This is a workaround for
   // https://github.com/firebase/firebase-tools/issues/1288
   if (service === "firestore.googleapis.com") {
-    if (proto.context) {
-      if (typeof proto.context.resource === "object") {
-        EmulatorLogger.log(
-          "DEBUG",
-          `[firestore] got resource ${proto.context.resource}, replacing with "name"`
-        );
-        proto.context.resource = proto.context.resource.name;
-      }
+    if (EventUtils.isEvent(proto)) {
+      EmulatorLogger.log(
+        "DEBUG",
+        `[firestore] converting to a v1beta1 event: ${JSON.stringify(proto)}`
+      );
+      proto = EventUtils.convertToLegacy(proto);
     }
   }
 

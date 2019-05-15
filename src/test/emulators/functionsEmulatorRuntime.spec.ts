@@ -593,7 +593,7 @@ describe("FunctionsEmulator-Runtime", () => {
           if (el.level !== "USER") {
             return;
           }
-          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
+          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: true, after_exists: true });
         });
 
         const logs = await _countLogEntries(runtime);
