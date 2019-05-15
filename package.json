@@ -100,7 +100,7 @@
     "tmp": "0.0.33",
     "universal-analytics": "^0.4.16",
     "update-notifier": "^2.5.0",
-    "uuid": "^3.3.2",
+    "uuid": "^3.0.0",
     "winston": "^1.0.1"
   },
   "devDependencies": {

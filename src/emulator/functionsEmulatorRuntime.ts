@@ -8,8 +8,8 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
-  getTemporarySocketPath,
   getFunctionService,
+  getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import * as express from "express";
 import { spawnSync } from "child_process";
