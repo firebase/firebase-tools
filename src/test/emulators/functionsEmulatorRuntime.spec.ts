@@ -572,7 +572,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide Change for firestore.onUpdate()", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onUpdate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
