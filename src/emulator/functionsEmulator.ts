@@ -110,10 +110,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
-      EmulatorLogger.log(
-        "DEBUG",
-        `[functions] ${method} request to function ${triggerId} accepted.`
-      );
+      EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody);
@@ -158,7 +155,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
-      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
+      logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
@@ -245,9 +242,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtime.exit;
     };
 
-    hub.get(httpsFunctionRoutes, httpsHandler);
-    hub.post(httpsFunctionRoutes, httpsHandler);
+    // The ordering here is important. The longer routes (background)
+    // need to be registered first otherwise the HTTP functions consume
+    // all events.
     hub.post(backgroundFunctionRoute, backgroundHandler);
+    hub.post(httpsFunctionRoutes, httpsHandler);
+    hub.get(httpsFunctionRoutes, httpsHandler);
 
     return hub;
   }

@@ -1,15 +1,11 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import {
-  EmulatedTriggerDefinition,
-  getFunctionRegion,
-  getFunctionService,
-} from "./functionsEmulatorShared";
+import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import * as FirebaseError from "../error";
-import { Constants } from "./constants";
+import { LegacyEvent } from "./events/types";
 
 interface FunctionsShellController {
   call(name: string, data: any, opts: any): void;
@@ -51,33 +47,25 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       throw new FirebaseError(`Function ${name} is not a background function`);
     }
 
-    const service = getFunctionService(trigger);
     const eventType = trigger.eventTrigger.eventType;
-    const resource = opts.resource;
 
-    const proto = {
-      context: {
-        eventId: uuid.v4(),
-        timestamp: new Date().toISOString(),
-        eventType,
-        resource,
-        params: opts.params,
-        auth: opts.auth,
-        authType: opts.authType,
-      },
+    // Resource could either be 'string' or '{ name: string, service: string }'
+    let resource = opts.resource;
+    if (typeof resource === "object" && resource.name) {
+      resource = resource.name;
+    }
+
+    // TODO: We always use v1beta1 events for now, but we want to move
+    //       to v1beta2 as soon as we can.
+    const proto: LegacyEvent = {
+      eventId: uuid.v4(),
+      timestamp: new Date().toISOString(),
+      eventType,
+      resource,
+      params: opts.params,
+      auth: opts.auth,
       data,
     };
-
-    // TODO: This should NOT be necessary!
-    if (service === Constants.SERVICE_FIRESTORE) {
-      if (proto.data.value) {
-        proto.data.value.name = resource.name;
-      }
-
-      if (proto.data.oldValue) {
-        proto.data.oldValue.name = resource.name;
-      }
-    }
 
     FunctionsEmulator.startFunctionRuntime(
       this.emu.bundleTemplate,

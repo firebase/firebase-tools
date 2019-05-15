@@ -571,11 +571,15 @@ async function ProcessBackground(
   // https://github.com/firebase/firebase-tools/issues/1288
   if (service === "firestore.googleapis.com") {
     if (EventUtils.isEvent(proto)) {
-      EmulatorLogger.log(
+      const legacyProto = EventUtils.convertToLegacy(proto);
+      new EmulatorLog(
         "DEBUG",
-        `[firestore] converting to a v1beta1 event: ${JSON.stringify(proto)}`
-      );
-      proto = EventUtils.convertToLegacy(proto);
+        "runtime-status",
+        `[firestore] converting to a v1beta1 event: old=${JSON.stringify(
+          proto
+        )}, new=${JSON.stringify(legacyProto)}`
+      ).log();
+      proto = legacyProto;
     }
   }
 
@@ -584,7 +588,7 @@ async function ProcessBackground(
 
 // TODO: Unify this with the HTTPS one (just Run())
 async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
-  new EmulatorLog("DEBUG", "runtime-status", `${JSON.stringify(proto)}`).log();
+  new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
 
   /* tslint:disable:no-console */
   const log = console.log;
