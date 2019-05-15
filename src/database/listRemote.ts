@@ -34,14 +34,12 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const startAfterSuffix = startAfter ? "&startAfter=" + startAfter : "";
-    const timeoutSuffix = timeout ? "&timeout=" + timeout + "ms" : "";
+    const timeoutParam = timeout ? `timeout=${timeout}ms` : ``;
+    const startAfterParam = startAfter ? `startAfter=${startAfter}` : ``;
     const url =
-      utils.addSubdomain(api.realtimeOrigin, this.instance) +
-      path +
-      `.json?shallow=true&limitToFirst=${numSubPath}` +
-      startAfterSuffix +
-      timeoutSuffix;
+      `${utils.addSubdomain(api.realtimeOrigin, this.instance)}` +
+      `${path}.json?shallow=true&limitToFirst=${numSubPath}` +
+      `&${startAfterParam}&${timeoutParam}`;
 
     const t0 = Date.now();
     const reqOptionsWithToken = await api.addRequestHeaders({ url });
@@ -71,12 +69,11 @@ export class RTDBListRemote implements ListRemote {
         if (data) {
           return resolve(Object.keys(data));
         }
-        resolve([]);
+        return resolve([]);
       });
     });
     const dt = Date.now() - t0;
-
     logger.debug(`[database] Sucessfully fetched ${paths.length} path at ${path} ${dt}`);
-    return Promise.resolve(paths);
+    return paths;
   }
 }
