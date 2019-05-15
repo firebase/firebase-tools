@@ -138,6 +138,14 @@ export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
   return "us-central1";
 }
 
+export function getFunctionService(def: EmulatedTriggerDefinition): string {
+  if (def.eventTrigger) {
+    return def.eventTrigger.service;
+  }
+
+  return "unknown";
+}
+
 export function waitForBody(req: express.Request): Promise<string> {
   let data = "";
   return new Promise((resolve) => {

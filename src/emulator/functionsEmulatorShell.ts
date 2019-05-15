@@ -1,7 +1,11 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  getFunctionRegion,
+  getFunctionService,
+} from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import * as FirebaseError from "../error";
@@ -47,7 +51,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       throw new FirebaseError(`Function ${name} is not a background function`);
     }
 
-    const service = trigger.eventTrigger.service;
+    const service = getFunctionService(trigger);
     const eventType = trigger.eventTrigger.eventType;
     const resource = opts.resource;
 

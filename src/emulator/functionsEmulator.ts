@@ -22,6 +22,7 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
+  getFunctionService,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -30,8 +31,6 @@ import { removePathSegments } from "./functionsEmulatorUtils";
 import { EmulatorLogger } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
-
-const SUPPORTED_SERVICES = [Constants.SERVICE_FIRESTORE];
 
 export interface FunctionsEmulatorArgs {
   port?: number;
@@ -59,15 +58,6 @@ interface RequestWithRawBody extends express.Request {
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
-  static isTriggerSupported(definition: EmulatedTriggerDefinition): boolean {
-    if (definition.httpsTrigger) {
-      return true;
-    }
-
-    const service: string = _.get(definition, "eventTrigger.service", "unknown");
-    return SUPPORTED_SERVICES.indexOf(service) >= 0;
-  }
-
   static getHttpFunctionUrl(port: number, projectId: string, name: string, region: string): string {
     return `http://localhost:${port}/${projectId}/${region}/${name}`;
   }
@@ -153,7 +143,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
       const trigger = triggerMap[triggerId];
-      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
+      const service = getFunctionService(trigger.definition);
       track(EVENT_INVOKE, service);
 
       await runtime.exit;
@@ -512,7 +502,7 @@ You can probably fix this by running "npm install ${
             `HTTP trigger initialized at ${clc.bold(url)}`
           );
         } else {
-          const service: string = _.get(definition, "eventTrigger.service", "unknown");
+          const service: string = getFunctionService(definition);
           switch (service) {
             case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);

@@ -9,6 +9,7 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
+  getFunctionService,
 } from "./functionsEmulatorShared";
 import * as express from "express";
 import { spawnSync } from "child_process";
@@ -564,9 +565,7 @@ async function ProcessBackground(
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
   let proto = frb.proto;
 
-  const service = trigger.definition.eventTrigger
-    ? trigger.definition.eventTrigger.service
-    : "unknown";
+  const service = getFunctionService(trigger.definition);
 
   // TODO: This is a workaround for
   // https://github.com/firebase/firebase-tools/issues/1288
