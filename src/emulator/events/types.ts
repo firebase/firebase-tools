@@ -51,11 +51,11 @@ export interface AuthMode {
  */
 export class EventUtils {
   static isEvent(proto: any): proto is Event {
-    return _.has(proto, ["context", "data"]);
+    return _.has(proto, "context") && _.has(proto, "data");
   }
 
   static isLegacyEvent(proto: any): proto is LegacyEvent {
-    return _.has(proto, ["data", "resource"]);
+    return _.has(proto, "data") && _.has(proto, "resource");
   }
 
   static convertFromLegacy(event: LegacyEvent, service: string): Event {

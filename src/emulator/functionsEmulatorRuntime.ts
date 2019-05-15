@@ -562,8 +562,8 @@ async function ProcessBackground(
   trigger: EmulatedTrigger
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
-  let proto = frb.proto;
 
+  let proto = frb.proto;
   const service = getFunctionService(trigger.definition);
 
   // TODO: This is a workaround for
@@ -579,6 +579,12 @@ async function ProcessBackground(
         )}, new=${JSON.stringify(legacyProto)}`
       ).log();
       proto = legacyProto;
+    } else {
+      new EmulatorLog(
+        "DEBUG",
+        "runtime-status",
+        `[firestore] Got legacy proto ${JSON.stringify(proto)}`
+      ).log();
     }
   }
 
