@@ -28,7 +28,7 @@ import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { removePathSegments } from "./functionsEmulatorUtils";
-import { EmulatorLogger } from "./emulatorLogger";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -427,7 +427,7 @@ You can probably fix this by running "npm install ${
     };
 
     // TODO: Would prefer not to have static state but here we are!
-    EmulatorLogger.quiet = this.args.quiet || false;
+    EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
 
   async start(): Promise<void> {

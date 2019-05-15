@@ -1,12 +1,32 @@
 import * as utils from "../utils";
 import * as logger from "../logger";
 
-type LogType = "DEBUG" | "INFO" | "USER" | "BULLET" | "WARN" | "SUCCESS";
+/**
+ * DEBUG - lowest level, not needed for most usages.
+ * INFO / BULLET - useful to humans, bullet logs with a fancier style.
+ * SUCCESS - useful to humans, similar to bullet but in a 'success' style.
+ * USER - logged by user code, always show to humans.
+ * WARN - warnings from our code that humans need.
+ */
+type LogType = "DEBUG" | "INFO" | "BULLET" | "SUCCESS" | "USER" | "WARN";
 
-const NEVER_QUIET: LogType[] = ["USER", "WARN"];
+const TYPE_VERBOSITY: { [type in LogType]: number } = {
+  DEBUG: 0,
+  INFO: 1,
+  BULLET: 1,
+  SUCCESS: 1,
+  USER: 2,
+  WARN: 2,
+};
+
+export enum Verbosity {
+  DEBUG = 0,
+  INFO = 1,
+  QUIET = 2,
+}
 
 export class EmulatorLogger {
-  static quiet: boolean = false;
+  static verbosity: Verbosity = Verbosity.DEBUG;
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
@@ -61,6 +81,7 @@ export class EmulatorLogger {
   }
 
   private static shouldSupress(type: LogType): boolean {
-    return EmulatorLogger.quiet && NEVER_QUIET.indexOf(type) < 0;
+    const typeVerbosity = TYPE_VERBOSITY[type];
+    return EmulatorLogger.verbosity > typeVerbosity;
   }
 }
