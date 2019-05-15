@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "6.9.1",
+  "version": "6.9.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -64,6 +64,7 @@
   "dependencies": {
     "JSONStream": "^1.2.1",
     "archiver": "^2.1.1",
+    "body-parser": "^1.19.0",
     "chokidar": "^2.1.5",
     "cjson": "^0.3.1",
     "cli-color": "^1.2.0",
@@ -103,6 +104,7 @@
     "winston": "^1.0.1"
   },
   "devDependencies": {
+    "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.1.6",
     "@types/chai-as-promised": "^7.1.0",
     "@types/cli-color": "^0.3.29",
@@ -122,6 +124,7 @@
     "@types/sinon-chai": "^3.2.2",
     "@types/supertest": "^2.0.6",
     "@types/tmp": "^0.1.0",
+    "@types/winston": "^2.4.4",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.1",
