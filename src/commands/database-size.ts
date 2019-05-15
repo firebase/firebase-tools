@@ -1,12 +1,10 @@
-"use strict";
+import { default as DatabaseSize } from "../database/size";
 
-var Command = require("../command");
-var requireInstance = require("../requireInstance");
-var requirePermissions = require("../requirePermissions");
-var DatabaseSize = require("../database/size").default;
-var utils = require("../utils");
-
-var _ = require("lodash");
+import * as Command from "../command";
+import * as requireInstance from "../requireInstance";
+import * as requirePermissions from "../requirePermissions";
+import * as utils from "../utils";
+import * as lodash from "lodash";
 
 module.exports = new Command("database:size <path>")
   .description(
@@ -19,12 +17,12 @@ module.exports = new Command("database:size <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .action(function(path, options) {
-    if (!_.startsWith(path, "/")) {
+  .action((path: string, options: any) => {
+    if (!lodash.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    let sizeOps = new DatabaseSize(options.instance, path);
-    return sizeOps.execute().then(function(bytes) {
+    const sizeOps = new DatabaseSize(options.instance, path);
+    return sizeOps.execute().then((bytes) => {
       utils.logSuccess(path + " is approximately " + bytes + " bytes.");
     });
   });
