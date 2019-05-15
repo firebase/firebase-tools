@@ -1,118 +1,16 @@
 import { expect } from "chai";
-import { FunctionsRuntimeInstance, InvokeRuntime } from "../../emulator/functionsEmulator";
+import {
+  FunctionsRuntimeInstance,
+  InvokeRuntime,
+  InvokeRuntimeOpts,
+} from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
 import { request } from "http";
-import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-const cwd = findModuleRoot("firebase-tools", __dirname);
-
-const FunctionRuntimeBundles = {
-  onCreate: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.create",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onWrite: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.write",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onDelete: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    proto: {
-      data: {
-        oldValue: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          fields: {
-            when: {
-              timestampValue: "2019-04-15T16:55:48.150Z",
-            },
-          },
-          createTime: "2019-04-15T16:56:13.737Z",
-          updateTime: "2019-04-15T16:56:13.737Z",
-        },
-        updateMask: {},
-      },
-      context: {
-        eventId: "7ebfb089-f549-4e1f-8312-fe843efc8be7",
-        timestamp: "2019-04-15T16:56:13.737Z",
-        eventType: "providers/cloud.firestore/eventTypes/document.delete",
-        resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
-          service: "firestore.googleapis.com",
-        },
-      },
-    },
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-  onRequest: {
-    ports: {
-      firestore: 8080,
-    },
-    cwd,
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-};
+import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
+import * as express from "express";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
@@ -127,20 +25,30 @@ async function _countLogEntries(
   return counts;
 }
 
+function InvokeRuntimeWithFunctions(
+  frb: FunctionsRuntimeBundle,
+  triggers: () => {},
+  opts?: InvokeRuntimeOpts
+): FunctionsRuntimeInstance {
+  const serializedTriggers = triggers.toString();
+
+  return InvokeRuntime(process.execPath, frb, {
+    ...opts,
+    serializedTriggers,
+  });
+}
+
 function _is_verbose(runtime: FunctionsRuntimeInstance): void {
   runtime.events.on("log", (el: EmulatorLog) => {
     process.stdout.write(el.toPrettyString() + "\n");
   });
 }
 
-const TIMEOUT_LONG = 10000;
-const TIMEOUT_MED = 5000;
-
-describe("FunctionsEmulatorRuntime", () => {
+describe("FunctionsEmulator-Runtime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing HTTPS requests", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -158,11 +66,8 @@ describe("FunctionsEmulatorRuntime", () => {
                 ]);
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
+
         const logs = await _countLogEntries(runtime);
 
         // In Node 6 we get >=5 events here, Node 8+ gets >=4 because of changes to
@@ -176,7 +81,7 @@ describe("FunctionsEmulatorRuntime", () => {
 
     describe("_InitializeFirebaseAdminStubs(...)", () => {
       it("should provide stubbed default app from initializeApp", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -184,19 +89,14 @@ describe("FunctionsEmulatorRuntime", () => {
               // tslint:disable-next-line:no-empty
               .onCreate(async () => {}),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
 
         const logs = await _countLogEntries(runtime);
-
         expect(logs["default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp(); // We still need to initialize default for snapshots
           require("firebase-admin").initializeApp({}, "non-default");
           return {
@@ -205,18 +105,13 @@ describe("FunctionsEmulatorRuntime", () => {
               // tslint:disable-next-line:no-empty
               .onCreate(async () => {}),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
         const logs = await _countLogEntries(runtime);
-
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should alert when the app is not initialized", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -227,18 +122,15 @@ describe("FunctionsEmulatorRuntime", () => {
                   .get();
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
+
         const logs = await _countLogEntries(runtime);
 
         expect(logs["admin-not-initialized"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should route all sub-fields accordingly", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -250,10 +142,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 );
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -268,7 +156,14 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should redirect Firestore write to emulator", async () => {
-        const serializedTriggers = (() => {
+        const onRequestCopy = JSON.parse(
+          JSON.stringify(FunctionRuntimeBundles.onRequest)
+        ) as FunctionsRuntimeBundle;
+
+        // Set the port to something crazy to avoid conflict with live emulator
+        onRequestCopy.ports = { firestore: 80800 };
+
+        const runtime = InvokeRuntimeWithFunctions(onRequestCopy, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
 
@@ -287,21 +182,9 @@ describe("FunctionsEmulatorRuntime", () => {
               }
             ),
           };
-        }).toString();
-
-        const onRequestCopy = JSON.parse(
-          JSON.stringify(FunctionRuntimeBundles.onRequest)
-        ) as FunctionsRuntimeBundle;
-
-        // Set the port to something crazy to avoid conflict with live emulator
-        onRequestCopy.ports = { firestore: 80800 };
-
-        const runtime = InvokeRuntime(process.execPath, onRequestCopy, {
-          serializedTriggers,
         });
 
         await runtime.ready;
-
         await new Promise((resolve) => {
           request(
             {
@@ -323,7 +206,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should merge .settings() with emulator settings", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
           admin.firestore().settings({
@@ -336,10 +219,6 @@ describe("FunctionsEmulatorRuntime", () => {
               // tslint:disable-next-line:no-empty
               .onCreate(async () => {}),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -355,7 +234,7 @@ describe("FunctionsEmulatorRuntime", () => {
           return;
         }
 
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           admin.initializeApp({
             databaseURL: "fake-app-id.firebaseio.com",
@@ -373,10 +252,6 @@ describe("FunctionsEmulatorRuntime", () => {
                   });
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -399,26 +274,29 @@ describe("FunctionsEmulatorRuntime", () => {
 
     describe("_InitializeFunctionsConfigHelper()", () => {
       it("should tell the user if they've accessed a non-existent function field", async () => {
-        const serializedTriggers = (() => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                /* tslint:disable:no-console */
-                console.log(require("firebase-functions").config().doesnt.exist);
-                console.log(require("firebase-functions").config().does.exist);
-                console.log(require("firebase-functions").config().also_doesnt.exist);
-              }),
-          };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onCreate, {
-          serializedTriggers,
-          env: {
-            CLOUD_RUNTIME_CONFIG: JSON.stringify({ does: { exist: "already exists" } }),
+        const runtime = InvokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(async () => {
+                  /* tslint:disable:no-console */
+                  console.log(require("firebase-functions").config().doesnt.exist);
+                  console.log(require("firebase-functions").config().does.exist);
+                  console.log(require("firebase-functions").config().also_doesnt.exist);
+                }),
+            };
           },
-        });
+          {
+            env: {
+              CLOUD_RUNTIME_CONFIG: JSON.stringify({
+                does: { exist: "already exists" },
+              }),
+            },
+          }
+        );
 
         const logs = await _countLogEntries(runtime);
         expect(logs["functions-config-missing-value"]).to.eq(2);
@@ -428,25 +306,19 @@ describe("FunctionsEmulatorRuntime", () => {
 
   describe("Runtime", () => {
     describe("HTTPS", () => {
-      it("should handle a single invocation", async () => {
-        const serializedTriggers = (() => {
+      it("should handle a GET request", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
-                /* tslint:disable:no-console */
                 res.json({ from_trigger: true });
               }
             ),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
-          serializedTriggers,
         });
 
         await runtime.ready;
-
         await new Promise((resolve) => {
           request(
             {
@@ -466,11 +338,212 @@ describe("FunctionsEmulatorRuntime", () => {
 
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with form data", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+
+        await new Promise((resolve) => {
+          const reqData = "name=sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with JSON data", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = '{"name": "sparky"}';
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with text data", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = "name is sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "text/plain",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal("name is sparky");
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle a POST request with any other type", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = "name is sparky";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post",
+              headers: {
+                "Content-Type": "gibber/ish",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data).type).to.deep.equal("Buffer");
+                expect(JSON.parse(data).data.length).to.deep.equal(14);
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should forward request to Express app", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          const app = require("express")();
+          app.get("/", (req: express.Request, res: express.Response) => {
+            res.json(req.query);
+          });
+          return {
+            function_id: require("firebase-functions").https.onRequest(app),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/?hello=world",
+              method: "get",
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
+                resolve();
+              });
+            }
+          );
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
     });
 
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -485,10 +558,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 );
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onWrite, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -503,7 +572,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide Change for firestore.onUpdate()", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -518,10 +587,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 );
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onWrite, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -536,7 +601,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide DocumentSnapshot for firestore.onDelete()", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onDelete, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -550,10 +615,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 );
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onDelete, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -568,7 +629,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide DocumentSnapshot for firestore.onCreate()", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -582,10 +643,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 );
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onWrite, {
-          serializedTriggers,
         });
 
         runtime.events.on("log", (el: EmulatorLog) => {
@@ -602,23 +659,18 @@ describe("FunctionsEmulatorRuntime", () => {
 
     describe("Error handling", () => {
       it("Should handle regular functions for Express handlers", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               (global as any)["not a thing"]();
             }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
-          serializedTriggers,
         });
 
         const logs = _countLogEntries(runtime);
 
         await runtime.ready;
-
         await new Promise((resolve) => {
           request(
             {
@@ -639,7 +691,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("Should handle async functions for Express handlers", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -648,16 +700,11 @@ describe("FunctionsEmulatorRuntime", () => {
               }
             ),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
-          serializedTriggers,
         });
 
         const logs = _countLogEntries(runtime);
 
         await runtime.ready;
-
         await new Promise((resolve) => {
           request(
             {
@@ -678,7 +725,7 @@ describe("FunctionsEmulatorRuntime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("Should handle async/runWith functions for Express handlers", async () => {
-        const serializedTriggers = (() => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -687,10 +734,6 @@ describe("FunctionsEmulatorRuntime", () => {
                 (global as any)["not a thing"]();
               }),
           };
-        }).toString();
-
-        const runtime = InvokeRuntime(process.execPath, FunctionRuntimeBundles.onRequest, {
-          serializedTriggers,
         });
 
         const logs = _countLogEntries(runtime);
