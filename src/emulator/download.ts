@@ -41,8 +41,7 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
         reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
       }
     });
-    req.on("end", () => {
-      writeStream.close();
+    writeStream.on("finish", () => {
       resolve(tmpfile.name);
     });
     req.pipe(writeStream);
