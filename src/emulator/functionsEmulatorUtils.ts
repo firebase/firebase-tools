@@ -55,3 +55,10 @@ export function trimSlashes(str: string): string {
     .filter((c) => c)
     .join("/");
 }
+
+export function removePathSegments(path: string, count: number): string {
+  return trimSlashes(path)
+    .split("/")
+    .slice(count)
+    .join("/");
+}

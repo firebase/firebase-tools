@@ -1,1 +1,6 @@
 feature - database:instances:{create,list} now allow viewing and creating Realtime Database instances
+fixed - Fixed issue with CORS rejecting some callable functions.
+fixed - Functions emulator no longer watches node_modules files.
+fixed - Functions emulator fails to route HTTPS functions to user-provided Express app
+fixed - Functions emulator fails to provide correct req.path
+fixed - Functions emulator fails on various malformed body requests
