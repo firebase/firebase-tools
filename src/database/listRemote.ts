@@ -11,6 +11,8 @@ export interface ListRemote {
    * Call the shallow get API with limitToFirst=numSubPath.
    * @param path the path to list
    * @param numSubPath the number of subPaths to fetch.
+   * @param startAfter omit list entries comparing lower than `startAfter`
+   * @param timeout milliseconds after which to timeout the request
    * @return the list of sub pathes found.
    */
   listPath(
@@ -22,11 +24,7 @@ export interface ListRemote {
 }
 
 export class RTDBListRemote implements ListRemote {
-  private instance: string;
-
-  constructor(instance: string) {
-    this.instance = instance;
-  }
+  constructor(private instance: string) {}
 
   async listPath(
     path: string,
@@ -34,15 +32,22 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const timeoutParam = timeout ? `timeout=${timeout}ms` : ``;
-    const startAfterParam = startAfter ? `startAfter=${startAfter}` : ``;
-    const url =
-      `${utils.addSubdomain(api.realtimeOrigin, this.instance)}` +
-      `${path}.json?shallow=true&limitToFirst=${numSubPath}` +
-      `&${startAfterParam}&${timeoutParam}`;
+    const url = `${utils.addSubdomain(api.realtimeOrigin, this.instance)}${path}.json`;
+
+    const params: any = {
+      shallow: true,
+      limitToFirst: numSubPath,
+    };
+    if (startAfter) {
+      params.startAfter = startAfter;
+    }
+    if (timeout) {
+      params.timeout = `${timeout}ms`;
+    }
 
     const t0 = Date.now();
     const reqOptionsWithToken = await api.addRequestHeaders({ url });
+    reqOptionsWithToken.qs = params;
     const paths = await new Promise<string[]>((resolve, reject) => {
       request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
         if (err) {
@@ -55,7 +60,7 @@ export class RTDBListRemote implements ListRemote {
         } else if (res.statusCode >= 400) {
           return reject(responseToError(res, body));
         }
-        let data = {};
+        let data;
         try {
           data = JSON.parse(body);
         } catch (e) {
