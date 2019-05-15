@@ -2,7 +2,13 @@
  * The types in this file are stolen from the firebase-functions SDK. They are not subject
  * to change because they are TS interpretations of protobuf wire formats already used in
  * productiton services.
+ *
+ * We can't import some of them because they are marked "internal".
  */
+
+import * as _ from "lodash";
+
+import { Resource } from "firebase-functions";
 
 /**
  * Wire formal for v1beta1 EventFlow.
@@ -33,17 +39,6 @@ export interface Event {
 }
 
 /**
- * Resource is a standard format for defining a resource (google.rpc.context.AttributeContext.Resource).
- * In Cloud Functions, it is the resource that triggered the function - such as a storage bucket.
- */
-export interface Resource {
-  service: string;
-  name: string;
-  type?: string;
-  labels?: { [tag: string]: string };
-}
-
-/**
  * Legacy AuthMode format.
  */
 export interface AuthMode {
@@ -56,11 +51,11 @@ export interface AuthMode {
  */
 export class EventUtils {
   static isEvent(proto: any): proto is Event {
-    return EventUtils.hasFields(proto, ["context", "data"]);
+    return _.has(proto, ["context", "data"]);
   }
 
   static isLegacyEvent(proto: any): proto is LegacyEvent {
-    return EventUtils.hasFields(proto, ["data", "resource"]);
+    return _.has(proto, ["data", "resource"]);
   }
 
   static convertFromLegacy(event: LegacyEvent, service: string): Event {
@@ -87,15 +82,5 @@ export class EventUtils {
       resource: event.context.resource.name,
       data: event.data,
     };
-  }
-
-  private static hasFields(obj: any, fields: string[]): boolean {
-    for (const field of fields) {
-      if (obj[field] === undefined) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }

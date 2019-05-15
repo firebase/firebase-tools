@@ -16,7 +16,6 @@ import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
-import { EmulatorLogger } from "./emulatorLogger";
 import { EventUtils } from "./events/types";
 
 let app: admin.app.App;
@@ -538,7 +537,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           resolveEphemeralServer();
         });
 
-        await Run([req, res], func);
+        await RunHTTPS([req, res], func);
       } catch (err) {
         rejectEphemeralServer(err);
       }
@@ -583,13 +582,13 @@ async function ProcessBackground(
     }
   }
 
-  await RunBackground(trigger.getRawFunction(), proto);
+  await RunBackground(proto, trigger.getRawFunction());
 }
 
-// TODO: Unify this with the HTTPS one (just Run())
-async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Promise<any> {
-  new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
-
+/**
+ * Run the given function while redirecting logs and looking out for errors.
+ */
+async function Run(func: () => Promise<any>): Promise<any> {
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
@@ -598,10 +597,11 @@ async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Pr
 
   let caughtErr;
   try {
-    await func(proto);
+    await func();
   } catch (err) {
     caughtErr = err;
   }
+
   console.log = log;
 
   new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server survived.`).log();
@@ -610,32 +610,25 @@ async function RunBackground(func: (proto: any) => Promise<any>, proto: any): Pr
   }
 }
 
-// TODO(abehaskins): This signature could probably use work lol
-async function Run(args: any[], func: (a: any, b: any) => Promise<any>): Promise<any> {
+async function RunBackground(proto: any, func: (proto: any) => Promise<any>): Promise<any> {
+  new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
+
+  await Run(() => {
+    return func(proto);
+  });
+}
+
+async function RunHTTPS(
+  args: any[],
+  func: (a: express.Request, b: express.Response) => Promise<any>
+): Promise<any> {
   if (args.length < 2) {
     throw new Error("Function must be passed 2 args.");
   }
 
-  /* tslint:disable:no-console */
-  const log = console.log;
-  console.log = (...messages: any[]) => {
-    new EmulatorLog("USER", "function-log", messages.join(" ")).log();
-  };
-
-  let caughtErr;
-  try {
-    await func(args[0], args[1]);
-  } catch (err) {
-    caughtErr = err;
-  }
-  console.log = log;
-
-  new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server survived.`).log();
-  if (caughtErr) {
-    throw caughtErr;
-  }
-
-  return;
+  await Run(() => {
+    return func(args[0], args[1]);
+  });
 }
 
 function isFeatureEnabled(

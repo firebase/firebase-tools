@@ -18,21 +18,21 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggers();
-    this.emulatedFunctions = this.triggers.map((t) => {
-      return t.name;
+    this.emulatedFunctions = this.triggers.map((trigger) => {
+      return trigger.name;
     });
 
     utils.logLabeledBullet("functions", `Loaded functions: ${this.emulatedFunctions.join(", ")}`);
 
-    for (const t of this.triggers) {
-      const name = t.name;
+    for (const trigger of this.triggers) {
+      const name = trigger.name;
 
-      if (t.httpsTrigger) {
+      if (trigger.httpsTrigger) {
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().port,
           this.emu.projectId,
           name,
-          getFunctionRegion(t)
+          getFunctionRegion(trigger)
         );
       }
     }
@@ -76,14 +76,14 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {
-    const trig = this.triggers.find((def) => {
-      return def.name === name;
+    const result = this.triggers.find((trigger) => {
+      return trigger.name === name;
     });
 
-    if (!trig) {
+    if (!result) {
       throw new FirebaseError(`Could not find trigger ${name}`);
     }
 
-    return trig;
+    return result;
   }
 }
