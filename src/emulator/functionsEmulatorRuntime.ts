@@ -18,6 +18,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EventUtils } from "./events/types";
 import * as fs from "fs";
+import { URL } from "url";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -537,11 +538,11 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           instance.close();
           resolveEphemeralServer();
 
-          process.nextTick(() => {
-            if (process.platform !== "win32") {
-              fs.unlinkSync(socketPath);
-            }
-          });
+          // If we're on a Unix platform, then the pipe is not cleaned up automatically so...
+          if (process.platform !== "win32") {
+            // We manually remove the pipe file
+            fs.unlinkSync(socketPath);
+          }
         });
 
         await RunHTTPS([req, res], func);

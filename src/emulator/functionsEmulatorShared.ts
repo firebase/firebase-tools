@@ -127,6 +127,8 @@ export function getEmulatedTriggersFromDefinitions(
 }
 
 export function getTemporarySocketPath(pid: number): string {
+  // See "net" package docs for information about IPC pipes on Windows
+  // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
   if (process.platform === "win32") {
     return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
   } else {
