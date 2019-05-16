@@ -17,6 +17,7 @@ import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EventUtils } from "./events/types";
+import * as fs from "fs";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -535,6 +536,12 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         res.on("finish", () => {
           instance.close();
           resolveEphemeralServer();
+
+          process.nextTick(() => {
+            if (process.platform !== "win32") {
+              fs.unlinkSync(socketPath);
+            }
+          });
         });
 
         await RunHTTPS([req, res], func);

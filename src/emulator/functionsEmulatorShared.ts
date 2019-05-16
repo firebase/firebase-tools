@@ -127,7 +127,11 @@ export function getEmulatedTriggersFromDefinitions(
 }
 
 export function getTemporarySocketPath(pid: number): string {
-  return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  if (process.platform === "win32") {
+    return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
+  } else {
+    return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  }
 }
 
 export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
