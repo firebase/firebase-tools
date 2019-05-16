@@ -9,13 +9,13 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
-  waitForBody,
 } from "./functionsEmulatorShared";
 import * as express from "express";
 import { extractParamsFromPath } from "./functionsEmulatorUtils";
 import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
+import * as bodyParser from "body-parser";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -536,26 +536,16 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           resolveEphemeralServer();
         });
 
-        // Read data and manually set the request body
-        const dataStr = await waitForBody(req);
-        if (dataStr && dataStr.length > 0) {
-          if (req.is("application/json")) {
-            new EmulatorLog(
-              "DEBUG",
-              "runtime-status",
-              `Detected JSON request body: ${dataStr}`
-            ).log();
-            req.body = JSON.parse(dataStr);
-          } else {
-            req.body = dataStr;
-          }
-        }
-
         await Run([req, res], func);
       } catch (err) {
         rejectEphemeralServer(err);
       }
     };
+
+    ephemeralServer.use(bodyParser.json({}));
+    ephemeralServer.use(bodyParser.text({}));
+    ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
+    ephemeralServer.use(bodyParser.raw({ type: "*/*" }));
 
     ephemeralServer.get("/*", handler);
     ephemeralServer.post("/*", handler);
