@@ -6,20 +6,22 @@ import { EmulatorServer } from "../emulator/emulatorServer";
 module.exports = {
   emulatorServer: undefined,
 
-  async start(options: any): Promise<void> {
-    const args: FunctionsEmulatorArgs = {
+  async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
+    args = args || {};
+
+    if (!args.disabledRuntimeFeatures) {
       // When running the functions emulator through 'firebase serve' we disable some
       // of the more adventurous features that could be breaking/unexpected behavior
       // for those used to the legacy emulator.
-      disabledRuntimeFeatures: {
+      args.disabledRuntimeFeatures = {
         functions_config_helper: true,
         network_filtering: true,
         timeout: true,
         memory_limiting: true,
         protect_env: true,
         admin_stubs: true,
-      },
-    };
+      };
+    }
 
     // If hosting emulator is not being served but Functions is,
     // we can use the port argument. Otherwise it goes to hosting and

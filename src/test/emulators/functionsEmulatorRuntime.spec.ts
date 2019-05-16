@@ -572,7 +572,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide Change for firestore.onUpdate()", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onUpdate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -593,7 +593,7 @@ describe("FunctionsEmulator-Runtime", () => {
           if (el.level !== "USER") {
             return;
           }
-          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
+          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: true, after_exists: true });
         });
 
         const logs = await _countLogEntries(runtime);
