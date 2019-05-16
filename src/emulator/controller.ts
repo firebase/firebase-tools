@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as fs from "fs";
 import * as pf from "portfinder";
 
 import * as utils from "../utils";
@@ -10,7 +11,7 @@ import { ALL_EMULATORS, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
-import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import * as FirebaseError from "../error";
 import * as path from "path";
@@ -123,13 +124,24 @@ export async function startAll(options: any): Promise<void> {
 
   if (targets.indexOf(Emulators.FIRESTORE) > -1) {
     const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
-    const rules = path.join(options.projectRoot, options.config.get("firestore.rules"));
 
-    const firestoreEmulator = new FirestoreEmulator({
+    const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
-      rules,
-    });
+    };
+
+    const rules: string = path.join(options.projectRoot, options.config.get("firestore.rules"));
+    if (fs.existsSync(rules)) {
+      args.rules = rules;
+    } else {
+      utils.logWarning(
+        `Firestore rules file ${clc.bold(
+          rules
+        )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
+      );
+    }
+
+    const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
 
     utils.logLabeledBullet(
