@@ -3,7 +3,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 
-interface FirestoreEmulatorArgs {
+export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
   rules?: string;
