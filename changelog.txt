@@ -4,6 +4,7 @@ fixed - Functions emulator no longer watches node_modules files.
 fixed - Functions emulator fails to route HTTPS functions to user-provided Express app
 fixed - Functions emulator fails to provide correct req.path
 fixed - Functions emulator fails on various malformed body requests
+fixed - Functions emulator fails on Windows with EACCESS error
 fixed - Fixed race condition where downloading emulators would sometimes resolve too early and fail.
 fixed - Fixed a number of issues that broke functions:shell.
 fixed - Fixed an issue where Firestore emulator would not start if rules file can't be found.
