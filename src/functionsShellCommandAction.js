@@ -9,17 +9,20 @@ var util = require("util");
 var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var logger = require("./logger");
+var shell = require("./emulator/functionsEmulatorShell");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
 
   return serveFunctions
-    .start(options)
+    .start(options, { quiet: true })
     .then(function() {
       return serveFunctions.connect();
     })
     .then(function() {
-      const emulator = serveFunctions.get();
+      const instance = serveFunctions.get();
+      const emulator = new shell.FunctionsEmulatorShell(instance);
+
       if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
         process.exit();
@@ -42,7 +45,7 @@ module.exports = function(options) {
       });
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-          var localFunction = new LocalFunction(trigger, emulator.urls, emulator.controller);
+          var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
           var triggerNameDotNotation = trigger.name.replace(/\-/g, ".");
           _.set(replServer.context, triggerNameDotNotation, localFunction.call);
         }

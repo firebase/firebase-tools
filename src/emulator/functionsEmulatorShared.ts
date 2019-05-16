@@ -17,7 +17,13 @@ export interface EmulatedTriggerDefinition {
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
-  eventTrigger?: any;
+  eventTrigger?: EventTrigger;
+}
+
+export interface EventTrigger {
+  resource: string;
+  service: string;
+  eventType: string;
 }
 
 export interface EmulatedTriggerMap {
@@ -130,6 +136,14 @@ export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
   }
 
   return "us-central1";
+}
+
+export function getFunctionService(def: EmulatedTriggerDefinition): string {
+  if (def.eventTrigger) {
+    return def.eventTrigger.service;
+  }
+
+  return "unknown";
 }
 
 export function waitForBody(req: express.Request): Promise<string> {
