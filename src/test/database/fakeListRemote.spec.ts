@@ -17,10 +17,18 @@ export class FakeListRemote implements ListRemote {
     this.data = data;
   }
 
-  listPath(path: string, numChildren: number): Promise<string[]> {
+  listPath(
+    path: string,
+    numChildren: number,
+    startAfter?: string,
+    timeout?: number
+  ): Promise<string[]> {
     const d = this._dataAtpath(path);
     if (d) {
-      const keys = Object.keys(d);
+      let keys = Object.keys(d);
+      if (startAfter) {
+        keys = keys.filter((key) => key > startAfter);
+      }
       return Promise.resolve(keys.slice(0, numChildren));
     }
     return Promise.resolve([]);

@@ -11,7 +11,7 @@ import { Stack } from "../throttler/stack";
  * shallow gets. We set a generous initial list batch size
  * to mitigate this.
  */
-const LIST_BATCH_SIZE = 2000;
+const LIST_BATCH_SIZE = 4000;
 
 /*
  * Top-level GET requests for large subtrees will likely
@@ -20,7 +20,7 @@ const LIST_BATCH_SIZE = 2000;
  * how deep to search in the tree before attempting large
  * GETs.
  */
-const SKIP_DEPTH = 2;
+const SKIP_DEPTH = 1;
 const TIMEOUT = 50;
 const TIMEOUT_STATUS_CODE = 400;
 
@@ -31,8 +31,8 @@ const TIMEOUT_STATUS_CODE = 400;
  * trees will have substantially more outstanding list
  * operations.
  */
-const SIZE_STACK_CONCURRENCY = 1000;
-const LIST_STACK_CONCURRENCY = 1000;
+const SIZE_STACK_CONCURRENCY = 2000;
+const LIST_STACK_CONCURRENCY = 2000;
 
 export default class DatabaseSize {
   path: string;
@@ -82,7 +82,6 @@ export default class DatabaseSize {
         sizeEstimate = result.bytes;
         return sizeEstimate;
       }
-
       /*
        * Ignore timeout errors so we can try sizing children of this node.
        */
@@ -111,6 +110,6 @@ export default class DatabaseSize {
       sizeEstimate += sizes.reduce((a, b) => a + b);
     } while (subPaths.length > 0);
 
-    return Promise.resolve(sizeEstimate);
+    return sizeEstimate;
   }
 }

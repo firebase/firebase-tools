@@ -26,16 +26,14 @@ export class RTDBSizeRemote implements SizeRemote {
   }
 
   sizeNode(path: string, timeout: number): Promise<SizeResult> {
-    const url =
-      utils.addSubdomain(api.realtimeOrigin, this.instance) +
-      path +
-      ".json?timeout=" +
-      timeout +
-      "ms";
+    const url = `${utils.addSubdomain(api.realtimeOrigin, this.instance)}${path}.json`;
+    const params: any = { timeout: `${timeout}ms` };
+
     const reqOptions = {
       url,
     };
     return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
+      reqOptionsWithToken.qs = params;
       return new Promise((resolve, reject) => {
         let response: any;
         let errorResponse = "";
@@ -77,11 +75,6 @@ export class RTDBSizeRemote implements SizeRemote {
               }
             } else {
               try {
-                /*
-                 * This parsing is strictly for validation.
-                 */
-                JSON.parse(payload);
-
                 /*
                  * For simplicity, we consider size to be the raw byte length
                  * in the payload of the response. This is an estimate. It
