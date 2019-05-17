@@ -25,18 +25,6 @@ describe("RemoveRemote", () => {
     nock.cleanAll();
   });
 
-  it("should return subpaths from shallow get request", () => {
-    nock(serverUrl)
-      .get("/.json")
-      .query({ shallow: true, limitToFirst: "1234" })
-      .reply(200, {
-        a: true,
-        x: true,
-        f: true,
-      });
-    return expect(listRemote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
-  });
-
   it("should return true when patch is small", () => {
     nock(serverUrl)
       .patch("/a/b.json")

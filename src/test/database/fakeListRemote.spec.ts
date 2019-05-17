@@ -3,16 +3,21 @@ import { expect } from "chai";
 
 import { ListRemote } from "../../database/listRemote";
 
+/**
+ * `FakeListRemote` is a test fixture for verifying logic lives in the
+ * `DatabaseRemove` class. It is essentially a mock for the Realtime Database
+ * that accepts a JSON tree to serve upon construction.
+ */
 export class FakeListRemote implements ListRemote {
   data: any;
   delay: number;
 
   /**
-   * @constructor
-   * @param data           the fake database structure. Each leaf is an integer representing the subtree's size.
-   * @param largeThreshold the threshold to determine if a delete exceeds the writeSizeLimit.
-   *                       If the sum of all leaves to delete is larger than largeThreshold,
-   *                       the delete will return false.
+   * @param data the fake database structure. Each leaf is an integer
+   *   representing the subtree's size.
+   * @param largeThreshold the threshold to determine if a delete exceeds the
+   *   writeSizeLimit. If the sum of all leaves to delete is larger than
+   *   largeThreshold the delete will return false.
    */
   constructor(data: any) {
     this.data = data;
@@ -31,7 +36,7 @@ export class FakeListRemote implements ListRemote {
     if (timeout && latency >= timeout) {
       return Promise.reject(new Error("timeout"));
     }
-    const d = this._dataAtpath(path);
+    const d = this.dataAtPath(path);
     if (d) {
       let keys = Object.keys(d);
       /*
@@ -43,18 +48,18 @@ export class FakeListRemote implements ListRemote {
         keys = keys.filter((key) => key > startAfter);
       }
       keys = keys.slice(0, numChildren);
-      return Promise.resolve(keys);
+      return keys;
     }
-    return Promise.resolve([]);
+    return [];
   }
 
-  private _size(data: any): number {
+  private size(data: any): number {
     if (typeof data === "number") {
       return data;
     }
     let size = 0;
     for (const key of Object.keys(data)) {
-      size += this._size(data[key]);
+      size += this.size(data[key]);
     }
     return size;
   }
@@ -63,7 +68,7 @@ export class FakeListRemote implements ListRemote {
     this.delay = delay;
   }
 
-  private _dataAtpath(path: string): any {
+  private dataAtPath(path: string): any {
     const splitedPath = path.slice(1).split("/");
     let d = this.data;
     for (const p of splitedPath) {
