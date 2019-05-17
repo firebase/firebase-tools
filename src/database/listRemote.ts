@@ -78,7 +78,7 @@ export class RTDBListRemote implements ListRemote {
       });
     });
     const dt = Date.now() - t0;
-    logger.debug(`[database] Sucessfully fetched ${paths.length} path at ${path} ${dt}`);
+    logger.debug(`[database] sucessfully fetched ${paths.length} path at ${path} ${dt}`);
     return paths;
   }
 }
