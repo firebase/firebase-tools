@@ -137,7 +137,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should alert when the app is not initialized", async () => {
+      it("should auto-initialize admin when the app is not initialized by user code", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           return {
             function_id: require("firebase-functions")
@@ -153,7 +153,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await _countLogEntries(runtime);
 
-        expect(logs["admin-not-initialized"]).to.eq(1);
+        expect(logs["admin-auto-initialized"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should route all sub-fields accordingly", async () => {
