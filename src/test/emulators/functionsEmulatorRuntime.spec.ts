@@ -138,8 +138,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should auto-initialize admin when the app is not initialized by user code", async () => {
-        const onCreateCopy = JSON.parse(
-          JSON.stringify(FunctionRuntimeBundles.onRequest)
+        const onCreateCopy = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
         ) as FunctionsRuntimeBundle;
         onCreateCopy.ports = {}; // Delete the ports so initialization doesn't try to connect to Firestore
         const runtime = InvokeRuntimeWithFunctions(onCreateCopy, () => {
@@ -187,8 +187,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should redirect Firestore write to emulator", async () => {
-        const onRequestCopy = JSON.parse(
-          JSON.stringify(FunctionRuntimeBundles.onRequest)
+        const onRequestCopy = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
         ) as FunctionsRuntimeBundle;
 
         // Set the port to something crazy to avoid conflict with live emulator

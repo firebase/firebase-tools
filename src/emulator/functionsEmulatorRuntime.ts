@@ -742,7 +742,6 @@ async function main(): Promise<void> {
   if (!app) {
     adminModuleProxy.initializeApp();
     new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
-    throw new Error(JSON.stringify(frb.ports));
   }
 
   let seconds = 0;
