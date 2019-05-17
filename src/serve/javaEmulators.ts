@@ -111,9 +111,11 @@ async function _runBinary(
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
+      emulator.stdout.write(data);
     });
     emulator.instance.stderr.on("data", (data) => {
       logger.debug(data.toString());
+      emulator.stdout.write(data);
     });
 
     emulator.instance.on("error", (err: any) => {
