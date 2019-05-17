@@ -11,6 +11,7 @@ export const FunctionRuntimeBundles = {
     triggerId: "function_id",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
+
   onCreate: {
     ports: {
       firestore: 8080,
@@ -43,6 +44,7 @@ export const FunctionRuntimeBundles = {
     triggerId: "function_id",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
+
   onWrite: {
     ports: {
       firestore: 8080,
@@ -75,6 +77,7 @@ export const FunctionRuntimeBundles = {
     triggerId: "function_id",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
+
   onDelete: {
     ports: {
       firestore: 8080,
@@ -107,6 +110,52 @@ export const FunctionRuntimeBundles = {
     triggerId: "function_id",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
+
+  onUpdate: {
+    ports: {
+      firestore: 8080,
+    },
+    cwd,
+    proto: {
+      data: {
+        oldValue: {
+          name: "projects/fake-project/databases/(default)/documents/test/test",
+          fields: {
+            new: {
+              stringValue: "old-value",
+            },
+          },
+          createTime: "2019-05-14T23:04:30.459119Z",
+          updateTime: "2019-05-15T16:21:15.148831Z",
+        },
+        updateMask: {
+          fieldPaths: ["new"],
+        },
+        value: {
+          name: "projects/fake-project/databases/(default)/documents/test/test",
+          fields: {
+            new: {
+              stringValue: "new-value",
+            },
+          },
+          createTime: "2019-05-14T23:04:30.459119Z",
+          updateTime: "2019-05-15T16:21:15.148831Z",
+        },
+      },
+      context: {
+        eventId: "c0fdb141-bc01-49e7-98c8-9bc7f861de47-0",
+        eventType: "providers/cloud.firestore/eventTypes/document.write",
+        resource: {
+          name: "projects/fake-project/databases/(default)/documents/test/test",
+          service: "firestore.googleapis.com",
+        },
+        timestamp: "2019-05-15T16:21:15.148831Z",
+      },
+    },
+    triggerId: "function_id",
+    projectId: "fake-project-id",
+  } as FunctionsRuntimeBundle,
+
   onRequest: {
     ports: {
       firestore: 8080,

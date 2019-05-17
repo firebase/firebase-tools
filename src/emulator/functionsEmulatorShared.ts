@@ -17,7 +17,13 @@ export interface EmulatedTriggerDefinition {
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
-  eventTrigger?: any;
+  eventTrigger?: EventTrigger;
+}
+
+export interface EventTrigger {
+  resource: string;
+  service: string;
+  eventType: string;
 }
 
 export interface EmulatedTriggerMap {
@@ -121,7 +127,13 @@ export function getEmulatedTriggersFromDefinitions(
 }
 
 export function getTemporarySocketPath(pid: number): string {
-  return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  // See "net" package docs for information about IPC pipes on Windows
+  // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
+  if (process.platform === "win32") {
+    return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
+  } else {
+    return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  }
 }
 
 export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
@@ -130,6 +142,14 @@ export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
   }
 
   return "us-central1";
+}
+
+export function getFunctionService(def: EmulatedTriggerDefinition): string {
+  if (def.eventTrigger) {
+    return def.eventTrigger.service;
+  }
+
+  return "unknown";
 }
 
 export function waitForBody(req: express.Request): Promise<string> {

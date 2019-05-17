@@ -47,34 +47,61 @@ function _is_verbose(runtime: FunctionsRuntimeInstance): void {
 describe("FunctionsEmulator-Runtime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
-      it("should log outgoing HTTPS requests", async () => {
+      it("should log outgoing unknown HTTP requests via 'http'", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                await Promise.all([
-                  require("node-fetch")("https://httpstat.us/302"),
-                  require("node-fetch")("https://storage.googleapis.com/"),
-                  new Promise((resolve) => {
-                    require("http").get("http://example.com", resolve);
-                  }),
-                  new Promise((resolve) => {
-                    require("https").get("https://example.com", resolve);
-                  }),
-                ]);
+                await new Promise((resolve) => {
+                  // tslint:disable-next-line:no-console
+                  console.log(require("http").get.toString());
+                  require("http").get("http://example.com", resolve);
+                });
+              }),
+          };
+        });
+
+        const logs = await _countLogEntries(runtime);
+        expect(logs["unidentified-network-access"]).to.gte(1);
+      }).timeout(TIMEOUT_LONG);
+
+      it("should log outgoing unknown HTTP requests via 'https'", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                await new Promise((resolve) => {
+                  require("https").get("https://example.com", resolve);
+                });
               }),
           };
         });
 
         const logs = await _countLogEntries(runtime);
 
-        // In Node 6 we get >=5 events here, Node 8+ gets >=4 because of changes to
-        // HTTP libraries, either is fine because we'll whitelist / deny the request
-        // after the first prompt.
+        expect(logs["unidentified-network-access"]).to.gte(1);
+      }).timeout(TIMEOUT_LONG);
 
-        expect(logs["unidentified-network-access"]).to.gte(3);
+      it("should log outgoing Google API requests", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                await new Promise((resolve) => {
+                  require("https").get("https://storage.googleapis.com", resolve);
+                });
+              }),
+          };
+        });
+
+        const logs = await _countLogEntries(runtime);
+
         expect(logs["googleapis-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
     });
@@ -572,7 +599,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide Change for firestore.onUpdate()", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onUpdate, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -593,7 +620,7 @@ describe("FunctionsEmulator-Runtime", () => {
           if (el.level !== "USER") {
             return;
           }
-          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
+          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: true, after_exists: true });
         });
 
         const logs = await _countLogEntries(runtime);
