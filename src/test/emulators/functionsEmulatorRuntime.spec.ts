@@ -11,6 +11,7 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 import * as express from "express";
+import * as _ from "lodash";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
