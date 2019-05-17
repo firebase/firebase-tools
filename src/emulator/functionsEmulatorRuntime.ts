@@ -17,7 +17,6 @@ import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EventUtils } from "./events/types";
-import * as fs from "fs";
 import { URL } from "url";
 
 let app: admin.app.App;
@@ -743,6 +742,7 @@ async function main(): Promise<void> {
   if (!app) {
     adminModuleProxy.initializeApp();
     new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
+    throw new Error(JSON.stringify(frb.ports));
   }
 
   let seconds = 0;

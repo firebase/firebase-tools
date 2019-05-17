@@ -138,7 +138,11 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should auto-initialize admin when the app is not initialized by user code", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+        const onCreateCopy = JSON.parse(
+          JSON.stringify(FunctionRuntimeBundles.onRequest)
+        ) as FunctionsRuntimeBundle;
+        onCreateCopy.ports = {}; // Delete the ports so initialization doesn't try to connect to Firestore
+        const runtime = InvokeRuntimeWithFunctions(onCreateCopy, () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
