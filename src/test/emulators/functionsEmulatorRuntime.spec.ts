@@ -11,6 +11,7 @@ import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 import * as express from "express";
+import * as _ from "lodash";
 
 async function _countLogEntries(
   runtime: FunctionsRuntimeInstance
@@ -137,8 +138,12 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should alert when the app is not initialized", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+      it("should auto-initialize admin when the app is not initialized by user code", async () => {
+        const onCreateCopy = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
+        onCreateCopy.ports = {}; // Delete the ports so initialization doesn't try to connect to Firestore
+        const runtime = InvokeRuntimeWithFunctions(onCreateCopy, () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
@@ -153,7 +158,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await _countLogEntries(runtime);
 
-        expect(logs["admin-not-initialized"]).to.eq(1);
+        expect(logs["admin-auto-initialized"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should route all sub-fields accordingly", async () => {
@@ -183,8 +188,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should redirect Firestore write to emulator", async () => {
-        const onRequestCopy = JSON.parse(
-          JSON.stringify(FunctionRuntimeBundles.onRequest)
+        const onRequestCopy = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
         ) as FunctionsRuntimeBundle;
 
         // Set the port to something crazy to avoid conflict with live emulator
