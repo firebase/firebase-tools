@@ -34,7 +34,7 @@ const TIMEOUT_STATUS_CODE = 400;
 const SIZE_STACK_CONCURRENCY = 2000;
 const LIST_STACK_CONCURRENCY = 2000;
 
-export default class DatabaseSize {
+export class DatabaseSize {
   path: string;
   skipDepth: number;
   sizeEstimate: number;

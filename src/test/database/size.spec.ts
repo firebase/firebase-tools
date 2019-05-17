@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import DatabaseSize from "../../database/size";
+import { DatabaseSize } from "../../database/size";
 import { SizeRemote } from "../../database/sizeRemote";
 import { FakeListRemote } from "./fakeListRemote.spec";
 import { FakeSizeRemote } from "./fakeSizeRemote.spec";

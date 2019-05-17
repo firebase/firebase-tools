@@ -1,4 +1,4 @@
-import { default as DatabaseSize } from "../database/size";
+import { DatabaseSize } from "../database/size";
 
 import * as Command from "../command";
 import * as requireInstance from "../requireInstance";
@@ -21,8 +21,8 @@ module.exports = new Command("database:size <path>")
     if (!lodash.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    const sizeOps = new DatabaseSize(options.instance, path);
-    return sizeOps.execute().then((bytes) => {
+    const sizeOps: DatabaseSize = new DatabaseSize(options.instance, path);
+    return sizeOps.execute().then((bytes: number) => {
       utils.logSuccess(path + " is approximately " + bytes + " bytes.");
     });
   });
