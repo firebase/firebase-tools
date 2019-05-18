@@ -1,7 +1,11 @@
 import * as pathLib from "path";
-import { expect } from "chai";
+import * as chai from "chai";
+import * as chaiAsPromised from "chai-as-promised";
 
 import { ListRemote } from "../../database/listRemote";
+
+const expect = chai.expect;
+chai.use(chaiAsPromised);
 
 /**
  * `FakeListRemote` is a test fixture for verifying logic lives in the
@@ -15,9 +19,6 @@ export class FakeListRemote implements ListRemote {
   /**
    * @param data the fake database structure. Each leaf is an integer
    *   representing the subtree's size.
-   * @param largeThreshold the threshold to determine if a delete exceeds the
-   *   writeSizeLimit. If the sum of all leaves to delete is larger than
-   *   largeThreshold the delete will return false.
    */
   constructor(data: any) {
     this.data = data;
@@ -30,11 +31,8 @@ export class FakeListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const startTime = Date.now();
-    await new Promise((resolve, _) => setTimeout(resolve, this.delay));
-    const latency = Date.now() - startTime;
-    if (timeout && latency >= timeout) {
-      return Promise.reject(new Error("timeout"));
+    if (timeout === 0) {
+      throw new Error("timeout");
     }
     const d = this.dataAtPath(path);
     if (d) {
@@ -62,10 +60,6 @@ export class FakeListRemote implements ListRemote {
       size += this.size(data[key]);
     }
     return size;
-  }
-
-  private setArtificialDelay(delay: number): any {
-    this.delay = delay;
   }
 
   private dataAtPath(path: string): any {
@@ -104,5 +98,6 @@ describe("FakeListRemote", () => {
     await expect(fakeDb.listPath("/", 1, "2")).to.eventually.eql(["3"]);
     await expect(fakeDb.listPath("/", 1, "3")).to.eventually.eql(["4"]);
     await expect(fakeDb.listPath("/", 1, "4")).to.eventually.eql([]);
+    await expect(fakeDb.listPath("/", 1, "1", 0)).to.be.rejected;
   });
 });
