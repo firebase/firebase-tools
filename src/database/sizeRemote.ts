@@ -60,12 +60,18 @@ export class RTDBSizeRemote implements SizeRemote {
             if (erroring) {
               try {
                 data = JSON.parse(errorResponse);
-                resolve(new RTDBSizeResult(false, 0, responseToError(response, data)));
+                resolve(
+                  new RTDBSizeResult(
+                    /*success=*/ false,
+                    /*bytes=*/ 0,
+                    responseToError(response, data)
+                  )
+                );
               } catch (e) {
                 resolve(
                   new RTDBSizeResult(
-                    false,
-                    0,
+                    /*success=*/ false,
+                    /*bytes=*/ 0,
                     new FirebaseError("Malformed JSON response", {
                       exit: 2,
                       original: e,
@@ -82,12 +88,14 @@ export class RTDBSizeRemote implements SizeRemote {
                  * as stored in the RTDB persistence layer, but is meaningful
                  * to applications that process the output of such requests.
                  */
-                resolve(new RTDBSizeResult(true, Buffer.byteLength(payload)));
+                resolve(
+                  new RTDBSizeResult(/*success=*/ true, /*bytes=*/ Buffer.byteLength(payload))
+                );
               } catch (e) {
                 resolve(
                   new RTDBSizeResult(
-                    false,
-                    0,
+                    /*success=*/ false,
+                    /*bytes=*/ 0,
                     new FirebaseError("Malformed JSON response", {
                       exit: 2,
                       original: e,
@@ -100,8 +108,8 @@ export class RTDBSizeRemote implements SizeRemote {
           .on("error", (err) => {
             resolve(
               new RTDBSizeResult(
-                false,
-                0,
+                /*success=*/ false,
+                /*bytes=*/ 0,
                 new FirebaseError("Malformed JSON response", {
                   exit: 2,
                   original: err,

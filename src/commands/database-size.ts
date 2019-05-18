@@ -8,8 +8,9 @@ import * as lodash from "lodash";
 
 module.exports = new Command("database:size <path>")
   .description(
-    "esimate the size of the Firebase subtree rooted at the specified path " +
-      "by recursively listing the sub-tree rooted at <path>"
+    "esimate the size of the Firebase Realtime Database subtree rooted at the specified " +
+      "path by recursively listing the sub-tree rooted at <path> (this operation can " +
+      "result in high billing charges for large nodes)"
   )
   .option(
     "--instance <instance>",

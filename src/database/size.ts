@@ -14,10 +14,8 @@ import { Stack } from "../throttler/stack";
 const LIST_BATCH_SIZE = 4000;
 
 /*
- * Top-level GET requests for large subtrees will likely
- * fail, so there are some probable gains to be had from
- * performing shallow gets first. This constant controls
- * how deep to search in the tree before attempting large
+ * This constant controls how deeply to expand nodes in the
+ * tree (with shallow GETs) before attempting larger subtree
  * GETs.
  */
 const SKIP_DEPTH = 1;
@@ -30,9 +28,12 @@ const TIMEOUT_STATUS_CODE = 400;
  * substantially more "size" operations, whereas deep
  * trees will have substantially more outstanding list
  * operations.
+ *
+ * TODO(wyszynski): run benchmarks to understand the
+ * performance of the API for various concurrency values.
  */
-const SIZE_STACK_CONCURRENCY = 2000;
-const LIST_STACK_CONCURRENCY = 2000;
+const SIZE_STACK_CONCURRENCY = 1000;
+const LIST_STACK_CONCURRENCY = 1000;
 
 export class DatabaseSize {
   path: string;
