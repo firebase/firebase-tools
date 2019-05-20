@@ -1,0 +1,2 @@
+* Fixed bug in Firestore emulator where some FieldTransforms were sending back incorrect results.
+* Added support for read-only transactions to Firestore emulator
