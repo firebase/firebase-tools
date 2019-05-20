@@ -61,6 +61,7 @@ export function getJob(name: string): Promise<any> {
   return api.request("GET", `/${VERSION}/${name}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
+    resolveOnHTTPError: true,
   });
 }
 
@@ -88,30 +89,24 @@ export function updateJob(job: Job): Promise<any> {
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = `${job.name.split("/").pop()}`;
-  try {
-    const existingJob = await getJob(job.name);
-    if (!job.timeZone) {
-      // We set this here to avoid recreating schedules that use the default timeZone
-      job.timeZone = DEFAULT_TIME_ZONE;
-    }
-
-    if (isIdentical(existingJob.body, job)) {
-      logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
-      return;
-    }
-    const updatedJob = await updateJob(job);
-    logLabeledBullet("functions", `updated scheduler job ${jobName}`);
-    return updatedJob;
-  } catch (e) {
-    // If the error status is 404, no job exists, so we can create one
-    // If it is anything else, we should error out
-    if (_.get(e, "context.response.statusCode") !== 404) {
-      throw e;
-    }
+  const existingJob = await getJob(job.name);
+  // if no job is found, create one
+  if (existingJob.status === 404) {
     const newJob = await createJob(job);
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
     return newJob;
   }
+  if (!job.timeZone) {
+    // We set this here to avoid recreating schedules that use the default timeZone
+    job.timeZone = DEFAULT_TIME_ZONE;
+  }
+  if (isIdentical(existingJob.body, job)) {
+    logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
+    return;
+  }
+  const updatedJob = await updateJob(job);
+  logLabeledBullet("functions", `updated scheduler job ${jobName}`);
+  return updatedJob;
 }
 
 /**

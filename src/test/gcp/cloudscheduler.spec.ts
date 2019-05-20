@@ -36,7 +36,7 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
       expect(response.body).to.deep.equal(mockJobResp);
-      expect(nock.isDone());
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should do nothing if an identical job exists", async () => {
@@ -47,7 +47,7 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
       expect(response).to.be.undefined;
-      expect(nock.isDone());
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should update if a job exists with the same name and a different schedule", async () => {
@@ -64,7 +64,7 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
       expect(response.body).to.deep.equal(mockJobResp);
-      expect(nock.isDone());
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should update if a job exists with the same name but a different timeZone", async () => {
@@ -81,7 +81,7 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
       expect(response.body).to.deep.equal(mockJobResp);
-      expect(nock.isDone());
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should update if a job exists with the same name but a different schedule", async () => {
@@ -98,7 +98,7 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
       expect(response.body).to.deep.equal(mockJobResp);
-      expect(nock.isDone());
+      expect(nock.isDone()).to.be.true;
     });
   });
 });
