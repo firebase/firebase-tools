@@ -34,7 +34,7 @@ export async function listCollectionIds(project: string): Promise<string[]> {
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-export async function deleteDocument(doc: any): Promise<void> {
+export async function deleteDocument(doc: any): Promise<any> {
   return api.request("DELETE", _API_ROOT + doc.name, {
     auth: true,
     origin: api.firestoreOrigin,
@@ -42,7 +42,7 @@ export async function deleteDocument(doc: any): Promise<void> {
 }
 
 /**
- * Delete an array of Firestore documents.
+ * Non-atomically delete an array of Firestore documents.
  *
  * For document format see:
  * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/Document
@@ -52,24 +52,34 @@ export async function deleteDocument(doc: any): Promise<void> {
  * @return {Promise<number>} a promise for the number of deleted documents.
  */
 export async function deleteDocuments(project: string, docs: any[]): Promise<number> {
-  const parent = "projects/" + project + "/databases/(default)/documents";
-  const url = parent + ":commit";
+  const url = _API_ROOT + "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {
-    return {
-      delete: doc.name,
-    };
+    return { delete: doc.name };
   });
 
   const body = { writes };
 
-  return api
-    .request("POST", _API_ROOT + url, {
+  try {
+    const res = await api.request("POST", url, {
       auth: true,
       data: body,
       origin: api.firestoreOrigin,
-    })
-    .then((res) => {
-      return res.body.writeResults.length;
     });
+    return res.body.writeResults.length;
+  } catch (err) {
+    if (
+      err.status === 400 &&
+      err.message.indexOf("Transaction too big") !== -1 &&
+      docs.length > 2
+    ) {
+      // If the batch is too large, we can get errors. Recursively split the
+      // batch into pieces and process them individually. This can lead to
+      // partial deletes if one of them succeeeds and the other fails.
+      const a = await deleteDocuments(project, docs.slice(0, docs.length / 2));
+      const b = await deleteDocuments(project, docs.slice(docs.length / 2));
+      return a + b;
+    }
+    throw err;
+  }
 }
