@@ -1,8 +1,6 @@
-"use strict";
+import api = require("../api");
 
-var api = require("../api");
-
-var _API_ROOT = "/v1beta1/";
+const _API_ROOT = "/v1beta1/";
 
 /**
  * List all collection IDs.
@@ -10,9 +8,9 @@ var _API_ROOT = "/v1beta1/";
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-var _listCollectionIds = function(project) {
-  var url = _API_ROOT + "projects/" + project + "/databases/(default)/documents:listCollectionIds";
-
+export async function listCollectionIds(project: string): Promise<string[]> {
+  const url =
+    _API_ROOT + "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   return api
     .request("POST", url, {
       auth: true,
@@ -22,10 +20,10 @@ var _listCollectionIds = function(project) {
         pageSize: 2147483647,
       },
     })
-    .then(function(res) {
+    .then((res) => {
       return res.body.collectionIds || [];
     });
-};
+}
 
 /**
  * Delete a single Firestore document.
@@ -36,12 +34,12 @@ var _listCollectionIds = function(project) {
  * @param {object} doc a Document object to delete.
  * @return {Promise} a promise for the delete operation.
  */
-var _deleteDocument = function(doc) {
+export async function deleteDocument(doc: any): Promise<void> {
   return api.request("DELETE", _API_ROOT + doc.name, {
     auth: true,
     origin: api.firestoreOrigin,
   });
-};
+}
 
 /**
  * Delete an array of Firestore documents.
@@ -53,19 +51,17 @@ var _deleteDocument = function(doc) {
  * @param {object[]} docs an array of Document objects to delete.
  * @return {Promise<number>} a promise for the number of deleted documents.
  */
-var _deleteDocuments = function(project, docs) {
-  var parent = "projects/" + project + "/databases/(default)/documents";
-  var url = parent + ":commit";
+export async function deleteDocuments(project: string, docs: any[]): Promise<number> {
+  const parent = "projects/" + project + "/databases/(default)/documents";
+  const url = parent + ":commit";
 
-  var writes = docs.map(function(doc) {
+  const writes = docs.map((doc) => {
     return {
       delete: doc.name,
     };
   });
 
-  var body = {
-    writes: writes,
-  };
+  const body = { writes };
 
   return api
     .request("POST", _API_ROOT + url, {
@@ -73,13 +69,7 @@ var _deleteDocuments = function(project, docs) {
       data: body,
       origin: api.firestoreOrigin,
     })
-    .then(function(res) {
+    .then((res) => {
       return res.body.writeResults.length;
     });
-};
-
-module.exports = {
-  deleteDocument: _deleteDocument,
-  deleteDocuments: _deleteDocuments,
-  listCollectionIds: _listCollectionIds,
-};
+}
