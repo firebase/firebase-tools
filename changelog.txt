@@ -1,0 +1,3 @@
+* Fixed bug in Firestore emulator where some FieldTransforms were sending back incorrect results.
+* Fixed bug where read-only transactions would cause errors in the Firestore emulator.
+* Fixed bug where collection group query listeners would cause errors in the Firestore emulator.
