@@ -549,8 +549,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
     ephemeralServer.use(bodyParser.raw({ type: "*/*" }));
 
-    ephemeralServer.get("/*", handler);
-    ephemeralServer.post("/*", handler);
+    ephemeralServer.all("/*", handler);
 
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
