@@ -244,9 +244,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // need to be registered first otherwise the HTTP functions consume
     // all events.
     hub.post(backgroundFunctionRoute, backgroundHandler);
-    hub.post(httpsFunctionRoutes, httpsHandler);
-    hub.get(httpsFunctionRoutes, httpsHandler);
-
+    hub.all(httpsFunctionRoutes, httpsHandler);
     return hub;
   }
 
