@@ -88,7 +88,7 @@ export function updateJob(job: Job): Promise<any> {
  * @throws { FirebaseError } if an error response other than 404 is received on the GET call.
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
-  const jobName = `${job.name.split("/").pop()}`;
+  const jobName = job.name.split("/").pop();
   const existingJob = await getJob(job.name);
   // if no job is found, create one
   if (existingJob.status === 404) {

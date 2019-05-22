@@ -28,21 +28,22 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(404, { context: { response: { statusCode: 404 } } });
-      const mockJobResp = { schedule: "every 5 minutes" };
       nock(api.cloudschedulerOrigin)
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
-        .reply(200, mockJobResp);
+        .reply(200, testJob);
 
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
-      expect(response.body).to.deep.equal(mockJobResp);
+      expect(response.body).to.deep.equal(testJob);
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should do nothing if an identical job exists", async () => {
+    it("should do nothing if a functionally identical job exists", async () => {
+      const otherJob = _.cloneDeep(testJob);
+      otherJob.name = "something-different";
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
-        .reply(200, testJob);
+        .reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
@@ -56,14 +57,13 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(200, otherJob);
-      const mockJobResp = { schedule: "every 6 minutes" };
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
-        .reply(200, mockJobResp);
+        .reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
-      expect(response.body).to.deep.equal(mockJobResp);
+      expect(response.body).to.deep.equal(otherJob);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -73,31 +73,29 @@ describe("cloudscheduler", () => {
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(200, otherJob);
-      const mockJobResp = { timeZone: "America/New_York" };
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
-        .reply(200, mockJobResp);
+        .reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
-      expect(response.body).to.deep.equal(mockJobResp);
+      expect(response.body).to.deep.equal(otherJob);
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should update if a job exists with the same name but a different schedule", async () => {
+    it("should update if a job exists with the same name but a different retry config", async () => {
       const otherJob = _.cloneDeep(testJob);
       otherJob.retryConfig = { maxDoublings: 10 };
       nock(api.cloudschedulerOrigin)
         .get(`/${VERSION}/${testJob.name}`)
         .reply(200, otherJob);
-      const mockJobResp = { retryConfig: { maxDoublings: 10 } };
       nock(api.cloudschedulerOrigin)
         .patch(`/${VERSION}/${testJob.name}`)
-        .reply(200, mockJobResp);
+        .reply(200, otherJob);
 
       const response = await cloudscheduler.createOrReplaceJob(testJob);
 
-      expect(response.body).to.deep.equal(mockJobResp);
+      expect(response.body).to.deep.equal(otherJob);
       expect(nock.isDone()).to.be.true;
     });
   });
