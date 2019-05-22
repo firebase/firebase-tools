@@ -22,19 +22,20 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
+  getFunctionService,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { removePathSegments } from "./functionsEmulatorUtils";
+import { trimFunctionPath } from "./functionsEmulatorUtils";
+import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
-
-const SERVICE_FIRESTORE = "firestore.googleapis.com";
 
 export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
+  quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
 }
 
@@ -109,7 +110,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
-      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
+      EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody);
@@ -131,15 +132,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       // this log entry to happen during the readying.
       const triggerLogPromise = waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
 
-      logger.debug(`[functions] Waiting for runtime to be ready!`);
+      EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
       await runtime.ready;
-      logger.debug(JSON.stringify(runtime.metadata));
+      EmulatorLogger.log("DEBUG", JSON.stringify(runtime.metadata));
 
       const triggerLog = await triggerLogPromise;
       const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
       const trigger = triggerMap[triggerId];
-      const service: string = _.get(trigger.definition, "eventTrigger.service", "unknown");
+      const service = getFunctionService(trigger.definition);
       track(EVENT_INVOKE, service);
 
       await runtime.exit;
@@ -154,7 +155,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const method = req.method;
       const triggerId = req.params.trigger_name;
 
-      logger.debug(`[functions] ${method} request to function ${triggerId} accepted.`);
+      logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
@@ -170,19 +171,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       logger.debug(JSON.stringify(runtime.metadata));
       track(EVENT_INVOKE, "https");
 
-      logger.debug(
+      EmulatorLogger.log(
+        "DEBUG",
         `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
       );
 
-      /*
-          We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
-          situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
-          consuming yet another port which is probably faster as well.
-         */
+      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
+      // situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
+      // consuming yet another port which is probably faster as well.
       const runtimeReq = http.request(
         {
           method,
-          path: "/" + removePathSegments(req.url, 3), // Remove the first 4 url paths like /X/X/X/a/b/c/
+          path: "/" + trimFunctionPath(req.url),
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -240,10 +240,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       await runtime.exit;
     };
 
-    hub.get(httpsFunctionRoutes, httpsHandler);
-    hub.post(httpsFunctionRoutes, httpsHandler);
+    // The ordering here is important. The longer routes (background)
+    // need to be registered first otherwise the HTTP functions consume
+    // all events.
     hub.post(backgroundFunctionRoute, backgroundHandler);
-
+    hub.all(httpsFunctionRoutes, httpsHandler);
     return hub;
   }
 
@@ -272,37 +273,47 @@ export class FunctionsEmulator implements EmulatorInstance {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          utils.logWarning(`Your function was killed because it raised an unhandled error.`);
+          EmulatorLogger.log(
+            "WARN",
+            `Your function was killed because it raised an unhandled error.`
+          );
         }
         break;
       case "googleapis-network-access":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `Google API requested!\n   - URL: "${
             systemLog.data.href
           }"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
-        utils.logWarning(`Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`);
+        EmulatorLogger.log(
+          "WARN",
+          `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`
+        );
         break;
       case "functions-config-missing-value":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `Non-existent functions.config() value requested!\n   - Path: "${
             systemLog.data.valuePath
           }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "default-admin-app-used":
-        utils.logWarning(`Default "firebase-admin" instance created!`);
+        utils.logBullet(`Your code has been provided a "firebase-admin" instance.`);
         break;
       case "non-default-admin-app-used":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
             `- This instance will *not* be mocked and will access production resources.`
         );
         break;
       case "missing-module":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
           }" to be installed as a ${
@@ -313,7 +324,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         break;
       case "uninstalled-module":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
           }" to be installed. This package is in your package.json, but it's not available. \
@@ -321,7 +333,8 @@ You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
           }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
@@ -331,7 +344,8 @@ You can probably fix this by running "npm install ${
         );
         break;
       case "missing-package-json":
-        utils.logWarning(
+        EmulatorLogger.log(
+          "WARN",
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
@@ -340,10 +354,10 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
-      case "admin-not-initialized":
-        utils.logWarning(
-          "The Firebase Admin module has not been initialized early enough. Make sure you run " +
-            '"admin.initializeApp()" outside of any function and at the top of your code'
+      case "admin-auto-initialized":
+        utils.logBullet(
+          "Your code does not appear to initialize the 'firebase-admin' module, so we've done it automatically.\n" +
+            "   - Learn more: https://firebase.google.com/docs/admin/setup"
         );
         break;
       default:
@@ -360,35 +374,36 @@ You can probably fix this by running "npm install ${
         FunctionsEmulator.handleSystemLog(log);
         break;
       case "USER":
-        logger.info(`${clc.blackBright("> ")} ${log.text}`);
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        logger.debug(log.text);
+        EmulatorLogger.log("DEBUG", log.text);
         break;
       case "INFO":
-        utils.logLabeledBullet("functions", log.text);
+        EmulatorLogger.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        utils.logWarning(log.text);
+        EmulatorLogger.log("WARN", log.text);
         break;
       case "FATAL":
-        utils.logWarning(log.text);
+        EmulatorLogger.log("WARN", log.text);
         break;
       default:
-        logger.info(`${log.level}: ${log.text}`);
+        EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
         break;
     }
   }
 
-  private readonly port: number;
-  private readonly projectId: string = "";
+  readonly projectId: string = "";
+  readonly bundleTemplate: FunctionsRuntimeBundle;
+  nodeBinary: string = "";
 
+  private readonly port: number;
   private server?: http.Server;
   private firebaseConfig: any;
   private functionsDir: string = "";
-  private nodeBinary: string = "";
+  private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-  private bundleTemplate: FunctionsRuntimeBundle;
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
     this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
@@ -406,10 +421,13 @@ You can probably fix this by running "npm install ${
       ports: {},
       disabled_features: this.args.disabledRuntimeFeatures,
     };
+
+    // TODO: Would prefer not to have static state but here we are!
+    EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
 
   async start(): Promise<void> {
-    this.nodeBinary = await askInstallNodeVersion(this.functionsDir);
+    this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
 
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
@@ -420,7 +438,11 @@ You can probably fix this by running "npm install ${
   }
 
   async connect(): Promise<void> {
-    utils.logLabeledBullet("functions", `Watching "${this.functionsDir}" for Cloud Functions...`);
+    EmulatorLogger.logLabeled(
+      "BULLET",
+      "functions",
+      `Watching "${this.functionsDir}" for Cloud Functions...`
+    );
 
     const watcher = chokidar.watch(this.functionsDir, {
       ignored: [
@@ -456,6 +478,8 @@ You can probably fix this by running "npm install ${
         (definition) => !this.knownTriggerIDs[definition.name]
       );
 
+      this.triggers = triggerDefinitions;
+
       for (const definition of toSetup) {
         if (definition.httpsTrigger) {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
@@ -467,16 +491,22 @@ You can probably fix this by running "npm install ${
             definition.name,
             region
           );
-          utils.logLabeledBullet("functions", `HTTP trigger initialized at ${clc.bold(url)}`);
+
+          EmulatorLogger.logLabeled(
+            "BULLET",
+            "functions",
+            `HTTP trigger initialized at ${clc.bold(url)}`
+          );
         } else {
-          const service: string = _.get(definition, "eventTrigger.service", "unknown");
+          const service: string = getFunctionService(definition);
           switch (service) {
-            case SERVICE_FIRESTORE:
+            case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
             default:
-              logger.debug(`Unsupported trigger: ${JSON.stringify(definition)}`);
-              utils.logWarning(
+              EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+              EmulatorLogger.log(
+                "INFO",
                 `Ignoring trigger "${
                   definition.name
                 }" because the service "${service}" is not yet supported.`
@@ -490,7 +520,7 @@ You can probably fix this by running "npm install ${
 
     const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
     watcher.on("change", (filePath) => {
-      logger.debug(`File ${filePath} changed, reloading triggers`);
+      EmulatorLogger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
 
@@ -500,15 +530,21 @@ You can probably fix this by running "npm install ${
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
-      utils.logWarning(
+      EmulatorLogger.log(
+        "INFO",
         `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
       );
       return Promise.resolve();
     }
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
-    utils.logLabeledBullet("functions", `Setting up Cloud Firestore trigger "${definition.name}"`);
+    EmulatorLogger.logLabeled(
+      "BULLET",
+      "functions",
+      `Setting up Cloud Firestore trigger "${definition.name}"`
+    );
 
+    logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
       request.put(
         `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
@@ -519,13 +555,14 @@ You can probably fix this by running "npm install ${
         },
         (err, res, body) => {
           if (err) {
-            utils.logWarning("Error adding trigger: " + err);
+            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
             reject();
             return;
           }
 
           if (JSON.stringify(JSON.parse(body)) === "{}") {
-            utils.logLabeledSuccess(
+            EmulatorLogger.logLabeled(
+              "SUCCESS",
               "functions",
               `Trigger "${definition.name}" has been acknowledged by the Cloud Firestore emulator.`
             );
@@ -553,6 +590,71 @@ You can probably fix this by running "npm install ${
 
   getName(): Emulators {
     return Emulators.FUNCTIONS;
+  }
+
+  getTriggers(): EmulatedTriggerDefinition[] {
+    return this.triggers;
+  }
+
+  /**
+   * Returns the path to a "node" executable to use.
+   */
+  async askInstallNodeVersion(cwd: string): Promise<string> {
+    const pkg = require(path.join(cwd, "package.json"));
+
+    // If the developer hasn't specified a Node to use, inform them that it's an option and use default
+    if (!pkg.engines || !pkg.engines.node) {
+      EmulatorLogger.log(
+        "WARN",
+        "Your functions directory does not specify a Node version.\n   " +
+          "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
+      );
+      return process.execPath;
+    }
+
+    const hostMajorVersion = process.versions.node.split(".")[0];
+    const requestedMajorVersion = pkg.engines.node;
+    let localMajorVersion = "0";
+    const localNodePath = path.join(cwd, "node_modules/.bin/node");
+
+    // Next check if we have a Node install in the node_modules folder
+    try {
+      const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
+      localMajorVersion = localNodeOutput.slice(1).split(".")[0];
+    } catch (err) {
+      // Will happen if we haven't asked about local version yet
+    }
+
+    // If the requested version is the same as the host, let's use that
+    if (requestedMajorVersion === hostMajorVersion) {
+      EmulatorLogger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from host.`
+      );
+      return process.execPath;
+    }
+
+    // If the requested version is already locally available, let's use that
+    if (localMajorVersion === requestedMajorVersion) {
+      EmulatorLogger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from local cache.`
+      );
+      return localNodePath;
+    }
+
+    /*
+    Otherwise we'll begin the conversational flow to install the correct version locally
+   */
+
+    EmulatorLogger.log(
+      "WARN",
+      `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
+    );
+
+    return process.execPath;
   }
 }
 
@@ -653,55 +755,4 @@ function waitForLog(
       }
     });
   });
-}
-
-/**
- * Returns the path to a "node" executable to use.
- */
-async function askInstallNodeVersion(cwd: string): Promise<string> {
-  const pkg = require(path.join(cwd, "package.json"));
-
-  // If the developer hasn't specified a Node to use, inform them that it's an option and use default
-  if (!pkg.engines || !pkg.engines.node) {
-    utils.logWarning(
-      "Your functions directory does not specify a Node version.\n   " +
-        "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
-    );
-    return process.execPath;
-  }
-
-  const hostMajorVersion = process.versions.node.split(".")[0];
-  const requestedMajorVersion = pkg.engines.node;
-  let localMajorVersion = "0";
-  const localNodePath = path.join(cwd, "node_modules/.bin/node");
-
-  // Next check if we have a Node install in the node_modules folder
-  try {
-    const localNodeOutput = spawnSync(localNodePath, ["--version"]).stdout.toString();
-    localMajorVersion = localNodeOutput.slice(1).split(".")[0];
-  } catch (err) {
-    // Will happen if we haven't asked about local version yet
-  }
-
-  // If the requested version is the same as the host, let's use that
-  if (requestedMajorVersion === hostMajorVersion) {
-    utils.logLabeledSuccess("functions", `Using node@${requestedMajorVersion} from host.`);
-    return process.execPath;
-  }
-
-  // If the requested version is already locally available, let's use that
-  if (localMajorVersion === requestedMajorVersion) {
-    utils.logLabeledSuccess("functions", `Using node@${requestedMajorVersion} from local cache.`);
-    return localNodePath;
-  }
-
-  /*
-    Otherwise we'll begin the conversational flow to install the correct version locally
-   */
-
-  utils.logWarning(
-    `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
-  );
-
-  return process.execPath;
 }

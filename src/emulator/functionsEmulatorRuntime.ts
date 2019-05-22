@@ -8,14 +8,16 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
+  getFunctionService,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import * as express from "express";
-import { extractParamsFromPath } from "./functionsEmulatorUtils";
 import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import { EventUtils } from "./events/types";
+import { URL } from "url";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -536,7 +538,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           resolveEphemeralServer();
         });
 
-        await Run([req, res], func);
+        await RunHTTPS([req, res], func);
       } catch (err) {
         rejectEphemeralServer(err);
       }
@@ -547,8 +549,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
     ephemeralServer.use(bodyParser.raw({ type: "*/*" }));
 
-    ephemeralServer.get("/*", handler);
-    ephemeralServer.post("/*", handler);
+    ephemeralServer.all("/*", handler);
 
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
@@ -560,77 +561,40 @@ async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  const { Change } = require("firebase-functions");
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
-  const proto = frb.proto;
+  let proto = frb.proto;
+  const service = getFunctionService(trigger.definition);
 
-  adminModuleProxy.firestore().settings({});
-  const makeFirestoreSnapshot = (app.firestore() as any).snapshot_.bind(app.firestore());
-
-  const resourcePath = proto.context.resource.name;
-  const params = extractParamsFromPath(trigger.definition.eventTrigger.resource, resourcePath);
-
-  /*
-  We use an internal Firestore method makeFirestoreSnapshot to generate Snapshots which we pass to firebase-function's
-  Change object. If we have a value for new / old snap, then we create a valid snapshot, otherwise we
-  invoke makeFirestoreSnapshot with a different signature describe here...
-  https://github.com/googleapis/nodejs-firestore/blob/114de25d1af3fc7441da3242f6bc8cc8354ffa09/dev/test/index.ts#L574
-  To create a snapshot where .exists() fails.
-   */
-
-  let newSnap;
-  if (proto.data.value) {
-    newSnap = makeFirestoreSnapshot(proto.data.value, new Date().toISOString(), "json");
-  } else {
-    newSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
+  // TODO: This is a workaround for
+  // https://github.com/firebase/firebase-tools/issues/1288
+  if (service === "firestore.googleapis.com") {
+    if (EventUtils.isEvent(proto)) {
+      const legacyProto = EventUtils.convertToLegacy(proto);
+      new EmulatorLog(
+        "DEBUG",
+        "runtime-status",
+        `[firestore] converting to a v1beta1 event: old=${JSON.stringify(
+          proto
+        )}, new=${JSON.stringify(legacyProto)}`
+      ).log();
+      proto = legacyProto;
+    } else {
+      new EmulatorLog(
+        "DEBUG",
+        "runtime-status",
+        `[firestore] Got legacy proto ${JSON.stringify(proto)}`
+      ).log();
+    }
   }
 
-  let oldSnap;
-  if (proto.data.oldValue) {
-    oldSnap = makeFirestoreSnapshot(proto.data.oldValue, new Date().toISOString(), "json");
-  } else {
-    oldSnap = makeFirestoreSnapshot(resourcePath, new Date().toISOString(), "json");
-  }
-
-  let data;
-  switch (trigger.definition.eventTrigger.eventType) {
-    case "providers/cloud.firestore/eventTypes/document.write":
-      data = Change.fromObjects(oldSnap, newSnap);
-      break;
-    case "providers/cloud.firestore/eventTypes/document.update":
-      data = Change.fromObjects(oldSnap, newSnap);
-      break;
-    case "providers/cloud.firestore/eventTypes/document.delete":
-      data = oldSnap;
-      break;
-    case "providers/cloud.firestore/eventTypes/document.create":
-      data = newSnap;
-      break;
-  }
-
-  const ctx = {
-    eventId: proto.context.eventId,
-    timestamp: proto.context.timestamp,
-    params,
-    auth: {},
-    authType: "UNAUTHENTICATED",
-  };
-
-  new EmulatorLog("DEBUG", "runtime-status", `Requesting a wrapped function.`).log();
-
-  const fftResolution = slowRequireResolve("firebase-functions-test", frb.cwd);
-  const func = trigger.getWrappedFunction(require(fftResolution));
-
-  await Run([data, ctx], func);
+  await RunBackground(proto, trigger.getRawFunction());
 }
 
-// TODO(abehaskins): This signature could probably use work lol
-async function Run(args: any[], func: (a: any, b: any) => Promise<any>): Promise<any> {
-  if (args.length < 2) {
-    throw new Error("Function must be passed 2 args.");
-  }
-
+/**
+ * Run the given function while redirecting logs and looking out for errors.
+ */
+async function Run(func: () => Promise<any>): Promise<any> {
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
@@ -639,18 +603,38 @@ async function Run(args: any[], func: (a: any, b: any) => Promise<any>): Promise
 
   let caughtErr;
   try {
-    await func(args[0], args[1]);
+    await func();
   } catch (err) {
     caughtErr = err;
   }
+
   console.log = log;
 
   new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server survived.`).log();
   if (caughtErr) {
     throw caughtErr;
   }
+}
 
-  return;
+async function RunBackground(proto: any, func: (proto: any) => Promise<any>): Promise<any> {
+  new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
+
+  await Run(() => {
+    return func(proto);
+  });
+}
+
+async function RunHTTPS(
+  args: any[],
+  func: (a: express.Request, b: express.Response) => Promise<any>
+): Promise<any> {
+  if (args.length < 2) {
+    throw new Error("Function must be passed 2 args.");
+  }
+
+  await Run(() => {
+    return func(args[0], args[1]);
+  });
 }
 
 function isFeatureEnabled(
@@ -755,8 +739,8 @@ async function main(): Promise<void> {
   new EmulatorLog("DEBUG", "runtime-status", `Running ${frb.triggerId} in mode ${mode}`).log();
 
   if (!app) {
-    new EmulatorLog("SYSTEM", "admin-not-initialized", "").log();
-    return;
+    adminModuleProxy.initializeApp();
+    new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
   }
 
   let seconds = 0;
