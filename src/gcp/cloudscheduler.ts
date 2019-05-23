@@ -1,9 +1,11 @@
+import * as _ from "lodash";
 import * as api from "../api";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";
+const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
-export interface Schedule {
+export interface Job {
   name: string;
   schedule: string;
   description?: string;
@@ -12,38 +14,112 @@ export interface Schedule {
     uri: string;
     httpMethod: string;
   };
+  retryConfig?: {
+    retryCount?: number;
+    maxRetryDuration?: string;
+    minBackoffDuration?: string;
+    maxBackoffDuration?: string;
+    maxDoublings?: number;
+  };
 }
 
-export function createJob(schedule: Schedule): Promise<void> {
+/**
+ * Creates a cloudScheduler job.
+ * If another job with that name already exists, this will return a 409.
+ * @param job The job to create.
+ */
+export function createJob(job: Job): Promise<any> {
   // the replace below removes the portion of the schedule name after the last /
   // ie: projects/my-proj/locations/us-central1/jobs/firebase-schedule-func-us-east1 would become
   // projects/my-proj/locations/us-central1/jobs
-  const strippedName = schedule.name.replace(/\/[^\/]+$/, "");
+  const strippedName = job.name.substring(0, job.name.lastIndexOf("/"));
   return api.request("POST", `/${VERSION}/${strippedName}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
-    data: Object.assign({ timeZone: "America/Los_Angeles" }, schedule),
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
   });
 }
 
-export function deleteJob(name: string): Promise<void> {
+/**
+ * Deletes a cloudScheduler job with the given name.
+ * Returns a 404 if no job with that name exists.
+ * @param name The name of the job to delete.
+ */
+export function deleteJob(name: string): Promise<any> {
   return api.request("DELETE", `/${VERSION}/${name}`, {
     auth: true,
     origin: api.cloudschedulerOrigin,
   });
 }
 
-export async function createOrReplaceJob(schedule: Schedule): Promise<void> {
-  const jobName = `${schedule.name.split("/")[5]}`;
-  try {
-    await createJob(schedule);
+/**
+ * Gets a cloudScheduler job with the given name.
+ * If no job with that name exists, this will return a 404.
+ * @param name The name of the job to get.
+ */
+export function getJob(name: string): Promise<any> {
+  return api.request("GET", `/${VERSION}/${name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+    resolveOnHTTPError: true,
+  });
+}
+
+/**
+ * Updates a cloudScheduler job.
+ * Returns a 404 if no job with that name exists.
+ * @param job A job to update.
+ */
+export function updateJob(job: Job): Promise<any> {
+  // Note that name cannot be updated.
+  return api.request("PATCH", `/${VERSION}/${job.name}`, {
+    auth: true,
+    origin: api.cloudschedulerOrigin,
+    data: Object.assign({ timeZone: DEFAULT_TIME_ZONE }, job),
+  });
+}
+
+/**
+ * Checks for a existing job with the given name.
+ * If none is found, it creates a new job.
+ * If one is found, and it is identical to the job parameter, it does nothing.
+ * Otherwise, if one is found and it is different from the job param, it updates the job.
+ * @param job A job to check for and create, replace, or leave as appropriate.
+ * @throws { FirebaseError } if an error response other than 404 is received on the GET call.
+ */
+export async function createOrReplaceJob(job: Job): Promise<any> {
+  const jobName = job.name.split("/").pop();
+  const existingJob = await getJob(job.name);
+  // if no job is found, create one
+  if (existingJob.status === 404) {
+    const newJob = await createJob(job);
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
-  } catch (e) {
-    if (e.context.response.statusCode !== 409) {
-      throw e;
-    }
-    logLabeledBullet("functions", `re-creating scheduler job ${jobName}`);
-    await deleteJob(schedule.name);
-    return createJob(schedule);
+    return newJob;
   }
+  if (!job.timeZone) {
+    // We set this here to avoid recreating schedules that use the default timeZone
+    job.timeZone = DEFAULT_TIME_ZONE;
+  }
+  if (isIdentical(existingJob.body, job)) {
+    logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
+    return;
+  }
+  const updatedJob = await updateJob(job);
+  logLabeledBullet("functions", `updated scheduler job ${jobName}`);
+  return updatedJob;
+}
+
+/**
+ * Check if two jobs are functionally equivalent.
+ * @param job a job to compare.
+ * @param otherJob a job to compare.
+ */
+function isIdentical(job: Job, otherJob: Job): boolean {
+  return (
+    job &&
+    otherJob &&
+    job.schedule === otherJob.schedule &&
+    job.timeZone === otherJob.timeZone &&
+    _.isEqual(job.retryConfig, otherJob.retryConfig)
+  );
 }
