@@ -57,9 +57,9 @@ exports.getAppEngineLocation = function(config) {
 exports.getFirebaseConfig = function(options) {
   return getProjectNumber(options)
     .then(function(projectNumber) {
-      return api.request("GET", "/v1/projects/" + projectNumber + ":getServerAppConfig", {
+      return api.request("GET", "/v1beta1/projects/" + projectNumber + "/adminSdkConfig", {
         auth: true,
-        origin: api.firedataOrigin,
+        origin: api.firebaseApiOrigin,
       });
     })
     .then(function(response) {
