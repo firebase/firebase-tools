@@ -50,6 +50,7 @@ describe("accountExporter", function() {
         userList.push({
           localId: i.toString(),
           email: "test" + i + "@test.org",
+          displayName: "John Tester" + i + (i === 0 ? ", CFA" : ""),
         });
       }
     });
@@ -110,6 +111,55 @@ describe("accountExporter", function() {
           expect(spyWrite.getCall(j).args[0]).to.eq(
             "," + os.EOL + JSON.stringify(userList[j], null, 2)
           );
+        }
+      });
+    });
+
+    it("should encapsulate displayNames with commas for csv formats", function() {
+      var trailingCommas = [];
+      // The remaining empty columns, index 6 to 25.
+      for (var i = 0; i < 20; i++) {
+        trailingCommas.push(",");
+      }
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 7,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList,
+          nextPageToken: "7",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 7,
+          nextPageToken: "7",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [],
+          nextPageToken: "7",
+        });
+
+      var result = serialExportUsers("test-project-id", {
+        format: "csv",
+        batchSize: 7,
+        writeStream: writeStream,
+      });
+      return result.then(function() {
+        expect(spyWrite.callCount).to.eq(7);
+        for (var j = 0; j < 7; j++) {
+          var expectedDisplayName = userList[j].displayName;
+          if (i === 0) {
+            expectedDisplayName = '"' + expectedDisplayName + '"';
+          }
+          var expectedEntry =
+            userList[j].localId +
+            "," +
+            userList[j].email +
+            ",false,,," +
+            expectedDisplayName +
+            trailingCommas.join("");
+          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + "," + os.EOL);
         }
       });
     });
