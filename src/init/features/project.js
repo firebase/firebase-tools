@@ -4,7 +4,7 @@ var clc = require("cli-color");
 
 var _ = require("lodash");
 var firebaseApi = require("../../firebaseApi");
-var prompt = require("../../prompt");
+var { prompt, listLabelToValue } = require("../../prompt");
 var logger = require("../../logger");
 var utils = require("../../utils");
 
@@ -81,7 +81,7 @@ function _getProject(options) {
           };
         }
 
-        var id = prompt.listLabelToValue(label, choices);
+        var id = listLabelToValue(label, choices);
         const project = projects.find((p) => p.projectId === id);
         return {
           id: id,

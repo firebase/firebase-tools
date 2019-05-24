@@ -15,7 +15,7 @@ var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
 var runtimeSelector = require("../../runtimeChoiceSelector");
 var { getAppEngineLocation } = require("../../functionsConfig");
-var prompt = require("../../prompt");
+var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
 
 var deploymentTool = require("../../deploymentTool");
@@ -338,7 +338,7 @@ module.exports = function(context, options, payload) {
 
       const next = options.force
         ? Promise.resolve(true)
-        : prompt.once({
+        : promptOnce({
             type: "confirm",
             name: "confirm",
             default: false,

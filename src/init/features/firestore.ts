@@ -5,11 +5,10 @@ import FirebaseError = require("../../error");
 import gcp = require("../../gcp");
 import iv2 = require("../../firestore/indexes");
 import fsutils = require("../../fsutils");
-import prompt = require("../../prompt");
+import { prompt, promptOnce } from "../../prompt";
 import logger = require("../../logger");
 import utils = require("../../utils");
 import requireAccess = require("../../requireAccess");
-import scopes = require("../../scopes");
 
 const indexes = new iv2.FirestoreIndexes();
 
@@ -49,7 +48,7 @@ async function initRules(setup: any, config: any): Promise<any> {
           clc.bold(filename) +
           " already exists." +
           " Do you want to overwrite it with the Firestore Rules from the Firebase Console?";
-        return prompt.once({
+        return promptOnce({
           type: "confirm",
           message: msg,
           default: false,
@@ -121,7 +120,7 @@ async function initIndexes(setup: any, config: any): Promise<any> {
           clc.bold(filename) +
           " already exists." +
           " Do you want to overwrite it with the Firestore Indexes from the Firebase Console?";
-        return prompt.once({
+        return promptOnce({
           type: "confirm",
           message: msg,
           default: false,
