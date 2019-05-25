@@ -1,11 +1,31 @@
 import * as inquirer from "inquirer";
 import * as _ from "lodash";
+
 import * as FirebaseError from "./error";
 
-export async function prompt(options: any, questions: any[]): Promise<any> {
+export interface Choice {
+  checked: boolean;
+  label: string;
+  name: string;
+}
+export type Question = inquirer.Question;
+
+/**
+ * prompt is used to prompt the user for values. Specifically, any `name` of a
+ * provided question will be checked against the `options` object. If `name`
+ * exists as a key in `options`, it will *not* be prompted for. If `options`
+ * contatins `nonInteractive = true`, then any `question.name` that does not
+ * have a value in `options` will cause an error to be returned. Once the values
+ * are queried, the values for them are put onto the `options` object, and the
+ * answers are returned.
+ * @param options The options object passed through by Command.
+ * @param questions `Question`s to ask the user.
+ * @return The answers, keyed by the `name` of the `Question`.
+ */
+export async function prompt(options: { [key: string]: any }, questions: Question[]): Promise<any> {
   const prompts = [];
   for (const question of questions) {
-    if (!options[question.name]) {
+    if (question.name && !options[question.name]) {
       prompts.push(question);
     }
   }
@@ -30,21 +50,23 @@ export async function prompt(options: any, questions: any[]): Promise<any> {
 }
 
 /**
- * Allow a one-off prompt when we don't need to ask a bunch of questions.
+ * Quick version of `prompt` to ask a single question.
+ * @param question The question (of life, the universe, and everything).
+ * @returns The value as returned by `inquirer` for that quesiton.
  */
-export async function promptOnce(question: any): Promise<any> {
+export async function promptOnce(question: Question): Promise<any> {
   question.name = question.name || "question";
   const answers = await prompt({}, [question]);
   return answers[question.name];
 }
 
-export function convertLabeledListChoices(choices: any): { checked: any; name: string } {
+export function convertLabeledListChoices(choices: any): Question[] {
   return choices.map((choice: any) => {
     return { checked: choice.checked, name: choice.label };
   });
 }
 
-export function listLabelToValue(label: any, choices: any[]): any {
+export function listLabelToValue(label: any, choices: Choice[]): string {
   for (const choice of choices) {
     if (choice.label === label) {
       return choice.name;
