@@ -4,7 +4,7 @@ var clc = require("cli-color");
 
 var _ = require("lodash");
 var firebaseApi = require("../../firebaseApi");
-var { prompt, listLabelToValue } = require("../../prompt");
+var { promptOnce, listLabelToValue } = require("../../prompt");
 var logger = require("../../logger");
 var utils = require("../../utils");
 
@@ -61,34 +61,32 @@ function _getProject(options) {
       );
     }
 
-    return prompt
-      .once({
-        type: "list",
-        name: "id",
-        message: "Select a default Firebase project for this directory:",
-        validate: function(answer) {
-          if (!_.includes(nameOptions, answer)) {
-            return "Must specify a Firebase to which you have access.";
-          }
-          return true;
-        },
-        choices: nameOptions,
-      })
-      .then(function(label) {
-        if (label === NEW_PROJECT || label === NO_PROJECT) {
-          return {
-            id: label,
-          };
+    return promptOnce({
+      type: "list",
+      name: "id",
+      message: "Select a default Firebase project for this directory:",
+      validate: function(answer) {
+        if (!_.includes(nameOptions, answer)) {
+          return "Must specify a Firebase to which you have access.";
         }
-
-        var id = listLabelToValue(label, choices);
-        const project = projects.find((p) => p.projectId === id);
+        return true;
+      },
+      choices: nameOptions,
+    }).then(function(label) {
+      if (label === NEW_PROJECT || label === NO_PROJECT) {
         return {
-          id: id,
-          label: label,
-          instance: _.get(project, "resources.realtimeDatabaseInstance"),
+          id: label,
         };
-      });
+      }
+
+      var id = listLabelToValue(label, choices);
+      const project = projects.find((p) => p.projectId === id);
+      return {
+        id: id,
+        label: label,
+        instance: _.get(project, "resources.realtimeDatabaseInstance"),
+      };
+    });
   });
 }
 
