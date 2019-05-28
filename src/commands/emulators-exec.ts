@@ -16,7 +16,7 @@ import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 async function runScript(script: string): Promise<void> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = {};
+  const env: NodeJS.ProcessEnv = {...process.env};
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
@@ -26,21 +26,13 @@ async function runScript(script: string): Promise<void> {
   }
 
   const proc = childProcess.spawn(script, {
-    stdio: ["inherit", "pipe", "pipe"] as StdioOptions,
+    stdio: ["inherit", "inherit", "inherit"] as StdioOptions,
     shell: true,
     windowsHide: true,
     env,
   });
 
   logger.debug(`Running ${script} with environment ${JSON.stringify(env)}`);
-
-  proc.stdout.on("data", (data) => {
-    process.stdout.write(data.toString());
-  });
-
-  proc.stderr.on("data", (data) => {
-    process.stderr.write(data.toString());
-  });
 
   return new Promise((resolve, reject) => {
     proc.on("error", (err: any) => {
