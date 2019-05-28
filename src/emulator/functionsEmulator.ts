@@ -27,7 +27,7 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { removePathSegments } from "./functionsEmulatorUtils";
+import { trimFunctionPath } from "./functionsEmulatorUtils";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
@@ -69,19 +69,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const hub = express();
 
     hub.use((req, res, next) => {
-      // Allow CORS to facilitate easier testing.
-      // Sources:
-      //  * https://enable-cors.org/server_expressjCannot understand what targets to deploys.html
-      //  * https://stackoverflow.com/a/37228330/324977
-      res.header("Access-Control-Allow-Origin", "*");
-
-      // Callable functions send "Authorization" and "Content-Type".
-      res.header(
-        "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Authorization, Accept"
-      );
-      res.header("Access-Control-Allow-Methods", "GET,OPTIONS,POST");
-
       let data = "";
       req.on("data", (chunk: any) => {
         data += chunk;
@@ -176,15 +163,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
       );
 
-      /*
-          We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
-          situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
-          consuming yet another port which is probably faster as well.
-         */
+      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
+      // situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
+      // consuming yet another port which is probably faster as well.
       const runtimeReq = http.request(
         {
           method,
-          path: "/" + removePathSegments(req.url, 3), // Remove the first 4 url paths like /X/X/X/a/b/c/
+          path: "/" + trimFunctionPath(req.url),
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -246,9 +231,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // need to be registered first otherwise the HTTP functions consume
     // all events.
     hub.post(backgroundFunctionRoute, backgroundHandler);
-    hub.post(httpsFunctionRoutes, httpsHandler);
-    hub.get(httpsFunctionRoutes, httpsHandler);
-
+    hub.all(httpsFunctionRoutes, httpsHandler);
     return hub;
   }
 
