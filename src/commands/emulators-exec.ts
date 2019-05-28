@@ -16,7 +16,7 @@ import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 async function runScript(script: string): Promise<void> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = {...process.env};
+  const env: NodeJS.ProcessEnv = { ...process.env };
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
