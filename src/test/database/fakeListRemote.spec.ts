@@ -1,11 +1,9 @@
 import * as pathLib from "path";
 import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
 
 import { ListRemote } from "../../database/listRemote";
 
 const expect = chai.expect;
-chai.use(chaiAsPromised);
 
 /**
  * `FakeListRemote` is a test fixture for verifying logic lives in the
