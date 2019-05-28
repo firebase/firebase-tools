@@ -468,6 +468,7 @@ You can probably fix this by running "npm install ${
       this.triggers = triggerDefinitions;
 
       for (const definition of toSetup) {
+        console.log(require("util").inspect(definition));
         if (definition.httpsTrigger) {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
           //                 that a developer is running the same function in multiple regions.
@@ -489,6 +490,9 @@ You can probably fix this by running "npm install ${
           switch (service) {
             case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);
+              break;
+            case Constants.SERVICE_REALTIME_DATABASE:
+              await this.addRealtimeDatabaseTrigger(this.projectId, definition);
               break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -512,6 +516,53 @@ You can probably fix this by running "npm install ${
     });
 
     return loadTriggers();
+  }
+
+  addRealtimeDatabaseTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
+    const databasePort = 9000; //EmulatorRegistry.getPort(Emulators.DATABASE);
+    if (!databasePort) {
+      EmulatorLogger.log(
+        "INFO",
+        `Ignoring trigger "${definition.name}" because the Realtime Database emulator is not running`
+      );
+      return Promise.resolve();
+    }
+    if (definition.eventTrigger === undefined) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has undefined "eventTrigger" member`
+      );
+      return Promise.reject();
+    }
+    console.log("Trigger definition " + require('util').inspect(definition));
+    const bundle = JSON.stringify([{
+      name: definition.name,
+      path: definition.eventTrigger.resource,
+      event: definition.eventTrigger.eventType,
+      topic: ""
+    }]);
+    EmulatorLogger.logLabeled(
+      "BULLET",
+      "functions",
+      `Setting up Realtime Database trigger "${definition.name}"`
+    );
+    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
+    return new Promise((resolve, reject) => {
+      request.put(`http://localhost:${databasePort}/.settings/functionTriggers.json`,
+        {
+          body: bundle
+        },
+        (err, res, body) => {
+          if (err) {
+            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+            reject();
+            return;
+          }
+          console.log("RTDB Trigger add result: " + require('util').inspect(body));
+          resolve();
+        }
+      )
+    });
   }
 
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
