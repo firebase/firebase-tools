@@ -42,6 +42,7 @@ export async function prompt(options: { [key: string]: any }, questions: Questio
   }
 
   const answers = await inquirer.prompt(prompts);
+  // lodash's forEach's call back is (value, key); this is not a typo.
   _.forEach(answers, (v, k) => {
     options[k] = v;
   });
@@ -59,13 +60,21 @@ export async function promptOnce(question: Question): Promise<any> {
   return answers[question.name];
 }
 
-export function convertLabeledListChoices(choices: any): Question[] {
+/*
+ * Converts a list of `Choice` objects into a list of `Question` objects which
+ * are compatible with `prompt` (and `promptOnce`).
+ */
+export function convertLabeledListChoices(choices: Choice[]): Question[] {
   return choices.map((choice: any) => {
     return { checked: choice.checked, name: choice.label };
   });
 }
 
-export function listLabelToValue(label: any, choices: Choice[]): string {
+/*
+ * Given a label, return the `Choice.name` that was associated with it.
+ * (Useful in conjunction with `convertLabeledListChoices`).
+ */
+export function listLabelToValue(label: string, choices: Choice[]): string {
   for (const choice of choices) {
     if (choice.label === label) {
       return choice.name;
