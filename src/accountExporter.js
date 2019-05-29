@@ -33,7 +33,7 @@ var PROVIDER_ID_INDEX_MAP = {
 var _escapeComma = function(str) {
   if (str.indexOf(",") !== -1) {
     // Encapsulate the string with quotes if it contains a comma.
-    return '"' + str + '"';
+    return `"${str}"`;
   }
   return str;
 };
