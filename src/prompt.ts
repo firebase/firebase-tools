@@ -31,10 +31,9 @@ export async function prompt(options: { [key: string]: any }, questions: Questio
   }
 
   if (prompts.length && options.nonInteractive) {
+    const missingOptions = _.uniq(_.map(prompts, "name")).join(", ");
     throw new FirebaseError(
-      "Missing required options (" +
-        _.uniq(_.map(prompts, "name")).join(", ") +
-        ") while running in non-interactive mode",
+      `Missing required options (${missingOptions}) while running in non-interactive mode`,
       {
         children: prompts,
         exit: 1,
