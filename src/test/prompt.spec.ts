@@ -7,13 +7,14 @@ import * as prompt from "../prompt";
 
 describe("prompt", () => {
   let inquirerStub: sinon.SinonStub;
+  const PROMPT_RESPONSES = {
+    some: "fool",
+    with: "values",
+  };
 
   beforeEach(() => {
     // Stub inquirer to return a set of fake answers.
-    inquirerStub = sinon.stub(inquirer, "prompt").resolves({
-      some: "fool",
-      with: "values",
-    });
+    inquirerStub = sinon.stub(inquirer, "prompt").resolves(PROMPT_RESPONSES);
   });
 
   afterEach(() => {
@@ -40,6 +41,20 @@ describe("prompt", () => {
 
       expect(inquirerStub).calledOnceWithExactly(qs);
     });
+
+    it("should add the new values to the options object", async () => {
+      const options = { hello: "world" };
+      const qs: prompt.Question[] = [
+        {
+          name: "foo",
+          message: "this is a test",
+        },
+      ];
+
+      await prompt.prompt(options, qs);
+
+      expect(options).to.deep.equal(Object.assign({ hello: "world" }, PROMPT_RESPONSES));
+    });
   });
 
   describe("promptOnce", () => {
@@ -63,10 +78,12 @@ describe("prompt", () => {
         {
           checked: false,
           name: "foo",
+          label: "Label for foo",
         },
         {
           checked: true,
           name: "bar",
+          label: "Label for bar",
         },
       ];
 
