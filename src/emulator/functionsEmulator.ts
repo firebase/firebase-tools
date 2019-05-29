@@ -481,7 +481,6 @@ You can probably fix this by running "npm install ${
       this.triggers = triggerDefinitions;
 
       for (const definition of toSetup) {
-        console.log(require("util").inspect(definition));
         if (definition.httpsTrigger) {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
           //                 that a developer is running the same function in multiple regions.
@@ -531,7 +530,10 @@ You can probably fix this by running "npm install ${
     return loadTriggers();
   }
 
-  addRealtimeDatabaseTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
+  addRealtimeDatabaseTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<any> {
     const databasePort = 9000; //EmulatorRegistry.getPort(Emulators.DATABASE);
     if (!databasePort) {
       EmulatorLogger.log(
@@ -547,13 +549,13 @@ You can probably fix this by running "npm install ${
       );
       return Promise.reject();
     }
-    console.log("Trigger definition " + require('util').inspect(definition));
     const bundle = JSON.stringify([{
-      name: definition.name,
-      path: definition.eventTrigger.resource,
+      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+      path: definition.eventTrigger.resource.split("refs")[1],
       event: definition.eventTrigger.eventType,
-      topic: ""
+      topic: `projects/${projectId}/topics/_`,
     }]);
+
     EmulatorLogger.logLabeled(
       "BULLET",
       "functions",
@@ -563,6 +565,9 @@ You can probably fix this by running "npm install ${
     return new Promise((resolve, reject) => {
       request.put(`http://localhost:${databasePort}/.settings/functionTriggers.json`,
         {
+          auth: {
+            bearer: "owner"
+          },
           body: bundle
         },
         (err, res, body) => {
@@ -571,7 +576,6 @@ You can probably fix this by running "npm install ${
             reject();
             return;
           }
-          console.log("RTDB Trigger add result: " + require('util').inspect(body));
           resolve();
         }
       )
