@@ -4,3 +4,5 @@
 * Fixed bug where query parameters were not sent to HTTP functions.
 * Fixed bug where some HTTP methods (like DELETE) were not allowed.
 * Fixed bug where CORS headers were too restrictive.
+* Fixed bug where environment variables are unset for script in `emulators:exec`.
+* `emulators:exec` script now inherits stdout and stderr.
