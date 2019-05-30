@@ -74,44 +74,61 @@ describe("prompt", () => {
 
   describe("convertLabeledListChoices", () => {
     it("should return a list of the same size", () => {
-      const cs = [
+      const choices = [
         {
           checked: false,
-          name: "foo",
           label: "Label for foo",
+          name: "foo",
         },
         {
           checked: true,
-          name: "bar",
           label: "Label for bar",
+          name: "bar",
         },
       ];
 
       expect(prompt.convertLabeledListChoices([])).to.have.length(0);
-      expect(prompt.convertLabeledListChoices(cs)).to.have.length(2);
+      expect(prompt.convertLabeledListChoices(choices)).to.have.length(2);
+    });
+
+    it("should turn the label into the name", () => {
+      expect(
+        prompt.convertLabeledListChoices([
+          {
+            checked: true,
+            label: "SuperSparkle: the Unicorn offering by Firebase",
+            name: "supersparkle",
+          },
+        ])
+      ).to.deep.equal([
+        {
+          checked: true,
+          name: "SuperSparkle: the Unicorn offering by Firebase",
+        },
+      ]);
     });
   });
 
   describe("listLabelToValue", () => {
     const CHOICES = [
       {
-        name: "foo",
-        label: "this is foo",
         checked: false,
+        label: "Label for foo",
+        name: "foo",
       },
       {
-        name: "bar",
-        label: "this is bar",
         checked: false,
+        label: "Label for bar",
+        name: "bar",
       },
     ];
 
     it("should return the value for a name given a label", () => {
-      expect(prompt.listLabelToValue("this is bar", CHOICES)).to.equal("bar");
+      expect(prompt.listLabelToValue("Label for bar", CHOICES)).to.equal("bar");
     });
 
     it("should return empty-string for an unknown label", () => {
-      expect(prompt.listLabelToValue("this is baz", CHOICES)).to.equal("");
+      expect(prompt.listLabelToValue("Label for baz", CHOICES)).to.equal("");
     });
   });
 });
