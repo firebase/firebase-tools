@@ -540,7 +540,7 @@ You can probably fix this by running "npm install ${
         "INFO",
         `Ignoring trigger "${
           definition.name
-        }" because the Realtime Database emulator is not running`
+        }" because the Realtime Database emulator is not running.`
       );
       return Promise.resolve();
     }
@@ -551,10 +551,26 @@ You can probably fix this by running "npm install ${
       );
       return Promise.reject();
     }
+    /*
+     * The Realtime Database emulator expects the `path` field in its trigger
+     * definition to be relative to the database root.
+     */
+    const pathPattern = new RegExp("^projects/[^/]*/instances/[^/]*/refs(/.*)$");
+    const result: string[] | null = pathPattern.exec(definition.eventTrigger.resource);
+
+    if (result === null || result.length !== 2) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has malformed "resource" member. ` +
+          `${definition.eventTrigger.resource}`
+      );
+      return Promise.reject();
+    }
+
     const bundle = JSON.stringify([
       {
         name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-        path: definition.eventTrigger.resource.split("refs")[1],
+        path: result[1], // path stored in the first capture group
         event: definition.eventTrigger.eventType,
         topic: `projects/${projectId}/topics/_`,
       },
