@@ -521,11 +521,13 @@ You can probably fix this by running "npm install ${
     projectId: string,
     definition: EmulatedTriggerDefinition
   ): Promise<any> {
-    const databasePort = 9000; //EmulatorRegistry.getPort(Emulators.DATABASE);
+    const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
     if (!databasePort) {
       EmulatorLogger.log(
         "INFO",
-        `Ignoring trigger "${definition.name}" because the Realtime Database emulator is not running`
+        `Ignoring trigger "${
+          definition.name
+        }" because the Realtime Database emulator is not running`
       );
       return Promise.resolve();
     }
@@ -536,12 +538,14 @@ You can probably fix this by running "npm install ${
       );
       return Promise.reject();
     }
-    const bundle = JSON.stringify([{
-      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-      path: definition.eventTrigger.resource.split("refs")[1],
-      event: definition.eventTrigger.eventType,
-      topic: `projects/${projectId}/topics/_`,
-    }]);
+    const bundle = JSON.stringify([
+      {
+        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+        path: definition.eventTrigger.resource.split("refs")[1],
+        event: definition.eventTrigger.eventType,
+        topic: `projects/${projectId}/topics/_`,
+      },
+    ]);
 
     EmulatorLogger.logLabeled(
       "BULLET",
@@ -550,12 +554,13 @@ You can probably fix this by running "npm install ${
     );
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
-      request.put(`http://localhost:${databasePort}/.settings/functionTriggers.json`,
+      request.put(
+        `http://localhost:${databasePort}/.settings/functionTriggers.json`,
         {
           auth: {
-            bearer: "owner"
+            bearer: "owner",
           },
-          body: bundle
+          body: bundle,
         },
         (err, res, body) => {
           if (err) {
@@ -565,7 +570,7 @@ You can probably fix this by running "npm install ${
           }
           resolve();
         }
-      )
+      );
     });
   }
 
