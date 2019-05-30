@@ -3,6 +3,7 @@ import { expect } from "chai";
 import DatabaseRemove from "../../database/remove";
 import { RemoveRemote } from "../../database/removeRemote";
 import { FakeRemoveRemote } from "./fakeRemoveRemote.spec";
+import { FakeListRemote } from "./fakeListRemote.spec";
 
 describe("DatabaseRemove", () => {
   it("should remove tiny tree", async () => {
@@ -14,7 +15,7 @@ describe("DatabaseRemove", () => {
   });
 
   it("should remove subtree at /a/b/c", async () => {
-    const fakeDb = new FakeRemoveRemote({
+    const data = {
       a: {
         b: { x: { y: 1 } },
         c: { x: 4, y: 8 },
@@ -23,9 +24,14 @@ describe("DatabaseRemove", () => {
       d: {
         e: 3,
       },
-    });
+    };
+
+    const fakeList = new FakeListRemote(data);
+    const fakeDb = new FakeRemoveRemote(data);
+
     const removeOps = new DatabaseRemove("test-sub-path", "/a");
     removeOps.remote = fakeDb;
+    removeOps.listRemote = fakeList;
     await removeOps.execute();
     expect(fakeDb.data).to.eql({
       d: {
@@ -48,17 +54,23 @@ describe("DatabaseRemove", () => {
   function databaseRemoveTestSuit(threshold: number): void {
     describe(`DatabaseRemove when largeThreshold=${threshold}`, () => {
       it("should remove nested tree", async () => {
-        const fakeDb = new FakeRemoveRemote(buildData(3, 5), threshold);
+        const data = buildData(3, 5);
+        const fakeDb = new FakeRemoveRemote(data, threshold);
+        const fakeLister = new FakeListRemote(data);
         const removeOps = new DatabaseRemove("test-nested-tree", "/");
         removeOps.remote = fakeDb;
+        removeOps.listRemote = fakeLister;
         await removeOps.execute();
         expect(fakeDb.data).to.eql(null);
       });
 
       it("should remove flat tree when threshold=${threshold}", async () => {
-        const fakeDb = new FakeRemoveRemote(buildData(1232, 1), threshold);
+        const data = buildData(1232, 1);
+        const fakeDb = new FakeRemoveRemote(data, threshold);
+        const fakeList = new FakeListRemote(data);
         const removeOps = new DatabaseRemove("test-remover", "/");
         removeOps.remote = fakeDb;
+        removeOps.listRemote = fakeList;
         await removeOps.execute();
         expect(fakeDb.data).to.eql(null);
       });
