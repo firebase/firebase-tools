@@ -8,17 +8,17 @@ export class FakeSizeRemote implements SizeRemote {
   constructor(private data: any) {}
 
   async sizeNode(path: string, timeout: number): Promise<SizeResult> {
-    return new RTDBSizeResult(true, this._size(this._dataAtPath(path)));
+    return new RTDBSizeResult(true, this.size(this.dataAtPath(path)));
   }
 
-  private _size(data: any): number {
+  private size(data: any): number {
     if (typeof data !== "object") {
       return Buffer.byteLength(data.toString());
     }
     return Buffer.byteLength(JSON.stringify(data));
   }
 
-  private _dataAtPath(path: string): any {
+  private dataAtPath(path: string): any {
     const splitedPath = path.slice(1).split("/");
     let d = this.data;
     for (const p of splitedPath) {

@@ -16,6 +16,7 @@ describe("DatabaseSize", () => {
 
     const result: number = await sizeOp.execute();
     expect(result).to.be.below(Buffer.byteLength(JSON.stringify(data)));
+    expect(result).to.be.above(0);
   });
   it("should size a medium tree", async () => {
     const data = {
@@ -38,6 +39,7 @@ describe("DatabaseSize", () => {
     const resulta: number = await sizeOp.execute();
 
     expect(resulta).to.be.below(Buffer.byteLength(JSON.stringify(data.a)));
+    expect(resulta).to.be.above(0);
 
     sizeOp = new DatabaseSize("test-medium-tree", "/");
     sizeOp.sizeRemote = fakeSize;
@@ -45,6 +47,7 @@ describe("DatabaseSize", () => {
     const result: number = await sizeOp.execute();
 
     expect(result).to.be.below(Buffer.byteLength(JSON.stringify(data)));
+    expect(resulta).to.be.above(0);
 
     sizeOp = new DatabaseSize("test-medium-tree", "/a/b");
     sizeOp.sizeRemote = fakeSize;

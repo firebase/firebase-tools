@@ -95,7 +95,7 @@ export class DatabaseSize {
     }
 
     let subPaths: string[] = [];
-    let offset: string;
+    let offset: string; // no initial offset (undefined placeholder for `listPath` below)
 
     do {
       subPaths = await this.listStack.run(() =>
