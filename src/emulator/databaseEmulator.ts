@@ -5,6 +5,8 @@ import { Constants } from "./constants";
 interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
+  functionsEmulatorPort?: number;
+  functionsEmulatorHost?: string;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
