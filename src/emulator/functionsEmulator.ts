@@ -32,6 +32,14 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
 
+/*
+ * The Realtime Database emulator expects the `path` field in its trigger
+ * definition to be relative to the database root. This regex is used to extract
+ * that path from the `resource` member in the trigger definition used by the
+ * functions emulator.
+ */
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
+
 export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
@@ -538,13 +546,8 @@ You can probably fix this by running "npm install ${
       );
       return Promise.reject();
     }
-    /*
-     * The Realtime Database emulator expects the `path` field in its trigger
-     * definition to be relative to the database root.
-     */
-    const pathPattern = new RegExp("^projects/[^/]*/instances/[^/]*/refs(/.*)$");
-    const result: string[] | null = pathPattern.exec(definition.eventTrigger.resource);
 
+    const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
     if (result === null || result.length !== 2) {
       EmulatorLogger.log(
         "WARN",
