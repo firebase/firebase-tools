@@ -86,9 +86,6 @@ export class DatabaseSize {
        * Ignore timeout errors so we can try sizing children of this node.
        */
       if (!result.success && result.error.status !== TIMEOUT_STATUS_CODE) {
-        logger.debug(
-          `Unexpected error: '${result.error.message}' when sizing node ${path}. Ignoring.`
-        );
         throw result.error;
       }
     }
@@ -96,7 +93,7 @@ export class DatabaseSize {
     let subPaths: string[] = [];
     let offset: string; // no initial offset (undefined placeholder for `listPath` below)
 
-    do {
+    while (true) {
       subPaths = await this.listStack.run(() =>
         this.listRemote.listPath(path, LIST_BATCH_SIZE, offset, TIMEOUT)
       );
@@ -108,7 +105,7 @@ export class DatabaseSize {
         subPaths.map((subPath) => this.getSubtreeSize(pathLib.join(path, subPath), depth + 1))
       );
       sizeEstimate += sizes.reduce((a, b) => a + b);
-    } while (subPaths.length > 0);
+    }
 
     return sizeEstimate;
   }

@@ -39,82 +39,46 @@ export class RTDBSizeRemote implements SizeRemote {
     return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
       reqOptionsWithToken.qs = params;
       return new Promise((resolve, reject) => {
-        let response: any;
-        let errorResponse = "";
-        let payload = "";
-        let erroring = false;
-
-        request
-          .get(reqOptionsWithToken)
-          .on("response", (res) => {
-            response = res;
-            if (response.statusCode >= 400) {
-              erroring = true;
-            }
-          })
-          .on("data", (chunk) => {
-            if (erroring) {
-              errorResponse += chunk;
-            } else {
-              payload += chunk;
-            }
-          })
-          .on("end", () => {
-            let data = {};
-            if (erroring) {
-              try {
-                data = JSON.parse(errorResponse);
-                resolve({
-                  success: false,
-                  bytes: 0,
-                  error: responseToError(response, data),
-                });
-              } catch (e) {
-                resolve({
-                  success: false,
-                  bytes: 0,
-                  error: new FirebaseError("Malformed JSON response", {
-                    exit: 2,
-                    original: e,
-                  }),
-                });
-              }
-            } else {
-              try {
-                /*
-                 * For simplicity, we consider size to be the raw byte length
-                 * in the payload of the response. This is an estimate. It
-                 * does not necessarily reflect the size of the JSON subtree
-                 * as stored in the RTDB persistence layer, but is meaningful
-                 * to applications that process the output of such requests.
-                 */
-                resolve({
-                  success: true,
-                  bytes: Buffer.byteLength(payload),
-                  error: undefined,
-                });
-              } catch (e) {
-                resolve({
-                  success: true,
-                  bytes: 0,
-                  error: new FirebaseError("Malformed JSON response", {
-                    exit: 2,
-                    original: e,
-                  }),
-                });
-              }
-            }
-          })
-          .on("error", (err) => {
-            resolve({
-              success: false,
-              bytes: 0,
-              error: new FirebaseError("Malformed JSON response", {
+        request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
+          if (err) {
+            return reject(
+              new FirebaseError(`Unexpected error sizing node: ${path}`, {
                 exit: 2,
                 original: err,
-              }),
+              })
+            );
+          }
+          let data = {};
+          try {
+            data = JSON.parse(body);
+          } catch (e) {
+            return reject(
+              new FirebaseError(`Malformed JSON response when sizing node: ${path}`, {
+                exit: 2,
+                original: e,
+              })
+            );
+          }
+          if (res.statusCode >= 400) {
+            return resolve({
+              success: false,
+              bytes: 0,
+              error: responseToError(res, data),
             });
+          }
+          /*
+           * For simplicity, we consider size to be the raw byte length
+           * in the payload of the response. This is an estimate. It
+           * does not necessarily reflect the size of the JSON subtree
+           * as stored in the RTDB persistence layer, but is meaningful
+           * to applications that process the output of such requests.
+           */
+          return resolve({
+            success: true,
+            bytes: Buffer.byteLength(body),
+            error: undefined,
           });
+        });
       });
     });
   }
