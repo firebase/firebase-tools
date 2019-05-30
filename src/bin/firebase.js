@@ -1,7 +1,21 @@
 #!/usr/bin/env node
 "use strict";
 
+// Make check for Node 6, which is no longer supported by the CLI.
+var semver = require("semver");
 var pkg = require("../../package.json");
+var nodeVersion = process.version;
+if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
+  console.error(
+    "Node " +
+      nodeVersion +
+      " is not supported to run the CLI." +
+      " Please upgrade Node to satisfy " +
+      pkg.engines.node
+  );
+  process.exit(1);
+}
+
 var updateNotifier = require("update-notifier")({ pkg: pkg });
 updateNotifier.notify({ defer: true, isGlobal: true });
 
