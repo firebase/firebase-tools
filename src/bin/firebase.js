@@ -7,10 +7,11 @@ var pkg = require("../../package.json");
 var nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
-    "Node " +
+    "Firebase CLI v" +
+      pkg.version +
+      " is incompatible with Node.js " +
       nodeVersion +
-      " is not supported to run the CLI." +
-      " Please upgrade Node to satisfy " +
+      " Please upgrade Node.js to version " +
       pkg.engines.node
   );
   process.exit(1);
