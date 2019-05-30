@@ -19,7 +19,6 @@ const LIST_BATCH_SIZE = 4000;
  */
 const SKIP_DEPTH = 1;
 const TIMEOUT = 50;
-const TIMEOUT_STATUS_CODE = 400;
 
 /*
  * Control how many outstanding full GETs and shallow
@@ -81,12 +80,6 @@ export class DatabaseSize {
       if (result !== null && result.success) {
         sizeEstimate = result.bytes;
         return sizeEstimate;
-      }
-      /*
-       * Ignore timeout errors so we can try sizing children of this node.
-       */
-      if (!result.success && result.error.status !== TIMEOUT_STATUS_CODE) {
-        throw result.error;
       }
     }
 

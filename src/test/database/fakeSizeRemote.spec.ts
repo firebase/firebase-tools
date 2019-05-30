@@ -10,7 +10,6 @@ export class FakeSizeRemote implements SizeRemote {
     return {
       success: true,
       bytes: this.size(this.dataAtPath(path)),
-      error: undefined,
     };
   }
 
@@ -65,13 +64,11 @@ describe("FakeSizeRemote", () => {
     const rootSize = {
       success: true,
       bytes: Buffer.byteLength(JSON.stringify(data)),
-      error: undefined,
     };
     await expect(fakeSizer.sizeNode("/", timeout)).to.eventually.eql(rootSize);
     const oneSize = {
       success: true,
       bytes: Buffer.byteLength(JSON.stringify(data.one)),
-      error: undefined,
     };
     await expect(fakeSizer.sizeNode("/one", timeout)).to.eventually.eql(oneSize);
 
@@ -85,7 +82,6 @@ describe("FakeSizeRemote", () => {
     const computedSize = {
       success: true,
       bytes: one.bytes + two.bytes + three.bytes + four.bytes + five.bytes + six.bytes + 47,
-      error: undefined,
     };
     await expect(fakeSizer.sizeNode("/", timeout)).to.eventually.eql(computedSize);
   });

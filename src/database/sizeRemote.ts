@@ -6,10 +6,11 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 
+const TIMEOUT_STATUS_CODE = 400;
+
 export interface SizeResult {
   success: boolean;
   bytes: number;
-  error: FirebaseError;
 }
 
 export interface SizeRemote {
@@ -59,12 +60,18 @@ export class RTDBSizeRemote implements SizeRemote {
               })
             );
           }
-          if (res.statusCode >= 400) {
+          if (res.statusCode === TIMEOUT_STATUS_CODE) {
             return resolve({
               success: false,
               bytes: 0,
-              error: responseToError(res, data),
             });
+          } else if (res.statusCode > TIMEOUT_STATUS_CODE) {
+            return reject(
+              new FirebaseError(`Unexpected error sizing node: ${path}`, {
+                exit: 2,
+                original: responseToError(res, data),
+              })
+            );
           }
           /*
            * For simplicity, we consider size to be the raw byte length
@@ -76,7 +83,6 @@ export class RTDBSizeRemote implements SizeRemote {
           return resolve({
             success: true,
             bytes: Buffer.byteLength(body),
-            error: undefined,
           });
         });
       });
