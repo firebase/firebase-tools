@@ -8,8 +8,8 @@ import * as prompt from "../prompt";
 describe("prompt", () => {
   let inquirerStub: sinon.SinonStub;
   const PROMPT_RESPONSES = {
-    some: "fool",
-    with: "values",
+    lint: true,
+    project: "the-best-project-ever",
   };
 
   beforeEach(() => {
@@ -65,9 +65,9 @@ describe("prompt", () => {
     });
 
     it("should return the value for the given name", async () => {
-      const r = await prompt.promptOnce({ name: "some" });
+      const r = await prompt.promptOnce({ name: "lint" });
 
-      expect(r).to.equal("fool");
+      expect(r).to.equal(true);
       expect(inquirerStub).calledOnce;
     });
   });
