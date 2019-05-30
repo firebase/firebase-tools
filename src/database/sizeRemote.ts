@@ -6,7 +6,11 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 
-import { RTDBSizeResult, SizeResult } from "./sizeResult";
+export interface SizeResult {
+  success: boolean;
+  bytes: number;
+  error: FirebaseError;
+}
 
 export interface SizeRemote {
   /**
@@ -60,24 +64,20 @@ export class RTDBSizeRemote implements SizeRemote {
             if (erroring) {
               try {
                 data = JSON.parse(errorResponse);
-                resolve(
-                  new RTDBSizeResult(
-                    /*success=*/ false,
-                    /*bytes=*/ 0,
-                    responseToError(response, data)
-                  )
-                );
+                resolve({
+                  success: false,
+                  bytes: 0,
+                  error: responseToError(response, data),
+                });
               } catch (e) {
-                resolve(
-                  new RTDBSizeResult(
-                    /*success=*/ false,
-                    /*bytes=*/ 0,
-                    new FirebaseError("Malformed JSON response", {
-                      exit: 2,
-                      original: e,
-                    })
-                  )
-                );
+                resolve({
+                  success: false,
+                  bytes: 0,
+                  error: new FirebaseError("Malformed JSON response", {
+                    exit: 2,
+                    original: e,
+                  }),
+                });
               }
             } else {
               try {
@@ -88,34 +88,32 @@ export class RTDBSizeRemote implements SizeRemote {
                  * as stored in the RTDB persistence layer, but is meaningful
                  * to applications that process the output of such requests.
                  */
-                resolve(
-                  new RTDBSizeResult(/*success=*/ true, /*bytes=*/ Buffer.byteLength(payload))
-                );
+                resolve({
+                  success: true,
+                  bytes: Buffer.byteLength(payload),
+                  error: undefined,
+                });
               } catch (e) {
-                resolve(
-                  new RTDBSizeResult(
-                    /*success=*/ false,
-                    /*bytes=*/ 0,
-                    new FirebaseError("Malformed JSON response", {
-                      exit: 2,
-                      original: e,
-                    })
-                  )
-                );
+                resolve({
+                  success: true,
+                  bytes: 0,
+                  error: new FirebaseError("Malformed JSON response", {
+                    exit: 2,
+                    original: e,
+                  }),
+                });
               }
             }
           })
           .on("error", (err) => {
-            resolve(
-              new RTDBSizeResult(
-                /*success=*/ false,
-                /*bytes=*/ 0,
-                new FirebaseError("Malformed JSON response", {
-                  exit: 2,
-                  original: err,
-                })
-              )
-            );
+            resolve({
+              success: false,
+              bytes: 0,
+              error: new FirebaseError("Malformed JSON response", {
+                exit: 2,
+                original: err,
+              }),
+            });
           });
       });
     });

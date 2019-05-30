@@ -2,8 +2,7 @@ import * as logger from "../logger";
 import * as pathLib from "path";
 
 import { ListRemote, RTDBListRemote } from "./listRemote";
-import { RTDBSizeRemote, SizeRemote } from "./sizeRemote";
-import { SizeResult } from "./sizeResult";
+import { RTDBSizeRemote, SizeRemote, SizeResult } from "./sizeRemote";
 import { Stack } from "../throttler/stack";
 
 /*
@@ -86,11 +85,11 @@ export class DatabaseSize {
       /*
        * Ignore timeout errors so we can try sizing children of this node.
        */
-      if (!result.success && result.err.status !== TIMEOUT_STATUS_CODE) {
+      if (!result.success && result.error.status !== TIMEOUT_STATUS_CODE) {
         logger.debug(
-          `Unexpected error: '${result.err.message}' when sizing node ${path}. Ignoring.`
+          `Unexpected error: '${result.error.message}' when sizing node ${path}. Ignoring.`
         );
-        throw result.err;
+        throw result.error;
       }
     }
 

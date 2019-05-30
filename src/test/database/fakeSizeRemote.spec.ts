@@ -1,14 +1,17 @@
 import * as pathLib from "path";
 import { expect } from "chai";
 
-import { SizeRemote } from "../../database/sizeRemote";
-import { RTDBSizeResult, SizeResult } from "../../database/sizeResult";
+import { SizeRemote, SizeResult } from "../../database/sizeRemote";
 
 export class FakeSizeRemote implements SizeRemote {
   constructor(private data: any) {}
 
   async sizeNode(path: string, timeout: number): Promise<SizeResult> {
-    return new RTDBSizeResult(true, this.size(this.dataAtPath(path)));
+    return {
+      success: true,
+      bytes: this.size(this.dataAtPath(path)),
+      error: undefined,
+    };
   }
 
   private size(data: any): number {
@@ -59,9 +62,17 @@ describe("FakeSizeRemote", () => {
     };
     const fakeSizer = new FakeSizeRemote(data);
 
-    const rootSize = new RTDBSizeResult(true, Buffer.byteLength(JSON.stringify(data)));
+    const rootSize = {
+      success: true,
+      bytes: Buffer.byteLength(JSON.stringify(data)),
+      error: undefined,
+    };
     await expect(fakeSizer.sizeNode("/", timeout)).to.eventually.eql(rootSize);
-    const oneSize = new RTDBSizeResult(true, Buffer.byteLength(JSON.stringify(data.one)));
+    const oneSize = {
+      success: true,
+      bytes: Buffer.byteLength(JSON.stringify(data.one)),
+      error: undefined,
+    };
     await expect(fakeSizer.sizeNode("/one", timeout)).to.eventually.eql(oneSize);
 
     const one = await fakeSizer.sizeNode("/one", timeout);
@@ -71,10 +82,11 @@ describe("FakeSizeRemote", () => {
     const five = await fakeSizer.sizeNode("/five", timeout);
     const six = await fakeSizer.sizeNode("/six", timeout);
 
-    const computedSize = new RTDBSizeResult(
-      true,
-      one.bytes + two.bytes + three.bytes + four.bytes + five.bytes + six.bytes + 47
-    );
+    const computedSize = {
+      success: true,
+      bytes: one.bytes + two.bytes + three.bytes + four.bytes + five.bytes + six.bytes + 47,
+      error: undefined,
+    };
     await expect(fakeSizer.sizeNode("/", timeout)).to.eventually.eql(computedSize);
   });
 });
