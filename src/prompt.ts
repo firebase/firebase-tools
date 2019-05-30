@@ -52,7 +52,7 @@ export async function prompt(options: { [key: string]: any }, questions: Questio
 /**
  * Quick version of `prompt` to ask a single question.
  * @param question The question (of life, the universe, and everything).
- * @returns The value as returned by `inquirer` for that quesiton.
+ * @return The value as returned by `inquirer` for that quesiton.
  */
 export async function promptOnce(question: Question): Promise<any> {
   question.name = question.name || "question";
