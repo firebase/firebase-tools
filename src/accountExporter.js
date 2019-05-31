@@ -30,6 +30,14 @@ var PROVIDER_ID_INDEX_MAP = {
   "github.com": 19,
 };
 
+var _escapeComma = function(str) {
+  if (str.indexOf(",") !== -1) {
+    // Encapsulate the string with quotes if it contains a comma.
+    return `"${str}"`;
+  }
+  return str;
+};
+
 var _convertToNormalBase64 = function(data) {
   return data.replace(/_/g, "/").replace(/-/g, "+");
 };
@@ -37,7 +45,7 @@ var _convertToNormalBase64 = function(data) {
 var _addProviderUserInfo = function(providerInfo, arr, startPos) {
   arr[startPos] = providerInfo.rawId;
   arr[startPos + 1] = providerInfo.email || "";
-  arr[startPos + 2] = providerInfo.displayName || "";
+  arr[startPos + 2] = _escapeComma(providerInfo.displayName || "");
   arr[startPos + 3] = providerInfo.photoUrl || "";
 };
 
@@ -48,7 +56,7 @@ var _transUserToArray = function(user) {
   arr[2] = user.emailVerified || false;
   arr[3] = _convertToNormalBase64(user.passwordHash || "");
   arr[4] = _convertToNormalBase64(user.salt || "");
-  arr[5] = user.displayName || "";
+  arr[5] = _escapeComma(user.displayName || "");
   arr[6] = user.photoUrl || "";
   for (var i = 0; i < (!user.providerUserInfo ? 0 : user.providerUserInfo.length); i++) {
     var providerInfo = user.providerUserInfo[i];
