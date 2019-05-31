@@ -99,12 +99,11 @@ describe("accountExporter", function() {
           nextPageToken: "7",
         });
 
-      var result = serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
         writeStream: writeStream,
-      });
-      return result.then(function() {
+      }).then(function() {
         expect(spyWrite.callCount).to.eq(7);
         expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
         for (var j = 1; j < 7; j++) {
@@ -158,12 +157,11 @@ describe("accountExporter", function() {
           nextPageToken: "7",
         });
 
-      var result = serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "csv",
         batchSize: 3,
         writeStream: writeStream,
-      });
-      return result.then(function() {
+      }).then(function() {
         expect(spyWrite.callCount).to.eq(userList.length);
         for (var j = 0; j < userList.length; j++) {
           var expectedEntry =
@@ -209,12 +207,11 @@ describe("accountExporter", function() {
           nextPageToken: "1",
         });
 
-      var result = serialExportUsers("test-project-id", {
+      return serialExportUsers("test-project-id", {
         format: "csv",
         batchSize: 1,
         writeStream: writeStream,
-      });
-      return result.then(function() {
+      }).then(function() {
         expect(spyWrite.callCount).to.eq(1);
         var expectedEntry =
           singleUser.localId +
