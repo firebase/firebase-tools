@@ -562,7 +562,7 @@ You can probably fix this by running "npm install ${
         name: `projects/${projectId}/locations/_/functions/${definition.name}`,
         path: result[1], // path stored in the first capture group
         event: definition.eventTrigger.eventType,
-        topic: `projects/${projectId}/topics/_`,
+        topic: `projects/${projectId}/topics/${definition.name}`,
       },
     ]);
 
