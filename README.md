@@ -109,7 +109,7 @@ The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
 
 1. On a machine with a browser, install the Firebase CLI.
-2. Run `firebase login:ci` to log in and print out a new [Google OAuth2 access token](https://developers.google.com/identity/protocols/OAuth2)
+2. Run `firebase login:ci` to log in and print out a new [refresh token](https://developers.google.com/identity/protocols/OAuth2)
    (the current CLI session will not be affected).
 3. Store the output token in a secure but accessible way in your CI system.
 
