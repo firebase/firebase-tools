@@ -62,7 +62,7 @@ module.exports = new Command("use [alias_or_project_id]")
       const lookupProject = aliasedProject || newActive;
       return firebaseApi
         .getProject(lookupProject)
-        .then(function(foundProject) {
+        .then((foundProject) => {
           project = foundProject;
         })
         .catch(() => {
