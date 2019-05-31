@@ -15,7 +15,6 @@
     "lint:js": "eslint 'src/**/*.js'",
     "lint:ts": "tslint --project tsconfig.json --config tslint.json",
     "mocha": "nyc mocha --opts mocha.opts",
-    "prepublish": "npm run clean && npm run build",
     "prepare": "npm run clean && npm run build",
     "test": "npm run lint && npm run mocha"
   },
