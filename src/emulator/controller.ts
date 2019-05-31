@@ -160,8 +160,8 @@ export async function startAll(options: any): Promise<void> {
       databaseEmulator = new DatabaseEmulator({
         host: databaseAddr.host,
         port: databaseAddr.port,
-        functionsEmulatorHost: functionsAddr.host,
-        functionsEmulatorPort: functionsAddr.port,
+        functions_emulator_host: functionsAddr.host,
+        functions_emulator_port: functionsAddr.port,
       });
     } else {
       databaseEmulator = new DatabaseEmulator({
