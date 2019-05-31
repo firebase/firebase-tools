@@ -19,15 +19,6 @@ export class FakeRemoveRemote implements RemoveRemote {
     this.largeThreshold = largeThreshold;
   }
 
-  listPath(path: string, numChildren: number): Promise<string[]> {
-    const d = this._dataAtpath(path);
-    if (d) {
-      const keys = Object.keys(d);
-      return Promise.resolve(keys.slice(0, numChildren));
-    }
-    return Promise.resolve([]);
-  }
-
   deletePath(path: string): Promise<boolean> {
     const d = this._dataAtpath(path);
     const size = this._size(d);
@@ -94,14 +85,6 @@ export class FakeRemoveRemote implements RemoveRemote {
 }
 
 describe("FakeRemoveRemote", () => {
-  it("should return limit the number of subpaths returned", async () => {
-    const fakeDb = new FakeRemoveRemote({ 1: 1, 2: 2, 3: 3, 4: 4 });
-    await expect(fakeDb.listPath("/", 4)).to.eventually.eql(["1", "2", "3", "4"]);
-    await expect(fakeDb.listPath("/", 3)).to.eventually.eql(["1", "2", "3"]);
-    await expect(fakeDb.listPath("/", 2)).to.eventually.eql(["1", "2"]);
-    await expect(fakeDb.listPath("/", 1)).to.eventually.eql(["1"]);
-  });
-
   it("should failed to delete large path /", async () => {
     const data = { 1: 11 };
     const fakeDb = new FakeRemoveRemote(data);
