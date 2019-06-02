@@ -571,6 +571,42 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
+
+      it("should handle `x-forwarded-host`", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json({ hostname: req.hostname });
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              headers: {
+                "x-forwarded-host": "real-hostname",
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
+                resolve();
+              });
+            }
+          ).end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
     });
 
     describe("Cloud Firestore", () => {
