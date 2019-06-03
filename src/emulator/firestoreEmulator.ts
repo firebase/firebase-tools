@@ -1,15 +1,22 @@
+import * as _ from "lodash";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as request from "request";
 
+import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
+import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Constants } from "./constants";
+
+// Args that should be passed from here to the JAR, if present.
+const JAR_ARGS: string[] = ["port", "host", "rules", "functions_emulator"];
 
 export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
+  projectId?: string;
   rules?: string;
   functions_emulator?: string;
 }
@@ -27,23 +34,26 @@ export class FirestoreEmulator implements EmulatorInstance {
       this.args.functions_emulator = `localhost:${functionsPort}`;
     }
 
-    if (this.args.rules) {
+    if (this.args.rules && this.args.projectId) {
       const path = this.args.rules;
       this.rulesWatcher = chokidar.watch(path, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on('change', (event, stats) => {
+      this.rulesWatcher.on("change", (event, stats) => {
         const newContent = fs.readFileSync(path).toString();
 
-        console.log("Updating rules...")
+        utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         this.updateRules(newContent)
           .then(() => {
-            console.log("Done!");
-          }).catch((err) => {
-            console.warn(err);
+            utils.logLabeledSuccess("firestore", "Rules updated.");
+          })
+          .catch((err) => {
+            utils.logWarning("Failed to update rules.");
+            EmulatorLogger.log("DEBUG", err);
           });
-      })
+      });
     }
 
-    return javaEmulators.start(Emulators.FIRESTORE, this.args);
+    const jarArgs = _.pick(this.args, JAR_ARGS);
+    return javaEmulators.start(Emulators.FIRESTORE, jarArgs);
   }
 
   async connect(): Promise<void> {
@@ -55,7 +65,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.rulesWatcher) {
       this.rulesWatcher.close();
     }
-    
+
     return javaEmulators.stop(Emulators.FIRESTORE);
   }
 
@@ -74,8 +84,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   private updateRules(content: string): Promise<any> {
-    // TODO: How to get the real one?
-    const projectId = 'fir-dumpster';
+    const projectId = this.args.projectId;
 
     const { host, port } = this.getInfo();
     const url = `http://${host}:${port}/emulator/v1/projects/${projectId}:securityRules`;
@@ -84,11 +93,11 @@ export class FirestoreEmulator implements EmulatorInstance {
         files: [
           {
             name: "security.rules",
-            content
-          }
-        ]
-      }
-    }
+            content,
+          },
+        ],
+      },
+    };
 
     return new Promise((resolve, reject) => {
       request.put(url, { json: body }, (err, res, resBody) => {
