@@ -534,6 +534,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
+  const functionRouter = express.Router();
   const socketPath = getTemporarySocketPath(process.pid);
 
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
@@ -555,13 +556,17 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(bodyParser.json({ verify: rawBodySaver }));
-    ephemeralServer.use(bodyParser.text({ verify: rawBodySaver }));
-    ephemeralServer.use(bodyParser.urlencoded({ extended: true, verify: rawBodySaver }));
-    ephemeralServer.use(bodyParser.raw({ type: "*/*", verify: rawBodySaver }));
+    functionRouter.use(bodyParser.json({ verify: rawBodySaver }));
+    functionRouter.use(bodyParser.text({ verify: rawBodySaver }));
+    functionRouter.use(bodyParser.urlencoded({ extended: true, verify: rawBodySaver }));
+    functionRouter.use(bodyParser.raw({ type: "*/*", verify: rawBodySaver }));
 
-    ephemeralServer.all("/*", handler);
+    functionRouter.all("*", handler);
 
+    ephemeralServer.use(
+      [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
+      functionRouter
+    );
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
     });

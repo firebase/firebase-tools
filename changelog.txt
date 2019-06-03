@@ -12,3 +12,5 @@
 * Fixed bug in Firestore emulator where it ignored `x-forwarded-host` header.
 * Fixed bug where raw body was missing on HTTPS function request
 * Fixed bug with Functions Emulator and firebase-admin@8.0.0
+* Fixed req.baseUrl in Functions Emulator
+* Added `FUNCTIONS_EMULATOR` environmental variable when running in Functions Emulator

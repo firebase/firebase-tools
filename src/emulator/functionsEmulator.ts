@@ -27,7 +27,6 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { trimFunctionPath } from "./functionsEmulatorUtils";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
@@ -169,7 +168,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path: "/" + trimFunctionPath(req.url),
+          path: req.url || "/",
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },

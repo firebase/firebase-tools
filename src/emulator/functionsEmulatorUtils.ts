@@ -66,13 +66,3 @@ export function removePathSegments(path: string, count: number): string {
     .slice(count)
     .join("/");
 }
-
-/**
- * The full URL to an emulated function is /project/region/path(/subpath)?params but the function
- * does not need to know about anything before the subpath.
- */
-export function trimFunctionPath(path: string): string {
-  // Use the URL library to separate query params for later reconstruction.
-  const fakeURL = new url.URL(path, "https://example.com");
-  return removePathSegments(fakeURL.pathname, 3) + fakeURL.search;
-}

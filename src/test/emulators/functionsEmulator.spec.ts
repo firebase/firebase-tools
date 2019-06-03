@@ -32,7 +32,7 @@ function UseFunctions(triggers: () => {}): void {
 }
 
 describe("FunctionsEmulator-Hub", () => {
-  it("should route requests to /:project_id/:trigger_id to HTTPS Function", async () => {
+  it("should route requests to /:project_id/:region/:trigger_id to HTTPS Function", async () => {
     UseFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
@@ -54,7 +54,7 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
-  it("should rewrite req.path to hide /:project_id/:trigger_id", async () => {
+  it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
     UseFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
@@ -73,6 +73,28 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should rewrite req.baseUrl to show /:project_id/:region/:trigger_id", async () => {
+    UseFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ baseUrl: req.baseUrl });
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/fake-project-id/us-central-1f/function_id/sub/route/a")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.baseUrl).to.eq("/fake-project-id/us-central-1f/function_id");
       });
   }).timeout(TIMEOUT_LONG);
 
