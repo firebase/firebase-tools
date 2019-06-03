@@ -10,3 +10,5 @@
 * Improved reliability and performance of project listing for `firebase use` command.
 * Fixed bug where `firestore:delete` skips legacy documents with numeric IDs.
 * Fixed bug in Firestore emulator where it ignored `x-forwarded-host` header.
+* Fixed bug where raw body was missing on HTTPS function request
+* Fixed bug with Functions Emulator and firebase-admin@8.0.0

@@ -543,7 +543,6 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
-                console.log(Object.keys(req));
                 res.send(req.rawBody);
               }
             ),
@@ -558,12 +557,16 @@ describe("FunctionsEmulator-Runtime", () => {
               socketPath: runtime.metadata.socketPath,
               path: "/",
               method: "post",
+              headers: {
+                "Content-Type": "gibber/ish",
+                "Content-Length": reqData.length,
+              },
             },
             (res) => {
               let data = "";
               res.on("data", (chunk) => (data += chunk));
               res.on("end", () => {
-                expect(data).to.equal("How are you?");
+                expect(data).to.equal(reqData);
                 resolve();
               });
             }
