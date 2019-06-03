@@ -55,7 +55,30 @@ function slowRequireResolve(moduleName: string, cwd?: string): string {
     cwd: path.resolve(cwd || process.cwd()),
   });
 
-  return result.stdout.toString().trim();
+  const resolution = result.stdout.toString().trim();
+  if (resolution == "") {
+    throw new Error(`Could not resolve module "${moduleName}"`);
+  }
+  return resolution;
+}
+
+const cachedResolutions: {[id: string]: any} = {};
+type CachedModuleMetadata = { path?: any, resolved?: boolean }
+function cachedRequireResolve(moduleName: string, cwd: string): Promise<CachedModuleMetadata> {
+  const id = [moduleName, cwd].join(":");
+  const meta: CachedModuleMetadata  = {};
+
+  if (!cachedResolutions[id]) {
+    try {
+      meta.path = slowRequireResolve(moduleName, cwd);
+      meta.resolved = true;
+    } catch (err) {
+      meta.resolved = false;
+    }
+    cachedResolutions[id] = meta;
+  }
+
+  return cachedResolutions[id];
 }
 
 /*
@@ -162,7 +185,7 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
+async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   let pkg;
   try {
     pkg = require(`${frb.cwd}/package.json`);
@@ -172,7 +195,7 @@ function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
   }
 
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 7 },
+    { name: "firebase-admin", isDev: false, minVersion: 8 },
     { name: "firebase-functions", isDev: false, minVersion: 2 },
     { name: "firebase-functions-test", isDev: true, minVersion: 0 },
   ];
@@ -193,16 +216,15 @@ function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
     /*
     Once we know it's in the package.json, make sure it's actually `npm install`ed
      */
-    let modResolution: string;
-    try {
-      modResolution = slowRequireResolve(modBundle.name, frb.cwd);
-    } catch (err) {
+    let modResolution = await cachedRequireResolve(modBundle.name, frb.cwd);
+
+    if (!modResolution.resolved) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
 
     const modPackageJSON = require(path.join(
-      findModuleRoot(modBundle.name, modResolution),
+      findModuleRoot(modBundle.name, modResolution.path),
       "package.json"
     ));
     const modMajorVersion = parseInt((modPackageJSON.version || "0").split("."), 10);
@@ -240,28 +262,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     { name: "net", module: require("net"), path: ["connect"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
-
-  try {
-    const gcFirestore = findModuleRoot(
-      "@google-cloud/firestore",
-      slowRequireResolve("@google-cloud/firestore", frb.cwd)
-    );
-    const gaxPath = slowRequireResolve("google-gax", gcFirestore);
-    const gaxModule = {
-      module: require(gaxPath),
-      path: ["GrpcClient"],
-      name: "google-gax",
-    };
-
-    networkingModules.push(gaxModule);
-    new EmulatorLog("DEBUG", "runtime-status", `Found google-gax at ${gaxPath}`).log();
-  } catch (err) {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
-      `Couldn't find google-cloud/firestore or google-gax`
-    ).log();
-  }
 
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {
@@ -312,16 +312,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        const newed = new original(...args);
-        if (bundle.name === "google-gax") {
-          const cs = newed.constructSettings;
-          newed.constructSettings = (...csArgs: any[]) => {
-            (csArgs[3] as any).authorization = "Bearer owner";
-            return cs.bind(newed)(...csArgs);
-          };
-        }
-
-        return newed;
+        return new original(...args);
       }
     };
 
@@ -343,8 +334,8 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
-  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", functionsDir);
+async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
+  const firebaseFunctionsResolution = (await cachedRequireResolve("firebase-functions", functionsDir)).path;
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -384,9 +375,9 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
     failing in some way and admin is attempting to access prod resources. This error isn't pretty,
     but it's hard to catch and better than accidentally talking to prod.
    */
-function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", frb.cwd);
-  const grpc = require(slowRequireResolve("grpc", frb.cwd));
+async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
+  const adminResolution = (await cachedRequireResolve("firebase-admin", frb.cwd)).path;
+  const grpc = require((await cachedRequireResolve("@grpc/grpc-js", frb.cwd)).path);
 
   const localAdminModule = require(adminResolution);
 
@@ -408,7 +399,10 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
         port: frb.ports.firestore,
         servicePath: "localhost",
         service: "firestore.googleapis.com",
-        sslCreds: grpc.credentials.createInsecure(),
+        sslCreds: grpc.ServerCredentials.createInsecure(),
+        customHeaders: {
+          "Authorization": "Bearer owner"
+        },
         ...userSettings,
       });
     } else if (!frb.ports.firestore && frb.triggerId) {
@@ -489,8 +483,8 @@ function InitializeEnvironmentalVariables(projectId: string): void {
   });
 }
 
-function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = slowRequireResolve("firebase-functions", functionsDir);
+async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+  const functionsResolution = (await cachedRequireResolve("firebase-functions", functionsDir)).path;
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -668,7 +662,13 @@ async function main(): Promise<void> {
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
 
-  const verified = verifyDeveloperNodeModules(frb);
+  await Promise.all([
+    "firebase-admin",
+    "firebase-functions",
+    "@grpc/grpc-js"
+  ].map((moduleName) => cachedRequireResolve(moduleName, frb.cwd)));
+
+  const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
     // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
     new EmulatorLog(
@@ -689,11 +689,11 @@ async function main(): Promise<void> {
   }
 
   if (isFeatureEnabled(frb, "functions_config_helper")) {
-    InitializeFunctionsConfigHelper(frb.cwd);
+    await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
-  InitializeFirebaseFunctionsStubs(frb.cwd);
-  InitializeFirebaseAdminStubs(frb);
+  await InitializeFirebaseFunctionsStubs(frb.cwd);
+  await InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
