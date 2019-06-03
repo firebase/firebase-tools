@@ -9,3 +9,4 @@
 * `emulators:exec` script now inherits stdout and stderr.
 * Improved reliability and performance of project listing for `firebase use` command.
 * Fixed bug where `firestore:delete` skips legacy documents with numeric IDs.
+* Fixed bug in Firestore emulator where it ignored `x-forwarded-host` header.
