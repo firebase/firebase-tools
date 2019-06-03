@@ -478,6 +478,7 @@ function ProtectEnvironmentalVariables(): void {
 
 function InitializeEnvironmentalVariables(projectId: string): void {
   process.env.GCLOUD_PROJECT = projectId;
+  process.env.FUNCTIONS_EMULATOR = "true";
   /*
     Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
     https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
