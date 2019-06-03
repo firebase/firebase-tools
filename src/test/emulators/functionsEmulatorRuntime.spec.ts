@@ -537,6 +537,45 @@ describe("FunctionsEmulator-Runtime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
+
+      it("should handle a POST request and store rawBody", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                console.log(Object.keys(req));
+                res.send(req.rawBody);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = 'How are you?';
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: "/",
+              method: "post"
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(data).to.equal("How are you?");
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
       it("should forward request to Express app", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();

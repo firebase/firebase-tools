@@ -517,6 +517,19 @@ async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<vo
   ff.config = () => proxiedConfig;
 }
 
+/*
+ Retains a reference to the raw body buffer to allow access to the raw body for things like request
+ signature validation. This is used as the "verify" function in body-parser options.
+https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/76f134b275df73878c9f47e5a452158c764eb1b9/src/invoker.ts#L310
+ */
+function rawBodySaver(
+  req: express.Request,
+  res: express.Response,
+  buf: Buffer
+) {
+  (req as any).rawBody = buf;
+}
+
 async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
   const socketPath = getTemporarySocketPath(process.pid);
@@ -539,10 +552,10 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(bodyParser.json({}));
-    ephemeralServer.use(bodyParser.text({}));
-    ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
-    ephemeralServer.use(bodyParser.raw({ type: "*/*" }));
+    ephemeralServer.use(bodyParser.json({verify: rawBodySaver}));
+    ephemeralServer.use(bodyParser.text({verify: rawBodySaver}));
+    ephemeralServer.use(bodyParser.urlencoded({ extended: true, verify: rawBodySaver }));
+    ephemeralServer.use(bodyParser.raw({ type: "*/*", verify: rawBodySaver }));
 
     ephemeralServer.all("/*", handler);
 
