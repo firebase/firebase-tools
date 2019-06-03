@@ -336,11 +336,6 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
-      case "missing-package-json":
-        utils.logWarning(
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
-        );
-        break;
       case "admin-auto-initialized":
         utils.logBullet(
           "Your code does not appear to initialize the 'firebase-admin' module, so we've done it automatically.\n" +
