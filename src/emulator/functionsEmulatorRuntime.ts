@@ -56,17 +56,20 @@ function slowRequireResolve(moduleName: string, cwd?: string): string {
   });
 
   const resolution = result.stdout.toString().trim();
-  if (resolution == "") {
+  if (resolution === "") {
     throw new Error(`Could not resolve module "${moduleName}"`);
   }
   return resolution;
 }
 
-const cachedResolutions: {[id: string]: any} = {};
-type CachedModuleMetadata = { path?: any, resolved?: boolean }
+const cachedResolutions: { [id: string]: any } = {};
+interface CachedModuleMetadata {
+  path?: any;
+  resolved?: boolean;
+}
 function cachedRequireResolve(moduleName: string, cwd: string): Promise<CachedModuleMetadata> {
   const id = [moduleName, cwd].join(":");
-  const meta: CachedModuleMetadata  = {};
+  const meta: CachedModuleMetadata = {};
 
   if (!cachedResolutions[id]) {
     try {
@@ -216,7 +219,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
     /*
     Once we know it's in the package.json, make sure it's actually `npm install`ed
      */
-    let modResolution = await cachedRequireResolve(modBundle.name, frb.cwd);
+    const modResolution = await cachedRequireResolve(modBundle.name, frb.cwd);
 
     if (!modResolution.resolved) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
@@ -335,7 +338,10 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
-  const firebaseFunctionsResolution = (await cachedRequireResolve("firebase-functions", functionsDir)).path;
+  const firebaseFunctionsResolution = (await cachedRequireResolve(
+    "firebase-functions",
+    functionsDir
+  )).path;
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -401,7 +407,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         service: "firestore.googleapis.com",
         sslCreds: grpc.ServerCredentials.createInsecure(),
         customHeaders: {
-          "Authorization": "Bearer owner"
+          Authorization: "Bearer owner",
         },
         ...userSettings,
       });
@@ -520,13 +526,8 @@ async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<vo
 /*
  Retains a reference to the raw body buffer to allow access to the raw body for things like request
  signature validation. This is used as the "verify" function in body-parser options.
-https://github.com/GoogleCloudPlatform/functions-framework-nodejs/blob/76f134b275df73878c9f47e5a452158c764eb1b9/src/invoker.ts#L310
- */
-function rawBodySaver(
-  req: express.Request,
-  res: express.Response,
-  buf: Buffer
-) {
+*/
+function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer): void {
   (req as any).rawBody = buf;
 }
 
@@ -552,8 +553,8 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(bodyParser.json({verify: rawBodySaver}));
-    ephemeralServer.use(bodyParser.text({verify: rawBodySaver}));
+    ephemeralServer.use(bodyParser.json({ verify: rawBodySaver }));
+    ephemeralServer.use(bodyParser.text({ verify: rawBodySaver }));
     ephemeralServer.use(bodyParser.urlencoded({ extended: true, verify: rawBodySaver }));
     ephemeralServer.use(bodyParser.raw({ type: "*/*", verify: rawBodySaver }));
 
@@ -675,11 +676,11 @@ async function main(): Promise<void> {
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
 
-  await Promise.all([
-    "firebase-admin",
-    "firebase-functions",
-    "@grpc/grpc-js"
-  ].map((moduleName) => cachedRequireResolve(moduleName, frb.cwd)));
+  await Promise.all(
+    ["firebase-admin", "firebase-functions", "@grpc/grpc-js"].map((moduleName) =>
+      cachedRequireResolve(moduleName, frb.cwd)
+    )
+  );
 
   const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {

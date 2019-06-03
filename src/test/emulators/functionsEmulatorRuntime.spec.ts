@@ -537,7 +537,6 @@ describe("FunctionsEmulator-Runtime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
-
       it("should handle a POST request and store rawBody", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
           require("firebase-admin").initializeApp();
@@ -553,12 +552,12 @@ describe("FunctionsEmulator-Runtime", () => {
 
         await runtime.ready;
         await new Promise((resolve) => {
-          const reqData = 'How are you?';
+          const reqData = "How are you?";
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
               path: "/",
-              method: "post"
+              method: "post",
             },
             (res) => {
               let data = "";
