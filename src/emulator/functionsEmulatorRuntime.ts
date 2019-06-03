@@ -544,6 +544,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       }
     };
 
+    ephemeralServer.enable("trust proxy");
     ephemeralServer.use(bodyParser.json({}));
     ephemeralServer.use(bodyParser.text({}));
     ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
