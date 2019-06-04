@@ -1,0 +1,1 @@
+* Modify RTDB emulator to publish triggers to the functions emulator
