@@ -249,7 +249,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .map((arg) => {
           if (typeof arg === "string") {
             try {
-              const _ = new URL(arg);
+              const url = new URL(arg);
               return arg;
             } catch (err) {
               return;

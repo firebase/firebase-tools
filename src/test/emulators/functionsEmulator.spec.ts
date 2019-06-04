@@ -54,6 +54,50 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
+  it("should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function", async () => {
+    UseFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ hello: "world" });
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/fake-project-id/us-central-1f/function_id/")
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({ hello: "world" });
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should route requests to /:project_id/:region/:trigger_id/a/b to HTTPS Function", async () => {
+    UseFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ hello: "world" });
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/fake-project-id/us-central-1f/function_id/a/b")
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({ hello: "world" });
+      });
+  }).timeout(TIMEOUT_LONG);
+
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
     UseFunctions(() => {
       require("firebase-admin").initializeApp();
