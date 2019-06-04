@@ -10,3 +10,4 @@
 * Improved reliability and performance of project listing for `firebase use` command.
 * Fixed bug where `firestore:delete` skips legacy documents with numeric IDs.
 * Fixed bug in Firestore emulator where it ignored `x-forwarded-host` header.
+* Improved Scheduled Functions deployment to keep and not recreate schedules that are already correct.
