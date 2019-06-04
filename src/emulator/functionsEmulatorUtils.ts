@@ -3,9 +3,6 @@ Please be careful when adding require/imports to this file, it is pulled into fu
 which is ran in a separate node process, so it is likely to have unintended side-effects for you.
  */
 
-// Safe import because it's standard in Node
-import * as url from "url";
-
 const wildcardRegex = new RegExp("{[^/{}]*}");
 const wildcardKeyRegex = new RegExp("^{(.+)}$");
 
