@@ -1,1 +1,2 @@
-* Modify RTDB emulator to publish triggers to the functions emulator
+* *BREAKING* Modify RTDB emulator to publish triggers to the functions emulator
+* RTDB Emulator comes up with open rules by default
