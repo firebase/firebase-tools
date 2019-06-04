@@ -22,14 +22,17 @@ import * as _ from "lodash";
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
 
-const cachedResolutions: { [id: string]: any } = {};
 interface CachedModuleMetadata {
-  path?: any;
+  path: string;
   resolved?: boolean;
 }
-function cachedRequireResolve(moduleName: string, cwd: string): Promise<CachedModuleMetadata> {
+const cachedResolutions: { [id: string]: CachedModuleMetadata } = {};
+async function cachedRequireResolve(
+  moduleName: string,
+  cwd: string
+): Promise<CachedModuleMetadata> {
   const id = [moduleName, cwd].join(":");
-  const meta: CachedModuleMetadata = {};
+  const meta: CachedModuleMetadata = { path: "" };
 
   if (!cachedResolutions[id]) {
     try {
@@ -184,7 +187,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
      */
     const modResolution = await cachedRequireResolve(modBundle.name, frb.cwd);
 
-    if (!modResolution.resolved) {
+    if (!modResolution.resolved || !modResolution.path) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
@@ -675,7 +678,7 @@ async function main(): Promise<void> {
 
   const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
-    // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
+    // If we can't verify the node modules, then just leave, something bad will happen during runtime.
     new EmulatorLog(
       "INFO",
       "runtime-status",
