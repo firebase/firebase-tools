@@ -3,11 +3,10 @@ import * as _ from "lodash";
 
 import * as FirebaseError from "./error";
 
-export interface Choice {
-  checked: boolean;
-  label: string;
-  name: string;
-}
+/**
+ * Question type for inquirer. See
+ * https://www.npmjs.com/package/inquirer#question
+ */
 export type Question = inquirer.Question;
 
 /**
@@ -58,27 +57,4 @@ export async function promptOnce(question: Question): Promise<any> {
   question.name = question.name || "question";
   const answers = await prompt({}, [question]);
   return answers[question.name];
-}
-
-/*
- * Converts a list of `Choice` objects into a list of `Question` objects which
- * are compatible with `prompt` (and `promptOnce`).
- */
-export function convertLabeledListChoices(choices: Choice[]): Question[] {
-  return choices.map((choice: any) => {
-    return { checked: choice.checked, name: choice.label };
-  });
-}
-
-/*
- * Given a label, return the `Choice.name` that was associated with it.
- * (Useful in conjunction with `convertLabeledListChoices`).
- */
-export function listLabelToValue(label: string, choices: Choice[]): string {
-  for (const choice of choices) {
-    if (choice.label === label) {
-      return choice.name;
-    }
-  }
-  return "";
 }
