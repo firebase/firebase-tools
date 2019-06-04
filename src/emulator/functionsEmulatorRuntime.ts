@@ -17,6 +17,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EventUtils } from "./events/types";
 import { URL } from "url";
+import * as _ from "lodash";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -42,6 +43,18 @@ function cachedRequireResolve(moduleName: string, cwd: string): Promise<CachedMo
 
   return cachedResolutions[id];
 }
+
+const isFeatureEnabled = (frb: FunctionsRuntimeBundle, feature: keyof FunctionsRuntimeFeatures) =>
+  frb.disabled_features ? !frb.disabled_features[feature] : true;
+
+const NoOp = () => false;
+
+const requireAsync = async (moduleName: string, opts?: { paths: string[] }) =>
+  require(require.resolve(moduleName, opts));
+
+const isConstructor = (obj: any) => !!obj.prototype && !!obj.prototype.constructor.name;
+
+const isExists = (obj: any) => obj !== undefined;
 
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
@@ -137,14 +150,6 @@ class Proxied<T> {
   finalize(): T {
     return this.proxy as T;
   }
-}
-
-function isConstructor(obj: any): boolean {
-  return !!obj.prototype && !!obj.prototype.constructor.name;
-}
-
-function isExists(obj: any): boolean {
-  return obj !== undefined;
 }
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
@@ -341,6 +346,7 @@ async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<v
    */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
   const adminResolution = (await cachedRequireResolve("firebase-admin", frb.cwd)).path;
+  // TODO Add support back for non-js GRPC
   const grpc = require((await cachedRequireResolve("@grpc/grpc-js", frb.cwd)).path);
 
   const localAdminModule = require(adminResolution);
@@ -611,11 +617,31 @@ async function RunHTTPS(
   });
 }
 
-function isFeatureEnabled(
-  frb: FunctionsRuntimeBundle,
-  feature: keyof FunctionsRuntimeFeatures
-): boolean {
-  return frb.disabled_features ? !frb.disabled_features[feature] : true;
+/*
+  This method attempts to help a developer whose code can't be loaded by suggesting
+  possible fixes based on the files in their functions directory.
+ */
+async function moduleResolutionDetective(frb: FunctionsRuntimeBundle): Promise<void> {
+  /*
+  These files could all potentially exist, if they don't then the value in the map will be
+  falsey, so we just catch to keep from throwing.
+   */
+  const clues = {
+    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(NoOp),
+    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(NoOp),
+  };
+
+  const isPotentially = {
+    typescript: false,
+    uncompiled: false,
+    wrong_directory: false,
+  };
+
+  isPotentially.typescript = !!clues.tsconfigJSON;
+  isPotentially.wrong_directory = !clues.packageJSON;
+  isPotentially.uncompiled = !!_.get(clues.packageJSON, "scripts.build", false);
+
+  new EmulatorLog("SYSTEM", "function-code-resolution-failed", "", isPotentially).log();
 }
 
 async function main(): Promise<void> {
@@ -682,7 +708,12 @@ async function main(): Promise<void> {
     /* tslint:disable:no-eval */
     triggerModule = eval(serializedFunctionTrigger)();
   } else {
-    triggerModule = require(frb.cwd);
+    try {
+      triggerModule = require(frb.cwd);
+    } catch (err) {
+      await moduleResolutionDetective(frb);
+      return;
+    }
   }
 
   require("../extractTriggers")(triggerModule, triggerDefinitions);

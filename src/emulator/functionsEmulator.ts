@@ -341,6 +341,22 @@ You can probably fix this by running "npm install ${
             "   - Learn more: https://firebase.google.com/docs/admin/setup"
         );
         break;
+      case "function-code-resolution-failed":
+        const helper = ["Your code could not be loaded."];
+        if (systemLog.data.wrong_directory) {
+          helper.push(`   - There is no "package.json" file in your functions directory.`);
+        }
+        if (systemLog.data.typescript) {
+          helper.push(
+            "   - It appears your code is written in Typescript, which must be compiled before emulation."
+          );
+        }
+        if (systemLog.data.uncompiled) {
+          helper.push(
+            `   - You may be able to run "npm run build" in your functions directory to resolve this.`
+          );
+        }
+        utils.logWarning(helper.join("\n"));
       default:
       // Silence
     }
