@@ -38,7 +38,7 @@ describe("FunctionsEmulator-Hub", () => {
       return {
         function_id: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
-            res.json({ hello: "world" });
+            res.json({ path: req.path });
           }
         ),
       };
@@ -50,7 +50,7 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central-1f/function_id")
       .expect(200)
       .then((res) => {
-        expect(res.body).to.deep.equal({ hello: "world" });
+        expect(res.body.path).to.deep.equal("/");
       });
   }).timeout(TIMEOUT_LONG);
 
@@ -60,7 +60,7 @@ describe("FunctionsEmulator-Hub", () => {
       return {
         function_id: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
-            res.json({ hello: "world" });
+            res.json({ path: req.path });
           }
         ),
       };
@@ -72,7 +72,7 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central-1f/function_id/")
       .expect(200)
       .then((res) => {
-        expect(res.body).to.deep.equal({ hello: "world" });
+        expect(res.body.path).to.deep.equal("/");
       });
   }).timeout(TIMEOUT_LONG);
 
@@ -82,7 +82,7 @@ describe("FunctionsEmulator-Hub", () => {
       return {
         function_id: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
-            res.json({ hello: "world" });
+            res.json({ path: req.path });
           }
         ),
       };
@@ -94,7 +94,7 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central-1f/function_id/a/b")
       .expect(200)
       .then((res) => {
-        expect(res.body).to.deep.equal({ hello: "world" });
+        expect(res.body.path).to.deep.equal("/a/b");
       });
   }).timeout(TIMEOUT_LONG);
 
