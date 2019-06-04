@@ -1,1 +1,2 @@
 * **BREAKING** The CLI no longer supports being run in Node 6 environments.
+* Modify RTDB emulator to publish triggers to the functions emulator
