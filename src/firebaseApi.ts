@@ -1,7 +1,24 @@
 import * as api from "./api";
-import { FirebaseProject } from "./project";
 
 const API_VERSION = "v1beta1";
+
+/**
+ * Represents the FirebaseProject resource returned from calling
+ * `projects.get` in Firebase Management API:
+ * https://firebase.google.com/docs/projects/api/reference/rest/v1beta1/projects#FirebaseProject
+ */
+export interface FirebaseProject {
+  projectId: string;
+  projectNumber: number;
+  displayName: string;
+  name: string;
+  resources: {
+    hostingSite: string;
+    realtimeDatabaseInstance: string;
+    storageBucket: string;
+    locationId: string;
+  };
+}
 
 export async function listProjects(
   nextPageToken?: string,

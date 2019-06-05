@@ -1,14 +1,24 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import * as firebaseApi from "../../firebaseApi";
+import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
 import * as logger from "../../logger";
-import { FirebaseProject, ProjectInfo } from "../../project";
 import { promptOnce, Question } from "../../prompt";
 import * as utils from "../../utils";
 
 const NO_PROJECT = "[don't setup a default project]";
 const NEW_PROJECT = "[create a new project]";
+
+/**
+ * Used in init flows to keep information about the project - basically
+ * a shorter version of FirebaseProject with some additional fields.
+ */
+export interface ProjectInfo {
+  id: string; // maps to projectId
+  label: string;
+  instance: string; // maps to FirebaseProject.resources.realtimeDatabaseInstance
+  location: string; // maps to FirebaseProject.resources.locationId
+}
 
 /**
  * Get the user's desired project, prompting if necessary.
@@ -20,14 +30,14 @@ const NEW_PROJECT = "[create a new project]";
  *  instance: project database instance [optional]
  * }
  */
-async function getProject(options: any): Promise<ProjectInfo> {
+async function getProjectInfo(options: any): Promise<ProjectInfo> {
   // The user passed in a --project flag directly, so no need to
   // load all projects.
   if (options.project) {
     // tslint:disable-next-line:no-shadowed-variable
     let project: FirebaseProject;
     try {
-      project = await firebaseApi.getProject(options.project);
+      project = await getProject(options.project);
     } catch (e) {
       throw new Error(`Error getting project ${options.project}: ${e}`);
     }
@@ -42,7 +52,7 @@ async function getProject(options: any): Promise<ProjectInfo> {
   }
 
   // Load all projects and prompt the user to choose.
-  const projects: FirebaseProject[] = await firebaseApi.listProjects();
+  const projects: FirebaseProject[] = await listProjects();
   let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
     return {
       name: p.projectId + " (" + p.displayName + ")",
@@ -105,7 +115,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<an
     return undefined;
   }
 
-  const projectInfo: ProjectInfo = await getProject(options);
+  const projectInfo: ProjectInfo = await getProjectInfo(options);
   if (projectInfo.id === NEW_PROJECT) {
     setup.createProject = true;
     return;
