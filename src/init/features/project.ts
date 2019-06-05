@@ -4,7 +4,7 @@ import * as _ from "lodash";
 import * as firebaseApi from "../../firebaseApi";
 import * as logger from "../../logger";
 import { FirebaseProject, ProjectInfo } from "../../project";
-import { promptOnce } from "../../prompt";
+import { promptOnce, Question } from "../../prompt";
 import * as utils from "../../utils";
 
 const NO_PROJECT = "[don't setup a default project]";
@@ -61,22 +61,28 @@ async function getProject(options: any): Promise<ProjectInfo> {
         ".\n"
     );
   }
-  const id: string = await promptOnce({
+  const projectId: string = await promptOnce({
     type: "list",
     name: "id",
     message: "Select a default Firebase project for this directory:",
+    validate: (answer: any) => {
+      if (!_.includes(choices, answer)) {
+        return "Must specify a Firebase to which you have access.";
+      }
+      return true;
+    },
     choices,
-  });
-  if (id === NEW_PROJECT || id === NO_PROJECT) {
-    return { id } as ProjectInfo;
+  } as Question);
+  if (projectId === NEW_PROJECT || projectId === NO_PROJECT) {
+    return { id: projectId } as ProjectInfo;
   }
 
-  const project = projects.find((p) => p.projectId === id);
-  const pId = choices.find((p) => p.value === id);
+  const project = projects.find((p) => p.projectId === projectId);
+  const pId = choices.find((p) => p.value === projectId);
   const label = pId ? pId.name : "";
 
   return {
-    id,
+    id: projectId,
     label,
     instance: _.get(project, "resources.realtimeDatabaseInstance"),
   } as ProjectInfo;
