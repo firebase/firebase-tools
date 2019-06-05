@@ -6,18 +6,24 @@ var _ = require("lodash");
 var request = require("request");
 var util = require("util");
 
-var FunctionsEmulator = require("./functionsEmulator");
+var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var logger = require("./logger");
+var shell = require("./emulator/functionsEmulatorShell");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
-  var emulator = new FunctionsEmulator(options);
 
-  return emulator
-    .start(true)
+  return serveFunctions
+    .start(options, { quiet: true })
     .then(function() {
-      if (emulator.emulatedFunctions.length === 0) {
+      return serveFunctions.connect();
+    })
+    .then(function() {
+      const instance = serveFunctions.get();
+      const emulator = new shell.FunctionsEmulatorShell(instance);
+
+      if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
         logger.info("No functions emulated.");
         process.exit();
       }
@@ -39,7 +45,7 @@ module.exports = function(options) {
       });
       _.forEach(emulator.triggers, function(trigger) {
         if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-          var localFunction = new LocalFunction(trigger, emulator.urls, emulator.controller);
+          var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
           var triggerNameDotNotation = trigger.name.replace(/\-/g, ".");
           _.set(replServer.context, triggerNameDotNotation, localFunction.call);
         }
@@ -51,7 +57,7 @@ module.exports = function(options) {
     .then(function() {
       return new Promise(function(resolve) {
         process.on("SIGINT", function() {
-          return emulator
+          return serveFunctions
             .stop()
             .then(resolve)
             .catch(resolve);
