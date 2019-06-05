@@ -6,10 +6,12 @@ import * as api from "../../api";
 
 import * as helpers from "../helpers";
 import { RTDBRemoveRemote } from "../../database/removeRemote";
+import { RTDBListRemote } from "../../database/listRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
   const remote = new RTDBRemoveRemote(instance);
+  const listRemote = new RTDBListRemote(instance);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
   let sandbox: sinon.SinonSandbox;
 
@@ -21,18 +23,6 @@ describe("RemoveRemote", () => {
   afterEach(() => {
     sandbox.restore();
     nock.cleanAll();
-  });
-
-  it("should return subpaths from shallow get request", () => {
-    nock(serverUrl)
-      .get("/.json")
-      .query({ shallow: true, limitToFirst: "1234" })
-      .reply(200, {
-        a: true,
-        x: true,
-        f: true,
-      });
-    return expect(remote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
   });
 
   it("should return true when patch is small", () => {
