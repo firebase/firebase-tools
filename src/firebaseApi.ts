@@ -1,9 +1,10 @@
-const api = require("./api");
+import * as api from "./api";
+import { Project } from "./project";
 
 const API_VERSION = "v1beta1";
 
-function _list(nextPageToken, projects) {
-  projects = projects || [];
+export function listProjects(nextPageToken?: string, projectsList?: Project[]): Promise<Project[]> {
+  let projects = projectsList || [];
 
   let path = `/${API_VERSION}/projects?page_size=100`;
   if (nextPageToken) {
@@ -18,18 +19,17 @@ function _list(nextPageToken, projects) {
     .then((response) => {
       projects = projects.concat(response.body.results);
       if (response.body.nextPageToken) {
-        return _list(response.body.nextPageToken, projects);
+        return listProjects(response.body.nextPageToken, projects);
       }
       return projects;
     });
 }
 
-exports.listProjects = () => _list();
-
-exports.getProject = (projectId) =>
-  api
+export function getProject(projectId: string): Promise<Project> {
+  return api
     .request("GET", `/${API_VERSION}/projects/${projectId}`, {
       auth: true,
       origin: api.firebaseApiOrigin,
     })
     .then((response) => response.body);
+}

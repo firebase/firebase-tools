@@ -1,15 +1,15 @@
-"use strict";
+import * as clc from "cli-color";
+import * as _ from "lodash";
+import * as util from "util";
 
-var clc = require("cli-color");
+import * as firebaseApi from "../../firebaseApi";
+import * as logger from "../../logger";
+import { Project, ProjectInfo } from "../../project";
+import * as prompt from "../../prompt";
+import * as utils from "../../utils";
 
-var _ = require("lodash");
-var firebaseApi = require("../../firebaseApi");
-var prompt = require("../../prompt");
-var logger = require("../../logger");
-var utils = require("../../utils");
-
-var NO_PROJECT = "[don't setup a default project]";
-var NEW_PROJECT = "[create a new project]";
+const NO_PROJECT = "[don't setup a default project]";
+const NEW_PROJECT = "[create a new project]";
 
 /**
  * Get the user's desired project, prompting if necessary.
@@ -21,36 +21,38 @@ var NEW_PROJECT = "[create a new project]";
  *  instance: project database instance [optional]
  * }
  */
-function _getProject(options) {
+async function getProject(options: any): Promise<ProjectInfo> {
   // The user passed in a --project flag directly, so no need to
   // load all projects.
   if (options.project) {
     return firebaseApi
       .getProject(options.project)
-      .then(function(project) {
-        var id = project.projectId;
-        var name = project.displayName;
+      .then((project: Project) => {
+        logger.info(util.inspect(project));
+        const projectId = project.projectId;
+        const name = project.displayName;
         return {
-          id: id,
-          label: id + " (" + name + ")",
+          id: projectId,
+          label: projectId + " (" + name + ")",
           instance: _.get(project, "resources.realtimeDatabaseInstance"),
-        };
+        } as ProjectInfo;
       })
-      .catch(function(e) {
-        return utils.reject("Error getting project " + options.project, { original: e });
+      .catch((e) => {
+        // return utils.reject("Error getting project " + options.project, { original: e });
+        throw new Error(`Error getting project ${options.project}: ${e}`);
       });
   }
 
   // Load all projects and prompt the user to choose.
-  return firebaseApi.listProjects().then(function(projects) {
-    var choices = projects.filter((project) => !!project).map((project) => {
+  return firebaseApi.listProjects().then((projects: Project[]) => {
+    let choices = projects.filter((project: Project) => !!project).map((project) => {
       return {
         name: project.projectId,
         label: project.projectId + " (" + project.displayName + ")",
       };
     });
     choices = _.orderBy(choices, ["name"], ["asc"]);
-    var nameOptions = [NO_PROJECT].concat(_.map(choices, "label")).concat([NEW_PROJECT]);
+    const nameOptions = [NO_PROJECT].concat(_.map(choices, "label")).concat([NEW_PROJECT]);
 
     if (choices.length >= 25) {
       utils.logBullet(
@@ -66,7 +68,7 @@ function _getProject(options) {
         type: "list",
         name: "id",
         message: "Select a default Firebase project for this directory:",
-        validate: function(answer) {
+        validate: (answer: any) => {
           if (!_.includes(nameOptions, answer)) {
             return "Must specify a Firebase to which you have access.";
           }
@@ -74,25 +76,25 @@ function _getProject(options) {
         },
         choices: nameOptions,
       })
-      .then(function(label) {
-        if (label === NEW_PROJECT || label === NO_PROJECT) {
+      .then((projectLabel: string) => {
+        if (projectLabel === NEW_PROJECT || projectLabel === NO_PROJECT) {
           return {
-            id: label,
-          };
+            id: projectLabel,
+          } as ProjectInfo;
         }
 
-        var id = prompt.listLabelToValue(label, choices);
-        const project = projects.find((p) => p.projectId === id);
+        const projectId = prompt.listLabelToValue(projectLabel, choices);
+        const project = projects.find((p) => p.projectId === projectId);
         return {
-          id: id,
-          label: label,
+          id: projectId,
+          label: projectLabel,
           instance: _.get(project, "resources.realtimeDatabaseInstance"),
-        };
+        } as ProjectInfo;
       });
   });
 }
 
-module.exports = function(setup, config, options) {
+module.exports = (setup: any, config: any, options: any): any => {
   setup.project = {};
 
   logger.info();
@@ -109,7 +111,7 @@ module.exports = function(setup, config, options) {
     return undefined;
   }
 
-  return _getProject(options).then(function(project) {
+  return getProject(options).then((project: ProjectInfo) => {
     if (project.id === NEW_PROJECT) {
       setup.createProject = true;
       return;
