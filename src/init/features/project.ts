@@ -87,7 +87,7 @@ async function getProject(options: any): Promise<ProjectInfo> {
   } as ProjectInfo;
 }
 
-export default async function(setup: any, config: any, options: any): Promise<any> {
+export default async function (setup: any, config: any, options: any): Promise<any> {
   setup.project = {};
 
   logger.info();
