@@ -4,7 +4,7 @@ import * as _ from "lodash";
 import * as firebaseApi from "../../firebaseApi";
 import * as logger from "../../logger";
 import { FirebaseProject, ProjectInfo } from "../../project";
-import * as prompt from "../../prompt";
+import { promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 
 const NO_PROJECT = "[don't setup a default project]";
@@ -45,12 +45,13 @@ async function getProject(options: any): Promise<ProjectInfo> {
   const projects: FirebaseProject[] = await firebaseApi.listProjects();
   let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
     return {
-      name: p.projectId,
-      label: p.projectId + " (" + p.displayName + ")",
+      name: p.projectId + " (" + p.displayName + ")",
+      value: p.projectId,
     };
   });
   choices = _.orderBy(choices, ["name"], ["asc"]);
-  const nameOptions = [NO_PROJECT].concat(_.map(choices, "label")).concat([NEW_PROJECT]);
+  choices.unshift({ name: NO_PROJECT, value: NO_PROJECT });
+  choices.push({ name: NEW_PROJECT, value: NEW_PROJECT });
 
   if (choices.length >= 25) {
     utils.logBullet(
@@ -60,29 +61,23 @@ async function getProject(options: any): Promise<ProjectInfo> {
         ".\n"
     );
   }
-  const projectLabel: string = await prompt.once({
+  const id: string = await promptOnce({
     type: "list",
     name: "id",
     message: "Select a default Firebase project for this directory:",
-    validate: (answer: any) => {
-      if (!_.includes(nameOptions, answer)) {
-        return "Must specify a Firebase to which you have access.";
-      }
-      return true;
-    },
-    choices: nameOptions,
+    choices,
   });
-  if (projectLabel === NEW_PROJECT || projectLabel === NO_PROJECT) {
-    return {
-      id: projectLabel,
-    } as ProjectInfo;
+  if (id === NEW_PROJECT || id === NO_PROJECT) {
+    return { id } as ProjectInfo;
   }
 
-  const projectId = prompt.listLabelToValue(projectLabel, choices);
-  const project = projects.find((p) => p.projectId === projectId);
+  const project = projects.find((p) => p.projectId === id);
+  const pId = choices.find((p) => p.value === id);
+  const label = pId ? pId.name : "";
+
   return {
-    id: projectId,
-    label: projectLabel,
+    id,
+    label,
     instance: _.get(project, "resources.realtimeDatabaseInstance"),
   } as ProjectInfo;
 }

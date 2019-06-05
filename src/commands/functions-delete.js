@@ -9,7 +9,7 @@ var functionsConfig = require("../functionsConfig");
 var functionsDelete = require("../functionsDelete");
 var getProjectId = require("../getProjectId");
 var helper = require("../functionsDeployHelper");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var requirePermissions = require("../requirePermissions");
 var utils = require("../utils");
 

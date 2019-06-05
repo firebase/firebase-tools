@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 
 import * as logger from "../../logger";
-import * as prompt from "../../prompt";
+import { prompt } from "../../prompt";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",

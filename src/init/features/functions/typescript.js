@@ -5,7 +5,7 @@ var fs = require("fs");
 var path = require("path");
 
 var npmDependencies = require("./npm-dependencies");
-var prompt = require("../../../prompt");
+var { prompt } = require("../../../prompt");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 var PACKAGE_LINTING_TEMPLATE = fs.readFileSync(

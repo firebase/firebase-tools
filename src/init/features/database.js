@@ -2,7 +2,7 @@
 
 var clc = require("cli-color");
 var api = require("../../api");
-var prompt = require("../../prompt");
+var { prompt, promptOnce } = require("../../prompt");
 var logger = require("../../logger");
 var utils = require("../../utils");
 var fsutils = require("../../fsutils");
@@ -76,7 +76,7 @@ module.exports = function(setup, config) {
           " Do you want to overwrite it with the Database Rules for " +
           clc.bold(instance) +
           " from the Firebase Console?";
-        return prompt.once({
+        return promptOnce({
           type: "confirm",
           message: msg,
           default: false,
