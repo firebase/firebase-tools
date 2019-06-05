@@ -3,7 +3,7 @@
 var clc = require("cli-color");
 var fs = require("fs");
 
-var prompt = require("../../prompt");
+var { prompt } = require("../../prompt");
 var logger = require("../../logger");
 
 var RULES_TEMPLATE = fs.readFileSync(

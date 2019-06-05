@@ -14,7 +14,7 @@ var api = require("./api");
 var configstore = require("./configstore");
 var FirebaseError = require("./error");
 var logger = require("./logger");
-var prompt = require("./prompt");
+var { prompt } = require("./prompt");
 var scopes = require("./scopes");
 
 portfinder.basePort = 9005;

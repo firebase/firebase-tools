@@ -14,7 +14,7 @@ var init = function(setup, config, options) {
       return utils.reject(
         clc.bold(nextFeature) +
           " is not a valid feature. Must be one of " +
-          _.without(_.keys(features), "project").join(",")
+          _.without(_.keys(features), "project").join(", ")
       );
     }
 

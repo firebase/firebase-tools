@@ -3,7 +3,7 @@
 var spawn = require("cross-spawn");
 
 var logger = require("../../../logger");
-var prompt = require("../../../prompt");
+var { prompt } = require("../../../prompt");
 
 exports.askInstallDependencies = function(setup, config) {
   return prompt(setup.functions, [

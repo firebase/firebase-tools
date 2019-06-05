@@ -5,7 +5,7 @@ var fs = require("fs");
 var path = require("path");
 
 var npmDependencies = require("./npm-dependencies");
-var prompt = require("../../../prompt");
+var { prompt } = require("../../../prompt");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/javascript/");
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.js"), "utf8");
