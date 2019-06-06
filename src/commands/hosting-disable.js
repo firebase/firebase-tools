@@ -5,7 +5,7 @@ var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
 var api = require("../api");
 var utils = require("../utils");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var clc = require("cli-color");
 
 module.exports = new Command("hosting:disable")
