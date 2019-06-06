@@ -47,7 +47,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id")
+      .get("/fake-project-id/us-central1/function_id")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
@@ -69,7 +69,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id/")
+      .get("/fake-project-id/us-central1/function_id/")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");
@@ -91,7 +91,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id/a/b")
+      .get("/fake-project-id/us-central1/function_id/a/b")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/a/b");
@@ -113,7 +113,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id/sub/route/a")
+      .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.eq("/sub/route/a");
@@ -135,10 +135,10 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id/sub/route/a")
+      .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
       .then((res) => {
-        expect(res.body.baseUrl).to.eq("/fake-project-id/us-central-1f/function_id");
+        expect(res.body.baseUrl).to.eq("/fake-project-id/us-central1/function_id");
       });
   }).timeout(TIMEOUT_LONG);
 
@@ -157,7 +157,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .post("/fake-project-id/us-central-1f/function_id/sub/route/a")
+      .post("/fake-project-id/us-central1/function_id/sub/route/a")
       .send({ hello: "world" })
       .expect(200)
       .then((res) => {
@@ -180,7 +180,7 @@ describe("FunctionsEmulator-Hub", () => {
     await supertest(
       FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
-      .get("/fake-project-id/us-central-1f/function_id/sub/route/a?hello=world")
+      .get("/fake-project-id/us-central1/function_id/sub/route/a?hello=world")
       .expect(200)
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
