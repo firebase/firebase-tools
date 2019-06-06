@@ -287,9 +287,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
-      case "default-admin-app-used":
-        utils.logBullet(`Your code has been provided a "firebase-admin" instance.`);
-        break;
       case "non-default-admin-app-used":
         EmulatorLogger.log(
           "WARN",
