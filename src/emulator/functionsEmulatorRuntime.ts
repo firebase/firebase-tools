@@ -26,7 +26,9 @@ interface CachedModuleMetadata {
   path: string;
   resolved?: boolean;
 }
+
 const cachedResolutions: { [id: string]: CachedModuleMetadata } = {};
+
 async function cachedRequireResolve(
   moduleName: string,
   cwd: string
@@ -47,17 +49,28 @@ async function cachedRequireResolve(
   return cachedResolutions[id];
 }
 
-const isFeatureEnabled = (frb: FunctionsRuntimeBundle, feature: keyof FunctionsRuntimeFeatures) =>
-  frb.disabled_features ? !frb.disabled_features[feature] : true;
+function isFeatureEnabled(
+  frb: FunctionsRuntimeBundle,
+  feature: keyof FunctionsRuntimeFeatures
+): boolean {
+  return frb.disabled_features ? !frb.disabled_features[feature] : true;
+}
 
-const NoOp = () => false;
+function NoOp(): false {
+  return false;
+}
 
-const requireAsync = async (moduleName: string, opts?: { paths: string[] }) =>
-  require(require.resolve(moduleName, opts));
+async function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
+  return require(require.resolve(moduleName, opts))
+}
 
-const isConstructor = (obj: any) => !!obj.prototype && !!obj.prototype.constructor.name;
+function isConstructor(obj: any):boolean {
+  return !!obj.prototype && !!obj.prototype.constructor.name;
+}
 
-const isExists = (obj: any) => obj !== undefined;
+function isExists(obj: any): boolean {
+  return obj !== undefined;
+}
 
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
