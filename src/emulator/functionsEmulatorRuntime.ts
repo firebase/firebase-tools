@@ -454,6 +454,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         return adminModuleTarget.initializeApp(opts, appName);
       }
 
+      new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
       app = adminModuleTarget.initializeApp({
         ...JSON.parse(process.env.FIREBASE_CONFIG || "{}"),
         ...opts,

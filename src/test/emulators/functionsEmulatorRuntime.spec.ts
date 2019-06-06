@@ -221,7 +221,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${onRequestCopy.projectId}/${onRequestCopy.triggerId}`,
+              path: `/${onRequestCopy.projectId}/us-central-1f/${onRequestCopy.triggerId}`,
             },
             (res) => {
               let data = "";
@@ -356,7 +356,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}/`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}/`,
             },
             (res) => {
               let data = "";
@@ -392,7 +392,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -434,7 +434,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "application/json",
@@ -476,7 +476,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "text/plain",
@@ -518,7 +518,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "gibber/ish",
@@ -561,7 +561,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "gibber/ish",
@@ -602,7 +602,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}?hello=world`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}?hello=world`,
               method: "get",
             },
             (res) => {
@@ -638,7 +638,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
               headers: {
                 "x-forwarded-host": "real-hostname",
               },
@@ -793,7 +793,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);
@@ -828,7 +828,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);
@@ -862,7 +862,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/${frb.triggerId}`,
+              path: `/${frb.projectId}/us-central-1f/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);
