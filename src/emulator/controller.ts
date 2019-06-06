@@ -158,17 +158,22 @@ export async function startAll(options: any): Promise<void> {
 
   if (targets.indexOf(Emulators.DATABASE) > -1) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
-    const databaseEmulator = new DatabaseEmulator({
-      host: databaseAddr.host,
-      port: databaseAddr.port,
-    });
+    let databaseEmulator;
+    if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
+      const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
+      databaseEmulator = new DatabaseEmulator({
+        host: databaseAddr.host,
+        port: databaseAddr.port,
+        functions_emulator_host: functionsAddr.host,
+        functions_emulator_port: functionsAddr.port,
+      });
+    } else {
+      databaseEmulator = new DatabaseEmulator({
+        host: databaseAddr.host,
+        port: databaseAddr.port,
+      });
+    }
     await startEmulator(databaseEmulator);
-
-    // TODO: When the database emulator is integrated with the Functions
-    //       emulator, we will need to pass the port in and remove this warning
-    utils.logWarning(
-      `Note: the database emulator is not currently integrated with the functions emulator.`
-    );
   }
 
   if (targets.indexOf(Emulators.HOSTING) > -1) {

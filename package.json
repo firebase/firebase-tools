@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "6.10.0",
+  "version": "6.11.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -15,7 +15,6 @@
     "lint:js": "eslint 'src/**/*.js'",
     "lint:ts": "tslint --project tsconfig.json --config tslint.json",
     "mocha": "nyc mocha --opts mocha.opts",
-    "prepublish": "npm run clean && npm run build",
     "prepare": "npm run clean && npm run build",
     "test": "npm run lint && npm run mocha"
   },
@@ -40,9 +39,8 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 6.0.0"
+    "node": ">= 8.0.0"
   },
-  "engineStrict": true,
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
   "bugs": {

@@ -32,6 +32,14 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
 
+/*
+ * The Realtime Database emulator expects the `path` field in its trigger
+ * definition to be relative to the database root. This regex is used to extract
+ * that path from the `resource` member in the trigger definition used by the
+ * functions emulator.
+ */
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
+
 export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
@@ -490,6 +498,9 @@ You can probably fix this by running "npm install ${
             case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
+            case Constants.SERVICE_REALTIME_DATABASE:
+              await this.addRealtimeDatabaseTrigger(this.projectId, definition);
+              break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               EmulatorLogger.log(
@@ -512,6 +523,74 @@ You can probably fix this by running "npm install ${
     });
 
     return loadTriggers();
+  }
+
+  addRealtimeDatabaseTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<any> {
+    const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
+    if (!databasePort) {
+      EmulatorLogger.log(
+        "INFO",
+        `Ignoring trigger "${
+          definition.name
+        }" because the Realtime Database emulator is not running.`
+      );
+      return Promise.resolve();
+    }
+    if (definition.eventTrigger === undefined) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has undefined "eventTrigger" member`
+      );
+      return Promise.reject();
+    }
+
+    const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
+    if (result === null || result.length !== 2) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has malformed "resource" member. ` +
+          `${definition.eventTrigger.resource}`
+      );
+      return Promise.reject();
+    }
+
+    const bundle = JSON.stringify([
+      {
+        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+        path: result[1], // path stored in the first capture group
+        event: definition.eventTrigger.eventType,
+        topic: `projects/${projectId}/topics/${definition.name}`,
+      },
+    ]);
+
+    EmulatorLogger.logLabeled(
+      "BULLET",
+      "functions",
+      `Setting up Realtime Database trigger "${definition.name}"`
+    );
+    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
+    return new Promise((resolve, reject) => {
+      request.put(
+        `http://localhost:${databasePort}/.settings/functionTriggers.json`,
+        {
+          auth: {
+            bearer: "owner",
+          },
+          body: bundle,
+        },
+        (err, res, body) => {
+          if (err) {
+            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+            reject();
+            return;
+          }
+          resolve();
+        }
+      );
+    });
   }
 
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
