@@ -165,7 +165,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
   }
 
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 8 },
+    { name: "firebase-admin", isDev: false, minVersion: 7 },
     { name: "firebase-functions", isDev: false, minVersion: 2 },
   ];
 
@@ -232,6 +232,28 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
 
+  try {
+    const gcFirestore = findModuleRoot(
+      "@google-cloud/firestore",
+      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
+    );
+    const gaxPath = require.resolve("google-gax", { paths: [gcFirestore] });
+    const gaxModule = {
+      module: require(gaxPath),
+      path: ["GrpcClient"],
+      name: "google-gax",
+    };
+
+    networkingModules.push(gaxModule);
+    new EmulatorLog("DEBUG", "runtime-status", `Found google-gax at ${gaxPath}`).log();
+  } catch (err) {
+    new EmulatorLog(
+      "DEBUG",
+      "runtime-status",
+      `Couldn't find @google-cloud/firestore or google-gax, this may be okay if using @google-cloud/firestore@2.0.0`
+    ).log();
+  }
+
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {
     let obj = bundle.module;
@@ -281,7 +303,16 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        return new original(...args);
+        const newed = new original(...args);
+        if (bundle.name === "google-gax") {
+          const cs = newed.constructSettings;
+          newed.constructSettings = (...csArgs: any[]) => {
+            (csArgs[3] as any).authorization = "Bearer owner";
+            return cs.bind(newed)(...csArgs);
+          };
+        }
+
+        return newed;
       }
     };
 
@@ -290,7 +321,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
   new EmulatorLog("DEBUG", "runtime-status", "Outgoing network have been stubbed.", results).log();
 }
-
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
     which returns a promise. In this scenario, we can't catch errors which get raised in user code,
@@ -336,6 +366,31 @@ async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<v
 }
 
 /*
+  @google-cloud/firestore@2.0.0 made a breaking change which swapped relying on "grpc" to "@grpc/grpc-js"
+  which has a slightly different signature. We need to detect the firestore version to know which version
+  of grpc to pass as a credential.
+ */
+async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<any> {
+  const firestorePackageJSON = require(path.join(
+    findModuleRoot(
+      "@google-cloud/firestore",
+      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
+    ),
+    "package.json"
+  ));
+
+  if (firestorePackageJSON.version.startsWith("1")) {
+    const grpc = await requireAsync("grpc", { paths: [frb.cwd] }).catch(NoOp);
+    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-native for admin credential").log();
+    return grpc.credentials.createInsecure();
+  } else {
+    const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(NoOp);
+    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-js for admin credential").log();
+    return grpc.ServerCredentials.createInsecure();
+  }
+}
+
+/*
     This stub is the most important and one of the only non-optional stubs. This feature redirects
     writes from the admin SDK back into emulated resources. Currently, this is only Firestore writes.
     To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
@@ -349,12 +404,15 @@ async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<v
    */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
   const adminResolution = (await cachedRequireResolve("firebase-admin", frb.cwd)).path;
-  // TODO Add support back for non-js GRPC
-  const grpc = require((await cachedRequireResolve("@grpc/grpc-js", frb.cwd)).path);
-
   const localAdminModule = require(adminResolution);
 
   let hasInitializedSettings = false;
+  /*
+  If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
+  then there's probably something really wrong (like a failed node-gyp build). If that's the case
+  we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
+   */
+  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
   const initializeSettings = (userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
 
@@ -372,7 +430,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         port: frb.ports.firestore,
         servicePath: "localhost",
         service: "firestore.googleapis.com",
-        sslCreds: grpc.ServerCredentials.createInsecure(),
+        sslCreds,
         customHeaders: {
           Authorization: "Bearer owner",
         },
