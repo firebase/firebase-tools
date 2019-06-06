@@ -22,33 +22,6 @@ import * as _ from "lodash";
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
 
-interface CachedModuleMetadata {
-  path: string;
-  resolved?: boolean;
-}
-
-const cachedResolutions: { [id: string]: CachedModuleMetadata } = {};
-
-async function cachedRequireResolve(
-  moduleName: string,
-  cwd: string
-): Promise<CachedModuleMetadata> {
-  const id = [moduleName, cwd].join(":");
-  const meta: CachedModuleMetadata = { path: "" };
-
-  if (!cachedResolutions[id]) {
-    try {
-      meta.path = require.resolve(moduleName, { paths: [cwd] });
-      meta.resolved = true;
-    } catch (err) {
-      meta.resolved = false;
-    }
-    cachedResolutions[id] = meta;
-  }
-
-  return cachedResolutions[id];
-}
-
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
@@ -61,10 +34,17 @@ function NoOp(): false {
 }
 
 async function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
-  return require(require.resolve(moduleName, opts))
+  return require(require.resolve(moduleName, opts));
 }
 
-function isConstructor(obj: any):boolean {
+async function requireResolveAsync(
+  moduleName: string,
+  opts?: { paths: string[] }
+): Promise<string> {
+  return require.resolve(moduleName, opts);
+}
+
+function isConstructor(obj: any): boolean {
   return !!obj.prototype && !!obj.prototype.constructor.name;
 }
 
@@ -198,15 +178,17 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
     /*
     Once we know it's in the package.json, make sure it's actually `npm install`ed
      */
-    const modResolution = await cachedRequireResolve(modBundle.name, frb.cwd);
+    const modResolution = await requireResolveAsync(modBundle.name, { paths: [frb.cwd] }).catch(
+      NoOp
+    );
 
-    if (!modResolution.resolved || !modResolution.path) {
+    if (!modResolution) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
 
     const modPackageJSON = require(path.join(
-      findModuleRoot(modBundle.name, modResolution.path),
+      findModuleRoot(modBundle.name, modResolution),
       "package.json"
     ));
     const modMajorVersion = parseInt((modPackageJSON.version || "0").split("."), 10);
@@ -347,10 +329,9 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
-  const firebaseFunctionsResolution = (await cachedRequireResolve(
-    "firebase-functions",
-    functionsDir
-  )).path;
+  const firebaseFunctionsResolution = await requireResolveAsync("firebase-functions", {
+    paths: [functionsDir],
+  });
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -416,7 +397,7 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
     but it's hard to catch and better than accidentally talking to prod.
    */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
-  const adminResolution = (await cachedRequireResolve("firebase-admin", frb.cwd)).path;
+  const adminResolution = await requireResolveAsync("firebase-admin", { paths: [frb.cwd] });
   const localAdminModule = require(adminResolution);
 
   let hasInitializedSettings = false;
@@ -529,7 +510,9 @@ function InitializeEnvironmentalVariables(projectId: string): void {
 }
 
 async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
-  const functionsResolution = (await cachedRequireResolve("firebase-functions", functionsDir)).path;
+  const functionsResolution = await requireResolveAsync("firebase-functions", {
+    paths: [functionsDir],
+  });
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -740,12 +723,6 @@ async function main(): Promise<void> {
     "runtime-status",
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
-
-  await Promise.all(
-    ["firebase-admin", "firebase-functions", "@grpc/grpc-js"].map((moduleName) =>
-      cachedRequireResolve(moduleName, frb.cwd)
-    )
-  );
 
   const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
