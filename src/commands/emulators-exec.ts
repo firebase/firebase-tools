@@ -22,7 +22,9 @@ async function runScript(script: string): Promise<void> {
   if (firestoreInstance) {
     const info = firestoreInstance.getInfo();
     const hostString = `${info.host}:${info.port}`;
+
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = hostString;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = hostString;
   }
 
   const proc = childProcess.spawn(script, {
