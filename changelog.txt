@@ -2,3 +2,5 @@
 * Fixed bug with Functions Emulator and firebase-admin@8.0.0
 * Fixed req.baseUrl in Functions Emulator
 * Added `FUNCTIONS_EMULATOR` environmental variable when running in Functions Emulator
+* Set FIRESTORE_EMULATOR_HOST env var in "emulators:exec".
+* Fixes bug in printing Function logs when the text payload was undefined.
