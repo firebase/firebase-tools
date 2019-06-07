@@ -1,1 +1,2 @@
+* Set FIRESTORE_EMULATOR_HOST env var in "emulators:exec".
 * Fixes bug in printing Function logs when the text payload was undefined.
