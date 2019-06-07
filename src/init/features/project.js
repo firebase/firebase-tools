@@ -4,7 +4,7 @@ var clc = require("cli-color");
 
 var _ = require("lodash");
 var firebaseApi = require("../../firebaseApi");
-var prompt = require("../../prompt");
+var { promptOnce } = require("../../prompt");
 var logger = require("../../logger");
 var utils = require("../../utils");
 
@@ -45,12 +45,13 @@ function _getProject(options) {
   return firebaseApi.listProjects().then(function(projects) {
     var choices = projects.filter((project) => !!project).map((project) => {
       return {
-        name: project.projectId,
-        label: project.projectId + " (" + project.displayName + ")",
+        name: project.projectId + " (" + project.displayName + ")",
+        value: project.projectId,
       };
     });
     choices = _.orderBy(choices, ["name"], ["asc"]);
-    var nameOptions = [NO_PROJECT].concat(_.map(choices, "label")).concat([NEW_PROJECT]);
+    choices.unshift({ name: NO_PROJECT, value: NO_PROJECT });
+    choices.push({ name: NEW_PROJECT, value: NEW_PROJECT });
 
     if (choices.length >= 25) {
       utils.logBullet(
@@ -61,34 +62,30 @@ function _getProject(options) {
       );
     }
 
-    return prompt
-      .once({
-        type: "list",
-        name: "id",
-        message: "Select a default Firebase project for this directory:",
-        validate: function(answer) {
-          if (!_.includes(nameOptions, answer)) {
-            return "Must specify a Firebase to which you have access.";
-          }
-          return true;
-        },
-        choices: nameOptions,
-      })
-      .then(function(label) {
-        if (label === NEW_PROJECT || label === NO_PROJECT) {
-          return {
-            id: label,
-          };
+    return promptOnce({
+      type: "list",
+      name: "id",
+      message: "Select a default Firebase project for this directory:",
+      validate: function(answer) {
+        if (!_.includes(choices, answer)) {
+          return "Must specify a Firebase to which you have access.";
         }
+        return true;
+      },
+      choices: choices,
+    }).then(function(id) {
+      if (id === NEW_PROJECT || id === NO_PROJECT) {
+        return { id: id };
+      }
 
-        var id = prompt.listLabelToValue(label, choices);
-        const project = projects.find((p) => p.projectId === id);
-        return {
-          id: id,
-          label: label,
-          instance: _.get(project, "resources.realtimeDatabaseInstance"),
-        };
-      });
+      const project = projects.find((p) => p.projectId === id);
+      const label = choices.find((p) => p.value === id).name;
+      return {
+        id: id,
+        label: label,
+        instance: _.get(project, "resources.realtimeDatabaseInstance"),
+      };
+    });
   });
 }
 

@@ -7,7 +7,7 @@ import logger = require("./logger");
 import FirebaseError = require("./error");
 import utils = require("./utils");
 
-import * as prompt from "./prompt";
+import { prompt } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 
 // The status code the Firebase Rules backend sends to indicate too many rulesets.
