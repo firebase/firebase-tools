@@ -1,6 +1,11 @@
-* Fixed bug where raw body was missing on HTTPS function request
-* Fixed bug with Functions Emulator and firebase-admin@8.0.0
-* Fixed req.baseUrl in Functions Emulator
-* Added `FUNCTIONS_EMULATOR` environmental variable when running in Functions Emulator
+* **BREAKING** The CLI no longer supports being run in Node 6 environments.
+* **BREAKING** RTDB Emulator comes up with open rules by default.
+* Modify RTDB emulator to publish triggers to the functions emulator.
+* Modify functions emulator to invoke RTDB emulator triggers.
+* Engines field is now required in package.json for functions deploys.
+* Fixed bug where raw body was missing on HTTPS function request.
+* Fixed bug with Functions Emulator and `firebase-admin@8.0.0`.
+* Fixed req.baseUrl in Functions Emulator.
+* Added `FUNCTIONS_EMULATOR` environmental variable when running in Functions Emulator.
 * Set FIRESTORE_EMULATOR_HOST env var in "emulators:exec".
 * Fixes bug in printing Function logs when the text payload was undefined.
