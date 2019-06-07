@@ -27,7 +27,6 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { trimFunctionPath } from "./functionsEmulatorUtils";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
@@ -177,7 +176,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path: "/" + trimFunctionPath(req.url),
+          path: req.url || "/",
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -296,9 +295,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
-      case "default-admin-app-used":
-        utils.logBullet(`Your code has been provided a "firebase-admin" instance.`);
-        break;
       case "non-default-admin-app-used":
         EmulatorLogger.log(
           "WARN",
@@ -344,17 +340,28 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
-      case "missing-package-json":
-        utils.logWarning(
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
-        );
-        break;
       case "admin-auto-initialized":
         utils.logBullet(
           "Your code does not appear to initialize the 'firebase-admin' module, so we've done it automatically.\n" +
             "   - Learn more: https://firebase.google.com/docs/admin/setup"
         );
         break;
+      case "function-code-resolution-failed":
+        const helper = ["Your code could not be loaded."];
+        if (systemLog.data.wrong_directory) {
+          helper.push(`   - There is no "package.json" file in your functions directory.`);
+        }
+        if (systemLog.data.typescript) {
+          helper.push(
+            "   - It appears your code is written in Typescript, which must be compiled before emulation."
+          );
+        }
+        if (systemLog.data.uncompiled) {
+          helper.push(
+            `   - You may be able to run "npm run build" in your functions directory to resolve this.`
+          );
+        }
+        utils.logWarning(helper.join("\n"));
       default:
       // Silence
     }
