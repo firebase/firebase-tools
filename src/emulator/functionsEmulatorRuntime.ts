@@ -678,7 +678,7 @@ async function RunHTTPS(
   This method attempts to help a developer whose code can't be loaded by suggesting
   possible fixes based on the files in their functions directory.
  */
-async function moduleResolutionDetective(frb: FunctionsRuntimeBundle): Promise<void> {
+async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Error): Promise<void> {
   /*
   These files could all potentially exist, if they don't then the value in the map will be
   falsey, so we just catch to keep from throwing.
@@ -698,7 +698,10 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle): Promise<v
   isPotentially.wrong_directory = !clues.packageJSON;
   isPotentially.uncompiled = !!_.get(clues.packageJSON, "scripts.build", false);
 
-  new EmulatorLog("SYSTEM", "function-code-resolution-failed", "", isPotentially).log();
+  new EmulatorLog("SYSTEM", "function-code-resolution-failed", "", {
+    isPotentially,
+    error: error.stack,
+  }).log();
 }
 
 async function main(): Promise<void> {
@@ -762,7 +765,7 @@ async function main(): Promise<void> {
     try {
       triggerModule = require(frb.cwd);
     } catch (err) {
-      await moduleResolutionDetective(frb);
+      await moduleResolutionDetective(frb, err);
       return;
     }
   }
