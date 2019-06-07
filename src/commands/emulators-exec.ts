@@ -21,10 +21,10 @@ async function runScript(script: string): Promise<void> {
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
     const info = firestoreInstance.getInfo();
-    const hostString = `${info.host}:${info.port}`;
+    const address = `${info.host}:${info.port}`;
 
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = hostString;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = hostString;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 
   const proc = childProcess.spawn(script, {
