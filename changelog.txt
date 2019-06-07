@@ -1,0 +1,1 @@
+* Set FIRESTORE_EMULATOR_HOST env var in "emulators:exec".
