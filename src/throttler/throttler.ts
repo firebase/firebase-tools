@@ -33,8 +33,20 @@ export interface ThrottlerStats {
 
 interface TaskData<T, R> {
   task: T;
-  retryCount: number;
+  retriesRemaining: number;
+  timeout?: number;
   wait?: { resolve: (R: any) => void; reject: (err: Error) => void };
+  status: TaskStatus;
+  result?: R;
+  error?: Error;
+}
+
+enum TaskStatus {
+  NOT_STARTED,
+  RUNNING,
+  FULFILLED,
+  RETRIES_EXHAUSTED,
+  TIMEOUT,
 }
 
 /**
@@ -56,6 +68,8 @@ export abstract class Throttler<T, R> {
   retried: number = 0;
   total: number = 0;
   taskDataMap = new Map<number, TaskData<T, R>>();
+  taskTimeoutIdMap = new Map<number, NodeJS.Timeout>();
+  isTimedOutMap = new Map<number, boolean>();
   waits: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
   min: number = 9999999999;
   max: number = 0;
@@ -120,15 +134,46 @@ export abstract class Throttler<T, R> {
    * Add the task to the throttler and return a promise of handler's result.
    * If the task failed, both the promised returned by throttle and wait will reject.
    */
-  run(task: T): Promise<R> {
+  run(task: T, timeout?: number): Promise<R> {
     return new Promise((resolve, reject) => {
-      this.addHelper(task, { resolve, reject });
+      this.addHelper(task, timeout, { resolve, reject });
     });
   }
 
   close(): boolean {
     this.closed = true;
     return this.finishIfIdle();
+  }
+
+  async handle(cursorIndex: number): Promise<void> {
+    const taskData = this.taskDataMap.get(cursorIndex);
+    if (!taskData) {
+      throw new Error(`taskData.get(${cursorIndex}) does not exist`);
+    }
+    switch (taskData.status) {
+      case TaskStatus.NOT_STARTED:
+        this.initializeTask(taskData, cursorIndex);
+        break;
+      case TaskStatus.RUNNING:
+        await this.executeTask(taskData, cursorIndex);
+        break;
+      case TaskStatus.FULFILLED:
+        return this.onTaskFulfilled(taskData, cursorIndex);
+      case TaskStatus.TIMEOUT:
+        return this.onTaskFailed(
+          taskData,
+          cursorIndex,
+          `Task ${this.taskName(cursorIndex)} timed out`
+        );
+      case TaskStatus.RETRIES_EXHAUSTED:
+        return this.onTaskFailed(
+          taskData,
+          cursorIndex,
+          `Retries exhausted on task ${this.taskName(cursorIndex)}`
+        );
+    }
+
+    return this.handle(cursorIndex);
   }
 
   process(): void {
@@ -138,60 +183,6 @@ export abstract class Throttler<T, R> {
 
     this.active++;
     this.handle(this.nextWaitingTaskIndex());
-  }
-
-  async handle(cursorIndex: number): Promise<void> {
-    const taskData = this.taskDataMap.get(cursorIndex);
-    if (!taskData) {
-      throw new Error(`taskData.get(${cursorIndex}) does not exist`);
-    }
-    const task = taskData.task;
-    const tname = this.taskName(cursorIndex);
-    const t0 = Date.now();
-
-    try {
-      const result = await this.handler(task);
-      const dt = Date.now() - t0;
-      if (dt < this.min) {
-        this.min = dt;
-      }
-      if (dt > this.max) {
-        this.max = dt;
-      }
-      this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
-
-      this.success++;
-      this.complete++;
-      this.active--;
-      if (taskData.wait) {
-        taskData.wait.resolve(result);
-      }
-      this.taskDataMap.delete(cursorIndex);
-      this.process();
-    } catch (err) {
-      if (this.retries > 0) {
-        if (taskData.retryCount < this.retries) {
-          taskData.retryCount++;
-          this.retried++;
-          await backoff(taskData.retryCount, this.backoff);
-          logger.debug(`[${this.name}] Retrying task`, tname);
-          return this.handle(cursorIndex);
-        }
-      }
-
-      this.errored++;
-      this.complete++;
-      this.active--;
-      if (taskData.retryCount > 0) {
-        logger.debug(`[${this.name}] Retries exhausted for task ${tname}:`, err);
-      } else {
-        logger.debug(`[${this.name}] Error on task ${tname}:`, err);
-      }
-      if (taskData.wait) {
-        taskData.wait.reject(err);
-      }
-      this.finish(err);
-    }
   }
 
   stats(): ThrottlerStats {
@@ -217,8 +208,97 @@ export abstract class Throttler<T, R> {
     return typeof taskData.task === "string" ? taskData.task : `index ${cursorIndex}`;
   }
 
+  private initializeTask(taskData: TaskData<T, R>, cursorIndex: number): void {
+    this.taskDataMap.set(cursorIndex, {
+      ...taskData,
+      status: TaskStatus.RUNNING,
+    });
+    if (taskData.timeout) {
+      this.taskTimeoutIdMap.set(
+        cursorIndex,
+        setTimeout(() => {
+          this.isTimedOutMap.set(cursorIndex, true);
+        }, taskData.timeout)
+      );
+    }
+  }
+
+  private async executeTask(taskData: TaskData<T, R>, cursorIndex: number): Promise<void> {
+    const updatedTaskData = { ...taskData };
+
+    const t0 = Date.now();
+    try {
+      updatedTaskData.result = await this.handler(taskData.task);
+      const dt = Date.now() - t0;
+      if (dt < this.min) {
+        this.min = dt;
+      }
+      if (dt > this.max) {
+        this.max = dt;
+      }
+      this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
+
+      this.success++;
+      this.complete++;
+      this.active--;
+      updatedTaskData.status = TaskStatus.FULFILLED;
+    } catch (err) {
+      if (taskData.retriesRemaining === 0) {
+        updatedTaskData.status = TaskStatus.RETRIES_EXHAUSTED;
+        updatedTaskData.error = err;
+      } else if (this.isTimedOutMap.get(cursorIndex)) {
+        updatedTaskData.status = TaskStatus.TIMEOUT;
+        updatedTaskData.error = err;
+      } else {
+        this.retried++;
+        updatedTaskData.retriesRemaining--;
+        await backoff(this.retries - updatedTaskData.retriesRemaining, this.backoff);
+        logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
+      }
+    }
+
+    this.taskDataMap.set(cursorIndex, updatedTaskData);
+  }
+
+  private onTaskFulfilled(taskData: TaskData<T, R>, cursorIndex: number): void {
+    if (taskData.wait) {
+      taskData.wait.resolve(taskData.result);
+    }
+    this.cleanupTask(cursorIndex);
+    this.process();
+  }
+
+  private onTaskFailed(taskData: TaskData<T, R>, cursorIndex: number, failureReason: string): void {
+    this.errored++;
+    this.complete++;
+    this.active--;
+
+    logger.debug(failureReason, taskData.error);
+
+    // TODO: Create a new Error class to include the task error on the previous retry and reason
+    // why we stop retrying (timeout | no_more_retries)
+    const error = taskData.error || new Error(failureReason);
+
+    if (taskData.wait) {
+      taskData.wait.reject(error);
+    }
+    this.cleanupTask(cursorIndex);
+    this.finish(error);
+  }
+
+  private cleanupTask(cursorIndex: number): void {
+    const timeoutId = this.taskTimeoutIdMap.get(cursorIndex);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      this.taskTimeoutIdMap.delete(cursorIndex);
+    }
+    this.isTimedOutMap.delete(cursorIndex);
+    this.taskDataMap.delete(cursorIndex);
+  }
+
   private addHelper(
     task: T,
+    timeout?: number,
     wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
   ): void {
     if (this.closed) {
@@ -230,7 +310,9 @@ export abstract class Throttler<T, R> {
     this.taskDataMap.set(this.total, {
       task,
       wait,
-      retryCount: 0,
+      timeout,
+      retriesRemaining: this.retries,
+      status: TaskStatus.NOT_STARTED,
     });
     this.total++;
     this.process();
