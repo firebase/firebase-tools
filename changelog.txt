@@ -3,3 +3,4 @@
 * Modify RTDB emulator to publish triggers to the functions emulator
 * Modify functions emulator to invoke RTDB emulator triggers
 * Engines field is now required in package.json for functions deploys.
+* Update functions init templates to use firebase-functions v3 and firebase-admin v8.
