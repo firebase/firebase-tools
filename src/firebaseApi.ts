@@ -13,19 +13,17 @@ export interface FirebaseProject {
   displayName: string;
   name: string;
   resources: {
-    hostingSite: string;
-    realtimeDatabaseInstance: string;
-    storageBucket: string;
-    locationId: string;
+    hostingSite?: string;
+    realtimeDatabaseInstance?: string;
+    storageBucket?: string;
+    locationId?: string;
   };
 }
 
 export async function listProjects(
   nextPageToken?: string,
-  projectsList?: FirebaseProject[]
+  projectsList: FirebaseProject[] = []
 ): Promise<FirebaseProject[]> {
-  let projects = projectsList || [];
-
   let path = `/${API_VERSION}/projects?page_size=100`;
   if (nextPageToken) {
     path += `&page_token=${nextPageToken}`;
@@ -35,11 +33,11 @@ export async function listProjects(
     auth: true,
     origin: api.firebaseApiOrigin,
   });
-  projects = projects.concat(response.body.results);
+  projectsList = projectsList.concat(response.body.results);
   if (response.body.nextPageToken) {
-    return listProjects(response.body.nextPageToken, projects);
+    return listProjects(response.body.nextPageToken, projectsList);
   }
-  return projects;
+  return projectsList;
 }
 
 export async function getProject(projectId: string): Promise<FirebaseProject> {

@@ -9,7 +9,7 @@ const RULES_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
-export async function doSetup(setup: any, config: any): Promise<any> {
+export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.storage = {};
 
   logger.info();
@@ -26,5 +26,5 @@ export async function doSetup(setup: any, config: any): Promise<any> {
       default: "storage.rules",
     },
   ]);
-  return config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
+  config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
 }

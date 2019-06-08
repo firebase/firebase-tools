@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
+import * as Config from "../../config";
 import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
 import * as logger from "../../logger";
 import { promptOnce, Question } from "../../prompt";
@@ -11,51 +12,59 @@ const NEW_PROJECT = "[create a new project]";
 
 /**
  * Used in init flows to keep information about the project - basically
- * a shorter version of FirebaseProject with some additional fields.
+ * a shorter version of {@link FirebaseProject} with some additional fields.
  */
 export interface ProjectInfo {
-  id: string; // maps to projectId
-  label: string;
-  instance: string; // maps to FirebaseProject.resources.realtimeDatabaseInstance
-  location: string; // maps to FirebaseProject.resources.locationId
+  id: string; // maps to FirebaseProject.projectId
+  label?: string;
+  instance?: string; // maps to FirebaseProject.resources.realtimeDatabaseInstance
+  location?: string; // maps to FirebaseProject.resources.locationId
 }
 
 /**
  * Get the user's desired project, prompting if necessary.
- * Returns a ProjectInfo object:
- *
- * {
- *  id: project ID [required]
- *  label: project display label [optional]
- *  instance: project database instance [optional]
- * }
+ * @returns A {@link ProjectInfo} object.
  */
 async function getProjectInfo(options: any): Promise<ProjectInfo> {
-  // The user passed in a --project flag directly, so no need to
-  // load all projects.
   if (options.project) {
-    // tslint:disable-next-line:no-shadowed-variable
-    let project: FirebaseProject;
-    try {
-      project = await getProject(options.project);
-    } catch (e) {
-      throw new Error(`Error getting project ${options.project}: ${e}`);
-    }
-    // tslint:disable-next-line:no-shadowed-variable
-    const projectId = project.projectId;
-    const name = project.displayName;
-    return {
-      id: projectId,
-      label: projectId + " (" + name + ")",
-      instance: _.get(project, "resources.realtimeDatabaseInstance"),
-    } as ProjectInfo;
+    return selectProjectFromOptions(options);
   }
+  return selectProjectFromList(options);
+}
 
-  // Load all projects and prompt the user to choose.
+/**
+ * Selects project when --project is passed in.
+ * @param options Command line options.
+ * @returns A {@link FirebaseProject} object.
+ */
+async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
+  let project: FirebaseProject;
+  try {
+    project = await getProject(options.project);
+  } catch (e) {
+    throw new Error(`Error getting project ${options.project}: ${e}`);
+  }
+  const projectId = project.projectId;
+  const name = project.displayName;
+  return {
+    id: projectId,
+    label: `${projectId} (${name})`,
+    instance: _.get(project, "resources.realtimeDatabaseInstance"),
+  };
+}
+
+/**
+ * Presents user with list of projects to choose from and gets project
+ * information for chosen project.
+ * @param options Command line options.
+ * @returns A {@link FirebaseProject} object.
+ */
+async function selectProjectFromList(options: any): Promise<ProjectInfo> {
+  let project: FirebaseProject | undefined;
   const projects: FirebaseProject[] = await listProjects();
   let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
     return {
-      name: p.projectId + " (" + p.displayName + ")",
+      name: `${p.projectId} (${p.displayName})`,
       value: p.projectId,
     };
   });
@@ -65,10 +74,10 @@ async function getProjectInfo(options: any): Promise<ProjectInfo> {
 
   if (choices.length >= 25) {
     utils.logBullet(
-      "Don't want to scroll through all your projects? If you know your project ID, " +
-        "you can initialize it directly using " +
-        clc.bold("firebase init --project <project_id>") +
-        ".\n"
+      `Don't want to scroll through all your projects? If you know your project ID, ` +
+        `you can initialize it directly using ${clc.bold(
+          "firebase init --project <project_id>"
+        )}.\n`
     );
   }
   const projectId: string = await promptOnce({
@@ -77,17 +86,17 @@ async function getProjectInfo(options: any): Promise<ProjectInfo> {
     message: "Select a default Firebase project for this directory:",
     validate: (answer: any) => {
       if (!_.includes(choices, answer)) {
-        return "Must specify a Firebase to which you have access.";
+        return `Must specify a Firebase project to which you have access.`;
       }
       return true;
     },
     choices,
   } as Question);
   if (projectId === NEW_PROJECT || projectId === NO_PROJECT) {
-    return { id: projectId } as ProjectInfo;
+    return { id: projectId };
   }
 
-  const project = projects.find((p) => p.projectId === projectId);
+  project = projects.find((p) => p.projectId === projectId);
   const pId = choices.find((p) => p.value === projectId);
   const label = pId ? pId.name : "";
 
@@ -95,24 +104,30 @@ async function getProjectInfo(options: any): Promise<ProjectInfo> {
     id: projectId,
     label,
     instance: _.get(project, "resources.realtimeDatabaseInstance"),
-  } as ProjectInfo;
+  };
 }
 
-export async function doSetup(setup: any, config: any, options: any): Promise<any> {
+/**
+ * Sets up the default project if provided and writes .firebaserc file.
+ * @param setup A helper object to use for the rest of the init features.
+ * @param config Configuration for the project.
+ * @param options Command line options.
+ */
+export async function doSetup(setup: any, config: Config, options: any): Promise<void> {
   setup.project = {};
 
   logger.info();
-  logger.info("First, let's associate this project directory with a Firebase project.");
+  logger.info(`First, let's associate this project directory with a Firebase project.`);
   logger.info(
-    "You can create multiple project aliases by running " + clc.bold("firebase use --add") + ", "
+    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `
   );
-  logger.info("but for now we'll just set up a default project.");
+  logger.info(`but for now we'll just set up a default project.`);
   logger.info();
 
   if (_.has(setup.rcfile, "projects.default")) {
-    utils.logBullet(".firebaserc already has a default project, skipping");
+    utils.logBullet(`.firebaserc already has a default project, skipping`);
     setup.projectId = _.get(setup.rcfile, "projects.default");
-    return undefined;
+    return;
   }
 
   const projectInfo: ProjectInfo = await getProjectInfo(options);
@@ -123,7 +138,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<an
     return;
   }
 
-  utils.logBullet("Using project " + projectInfo.label);
+  utils.logBullet(`Using project ${projectInfo.label}`);
 
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", projectInfo.id);
