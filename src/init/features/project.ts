@@ -26,7 +26,7 @@ export interface ProjectInfo {
  * Get the user's desired project, prompting if necessary.
  * @returns A {@link ProjectInfo} object.
  */
-async function getProjectInfo(options: any): Promise<ProjectInfo> {
+export async function getProjectInfo(options: any): Promise<ProjectInfo> {
   if (options.project) {
     return selectProjectFromOptions(options);
   }
