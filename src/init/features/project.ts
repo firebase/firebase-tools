@@ -2,6 +2,7 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 
 import * as Config from "../../config";
+import * as FirebaseError from "../../error";
 import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
 import * as logger from "../../logger";
 import { promptOnce, Question } from "../../prompt";
@@ -42,7 +43,7 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
   try {
     project = await getProject(options.project);
   } catch (e) {
-    throw new Error(`Error getting project ${options.project}: ${e}`);
+    throw new FirebaseError(`Error getting project ${options.project}: ${e}`);
   }
   const projectId = project.projectId;
   const name = project.displayName;
