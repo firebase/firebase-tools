@@ -28,7 +28,7 @@ describe("storage", () => {
 
       await doSetup(setup, new Config("/path/to/src", {}));
 
-      expect(_.get(setup, "config.storage")).to.deep.equal("storage.rules");
+      expect(_.get(setup, "config.storage.rules")).to.deep.equal("storage.rules");
     });
   });
 });
