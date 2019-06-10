@@ -1,17 +1,15 @@
-"use strict";
+import * as clc from "cli-color";
+import * as fs from "fs";
 
-var clc = require("cli-color");
-var fs = require("fs");
+import * as logger from "../../logger";
+import { prompt } from "../../prompt";
 
-var { prompt } = require("../../prompt");
-var logger = require("../../logger");
-
-var RULES_TEMPLATE = fs.readFileSync(
+const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",
   "utf8"
 );
 
-module.exports = function(setup, config) {
+export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.storage = {};
 
   logger.info();
@@ -20,14 +18,13 @@ module.exports = function(setup, config) {
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
 
-  return prompt(setup.config.storage, [
+  await prompt(setup.config.storage, [
     {
       type: "input",
       name: "rules",
       message: "What file should be used for Storage Rules?",
       default: "storage.rules",
     },
-  ]).then(function() {
-    return config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
-  });
-};
+  ]);
+  config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
+}
