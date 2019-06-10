@@ -51,6 +51,7 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
     id: projectId,
     label: `${projectId} (${name})`,
     instance: _.get(project, "resources.realtimeDatabaseInstance"),
+    location: _.get(project, "resources.locationId"),
   };
 }
 
@@ -105,6 +106,7 @@ async function selectProjectFromList(options: any): Promise<ProjectInfo> {
     id: projectId,
     label,
     instance: _.get(project, "resources.realtimeDatabaseInstance"),
+    location: _.get(project, "resources.locationId"),
   };
 }
 
@@ -145,5 +147,6 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   _.set(setup.rcfile, "projects.default", projectInfo.id);
   setup.projectId = projectInfo.id;
   setup.instance = projectInfo.instance;
+  setup.projectLocation = projectInfo.location;
   utils.makeActiveProject(config.projectDir, projectInfo.id);
 }
