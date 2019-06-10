@@ -7,7 +7,7 @@ import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";
 import * as requireAccess from "../../../requireAccess";
 
-describe("firestore", () => {
+describe.only("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   afterEach(() => {
@@ -24,9 +24,9 @@ describe("firestore", () => {
 
       await firestore.doSetup(setup, {});
 
-      expect(requireAccessStub.calledOnce).to.be.true;
-      expect(initRulesStub.calledOnce).to.be.true;
-      expect(initIndexesStub.calledOnce).to.be.true;
+      expect(requireAccessStub).to.have.been.calledOnce;
+      expect(initRulesStub).to.have.been.calledOnce;
+      expect(initIndexesStub).to.have.been.calledOnce;
       expect(_.get(setup, "config.firestore")).to.deep.equal({});
     });
   });
