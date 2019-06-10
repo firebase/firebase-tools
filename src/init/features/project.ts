@@ -61,7 +61,6 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
  * @returns A {@link FirebaseProject} object.
  */
 async function selectProjectFromList(options: any): Promise<ProjectInfo> {
-  let project: FirebaseProject | undefined;
   const projects: FirebaseProject[] = await listProjects();
   let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
     return {
@@ -85,18 +84,13 @@ async function selectProjectFromList(options: any): Promise<ProjectInfo> {
     type: "list",
     name: "id",
     message: "Select a default Firebase project for this directory:",
-    validate: (answer: any) => {
-      if (!_.includes(choices, answer)) {
-        return `Must specify a Firebase project to which you have access.`;
-      }
-      return true;
-    },
     choices,
-  } as Question);
+  });
   if (projectId === NEW_PROJECT || projectId === NO_PROJECT) {
     return { id: projectId };
   }
 
+  let project: FirebaseProject | undefined;
   project = projects.find((p) => p.projectId === projectId);
   const pId = choices.find((p) => p.value === projectId);
   const label = pId ? pId.name : "";
@@ -131,7 +125,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     return;
   }
 
-  const projectInfo: ProjectInfo = await getProjectInfo(options);
+  const projectInfo = await getProjectInfo(options);
   if (projectInfo.id === NEW_PROJECT) {
     setup.createProject = true;
     return;
