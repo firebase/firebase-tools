@@ -5,7 +5,7 @@ var logger = require("../logger");
 var configstore = require("../configstore");
 var clc = require("cli-color");
 var utils = require("../utils");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 
 var auth = require("../auth");
 

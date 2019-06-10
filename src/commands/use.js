@@ -7,7 +7,7 @@ var firebaseApi = require("../firebaseApi");
 var clc = require("cli-color");
 var utils = require("../utils");
 var _ = require("lodash");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 
 var listAliases = function(options) {
   if (options.rc.hasProjects) {
