@@ -26,6 +26,6 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     message: "What file should be used for Storage Rules?",
     default: "storage.rules",
   });
-  setup.config.storage = storageRulesFile;
+  setup.config.storage.rules = storageRulesFile;
   config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
 }

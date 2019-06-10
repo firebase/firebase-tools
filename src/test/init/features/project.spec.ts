@@ -71,7 +71,6 @@ describe("project", () => {
 
     it("should return correct project info when choosing new project", async () => {
       const options = {};
-
       listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
       promptStub.returns("[create a new project]");
 
@@ -82,7 +81,6 @@ describe("project", () => {
 
     it("should return correct project info when choosing not to set up project", async () => {
       const options = {};
-
       listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
       promptStub.returns("[don't setup a default project]");
 
