@@ -7,7 +7,7 @@ import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";
 import * as requireAccess from "../../../requireAccess";
 
-describe.only("firestore", () => {
+describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
   afterEach(() => {
