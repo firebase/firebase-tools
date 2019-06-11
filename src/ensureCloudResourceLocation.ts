@@ -9,7 +9,7 @@ import * as FirebaseError from "./error";
  * @param location cloud resource location, like "us-central1"
  * @throws { FirebaseError } if location is not set
  */
-export function ensureLocationSet(location: string, feature: string): void {
+export function ensureLocationSet(location: string | undefined, feature: string): void {
   if (!location) {
     throw new FirebaseError(
       `Cloud resource location is not set for this project but the operation ` +

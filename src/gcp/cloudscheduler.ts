@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as api from "../api";
+import * as FirebaseError from "../error";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";
@@ -85,14 +86,26 @@ export function updateJob(job: Job): Promise<any> {
  * If one is found, and it is identical to the job parameter, it does nothing.
  * Otherwise, if one is found and it is different from the job param, it updates the job.
  * @param job A job to check for and create, replace, or leave as appropriate.
- * @throws { FirebaseError } if an error response other than 404 is received on the GET call.
+ * @throws { FirebaseError } if an error response other than 404 is received on the GET call
+ * or if cloud resource location is not set.
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = job.name.split("/").pop();
   const existingJob = await getJob(job.name);
   // if no job is found, create one
   if (existingJob.status === 404) {
-    const newJob = await createJob(job);
+    let newJob;
+    try {
+      newJob = await createJob(job);
+    } catch (err) {
+      // Cloud resource location is not set so we error here and exit.
+      if (err.context.response.statusCode === 404) {
+        throw new FirebaseError(
+          `Cloud resource location is not set for this project but scheduled functions requires it. ` +
+            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
+        );
+      }
+    }
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
     return newJob;
   }

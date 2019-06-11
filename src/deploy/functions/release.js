@@ -14,7 +14,6 @@ var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
 var runtimeSelector = require("../../runtimeChoiceSelector");
-var { ensureLocationSet } = require("../../ensureCloudResourceLocation");
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
@@ -434,7 +433,6 @@ module.exports = function(context, options, payload) {
           ? _.includes(deleteReleaseNames, trigger.name)
           : true;
       });
-      ensureLocationSet(appEngineLocation, "scheduled functions");
       return createOrUpdateSchedulesAndTopics(
         context.projectId,
         functionsInDeploy,
