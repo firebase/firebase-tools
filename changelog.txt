@@ -3,4 +3,4 @@
 * Fixes bug in Firestore emulator where property paths with special characters would cause errors due to ClassNotFound exceptions.
 * Fixes bug in Firestore emulator where auto-id allocation only worked once per collection.
 * Adds REST API to Firestore emulator for setting security rules.
-* Fixes bug where "emulators:exec" would succeed even if the script failed.
+* Fixes bug where `firebase emulators:exec` would succeed even if the script failed.
