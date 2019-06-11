@@ -545,10 +545,28 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
-    ephemeralServer.use(bodyParser.json({}));
-    ephemeralServer.use(bodyParser.text({}));
-    ephemeralServer.use(bodyParser.urlencoded({ extended: true }));
-    ephemeralServer.use(bodyParser.raw({ type: "*/*" }));
+    ephemeralServer.use(
+      bodyParser.json({
+        limit: "10mb",
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.text({
+        limit: "10mb",
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.urlencoded({
+        extended: true,
+        limit: "10mb",
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.raw({
+        type: "*/*",
+        limit: "10mb",
+      })
+    );
 
     ephemeralServer.all("/*", handler);
 
