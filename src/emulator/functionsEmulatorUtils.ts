@@ -3,9 +3,6 @@ Please be careful when adding require/imports to this file, it is pulled into fu
 which is ran in a separate node process, so it is likely to have unintended side-effects for you.
  */
 
-// Safe import because it's standard in Node
-import * as url from "url";
-
 const wildcardRegex = new RegExp("{[^/{}]*}");
 const wildcardKeyRegex = new RegExp("^{(.+)}$");
 
@@ -65,14 +62,4 @@ export function removePathSegments(path: string, count: number): string {
     .split("/")
     .slice(count)
     .join("/");
-}
-
-/**
- * The full URL to an emulated function is /project/region/path(/subpath)?params but the function
- * does not need to know about anything before the subpath.
- */
-export function trimFunctionPath(path: string): string {
-  // Use the URL library to separate query params for later reconstruction.
-  const fakeURL = new url.URL(path, "https://example.com");
-  return removePathSegments(fakeURL.pathname, 3) + fakeURL.search;
 }

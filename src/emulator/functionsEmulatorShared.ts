@@ -1,9 +1,7 @@
 import * as _ from "lodash";
 import * as logger from "../logger";
-import * as FirebaseFunctionsTest from "firebase-functions-test";
 import * as parseTriggers from "../parseTriggers";
 import * as utils from "../utils";
-import { WrappedFunction } from "firebase-functions-test/lib/main";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
@@ -86,10 +84,6 @@ export class EmulatedTrigger {
 
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
-  }
-
-  getWrappedFunction(fft: typeof FirebaseFunctionsTest): WrappedFunction {
-    return fft().wrap(this.getRawFunction());
   }
 }
 
