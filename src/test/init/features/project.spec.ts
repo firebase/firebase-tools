@@ -34,7 +34,7 @@ const TEST_PROJECT_INFO: ProjectInfo = {
   location: "us-central",
 };
 
-describe.only("project", () => {
+describe("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let listProjectsStub: sinon.SinonStub;
   let getProjectStub: sinon.SinonStub;
