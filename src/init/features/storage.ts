@@ -1,15 +1,15 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import * as logger from "../../logger";
+ import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 
-const RULES_TEMPLATE = fs.readFileSync(
+ const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",
   "utf8"
 );
 
-export async function doSetup(setup: any, config: any): Promise<void> {
+ export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.storage = {};
 
   logger.info();
@@ -18,7 +18,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
 
-  const storageRulesFile = await promptOnce({
+   const storageRulesFile = await promptOnce({
     type: "input",
     name: "rules",
     message: "What file should be used for Storage Rules?",
@@ -26,4 +26,4 @@ export async function doSetup(setup: any, config: any): Promise<void> {
   });
   setup.config.storage.rules = storageRulesFile;
   config.writeProjectFile(setup.config.storage.rules, RULES_TEMPLATE);
-}
+ }
