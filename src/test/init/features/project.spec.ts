@@ -2,11 +2,11 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import { doSetup, getProjectInfo } from "../../../init/features/project";
+import { doSetup, getProjectInfo, ProjectInfo } from "../../../init/features/project";
 import * as firebaseApi from "../../../firebaseApi";
 import * as prompt from "../../../prompt";
 
-const TEST_FIREBASE_PROJECT = {
+const TEST_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
   projectId: "my-project-123",
   projectNumber: 123456789,
   displayName: "my-project",
@@ -19,7 +19,7 @@ const TEST_FIREBASE_PROJECT = {
   },
 };
 
-const ANOTHER_FIREBASE_PROJECT = {
+const ANOTHER_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
   projectId: "another-project",
   projectNumber: 987654321,
   displayName: "another-project",
@@ -27,13 +27,14 @@ const ANOTHER_FIREBASE_PROJECT = {
   resources: {},
 };
 
-const TEST_PROJECT_INFO = {
+const TEST_PROJECT_INFO: ProjectInfo = {
   id: "my-project-123",
   label: "my-project-123 (my-project)",
   instance: "my-project",
+  location: "us-central",
 };
 
-describe("project", () => {
+describe.only("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let listProjectsStub: sinon.SinonStub;
   let getProjectStub: sinon.SinonStub;
@@ -58,6 +59,21 @@ describe("project", () => {
       const project = await getProjectInfo(options);
 
       expect(project).to.deep.equal(TEST_PROJECT_INFO);
+    });
+
+    it("should set instance and location to undefined when resources not provided", async () => {
+      const options = {};
+      listProjectsStub.returns([ANOTHER_FIREBASE_PROJECT]);
+      promptStub.returns("another-project");
+
+      const project = await getProjectInfo(options);
+
+      expect(project).to.deep.equal({
+        id: "another-project",
+        label: "another-project (another-project)",
+        instance: undefined,
+        location: undefined,
+      });
     });
 
     it("should get the correct project info when --project is supplied", async () => {
@@ -100,6 +116,7 @@ describe("project", () => {
 
       expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
       expect(_.get(setup, "instance")).to.deep.equal("my-project");
+      expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
       expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
     });
 
