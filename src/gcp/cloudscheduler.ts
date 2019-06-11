@@ -87,7 +87,8 @@ export function updateJob(job: Job): Promise<any> {
  * Otherwise, if one is found and it is different from the job param, it updates the job.
  * @param job A job to check for and create, replace, or leave as appropriate.
  * @throws { FirebaseError } if an error response other than 404 is received on the GET call
- * or if cloud resource location is not set.
+ * or if error response 404 is received on the POST call, indicating that cloud resource
+ * location is not set.
  */
 export async function createOrReplaceJob(job: Job): Promise<any> {
   const jobName = job.name.split("/").pop();
@@ -99,7 +100,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
       newJob = await createJob(job);
     } catch (err) {
       // Cloud resource location is not set so we error here and exit.
-      if (err.context.response.statusCode === 404) {
+      if (_.get(err, "context.response.statusCode") === 404) {
         throw new FirebaseError(
           `Cloud resource location is not set for this project but scheduled functions requires it. ` +
             `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`

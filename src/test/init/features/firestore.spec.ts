@@ -33,7 +33,10 @@ describe("firestore", () => {
     it("should error when cloud resource location is not set", async () => {
       const setup = { config: {}, projectId: "my-project-123" };
 
-      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(FirebaseError);
+      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+        FirebaseError,
+        "Cloud resource location is not set"
+      );
     });
   });
 });

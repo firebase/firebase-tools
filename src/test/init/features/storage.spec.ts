@@ -45,7 +45,8 @@ describe("storage", () => {
       };
 
       expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
-        FirebaseError
+        FirebaseError,
+        "Cloud resource location is not set"
       );
     });
   });
