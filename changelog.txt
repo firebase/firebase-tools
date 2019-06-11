@@ -5,3 +5,4 @@
 * Adds REST API to Firestore emulator for setting security rules.
 * Functions emulator now limits request sizes to 10MB.
 * Fixes bug where `firebase emulators:exec` would succeed even if the script failed.
+* Initializing Firestore or Storage now requires a cloud resource location to be set. 
