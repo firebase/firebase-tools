@@ -12,50 +12,44 @@ import {
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import * as express from "express";
-import { spawnSync } from "child_process";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { EventUtils } from "./events/types";
 import { URL } from "url";
+import * as _ from "lodash";
 
 let app: admin.app.App;
 let adminModuleProxy: typeof admin;
 
-/*
-  This method is a hacky way of "resolving" Node modules. Normally, when you "require()" a package,
-  Node looks for that package in a set of locations or paths. The logic varies slightly between
-  Nodejs versions and there's no consistent way to make sure the exact same resolution is happening
-  all the time.
+function isFeatureEnabled(
+  frb: FunctionsRuntimeBundle,
+  feature: keyof FunctionsRuntimeFeatures
+): boolean {
+  return frb.disabled_features ? !frb.disabled_features[feature] : true;
+}
 
-  Since functionsEmulatorRuntime.js lives inside the firebase-tools installation, it's always tempted
-  to resolve from the same places that firebase-tools gets it's modules. Normally this is fine, but
-  in order to provide mocks to a developer's functions we need to resolve modules as if we were in the
-  same filesystem location as the user's code. Some versions of Node let us do this by calling
-  require.resolve() with a list of paths to look in, but that's not a fix for all versions.
+function NoOp(): false {
+  return false;
+}
 
-  slowRequireResolve works around this by spinning up another node process which doesn't have a
-  file path to look at for resolutions (code is passed via -e flag) so it uses the cwd instead.
-  This allows us to easily resolve modules as if we had code in that folder. Sadly, this is incredibly
-  sllooooow. It's about 100-200ms per resolution, which means the majority of time spent on a
-  Cloud Function invocation is spent right here.
+async function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
+  return require(require.resolve(moduleName, opts));
+}
 
-  It's made even worse because we occasionally need to resolve a dependency as if we were a different
-  depedency, so that requires two slowRequireResolves - it's bad.
+async function requireResolveAsync(
+  moduleName: string,
+  opts?: { paths: string[] }
+): Promise<string> {
+  return require.resolve(moduleName, opts);
+}
 
-  For the initial release of the emulator, we went for consistency and simplicity over execution speed
-  going forward, there's many paths to look into for optimization, for example we could cache results
-  in an inter-process memory store, look into ways to help node believe our runtime is in the user's
-  code directory, or move to native require.resolve on newer node versions and deal with the inconsistencies
-  between versions.
- */
-function slowRequireResolve(moduleName: string, cwd?: string): string {
-  const resolver = `console.log(require.resolve("${moduleName}"))`;
-  const result = spawnSync(process.execPath, ["-e", resolver], {
-    cwd: path.resolve(cwd || process.cwd()),
-  });
+function isConstructor(obj: any): boolean {
+  return !!obj.prototype && !!obj.prototype.constructor.name;
+}
 
-  return result.stdout.toString().trim();
+function isExists(obj: any): boolean {
+  return obj !== undefined;
 }
 
 /*
@@ -154,15 +148,7 @@ class Proxied<T> {
   }
 }
 
-function isConstructor(obj: any): boolean {
-  return !!obj.prototype && !!obj.prototype.constructor.name;
-}
-
-function isExists(obj: any): boolean {
-  return obj !== undefined;
-}
-
-function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
+async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   let pkg;
   try {
     pkg = require(`${frb.cwd}/package.json`);
@@ -174,7 +160,6 @@ function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: 7 },
     { name: "firebase-functions", isDev: false, minVersion: 2 },
-    { name: "firebase-functions-test", isDev: true, minVersion: 0 },
   ];
 
   for (const modBundle of modBundles) {
@@ -193,10 +178,11 @@ function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): boolean {
     /*
     Once we know it's in the package.json, make sure it's actually `npm install`ed
      */
-    let modResolution: string;
-    try {
-      modResolution = slowRequireResolve(modBundle.name, frb.cwd);
-    } catch (err) {
+    const modResolution = await requireResolveAsync(modBundle.name, { paths: [frb.cwd] }).catch(
+      NoOp
+    );
+
+    if (!modResolution) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
@@ -244,9 +230,9 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   try {
     const gcFirestore = findModuleRoot(
       "@google-cloud/firestore",
-      slowRequireResolve("@google-cloud/firestore", frb.cwd)
+      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
     );
-    const gaxPath = slowRequireResolve("google-gax", gcFirestore);
+    const gaxPath = require.resolve("google-gax", { paths: [gcFirestore] });
     const gaxModule = {
       module: require(gaxPath),
       path: ["GrpcClient"],
@@ -259,7 +245,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     new EmulatorLog(
       "DEBUG",
       "runtime-status",
-      `Couldn't find google-cloud/firestore or google-gax`
+      `Couldn't find @google-cloud/firestore or google-gax, this may be okay if using @google-cloud/firestore@2.0.0`
     ).log();
   }
 
@@ -280,7 +266,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .map((arg) => {
           if (typeof arg === "string") {
             try {
-              const _ = new URL(arg);
+              const url = new URL(arg);
               return arg;
             } catch (err) {
               return;
@@ -330,7 +316,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
   new EmulatorLog("DEBUG", "runtime-status", "Outgoing network have been stubbed.", results).log();
 }
-
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
     which returns a promise. In this scenario, we can't catch errors which get raised in user code,
@@ -343,8 +328,10 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
-  const firebaseFunctionsResolution = slowRequireResolve("firebase-functions", functionsDir);
+async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
+  const firebaseFunctionsResolution = await requireResolveAsync("firebase-functions", {
+    paths: [functionsDir],
+  });
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
@@ -373,6 +360,31 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
 }
 
 /*
+  @google-cloud/firestore@2.0.0 made a breaking change which swapped relying on "grpc" to "@grpc/grpc-js"
+  which has a slightly different signature. We need to detect the firestore version to know which version
+  of grpc to pass as a credential.
+ */
+async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<any> {
+  const firestorePackageJSON = require(path.join(
+    findModuleRoot(
+      "@google-cloud/firestore",
+      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
+    ),
+    "package.json"
+  ));
+
+  if (firestorePackageJSON.version.startsWith("1")) {
+    const grpc = await requireAsync("grpc", { paths: [frb.cwd] }).catch(NoOp);
+    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-native for admin credential").log();
+    return grpc.credentials.createInsecure();
+  } else {
+    const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(NoOp);
+    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-js for admin credential").log();
+    return grpc.ServerCredentials.createInsecure();
+  }
+}
+
+/*
     This stub is the most important and one of the only non-optional stubs. This feature redirects
     writes from the admin SDK back into emulated resources. Currently, this is only Firestore writes.
     To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
@@ -384,13 +396,17 @@ function InitializeFirebaseFunctionsStubs(functionsDir: string): void {
     failing in some way and admin is attempting to access prod resources. This error isn't pretty,
     but it's hard to catch and better than accidentally talking to prod.
    */
-function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin {
-  const adminResolution = slowRequireResolve("firebase-admin", frb.cwd);
-  const grpc = require(slowRequireResolve("grpc", frb.cwd));
-
+async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
+  const adminResolution = await requireResolveAsync("firebase-admin", { paths: [frb.cwd] });
   const localAdminModule = require(adminResolution);
 
   let hasInitializedSettings = false;
+  /*
+  If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
+  then there's probably something really wrong (like a failed node-gyp build). If that's the case
+  we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
+   */
+  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
   const initializeSettings = (userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
 
@@ -408,7 +424,10 @@ function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): typeof admin
         port: frb.ports.firestore,
         servicePath: "localhost",
         service: "firestore.googleapis.com",
-        sslCreds: grpc.credentials.createInsecure(),
+        sslCreds,
+        customHeaders: {
+          Authorization: "Bearer owner",
+        },
         ...userSettings,
       });
     } else if (!frb.ports.firestore && frb.triggerId) {
@@ -478,6 +497,7 @@ function ProtectEnvironmentalVariables(): void {
 
 function InitializeEnvironmentalVariables(projectId: string): void {
   process.env.GCLOUD_PROJECT = projectId;
+  process.env.FUNCTIONS_EMULATOR = "true";
   /*
     Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
     https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
@@ -489,8 +509,10 @@ function InitializeEnvironmentalVariables(projectId: string): void {
   });
 }
 
-function InitializeFunctionsConfigHelper(functionsDir: string): void {
-  const functionsResolution = slowRequireResolve("firebase-functions", functionsDir);
+async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+  const functionsResolution = await requireResolveAsync("firebase-functions", {
+    paths: [functionsDir],
+  });
 
   const ff = require(functionsResolution);
   new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
@@ -523,8 +545,17 @@ function InitializeFunctionsConfigHelper(functionsDir: string): void {
   ff.config = () => proxiedConfig;
 }
 
+/*
+ Retains a reference to the raw body buffer to allow access to the raw body for things like request
+ signature validation. This is used as the "verify" function in body-parser options.
+*/
+function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer): void {
+  (req as any).rawBody = buf;
+}
+
 async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
+  const functionRouter = express.Router();
   const socketPath = getTemporarySocketPath(process.pid);
 
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
@@ -533,6 +564,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
         const func = trigger.getRawFunction();
 
+        new EmulatorLog("DEBUG", "runtime-status", "Body" + (req as any).rawBody).log();
         res.on("finish", () => {
           instance.close();
           resolveEphemeralServer();
@@ -548,28 +580,36 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     ephemeralServer.use(
       bodyParser.json({
         limit: "10mb",
+        verify: rawBodySaver,
       })
     );
     ephemeralServer.use(
       bodyParser.text({
         limit: "10mb",
+        verify: rawBodySaver,
       })
     );
     ephemeralServer.use(
       bodyParser.urlencoded({
         extended: true,
         limit: "10mb",
+        verify: rawBodySaver,
       })
     );
     ephemeralServer.use(
       bodyParser.raw({
         type: "*/*",
         limit: "10mb",
+        verify: rawBodySaver,
       })
     );
 
-    ephemeralServer.all("/*", handler);
+    functionRouter.all("*", handler);
 
+    ephemeralServer.use(
+      [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
+      functionRouter
+    );
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
     });
@@ -656,11 +696,34 @@ async function RunHTTPS(
   });
 }
 
-function isFeatureEnabled(
-  frb: FunctionsRuntimeBundle,
-  feature: keyof FunctionsRuntimeFeatures
-): boolean {
-  return frb.disabled_features ? !frb.disabled_features[feature] : true;
+/*
+  This method attempts to help a developer whose code can't be loaded by suggesting
+  possible fixes based on the files in their functions directory.
+ */
+async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Error): Promise<void> {
+  /*
+  These files could all potentially exist, if they don't then the value in the map will be
+  falsey, so we just catch to keep from throwing.
+   */
+  const clues = {
+    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(NoOp),
+    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(NoOp),
+  };
+
+  const isPotentially = {
+    typescript: false,
+    uncompiled: false,
+    wrong_directory: false,
+  };
+
+  isPotentially.typescript = !!clues.tsconfigJSON;
+  isPotentially.wrong_directory = !clues.packageJSON;
+  isPotentially.uncompiled = !!_.get(clues.packageJSON, "scripts.build", false);
+
+  new EmulatorLog("SYSTEM", "function-code-resolution-failed", "", {
+    isPotentially,
+    error: error.stack,
+  }).log();
 }
 
 async function main(): Promise<void> {
@@ -686,9 +749,9 @@ async function main(): Promise<void> {
     `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
   ).log();
 
-  const verified = verifyDeveloperNodeModules(frb);
+  const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
-    // If we can't verify the node modules, then just leave, soemthing bad will happen during runtime.
+    // If we can't verify the node modules, then just leave, something bad will happen during runtime.
     new EmulatorLog(
       "INFO",
       "runtime-status",
@@ -707,11 +770,11 @@ async function main(): Promise<void> {
   }
 
   if (isFeatureEnabled(frb, "functions_config_helper")) {
-    InitializeFunctionsConfigHelper(frb.cwd);
+    await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
-  InitializeFirebaseFunctionsStubs(frb.cwd);
-  InitializeFirebaseAdminStubs(frb);
+  await InitializeFirebaseFunctionsStubs(frb.cwd);
+  await InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
@@ -721,7 +784,12 @@ async function main(): Promise<void> {
     /* tslint:disable:no-eval */
     triggerModule = eval(serializedFunctionTrigger)();
   } else {
-    triggerModule = require(frb.cwd);
+    try {
+      triggerModule = require(frb.cwd);
+    } catch (err) {
+      await moduleResolutionDetective(frb, err);
+      return;
+    }
   }
 
   require("../extractTriggers")(triggerModule, triggerDefinitions);
