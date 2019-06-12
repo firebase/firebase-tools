@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as nock from "nock";
 import * as api from "../../api";
 
+import * as FirebaseError from "../../error";
 import { cloudscheduler } from "../../gcp";
 
 const VERSION = "v1beta1";
@@ -96,6 +97,22 @@ describe("cloudscheduler", () => {
       const response = await cloudscheduler.createOrReplaceJob(TEST_JOB);
 
       expect(response.body).to.deep.equal(otherJob);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error and exit if cloud resource location is not set", async () => {
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${TEST_JOB.name}`)
+        .reply(404, { context: { response: { statusCode: 404 } } });
+      nock(api.cloudschedulerOrigin)
+        .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
+        .reply(404, { context: { response: { statusCode: 404 } } });
+
+      await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
+        FirebaseError,
+        "Cloud resource location is not set"
+      );
+
       expect(nock.isDone()).to.be.true;
     });
   });
