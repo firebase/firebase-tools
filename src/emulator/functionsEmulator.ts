@@ -27,10 +27,17 @@ import {
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
-import { trimFunctionPath } from "./functionsEmulatorUtils";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 
 const EVENT_INVOKE = "functions:invoke";
+
+/*
+ * The Realtime Database emulator expects the `path` field in its trigger
+ * definition to be relative to the database root. This regex is used to extract
+ * that path from the `resource` member in the trigger definition used by the
+ * functions emulator.
+ */
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
 
 export interface FunctionsEmulatorArgs {
   port?: number;
@@ -169,7 +176,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtimeReq = http.request(
         {
           method,
-          path: "/" + trimFunctionPath(req.url),
+          path: req.url || "/",
           headers: req.headers,
           socketPath: runtime.metadata.socketPath,
         },
@@ -288,9 +295,6 @@ export class FunctionsEmulator implements EmulatorInstance {
           }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
-      case "default-admin-app-used":
-        utils.logBullet(`Your code has been provided a "firebase-admin" instance.`);
-        break;
       case "non-default-admin-app-used":
         EmulatorLogger.log(
           "WARN",
@@ -336,17 +340,29 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
-      case "missing-package-json":
-        utils.logWarning(
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
-        );
-        break;
       case "admin-auto-initialized":
         utils.logBullet(
           "Your code does not appear to initialize the 'firebase-admin' module, so we've done it automatically.\n" +
             "   - Learn more: https://firebase.google.com/docs/admin/setup"
         );
         break;
+      case "function-code-resolution-failed":
+        EmulatorLogger.log("WARN", systemLog.data.error);
+        const helper = ["We were unable to load your functions code. (see above)"];
+        if (systemLog.data.isPotentially.wrong_directory) {
+          helper.push(`   - There is no "package.json" file in your functions directory.`);
+        }
+        if (systemLog.data.isPotentially.typescript) {
+          helper.push(
+            "   - It appears your code is written in Typescript, which must be compiled before emulation."
+          );
+        }
+        if (systemLog.data.isPotentially.uncompiled) {
+          helper.push(
+            `   - You may be able to run "npm run build" in your functions directory to resolve this.`
+          );
+        }
+        utils.logWarning(helper.join("\n"));
       default:
       // Silence
     }
@@ -490,6 +506,9 @@ You can probably fix this by running "npm install ${
             case Constants.SERVICE_FIRESTORE:
               await this.addFirestoreTrigger(this.projectId, definition);
               break;
+            case Constants.SERVICE_REALTIME_DATABASE:
+              await this.addRealtimeDatabaseTrigger(this.projectId, definition);
+              break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               EmulatorLogger.log(
@@ -512,6 +531,74 @@ You can probably fix this by running "npm install ${
     });
 
     return loadTriggers();
+  }
+
+  addRealtimeDatabaseTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<any> {
+    const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
+    if (!databasePort) {
+      EmulatorLogger.log(
+        "INFO",
+        `Ignoring trigger "${
+          definition.name
+        }" because the Realtime Database emulator is not running.`
+      );
+      return Promise.resolve();
+    }
+    if (definition.eventTrigger === undefined) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has undefined "eventTrigger" member`
+      );
+      return Promise.reject();
+    }
+
+    const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
+    if (result === null || result.length !== 2) {
+      EmulatorLogger.log(
+        "WARN",
+        `Event trigger "${definition.name}" has malformed "resource" member. ` +
+          `${definition.eventTrigger.resource}`
+      );
+      return Promise.reject();
+    }
+
+    const bundle = JSON.stringify([
+      {
+        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+        path: result[1], // path stored in the first capture group
+        event: definition.eventTrigger.eventType,
+        topic: `projects/${projectId}/topics/${definition.name}`,
+      },
+    ]);
+
+    EmulatorLogger.logLabeled(
+      "BULLET",
+      "functions",
+      `Setting up Realtime Database trigger "${definition.name}"`
+    );
+    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
+    return new Promise((resolve, reject) => {
+      request.put(
+        `http://localhost:${databasePort}/.settings/functionTriggers.json`,
+        {
+          auth: {
+            bearer: "owner",
+          },
+          body: bundle,
+        },
+        (err, res, body) => {
+          if (err) {
+            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+            reject();
+            return;
+          }
+          resolve();
+        }
+      );
+    });
   }
 
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {

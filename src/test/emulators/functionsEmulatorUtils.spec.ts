@@ -2,7 +2,6 @@ import { expect } from "chai";
 import {
   extractParamsFromPath,
   isValidWildcardMatch,
-  trimFunctionPath,
   trimSlashes,
 } from "../../emulator/functionsEmulatorUtils";
 
@@ -92,26 +91,6 @@ describe("FunctionsEmulatorUtils", () => {
     });
     it("should do both", () => {
       expect(trimSlashes("///a////b//c/")).to.equal("a/b/c");
-    });
-  });
-
-  describe("trimFunctionPath", () => {
-    it("should remove the beginning of a function URL", () => {
-      expect(trimFunctionPath("/projectid/us-central1/functionPath")).to.equal("");
-    });
-    it("should not care about leading slashes", () => {
-      expect(trimFunctionPath("projectid/us-central1/functionPath")).to.equal("");
-    });
-    it("should preserve query parameters", () => {
-      expect(trimFunctionPath("/projectid/us-central1/functionPath?foo=bar")).to.equal("?foo=bar");
-    });
-    it("should preserve subpaths", () => {
-      expect(trimFunctionPath("/projectid/us-central1/functionPath/x/y")).to.equal("x/y");
-    });
-    it("should preserve subpaths with query parameters", () => {
-      expect(trimFunctionPath("/projectid/us-central1/functionPath/x/y?foo=bar")).to.equal(
-        "x/y?foo=bar"
-      );
     });
   });
 });

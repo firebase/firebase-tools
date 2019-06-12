@@ -68,18 +68,48 @@ export function packageJsonIsValid(
   try {
     const data = cjson.load(packageJsonFile);
     logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
-    const indexJsFile = path.join(sourceDir, data.main || "index.js");
-    if (!fsutils.fileExistsSync(indexJsFile)) {
-      const msg = `${path.relative(
-        projectDir,
-        indexJsFile
-      )} does not exist, can't deploy Cloud Functions`;
-      throw new FirebaseError(msg);
-    }
+    assertFunctionsSourcePresent(data, sourceDir, projectDir);
+    assertEnginesFieldPresent(data, sourceDirName);
   } catch (e) {
     const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${
       e.message
     }`;
+    throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Asserts that functions source directory exists and source file is present.
+ * @param data Object representing package.json file.
+ * @param sourceDir Directory for the functions source.
+ * @param projectDir Project directory.
+ * @throws { FirebaseError } Functions source directory and source file must exist.
+ */
+function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: string): void {
+  const indexJsFile = path.join(sourceDir, data.main || "index.js");
+  if (!fsutils.fileExistsSync(indexJsFile)) {
+    const msg = `${path.relative(
+      projectDir,
+      indexJsFile
+    )} does not exist, can't deploy Cloud Functions`;
+    throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Asserts the engines field is present in package.json.
+ * @param data Object representing package.json file.
+ * @param sourceDirName Name of the functions source directory.
+ * @throws { FirebaseError } Engines field must be present in package.json.
+ */
+function assertEnginesFieldPresent(data: any, sourceDirName: string): void {
+  if (!data.engines || !data.engines.node) {
+    const msg =
+      `Engines field is required but was not found in ${sourceDirName}${path.sep}package.json.\n` +
+      `To fix this, add the following lines to your package.json: \n
+      "engines": {
+        "node": "8"
+      }\n`;
     throw new FirebaseError(msg);
   }
 }

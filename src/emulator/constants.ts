@@ -13,6 +13,7 @@ const DEFAULT_HOST = "localhost";
 
 export class Constants {
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
+  static SERVICE_REALTIME_DATABASE = "firebaseio.com";
 
   static getDefaultHost(emulator: Emulators): string {
     return DEFAULT_HOST;
