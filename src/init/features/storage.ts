@@ -3,6 +3,7 @@ import * as fs from "fs";
 
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
+import { ensureLocationSet } from "../../ensureCloudResourceLocation";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",
@@ -11,6 +12,7 @@ const RULES_TEMPLATE = fs.readFileSync(
 
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.storage = {};
+  ensureLocationSet(setup.projectLocation, "Cloud Storage");
 
   logger.info();
   logger.info("Firebase Storage Security Rules allow you to define how and when to allow");
