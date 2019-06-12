@@ -141,5 +141,16 @@ describe("project", () => {
 
       expect(setup).to.deep.equal({ config: {}, rcfile: {}, project: {} });
     });
+
+    it("should set project location even if .firebaserc is already set up", async () => {
+      const options = {};
+      const setup = { config: {}, rcfile: { projects: { default: "my-project" } } };
+      getProjectStub.returns(TEST_FIREBASE_PROJECT);
+
+      await doSetup(setup, {}, options);
+
+      expect(_.get(setup, "projectId")).to.equal("my-project");
+      expect(_.get(setup, "projectLocation")).to.equal("us-central");
+    });
   });
 });
