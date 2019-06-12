@@ -1,8 +1,0 @@
-* Set FIRESTORE_EMULATOR_HOST env var in "emulators:exec".
-* Fixes bug in printing Function logs when the text payload was undefined.
-* Fixes bug in Firestore emulator where property paths with special characters would cause errors due to ClassNotFound exceptions.
-* Fixes bug in Firestore emulator where auto-id allocation only worked once per collection.
-* Adds REST API to Firestore emulator for setting security rules.
-* Functions emulator now limits request sizes to 10MB.
-* Fixes bug where `firebase emulators:exec` would succeed even if the script failed.
-* Initializing Firestore or Storage now requires a cloud resource location to be set. 
