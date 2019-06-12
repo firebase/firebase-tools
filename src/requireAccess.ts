@@ -1,16 +1,14 @@
-"use strict";
+import * as _ from "lodash";
+import * as clc from "cli-color";
 
-var _ = require("lodash");
-var clc = require("cli-color");
+import * as getInstanceId from "./getInstanceId";
+import * as getProjectId from "./getProjectId";
+import * as FirebaseError from "./error";
+import * as identifierToProjectId from "./identifierToProjectId";
+import * as requireAuth from "./requireAuth";
 
-var getInstanceId = require("./getInstanceId");
-var getProjectId = require("./getProjectId");
-var FirebaseError = require("./error");
-var identifierToProjectId = require("./identifierToProjectId");
-var requireAuth = require("./requireAuth");
-
-module.exports = function(options) {
-  var projectId = getProjectId(options);
+export function requireAccess(options: any): Promise<any> {
+  const projectId = getProjectId(options, false);
   options.project = projectId;
 
   if (process.env.FIREBASE_BYPASS_ADMIN_CALLS_FOR_TESTING === "true") {
@@ -18,21 +16,21 @@ module.exports = function(options) {
   }
 
   return requireAuth(options)
-    .then(function() {
+    .then(() => {
       return getInstanceId(options);
     })
-    .then(function(instance) {
+    .then((instance) => {
       options.instance = instance;
       return;
     })
-    .catch(function(err) {
+    .catch((err) => {
       if (err && err.exit && _.get(err, "context.body.error.code") !== "PROJECT_NOT_FOUND") {
         return Promise.reject(err);
       }
 
-      return identifierToProjectId(projectId).then(function(realProjectId) {
+      return identifierToProjectId(projectId).then((realProjectId) => {
         if (realProjectId) {
-          var fixCommand = "firebase use " + realProjectId;
+          let fixCommand = "firebase use " + realProjectId;
           if (options.projectAlias) {
             fixCommand += " --alias " + options.projectAlias;
           }
@@ -47,9 +45,9 @@ module.exports = function(options) {
                 "To use " +
                 clc.bold(realProjectId) +
                 " instead, run:\n\n  " +
-                clc.bold(fixCommand)
-            ),
-            { exit: 1 }
+                clc.bold(fixCommand),
+              { exit: 1 }
+            )
           );
         }
 
@@ -60,4 +58,4 @@ module.exports = function(options) {
         );
       });
     });
-};
+}

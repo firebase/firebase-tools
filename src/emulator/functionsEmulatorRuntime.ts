@@ -577,10 +577,32 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     };
 
     ephemeralServer.enable("trust proxy");
-    functionRouter.use(bodyParser.json({ verify: rawBodySaver }));
-    functionRouter.use(bodyParser.text({ verify: rawBodySaver }));
-    functionRouter.use(bodyParser.urlencoded({ extended: true, verify: rawBodySaver }));
-    functionRouter.use(bodyParser.raw({ type: "*/*", verify: rawBodySaver }));
+    ephemeralServer.use(
+      bodyParser.json({
+        limit: "10mb",
+        verify: rawBodySaver,
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.text({
+        limit: "10mb",
+        verify: rawBodySaver,
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.urlencoded({
+        extended: true,
+        limit: "10mb",
+        verify: rawBodySaver,
+      })
+    );
+    ephemeralServer.use(
+      bodyParser.raw({
+        type: "*/*",
+        limit: "10mb",
+        verify: rawBodySaver,
+      })
+    );
 
     functionRouter.all("*", handler);
 
