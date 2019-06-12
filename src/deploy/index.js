@@ -101,11 +101,6 @@ var deploy = function(targetNames, options) {
       logger.info();
       var deployedHosting = _.includes(targetNames, "hosting");
       var deployedFunctions = _.includes(targetNames, "functions");
-      if (deployedFunctions) {
-        logger.info(
-          "Please note that it can take up to 30 seconds for your updated functions to propagate."
-        );
-      }
       logger.info(clc.bold("Project Console:"), utils.consoleUrl(options.project, "/overview"));
       if (deployedHosting) {
         _.each(context.hosting.deploys, function(deploy) {
