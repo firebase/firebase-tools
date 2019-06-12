@@ -38,7 +38,7 @@ interface TaskData<T, R> {
   task: T;
   retryCount: number;
   wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
-  timeout?: number;
+  timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
   isTimedOut?: boolean;
 }
@@ -118,17 +118,17 @@ export abstract class Throttler<T, R> {
    * When the task is completed, resolve will be called with handler's result.
    * If this task fails after retries, reject will be called with the error.
    */
-  add(task: T, timeout?: number): void {
-    this.addHelper(task, timeout);
+  add(task: T, timeoutMillis?: number): void {
+    this.addHelper(task, timeoutMillis);
   }
 
   /**
    * Add the task to the throttler and return a promise of handler's result.
    * If the task failed, both the promised returned by throttle and wait will reject.
    */
-  run(task: T, timeout?: number): Promise<R> {
+  run(task: T, timeoutMillis?: number): Promise<R> {
     return new Promise((resolve, reject) => {
-      this.addHelper(task, timeout, { resolve, reject });
+      this.addHelper(task, timeoutMillis, { resolve, reject });
     });
   }
 
@@ -141,13 +141,22 @@ export abstract class Throttler<T, R> {
     return this.finishIfIdle();
   }
 
+  process(): void {
+    if (this.finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
+      return;
+    }
+
+    this.active++;
+    this.handle(this.nextWaitingTaskIndex());
+  }
+
   async handle(cursorIndex: number): Promise<void> {
     const taskData = this.taskDataMap.get(cursorIndex);
     if (!taskData) {
       throw new Error(`taskData.get(${cursorIndex}) does not exist`);
     }
     const promises = [this.executeTask(taskData, cursorIndex)];
-    if (taskData.timeout) {
+    if (taskData.timeoutMillis) {
       promises.push(this.initializeTimeout(taskData, cursorIndex));
     }
 
@@ -157,15 +166,6 @@ export abstract class Throttler<T, R> {
     } catch (error) {
       this.onTaskFailed(error, taskData, cursorIndex);
     }
-  }
-
-  process(): void {
-    if (this.finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
-      return;
-    }
-
-    this.active++;
-    this.handle(this.nextWaitingTaskIndex());
   }
 
   stats(): ThrottlerStats {
@@ -191,16 +191,56 @@ export abstract class Throttler<T, R> {
     return typeof taskData.task === "string" ? taskData.task : `index ${cursorIndex}`;
   }
 
+  private addHelper(
+    task: T,
+    timeoutMillis?: number,
+    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
+  ): void {
+    if (this.closed) {
+      throw new Error("Cannot add a task to a closed throttler.");
+    }
+    if (!this.startTime) {
+      this.startTime = Date.now();
+    }
+    this.taskDataMap.set(this.total, {
+      task,
+      wait,
+      timeoutMillis,
+      retryCount: 0,
+    });
+    this.total++;
+    this.process();
+  }
+
+  private finishIfIdle(): boolean {
+    if (this.closed && !this.hasWaitingTask() && this.active === 0) {
+      this.finish();
+      return true;
+    }
+
+    return false;
+  }
+
+  private finish(err?: TaskError): void {
+    this.waits.forEach((p) => {
+      if (err) {
+        return p.reject(err);
+      }
+      this.finished = true;
+      return p.resolve();
+    });
+  }
+
   private initializeTimeout(taskData: TaskData<T, R>, cursorIndex: number): Promise<void> {
     let rejectFunc: (err: TaskError) => void;
-    const timeout = taskData.timeout!;
+    const timeoutMillis = taskData.timeoutMillis!;
     const timeoutPromise = new Promise<void>((_, reject) => {
       rejectFunc = reject;
     });
     taskData.timeoutId = setTimeout(() => {
       taskData.isTimedOut = true;
-      rejectFunc(new TimeoutError(this.taskName(cursorIndex), timeout));
-    }, timeout);
+      rejectFunc(new TimeoutError(this.taskName(cursorIndex), timeoutMillis));
+    }, timeoutMillis);
 
     return timeoutPromise;
   }
@@ -264,45 +304,5 @@ export abstract class Throttler<T, R> {
       clearTimeout(timeoutId);
     }
     this.taskDataMap.delete(cursorIndex);
-  }
-
-  private addHelper(
-    task: T,
-    timeout?: number,
-    wait?: { resolve: (result: R) => void; reject: (err: Error) => void }
-  ): void {
-    if (this.closed) {
-      throw new Error("Cannot add a task to a closed throttler.");
-    }
-    if (!this.startTime) {
-      this.startTime = Date.now();
-    }
-    this.taskDataMap.set(this.total, {
-      task,
-      wait,
-      timeout,
-      retryCount: 0,
-    });
-    this.total++;
-    this.process();
-  }
-
-  private finishIfIdle(): boolean {
-    if (this.closed && !this.hasWaitingTask() && this.active === 0) {
-      this.finish();
-      return true;
-    }
-
-    return false;
-  }
-
-  private finish(err?: TaskError): void {
-    this.waits.forEach((p) => {
-      if (err) {
-        return p.reject(err);
-      }
-      this.finished = true;
-      return p.resolve();
-    });
   }
 }
