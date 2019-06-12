@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
+import * as firebaseApi from "../../firebaseApi";
 import * as Config from "../../config";
 import * as FirebaseError from "../../error";
 import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
@@ -121,9 +122,14 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   logger.info(`but for now we'll just set up a default project.`);
   logger.info();
 
-  if (_.has(setup.rcfile, "projects.default")) {
-    utils.logBullet(`.firebaserc already has a default project, skipping`);
-    setup.projectId = _.get(setup.rcfile, "projects.default");
+  const projectFromRcFile = _.get(setup.rcfile, "projects.default");
+  if (projectFromRcFile) {
+    utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
+    // we still need to get project info in case user wants to init firestore or storage, which
+    // require a resource location:
+    const rcProject: FirebaseProject = await firebaseApi.getProject(projectFromRcFile);
+    setup.projectId = projectFromRcFile;
+    setup.projectLocation = _.get(rcProject, "resources.locationId");
     return;
   }
 
