@@ -307,7 +307,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
     const q = new Queue({
       handler,
       retries: 1000,
-      backoff: 10,
+      backoff: 5,
     });
 
     try {
