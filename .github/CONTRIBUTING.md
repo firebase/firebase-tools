@@ -25,9 +25,12 @@ information on using pull requests.
 
 ## Development setup
 
-When working on the Firebase CLI, you will want to [fork the project](https://help.github.com/articles/fork-a-repo/), clone the forked repository, and then use `npm link` to globally link your working directory. This allows you to use the firebase command anywhere with your work-in-progress code.
+When working on the Firebase CLI, you will want to [fork the project](https://help.github.com/articles/fork-a-repo/), clone the forked repository, make sure you're using `node >= 8.16.0` and `npm >= 6.9.0`, and then use `npm link` to globally link your working directory. This allows you to use the firebase command anywhere with your work-in-progress code.
 
 ```
+node --version # Make sure it is >= 8.16.0
+npm install -g 'npm@>=6.9.0'
+
 git clone <your_forked_repo>
 cd firebase-tools # navigate to your local repository
 npm link
