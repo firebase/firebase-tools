@@ -2,7 +2,6 @@
 
 var clc = require("cli-color");
 var Table = require("cli-table");
-var Set = require("es6-set");
 var fs = require("fs");
 var _ = require("lodash");
 var readline = require("readline");
