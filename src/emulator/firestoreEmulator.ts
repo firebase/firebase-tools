@@ -48,7 +48,7 @@ export class FirestoreEmulator implements EmulatorInstance {
           })
           .catch((err) => {
             utils.logWarning("Failed to update rules.");
-            EmulatorLogger.log("DEBUG", err);
+            utils.logWarning(err);
           });
       });
     }
@@ -108,8 +108,13 @@ export class FirestoreEmulator implements EmulatorInstance {
         }
 
         if (res.statusCode !== 200) {
-          reject("Error updating rules: " + res.statusCode);
-          return;
+          if (res.statusCode >= 400 && res.statusCode < 500) {
+            reject(resBody.error.message);
+            return;
+          } else {
+            reject("Error updating rules: " + res.statusCode);
+            return;
+          }
         }
 
         resolve();
