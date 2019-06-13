@@ -11,7 +11,7 @@ var FirebaseError = require("./error");
 var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
 var parseBoltRules = require("./parseBoltRules");
-var prompt = require("./prompt");
+var { promptOnce } = require("./prompt");
 var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
@@ -216,7 +216,7 @@ Config.prototype.askWriteProjectFile = function(p, content) {
   var writeTo = this.path(p);
   var next;
   if (fsutils.fileExistsSync(writeTo)) {
-    next = prompt.once({
+    next = promptOnce({
       type: "confirm",
       message: "File " + clc.underline(p) + " already exists. Overwrite?",
       default: false,

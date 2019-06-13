@@ -7,7 +7,7 @@ var Command = require("../command");
 var Config = require("../config");
 var identifierToProjectId = require("../identifierToProjectId");
 var logger = require("../logger");
-var prompt = require("../prompt");
+var { promptOnce } = require("../prompt");
 var requireAuth = require("../requireAuth");
 var utils = require("../utils");
 
@@ -83,7 +83,7 @@ module.exports = new Command("tools:migrate")
       if (options.confirm) {
         next = Promise.resolve(true);
       } else {
-        next = prompt.once({
+        next = promptOnce({
           type: "confirm",
           message: "Write new config to " + clc.underline("firebase.json") + "?",
           default: true,

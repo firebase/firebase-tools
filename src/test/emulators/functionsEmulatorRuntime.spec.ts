@@ -221,7 +221,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${onRequestCopy.projectId}/us-central1/${onRequestCopy.triggerId}`,
             },
             (res) => {
               let data = "";
@@ -339,7 +339,8 @@ describe("FunctionsEmulator-Runtime", () => {
   describe("Runtime", () => {
     describe("HTTPS", () => {
       it("should handle a GET request", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -355,7 +356,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}/`,
             },
             (res) => {
               let data = "";
@@ -372,7 +373,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with form data", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -390,7 +392,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -414,7 +416,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with JSON data", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -431,7 +434,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "application/json",
@@ -455,7 +458,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with text data", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -472,7 +476,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "text/plain",
@@ -496,7 +500,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with any other type", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -513,7 +518,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
               method: "post",
               headers: {
                 "Content-Type": "gibber/ish",
@@ -537,8 +542,51 @@ describe("FunctionsEmulator-Runtime", () => {
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
+      it("should handle a POST request and store rawBody", async () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.send(req.rawBody);
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          const reqData = "How are you?";
+          const req = request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
+              method: "post",
+              headers: {
+                "Content-Type": "gibber/ish",
+                "Content-Length": reqData.length,
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(data).to.equal(reqData);
+                resolve();
+              });
+            }
+          );
+          req.write(reqData);
+          req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
       it("should forward request to Express app", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           const app = require("express")();
           app.get("/", (req: express.Request, res: express.Response) => {
@@ -554,7 +602,7 @@ describe("FunctionsEmulator-Runtime", () => {
           const req = request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/?hello=world",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}?hello=world`,
               method: "get",
             },
             (res) => {
@@ -567,6 +615,43 @@ describe("FunctionsEmulator-Runtime", () => {
             }
           );
           req.end();
+        });
+
+        await runtime.exit;
+      }).timeout(TIMEOUT_MED);
+
+      it("should handle `x-forwarded-host`", async () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
+          require("firebase-admin").initializeApp();
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                res.json({ hostname: req.hostname });
+              }
+            ),
+          };
+        });
+
+        await runtime.ready;
+        await new Promise((resolve) => {
+          request(
+            {
+              socketPath: runtime.metadata.socketPath,
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
+              headers: {
+                "x-forwarded-host": "real-hostname",
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => (data += chunk));
+              res.on("end", () => {
+                expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
+                resolve();
+              });
+            }
+          ).end();
         });
 
         await runtime.exit;
@@ -691,7 +776,8 @@ describe("FunctionsEmulator-Runtime", () => {
 
     describe("Error handling", () => {
       it("Should handle regular functions for Express handlers", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
@@ -707,7 +793,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);
@@ -723,7 +809,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("Should handle async functions for Express handlers", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest(
@@ -741,7 +828,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);
@@ -757,7 +844,8 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("Should handle async/runWith functions for Express handlers", async () => {
-        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions")
@@ -774,7 +862,7 @@ describe("FunctionsEmulator-Runtime", () => {
           request(
             {
               socketPath: runtime.metadata.socketPath,
-              path: "/",
+              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
             },
             (res) => {
               res.on("end", resolve);

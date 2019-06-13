@@ -7,7 +7,7 @@ var DatabaseRemove = require("../database/remove").default;
 var api = require("../api");
 
 var utils = require("../utils");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var clc = require("cli-color");
 var _ = require("lodash");
 

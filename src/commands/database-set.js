@@ -12,7 +12,7 @@ var utils = require("../utils");
 var clc = require("cli-color");
 var logger = require("../logger");
 var fs = require("fs");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var _ = require("lodash");
 
 module.exports = new Command("database:set <path> [infile]")

@@ -5,7 +5,7 @@ var fs = require("fs");
 
 var api = require("../../api");
 var logger = require("../../logger");
-var prompt = require("../../prompt");
+var { prompt } = require("../../prompt");
 
 var INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/hosting/index.html",
