@@ -40,7 +40,7 @@ interface TaskData<T, R> {
   wait?: { resolve: (R: any) => void; reject: (err: TaskError) => void };
   timeoutMillis?: number;
   timeoutId?: NodeJS.Timeout;
-  isTimedOut?: boolean;
+  isTimedOut: boolean;
 }
 
 /**
@@ -163,8 +163,8 @@ export abstract class Throttler<T, R> {
     try {
       const result = await Promise.race(promises);
       this.onTaskFulfilled(result, taskData, cursorIndex);
-    } catch (error) {
-      this.onTaskFailed(error, taskData, cursorIndex);
+    } catch (err) {
+      this.onTaskFailed(err, taskData, cursorIndex);
     }
   }
 
@@ -207,6 +207,7 @@ export abstract class Throttler<T, R> {
       wait,
       timeoutMillis,
       retryCount: 0,
+      isTimedOut: false,
     });
     this.total++;
     this.process();
@@ -232,15 +233,13 @@ export abstract class Throttler<T, R> {
   }
 
   private initializeTimeout(taskData: TaskData<T, R>, cursorIndex: number): Promise<void> {
-    let rejectFunc: (err: TaskError) => void;
     const timeoutMillis = taskData.timeoutMillis!;
     const timeoutPromise = new Promise<void>((_, reject) => {
-      rejectFunc = reject;
+      taskData.timeoutId = setTimeout(() => {
+        taskData.isTimedOut = true;
+        reject(new TimeoutError(this.taskName(cursorIndex), timeoutMillis));
+      }, timeoutMillis);
     });
-    taskData.timeoutId = setTimeout(() => {
-      taskData.isTimedOut = true;
-      rejectFunc(new TimeoutError(this.taskName(cursorIndex), timeoutMillis));
-    }, timeoutMillis);
 
     return timeoutPromise;
   }
@@ -262,16 +261,16 @@ export abstract class Throttler<T, R> {
       this.complete++;
       this.active--;
       return result;
-    } catch (error) {
+    } catch (err) {
       if (taskData.retryCount === this.retries) {
-        throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, error);
+        throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
       }
+      await backoff(taskData.retryCount + 1, this.backoff);
       if (taskData.isTimedOut) {
-        throw error;
+        throw new TimeoutError(this.taskName(cursorIndex), taskData.timeoutMillis!);
       }
       this.retried++;
       taskData.retryCount++;
-      await backoff(taskData.retryCount, this.backoff);
       logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
       return this.executeTask(taskData, cursorIndex);
     }
