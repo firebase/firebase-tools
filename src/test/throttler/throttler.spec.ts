@@ -333,7 +333,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
     const q = new Queue({
       handler,
       retries: 4,
-      backoff: 10,
+      backoff: 20,
     });
 
     q.add(2);
