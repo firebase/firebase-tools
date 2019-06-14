@@ -441,7 +441,7 @@ You can probably fix this by running "npm install ${
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
-    const host = this.args.host || "localhost";
+    const host = this.getInfo().host;
     this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
       this.port,
       host
@@ -497,7 +497,7 @@ You can probably fix this by running "npm install ${
           //                 that a developer is running the same function in multiple regions.
           const region = getFunctionRegion(definition);
           const url = FunctionsEmulator.getHttpFunctionUrl(
-            this.args.host || "localhost",
+            this.getInfo().host,
             this.port,
             this.projectId,
             definition.name,
