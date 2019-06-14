@@ -29,6 +29,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
       if (trigger.httpsTrigger) {
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
+          this.emu.getInfo().host,
           this.emu.getInfo().port,
           this.emu.projectId,
           name,

@@ -1,0 +1,1 @@
+* Fixes bug where `firebase serve --only functions` dropped the host argument.
