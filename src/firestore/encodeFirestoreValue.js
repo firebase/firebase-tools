@@ -1,7 +1,6 @@
 "use strict";
 
 var _ = require("lodash");
-var is = require("is");
 
 var encodeFirestoreValue = function(data) {
   var isPlainObject = function(input) {
@@ -13,33 +12,33 @@ var encodeFirestoreValue = function(data) {
   };
 
   var encodeHelper = function(val) {
-    if (is.string(val)) {
+    if (_.isString(val)) {
       return {
         stringValue: val,
       };
     }
-    if (is.boolean(val)) {
+    if (_.isBoolean(val)) {
       return {
         booleanValue: val,
       };
     }
-    if (is.integer(val)) {
+    if (_.isInteger(val)) {
       return {
         integerValue: val,
       };
     }
     // Integers are handled above, the remaining numbers are treated as doubles
-    if (is.number(val)) {
+    if (_.isNumber(val)) {
       return {
         doubleValue: val,
       };
     }
-    if (is.date(val)) {
+    if (_.isDate(val)) {
       return {
         timestampValue: val.toISOString(),
       };
     }
-    if (is.array(val)) {
+    if (_.isArray(val)) {
       var encodedElements = [];
       for (var i = 0; i < val.length; ++i) {
         var enc = encodeHelper(val[i]);
@@ -53,12 +52,12 @@ var encodeFirestoreValue = function(data) {
         },
       };
     }
-    if (is.nil(val)) {
+    if (_.isNil(val)) {
       return {
         nullValue: "NULL_VALUE",
       };
     }
-    if (is.instanceof(val, Buffer) || is.instanceof(val, Uint8Array)) {
+    if (val instanceof Buffer || val instanceof Uint8Array) {
       return {
         bytesValue: val,
       };
