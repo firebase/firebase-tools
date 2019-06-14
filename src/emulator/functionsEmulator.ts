@@ -65,8 +65,14 @@ interface RequestWithRawBody extends express.Request {
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
-  static getHttpFunctionUrl(port: number, projectId: string, name: string, region: string): string {
-    return `http://localhost:${port}/${projectId}/${region}/${name}`;
+  static getHttpFunctionUrl(
+    host: string,
+    port: number,
+    projectId: string,
+    name: string,
+    region: string
+  ): string {
+    return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
   static createHubServer(
@@ -401,7 +407,6 @@ You can probably fix this by running "npm install ${
   readonly bundleTemplate: FunctionsRuntimeBundle;
   nodeBinary: string = "";
 
-  private readonly port: number;
   private server?: http.Server;
   private firebaseConfig: any;
   private functionsDir: string = "";
@@ -409,7 +414,6 @@ You can probably fix this by running "npm install ${
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
     this.projectId = getProjectId(this.options, false);
 
     this.functionsDir = path.join(
@@ -435,8 +439,10 @@ You can probably fix this by running "npm install ${
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
+    const { host, port } = this.getInfo();
     this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
-      this.port
+      port,
+      host
     );
   }
 
@@ -489,7 +495,8 @@ You can probably fix this by running "npm install ${
           //                 that a developer is running the same function in multiple regions.
           const region = getFunctionRegion(definition);
           const url = FunctionsEmulator.getHttpFunctionUrl(
-            this.port,
+            this.getInfo().host,
+            this.getInfo().port,
             this.projectId,
             definition.name,
             region
