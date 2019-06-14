@@ -4,7 +4,7 @@ import * as nock from "nock";
 import { LroPoller, LroPollerOptions } from "../lro-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
 
-const TEST_ORIGIN = "https://firebasedummy.test.com";
+const TEST_ORIGIN = "https://firebasedummy.googleapis.com.com";
 const VERSION = "v1";
 const LRO_RESOURCE_NAME = "operations/cp.3322442424242444";
 
@@ -67,7 +67,7 @@ describe("LroPoller", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should retry polling if http requests response with 500 or 503 status code", async () => {
+    it("should retry polling if http request responds with 500 or 503 status code", async () => {
       const successfulResponse = {
         done: true,
         response: "completed",
@@ -115,12 +115,14 @@ describe("LroPoller", () => {
         .get(`/${VERSION}/${LRO_RESOURCE_NAME}`)
         .reply(200, successfulResponse);
 
+      let error;
       try {
         await poller.poll(pollerOptions);
       } catch (err) {
-        expect(err).to.be.instanceOf(TimeoutError);
-        expect(nock.isDone()).to.be.false;
+        error = err;
       }
+      expect(error).to.be.instanceOf(TimeoutError);
+      expect(nock.isDone()).to.be.false;
     });
   });
 });

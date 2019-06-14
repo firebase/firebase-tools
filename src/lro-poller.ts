@@ -16,7 +16,7 @@ export interface LroResult {
   response?: any;
 }
 
-const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 1000;
+const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
 const DEFAULT_MASTER_TIMEOUT_MILLIS = 15000;
 
 export class LroPoller {
@@ -54,6 +54,7 @@ export class LroPoller {
           requestOptions
         );
       } catch (err) {
+        // Responses with 500 or 503 status code are treated as retriable errors
         if (err.status === 500 || err.status === 503) {
           throw err;
         }
