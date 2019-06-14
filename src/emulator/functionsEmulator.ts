@@ -407,7 +407,6 @@ You can probably fix this by running "npm install ${
   readonly bundleTemplate: FunctionsRuntimeBundle;
   nodeBinary: string = "";
 
-  private readonly port: number;
   private server?: http.Server;
   private firebaseConfig: any;
   private functionsDir: string = "";
@@ -415,7 +414,6 @@ You can probably fix this by running "npm install ${
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
     this.projectId = getProjectId(this.options, false);
 
     this.functionsDir = path.join(
@@ -441,9 +439,9 @@ You can probably fix this by running "npm install ${
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
-    const host = this.getInfo().host;
+    const { host, port } = this.getInfo();
     this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
-      this.port,
+      port,
       host
     );
   }
@@ -498,7 +496,7 @@ You can probably fix this by running "npm install ${
           const region = getFunctionRegion(definition);
           const url = FunctionsEmulator.getHttpFunctionUrl(
             this.getInfo().host,
-            this.port,
+            this.getInfo().port,
             this.projectId,
             definition.name,
             region
