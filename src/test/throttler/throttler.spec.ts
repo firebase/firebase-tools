@@ -109,7 +109,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 0 attempts");
+        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 1 attempts");
       })
       .then(() => {
         expect(handler.callCount).to.equal(1);
@@ -140,7 +140,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 3 attempts");
+        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 4 attempts");
       })
       .then(() => {
         expect(handler.callCount).to.equal(4);
@@ -295,7 +295,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
     } catch (err) {
       expect(err).to.be.instanceOf(RetriesExhaustedError);
       expect(err.original).to.equal(TEST_ERROR);
-      expect(err.message).to.equal("Task index 0 failed: retries exhausted after 2 attempts");
+      expect(err.message).to.equal("Task index 0 failed: retries exhausted after 3 attempts");
       expect(handler.callCount).to.equal(3);
       expect(q.complete).to.equal(1);
       expect(q.success).to.equal(0);
@@ -380,7 +380,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       await q.wait();
     } catch (err) {
       expect(err).to.be.instanceOf(RetriesExhaustedError);
-      expect(err.message).to.equal("Task index 1 failed: retries exhausted after 1 attempts");
+      expect(err.message).to.equal("Task index 1 failed: retries exhausted after 2 attempts");
       expect(handler.callCount).to.equal(3);
       expect(q.complete).to.equal(2);
       expect(q.success).to.equal(1);
