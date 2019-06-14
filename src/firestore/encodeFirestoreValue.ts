@@ -39,7 +39,7 @@ function encodeHelper(val: any): any {
       arrayValue: { values: encodedElements },
     };
   }
-  if (_.isNil(val)) {
+  if (_.isNull(val)) {
     return { nullValue: "NULL_VALUE" };
   }
   if (val instanceof Buffer || val instanceof Uint8Array) {
