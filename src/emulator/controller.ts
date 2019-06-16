@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
+import * as path from "path";
 import * as pf from "portfinder";
 
 import * as utils from "../utils";
@@ -14,9 +15,10 @@ import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import * as FirebaseError from "../error";
-import * as path from "path";
+import { ALL_FEATURES } from "./functionsEmulatorShared";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
+export const VALID_FEATURE_STRINGS: string[] = ALL_FEATURES;
 
 async function checkPortOpen(port: number): Promise<boolean> {
   try {
@@ -113,11 +115,17 @@ export async function startAll(options: any): Promise<void> {
     }
   }
 
+  const disabledRuntimeFeatures: any = {};
+  if (options.disabledFeatures) {
+    options.disabledFeatures.split(",").map((ft: string) => (disabledRuntimeFeatures[ft] = true));
+  }
+
   if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
     const functionsEmulator = new FunctionsEmulator(options, {
       host: functionsAddr.host,
       port: functionsAddr.port,
+      disabledRuntimeFeatures,
     });
     await startEmulator(functionsEmulator);
   }

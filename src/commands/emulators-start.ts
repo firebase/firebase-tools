@@ -18,6 +18,13 @@ module.exports = new Command("emulators:start")
       "Valid options are: " +
       JSON.stringify(controller.VALID_EMULATOR_STRINGS)
   )
+  .option(
+    "--disabled-features <list>",
+    "disable specific features. " +
+      "This is a comma separated list of functions features. " +
+      "Valid options are: " +
+      JSON.stringify(controller.VALID_FEATURE_STRINGS)
+  )
   .action(async (options: any) => {
     try {
       await controller.startAll(options);

@@ -49,6 +49,15 @@ export interface FunctionsRuntimeFeatures {
   admin_stubs?: boolean;
 }
 
+export const ALL_FEATURES = [
+  "functions_config_helper",
+  "network_filtering",
+  "timeout",
+  "memory_limiting",
+  "protect_env",
+  "admin_stubs",
+];
+
 const memoryLookup = {
   "128MB": 128,
   "256MB": 256,
