@@ -52,19 +52,15 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-/**
- * Fake credentials to allow the admin SDK to talk to the RTDB emulator.
- */
-class FakeCredentials {
-  getAccessToken() {
-    return Promise.resolve({
-      expires_in: 1000000,
-      access_token: "owner",
-    });
-  }
-  getCertificate() {
-    return null;
-  }
+function makeFakeCredentials(): admin.credential.Credential {
+  return {
+    getAccessToken: () => {
+      return Promise.resolve({
+        expires_in: 1000000,
+        access_token: "owner",
+      });
+    },
+  };
 }
 
 /*
@@ -469,8 +465,8 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       if (frb.ports.database) {
         config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-        (config.credential = new FakeCredentials()),
-          new EmulatorLog("SYSTEM", `Overriding database URL to ${config.databaseURL}`, "").log();
+        config.credential = makeFakeCredentials();
+        new EmulatorLog("SYSTEM", `Overriding database URL to ${config.databaseURL}`, "").log();
       }
 
       app = adminModuleTarget.initializeApp({
@@ -525,7 +521,7 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
-  //Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
+  // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
   process.env.FIREBASE_CONFIG = JSON.stringify({
     databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
