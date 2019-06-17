@@ -60,10 +60,11 @@ describe("LroPoller", () => {
     it("should return result with error field if api call rejects with unrecoverable error", async () => {
       nock(TEST_ORIGIN)
         .get(`/${VERSION}/${LRO_RESOURCE_NAME}`)
-        .reply(404, { context: { response: { statusCode: 404 } } });
+        .reply(404, { error: { message: "poll failed" } });
 
       const response = await poller.poll(pollerOptions);
       expect(response.error.status).to.equal(404);
+      expect(response.error.message).to.equal("HTTP Error: 404, poll failed");
       expect(nock.isDone()).to.be.true;
     });
 
