@@ -160,12 +160,13 @@ export abstract class Throttler<T, R> {
       promises.push(this.initializeTimeout(taskData, cursorIndex));
     }
 
+    let result;
     try {
-      const result = await Promise.race(promises);
-      this.onTaskFulfilled(result, taskData, cursorIndex);
+      result = await Promise.race(promises);
     } catch (err) {
       this.onTaskFailed(err, taskData, cursorIndex);
     }
+    this.onTaskFulfilled(result, taskData, cursorIndex);
   }
 
   stats(): ThrottlerStats {
