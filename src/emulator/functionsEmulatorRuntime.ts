@@ -52,6 +52,21 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
+/**
+ * Fake credentials to allow the admin SDK to talk to the RTDB emulator.
+ */
+class FakeCredentials {
+  getAccessToken() {
+    return Promise.resolve({
+      expires_in: 1000000,
+      access_token: "owner",
+    });
+  }
+  getCertificate() {
+    return null;
+  }
+}
+
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
   by allowing us to easily overide some or all of an objects methods. When placed back into require's
@@ -451,6 +466,13 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
       new EmulatorLog("SYSTEM", `default-admin-app-used, config=${config}`, "").log();
+
+      if (frb.ports.database) {
+        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+        (config.credential = new FakeCredentials()),
+          new EmulatorLog("SYSTEM", `Overriding database URL to ${config.databaseURL}`, "").log();
+      }
+
       app = adminModuleTarget.initializeApp({
         ...config,
         ...opts,
@@ -503,17 +525,10 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
-  // If the database emulator is running, we want to point at it.
-  let databaseURL =
-    process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`;
-  if (frb.ports.database) {
-    databaseURL = `http://localhost:${frb.ports.database}?ns=${projectId}`;
-  }
-
   //Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL,
+    databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
     projectId: projectId || process.env.GCLOUD_PROJECT,
   });
