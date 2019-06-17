@@ -438,6 +438,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
           "'default credentials' error."
       ).log();
     }
+
     hasInitializedSettings = true;
   };
 
@@ -448,9 +449,10 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         return adminModuleTarget.initializeApp(opts, appName);
       }
 
-      new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
+      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+      new EmulatorLog("SYSTEM", `default-admin-app-used, config=${config}`, "").log();
       app = adminModuleTarget.initializeApp({
-        ...JSON.parse(process.env.FIREBASE_CONFIG || "{}"),
+        ...config,
         ...opts,
       });
       return app;
@@ -495,17 +497,25 @@ function ProtectEnvironmentalVariables(): void {
   process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
 }
 
-function InitializeEnvironmentalVariables(projectId: string): void {
+function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  const projectId = frb.projectId;
+
   process.env.GCLOUD_PROJECT = projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
-  /*
-    Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
-    https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
-   */
+
+  // If the database emulator is running, we want to point at it.
+  let databaseURL =
+    process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`;
+  if (frb.ports.database) {
+    databaseURL = `http://localhost:${frb.ports.database}?ns=${projectId}`;
+  }
+
+  //Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
+  // https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
+    databaseURL,
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
-    projectId: process.env.GCLOUD_PROJECT,
+    projectId: projectId || process.env.GCLOUD_PROJECT,
   });
 }
 
@@ -760,7 +770,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  InitializeEnvironmentalVariables(frb.projectId);
+  InitializeEnvironmentalVariables(frb);
   if (isFeatureEnabled(frb, "protect_env")) {
     ProtectEnvironmentalVariables();
   }
