@@ -588,8 +588,19 @@ You can probably fix this by running "npm install ${
     );
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
+      let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
+      if (projectId !== "") {
+        setTriggersPath += `?ns=${projectId}`;
+      } else {
+        EmulatorLogger.log(
+          "WARN",
+          `No project in use. Registering function trigger for sentinel namespace '${
+            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
+          }'`
+        );
+      }
       request.put(
-        `http://localhost:${databasePort}/.settings/functionTriggers.json`,
+        setTriggersPath,
         {
           auth: {
             bearer: "owner",
