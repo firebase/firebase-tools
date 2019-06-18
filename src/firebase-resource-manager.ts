@@ -156,7 +156,7 @@ export class FirebaseResourceManager {
       apiVersion: "v1beta1",
       operationResourceName,
     };
-    const spinner = new OraWrapper("Waiting for project creation to be completed")
+    const spinner = new OraWrapper("Waiting for project creation to be completed");
     spinner.start();
 
     try {
