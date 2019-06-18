@@ -14,29 +14,35 @@ import * as utils from "../utils";
 interface Link {
   name: string;
   arg: string;
-  consoleUrl?: string;
+  consolePath?: string;
   url?: string;
 }
 
 const LINKS: Link[] = [
-  { name: "Analytics", arg: "analytics", consoleUrl: "/analytics" },
-  { name: "Authentication: Providers", arg: "auth", consoleUrl: "/authentication/providers" },
-  { name: "Authentication: Users", arg: "auth:users", consoleUrl: "/authentication/users" },
-  { name: "Crash Reporting", arg: "crash", consoleUrl: "/monitoring" },
-  { name: "Database: Data", arg: "database", consoleUrl: "/database/data" },
-  { name: "Database: Rules", arg: "database:rules", consoleUrl: "/database/rules" },
+  { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
+  { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
+  { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
+  { name: "Crash Reporting", arg: "crash", consolePath: "/monitoring" },
+  { name: "Database: Data", arg: "database", consolePath: "/database/data" },
+  { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
-  { name: "Dynamic Links", arg: "links", consoleUrl: "/durablelinks" },
-  { name: "Hosting: Deployed Site", arg: "hosting:site" },
-  { name: "Hosting", arg: "hosting", consoleUrl: "/hosting/main" },
-  { name: "Notifications", arg: "notifications", consoleUrl: "/notification" },
-  { name: "Project Dashboard", arg: "dashboard", consoleUrl: "/overview" },
-  { name: "Project Settings", arg: "settings", consoleUrl: "/settings/general" },
-  { name: "Remote Config: Conditions", arg: "config:conditions", consoleUrl: "/config/conditions" },
-  { name: "Remote Config", arg: "config", consoleUrl: "/config" },
-  { name: "Storage: Files", arg: "storage", consoleUrl: "/storage/files" },
-  { name: "Storage: Rules", arg: "storage:rules", consoleUrl: "/storage/rules" },
-  { name: "Test Lab", arg: "testlab", consoleUrl: "/testlab/histories/" },
+  { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Functions", arg: "functions", consolePath: "/functions/list" },
+  { name: "Functions Log", arg: "functions:log" } /* Special Case */,
+  { name: "Hosting: Deployed Site", arg: "hosting:site" } /* Special Case */,
+  { name: "Hosting", arg: "hosting", consolePath: "/hosting/main" },
+  { name: "Notifications", arg: "notifications", consolePath: "/notification" },
+  { name: "Project Dashboard", arg: "dashboard", consolePath: "/overview" },
+  { name: "Project Settings", arg: "settings", consolePath: "/settings/general" },
+  {
+    name: "Remote Config: Conditions",
+    arg: "config:conditions",
+    consolePath: "/config/conditions",
+  },
+  { name: "Remote Config", arg: "config", consolePath: "/config" },
+  { name: "Storage: Files", arg: "storage", consolePath: "/storage/files" },
+  { name: "Storage: Rules", arg: "storage:rules", consolePath: "/storage/rules" },
+  { name: "Test Lab", arg: "testlab", consolePath: "/testlab/histories/" },
 ];
 
 const CHOICES = _.map(LINKS, "name");
@@ -69,18 +75,16 @@ export default new Command("open [link]")
       }
 
       let url;
-      if (link.consoleUrl) {
-        url = utils.consoleUrl(options.project, link.consoleUrl);
+      if (link.consolePath) {
+        url = utils.consoleUrl(options.project, link.consolePath);
       } else if (link.url) {
         url = link.url;
       } else if (link.arg === "hosting:site") {
         url = utils.addSubdomain(api.hostingOrigin, options.instance);
-      } else if (link.arg === "functions") {
-        url = "https://console.firebase.google.com/project/" + options.project + "/functions/list";
       } else if (link.arg === "functions:log") {
-        url =
-          "https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=" +
-          options.project;
+        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${
+          options.project
+        }`;
       } else {
         throw new FirebaseError(`Unable to determine URL for link: ${link}`);
       }
