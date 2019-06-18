@@ -89,7 +89,7 @@
     "lodash": "^4.17.10",
     "minimatch": "^3.0.4",
     "open": "^6.3.0",
-    "ora": "0.2.3",
+    "ora": "^3.4.0",
     "portfinder": "^1.0.13",
     "progress": "^2.0.0",
     "request": "^2.87.0",
