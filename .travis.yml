@@ -1,13 +1,17 @@
 language: node_js
 node_js:
-- '4'
-- '5.10'
-- '6'
-- '8'
-- stable
-sudo: false
+  - "8"
+  - "10"
 after_script:
-- cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js
+  - nyc report --reporter=text-lcov | coveralls
+jobs:
+  include:
+    - stage: hosting functional test
+      if: repo == head_repo OR type == push
+      node_js: "8"
+      before_script: ./scripts/decrypt-app-credentials.sh
+      script: ./scripts/test-hosting.sh
+      after_script: skip
 cache:
   directories:
-  - node_modules
+    - node_modules

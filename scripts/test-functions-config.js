@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 
+/**
+ * Integration test for functions config commands. Run:
+ * node ./test-functions-config.js <projectId>
+ *
+ * If parameter ommited:
+ * - projectId defaults to `functions-integration-test`
+ */
+
 var clc = require("cli-color");
 var exec = require("child_process").exec;
 var execSync = require("child_process").execSync;
@@ -12,7 +20,8 @@ var api = require("../lib/api");
 var scopes = require("../lib/scopes");
 var configstore = require("../lib/configstore");
 
-var localFirebase = __dirname + "/../bin/firebase";
+var projectId = process.argv[2] || "functions-integration-test";
+var localFirebase = __dirname + "/../lib/bin/firebase.js";
 var projectDir = __dirname + "/test-project";
 var tmpDir;
 
@@ -22,7 +31,7 @@ var preTest = function() {
   fs.copySync(projectDir, tmpDir);
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
-  execSync(localFirebase + " functions:config:unset foo", { cwd: tmpDir });
+  execSync(`${localFirebase} functions:config:unset foo --project=${projectId}`, { cwd: tmpDir });
   console.log("Done pretest prep.");
 };
 
@@ -33,7 +42,7 @@ var postTest = function() {
 
 var set = function(expression) {
   return new Promise(function(resolve) {
-    exec(localFirebase + " functions:config:set " + expression, { cwd: tmpDir }, function(err) {
+    exec(`${localFirebase} functions:config:set ${expression} --project=${projectId}`, { cwd: tmpDir }, function(err) {
       expect(err).to.be.null;
       resolve();
     });
@@ -42,7 +51,7 @@ var set = function(expression) {
 
 var unset = function(key) {
   return new Promise(function(resolve) {
-    exec(localFirebase + " functions:config:unset " + key, { cwd: tmpDir }, function(err) {
+    exec(`${localFirebase} functions:config:unset ${key} --project=${projectId}`, { cwd: tmpDir }, function(err) {
       expect(err).to.be.null;
       resolve();
     });
@@ -51,7 +60,7 @@ var unset = function(key) {
 
 var getAndCompare = function(expected) {
   return new Promise(function(resolve) {
-    exec(localFirebase + " functions:config:get", { cwd: tmpDir }, function(err, stdout) {
+    exec(`${localFirebase} functions:config:get --project=${projectId}`, { cwd: tmpDir }, function(err, stdout) {
       expect(JSON.parse(stdout)).to.deep.equal(expected);
       resolve();
     });

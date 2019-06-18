@@ -1,4 +1,4 @@
-# Firebase CLI [![Build Status](https://travis-ci.org/firebase/firebase-tools.svg?branch=master)](https://travis-ci.org/firebase/firebase-tools) [![Coverage Status](https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat)](https://coveralls.io/r/firebase/firebase-tools) [![Node Version](https://img.shields.io/node/v/firebase-tools.svg)](https://www.npmjs.com/package/firebase-tools) [![NPM version](https://badge.fury.io/js/firebase-tools.svg)](http://badge.fury.io/js/firebase-tools)
+# Firebase CLI [![Build Status][travis-badge]][travis-ci] [![Coverage Status][coveralls-badge]][coveralls] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
 
 These are the Firebase Command Line Interface (CLI) Tools. They can be used to:
 
@@ -8,7 +8,6 @@ These are the Firebase Command Line Interface (CLI) Tools. They can be used to:
 * Import/Export users into/from Firebase Auth
 
 To get started with the Firebase CLI, read the full list of commands below or check out the [hosting-specific CLI documentation](https://firebase.google.com/docs/hosting/quickstart).
-
 
 ## Installation
 
@@ -24,7 +23,6 @@ npm install -g firebase-tools
 ```
 
 This will provide you with the globally accessible `firebase` command.
-
 
 ## Commands
 
@@ -111,7 +109,7 @@ The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
 
 1. On a machine with a browser, install the Firebase CLI.
-2. Run `firebase login:ci` to log in and print out a new access token
+2. Run `firebase login:ci` to log in and print out a new [refresh token](https://developers.google.com/identity/protocols/OAuth2)
    (the current CLI session will not be affected).
 3. Store the output token in a secure but accessible way in your CI system.
 
@@ -141,6 +139,7 @@ client.list().then(function(data) {
 client.deploy({
   project: 'myfirebase',
   token: process.env.FIREBASE_TOKEN,
+  force: true,
   cwd: '/path/to/project/folder'
 }).then(function() {
   console.log('Rules have been deployed!')
@@ -148,3 +147,12 @@ client.deploy({
   // handle error
 });
 ```
+
+[travis-ci]: https://travis-ci.org/firebase/firebase-tools
+[coveralls]: https://coveralls.io/r/firebase/firebase-tools
+[npm]: https://www.npmjs.com/package/firebase-tools
+
+[travis-badge]: https://img.shields.io/travis/firebase/firebase-tools/master.svg
+[coveralls-badge]: https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat
+[node-badge]: https://img.shields.io/node/v/firebase-tools.svg
+[npm-badge]: https://img.shields.io/npm/v/firebase-tools.svg
