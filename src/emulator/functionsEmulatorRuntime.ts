@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { DeploymentOptions } from "firebase-functions";
+import { DeploymentOptions, CloudFunction } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -62,6 +62,17 @@ function makeFakeCredentials(): admin.credential.Credential {
     },
   };
 }
+
+type PackageJSON = {
+  dependencies: { [name: string]: any };
+  devDependencies: { [name: string]: any };
+};
+
+type ModuleResolution = {
+  declared: boolean;
+  installed: boolean;
+  version?: string;
+};
 
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
@@ -159,58 +170,104 @@ class Proxied<T> {
   }
 }
 
+async function resolveDeveloperNodeModule(
+  frb: FunctionsRuntimeBundle,
+  pkg: PackageJSON,
+  name: string
+): Promise<ModuleResolution> {
+  const dependencies = pkg.dependencies;
+  const devDependencies = pkg.devDependencies;
+  const isInPackageJSON = dependencies[name] || devDependencies[name];
+
+  // If there's no reference to the module in their package.json, prompt them to install it
+  if (!isInPackageJSON) {
+    return { declared: false, installed: false };
+  }
+
+  // Once we know it's in the package.json, make sure it's actually `npm install`ed
+  const modResolution = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
+
+  if (!modResolution) {
+    return { declared: true, installed: false };
+  }
+
+  const modPackageJSON = require(path.join(findModuleRoot(name, modResolution), "package.json"));
+
+  return {
+    declared: true,
+    installed: true,
+    version: modPackageJSON.version,
+  };
+}
+
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
-  let pkg;
-  try {
-    pkg = require(`${frb.cwd}/package.json`);
-  } catch (err) {
+  let pkg = requirePackageJson(frb);
+  if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     return false;
   }
 
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 7 },
-    { name: "firebase-functions", isDev: false, minVersion: 2 },
+    { name: "firebase-admin", isDev: false, minVersion: 8 },
+    { name: "firebase-functions", isDev: false, minVersion: 3 },
   ];
 
   for (const modBundle of modBundles) {
-    const dependencies = pkg.dependencies || {};
-    const devDependencies = pkg.devDependencies || {};
-    const isInPackageJSON = dependencies[modBundle.name] || devDependencies[modBundle.name];
+    const resolution = await resolveDeveloperNodeModule(frb, pkg, modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
      */
-    if (!isInPackageJSON) {
+    if (!resolution.declared) {
       new EmulatorLog("SYSTEM", "missing-module", "", modBundle).log();
       return false;
     }
 
-    /*
-    Once we know it's in the package.json, make sure it's actually `npm install`ed
-     */
-    const modResolution = await requireResolveAsync(modBundle.name, { paths: [frb.cwd] }).catch(
-      NoOp
-    );
-
-    if (!modResolution) {
+    if (!resolution.installed) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
 
-    const modPackageJSON = require(path.join(
-      findModuleRoot(modBundle.name, modResolution),
-      "package.json"
-    ));
-    const modMajorVersion = parseInt((modPackageJSON.version || "0").split("."), 10);
-
-    if (modMajorVersion < modBundle.minVersion) {
+    const versionInfo = parseVersionString(resolution.version);
+    if (versionInfo.major < modBundle.minVersion) {
       new EmulatorLog("SYSTEM", "out-of-date-module", "", modBundle).log();
       return false;
     }
   }
 
   return true;
+}
+
+/**
+ * Get the developer's package.json file.
+ */
+function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+  try {
+    let pkg = require(`${frb.cwd}/package.json`);
+    return {
+      dependencies: pkg.dependencies || {},
+      devDependencies: pkg.devDependencies || {},
+    };
+  } catch (err) {
+    return undefined;
+  }
+}
+
+/**
+ * Parse a semver version string into parts, filling in 0s where empty.
+ */
+function parseVersionString(version?: string) {
+  const parts = (version || "0").split(".");
+  const missing = 3 - parts.length;
+  for (let i = 0; i < missing; i++) {
+    parts.push("0");
+  }
+
+  return {
+    major: parseInt(parts[0], 10),
+    minor: parseInt(parts[1], 10),
+    patch: parseInt(parts[2], 10),
+  };
 }
 
 /*
@@ -646,6 +703,8 @@ async function ProcessBackground(
   let proto = frb.proto;
   const service = getFunctionService(trigger.definition);
 
+  // TODO: I don't think this legacy hack for Firestore will work anymore
+
   // TODO: This is a workaround for
   // https://github.com/firebase/firebase-tools/issues/1288
   if (service === "firestore.googleapis.com") {
@@ -665,6 +724,19 @@ async function ProcessBackground(
         "runtime-status",
         `[firestore] Got legacy proto ${JSON.stringify(proto)}`
       ).log();
+    }
+  }
+
+  if (service === "firebaseio.com") {
+    if (EventUtils.isLegacyEvent(proto)) {
+      console.log("\nPROTO BEFORE: ", proto);
+      proto = EventUtils.convertFromLegacy(proto, service);
+      console.log("\nPROTO AFTER`: ", proto);
+    }
+
+    // TODO: this hack sucks and I need to figure out why it exists.
+    if (proto.context.resource && proto.context.resource.name) {
+      proto.context.resource = proto.context.resource.name;
     }
   }
 
@@ -696,11 +768,11 @@ async function Run(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function RunBackground(proto: any, func: (proto: any) => Promise<any>): Promise<any> {
+async function RunBackground(proto: any, func: CloudFunction<any>): Promise<any> {
   new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
 
   await Run(() => {
-    return func(proto);
+    return func(proto.data, proto.context);
   });
 }
 
