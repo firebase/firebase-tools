@@ -380,7 +380,7 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
   } else {
     const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(NoOp);
     new EmulatorLog("SYSTEM", "runtime-status", "using grpc-js for admin credential").log();
-    return grpc.ServerCredentials.createInsecure();
+    return grpc.ChannelCredentials.createInsecure();
   }
 }
 
