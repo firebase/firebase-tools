@@ -615,7 +615,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (res.statusCode == 200) {
+          if (res.statusCode === 200) {
             EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",
@@ -664,7 +664,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (res.statusCode == 200) {
+          if (res.statusCode === 200) {
             EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",

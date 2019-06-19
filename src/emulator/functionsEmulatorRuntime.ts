@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { DeploymentOptions, CloudFunction } from "firebase-functions";
+import { CloudFunction, DeploymentOptions } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -8,7 +8,6 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
-  getFunctionService,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import * as express from "express";
@@ -70,16 +69,22 @@ function makeFakeCredentials(): any {
   };
 }
 
-type PackageJSON = {
+interface PackageJSON {
   dependencies: { [name: string]: any };
   devDependencies: { [name: string]: any };
-};
+}
 
-type ModuleResolution = {
+interface ModuleResolution {
   declared: boolean;
   installed: boolean;
   version?: string;
-};
+}
+
+interface ModuleVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
 
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
@@ -208,7 +213,7 @@ async function resolveDeveloperNodeModule(
 }
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
-  let pkg = requirePackageJson(frb);
+  const pkg = requirePackageJson(frb);
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     return false;
@@ -250,7 +255,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
  */
 function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
   try {
-    let pkg = require(`${frb.cwd}/package.json`);
+    const pkg = require(`${frb.cwd}/package.json`);
     return {
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
@@ -263,12 +268,12 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
 /**
  * Parse a semver version string into parts, filling in 0s where empty.
  */
-function parseVersionString(version?: string) {
+function parseVersionString(version?: string): ModuleVersion {
   const parts = (version || "0").split(".");
-  const missing = 3 - parts.length;
-  for (let i = 0; i < missing; i++) {
-    parts.push("0");
-  }
+
+  // Make sure "parts" always has 3 elements. Extras are ignored.
+  parts.push("0");
+  parts.push("0");
 
   return {
     major: parseInt(parts[0], 10),
@@ -709,7 +714,7 @@ async function ProcessBackground(
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
-  let proto = frb.proto;
+  const proto = frb.proto;
   new EmulatorLog(
     "DEBUG",
     "runtime-status",
@@ -718,9 +723,9 @@ async function ProcessBackground(
 
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
-  let data = proto.data;
+  const data = proto.data;
   delete proto.data;
-  let context = proto.context ? proto.context : proto;
+  const context = proto.context ? proto.context : proto;
 
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
