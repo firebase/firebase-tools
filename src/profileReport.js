@@ -65,7 +65,7 @@ ProfileReport.extractJSON = function(line, input) {
 
 ProfileReport.isNullPath = function(path) {
   return Array.isArray(path) && path.length === 1 && path[0] === NULL_PATH_COMPONENT;
-}
+};
 
 ProfileReport.pathString = function(path) {
   if (path && !this.isNullPath(path)) {
