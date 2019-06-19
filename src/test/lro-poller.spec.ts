@@ -10,6 +10,8 @@ import { mockAuth } from "./helpers";
 const TEST_ORIGIN = "https://firebasedummy.googleapis.com.com";
 const VERSION = "v1";
 const LRO_RESOURCE_NAME = "operations/cp.3322442424242444";
+const FULL_RESOURCE_NAME = `/${VERSION}/${LRO_RESOURCE_NAME}`;
+const API_OPTIONS = { auth: true, origin: TEST_ORIGIN };
 
 describe("LroPoller", () => {
   describe("poll", () => {
@@ -41,10 +43,7 @@ describe("LroPoller", () => {
       };
 
       stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
+        .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ body: successfulResponse });
 
       expect(await poller.poll(pollerOptions)).to.deep.equal({ response: "completed" });
@@ -60,10 +59,7 @@ describe("LroPoller", () => {
         },
       };
       stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
+        .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ body: failedResponse });
 
       const response = await poller.poll(pollerOptions);
@@ -75,12 +71,7 @@ describe("LroPoller", () => {
     it("should return result with error field if api call rejects with unrecoverable error", async () => {
       const unrecoverableError = new FirebaseError("poll failed", { status: 404 });
 
-      stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
-        .rejects(unrecoverableError);
+      stubApiRequest.withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS).rejects(unrecoverableError);
 
       const response = await poller.poll(pollerOptions);
       expect(response.error).to.equal(unrecoverableError);
@@ -96,10 +87,7 @@ describe("LroPoller", () => {
       };
 
       stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
+        .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .onFirstCall()
         .rejects(retriableError1)
         .onSecondCall()
@@ -117,10 +105,7 @@ describe("LroPoller", () => {
         response: "completed",
       };
       stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
+        .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ done: false })
         .onThirdCall()
         .resolves({ body: successfulResponse });
@@ -131,12 +116,7 @@ describe("LroPoller", () => {
 
     it("should reject with TimeoutError when timed out after failed retries", async () => {
       pollerOptions.masterTimeout = 200;
-      stubApiRequest
-        .withArgs("GET", `/${VERSION}/${LRO_RESOURCE_NAME}`, {
-          auth: true,
-          origin: TEST_ORIGIN,
-        })
-        .resolves({ done: false });
+      stubApiRequest.withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS).resolves({ done: false });
 
       let error;
       try {
