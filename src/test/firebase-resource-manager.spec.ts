@@ -49,7 +49,7 @@ describe("FirebaseResourceManager", () => {
       expectedResolvedValues = [
         { body: { name: "operations/cp.111111111111111" } },
         { response: { projectNumber: PROJECT_NUMBER } },
-        { body: { name: "operations/cp.222222222222222" } },
+        { body: { name: "operations/cp.222222222222223" } },
         { response: { projectId: PROJECT_ID, displayName: PROJECT_NAME } },
       ];
       mockApi
