@@ -92,8 +92,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .resolves(expectedResolvedValues[3]);
-      mockOraWrapper.expects("start").exactly(4);
-      mockOraWrapper.expects("succeed").exactly(4);
+      mockOraWrapper.expects("start").exactly(2);
+      mockOraWrapper.expects("succeed").exactly(2);
       mockOraWrapper.expects("fail").never();
 
       expect(
@@ -102,7 +102,7 @@ describe("FirebaseResourceManager", () => {
           PROJECT_NAME,
           PARENT_RESOURCE
         )
-      ).to.deep.equal({ projectId: PROJECT_ID, projectNumber: PROJECT_NUMBER });
+      ).to.deep.equal({ projectId: PROJECT_ID });
     });
 
     it("should reject if Cloud project creation fails", async () => {
@@ -163,8 +163,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .resolves(expectedResolvedValues[1]);
-      mockOraWrapper.expects("start").exactly(2);
-      mockOraWrapper.expects("succeed").exactly(1);
+      mockOraWrapper.expects("start").exactly(1);
+      mockOraWrapper.expects("succeed").never();
       mockOraWrapper.expects("fail").exactly(1);
 
       let err;
@@ -206,8 +206,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .rejects(expectedError);
-      mockOraWrapper.expects("start").exactly(2);
-      mockOraWrapper.expects("succeed").exactly(1);
+      mockOraWrapper.expects("start").exactly(1);
+      mockOraWrapper.expects("succeed").never();
       mockOraWrapper.expects("fail").exactly(1);
 
       let err;
@@ -262,8 +262,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .resolves(expectedResolvedValues[1]);
-      mockOraWrapper.expects("start").exactly(3);
-      mockOraWrapper.expects("succeed").exactly(2);
+      mockOraWrapper.expects("start").exactly(2);
+      mockOraWrapper.expects("succeed").exactly(1);
       mockOraWrapper.expects("fail").exactly(1);
 
       let err;
@@ -330,8 +330,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .resolves(expectedResolvedValues[3]);
-      mockOraWrapper.expects("start").exactly(4);
-      mockOraWrapper.expects("succeed").exactly(3);
+      mockOraWrapper.expects("start").exactly(2);
+      mockOraWrapper.expects("succeed").exactly(1);
       mockOraWrapper.expects("fail").exactly(1);
 
       let err;
@@ -397,8 +397,8 @@ describe("FirebaseResourceManager", () => {
         })
         .once()
         .rejects(expectedError);
-      mockOraWrapper.expects("start").exactly(4);
-      mockOraWrapper.expects("succeed").exactly(3);
+      mockOraWrapper.expects("start").exactly(2);
+      mockOraWrapper.expects("succeed").exactly(1);
       mockOraWrapper.expects("fail").exactly(1);
 
       let err;

@@ -25,39 +25,33 @@ export class FirebaseResourceManager {
     projectId: string,
     projectDisplayName: string,
     parentResource?: ParentResource
-  ): Promise<{ projectNumber: string; projectId: string }> {
-    const cloudProjectCreationOperation = await this.createCloudProject(
-      projectId,
-      projectDisplayName,
-      parentResource
-    );
-    const { projectNumber } = await this.pollCloudProjectCreationOperation(
-      cloudProjectCreationOperation
-    );
-    const addFirebaseOperation = await this.addFirebaseToCloudProject(projectId);
-    const projectData = await this.pollAddFirebaseToCloudProjectOperation(addFirebaseOperation);
+  ): Promise<{ projectId: string }> {
+    await this.createCloudProject(projectId, projectDisplayName, parentResource);
+    const projectInfo = await this.addFirebaseToCloudProject(projectId);
 
     logger.info("");
     logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
     logger.info("");
     logger.info("Project information:");
-    logger.info(`   - Project ID: ${clc.bold(projectData.projectId)}`);
-    logger.info(`   - Project Name: ${clc.bold(projectData.displayName)}`);
+    logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
+    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
     logger.info("");
     logger.info("Firebase console is available at");
     logger.info(`https://console.firebase.google.com/project/${clc.bold(projectId)}/overview`);
-    return { projectNumber, projectId };
+    return { projectId };
   }
 
   /**
-   * @return {Promise} this function returns a promise that resolves to the resource name of the
-   *     create cloud project LRO, or rejects if an error is thrown
+   * Send an API request to create a new Google Cloud Platform project and poll the LRO to get the
+   * new project information.
+   * @return {Promise} this function returns a promise that resolves to the new cloud project
+   *     information
    */
   private async createCloudProject(
     projectId: string,
     projectDisplayName: string,
     parentResource?: ParentResource
-  ): Promise<string> {
+  ): Promise<any> {
     const spinner = new OraWrapper("Creating Google Cloud Platform project");
     spinner.start();
 
@@ -68,8 +62,11 @@ export class FirebaseResourceManager {
         timeout: 15 * ONE_SECOND_MILLIS,
         data: { projectId, name: projectDisplayName, parent: parentResource },
       });
+      const projectInfo = await this.pollCloudProjectCreationOperation(
+        response.body.name /* LRO resource name */
+      );
       spinner.succeed();
-      return response.body.name; /* Operation resource name */
+      return projectInfo;
     } catch (err) {
       spinner.fail();
       logger.debug(err.message);
@@ -91,31 +88,20 @@ export class FirebaseResourceManager {
       apiVersion: "v1",
       operationResourceName,
     };
-    const spinner = new OraWrapper("Waiting for project creation to be completed");
-    spinner.start();
-
-    try {
-      const { error, response } = await this.poller.poll(pollerOptions);
-      if (error) {
-        throw error;
-      }
-      spinner.succeed();
-      return response;
-    } catch (err) {
-      spinner.fail();
-      logger.debug(err.message);
-      throw new FirebaseError(
-        "Failed to create Google Cloud project. See firebase-debug.log for more info.",
-        { exit: 2, original: err }
-      );
+    const { error, response } = await this.poller.poll(pollerOptions);
+    if (error) {
+      throw error;
     }
+    return response;
   }
 
   /**
-   * @return {Promise} this function returns a promise that resolves to the resource name of the add
-   *     Firebase to cloud project LRO, or rejects if an error is thrown
+   * Send an API request to add Firebase to the new Google Cloud Platform project and poll the LRO
+   * to get the new Firebase project information.
+   * @return {Promise} this function returns a promise that resolves to the new firebase project
+   *    information
    */
-  private async addFirebaseToCloudProject(projectId: string): Promise<string> {
+  private async addFirebaseToCloudProject(projectId: string): Promise<any> {
     const spinner = new OraWrapper("Adding Firebase to Google Cloud project");
     spinner.start();
 
@@ -131,8 +117,11 @@ export class FirebaseResourceManager {
         timeout: 15 * ONE_SECOND_MILLIS,
         data: { timeZone, regionCode, locationId },
       });
+      const projectInfo = await this.pollAddFirebaseToCloudProjectOperation(
+        response.body.name /* LRO resource name */
+      );
       spinner.succeed();
-      return response.body.name; /* Operation resource name */
+      return projectInfo; /* Operation resource name */
     } catch (err) {
       spinner.fail();
       logger.debug(err.message);
@@ -156,23 +145,10 @@ export class FirebaseResourceManager {
       apiVersion: "v1beta1",
       operationResourceName,
     };
-    const spinner = new OraWrapper("Waiting for project creation to be completed");
-    spinner.start();
-
-    try {
-      const { error, response } = await this.poller.poll(pollerOptions);
-      if (error) {
-        throw error;
-      }
-      spinner.succeed();
-      return response;
-    } catch (err) {
-      spinner.fail();
-      logger.debug(err.message);
-      throw new FirebaseError(
-        "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info.",
-        { exit: 2, original: err }
-      );
+    const { error, response } = await this.poller.poll(pollerOptions);
+    if (error) {
+      throw error;
     }
+    return response;
   }
 }
