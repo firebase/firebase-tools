@@ -530,7 +530,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }
 
       const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-      new EmulatorLog("SYSTEM", `default-admin-app-used, config=${config}`, "").log();
+      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
 
       // TODO: Is there any possible harm in this?
       config.credential = makeFakeCredentials();
