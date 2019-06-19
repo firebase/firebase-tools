@@ -26,8 +26,6 @@ var SPEED_NOTE =
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
 
-var NULL_PATH_COMPONENT = "null";
-
 var ProfileReport = function(tmpFile, outStream, options) {
   this.tempFile = tmpFile;
   this.output = outStream;
@@ -63,15 +61,11 @@ ProfileReport.extractJSON = function(line, input) {
   }
 };
 
-ProfileReport.isNullPath = function(path) {
-  return Array.isArray(path) && path.length === 1 && path[0] === NULL_PATH_COMPONENT;
-};
-
 ProfileReport.pathString = function(path) {
-  if (path && !this.isNullPath(path)) {
+  if (path) {
     return "/" + path.join("/");
   }
-  return NULL_PATH_COMPONENT;
+  return "/";
 };
 
 ProfileReport.formatNumber = function(num) {
