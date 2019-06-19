@@ -52,13 +52,20 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-function makeFakeCredentials(): admin.credential.Credential {
+// TODO: This function should return a admin.credential.Credential
+// but that interface is not properly exported/
+function makeFakeCredentials(): any {
   return {
     getAccessToken: () => {
       return Promise.resolve({
         expires_in: 1000000,
         access_token: "owner",
       });
+    },
+
+    // TODO: Should this ever not return null?
+    getCertificate: () => {
+      return {};
     },
   };
 }
@@ -520,10 +527,12 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
       new EmulatorLog("SYSTEM", `default-admin-app-used, config=${config}`, "").log();
 
+      // TODO: Is there any possible harm in this?
+      config.credential = makeFakeCredentials();
+
       if (frb.ports.database) {
         config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-        config.credential = makeFakeCredentials();
-        new EmulatorLog("SYSTEM", `Overriding database URL to ${config.databaseURL}`, "").log();
+        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
       }
 
       app = adminModuleTarget.initializeApp({
@@ -703,27 +712,10 @@ async function ProcessBackground(
   let proto = frb.proto;
   const service = getFunctionService(trigger.definition);
 
-  // TODO: I don't think this legacy hack for Firestore will work anymore
-
-  // TODO: This is a workaround for
-  // https://github.com/firebase/firebase-tools/issues/1288
   if (service === "firestore.googleapis.com") {
-    if (EventUtils.isEvent(proto)) {
-      const legacyProto = EventUtils.convertToLegacy(proto);
-      new EmulatorLog(
-        "DEBUG",
-        "runtime-status",
-        `[firestore] converting to a v1beta1 event: old=${JSON.stringify(
-          proto
-        )}, new=${JSON.stringify(legacyProto)}`
-      ).log();
-      proto = legacyProto;
-    } else {
-      new EmulatorLog(
-        "DEBUG",
-        "runtime-status",
-        `[firestore] Got legacy proto ${JSON.stringify(proto)}`
-      ).log();
+    // TODO: this hack sucks and I need to figure out why it exists.
+    if (proto.context.resource && proto.context.resource.name) {
+      proto.context.resource = proto.context.resource.name;
     }
   }
 

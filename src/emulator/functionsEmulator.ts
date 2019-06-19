@@ -614,6 +614,17 @@ You can probably fix this by running "npm install ${
             reject();
             return;
           }
+
+          if (JSON.stringify(JSON.parse(body)) === "{}") {
+            EmulatorLogger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Trigger "${
+                definition.name
+              }" has been acknowledged by the Realtime Database emulator.`
+            );
+          }
+
           resolve();
         }
       );
