@@ -15,7 +15,6 @@ import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
-import { EventUtils } from "./events/types";
 import { URL } from "url";
 import * as _ from "lodash";
 
