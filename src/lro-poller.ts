@@ -17,7 +17,7 @@ export interface LroResult {
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
-const DEFAULT_MASTER_TIMEOUT_MILLIS = 15000;
+const DEFAULT_MASTER_TIMEOUT_MILLIS = 30000;
 
 export class LroPoller {
   /**
