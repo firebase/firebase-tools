@@ -52,8 +52,9 @@ function isExists(obj: any): boolean {
   return obj !== undefined;
 }
 
-// TODO: This function should return a admin.credential.Credential
-// but that interface is not properly exported/
+/**
+ * See admin.credential.Credential.
+ */
 function makeFakeCredentials(): any {
   return {
     getAccessToken: () => {
@@ -63,7 +64,7 @@ function makeFakeCredentials(): any {
       });
     },
 
-    // TODO: Should this ever not return null?
+    // TODO: Should we fill in the parts of the certificate we like?
     getCertificate: () => {
       return {};
     },
@@ -710,29 +711,30 @@ async function ProcessBackground(
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
   let proto = frb.proto;
-  const service = getFunctionService(trigger.definition);
+  new EmulatorLog(
+    "DEBUG",
+    "runtime-status",
+    `ProcessBackground: proto=${JSON.stringify(proto)}`
+  ).log();
 
-  if (service === "firestore.googleapis.com") {
-    // TODO: this hack sucks and I need to figure out why it exists.
-    if (proto.context.resource && proto.context.resource.name) {
-      proto.context.resource = proto.context.resource.name;
-    }
+  // All formats of the payload should carry a "data" property. The "context" property does
+  // not exist in all versions. Where it doesn't exist, context is everything besides data.
+  let data = proto.data;
+  delete proto.data;
+  let context = proto.context ? proto.context : proto;
+
+  // This is due to the fact that the Firestore emulator sends payloads in a newer
+  // format than production firestore.
+  if (context.resource && context.resource.name) {
+    new EmulatorLog(
+      "DEBUG",
+      "runtime-status",
+      `ProcessBackground: lifting resource.name from resource ${JSON.stringify(context.resource)}`
+    ).log();
+    context.resource = context.resource.name;
   }
 
-  if (service === "firebaseio.com") {
-    if (EventUtils.isLegacyEvent(proto)) {
-      console.log("\nPROTO BEFORE: ", proto);
-      proto = EventUtils.convertFromLegacy(proto, service);
-      console.log("\nPROTO AFTER`: ", proto);
-    }
-
-    // TODO: this hack sucks and I need to figure out why it exists.
-    if (proto.context.resource && proto.context.resource.name) {
-      proto.context.resource = proto.context.resource.name;
-    }
-  }
-
-  await RunBackground(proto, trigger.getRawFunction());
+  await RunBackground({ data, context }, trigger.getRawFunction());
 }
 
 /**
