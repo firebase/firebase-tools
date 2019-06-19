@@ -96,7 +96,7 @@ export class FirebaseResourceManager {
   }
 
   /**
-   * Send an API request to add Firebase to the new Google Cloud Platform project and poll the LRO
+   * Send an API request to add Firebase to the Google Cloud Platform project and poll the LRO
    * to get the new Firebase project information.
    * @return {Promise} this function returns a promise that resolves to the new firebase project
    *    information
