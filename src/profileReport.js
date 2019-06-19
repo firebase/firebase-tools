@@ -62,10 +62,7 @@ ProfileReport.extractJSON = function(line, input) {
 };
 
 ProfileReport.pathString = function(path) {
-  if (path) {
-    return "/" + path.join("/");
-  }
-  return "/";
+  return "/" + (path ? path.join("/") : "");
 };
 
 ProfileReport.formatNumber = function(num) {
@@ -182,12 +179,12 @@ ProfileReport.prototype.collectUnlisten = function(data, path) {
   this.collectSpeed(data, path, this.state.unlistenSpeed);
 };
 
-ProfileReport.prototype.collectConnect = function(data, path) {
-  this.collectSpeed(data, path, this.state.connectSpeed);
+ProfileReport.prototype.collectConnect = function(data) {
+  this.collectSpeed(data, "null", this.state.connectSpeed);
 };
 
-ProfileReport.prototype.collectDisconnect = function(data, path) {
-  this.collectSpeed(data, path, this.state.disconnectSpeed);
+ProfileReport.prototype.collectDisconnect = function(data) {
+  this.collectSpeed(data, "null", this.state.disconnectSpeed);
 };
 
 ProfileReport.prototype.collectWrite = function(data, path, bytes) {
@@ -204,10 +201,10 @@ ProfileReport.prototype.processOperation = function(data) {
   this.state.opCount++;
   switch (data.name) {
     case "concurrent-connect":
-      this.collectConnect(data, path);
+      this.collectConnect(data);
       break;
     case "concurrent-disconnect":
-      this.collectDisconnect(data, path);
+      this.collectDisconnect(data);
       break;
     case "realtime-read":
       this.collectRead(data, path, data.bytes);
