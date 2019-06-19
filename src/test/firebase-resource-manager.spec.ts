@@ -14,6 +14,8 @@ const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";
 const PROJECT_NAME = "The Best Project";
 const PARENT_RESOURCE: ParentResource = { id: "1111111111111", type: ParentResourceType.FOLDER };
+const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
+const OPERATION_RESOURCE_NAME_2 = "operations/cp.22222222222222222";
 
 // TODO(caot): Removed when "Deferred Analytics" and "Deferred Location" are launched
 const TIME_ZONE = "America/Los_Angeles";
@@ -26,7 +28,6 @@ describe("FirebaseResourceManager", () => {
     let mockApi: sinon.SinonMock;
     let mockPoller: sinon.SinonMock;
     let mockOraWrapper: sinon.SinonMock;
-    let expectedResolvedValues = [];
     const firebaseResourceManager = new FirebaseResourceManager();
 
     beforeEach(() => {
@@ -42,56 +43,17 @@ describe("FirebaseResourceManager", () => {
       mockPoller.verify();
       mockOraWrapper.verify();
       sandbox.restore();
-      expectedResolvedValues = [];
     });
 
     it("should resolve with project data if it succeeds", async () => {
-      expectedResolvedValues = [
-        { body: { name: "operations/cp.111111111111111" } },
-        { response: { projectNumber: PROJECT_NUMBER } },
-        { body: { name: "operations/cp.222222222222223" } },
-        { response: { projectId: PROJECT_ID, displayName: PROJECT_NAME } },
-      ];
-      mockApi
-        .expects("request")
-        .withArgs("POST", "/v1/projects", {
-          auth: true,
-          origin: api.resourceManagerOrigin,
-          timeout: 15000,
-          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
-        })
-        .once()
-        .resolves(expectedResolvedValues[0]);
-      mockApi
-        .expects("request")
-        .withArgs("POST", `/v1beta1/projects/${PROJECT_ID}:addFirebase`, {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 15000,
-          data: { timeZone: TIME_ZONE, regionCode: REGION_CODE, locationId: LOCATION_ID },
-        })
-        .once()
-        .resolves(expectedResolvedValues[2]);
-      mockPoller
-        .expects("poll")
-        .withArgs({
-          pollerName: "Project Creation Poller",
-          apiOrigin: api.resourceManagerOrigin,
-          apiVersion: "v1",
-          operationResourceName: expectedResolvedValues[0].body!.name,
-        })
-        .once()
-        .resolves(expectedResolvedValues[1]);
-      mockPoller
-        .expects("poll")
-        .withArgs({
-          pollerName: "Add Firebase Poller",
-          apiOrigin: api.firebaseApiOrigin,
-          apiVersion: "v1beta1",
-          operationResourceName: expectedResolvedValues[2].body!.name,
-        })
-        .once()
-        .resolves(expectedResolvedValues[3]);
+      _mockCreateCloudProjectApi().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      _mockCreateCloudProjectPoll(OPERATION_RESOURCE_NAME_1).resolves({
+        response: { projectNumber: PROJECT_NUMBER },
+      });
+      _mockAddFirebaseApi().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } });
+      _mockCreateCloudProjectPoll(OPERATION_RESOURCE_NAME_2).resolves({
+        response: { projectId: PROJECT_ID, displayName: PROJECT_NAME },
+      });
       mockOraWrapper.expects("start").exactly(2);
       mockOraWrapper.expects("succeed").exactly(2);
       mockOraWrapper.expects("fail").never();
@@ -107,16 +69,7 @@ describe("FirebaseResourceManager", () => {
 
     it("should reject if Cloud project creation fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      mockApi
-        .expects("request")
-        .withArgs("POST", "/v1/projects", {
-          auth: true,
-          origin: api.resourceManagerOrigin,
-          timeout: 15000,
-          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
-        })
-        .once()
-        .rejects(expectedError);
+      _mockCreateCloudProjectApi().rejects(expectedError);
       mockOraWrapper.expects("start").exactly(1);
       mockOraWrapper.expects("succeed").never();
       mockOraWrapper.expects("fail").exactly(1);
@@ -143,6 +96,14 @@ describe("FirebaseResourceManager", () => {
         { body: { name: "operations/cp.111111111111111" } },
         { error: expectedError },
       ];
+      _mockCreateCloudProjectApi().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      _mockCreateCloudProjectPoll(OPERATION_RESOURCE_NAME_1).resolves({
+        response: { projectNumber: PROJECT_NUMBER },
+      });
+      _mockAddFirebaseApi().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } });
+      _mockCreateCloudProjectPoll(OPERATION_RESOURCE_NAME_2).resolves({
+        response: { projectId: PROJECT_ID, displayName: PROJECT_NAME },
+      });
       mockApi
         .expects("request")
         .withArgs("POST", "/v1/projects", {
@@ -416,5 +377,53 @@ describe("FirebaseResourceManager", () => {
       );
       expect(err.original).to.equal(expectedError);
     });
+
+    function _mockCreateCloudProjectApi(): sinon.SinonExpectation {
+      return mockApi
+        .expects("request")
+        .withArgs("POST", "/v1/projects", {
+          auth: true,
+          origin: api.resourceManagerOrigin,
+          timeout: 15000,
+          data: { projectId: PROJECT_ID, name: PROJECT_NAME, parent: PARENT_RESOURCE },
+        })
+        .once();
+    }
+
+    function _mockAddFirebaseApi(): sinon.SinonExpectation {
+      return mockApi
+        .expects("request")
+        .withArgs("POST", `/v1beta1/projects/${PROJECT_ID}:addFirebase`, {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: { timeZone: TIME_ZONE, regionCode: REGION_CODE, locationId: LOCATION_ID },
+        })
+        .once();
+    }
+
+    function _mockCreateCloudProjectPoll(operationResourceName: string): sinon.SinonExpectation {
+      return mockPoller
+        .expects("poll")
+        .withArgs({
+          pollerName: "Project Creation Poller",
+          apiOrigin: api.resourceManagerOrigin,
+          apiVersion: "v1",
+          operationResourceName,
+        })
+        .once();
+    }
+
+    function _mockAddFirebasePoll(operationResourceName: string): sinon.SinonExpectation {
+      return mockPoller
+        .expects("poll")
+        .withArgs({
+          pollerName: "Add Firebase Poller",
+          apiOrigin: api.firebaseApiOrigin,
+          apiVersion: "v1beta1",
+          operationResourceName,
+        })
+        .once();
+    }
   });
 });
