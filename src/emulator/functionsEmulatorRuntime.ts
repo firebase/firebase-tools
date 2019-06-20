@@ -587,9 +587,7 @@ function ProtectEnvironmentalVariables(): void {
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
-  const projectId = frb.projectId;
-
-  process.env.GCLOUD_PROJECT = projectId;
+  process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
@@ -597,7 +595,7 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.FIREBASE_CONFIG = JSON.stringify({
     databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
-    projectId: projectId || process.env.GCLOUD_PROJECT,
+    projectId: process.env.GCLOUD_PROJECT,
   });
 }
 
