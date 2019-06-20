@@ -256,14 +256,9 @@ export abstract class Throttler<T, R> {
   private async executeTask(cursorIndex: number): Promise<any> {
     const taskData = this.taskDataMap.get(cursorIndex)!;
     const t0 = Date.now();
+    let result;
     try {
-      const result = await this.handler(taskData.task);
-      const dt = Date.now() - t0;
-      this.min = Math.min(dt, this.min);
-      this.max = Math.max(dt, this.max);
-      this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
-
-      return result;
+      result = await this.handler(taskData.task);
     } catch (err) {
       if (taskData.retryCount === this.retries) {
         throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
@@ -277,6 +272,16 @@ export abstract class Throttler<T, R> {
       logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
       return this.executeTask(cursorIndex);
     }
+
+    if (taskData.isTimedOut) {
+      throw new TimeoutError(this.taskName(cursorIndex), taskData.timeoutMillis!);
+    }
+    const dt = Date.now() - t0;
+    this.min = Math.min(dt, this.min);
+    this.max = Math.max(dt, this.max);
+    this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
+
+    return result;
   }
 
   private onTaskFulfilled(result: any, cursorIndex: number): void {
