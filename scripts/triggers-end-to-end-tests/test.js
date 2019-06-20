@@ -1,27 +1,27 @@
 #!/usr/bin/env node
 
-var admin = require("firebase-admin");
-var fs = require("fs");
+const admin = require("firebase-admin");
+const fs = require("fs");
 
-var Firestore = require("@google-cloud/firestore");
-var grpc = require("@grpc/grpc-js");
+const Firestore = require("@google-cloud/firestore");
+const grpc = require("@grpc/grpc-js");
 
-var path = require("path");
-var request = require("request");
-var subprocess = require("child_process");
+const path = require("path");
+const request = require("request");
+const subprocess = require("child_process");
 
-var PROJECT_ROOT = path.dirname(path.dirname(path.dirname(__filename)));
-var FIREBASE_PROJECT = "fir-tools-testing";
-var FIREBASE_PROJECT_ZONE = "us-central1";
+const PROJECT_ROOT = path.dirname(path.dirname(path.dirname(__filename)));
+const FIREBASE_PROJECT = "fir-tools-testing";
+const FIREBASE_PROJECT_ZONE = "us-central1";
 
-var RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
-var FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
+const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
+const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 
-var EMULATORS_STARTUP_DELAY_MS = 7000;
-var EMULATORS_WRITE_DELAY_MS = 5000;
+const EMULATORS_STARTUP_DELAY_MS = 7000;
+const EMULATORS_WRITE_DELAY_MS = 5000;
 
-var FIRESTORE_COMPLETION_MARKER = "test/done_from_firestore";
-var DATABASE_COMPLETION_MARKER = "test/done_from_database";
+const FIRESTORE_COMPLETION_MARKER = "test/done_from_firestore";
+const DATABASE_COMPLETION_MARKER = "test/done_from_database";
 
 function TriggerEndToEndTest(config)
 {
