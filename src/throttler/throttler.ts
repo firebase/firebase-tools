@@ -155,18 +155,25 @@ export abstract class Throttler<T, R> {
     if (!taskData) {
       throw new Error(`taskData.get(${cursorIndex}) does not exist`);
     }
-    const promises = [this.executeTask(taskData, cursorIndex)];
+    const promises = [this.executeTask(cursorIndex)];
     if (taskData.timeoutMillis) {
-      promises.push(this.initializeTimeout(taskData, cursorIndex));
+      promises.push(this.initializeTimeout(cursorIndex));
     }
 
     let result;
     try {
       result = await Promise.race(promises);
     } catch (err) {
-      this.onTaskFailed(err, taskData, cursorIndex);
+      this.errored++;
+      this.complete++;
+      this.active--;
+      this.onTaskFailed(err, cursorIndex);
+      return;
     }
-    this.onTaskFulfilled(result, taskData, cursorIndex);
+    this.success++;
+    this.complete++;
+    this.active--;
+    this.onTaskFulfilled(result, cursorIndex);
   }
 
   stats(): ThrottlerStats {
@@ -233,7 +240,8 @@ export abstract class Throttler<T, R> {
     });
   }
 
-  private initializeTimeout(taskData: TaskData<T, R>, cursorIndex: number): Promise<void> {
+  private initializeTimeout(cursorIndex: number): Promise<void> {
+    const taskData = this.taskDataMap.get(cursorIndex)!;
     const timeoutMillis = taskData.timeoutMillis!;
     const timeoutPromise = new Promise<void>((_, reject) => {
       taskData.timeoutId = setTimeout(() => {
@@ -245,7 +253,8 @@ export abstract class Throttler<T, R> {
     return timeoutPromise;
   }
 
-  private async executeTask(taskData: TaskData<T, R>, cursorIndex: number): Promise<any> {
+  private async executeTask(cursorIndex: number): Promise<any> {
+    const taskData = this.taskDataMap.get(cursorIndex)!;
     const t0 = Date.now();
     try {
       const result = await this.handler(taskData.task);
@@ -254,9 +263,6 @@ export abstract class Throttler<T, R> {
       this.max = Math.max(dt, this.max);
       this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
 
-      this.success++;
-      this.complete++;
-      this.active--;
       return result;
     } catch (err) {
       if (taskData.retryCount === this.retries) {
@@ -269,33 +275,32 @@ export abstract class Throttler<T, R> {
       this.retried++;
       taskData.retryCount++;
       logger.debug(`[${this.name}] Retrying task`, this.taskName(cursorIndex));
-      return this.executeTask(taskData, cursorIndex);
+      return this.executeTask(cursorIndex);
     }
   }
 
-  private onTaskFulfilled(result: any, taskData: TaskData<T, R>, cursorIndex: number): void {
+  private onTaskFulfilled(result: any, cursorIndex: number): void {
+    const taskData = this.taskDataMap.get(cursorIndex)!;
     if (taskData.wait) {
       taskData.wait.resolve(result);
     }
-    this.cleanupTask(taskData, cursorIndex);
+    this.cleanupTask(cursorIndex);
     this.process();
   }
 
-  private onTaskFailed(error: TaskError, taskData: TaskData<T, R>, cursorIndex: number): void {
-    this.errored++;
-    this.complete++;
-    this.active--;
-
+  private onTaskFailed(error: TaskError, cursorIndex: number): void {
+    const taskData = this.taskDataMap.get(cursorIndex)!;
     logger.debug(error);
 
     if (taskData.wait) {
       taskData.wait.reject(error);
     }
-    this.cleanupTask(taskData, cursorIndex);
+    this.cleanupTask(cursorIndex);
     this.finish(error);
   }
 
-  private cleanupTask({ timeoutId }: TaskData<T, R>, cursorIndex: number): void {
+  private cleanupTask(cursorIndex: number): void {
+    const { timeoutId } = this.taskDataMap.get(cursorIndex)!;
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
