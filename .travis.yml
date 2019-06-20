@@ -17,7 +17,7 @@ jobs:
       if: repo == head_repo OR type == push
       node_js: "8"
       before_script: skip
-      script: ./scripts/triggers-end-to-end-tests/test.js
+      script: ./scripts/test-triggers-end-to-end.sh
       after_script: skip
 cache:
   directories:
