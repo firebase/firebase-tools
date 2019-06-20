@@ -1,4 +1,0 @@
-* Fixes bug where `firebase serve --only functions` dropped the host argument.
-* Fixes bug where `grpc-js` connections used the wrong credentials.
-* Fixes bug where `firebase open` would return an error.
-* Sets version of `inquirer` package to prevent issues in `firebase init`.
