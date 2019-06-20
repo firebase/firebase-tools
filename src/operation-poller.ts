@@ -14,14 +14,22 @@ export interface OperationPollerOptions {
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
 const DEFAULT_MASTER_TIMEOUT_MILLIS = 30000;
 
-export class OperationPoller {
+interface OperationResult<T> {
+  response?: T;
+  error?: {
+    message: string;
+    code: number;
+  };
+}
+
+export class OperationPoller<T> {
   /**
    * Returns a promise that resolves when the operation is completed with a successful response.
    * Rejects the promise if the masterTimeout runs out before the operation is "done", or when it is
    * "done" with an error response, or when the api request rejects with an unrecoverable error.
    */
-  async poll(options: OperationPollerOptions): Promise<any> {
-    const queue: Queue<() => Promise<any>, any> = new Queue({
+  async poll(options: OperationPollerOptions): Promise<T> {
+    const queue: Queue<() => Promise<OperationResult<T>>, OperationResult<T>> = new Queue({
       name: options.pollerName || "LRO Poller",
       concurrency: 1,
       retries: Number.MAX_SAFE_INTEGER,
@@ -37,10 +45,10 @@ export class OperationPoller {
         ? error
         : new FirebaseError(error.message, { status: error.code });
     }
-    return response;
+    return response!;
   }
 
-  private getPollingTask(options: OperationPollerOptions): () => Promise<any> {
+  private getPollingTask(options: OperationPollerOptions): () => Promise<OperationResult<T>> {
     const { apiOrigin, apiVersion, operationResourceName } = options;
     const requestOptions = { auth: true, origin: apiOrigin };
     return async () => {
@@ -64,11 +72,11 @@ export class OperationPoller {
         throw new Error("Polling incomplete, should trigger retry with backoff");
       }
 
-      return apiResponse.body;
+      return apiResponse.body as OperationResult<T>;
     };
   }
 }
 
-export function pollOperation(options: OperationPollerOptions): Promise<any> {
-  return new OperationPoller().poll(options);
+export function pollOperation<T>(options: OperationPollerOptions): Promise<T> {
+  return new OperationPoller<T>().poll(options);
 }

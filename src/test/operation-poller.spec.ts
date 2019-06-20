@@ -18,7 +18,7 @@ describe("OperationPoller", () => {
     let sandbox: sinon.SinonSandbox;
     let stubApiRequest: sinon.SinonStub;
     let pollerOptions: OperationPollerOptions;
-    const poller = new OperationPoller();
+    const poller = new OperationPoller<string>();
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
