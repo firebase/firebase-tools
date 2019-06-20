@@ -870,8 +870,12 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  main().catch((err) => {
-    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-    process.exit();
-  });
+  main()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      process.exit(1);
+    });
 }

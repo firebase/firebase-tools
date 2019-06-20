@@ -1,0 +1,1 @@
+* Fixes issue where the functions runtime would not always exit on success (#1346).
