@@ -2,9 +2,17 @@
 
 set -xe
 
-cd ./scripts/triggers-end-to-end-tests
+FIREBASE_CLI="./lib/bin/firebase.js"
 
-firebase setup:emulators:firestore
-firebase setup:emulators:database
+if ! [ -x $FIREBASE_CLI ];
+then
+  echo "marking $FIREBASE_CLI user/group executable"
+  chmod ug+x $FIREBASE_CLI
+fi;
+
+$FIREBASE_CLI setup:emulators:firestore
+$FIREBASE_CLI setup:emulators:database
+
+cd ./scripts/triggers-end-to-end-tests
 
 npm install && npm test
