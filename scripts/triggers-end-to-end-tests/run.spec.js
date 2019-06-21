@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const admin = require("firebase-admin");
+const async = require("async");
 const chai = require('chai');
 const expect = chai.expect;
 const assert = chai.assert;
@@ -29,6 +30,7 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
+const TEST_SETUP_TIMEOUT = 20000;
 const EMULATORS_STARTUP_DELAY_MS = 7000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 2000;
@@ -173,87 +175,87 @@ describe("database and firestore emulator function triggers", function () {
   var test;
 
   before(function (done) {
-    readConfig(function (err, config) {
-      if (err) {
-        done(new Error("error reading firebase.json: " + err));
-        return;
-      }
-      test = new TriggerEndToEndTest(config);
-      done();
-    });
-  });
-
-  before(function (done) {
-    this.timeout(EMULATORS_STARTUP_DELAY_MS * 2);
-    test.startEmulators();
-    /*
-     * Give some time for the emulator subprocesses to start up.
-     */
-    setTimeout(done, EMULATORS_STARTUP_DELAY_MS);
-  });
-
-  before(function (done) {
-    test.firestore_client = new Firestore({
-      port: test.firestore_emulator_port,
-      projectId: FIREBASE_PROJECT,
-      servicePath: 'localhost',
-      ssl: false
-    });
-
-    admin.initializeApp({
-      projectId: FIREBASE_PROJECT,
-      databaseURL: "http://localhost:" + test.rtdb_emulator_port + "?ns=" + FIREBASE_PROJECT,
-      credential: {
-        getAccessToken: () => {
-          return Promise.resolve({
-            expires_in: 1000000,
-            access_token: "owner",
+    this.timeout(TEST_SETUP_TIMEOUT);
+    async.series([
+      function (done) {
+        readConfig(function (err, config) {
+          if (err) {
+            done(new Error("error reading firebase.json: " + err));
+            return;
+          }
+          test = new TriggerEndToEndTest(config);
+          done();
+        });
+      },
+      function (done) {
+          test.startEmulators();
+          /*
+           * Give some time for the emulator subprocesses to start up.
+           */
+          setTimeout(done, EMULATORS_STARTUP_DELAY_MS);
+      },
+      function (done) {
+          test.firestore_client = new Firestore({
+            port: test.firestore_emulator_port,
+            projectId: FIREBASE_PROJECT,
+            servicePath: 'localhost',
+            ssl: false
           });
-        },
-        getCertificate: () => {
-          return {};
-        }
+
+          admin.initializeApp({
+            projectId: FIREBASE_PROJECT,
+            databaseURL: "http://localhost:" + test.rtdb_emulator_port + "?ns=" + FIREBASE_PROJECT,
+            credential: {
+              getAccessToken: () => {
+                return Promise.resolve({
+                  expires_in: 1000000,
+                  access_token: "owner",
+                });
+              },
+              getCertificate: () => {
+                return {};
+              }
+            }
+          });
+
+          test.database_client = admin.database();
+          done();
+      },
+      function (done) {
+        const firestore = test.firestore_client;
+        const database = test.database_client;
+
+        /*
+         * Install completion marker handlers and have them update state
+         * in the global test fixture on success. We will later check that
+         * state to determine whether the test passed or failed.
+         */
+        database.ref(FIRESTORE_COMPLETION_MARKER).on("value", function (snap) {
+          test.rtdb_from_firestore = true;
+        }, function (err) {
+          assert.fail(err, "Error reading " + FIRESTORE_COMPLETION_MARKER + " from database emulator.");
+        });
+
+        database.ref(DATABASE_COMPLETION_MARKER).on("value", function (snap) {
+          test.rtdb_from_rtdb = true;
+        }, function (err) {
+          assert.fail(err, "Error reading " + DATABASE_COMPLETION_MARKER + " from database emulator.");
+        });
+
+        firestore.doc(FIRESTORE_COMPLETION_MARKER).onSnapshot(function (snap) {
+          test.firestore_from_firestore = true;
+        }, function (err) {
+          assert.fail(err, "Error reading " + FIRESTORE_COMPLETION_MARKER + " from firestore emulator.");
+        });
+
+        firestore.doc(DATABASE_COMPLETION_MARKER).onSnapshot(function (snap) {
+          test.firestore_from_rtdb = true;
+        }, function (err) {
+          assert.fail(err, "Error reading " + DATABASE_COMPLETION_MARKER + " from firestore emulator.");
+        });
+        done();
       }
-    });
-
-    test.database_client = admin.database();
-    done();
-  });
-
-  before(function (done) {
-    const firestore = test.firestore_client;
-    const database = test.database_client;
-
-    /*
-     * Install completion marker handlers and have them update state
-     * in the global test fixture on success. We will later check that
-     * state to determine whether the test passed or failed.
-     */
-    database.ref(FIRESTORE_COMPLETION_MARKER).on("value", function (snap) {
-      test.rtdb_from_firestore = true;
-    }, function (err) {
-      assert.fail(err, "Error reading " + FIRESTORE_COMPLETION_MARKER + " from database emulator.");
-    });
-
-    database.ref(DATABASE_COMPLETION_MARKER).on("value", function (snap) {
-      test.rtdb_from_rtdb = true;
-    }, function (err) {
-      assert.fail(err, "Error reading " + DATABASE_COMPLETION_MARKER + " from database emulator.");
-    });
-
-    firestore.doc(FIRESTORE_COMPLETION_MARKER).onSnapshot(function (snap) {
-      test.firestore_from_firestore = true;
-    }, function (err) {
-      assert.fail(err, "Error reading " + FIRESTORE_COMPLETION_MARKER + " from firestore emulator.");
-    });
-
-    firestore.doc(DATABASE_COMPLETION_MARKER).onSnapshot(function (snap) {
-      test.firestore_from_rtdb = true;
-    }, function (err) {
-      assert.fail(err, "Error reading " + DATABASE_COMPLETION_MARKER + " from firestore emulator.");
-    });
-
-    done();
+    ], done);
   });
 
   it("should write to the database emulator", function (done) {
