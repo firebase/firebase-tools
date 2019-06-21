@@ -250,12 +250,8 @@ export abstract class Throttler<T, R> {
     try {
       const result = await this.handler(taskData.task);
       const dt = Date.now() - t0;
-      if (dt < this.min) {
-        this.min = dt;
-      }
-      if (dt > this.max) {
-        this.max = dt;
-      }
+      this.min = Math.min(dt, this.min);
+      this.max = Math.max(dt, this.max);
       this.avg = (this.avg * this.complete + dt) / (this.complete + 1);
 
       this.success++;
