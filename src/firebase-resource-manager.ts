@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import * as api from "./api";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
-import { LroPoller, LroPollerOptions } from "./lro-poller";
+import { OperationPollerOptions, pollOperation } from "./operation-poller";
 import { OraWrapper } from "./oraWrapper";
 
 const ONE_SECOND_MILLIS = 1000;
@@ -18,9 +18,7 @@ export interface ParentResource {
   type: ParentResourceType;
 }
 
-export class FirebaseResourceManager {
-  private poller: LroPoller = new LroPoller();
-
+class FirebaseResourceManager {
   async createFirebaseProject(
     projectId: string,
     projectDisplayName: string,
@@ -82,17 +80,13 @@ export class FirebaseResourceManager {
    *     information
    */
   private async pollCloudProjectCreationOperation(operationResourceName: string): Promise<any> {
-    const pollerOptions: LroPollerOptions = {
+    const pollerOptions: OperationPollerOptions = {
       pollerName: "Project Creation Poller",
       apiOrigin: api.resourceManagerOrigin,
       apiVersion: "v1",
       operationResourceName,
     };
-    const { error, response } = await this.poller.poll(pollerOptions);
-    if (error) {
-      throw error;
-    }
-    return response;
+    return await pollOperation<any>(pollerOptions);
   }
 
   /**
@@ -139,16 +133,24 @@ export class FirebaseResourceManager {
   private async pollAddFirebaseToCloudProjectOperation(
     operationResourceName: string
   ): Promise<any> {
-    const pollerOptions: LroPollerOptions = {
+    const pollerOptions: OperationPollerOptions = {
       pollerName: "Add Firebase Poller",
       apiOrigin: api.firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName,
     };
-    const { error, response } = await this.poller.poll(pollerOptions);
-    if (error) {
-      throw error;
-    }
-    return response;
+    return await pollOperation<any>(pollerOptions);
   }
+}
+
+export function createFirebaseProject(
+  projectId: string,
+  projectDisplayName: string,
+  parentResource?: ParentResource
+): Promise<{ projectId: string }> {
+  return new FirebaseResourceManager().createFirebaseProject(
+    projectId,
+    projectDisplayName,
+    parentResource
+  );
 }
