@@ -2,4 +2,4 @@
 
 cd ./scripts/triggers-end-to-end-tests
 
-npm test
+npm install && npm test
