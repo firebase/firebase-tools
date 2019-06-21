@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import * as api from "../api";
 import * as FirebaseError from "../error";
-import { LroPoller, LroPollerOptions } from "../lro-poller";
+import { OperationPollerOptions, pollOperation } from "../operation-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
 import { mockAuth } from "./helpers";
 
@@ -13,12 +13,11 @@ const LRO_RESOURCE_NAME = "operations/cp.3322442424242444";
 const FULL_RESOURCE_NAME = `/${VERSION}/${LRO_RESOURCE_NAME}`;
 const API_OPTIONS = { auth: true, origin: TEST_ORIGIN };
 
-describe("LroPoller", () => {
+describe("OperationPoller", () => {
   describe("poll", () => {
     let sandbox: sinon.SinonSandbox;
     let stubApiRequest: sinon.SinonStub;
-    let pollerOptions: LroPollerOptions;
-    const poller = new LroPoller();
+    let pollerOptions: OperationPollerOptions;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -46,7 +45,7 @@ describe("LroPoller", () => {
         .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal({ response: "completed" });
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(1);
     });
 
@@ -62,9 +61,14 @@ describe("LroPoller", () => {
         .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ body: failedResponse });
 
-      const response = await poller.poll(pollerOptions);
-      expect(response.error.message).to.equal("failed");
-      expect(response.error.status).to.equal(7);
+      let err;
+      try {
+        await pollOperation<string>(pollerOptions);
+      } catch (e) {
+        err = e;
+      }
+      expect(err.message).to.equal("failed");
+      expect(err.status).to.equal(7);
       expect(stubApiRequest.callCount).to.equal(1);
     });
 
@@ -73,8 +77,13 @@ describe("LroPoller", () => {
 
       stubApiRequest.withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS).rejects(unrecoverableError);
 
-      const response = await poller.poll(pollerOptions);
-      expect(response.error).to.equal(unrecoverableError);
+      let err;
+      try {
+        await pollOperation<string>(pollerOptions);
+      } catch (e) {
+        err = e;
+      }
+      expect(err).to.equal(unrecoverableError);
       expect(stubApiRequest.callCount).to.equal(1);
     });
 
@@ -95,7 +104,7 @@ describe("LroPoller", () => {
         .onThirdCall()
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal({ response: "completed" });
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(3);
     });
 
@@ -110,7 +119,7 @@ describe("LroPoller", () => {
         .onThirdCall()
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal({ response: "completed" });
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(3);
     });
 
@@ -120,7 +129,7 @@ describe("LroPoller", () => {
 
       let error;
       try {
-        await poller.poll(pollerOptions);
+        await pollOperation<string>(pollerOptions);
       } catch (err) {
         error = err;
       }

@@ -2,7 +2,7 @@ import { Queue } from "./throttler/queue";
 import * as api from "./api";
 import * as FirebaseError from "./error";
 
-export interface LroPollerOptions {
+export interface OperationPollerOptions {
   pollerName?: string;
   apiOrigin: string;
   apiVersion: "v1" | "v1beta1";
@@ -11,22 +11,25 @@ export interface LroPollerOptions {
   masterTimeout?: number;
 }
 
-export interface LroResult {
-  error?: FirebaseError;
-  response?: any;
-}
-
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
 const DEFAULT_MASTER_TIMEOUT_MILLIS = 30000;
 
-export class LroPoller {
+interface OperationResult<T> {
+  response?: T;
+  error?: {
+    message: string;
+    code: number;
+  };
+}
+
+export class OperationPoller<T> {
   /**
-   * Returns a promise that resolves when the operation is "done", either successfully or with an
-   * error response. Rejects the promise if the masterTimeout runs out before the operation is
-   * "done".
+   * Returns a promise that resolves when the operation is completed with a successful response.
+   * Rejects the promise if the masterTimeout runs out before the operation is "done", or when it is
+   * "done" with an error response, or when the api request rejects with an unrecoverable error.
    */
-  async poll(options: LroPollerOptions): Promise<LroResult> {
-    const queue: Queue<() => Promise<LroResult>, LroResult> = new Queue({
+  async poll(options: OperationPollerOptions): Promise<T> {
+    const queue: Queue<() => Promise<OperationResult<T>>, OperationResult<T>> = new Queue({
       name: options.pollerName || "LRO Poller",
       concurrency: 1,
       retries: Number.MAX_SAFE_INTEGER,
@@ -35,13 +38,17 @@ export class LroPoller {
 
     const masterTimeout = options.masterTimeout || DEFAULT_MASTER_TIMEOUT_MILLIS;
 
-    const lroResult = await queue.run(this.getPollingTask(options), masterTimeout);
+    const { response, error } = await queue.run(this.getPollingTask(options), masterTimeout);
     queue.close();
-
-    return lroResult;
+    if (error) {
+      throw error instanceof FirebaseError
+        ? error
+        : new FirebaseError(error.message, { status: error.code });
+    }
+    return response!;
   }
 
-  private getPollingTask(options: LroPollerOptions): () => Promise<LroResult> {
+  private getPollingTask(options: OperationPollerOptions): () => Promise<OperationResult<T>> {
     const { apiOrigin, apiVersion, operationResourceName } = options;
     const requestOptions = { auth: true, origin: apiOrigin };
     return async () => {
@@ -65,14 +72,11 @@ export class LroPoller {
         throw new Error("Polling incomplete, should trigger retry with backoff");
       }
 
-      const result: LroResult = {};
-      const { error, response } = apiResponse.body;
-      if (error) {
-        result.error = new FirebaseError(error.message, { status: error.code });
-      } else {
-        result.response = response;
-      }
-      return result;
+      return apiResponse.body as OperationResult<T>;
     };
   }
+}
+
+export function pollOperation<T>(options: OperationPollerOptions): Promise<T> {
+  return new OperationPoller<T>().poll(options);
 }
