@@ -29,7 +29,7 @@ describe("FirebaseResourceManager", () => {
     let mockOraWrapper: sinon.SinonMock;
     let apiRequestStub: sinon.SinonStub;
     let pollOperationStub: sinon.SinonStub;
-    let calledStubs: sinon.SinonStub[];
+    let expectedCalledStubs: sinon.SinonStub[];
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -37,17 +37,17 @@ describe("FirebaseResourceManager", () => {
       mockOraWrapper = sandbox.mock(OraWrapper.prototype);
       apiRequestStub = sandbox.stub(api, "request");
       pollOperationStub = sandbox.stub(pollUtils, "pollOperation");
-      calledStubs = [];
+      expectedCalledStubs = [];
     });
 
     afterEach(() => {
-      calledStubs.forEach((stub) => expect(stub.calledOnce).to.be.true);
       mockOraWrapper.verify();
+      expectedCalledStubs.forEach((stub) => expect(stub.calledOnce).to.be.true);
       sandbox.restore();
     });
 
     it("should resolve with project data if it succeeds", async () => {
-      calledStubs.push(
+      expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
           response: { projectNumber: PROJECT_NUMBER },
@@ -68,7 +68,7 @@ describe("FirebaseResourceManager", () => {
 
     it("should reject if Cloud project creation fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      calledStubs.push(_createCloudProjectApiStub().rejects(expectedError));
+      expectedCalledStubs.push(_createCloudProjectApiStub().rejects(expectedError));
       mockOraWrapper.expects("start").exactly(1);
       mockOraWrapper.expects("succeed").never();
       mockOraWrapper.expects("fail").exactly(1);
@@ -79,7 +79,7 @@ describe("FirebaseResourceManager", () => {
       } catch (e) {
         err = e;
       }
-      expect(err.message).to.equals(
+      expect(err.message).to.equal(
         "Failed to create Google Cloud project. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
@@ -89,7 +89,7 @@ describe("FirebaseResourceManager", () => {
 
     it("should reject if Cloud project creation polling throws error", async () => {
       const expectedError = new Error("Entity already exists");
-      calledStubs.push(
+      expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).rejects(expectedError)
       );
@@ -103,7 +103,7 @@ describe("FirebaseResourceManager", () => {
       } catch (e) {
         err = e;
       }
-      expect(err.message).to.equals(
+      expect(err.message).to.equal(
         "Failed to create Google Cloud project. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
@@ -113,7 +113,7 @@ describe("FirebaseResourceManager", () => {
 
     it("should reject if add Firebase api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      calledStubs.push(
+      expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
           response: { projectNumber: PROJECT_NUMBER },
@@ -130,7 +130,7 @@ describe("FirebaseResourceManager", () => {
       } catch (e) {
         err = e;
       }
-      expect(err.message).to.equals(
+      expect(err.message).to.equal(
         "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
@@ -140,7 +140,7 @@ describe("FirebaseResourceManager", () => {
 
     it("should reject if polling add Firebase operation returns error response", async () => {
       const expectedError = new Error("Permission denied");
-      calledStubs.push(
+      expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
           response: { projectNumber: PROJECT_NUMBER },
@@ -158,7 +158,7 @@ describe("FirebaseResourceManager", () => {
       } catch (e) {
         err = e;
       }
-      expect(err.message).to.equals(
+      expect(err.message).to.equal(
         "Failed to add Firebase to Google Cloud Platform project. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
