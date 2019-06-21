@@ -47,7 +47,7 @@ class FirebaseResourceManager {
    */
   private async createCloudProject(
     projectId: string,
-    projectDisplayName: string,
+    projectDisplayName: string = "",
     parentResource?: ParentResource
   ): Promise<any> {
     const spinner = new OraWrapper("Creating Google Cloud Platform project");
