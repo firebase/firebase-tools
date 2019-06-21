@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import * as api from "../api";
 import * as FirebaseError from "../error";
-import { OperationPoller, OperationPollerOptions } from "../operation-poller";
+import { OperationPollerOptions, pollOperation } from "../operation-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
 import { mockAuth } from "./helpers";
 
@@ -18,7 +18,6 @@ describe("OperationPoller", () => {
     let sandbox: sinon.SinonSandbox;
     let stubApiRequest: sinon.SinonStub;
     let pollerOptions: OperationPollerOptions;
-    const poller = new OperationPoller<string>();
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -46,7 +45,7 @@ describe("OperationPoller", () => {
         .withArgs("GET", FULL_RESOURCE_NAME, API_OPTIONS)
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(1);
     });
 
@@ -64,7 +63,7 @@ describe("OperationPoller", () => {
 
       let err;
       try {
-        await poller.poll(pollerOptions);
+        await pollOperation<string>(pollerOptions);
       } catch (e) {
         err = e;
       }
@@ -80,7 +79,7 @@ describe("OperationPoller", () => {
 
       let err;
       try {
-        await poller.poll(pollerOptions);
+        await pollOperation<string>(pollerOptions);
       } catch (e) {
         err = e;
       }
@@ -105,7 +104,7 @@ describe("OperationPoller", () => {
         .onThirdCall()
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(3);
     });
 
@@ -120,7 +119,7 @@ describe("OperationPoller", () => {
         .onThirdCall()
         .resolves({ body: successfulResponse });
 
-      expect(await poller.poll(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
       expect(stubApiRequest.callCount).to.equal(3);
     });
 
@@ -130,7 +129,7 @@ describe("OperationPoller", () => {
 
       let error;
       try {
-        await poller.poll(pollerOptions);
+        await pollOperation<string>(pollerOptions);
       } catch (err) {
         error = err;
       }
