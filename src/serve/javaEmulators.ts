@@ -185,7 +185,7 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
       await downloadEmulator(targetName);
     } else {
       utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
-      return Promise.reject("emulator not found");
+      throw new FirebaseError("emulator not found");
     }
   }
 
