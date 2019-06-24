@@ -16,7 +16,7 @@ const subprocess = require("child_process");
 
 const PROJECT_ROOT = path.dirname(path.dirname(path.dirname(__filename)));
 
-const FIREBASE_PROJECT = "fir-tools-testing";
+const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT;
 const FIREBASE_PROJECT_ZONE = "us-central1";
 
 /*
@@ -175,6 +175,8 @@ describe("database and firestore emulator function triggers", function () {
   var test;
 
   before(function (done) {
+    expect(FIREBASE_PROJECT).to.not.be.an('undefined');
+    expect(FIREBASE_PROJECT).to.not.be.null;
     this.timeout(TEST_SETUP_TIMEOUT);
     async.series([
       function (done) {
