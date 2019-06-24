@@ -41,6 +41,10 @@ function FirestoreDelete(project, path, options) {
   this.isDocumentPath = segments.length % 2 === 0;
   this.isCollectionPath = !this.isDocumentPath;
 
+  // this.parent is the closest ancestor document to the location we're deleting.
+  // If we are deleting a document, this.parent is the path of that document.
+  // If we are deleting a collection, this.parent is the path of the document
+  // containing that collection (or the database root, if it is a root collection).
   this.parent = this.root;
   if (this.isCollectionPath) {
     segments.pop();
