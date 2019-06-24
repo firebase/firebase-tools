@@ -46,7 +46,8 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
       }
 
       const total = parseInt(response.headers["content-length"] || "0", 10);
-      bar = new ProgressBar("Progress: :bar (:percent)", { total, head: ">" });
+      const totalMb = Math.ceil(total / 1000000);
+      bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
     });
 
     req.on("data", (chunk) => {
