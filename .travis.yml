@@ -12,7 +12,6 @@ jobs:
       before_script: ./scripts/decrypt-app-credentials.sh
       script: ./scripts/test-hosting.sh
       after_script: skip
-  include:
     - stage: emulator triggers end to end test
       if: repo == head_repo OR type == push
       node_js: "8"
