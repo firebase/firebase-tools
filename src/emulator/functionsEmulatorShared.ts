@@ -35,6 +35,7 @@ export interface FunctionsRuntimeBundle {
   triggerId?: string;
   ports: {
     firestore?: number;
+    database?: number;
   };
   disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
