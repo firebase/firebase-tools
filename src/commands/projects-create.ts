@@ -45,20 +45,15 @@ module.exports = new Command("projects:create [projectId]")
       ]);
     }
     if (!options.projectId) {
-      const message = options.nonInteractive
-        ? "Cannot run projects:create without project ID specified in non-interactive mode"
-        : "Project ID cannot be empty";
-      throw new FirebaseError(message);
+      throw new FirebaseError("Project ID cannot be empty");
     }
 
-    projectId = options.projectId;
-    const { displayName, organization, folder } = options;
     let parentResource;
-    if (organization) {
-      parentResource = { type: ParentResourceType.ORGANIZATION, id: organization };
-    } else if (folder) {
-      parentResource = { type: ParentResourceType.FOLDER, id: folder };
+    if (options.organization) {
+      parentResource = { type: ParentResourceType.ORGANIZATION, id: options.organization };
+    } else if (options.folder) {
+      parentResource = { type: ParentResourceType.FOLDER, id: options.folder };
     }
 
-    return createFirebaseProject(projectId, displayName, parentResource);
+    return createFirebaseProject(options.projectId, options.displayName, parentResource);
   });
