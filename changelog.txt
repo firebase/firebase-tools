@@ -1,2 +1,3 @@
 * Fixes a bug where the functions emulator did not work with `firebase-functions` versions `3.x.x`.
 * Make the Functions emulator automatically point to the RTDB emulator when running.
+* Auto-download Firestore and RTDB emulators when using `emulators:start`.
