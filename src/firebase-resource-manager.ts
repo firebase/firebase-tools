@@ -59,9 +59,13 @@ async function createCloudProject(
       timeout: 15 * ONE_SECOND_MILLIS,
       data: { projectId, name: projectDisplayName, parent: parentResource },
     });
-    const projectInfo = await pollCloudProjectCreationOperation(
-      response.body.name /* LRO resource name */
-    );
+
+    const projectInfo = await pollOperation<any>({
+      pollerName: "Project Creation Poller",
+      apiOrigin: api.resourceManagerOrigin,
+      apiVersion: "v1",
+      operationResourceName: response.body.name /* LRO resource name */,
+    });
     spinner.succeed();
     return projectInfo;
   } catch (err) {
@@ -72,20 +76,6 @@ async function createCloudProject(
       { exit: 2, original: err }
     );
   }
-}
-
-/**
- * @return {Promise} this function returns a promise that resolves to the new cloud project
- *     information
- */
-async function pollCloudProjectCreationOperation(operationResourceName: string): Promise<any> {
-  const pollerOptions: OperationPollerOptions = {
-    pollerName: "Project Creation Poller",
-    apiOrigin: api.resourceManagerOrigin,
-    apiVersion: "v1",
-    operationResourceName,
-  };
-  return await pollOperation<any>(pollerOptions);
 }
 
 /**
@@ -110,11 +100,14 @@ async function addFirebaseToCloudProject(projectId: string): Promise<any> {
       timeout: 15 * ONE_SECOND_MILLIS,
       data: { timeZone, regionCode, locationId },
     });
-    const projectInfo = await pollAddFirebaseToCloudProjectOperation(
-      response.body.name /* LRO resource name */
-    );
+    const projectInfo = await pollOperation<any>({
+      pollerName: "Add Firebase Poller",
+      apiOrigin: api.firebaseApiOrigin,
+      apiVersion: "v1beta1",
+      operationResourceName: response.body.name /* LRO resource name */,
+    });
     spinner.succeed();
-    return projectInfo; /* Operation resource name */
+    return projectInfo;
   } catch (err) {
     spinner.fail();
     logger.debug(err.message);
@@ -123,18 +116,4 @@ async function addFirebaseToCloudProject(projectId: string): Promise<any> {
       { exit: 2, original: err }
     );
   }
-}
-
-/**
- * @return {Promise} this function returns a promise that resolves to the new firebase project
- *    information
- */
-async function pollAddFirebaseToCloudProjectOperation(operationResourceName: string): Promise<any> {
-  const pollerOptions: OperationPollerOptions = {
-    pollerName: "Add Firebase Poller",
-    apiOrigin: api.firebaseApiOrigin,
-    apiVersion: "v1beta1",
-    operationResourceName,
-  };
-  return await pollOperation<any>(pollerOptions);
 }
