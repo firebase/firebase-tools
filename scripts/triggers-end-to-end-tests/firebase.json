@@ -1,0 +1,18 @@
+{
+  "database": {},
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": {},
+  "emulators": {
+    "database": {
+      "port": 9000
+    },
+    "firestore": {
+      "port": 9001
+    },
+    "functions": {
+      "port": 9002
+    }
+  }
+}

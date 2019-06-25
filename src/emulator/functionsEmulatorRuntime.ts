@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { DeploymentOptions } from "firebase-functions";
+import { CloudFunction, DeploymentOptions } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -8,14 +8,12 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
-  getFunctionService,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
-import { EventUtils } from "./events/types";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -50,6 +48,42 @@ function isConstructor(obj: any): boolean {
 
 function isExists(obj: any): boolean {
   return obj !== undefined;
+}
+
+/**
+ * See admin.credential.Credential.
+ */
+function makeFakeCredentials(): any {
+  return {
+    getAccessToken: () => {
+      return Promise.resolve({
+        expires_in: 1000000,
+        access_token: "owner",
+      });
+    },
+
+    // TODO: Should we fill in the parts of the certificate we like?
+    getCertificate: () => {
+      return {};
+    },
+  };
+}
+
+interface PackageJSON {
+  dependencies: { [name: string]: any };
+  devDependencies: { [name: string]: any };
+}
+
+interface ModuleResolution {
+  declared: boolean;
+  installed: boolean;
+  version?: string;
+}
+
+interface ModuleVersion {
+  major: number;
+  minor: number;
+  patch: number;
 }
 
 /*
@@ -148,58 +182,104 @@ class Proxied<T> {
   }
 }
 
+async function resolveDeveloperNodeModule(
+  frb: FunctionsRuntimeBundle,
+  pkg: PackageJSON,
+  name: string
+): Promise<ModuleResolution> {
+  const dependencies = pkg.dependencies;
+  const devDependencies = pkg.devDependencies;
+  const isInPackageJSON = dependencies[name] || devDependencies[name];
+
+  // If there's no reference to the module in their package.json, prompt them to install it
+  if (!isInPackageJSON) {
+    return { declared: false, installed: false };
+  }
+
+  // Once we know it's in the package.json, make sure it's actually `npm install`ed
+  const modResolution = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
+
+  if (!modResolution) {
+    return { declared: true, installed: false };
+  }
+
+  const modPackageJSON = require(path.join(findModuleRoot(name, modResolution), "package.json"));
+
+  return {
+    declared: true,
+    installed: true,
+    version: modPackageJSON.version,
+  };
+}
+
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
-  let pkg;
-  try {
-    pkg = require(`${frb.cwd}/package.json`);
-  } catch (err) {
+  const pkg = requirePackageJson(frb);
+  if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
     return false;
   }
 
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 7 },
-    { name: "firebase-functions", isDev: false, minVersion: 2 },
+    { name: "firebase-admin", isDev: false, minVersion: 8 },
+    { name: "firebase-functions", isDev: false, minVersion: 3 },
   ];
 
   for (const modBundle of modBundles) {
-    const dependencies = pkg.dependencies || {};
-    const devDependencies = pkg.devDependencies || {};
-    const isInPackageJSON = dependencies[modBundle.name] || devDependencies[modBundle.name];
+    const resolution = await resolveDeveloperNodeModule(frb, pkg, modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
      */
-    if (!isInPackageJSON) {
+    if (!resolution.declared) {
       new EmulatorLog("SYSTEM", "missing-module", "", modBundle).log();
       return false;
     }
 
-    /*
-    Once we know it's in the package.json, make sure it's actually `npm install`ed
-     */
-    const modResolution = await requireResolveAsync(modBundle.name, { paths: [frb.cwd] }).catch(
-      NoOp
-    );
-
-    if (!modResolution) {
+    if (!resolution.installed) {
       new EmulatorLog("SYSTEM", "uninstalled-module", "", modBundle).log();
       return false;
     }
 
-    const modPackageJSON = require(path.join(
-      findModuleRoot(modBundle.name, modResolution),
-      "package.json"
-    ));
-    const modMajorVersion = parseInt((modPackageJSON.version || "0").split("."), 10);
-
-    if (modMajorVersion < modBundle.minVersion) {
+    const versionInfo = parseVersionString(resolution.version);
+    if (versionInfo.major < modBundle.minVersion) {
       new EmulatorLog("SYSTEM", "out-of-date-module", "", modBundle).log();
       return false;
     }
   }
 
   return true;
+}
+
+/**
+ * Get the developer's package.json file.
+ */
+function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+  try {
+    const pkg = require(`${frb.cwd}/package.json`);
+    return {
+      dependencies: pkg.dependencies || {},
+      devDependencies: pkg.devDependencies || {},
+    };
+  } catch (err) {
+    return undefined;
+  }
+}
+
+/**
+ * Parse a semver version string into parts, filling in 0s where empty.
+ */
+function parseVersionString(version?: string): ModuleVersion {
+  const parts = (version || "0").split(".");
+
+  // Make sure "parts" always has 3 elements. Extras are ignored.
+  parts.push("0");
+  parts.push("0");
+
+  return {
+    major: parseInt(parts[0], 10),
+    minor: parseInt(parts[1], 10),
+    patch: parseInt(parts[2], 10),
+  };
 }
 
 /*
@@ -438,6 +518,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
           "'default credentials' error."
       ).log();
     }
+
     hasInitializedSettings = true;
   };
 
@@ -448,9 +529,19 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         return adminModuleTarget.initializeApp(opts, appName);
       }
 
-      new EmulatorLog("SYSTEM", "default-admin-app-used", "").log();
+      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
+
+      // TODO: Is there any possible harm in this?
+      config.credential = makeFakeCredentials();
+
+      if (frb.ports.database) {
+        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
+      }
+
       app = adminModuleTarget.initializeApp({
-        ...JSON.parse(process.env.FIREBASE_CONFIG || "{}"),
+        ...config,
         ...opts,
       });
       return app;
@@ -495,13 +586,12 @@ function ProtectEnvironmentalVariables(): void {
   process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
 }
 
-function InitializeEnvironmentalVariables(projectId: string): void {
-  process.env.GCLOUD_PROJECT = projectId;
+function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
-  /*
-    Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
-    https://github.com/firebase/firebase-functions/blob/master/src/index.ts#L70
-   */
+
+  // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
+  // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
     databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
@@ -622,32 +712,31 @@ async function ProcessBackground(
 ): Promise<void> {
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
-  let proto = frb.proto;
-  const service = getFunctionService(trigger.definition);
+  const proto = frb.proto;
+  new EmulatorLog(
+    "DEBUG",
+    "runtime-status",
+    `ProcessBackground: proto=${JSON.stringify(proto)}`
+  ).log();
 
-  // TODO: This is a workaround for
-  // https://github.com/firebase/firebase-tools/issues/1288
-  if (service === "firestore.googleapis.com") {
-    if (EventUtils.isEvent(proto)) {
-      const legacyProto = EventUtils.convertToLegacy(proto);
-      new EmulatorLog(
-        "DEBUG",
-        "runtime-status",
-        `[firestore] converting to a v1beta1 event: old=${JSON.stringify(
-          proto
-        )}, new=${JSON.stringify(legacyProto)}`
-      ).log();
-      proto = legacyProto;
-    } else {
-      new EmulatorLog(
-        "DEBUG",
-        "runtime-status",
-        `[firestore] Got legacy proto ${JSON.stringify(proto)}`
-      ).log();
-    }
+  // All formats of the payload should carry a "data" property. The "context" property does
+  // not exist in all versions. Where it doesn't exist, context is everything besides data.
+  const data = proto.data;
+  delete proto.data;
+  const context = proto.context ? proto.context : proto;
+
+  // This is due to the fact that the Firestore emulator sends payloads in a newer
+  // format than production firestore.
+  if (context.resource && context.resource.name) {
+    new EmulatorLog(
+      "DEBUG",
+      "runtime-status",
+      `ProcessBackground: lifting resource.name from resource ${JSON.stringify(context.resource)}`
+    ).log();
+    context.resource = context.resource.name;
   }
 
-  await RunBackground(proto, trigger.getRawFunction());
+  await RunBackground({ data, context }, trigger.getRawFunction());
 }
 
 /**
@@ -675,11 +764,11 @@ async function Run(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function RunBackground(proto: any, func: (proto: any) => Promise<any>): Promise<any> {
+async function RunBackground(proto: any, func: CloudFunction<any>): Promise<any> {
   new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
 
   await Run(() => {
-    return func(proto);
+    return func(proto.data, proto.context);
   });
 }
 
@@ -760,7 +849,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  InitializeEnvironmentalVariables(frb.projectId);
+  InitializeEnvironmentalVariables(frb);
   if (isFeatureEnabled(frb, "protect_env")) {
     ProtectEnvironmentalVariables();
   }
@@ -870,8 +959,12 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  main().catch((err) => {
-    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-    process.exit();
-  });
+  main()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((err) => {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      process.exit(1);
+    });
 }
