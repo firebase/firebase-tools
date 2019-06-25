@@ -50,11 +50,12 @@ describe("FirebaseResourceManager", () => {
       expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
-          response: { projectNumber: PROJECT_NUMBER },
+          projectNumber: PROJECT_NUMBER,
         }),
         _addFirebaseApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } }),
         _pollAddFirebaseOperationStub(OPERATION_RESOURCE_NAME_2).resolves({
-          response: { projectId: PROJECT_ID, displayName: PROJECT_NAME },
+          projectId: PROJECT_ID,
+          displayName: PROJECT_NAME,
         })
       );
       mockOraWrapper.expects("start").exactly(2);
@@ -116,7 +117,7 @@ describe("FirebaseResourceManager", () => {
       expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
-          response: { projectNumber: PROJECT_NUMBER },
+          projectNumber: PROJECT_NUMBER,
         }),
         _addFirebaseApiStub().rejects(expectedError)
       );
@@ -143,7 +144,7 @@ describe("FirebaseResourceManager", () => {
       expectedCalledStubs.push(
         _createCloudProjectApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } }),
         _pollCreateCloudProjectOperationStub(OPERATION_RESOURCE_NAME_1).resolves({
-          response: { projectNumber: PROJECT_NUMBER },
+          projectNumber: PROJECT_NUMBER,
         }),
         _addFirebaseApiStub().resolves({ body: { name: OPERATION_RESOURCE_NAME_2 } }),
         _pollAddFirebaseOperationStub(OPERATION_RESOURCE_NAME_2).rejects(expectedError)
