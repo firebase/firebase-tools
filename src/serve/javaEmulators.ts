@@ -54,7 +54,6 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
       "port",
       "host",
       "rules",
-      "functions_emulator",
       "functions_emulator_port",
       "functions_emulator_host",
     ],
