@@ -5,7 +5,7 @@ import * as FirebaseError from "./error";
 export interface OperationPollerOptions {
   pollerName?: string;
   apiOrigin: string;
-  apiVersion: "v1" | "v1beta1";
+  apiVersion: string;
   operationResourceName: string;
   backoff?: number;
   masterTimeout?: number;
