@@ -1,5 +1,6 @@
 import * as controller from "../emulator/controller";
 import * as Config from "../config";
+import * as utils from "../utils";
 import getProjectNumber = require("../getProjectNumber");
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
@@ -25,6 +26,7 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
   if (canStartWithoutConfig && !options.config) {
+    utils.logWarning("Could not find config (firebase.json) so using defaults.");
     options.config = DEFAULT_CONFIG;
   } else {
     await requireConfig(options);

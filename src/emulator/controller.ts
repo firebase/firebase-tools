@@ -147,6 +147,8 @@ export async function startAll(options: any): Promise<void> {
           )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
         );
       }
+    } else {
+      utils.logWarning(`No Firestore rules file specified in firebase.json, using default rules.`);
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
