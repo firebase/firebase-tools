@@ -4,7 +4,7 @@ import * as FirebaseError from "../error";
 import { createFirebaseProject, ParentResourceType } from "../firebase-resource-manager";
 import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
-import logger = require("../logger");
+import * as logger from "../logger";
 
 module.exports = new Command("projects:create [projectId]")
   .description("create a new firebase project")
@@ -18,7 +18,7 @@ module.exports = new Command("projects:create [projectId]")
     "(optional) ID of the parent Google Cloud Platform folder in which to create this project"
   )
   .before(requireAuth)
-  .action(async (projectId: string, options: any) => {
+  .action(async (projectId: string | undefined, options: any) => {
     options.projectId = projectId; // add projectId into options to pass into prompt function
 
     if (options.organization && options.folder) {
@@ -40,7 +40,7 @@ module.exports = new Command("projects:create [projectId]")
           default: "",
           message:
             "Please specify a unique project id " +
-            `(${clc.red("warning")}: cannot modify after project creation) [6-30 characters]:\n`,
+            `(${clc.yellow("warning")}: cannot modify after project creation) [6-30 characters]:\n`,
         },
       ]);
     }
@@ -55,5 +55,9 @@ module.exports = new Command("projects:create [projectId]")
       parentResource = { type: ParentResourceType.FOLDER, id: options.folder };
     }
 
-    return createFirebaseProject(options.projectId, options.displayName, parentResource);
+    logger.info("Starting project creation. It may take a while...");
+    return createFirebaseProject(options.projectId, {
+      displayName: options.displayName,
+      parentResource,
+    });
   });

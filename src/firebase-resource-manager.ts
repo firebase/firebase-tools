@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import * as api from "./api";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
-import { OperationPollerOptions, pollOperation } from "./operation-poller";
+import { pollOperation } from "./operation-poller";
 import { OraWrapper } from "./oraWrapper";
 
 const ONE_SECOND_MILLIS = 1000;
@@ -20,10 +20,9 @@ export interface ParentResource {
 
 export async function createFirebaseProject(
   projectId: string,
-  projectDisplayName: string,
-  parentResource?: ParentResource
+  options: { displayName?: string; parentResource?: ParentResource }
 ): Promise<{ projectId: string }> {
-  await createCloudProject(projectId, projectDisplayName, parentResource);
+  await createCloudProject(projectId, options);
   const projectInfo = await addFirebaseToCloudProject(projectId);
 
   logger.info("");
@@ -35,7 +34,7 @@ export async function createFirebaseProject(
   logger.info("");
   logger.info("Firebase console is available at");
   logger.info(`https://console.firebase.google.com/project/${clc.bold(projectId)}/overview`);
-  return { projectId };
+  return projectInfo;
 }
 
 /**
@@ -46,8 +45,7 @@ export async function createFirebaseProject(
  */
 async function createCloudProject(
   projectId: string,
-  projectDisplayName: string,
-  parentResource?: ParentResource
+  options: { displayName?: string; parentResource?: ParentResource }
 ): Promise<any> {
   const spinner = new OraWrapper("Creating Google Cloud Platform project");
   spinner.start();
@@ -57,7 +55,7 @@ async function createCloudProject(
       auth: true,
       origin: api.resourceManagerOrigin,
       timeout: 15 * ONE_SECOND_MILLIS,
-      data: { projectId, name: projectDisplayName, parent: parentResource },
+      data: { projectId, name: options.displayName || projectId, parent: options.parentResource },
     });
 
     const projectInfo = await pollOperation<any>({

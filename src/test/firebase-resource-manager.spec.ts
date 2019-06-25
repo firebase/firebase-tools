@@ -62,8 +62,14 @@ describe("FirebaseResourceManager", () => {
       mockOraWrapper.expects("succeed").exactly(2);
       mockOraWrapper.expects("fail").never();
 
-      expect(await createFirebaseProject(PROJECT_ID, PROJECT_NAME, PARENT_RESOURCE)).to.deep.equal({
+      expect(
+        await createFirebaseProject(PROJECT_ID, {
+          displayName: PROJECT_NAME,
+          parentResource: PARENT_RESOURCE,
+        })
+      ).to.deep.equal({
         projectId: PROJECT_ID,
+        displayName: PROJECT_NAME,
       });
     });
 
@@ -76,7 +82,10 @@ describe("FirebaseResourceManager", () => {
 
       let err;
       try {
-        await createFirebaseProject(PROJECT_ID, PROJECT_NAME, PARENT_RESOURCE);
+        await createFirebaseProject(PROJECT_ID, {
+          displayName: PROJECT_NAME,
+          parentResource: PARENT_RESOURCE,
+        });
       } catch (e) {
         err = e;
       }
@@ -100,7 +109,10 @@ describe("FirebaseResourceManager", () => {
 
       let err;
       try {
-        await createFirebaseProject(PROJECT_ID, PROJECT_NAME, PARENT_RESOURCE);
+        await createFirebaseProject(PROJECT_ID, {
+          displayName: PROJECT_NAME,
+          parentResource: PARENT_RESOURCE,
+        });
       } catch (e) {
         err = e;
       }
@@ -127,7 +139,10 @@ describe("FirebaseResourceManager", () => {
 
       let err;
       try {
-        await createFirebaseProject(PROJECT_ID, PROJECT_NAME, PARENT_RESOURCE);
+        await createFirebaseProject(PROJECT_ID, {
+          displayName: PROJECT_NAME,
+          parentResource: PARENT_RESOURCE,
+        });
       } catch (e) {
         err = e;
       }
@@ -155,7 +170,10 @@ describe("FirebaseResourceManager", () => {
 
       let err;
       try {
-        await createFirebaseProject(PROJECT_ID, PROJECT_NAME, PARENT_RESOURCE);
+        await createFirebaseProject(PROJECT_ID, {
+          displayName: PROJECT_NAME,
+          parentResource: PARENT_RESOURCE,
+        });
       } catch (e) {
         err = e;
       }
