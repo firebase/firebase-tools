@@ -12,7 +12,7 @@ import { Emulators } from "../emulator/types";
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
 
-export async function beforeEmulatorCommand(options: any) {
+export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
     ...options,
     config: DEFAULT_CONFIG,
