@@ -379,6 +379,61 @@ ProfileReport.prototype.renderIncomingBandwidth = function() {
   return this.renderBandwidth(this.state.inband);
 };
 
+/*
+ * Some Realtime Database operations (concurrent-connect, concurrent-disconnect)
+ * are not logically associated with a path in the database. In this source
+ * file, we associate these operations with the sentinel path "null" so that
+ * they can still be aggregated in `collapsePaths`. So as to not confuse
+ * developers, we render aggregate statistics for such operations without a
+ * `path` table column.
+ */
+ProfileReport.prototype.renderUnpathedOperationSpeed = function(pureData, hasSecurity) {
+  var head = ["Count", "Average Execution Speed", "Average Pending Time"];
+  if (hasSecurity) {
+    head.push("Permission Denied");
+  }
+  var table = new Table({
+    head: head,
+    style: {
+      head: this.options.isFile ? [] : ["yellow"],
+      border: this.options.isFile ? [] : ["grey"],
+    },
+  });
+  var data = this.collapsePaths(pureData, function(s1, s2) {
+    return {
+      times: s1.times + s2.times,
+      millis: s1.millis + s2.millis,
+      pendingCount: s1.pendingCount + s2.pendingCount,
+      pendingTime: s1.pendingTime + s2.pendingTime,
+      rejected: s1.rejected + s2.rejected,
+    };
+  });
+  var paths = _.keys(data);
+  paths = _.orderBy(
+    paths,
+    function(path) {
+      var speed = data[path];
+      return speed.millis / speed.times;
+    },
+    ["desc"]
+  );
+  paths.forEach(function(path) {
+    var speed = data[path];
+    var row = [
+      speed.times,
+      ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
+      ProfileReport.formatNumber(
+        speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
+      ) + " ms",
+    ];
+    if (hasSecurity) {
+      row.push(ProfileReport.formatNumber(speed.rejected));
+    }
+    table.push(row);
+  });
+  return table;
+};
+
 ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
   var head = ["Path", "Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
@@ -440,11 +495,11 @@ ProfileReport.prototype.renderBroadcastSpeed = function() {
 };
 
 ProfileReport.prototype.renderConnectSpeed = function() {
-  return this.renderOperationSpeed(this.state.connectSpeed, false);
+  return this.renderUnpathedOperationSpeed(this.state.connectSpeed, false);
 };
 
 ProfileReport.prototype.renderDisconnectSpeed = function() {
-  return this.renderOperationSpeed(this.state.disconnectSpeed, false);
+  return this.renderUnpathedOperationSpeed(this.state.disconnectSpeed, false);
 };
 
 ProfileReport.prototype.renderUnlistenSpeed = function() {
