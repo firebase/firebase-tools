@@ -1,3 +1,0 @@
-* Fixes a bug where the functions emulator did not work with `firebase-functions` versions `3.x.x`.
-* Make the Functions emulator automatically point to the RTDB emulator when running.
-* Fixes issue where the functions runtime would not always exit on success (#1346).
