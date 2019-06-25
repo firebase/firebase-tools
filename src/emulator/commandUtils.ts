@@ -1,0 +1,34 @@
+import * as controller from "../emulator/controller";
+import * as Config from "../config";
+import getProjectNumber = require("../getProjectNumber");
+import requireAuth = require("../requireAuth");
+import requireConfig = require("../requireConfig");
+import { Emulators } from "../emulator/types";
+
+/**
+ * We want to be able to run the Firestore and Database emulators even in the absence
+ * of firebase.json. For Functions and Hosting we require the JSON file since the
+ * config interactions can become fairly complex.
+ */
+const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+
+export async function beforeEmulatorCommand(options: any) {
+  const optionsWithDefaultConfig = {
+    ...options,
+    config: DEFAULT_CONFIG,
+  };
+  const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
+
+  const canStartWithoutConfig =
+    options.only &&
+    !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
+    !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
+
+  if (canStartWithoutConfig && !options.config) {
+    options.config = DEFAULT_CONFIG;
+  } else {
+    await requireConfig(options);
+    await requireAuth(options);
+    await getProjectNumber(options);
+  }
+}
