@@ -259,6 +259,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...bundleTemplate,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getPort(Emulators.DATABASE),
       },
       proto,
       triggerId,
@@ -613,6 +614,17 @@ You can probably fix this by running "npm install ${
             reject();
             return;
           }
+
+          if (res.statusCode === 200) {
+            EmulatorLogger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Trigger "${
+                definition.name
+              }" has been acknowledged by the Realtime Database emulator.`
+            );
+          }
+
           resolve();
         }
       );
@@ -652,7 +664,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (JSON.stringify(JSON.parse(body)) === "{}") {
+          if (res.statusCode === 200) {
             EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",

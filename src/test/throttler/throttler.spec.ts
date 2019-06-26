@@ -4,6 +4,9 @@ import { expect } from "chai";
 import Queue from "../../throttler/queue";
 import Stack from "../../throttler/stack";
 import { Throttler, ThrottlerOptions } from "../../throttler/throttler";
+import TaskError from "../../throttler/errors/task-error";
+import TimeoutError from "../../throttler/errors/timeout-error";
+import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-error";
 
 const TEST_ERROR = new Error("foobar");
 
@@ -103,8 +106,10 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .then(() => {
         throw new Error("handler should have rejected");
       })
-      .catch((err: Error) => {
-        expect(err).to.equal(TEST_ERROR);
+      .catch((err: TaskError) => {
+        expect(err).to.be.an.instanceof(RetriesExhaustedError);
+        expect(err.original).to.equal(TEST_ERROR);
+        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 1 attempts");
       })
       .then(() => {
         expect(handler.callCount).to.equal(1);
@@ -132,8 +137,10 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .then(() => {
         throw new Error("handler should have rejected");
       })
-      .catch((err: Error) => {
-        expect(err).to.equal(TEST_ERROR);
+      .catch((err: TaskError) => {
+        expect(err).to.be.an.instanceof(RetriesExhaustedError);
+        expect(err.original).to.equal(TEST_ERROR);
+        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 4 attempts");
       })
       .then(() => {
         expect(handler.callCount).to.equal(4);
@@ -235,6 +242,162 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
     expect(q.run(2)).to.eventually.to.equal("result: 2");
     expect(q.run(3)).to.eventually.to.equal("result: 3");
+  });
+
+  it("should resolve if task finishes before timeout", async () => {
+    const handler = (task: number) => {
+      return Promise.resolve(`result: ${task}`);
+    };
+
+    const q = new Queue({
+      handler,
+    });
+
+    expect(await q.run(2, 20000000)).to.equal("result: 2");
+    expect(q.complete).to.equal(1);
+    expect(q.success).to.equal(1);
+    expect(q.errored).to.equal(0);
+    expect(q.retried).to.equal(0);
+    expect(q.total).to.equal(1);
+  });
+
+  it("should reject if timeout", async () => {
+    const handler = (task: number) =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(`result: ${task}`);
+        }, 150);
+      });
+
+    const q = new Queue({
+      handler,
+    });
+
+    let err;
+    try {
+      await q.run(2, 100);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(TimeoutError);
+    expect(err.message).to.equal("Task index 0 failed: timed out after 100ms.");
+  });
+
+  it("should reject with RetriesExhaustedError if last trial is rejected before timeout", async () => {
+    const handler = sinon.stub().rejects(TEST_ERROR);
+
+    const q = new Queue({
+      handler,
+      retries: 2,
+      backoff: 10,
+    });
+
+    let err;
+    try {
+      await q.run(2, 200);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(RetriesExhaustedError);
+    expect(err.original).to.equal(TEST_ERROR);
+    expect(err.message).to.equal("Task index 0 failed: retries exhausted after 3 attempts");
+    expect(handler.callCount).to.equal(3);
+    expect(q.complete).to.equal(1);
+    expect(q.success).to.equal(0);
+    expect(q.errored).to.equal(1);
+    expect(q.retried).to.equal(2);
+    expect(q.total).to.equal(1);
+  });
+
+  it("should reject with TimeoutError if timeout while retrying", async () => {
+    const handler = sinon.stub().rejects(TEST_ERROR);
+
+    const q = new Queue({
+      handler,
+      retries: 1000,
+      backoff: 5,
+    });
+
+    let err;
+    try {
+      await q.run(2, 100);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(TimeoutError);
+    expect(handler.callCount).to.be.at.least(2);
+    expect(err.message).to.equal("Task index 0 failed: timed out after 100ms.");
+    expect(q.complete).to.equal(1);
+    expect(q.success).to.equal(0);
+    expect(q.errored).to.equal(1);
+    expect(q.retried).to.be.at.least(3);
+    expect(q.total).to.equal(1);
+  });
+
+  it("should reject with TimeoutError when waiting", async () => {
+    const handler = sinon
+      .stub()
+      .rejects(TEST_ERROR)
+      .onFirstCall()
+      .resolves(0);
+
+    const q = new Queue({
+      handler,
+      retries: 4,
+      backoff: 20,
+    });
+
+    q.add(2);
+    q.add(3, 10); // This fails first due to very short timeout
+    q.add(4, 500);
+    q.close();
+
+    let err;
+    try {
+      await q.wait();
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(TimeoutError);
+    expect(err.message).to.equal("Task index 1 failed: timed out after 10ms.");
+    expect(handler.callCount).to.equal(3);
+    expect(q.complete).to.equal(2);
+    expect(q.success).to.equal(1);
+    expect(q.errored).to.equal(1);
+    expect(q.total).to.equal(3);
+  });
+
+  it("should reject with RetriesExhaustedError when waiting", async () => {
+    const handler = sinon
+      .stub()
+      .rejects(TEST_ERROR)
+      .onFirstCall()
+      .resolves(0);
+
+    const q = new Queue({
+      handler,
+      retries: 1,
+      backoff: 10,
+    });
+
+    q.add(2);
+    q.add(3, 100); // This fails due to retries exhausted since we only retry once
+    q.close();
+
+    let err;
+    try {
+      await q.wait();
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(RetriesExhaustedError);
+    expect(err.message).to.equal("Task index 1 failed: retries exhausted after 2 attempts");
+    expect(handler.callCount).to.equal(3);
+    expect(q.complete).to.equal(2);
+    expect(q.success).to.equal(1);
+    expect(q.errored).to.equal(1);
+    expect(q.retried).to.equal(1);
+    expect(q.total).to.equal(2);
   });
 };
 

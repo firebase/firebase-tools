@@ -2,3 +2,7 @@
 * Fixes bug where `grpc-js` connections used the wrong credentials.
 * Fixes bug where `firebase open` would return an error.
 * Fixes bug where profiler table rendering crashes due to undefined `path` fields.
+* Auto-download Firestore and RTDB emulators when using `emulators:start`.
+* Make `functions:shell` respect the `--port` argument.
+* Improve error message when `firebase serve` can't acquire the right port.
+* Allow running the Firestore and RTDB emulators without a configuration.

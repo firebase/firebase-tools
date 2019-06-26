@@ -57,30 +57,4 @@ export class EventUtils {
   static isLegacyEvent(proto: any): proto is LegacyEvent {
     return _.has(proto, "data") && _.has(proto, "resource");
   }
-
-  static convertFromLegacy(event: LegacyEvent, service: string): Event {
-    // TODO(samstern): Unclear what we should do with "params" and "authMode"
-    return {
-      context: {
-        eventId: event.eventId || "",
-        timestamp: event.timestamp || "",
-        eventType: event.eventType || "",
-        resource: {
-          name: event.resource || "",
-          service,
-        },
-      },
-      data: event.data,
-    };
-  }
-
-  static convertToLegacy(event: Event): LegacyEvent {
-    return {
-      eventId: event.context.eventId,
-      timestamp: event.context.timestamp,
-      eventType: event.context.eventType,
-      resource: event.context.resource.name,
-      data: event.data,
-    };
-  }
 }

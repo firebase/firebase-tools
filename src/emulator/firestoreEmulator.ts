@@ -8,6 +8,7 @@ export interface FirestoreEmulatorArgs {
   host?: string;
   rules?: string;
   functions_emulator?: string;
+  auto_download?: boolean;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
