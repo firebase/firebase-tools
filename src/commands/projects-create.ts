@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as Command from "../command";
 import * as FirebaseError from "../error";
-import { createFirebaseProject, ParentResourceType } from "../firebase-resource-manager";
+import { createFirebaseProject, ParentResourceType } from "../projectsCreate";
 import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";

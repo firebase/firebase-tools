@@ -2,11 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../api";
-import {
-  createFirebaseProject,
-  ParentResource,
-  ParentResourceType,
-} from "../firebase-resource-manager";
+import { createFirebaseProject, ParentResource, ParentResourceType } from "../projectsCreate";
 import * as pollUtils from "../operation-poller";
 import { mockAuth } from "./helpers";
 import { OraWrapper } from "../oraWrapper";
