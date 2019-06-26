@@ -125,6 +125,7 @@ export async function startAll(options: any): Promise<void> {
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
+      auto_download: true,
     };
 
     const rules: string = path.join(options.projectRoot, options.config.get("firestore.rules"));
@@ -159,6 +160,7 @@ export async function startAll(options: any): Promise<void> {
         port: databaseAddr.port,
         functions_emulator_host: functionsAddr.host,
         functions_emulator_port: functionsAddr.port,
+        auto_download: true,
       });
     } else {
       databaseEmulator = new DatabaseEmulator({

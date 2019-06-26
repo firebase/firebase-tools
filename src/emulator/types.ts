@@ -55,6 +55,7 @@ export interface EmulatorInfo {
 export interface JavaEmulatorCommand {
   binary: string;
   args: string[];
+  optionalArgs: string[];
 }
 
 export interface JavaEmulatorDetails {
