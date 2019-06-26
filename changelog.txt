@@ -1,2 +1,3 @@
 * Auto-download Firestore and RTDB emulators when using `emulators:start`.
 * Make `functions:shell` respect the `--port` argument.
+* Improve error message when `firebase serve` can't acquire the right port.
