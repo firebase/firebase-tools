@@ -81,6 +81,11 @@ export async function cleanShutdown(): Promise<boolean> {
   return true;
 }
 
+export function shouldStart(options: any, name: Emulators): boolean {
+  const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
+  return targets.indexOf(name) >= 0;
+}
+
 export async function startAll(options: any): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -110,7 +115,7 @@ export async function startAll(options: any): Promise<void> {
     }
   }
 
-  if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
+  if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
     const functionsEmulator = new FunctionsEmulator(options, {
       host: functionsAddr.host,
@@ -119,7 +124,7 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(functionsEmulator);
   }
 
-  if (targets.indexOf(Emulators.FIRESTORE) > -1) {
+  if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
 
     const args: FirestoreEmulatorArgs = {
@@ -128,15 +133,20 @@ export async function startAll(options: any): Promise<void> {
       auto_download: true,
     };
 
-    const rules: string = path.join(options.projectRoot, options.config.get("firestore.rules"));
-    if (fs.existsSync(rules)) {
-      args.rules = rules;
+    const rulesLocalPath = options.config.get("firestore.rules");
+    if (rulesLocalPath) {
+      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      if (fs.existsSync(rules)) {
+        args.rules = rules;
+      } else {
+        utils.logWarning(
+          `Firestore rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
+        );
+      }
     } else {
-      utils.logWarning(
-        `Firestore rules file ${clc.bold(
-          rules
-        )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
-      );
+      utils.logWarning(`No Firestore rules file specified in firebase.json, using default rules.`);
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -150,10 +160,10 @@ export async function startAll(options: any): Promise<void> {
     );
   }
 
-  if (targets.indexOf(Emulators.DATABASE) > -1) {
+  if (shouldStart(options, Emulators.DATABASE)) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
     let databaseEmulator;
-    if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
+    if (shouldStart(options, Emulators.FUNCTIONS)) {
       const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
       databaseEmulator = new DatabaseEmulator({
         host: databaseAddr.host,
@@ -171,7 +181,7 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(databaseEmulator);
   }
 
-  if (targets.indexOf(Emulators.HOSTING) > -1) {
+  if (shouldStart(options, Emulators.HOSTING)) {
     const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
     const hostingEmulator = new HostingEmulator({
       host: hostingAddr.host,
