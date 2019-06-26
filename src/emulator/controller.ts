@@ -18,7 +18,7 @@ import * as path from "path";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
-async function checkPortOpen(port: number): Promise<boolean> {
+export async function checkPortOpen(port: number): Promise<boolean> {
   try {
     await pf.getPortPromise({ port, stopPort: port });
     return true;
@@ -27,7 +27,7 @@ async function checkPortOpen(port: number): Promise<boolean> {
   }
 }
 
-async function waitForPortClosed(port: number): Promise<void> {
+export async function waitForPortClosed(port: number): Promise<void> {
   const interval = 250;
   const timeout = 30000;
 
@@ -67,10 +67,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
-  // Start the emulator, wait for it to grab its port, and then mark it as started
-  // in the registry.
   await EmulatorRegistry.start(instance);
-  await waitForPortClosed(info.port);
 }
 
 export async function cleanShutdown(): Promise<boolean> {
