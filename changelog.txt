@@ -1,1 +1,3 @@
+* Auto-download Firestore and RTDB emulators when using `emulators:start`.
+* Make `functions:shell` respect the `--port` argument.
 * Allow running the Firestore and RTDB emulators without a configuration.
