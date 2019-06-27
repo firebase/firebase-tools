@@ -7,11 +7,7 @@ import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
-import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Constants } from "./constants";
-
-// Args that should be passed from here to the JAR, if present.
-const JAR_ARGS: string[] = ["port", "host", "rules", "functions_emulator"];
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -54,8 +50,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    const jarArgs = _.pick(this.args, JAR_ARGS);
-    return javaEmulators.start(Emulators.FIRESTORE, jarArgs);
+    return javaEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
   async connect(): Promise<void> {
