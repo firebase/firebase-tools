@@ -8,6 +8,8 @@ import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
+import { Issue } from "./types";
+import { issue } from "firebase-functions/lib/providers/crashlytics";
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -35,18 +37,23 @@ export class FirestoreEmulator implements EmulatorInstance {
     if (this.args.rules && this.args.projectId) {
       const path = this.args.rules;
       this.rulesWatcher = chokidar.watch(path, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", (event, stats) => {
+      this.rulesWatcher.on("change", async (event, stats) => {
         const newContent = fs.readFileSync(path).toString();
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
-        this.updateRules(newContent)
-          .then(() => {
-            utils.logLabeledSuccess("firestore", "Rules updated.");
-          })
-          .catch((err) => {
-            utils.logWarning("Failed to update rules.");
-            utils.logWarning(err);
-          });
+        const issues = await this.updateRules(newContent);
+        if (issues && issues.length > 0) {
+          utils.logWarning("Failed to update rules");
+          for (const issue of issues) {
+            utils.logWarning(
+              `${issue.severity} (${issue.sourcePosition.line}:${issue.sourcePosition.column}) - ${
+                issue.description
+              }`
+            );
+          }
+        } else {
+          utils.logLabeledSuccess("firestore", "Rules updated.");
+        }
       });
     }
 
@@ -80,12 +87,14 @@ export class FirestoreEmulator implements EmulatorInstance {
     return Emulators.FIRESTORE;
   }
 
-  private updateRules(content: string): Promise<any> {
+  private updateRules(content: string): Promise<Issue[]> {
     const projectId = this.args.projectId;
 
     const { host, port } = this.getInfo();
     const url = `http://${host}:${port}/emulator/v1/projects/${projectId}:securityRules`;
     const body = {
+      // Invalid rulesets will still result in a 200 response but with more information
+      ignore_errors: true,
       rules: {
         files: [
           {
@@ -103,17 +112,13 @@ export class FirestoreEmulator implements EmulatorInstance {
           return;
         }
 
-        if (res.statusCode !== 200) {
-          if (res.statusCode >= 400 && res.statusCode < 500) {
-            reject(resBody.error.message);
-            return;
-          } else {
-            reject("Error updating rules: " + res.statusCode);
-            return;
-          }
+        const rulesValid = res.statusCode == 200 && !resBody.issues;
+        if (!rulesValid) {
+          const issues = resBody.issues as Issue[];
+          resolve(issues);
         }
 
-        resolve();
+        resolve([]);
       });
     });
   }

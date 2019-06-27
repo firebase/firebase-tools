@@ -55,7 +55,7 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
-    optionalArgs: ["port", "host", "rules", "projectId", "functions_emulator"],
+    optionalArgs: ["port", "host", "rules", "functions_emulator"],
   },
 };
 
