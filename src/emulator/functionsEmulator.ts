@@ -65,8 +65,14 @@ interface RequestWithRawBody extends express.Request {
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
-  static getHttpFunctionUrl(port: number, projectId: string, name: string, region: string): string {
-    return `http://localhost:${port}/${projectId}/${region}/${name}`;
+  static getHttpFunctionUrl(
+    host: string,
+    port: number,
+    projectId: string,
+    name: string,
+    region: string
+  ): string {
+    return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
   static createHubServer(
@@ -253,6 +259,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...bundleTemplate,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getPort(Emulators.DATABASE),
       },
       proto,
       triggerId,
@@ -401,7 +408,6 @@ You can probably fix this by running "npm install ${
   readonly bundleTemplate: FunctionsRuntimeBundle;
   nodeBinary: string = "";
 
-  private readonly port: number;
   private server?: http.Server;
   private firebaseConfig: any;
   private functionsDir: string = "";
@@ -409,7 +415,6 @@ You can probably fix this by running "npm install ${
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
     this.projectId = getProjectId(this.options, false);
 
     this.functionsDir = path.join(
@@ -435,8 +440,10 @@ You can probably fix this by running "npm install ${
     // TODO: This call requires authentication, which we should remove eventually
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
+    const { host, port } = this.getInfo();
     this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
-      this.port
+      port,
+      host
     );
   }
 
@@ -489,7 +496,8 @@ You can probably fix this by running "npm install ${
           //                 that a developer is running the same function in multiple regions.
           const region = getFunctionRegion(definition);
           const url = FunctionsEmulator.getHttpFunctionUrl(
-            this.port,
+            this.getInfo().host,
+            this.getInfo().port,
             this.projectId,
             definition.name,
             region
@@ -581,8 +589,19 @@ You can probably fix this by running "npm install ${
     );
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
+      let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
+      if (projectId !== "") {
+        setTriggersPath += `?ns=${projectId}`;
+      } else {
+        EmulatorLogger.log(
+          "WARN",
+          `No project in use. Registering function trigger for sentinel namespace '${
+            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
+          }'`
+        );
+      }
       request.put(
-        `http://localhost:${databasePort}/.settings/functionTriggers.json`,
+        setTriggersPath,
         {
           auth: {
             bearer: "owner",
@@ -595,6 +614,17 @@ You can probably fix this by running "npm install ${
             reject();
             return;
           }
+
+          if (res.statusCode === 200) {
+            EmulatorLogger.logLabeled(
+              "SUCCESS",
+              "functions",
+              `Trigger "${
+                definition.name
+              }" has been acknowledged by the Realtime Database emulator.`
+            );
+          }
+
           resolve();
         }
       );
@@ -634,7 +664,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (JSON.stringify(JSON.parse(body)) === "{}") {
+          if (res.statusCode === 200) {
             EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",

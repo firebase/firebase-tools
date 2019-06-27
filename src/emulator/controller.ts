@@ -19,7 +19,7 @@ import * as getProjectId from "../getProjectId";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
-async function checkPortOpen(port: number): Promise<boolean> {
+export async function checkPortOpen(port: number): Promise<boolean> {
   try {
     await pf.getPortPromise({ port, stopPort: port });
     return true;
@@ -28,7 +28,7 @@ async function checkPortOpen(port: number): Promise<boolean> {
   }
 }
 
-async function waitForPortClosed(port: number): Promise<void> {
+export async function waitForPortClosed(port: number): Promise<void> {
   const interval = 250;
   const timeout = 30000;
 
@@ -68,10 +68,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
-  // Start the emulator, wait for it to grab its port, and then mark it as started
-  // in the registry.
   await EmulatorRegistry.start(instance);
-  await waitForPortClosed(info.port);
 }
 
 export async function cleanShutdown(): Promise<boolean> {
@@ -83,6 +80,11 @@ export async function cleanShutdown(): Promise<boolean> {
   }
 
   return true;
+}
+
+export function shouldStart(options: any, name: Emulators): boolean {
+  const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
+  return targets.indexOf(name) >= 0;
 }
 
 export async function startAll(options: any): Promise<void> {
@@ -116,7 +118,7 @@ export async function startAll(options: any): Promise<void> {
     }
   }
 
-  if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
+  if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
     const functionsEmulator = new FunctionsEmulator(options, {
       host: functionsAddr.host,
@@ -125,24 +127,30 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(functionsEmulator);
   }
 
-  if (targets.indexOf(Emulators.FIRESTORE) > -1) {
+  if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       projectId,
+      auto_download: true,
     };
 
-    const rules: string = path.join(options.projectRoot, options.config.get("firestore.rules"));
-    if (fs.existsSync(rules)) {
-      args.rules = rules;
+    const rulesLocalPath = options.config.get("firestore.rules");
+    if (rulesLocalPath) {
+      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      if (fs.existsSync(rules)) {
+        args.rules = rules;
+      } else {
+        utils.logWarning(
+          `Firestore rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
+        );
+      }
     } else {
-      utils.logWarning(
-        `Firestore rules file ${clc.bold(
-          rules
-        )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
-      );
+      utils.logWarning(`No Firestore rules file specified in firebase.json, using default rules.`);
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -156,16 +164,17 @@ export async function startAll(options: any): Promise<void> {
     );
   }
 
-  if (targets.indexOf(Emulators.DATABASE) > -1) {
+  if (shouldStart(options, Emulators.DATABASE)) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
     let databaseEmulator;
-    if (targets.indexOf(Emulators.FUNCTIONS) > -1) {
+    if (shouldStart(options, Emulators.FUNCTIONS)) {
       const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
       databaseEmulator = new DatabaseEmulator({
         host: databaseAddr.host,
         port: databaseAddr.port,
         functions_emulator_host: functionsAddr.host,
         functions_emulator_port: functionsAddr.port,
+        auto_download: true,
       });
     } else {
       databaseEmulator = new DatabaseEmulator({
@@ -176,7 +185,7 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(databaseEmulator);
   }
 
-  if (targets.indexOf(Emulators.HOSTING) > -1) {
+  if (shouldStart(options, Emulators.HOSTING)) {
     const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
     const hostingEmulator = new HostingEmulator({
       host: hostingAddr.host,

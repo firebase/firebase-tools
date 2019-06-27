@@ -23,14 +23,19 @@ module.exports = {
       };
     }
 
+    if (options.host) {
+      args.host = options.host;
+    }
+
     // If hosting emulator is not being served but Functions is,
     // we can use the port argument. Otherwise it goes to hosting and
     // we use port + 1.
     if (options.port) {
-      if (options.targets && options.targets.indexOf("hosting") < 0) {
-        args.port = options.port;
-      } else {
+      const hostingRunning = options.targets && options.targets.indexOf("hosting") >= 0;
+      if (hostingRunning) {
         args.port = options.port + 1;
+      } else {
+        args.port = options.port;
       }
     }
 

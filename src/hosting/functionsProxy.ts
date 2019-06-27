@@ -39,9 +39,9 @@ export default function(
       // things still point to production.
       const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
       if (functionsEmu) {
-        const port = functionsEmu.getInfo().port;
         url = FunctionsEmulator.getHttpFunctionUrl(
-          port,
+          functionsEmu.getInfo().host,
+          functionsEmu.getInfo().port,
           projectId,
           rewrite.function,
           "us-central1"

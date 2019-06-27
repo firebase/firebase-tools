@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import opn = require("opn");
+import * as opn from "open";
 import * as qs from "querystring";
 
 import * as Command from "../command";

@@ -11,6 +11,9 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 
+// tslint:disable-next-line
+const downloadEmulator = require("../emulator/download");
+
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
 type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
@@ -47,10 +50,12 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
+    optionalArgs: ["port", "host", "rules", "functions_emulator_port", "functions_emulator_host"],
   },
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
+    optionalArgs: ["port", "host", "rules", "projectId", "functions_emulator"],
   },
 };
 
@@ -73,6 +78,11 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
 
   const cmdLineArgs = baseCmd.args.slice();
   Object.keys(args).forEach((key) => {
+    if (baseCmd.optionalArgs.indexOf(key) < 0) {
+      logger.debug(`Ignoring unsupported arg: ${key}`);
+      return;
+    }
+
     const argKey = "--" + key;
     const argVal = args[key];
 
@@ -82,6 +92,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
   return {
     binary: baseCmd.binary,
     args: cmdLineArgs,
+    optionalArgs: baseCmd.optionalArgs,
   };
 }
 
@@ -167,12 +178,18 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
 
 export async function start(targetName: JavaEmulators, args: any): Promise<void> {
   const emulator = EmulatorDetails[targetName];
-  const command = _getCommand(targetName, args);
-  if (!fs.existsSync(emulator.localPath)) {
-    utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
-    return Promise.reject("emulator not found");
+
+  const hasEmulator = fs.existsSync(emulator.localPath);
+  if (!hasEmulator) {
+    if (args.auto_download) {
+      await downloadEmulator(targetName);
+    } else {
+      utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
+      throw new FirebaseError("emulator not found");
+    }
   }
 
+  const command = _getCommand(targetName, args);
   logger.debug(`Starting emulator ${targetName} with args ${JSON.stringify(args)}`);
   return _runBinary(emulator, command);
 }

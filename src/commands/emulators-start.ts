@@ -1,15 +1,9 @@
 import * as Command from "../command";
 import * as controller from "../emulator/controller";
-import getProjectNumber = require("../getProjectNumber");
-import requireAuth = require("../requireAuth");
-import requireConfig = require("../requireConfig");
+import { beforeEmulatorCommand } from "../emulator/commandUtils";
 
 module.exports = new Command("emulators:start")
-  .before(async (options: any) => {
-    await requireConfig(options);
-    await requireAuth(options);
-    await getProjectNumber(options);
-  })
+  .before(beforeEmulatorCommand)
   .description("start the local Firebase emulators")
   .option(
     "--only <list>",
