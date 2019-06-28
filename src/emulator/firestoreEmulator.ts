@@ -2,6 +2,8 @@ import * as _ from "lodash";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as request from "request";
+import * as clc from "cli-color";
+import * as path from "path";
 
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
@@ -9,7 +11,6 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
-import { issue } from "firebase-functions/lib/providers/crashlytics";
 
 export interface FirestoreEmulatorArgs {
   port?: number;
@@ -35,22 +36,18 @@ export class FirestoreEmulator implements EmulatorInstance {
     }
 
     if (this.args.rules && this.args.projectId) {
-      const path = this.args.rules;
-      this.rulesWatcher = chokidar.watch(path, { persistent: true, ignoreInitial: true });
+      const rulesPath = this.args.rules;
+      this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(path).toString();
+        const newContent = fs.readFileSync(rulesPath).toString();
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const issues = await this.updateRules(newContent);
         if (issues && issues.length > 0) {
-          utils.logWarning("Failed to update rules");
           for (const issue of issues) {
-            utils.logWarning(
-              `${issue.severity} (${issue.sourcePosition.line}:${issue.sourcePosition.column}) - ${
-                issue.description
-              }`
-            );
+            utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
           }
+          utils.logWarning("Failed to update rules");
         } else {
           utils.logLabeledSuccess("firestore", "Rules updated.");
         }
@@ -112,7 +109,7 @@ export class FirestoreEmulator implements EmulatorInstance {
           return;
         }
 
-        const rulesValid = res.statusCode == 200 && !resBody.issues;
+        const rulesValid = res.statusCode === 200 && !resBody.issues;
         if (!rulesValid) {
           const issues = resBody.issues as Issue[];
           resolve(issues);
@@ -121,5 +118,18 @@ export class FirestoreEmulator implements EmulatorInstance {
         resolve([]);
       });
     });
+  }
+
+  /**
+   * Create a colorized and human-readable string describing a Rules validation error.
+   * Ex: firestore:21:4 - ERROR expected 'if'
+   */
+  private prettyPrintRulesIssue(filePath: string, issue: Issue): string {
+    const relativePath = path.relative(process.cwd(), filePath);
+    const line = issue.sourcePosition.line || 0;
+    const col = issue.sourcePosition.column || 0;
+    return `${clc.cyan(relativePath)}:${clc.yellow(line)}:${clc.yellow(col)} - ${clc.red(
+      issue.severity
+    )} ${issue.description}`;
   }
 }
