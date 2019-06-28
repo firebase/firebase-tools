@@ -1,10 +1,7 @@
-import * as clc from "cli-color";
-
 import * as api from "./api";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
 import { pollOperation } from "./operation-poller";
-import { OraWrapper } from "./oraWrapper";
 
 const ONE_SECOND_MILLIS = 1000;
 
@@ -12,27 +9,6 @@ export enum AppPlatform {
   IOS = "iOS",
   ANDROID = "Android",
   WEB = "Web",
-}
-
-export interface AppMetadata {
-  appId: string;
-  displayName: string;
-  appPlatform: AppPlatform;
-}
-
-export interface IosAppMetadata extends AppMetadata {
-  bundleId: string;
-  appPlatform: AppPlatform.IOS;
-}
-
-export interface AndroidAppMetadata extends AppMetadata {
-  packageName: string;
-  shaCertificates?: ShaCertificate[];
-  appPlatform: AppPlatform.ANDROID;
-}
-
-export interface WebAppMetadata extends AppMetadata {
-  appPlatform: AppPlatform.WEB;
 }
 
 export interface ShaCertificate {
@@ -44,40 +20,27 @@ export interface ShaCertificate {
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
  * information.
- * @return {Promise} this function returns a promise that resolves to the new iOS app information
+ * @return a promise that resolves to the new iOS app information
  */
 export async function createIosApp(
   projectId: string,
-  displayName: string,
-  bundleId: string
-): Promise<IosAppMetadata> {
-  const spinner = new OraWrapper("Creating your iOS app");
-  spinner.start();
-
+  options: { displayName?: string; bundleId: string }
+): Promise<any> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
       timeout: 15 * ONE_SECOND_MILLIS,
-      data: { displayName, bundleId },
+      data: options,
     });
-    const result = await pollOperation<any>({
+    const appData = await pollOperation<any>({
       pollerName: "Create iOS app Poller",
       apiOrigin: api.firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
-    spinner.succeed();
-    const appMetadata: IosAppMetadata = {
-      appId: result.appId,
-      displayName: result.displayName,
-      bundleId: result.bundleId,
-      appPlatform: AppPlatform.IOS,
-    };
-    logPostAppCreationInformation(appMetadata);
-    return appMetadata;
+    return appData;
   } catch (err) {
-    spinner.fail();
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create iOS app for project ${projectId}. See firebase-debug.log for more info.`,
@@ -89,109 +52,62 @@ export async function createIosApp(
 /**
  * Send an API request to create a new Firebase Android app and poll the LRO to get the new app
  * information. Optionally add a SHA certificate to the app if specified.
- * @return {Promise} this function returns a promise that resolves to the new Android app
- *     information
+ * @return a promise that resolves to the new Android app information
  */
 export async function createAndroidApp(
   projectId: string,
-  displayName: string,
-  packageName: string,
-  shaCertificate?: ShaCertificate
-): Promise<AndroidAppMetadata> {
-  let spinner = new OraWrapper("Creating your Android app");
-  let isAppCreated = false;
-  spinner.start();
-
+  options: { displayName?: string; packageName: string }
+): Promise<any> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/androidApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
       timeout: 15 * ONE_SECOND_MILLIS,
-      data: { displayName, packageName },
+      data: options,
     });
-    const result = await pollOperation<any>({
+    const appData = await pollOperation<any>({
       pollerName: "Create Android app Poller",
       apiOrigin: api.firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
-    spinner.succeed();
-    isAppCreated = true;
-    const appMetadata: AndroidAppMetadata = {
-      appId: result.appId,
-      displayName: result.displayName,
-      packageName: result.packageName,
-      appPlatform: AppPlatform.ANDROID,
-    };
-    logPostAppCreationInformation(appMetadata);
-
-    if (shaCertificate) {
-      spinner = new OraWrapper(`Adding sha certificate to your app`);
-      spinner.start();
-      const shaResponse = await api.request(
-        "POST",
-        `/v1beta1/projects/-/androidApps/${appMetadata.appId}/sha`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 15 * ONE_SECOND_MILLIS,
-          data: shaCertificate,
-        }
-      );
-      spinner.succeed();
-      appMetadata.shaCertificates = [shaResponse.body];
-    }
-
-    return appMetadata;
+    return appData;
   } catch (err) {
-    spinner.fail();
     logger.debug(err.message);
-    const message = !isAppCreated
-      ? `Failed to create Android app for project ${projectId}`
-      : "Failed to add sha certificate for your Android app";
-    throw new FirebaseError(`${message}. See firebase-debug.log for more info.`, {
-      exit: 2,
-      original: err,
-    });
+    throw new FirebaseError(
+      `Failed to create Android app for project ${projectId}. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
   }
 }
 
 /**
  * Send an API request to create a new Firebase Web app and poll the LRO to get the new app
  * information.
- * @return {Promise} this function returns a promise that resolves to the resource name of the
- *     create Web app LRO, or rejects if an error is thrown
+ * @return a promise that resolves to the resource name of the create Web app LRO
  */
 export async function createWebApp(
   projectId: string,
-  displayName: string
-): Promise<WebAppMetadata> {
-  const spinner = new OraWrapper("Creating your Web app");
-  spinner.start();
-
+  options: { displayName?: string }
+): Promise<any> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/webApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
       timeout: 15 * ONE_SECOND_MILLIS,
-      data: { displayName },
+      data: options,
     });
-    const result = await pollOperation<any>({
+    const appData = await pollOperation<any>({
       pollerName: "Create Web app Poller",
       apiOrigin: api.firebaseApiOrigin,
       apiVersion: "v1beta1",
       operationResourceName: response.body.name /* LRO resource name */,
     });
-    spinner.succeed();
-    const appMetadata: WebAppMetadata = {
-      appId: result.appId,
-      displayName: result.displayName,
-      appPlatform: AppPlatform.WEB,
-    };
-    logPostAppCreationInformation(appMetadata);
-    return appMetadata;
+    return appData;
   } catch (err) {
-    spinner.fail();
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to create Web app for project ${projectId}. See firebase-debug.log for more info.`,
@@ -200,16 +116,54 @@ export async function createWebApp(
   }
 }
 
-function logPostAppCreationInformation(appMetadata: AppMetadata): void {
-  logger.log(`🎉🎉🎉 Your Firebase ${appMetadata.appPlatform} App is ready! 🎉🎉🎉`);
+/**
+ * Send an API request to create a sha certificate to an Android app.
+ * @return a promise that resolves to the new sha certificate information
+ */
+export async function createShaCertificate(
+  appId: string,
+  shaCertificate?: ShaCertificate
+): Promise<ShaCertificate> {
+  try {
+    const shaResponse = await api.request("POST", `/v1beta1/projects/-/androidApps/${appId}/sha`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: 15 * ONE_SECOND_MILLIS,
+      data: shaCertificate,
+    });
+    return shaResponse.body;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      "Failed to add sha certificate for your Android app. See firebase-debug.log for more info.",
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+/**
+ * TODO: move this function to the command file
+ */
+function logPostAppCreationInformation(
+  appMetadata: {
+    appId: string;
+    displayName: string;
+    bundleId?: string;
+    packageName?: string;
+  },
+  appPlatform: AppPlatform
+): void {
+  logger.log(`🎉🎉🎉 Your Firebase ${appPlatform} App is ready! 🎉🎉🎉`);
   logger.log("");
   logger.log("App information:");
   logger.log(`  - App ID: ${appMetadata.appId}`);
   logger.log(`  - Display name: ${appMetadata.displayName}`);
-  if (appMetadata.appPlatform === AppPlatform.IOS) {
-    logger.log(`  - Bundle ID: ${(appMetadata as IosAppMetadata).bundleId}`);
-  } else if (appMetadata.appPlatform === AppPlatform.ANDROID) {
-    const androidAppMetadata = appMetadata as AndroidAppMetadata;
-    logger.log(`  - Package name: ${androidAppMetadata.packageName}`);
+  if (appPlatform === AppPlatform.IOS) {
+    logger.log(`  - Bundle ID: ${appMetadata.bundleId}`);
+  } else if (appPlatform === AppPlatform.ANDROID) {
+    logger.log(`  - Package name: ${appMetadata.packageName}`);
   }
 }
