@@ -1,9 +1,7 @@
 import * as _ from "lodash";
 import * as logger from "../logger";
-import * as FirebaseFunctionsTest from "firebase-functions-test";
 import * as parseTriggers from "../parseTriggers";
 import * as utils from "../utils";
-import { WrappedFunction } from "firebase-functions-test/lib/main";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
@@ -17,7 +15,13 @@ export interface EmulatedTriggerDefinition {
   regions?: string[];
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
-  eventTrigger?: any;
+  eventTrigger?: EventTrigger;
+}
+
+export interface EventTrigger {
+  resource: string;
+  service: string;
+  eventType: string;
 }
 
 export interface EmulatedTriggerMap {
@@ -31,6 +35,7 @@ export interface FunctionsRuntimeBundle {
   triggerId?: string;
   ports: {
     firestore?: number;
+    database?: number;
   };
   disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
@@ -41,6 +46,8 @@ export interface FunctionsRuntimeFeatures {
   network_filtering?: boolean;
   timeout?: boolean;
   memory_limiting?: boolean;
+  protect_env?: boolean;
+  admin_stubs?: boolean;
 }
 
 const memoryLookup = {
@@ -79,10 +86,6 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
-
-  getWrappedFunction(fft: typeof FirebaseFunctionsTest): WrappedFunction {
-    return fft().wrap(this.getRawFunction());
-  }
 }
 
 export async function getTriggersFromDirectory(
@@ -119,7 +122,13 @@ export function getEmulatedTriggersFromDefinitions(
 }
 
 export function getTemporarySocketPath(pid: number): string {
-  return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  // See "net" package docs for information about IPC pipes on Windows
+  // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
+  if (process.platform === "win32") {
+    return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
+  } else {
+    return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+  }
 }
 
 export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
@@ -128,6 +137,14 @@ export function getFunctionRegion(def: EmulatedTriggerDefinition): string {
   }
 
   return "us-central1";
+}
+
+export function getFunctionService(def: EmulatedTriggerDefinition): string {
+  if (def.eventTrigger) {
+    return def.eventTrigger.service;
+  }
+
+  return "unknown";
 }
 
 export function waitForBody(req: express.Request): Promise<string> {
@@ -144,7 +161,7 @@ export function waitForBody(req: express.Request): Promise<string> {
 }
 
 export function findModuleRoot(moduleName: string, filepath: string): string {
-  const hierarchy = filepath.split("/");
+  const hierarchy = filepath.split(path.sep);
 
   for (let i = 0; i < hierarchy.length; i++) {
     try {
@@ -154,7 +171,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
       } else {
         chunks = hierarchy;
       }
-      const packagePath = path.join(chunks.join("/"), "package.json");
+      const packagePath = path.join(chunks.join(path.sep), "package.json");
       const serializedPackage = fs.readFileSync(packagePath).toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");

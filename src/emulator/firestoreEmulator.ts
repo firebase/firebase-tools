@@ -3,15 +3,17 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 
-interface FirestoreEmulatorArgs {
+export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
   rules?: string;
   functions_emulator?: string;
+  auto_download?: boolean;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
-  static FIRESTORE_EMULATOR_ENV = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
+  static FIRESTORE_EMULATOR_ENV = "FIRESTORE_EMULATOR_HOST";
+  static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
 
   constructor(private args: FirestoreEmulatorArgs) {}
 

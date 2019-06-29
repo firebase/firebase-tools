@@ -1,6 +1,5 @@
 language: node_js
 node_js:
-  - "6"
   - "8"
   - "10"
 after_script:
@@ -9,9 +8,15 @@ jobs:
   include:
     - stage: hosting functional test
       if: repo == head_repo OR type == push
-      node_js: "6"
+      node_js: "8"
       before_script: ./scripts/decrypt-app-credentials.sh
       script: ./scripts/test-hosting.sh
+      after_script: skip
+    - stage: emulator triggers end to end test
+      if: repo == head_repo OR type == push
+      node_js: "8"
+      before_script: skip
+      script: ./scripts/test-triggers-end-to-end.sh
       after_script: skip
 cache:
   directories:

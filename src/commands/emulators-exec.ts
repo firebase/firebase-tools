@@ -3,44 +3,37 @@ import { StdioOptions } from "child_process";
 import * as clc from "cli-color";
 
 import * as Command from "../command";
-import getProjectNumber = require("../getProjectNumber");
-import requireAuth = require("../requireAuth");
-import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
+import * as FirebaseError from "../error";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import * as controller from "../emulator/controller";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { beforeEmulatorCommand } from "../emulator/commandUtils";
 
-async function runScript(script: string): Promise<void> {
+async function runScript(script: string): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = {};
+  const env: NodeJS.ProcessEnv = { ...process.env };
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
     const info = firestoreInstance.getInfo();
-    const hostString = `${info.host}:${info.port}`;
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = hostString;
+    const address = `${info.host}:${info.port}`;
+
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 
   const proc = childProcess.spawn(script, {
-    stdio: ["inherit", "pipe", "pipe"] as StdioOptions,
+    stdio: ["inherit", "inherit", "inherit"] as StdioOptions,
     shell: true,
     windowsHide: true,
     env,
   });
 
   logger.debug(`Running ${script} with environment ${JSON.stringify(env)}`);
-
-  proc.stdout.on("data", (data) => {
-    process.stdout.write(data.toString());
-  });
-
-  proc.stderr.on("data", (data) => {
-    process.stderr.write(data.toString());
-  });
 
   return new Promise((resolve, reject) => {
     proc.on("error", (err: any) => {
@@ -58,25 +51,25 @@ async function runScript(script: string): Promise<void> {
       if (signal) {
         utils.logWarning(`Script exited with signal: ${signal}`);
         setTimeout(reject, exitDelayMs);
+        return;
       }
 
+      const exitCode = code || 0;
       if (code === 0) {
         utils.logSuccess(`Script exited successfully (code 0)`);
-        setTimeout(resolve, exitDelayMs);
       } else {
         utils.logWarning(`Script exited unsuccessfully (code ${code})`);
-        setTimeout(resolve, exitDelayMs);
       }
+
+      setTimeout(() => {
+        resolve(exitCode);
+      }, exitDelayMs);
     });
   });
 }
 
 module.exports = new Command("emulators:exec <script>")
-  .before(async (options: any) => {
-    await requireConfig(options);
-    await requireAuth(options);
-    await getProjectNumber(options);
-  })
+  .before(beforeEmulatorCommand)
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
@@ -88,13 +81,20 @@ module.exports = new Command("emulators:exec <script>")
       JSON.stringify(controller.VALID_EMULATOR_STRINGS)
   )
   .action(async (script: string, options: any) => {
+    let exitCode = 0;
     try {
       await controller.startAll(options);
-      await runScript(script);
+      exitCode = await runScript(script);
     } catch (e) {
       logger.debug("Error in emulators:exec", e);
       throw e;
     } finally {
       await controller.cleanShutdown();
+    }
+
+    if (exitCode !== 0) {
+      throw new FirebaseError(`Script "${clc.bold(script)}" exited with code ${exitCode}`, {
+        exit: exitCode,
+      });
     }
   });

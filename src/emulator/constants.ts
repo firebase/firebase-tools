@@ -5,13 +5,17 @@ import { Address, Emulators } from "./types";
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
-  firestore: 5002,
-  database: 5003,
+  firestore: 8080,
+  database: 9000,
 };
 
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
+  static SERVICE_FIRESTORE = "firestore.googleapis.com";
+  static SERVICE_REALTIME_DATABASE = "firebaseio.com";
+  static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
+
   static getDefaultHost(emulator: Emulators): string {
     return DEFAULT_HOST;
   }

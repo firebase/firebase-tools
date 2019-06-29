@@ -1,5 +1,6 @@
 import * as crypto from "crypto";
 import * as request from "request";
+import * as ProgressBar from "progress";
 
 import * as FirebaseError from "../error";
 import * as utils from "../utils";
@@ -36,13 +37,26 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
     const req = request.get(remoteUrl);
     const writeStream = fs.createWriteStream(tmpfile.name);
     req.on("error", (err: any) => reject(err));
+
+    let bar: ProgressBar;
+
     req.on("response", (response) => {
       if (response.statusCode !== 200) {
         reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
       }
+
+      const total = parseInt(response.headers["content-length"] || "0", 10);
+      const totalMb = Math.ceil(total / 1000000);
+      bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
     });
-    req.on("end", () => {
-      writeStream.close();
+
+    req.on("data", (chunk) => {
+      if (bar) {
+        bar.tick(chunk.length);
+      }
+    });
+
+    writeStream.on("finish", () => {
       resolve(tmpfile.name);
     });
     req.pipe(writeStream);

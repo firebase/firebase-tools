@@ -1,4 +1,5 @@
-fixed - Fixes issue where functions for unsupported services caused a ReferenceError.
-fixed - Fixes issue where headers and response codes for HTTP functions were lost.
-fixed - Fixes issue where firebase serve does not properly start the Functions emulator.
-fixed - Adds a devDependency on firebase-functions-test to the default functions init template to prevent emulator issues.
+* Auto-download Firestore and RTDB emulators when using `emulators:start`.
+* Make `functions:shell` respect the `--port` argument.
+* Improve error message when `firebase serve` can't acquire the right port.
+* Allow running the Firestore and RTDB emulators without a configuration.
+* Allow the Firestore emulator to give more information about invalid rulesets.

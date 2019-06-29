@@ -5,6 +5,9 @@ import { Constants } from "./constants";
 interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
+  functions_emulator_port?: number;
+  functions_emulator_host?: string;
+  auto_download?: boolean;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {

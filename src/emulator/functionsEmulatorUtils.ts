@@ -2,6 +2,7 @@
 Please be careful when adding require/imports to this file, it is pulled into functionsEmulatorRuntime
 which is ran in a separate node process, so it is likely to have unintended side-effects for you.
  */
+
 const wildcardRegex = new RegExp("{[^/{}]*}");
 const wildcardKeyRegex = new RegExp("^{(.+)}$");
 
@@ -53,5 +54,12 @@ export function trimSlashes(str: string): string {
   return str
     .split("/")
     .filter((c) => c)
+    .join("/");
+}
+
+export function removePathSegments(path: string, count: number): string {
+  return trimSlashes(path)
+    .split("/")
+    .slice(count)
     .join("/");
 }

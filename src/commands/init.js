@@ -10,7 +10,7 @@ var Config = require("../config");
 var fsutils = require("../fsutils");
 var init = require("../init");
 var logger = require("../logger");
-var prompt = require("../prompt");
+var { prompt, promptOnce } = require("../prompt");
 var requireAuth = require("../requireAuth");
 var utils = require("../utils");
 
@@ -71,28 +71,28 @@ module.exports = new Command("init [feature]")
 
     var choices = [
       {
-        name: "database",
-        label: "Database: Deploy Firebase Realtime Database Rules",
+        value: "database",
+        name: "Database: Deploy Firebase Realtime Database Rules",
         checked: false,
       },
       {
-        name: "firestore",
-        label: "Firestore: Deploy rules and create indexes for Firestore",
+        value: "firestore",
+        name: "Firestore: Deploy rules and create indexes for Firestore",
         checked: false,
       },
       {
-        name: "functions",
-        label: "Functions: Configure and deploy Cloud Functions",
+        value: "functions",
+        name: "Functions: Configure and deploy Cloud Functions",
         checked: false,
       },
       {
-        name: "hosting",
-        label: "Hosting: Configure and deploy Firebase Hosting sites",
+        value: "hosting",
+        name: "Hosting: Configure and deploy Firebase Hosting sites",
         checked: false,
       },
       {
-        name: "storage",
-        label: "Storage: Deploy Cloud Storage security rules",
+        value: "storage",
+        name: "Storage: Deploy Cloud Storage security rules",
         checked: false,
       },
     ];
@@ -101,7 +101,7 @@ module.exports = new Command("init [feature]")
     // HACK: Windows Node has issues with selectables as the first prompt, so we
     // add an extra confirmation prompt that fixes the problem
     if (process.platform === "win32") {
-      next = prompt.once({
+      next = promptOnce({
         type: "confirm",
         message: "Are you ready to proceed?",
       });
@@ -128,16 +128,11 @@ module.exports = new Command("init [feature]")
             message:
               "Which Firebase CLI features do you want to set up for this folder? " +
               "Press Space to select features, then Enter to confirm your choices.",
-            choices: prompt.convertLabeledListChoices(choices),
+            choices: choices,
           },
         ]);
       })
       .then(function() {
-        if (!setup.featureArg) {
-          setup.features = setup.features.map(function(feat) {
-            return prompt.listLabelToValue(feat, choices);
-          });
-        }
         if (setup.features.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +

@@ -9,6 +9,11 @@ var FirebaseError = require("../error");
 var logger = require("../logger");
 var utils = require("../utils");
 
+// Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
+// exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric
+// value expressed in that format.
+var MIN_ID = "__id-9223372036854775808__";
+
 /**
  * Construct a new Firestore delete operation.
  *
@@ -119,8 +124,8 @@ FirestoreDelete.prototype._collectionDescendantsQuery = function(
 ) {
   var nullChar = String.fromCharCode(0);
 
-  var startAt = this.parent + "/" + this.path + "/" + nullChar;
-  var endAt = this.parent + "/" + this.path + nullChar + "/" + nullChar;
+  var startAt = this.parent + "/" + this.path + "/" + MIN_ID;
+  var endAt = this.parent + "/" + this.path + nullChar + "/" + MIN_ID;
 
   var where = {
     compositeFilter: {

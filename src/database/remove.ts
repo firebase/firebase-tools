@@ -1,6 +1,7 @@
 import * as pathLib from "path";
 
 import { RemoveRemote, RTDBRemoveRemote } from "./removeRemote";
+import { ListRemote, RTDBListRemote } from "./listRemote";
 import { Stack } from "../throttler/stack";
 
 function chunkList<T>(ls: T[], chunkSize: number): T[][] {
@@ -18,6 +19,7 @@ const MAX_LIST_NUM_SUB_PATH = 204800;
 export default class DatabaseRemove {
   path: string;
   remote: RemoveRemote;
+  listRemote: ListRemote;
   private deleteJobStack: Stack<() => Promise<boolean>, boolean>;
   private listStack: Stack<() => Promise<string[]>, string[]>;
 
@@ -36,6 +38,7 @@ export default class DatabaseRemove {
       concurrency: 1,
       retries: 3,
     });
+    this.listRemote = new RTDBListRemote(instance);
     this.listStack = new Stack({
       name: "list stack",
       concurrency: 1,
@@ -68,7 +71,7 @@ export default class DatabaseRemove {
     let batchSize = INITIAL_DELETE_BATCH_SIZE;
     while (true) {
       const subPathList = await this.listStack.run(() =>
-        this.remote.listPath(path, listNumSubPath)
+        this.listRemote.listPath(path, listNumSubPath)
       );
       if (subPathList.length === 0) {
         return Promise.resolve(false);

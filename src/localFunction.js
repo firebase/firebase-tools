@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var request = require("request");
 
-var encodeFirestoreValue = require("./firestore/encodeFirestoreValue");
+var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
 
 var LocalFunction = function(trigger, urls, controller) {

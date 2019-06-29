@@ -1,5 +1,9 @@
+import * as clc from "cli-color";
+
 import { ALL_EMULATORS, EmulatorInstance, Emulators } from "./types";
 import * as FirebaseError from "../error";
+import * as utils from "../utils";
+import * as controller from "./controller";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -13,8 +17,16 @@ export class EmulatorRegistry {
       throw new FirebaseError(`Emulator ${instance.getName()} is already running!`, {});
     }
 
+    // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
+    await controller.waitForPortClosed(instance.getInfo().port);
+
     this.set(instance.getName(), instance);
+    const info = instance.getInfo();
+    utils.logLabeledSuccess(
+      instance.getName(),
+      `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
+    );
   }
 
   static async stop(name: Emulators): Promise<void> {

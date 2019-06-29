@@ -1,4 +1,4 @@
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
+import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
@@ -6,8 +6,40 @@ import { EmulatorServer } from "../emulator/emulatorServer";
 module.exports = {
   emulatorServer: undefined,
 
-  async start(options: any): Promise<void> {
-    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, {}));
+  async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
+    args = args || {};
+
+    if (!args.disabledRuntimeFeatures) {
+      // When running the functions emulator through 'firebase serve' we disable some
+      // of the more adventurous features that could be breaking/unexpected behavior
+      // for those used to the legacy emulator.
+      args.disabledRuntimeFeatures = {
+        functions_config_helper: true,
+        network_filtering: true,
+        timeout: true,
+        memory_limiting: true,
+        protect_env: true,
+        admin_stubs: true,
+      };
+    }
+
+    if (options.host) {
+      args.host = options.host;
+    }
+
+    // If hosting emulator is not being served but Functions is,
+    // we can use the port argument. Otherwise it goes to hosting and
+    // we use port + 1.
+    if (options.port) {
+      const hostingRunning = options.targets && options.targets.indexOf("hosting") >= 0;
+      if (hostingRunning) {
+        args.port = options.port + 1;
+      } else {
+        args.port = options.port;
+      }
+    }
+
+    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, args));
     await this.emulatorServer.start();
   },
 

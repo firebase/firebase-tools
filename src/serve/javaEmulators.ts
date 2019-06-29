@@ -11,6 +11,9 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 
+// tslint:disable-next-line
+const downloadEmulator = require("../emulator/download");
+
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
 type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
@@ -25,10 +28,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v3.5.0.jar",
-    expectedSize: 17013124,
-    expectedChecksum: "4bc8a67bc2a11d3e7ed226eda1b1a986",
-    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v3.5.0.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.0.0.jar",
+    expectedSize: 17097803,
+    expectedChecksum: "102c8de422db81933a0f29fede5a80a0",
+    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.0.0.jar"),
   },
   firestore: {
     name: Emulators.FIRESTORE,
@@ -36,10 +39,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.4.5.jar",
-    expectedSize: 56840576,
-    expectedChecksum: "7fa4ebe4615650038c79ea260b0e7bf6",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.4.5.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.6.0.jar",
+    expectedSize: 57397358,
+    expectedChecksum: "58e9360b2abac579b2451c36c0cce147",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.6.0.jar"),
   },
 };
 
@@ -47,10 +50,12 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
+    optionalArgs: ["port", "host", "rules", "functions_emulator_port", "functions_emulator_host"],
   },
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
+    optionalArgs: ["port", "host", "rules", "functions_emulator"],
   },
 };
 
@@ -73,6 +78,11 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
 
   const cmdLineArgs = baseCmd.args.slice();
   Object.keys(args).forEach((key) => {
+    if (baseCmd.optionalArgs.indexOf(key) < 0) {
+      logger.debug(`Ignoring unsupported arg: ${key}`);
+      return;
+    }
+
     const argKey = "--" + key;
     const argVal = args[key];
 
@@ -82,6 +92,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
   return {
     binary: baseCmd.binary,
     args: cmdLineArgs,
+    optionalArgs: baseCmd.optionalArgs,
   };
 }
 
@@ -111,9 +122,11 @@ async function _runBinary(
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
+      emulator.stdout.write(data);
     });
     emulator.instance.stderr.on("data", (data) => {
       logger.debug(data.toString());
+      emulator.stdout.write(data);
     });
 
     emulator.instance.on("error", (err: any) => {
@@ -165,12 +178,18 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
 
 export async function start(targetName: JavaEmulators, args: any): Promise<void> {
   const emulator = EmulatorDetails[targetName];
-  const command = _getCommand(targetName, args);
-  if (!fs.existsSync(emulator.localPath)) {
-    utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
-    return Promise.reject("emulator not found");
+
+  const hasEmulator = fs.existsSync(emulator.localPath);
+  if (!hasEmulator) {
+    if (args.auto_download) {
+      await downloadEmulator(targetName);
+    } else {
+      utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
+      throw new FirebaseError("emulator not found");
+    }
   }
 
+  const command = _getCommand(targetName, args);
   logger.debug(`Starting emulator ${targetName} with args ${JSON.stringify(args)}`);
   return _runBinary(emulator, command);
 }
