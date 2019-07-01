@@ -1,31 +1,14 @@
 import * as clc from "cli-color";
 
 import * as api from "../api";
-import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
 import * as validator from "./validator";
 
 import * as API from "./indexes-api";
 import * as Spec from "./indexes-spec";
-
-// projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/indexes/$INDEX_ID
-const INDEX_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/indexes\/([^\/]*)/;
-
-// projects/$PROJECT_ID/databases/(default)/collectionGroups/$COLLECTION_GROUP_ID/fields/$FIELD_ID
-const FIELD_NAME_REGEX = /projects\/([^\/]+?)\/databases\/\(default\)\/collectionGroups\/([^\/]+?)\/fields\/([^\/]*)/;
-
-interface IndexName {
-  projectId: string;
-  collectionGroupId: string;
-  indexId: string;
-}
-
-interface FieldName {
-  projectId: string;
-  collectionGroupId: string;
-  fieldPath: string;
-}
+import * as sort from "./indexes-sort";
+import * as util from "./util";
 
 export class FirestoreIndexes {
   /**
@@ -157,7 +140,7 @@ export class FirestoreIndexes {
   makeIndexSpec(indexes: API.Index[], fields?: API.Field[]): Spec.IndexFile {
     const indexesJson = indexes.map((index) => {
       return {
-        collectionGroup: this.parseIndexName(index.name).collectionGroupId,
+        collectionGroup: util.parseIndexName(index.name).collectionGroupId,
         queryScope: index.queryScope,
         fields: index.fields,
       };
@@ -169,7 +152,7 @@ export class FirestoreIndexes {
     }
 
     const fieldsJson = fields.map((field) => {
-      const parsedName = this.parseFieldName(field.name);
+      const parsedName = util.parseFieldName(field.name);
       const fieldIndexes = field.indexConfig.indexes || [];
       return {
         collectionGroup: parsedName.collectionGroupId,
@@ -186,9 +169,11 @@ export class FirestoreIndexes {
       };
     });
 
+    const sortedIndexes = indexesJson.sort(sort.compareSpecIndex);
+    const sortedFields = fieldsJson.sort(sort.compareFieldOverride);
     return {
-      indexes: indexesJson,
-      fieldOverrides: fieldsJson,
+      indexes: sortedIndexes,
+      fieldOverrides: sortedFields,
     };
   }
 
@@ -202,7 +187,8 @@ export class FirestoreIndexes {
       return;
     }
 
-    indexes.forEach((index) => {
+    const sortedIndexes = indexes.sort(sort.compareApiIndex);
+    sortedIndexes.forEach((index) => {
       logger.info(this.prettyIndexString(index));
     });
   }
@@ -217,7 +203,8 @@ export class FirestoreIndexes {
       return;
     }
 
-    fields.forEach((field) => {
+    const sortedFields = fields.sort(sort.compareApiField);
+    sortedFields.forEach((field) => {
       logger.info(this.prettyFieldString(field));
     });
   }
@@ -349,7 +336,7 @@ export class FirestoreIndexes {
    * Determine if an API Index and a Spec Index are functionally equivalent.
    */
   indexMatchesSpec(index: API.Index, spec: Spec.Index): boolean {
-    const collection = this.parseIndexName(index.name).collectionGroupId;
+    const collection = util.parseIndexName(index.name).collectionGroupId;
     if (collection !== spec.collectionGroup) {
       return false;
     }
@@ -389,7 +376,7 @@ export class FirestoreIndexes {
    * Determine if an API Field and a Spec Field are functionally equivalent.
    */
   fieldMatchesSpec(field: API.Field, spec: Spec.FieldOverride): boolean {
-    const parsedName = this.parseFieldName(field.name);
+    const parsedName = util.parseFieldName(field.name);
 
     if (parsedName.collectionGroupId !== spec.collectionGroup) {
       return false;
@@ -422,42 +409,6 @@ export class FirestoreIndexes {
     }
 
     return true;
-  }
-
-  /**
-   * Parse an Index name into useful pieces.
-   */
-  parseIndexName(name?: string): IndexName {
-    if (!name) {
-      throw new FirebaseError(`Cannot parse undefined index name.`);
-    }
-
-    const m = name.match(INDEX_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing index name: ${name}`);
-    }
-
-    return {
-      projectId: m[1],
-      collectionGroupId: m[2],
-      indexId: m[3],
-    };
-  }
-
-  /**
-   * Parse an Field name into useful pieces.
-   */
-  parseFieldName(name: string): FieldName {
-    const m = name.match(FIELD_NAME_REGEX);
-    if (!m || m.length < 4) {
-      throw new FirebaseError(`Error parsing field name: ${name}`);
-    }
-
-    return {
-      projectId: m[1],
-      collectionGroupId: m[2],
-      fieldPath: m[3],
-    };
   }
 
   /**
@@ -539,7 +490,7 @@ export class FirestoreIndexes {
       }
     }
 
-    const nameInfo = this.parseIndexName(index.name);
+    const nameInfo = util.parseIndexName(index.name);
 
     result += clc.cyan(`(${nameInfo.collectionGroupId})`);
     result += " -- ";
@@ -564,7 +515,7 @@ export class FirestoreIndexes {
   private prettyFieldString(field: API.Field): string {
     let result = "";
 
-    const parsedName = this.parseFieldName(field.name);
+    const parsedName = util.parseFieldName(field.name);
 
     result +=
       "[" +

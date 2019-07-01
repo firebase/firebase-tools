@@ -3,6 +3,8 @@ import { FirestoreIndexes } from "../../firestore/indexes";
 import * as FirebaseError from "../../error";
 import * as API from "../../firestore/indexes-api";
 import * as Spec from "../../firestore/indexes-spec";
+import * as sort from "../../firestore/indexes-sort";
+import * as util from "../../firestore/util";
 
 const idx = new FirestoreIndexes();
 
@@ -103,7 +105,7 @@ describe("IndexNameParsing", () => {
   it("should parse an index name correctly", () => {
     const name =
       "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123/";
-    expect(idx.parseIndexName(name)).to.eql({
+    expect(util.parseIndexName(name)).to.eql({
       projectId: "myproject",
       collectionGroupId: "collection",
       indexId: "abc123",
@@ -113,7 +115,7 @@ describe("IndexNameParsing", () => {
   it("should parse a field name correctly", () => {
     const name =
       "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123/";
-    expect(idx.parseFieldName(name)).to.eql({
+    expect(util.parseFieldName(name)).to.eql({
       projectId: "myproject",
       collectionGroupId: "collection",
       fieldPath: "abc123",
@@ -241,5 +243,215 @@ describe("IndexSpecMatching", () => {
 
     // The second spec contains "DESCENDING" where the first contains "ASCENDING"
     expect(idx.fieldMatchesSpec(apiField, specField)).to.eql(false);
+  });
+});
+
+describe("IndexSorting", () => {
+  it("should be able to handle empty arrays", () => {
+    expect(([] as Spec.Index[]).sort(sort.compareSpecIndex)).to.eql([]);
+    expect(([] as Spec.FieldOverride[]).sort(sort.compareFieldOverride)).to.eql([]);
+    expect(([] as API.Index[]).sort(sort.compareApiIndex)).to.eql([]);
+    expect(([] as API.Field[]).sort(sort.compareApiField)).to.eql([]);
+  });
+
+  it("should correctly sort an array of Spec indexes", () => {
+    // Sorts first because of collectionGroup
+    const a: Spec.Index = {
+      collectionGroup: "collectionA",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+    };
+
+    // fieldA ASCENDING should sort before fieldA DESCENDING
+    const b: Spec.Index = {
+      collectionGroup: "collectionB",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    // This compound index sorts before the following simple
+    // index because the first element sorts first.
+    const c: Spec.Index = {
+      collectionGroup: "collectionB",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+        {
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    const d: Spec.Index = {
+      collectionGroup: "collectionB",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    const e: Spec.Index = {
+      collectionGroup: "collectionB",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
+        },
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    expect([b, a, e, d, c].sort(sort.compareSpecIndex)).to.eql([a, b, c, d, e]);
+  });
+
+  it("should correcty sort an array of Spec field overrides", () => {
+    // Sorts first because of collectionGroup
+    const a: Spec.FieldOverride = {
+      collectionGroup: "collectionA",
+      fieldPath: "fieldA",
+      indexes: [],
+    };
+
+    const b: Spec.FieldOverride = {
+      collectionGroup: "collectionB",
+      fieldPath: "fieldA",
+      indexes: [],
+    };
+
+    // Order indexes sort before Array indexes
+    const c: Spec.FieldOverride = {
+      collectionGroup: "collectionB",
+      fieldPath: "fieldB",
+      indexes: [
+        {
+          queryScope: API.QueryScope.COLLECTION,
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    const d: Spec.FieldOverride = {
+      collectionGroup: "collectionB",
+      fieldPath: "fieldB",
+      indexes: [
+        {
+          queryScope: API.QueryScope.COLLECTION,
+          arrayConfig: API.ArrayConfig.CONTAINS,
+        },
+      ],
+    };
+
+    expect([b, a, d, c].sort(sort.compareFieldOverride)).to.eql([a, b, c, d]);
+  });
+
+  it("should correctly sort an array of API indexes", () => {
+    // Sorts first because of collectionGroup
+    const a: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionA/indexes/a",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [],
+    };
+
+    // fieldA ASCENDING should sort before fieldA DESCENDING
+    const b: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/b",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    // This compound index sorts before the following simple
+    // index because the first element sorts first.
+    const c: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/c",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          order: API.Order.ASCENDING,
+        },
+        {
+          fieldPath: "fieldB",
+          order: API.Order.ASCENDING,
+        },
+      ],
+    };
+
+    const d: API.Index = {
+      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/d",
+      queryScope: API.QueryScope.COLLECTION,
+      fields: [
+        {
+          fieldPath: "fieldA",
+          order: API.Order.DESCENDING,
+        },
+      ],
+    };
+
+    expect([b, a, d, c].sort(sort.compareApiIndex)).to.eql([a, b, c, d]);
+  });
+
+  it("should correctly sort an array of API field overrides", () => {
+    // Sorts first because of collectionGroup
+    const a: API.Field = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collectionA/fields/fieldA",
+      indexConfig: {
+        indexes: [],
+      },
+    };
+
+    const b: API.Field = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldA",
+      indexConfig: {
+        indexes: [],
+      },
+    };
+
+    // Order indexes sort before Array indexes
+    const c: API.Field = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
+      indexConfig: {
+        indexes: [
+          {
+            queryScope: API.QueryScope.COLLECTION,
+            fields: [{ fieldPath: "fieldB", order: API.Order.DESCENDING }],
+          },
+        ],
+      },
+    };
+
+    const d: API.Field = {
+      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
+      indexConfig: {
+        indexes: [
+          {
+            queryScope: API.QueryScope.COLLECTION,
+            fields: [{ fieldPath: "fieldB", arrayConfig: API.ArrayConfig.CONTAINS }],
+          },
+        ],
+      },
+    };
+
+    expect([b, a, d, c].sort(sort.compareApiField)).to.eql([a, b, c, d]);
   });
 });
