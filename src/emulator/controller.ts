@@ -103,7 +103,7 @@ export async function startAll(options: any): Promise<void> {
   const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
   options.targets = targets;
 
-  const projectId = getProjectId(options, false);
+  const projectId: string | undefined = getProjectId(options, true);
 
   utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
   if (options.only) {
