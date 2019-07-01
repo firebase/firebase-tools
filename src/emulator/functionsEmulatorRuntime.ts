@@ -78,6 +78,7 @@ interface ModuleResolution {
   declared: boolean;
   installed: boolean;
   version?: string;
+  resolution?: string;
 }
 
 interface ModuleVersion {
@@ -184,9 +185,15 @@ class Proxied<T> {
 
 async function resolveDeveloperNodeModule(
   frb: FunctionsRuntimeBundle,
-  pkg: PackageJSON,
   name: string
 ): Promise<ModuleResolution> {
+  // TODO: Can we cache this call?  Should we?
+  const pkg = requirePackageJson(frb);
+  if (!pkg) {
+    new EmulatorLog("SYSTEM", "missing-package-json", "").log();
+    throw "Could not find package.json";
+  }
+
   const dependencies = pkg.dependencies;
   const devDependencies = pkg.devDependencies;
   const isInPackageJSON = dependencies[name] || devDependencies[name];
@@ -197,35 +204,32 @@ async function resolveDeveloperNodeModule(
   }
 
   // Once we know it's in the package.json, make sure it's actually `npm install`ed
-  const modResolution = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
-
-  if (!modResolution) {
+  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
+  if (!resolveResult) {
     return { declared: true, installed: false };
   }
 
-  const modPackageJSON = require(path.join(findModuleRoot(name, modResolution), "package.json"));
+  const modPackageJSON = require(path.join(findModuleRoot(name, resolveResult), "package.json"));
 
-  return {
+  const moduleResolution: ModuleResolution = {
     declared: true,
     installed: true,
     version: modPackageJSON.version,
+    resolution: resolveResult,
   };
+
+  new EmulatorLog("DEBUG", "runtime-status", `Resolved module ${name}: ${JSON.stringify(moduleResolution)}`).log();
+  return moduleResolution;
 }
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
-  const pkg = requirePackageJson(frb);
-  if (!pkg) {
-    new EmulatorLog("SYSTEM", "missing-package-json", "").log();
-    return false;
-  }
-
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: 8 },
     { name: "firebase-functions", isDev: false, minVersion: 3 },
   ];
 
   for (const modBundle of modBundles) {
-    const resolution = await resolveDeveloperNodeModule(frb, pkg, modBundle.name);
+    const resolution = await resolveDeveloperNodeModule(frb, modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
@@ -408,11 +412,13 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
-  const firebaseFunctionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [functionsDir],
-  });
-  const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
+async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
+  const firebaseFunctionsResolution = await resolveDeveloperNodeModule(frb, "firebase-functions");
+  if (!firebaseFunctionsResolution.resolution) {
+    throw "Could not resolve 'firebase-functions'"
+  }
+
+  const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution.resolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
   const httpsProvider = require(httpsProviderResolution);
@@ -477,10 +483,15 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
     but it's hard to catch and better than accidentally talking to prod.
    */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
-  const adminResolution = await requireResolveAsync("firebase-admin", { paths: [frb.cwd] });
-  const localAdminModule = require(adminResolution);
+  const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
+  if (!adminResolution.resolution) {
+    throw "Could not resolve 'firebase-admin'";
+  }
 
-  let hasInitializedSettings = false;
+  const localAdminModule = require(adminResolution.resolution);
+
+  let hasInitializedFirestore = false;
+
   /*
   If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
   then there's probably something really wrong (like a failed node-gyp build). If that's the case
@@ -491,14 +502,14 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
 
     if (!isEnabled) {
-      if (!hasInitializedSettings) {
+      if (!hasInitializedFirestore) {
         app.firestore().settings(userSettings);
-        hasInitializedSettings = true;
+        hasInitializedFirestore = true;
       }
       return;
     }
 
-    if (!hasInitializedSettings && frb.ports.firestore) {
+    if (!hasInitializedFirestore && frb.ports.firestore) {
       app.firestore().settings({
         projectId: frb.projectId,
         port: frb.ports.firestore,
@@ -519,7 +530,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       ).log();
     }
 
-    hasInitializedSettings = true;
+    hasInitializedFirestore = true;
   };
 
   adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
@@ -532,7 +543,6 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
       new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
 
-      // TODO: Is there any possible harm in this?
       config.credential = makeFakeCredentials();
 
       if (frb.ports.database) {
@@ -566,13 +576,15 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
     })
     .finalize();
 
-  require.cache[adminResolution] = {
+  // Stub the admin module in the require cache
+  require.cache[adminResolution.resolution] = {
     exports: adminModuleProxy,
   };
 
   new EmulatorLog("DEBUG", "runtime-status", "firebase-admin has been stubbed.", {
     adminResolution,
   }).log();
+
   return adminModuleProxy;
 }
 
@@ -862,7 +874,7 @@ async function main(): Promise<void> {
     await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
-  await InitializeFirebaseFunctionsStubs(frb.cwd);
+  await InitializeFirebaseFunctionsStubs(frb);
   await InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
