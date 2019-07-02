@@ -16,7 +16,6 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
-import { Message } from "firebase-functions/lib/providers/pubsub";
 
 let defaultApp: admin.app.App;
 let adminModuleProxy: typeof admin;
@@ -42,14 +41,6 @@ async function requireResolveAsync(
   opts?: { paths: string[] }
 ): Promise<string> {
   return require.resolve(moduleName, opts);
-}
-
-function isConstructor(obj: any): boolean {
-  return !!obj.prototype && !!obj.prototype.constructor.name;
-}
-
-function isExists(obj: any): boolean {
-  return obj !== undefined;
 }
 
 /**
@@ -89,6 +80,10 @@ interface ModuleVersion {
   patch: number;
 }
 
+interface ProxyTarget extends Object {
+  [key: string]: any;
+}
+
 /*
   This helper is used to create mocks for Firebase SDKs. It simplifies creation of Proxy objects
   by allowing us to easily overide some or all of an objects methods. When placed back into require's
@@ -102,21 +97,21 @@ interface ModuleVersion {
   obj.value == 1;
   obj.incremented == 2;
    */
-class Proxied<T> {
-  proxy: any;
-  private anyValue?: (target: any, key: string) => any;
+class Proxied<T extends ProxyTarget> {
+  proxy: T;
+  private anyValue?: (target: T, key: string) => any;
   private appliedValue?: () => any;
   private rewrites: {
-    [key: string]: (target: any, key: string) => any;
+    [key: string]: (target: T, key: string) => any;
   } = {};
 
-  constructor(private original: any) {
-    /*
-      When initialized an original object is passed. This object is supplied to both .when()
-      and .any() functions so the original value of the object is accessible. When no
-      .any() is provided, the original value of the object is returned when the field
-      key does not match any known rewrite.
-      */
+  /**
+   * When initialized an original object is passed. This object is supplied to both .when()
+   * and .any() functions so the original value of the object is accessible. When no
+   * .any() is provided, the original value of the object is returned when the field
+   * key does not match any known rewrite.
+   */
+  constructor(private original: T) {
     this.proxy = new Proxy(this.original, {
       get: (target, key) => {
         key = key.toString();
@@ -143,7 +138,7 @@ class Proxied<T> {
   /**
    * Calling .when("a", () => "b") will rewrite obj["a"] to be equal to "b"
    */
-  when(key: string, value: (target: any, key: string) => any): Proxied<T> {
+  when(key: string, value: (target: T, key: string) => any): Proxied<T> {
     this.rewrites[key] = value;
     return this as Proxied<T>;
   }
@@ -151,7 +146,7 @@ class Proxied<T> {
   /**
    * Calling .any(() => "b") will rewrite all fields on obj to be equal to "b"
    */
-  any(value: (target: any, key: string) => any): Proxied<T> {
+  any(value: (target: T, key: string) => any): Proxied<T> {
     this.anyValue = value;
     return this as Proxied<T>;
   }
@@ -164,24 +159,41 @@ class Proxied<T> {
     return this as Proxied<T>;
   }
 
-  getOriginal(target: any, key: string): any {
+  /**
+   * Gets a property from the original object.
+   */
+  getOriginal(target: T, key: string): any {
     const value = target[key];
 
-    if (!isExists(value)) {
+    if (!this.isExists(value)) {
       return undefined;
-    } else if (isConstructor(value) || typeof value !== "function") {
+    } else if (this.isConstructor(value) || typeof value !== "function") {
       return value;
     } else {
       return value.bind(target);
     }
   }
 
+  /**
+   * Run the original target.
+   */
   applyOriginal(target: any, thisArg: any, argArray: any[]): any {
     return target.apply(thisArg, argArray);
   }
 
+  /**
+   * Return the final proxied object.
+   */
   finalize(): T {
     return this.proxy as T;
+  }
+
+  private isConstructor(obj: any): boolean {
+    return !!obj.prototype && !!obj.prototype.constructor.name;
+  }
+
+  private isExists(obj: any): boolean {
+    return obj !== undefined;
   }
 }
 
@@ -499,7 +511,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   const localAdminModule = require(adminResolution.resolution);
 
   adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
-    .when("initializeApp", (adminModuleTarget) => (opts: any, appName: any) => {
+    .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
@@ -524,15 +536,15 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       defaultApp = proxyFirebaseApp(frb, originalApp, sslCreds);
       return defaultApp;
     })
-    .when("firestore", (target: any) => {
+    .when("firestore", (adminModuleTarget) => {
       // When we call admin.firestore() we want to forward this on to the default app,
       // but if you access something like admin.firestore.FieldValue we don't want to
       // do anything.
-      const adminFirestoreProxy = new Proxied<typeof admin.firestore>(target.firestore).applied(
-        () => {
-          return defaultApp.firestore();
-        }
-      );
+      const adminFirestoreProxy = new Proxied<typeof admin.firestore>(
+        adminModuleTarget.firestore
+      ).applied(() => {
+        return defaultApp.firestore();
+      });
 
       return adminFirestoreProxy.finalize();
     })
@@ -595,6 +607,8 @@ function proxyFirebaseApp(
 
   const appProxy = new Proxied<admin.app.App>(original);
   appProxy.when("firestore", (target: any) => {
+    // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
+    //       but I can't get all the type checking to play nice.
     const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
     return firestoreProxy
       .applied(() => {
@@ -918,10 +932,8 @@ async function main(): Promise<void> {
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
 
   if (!frb.triggerId) {
-    /*
-      This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
-      expected, so we don't have any function to invoke.
-     */
+    // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
+    // expected, so we don't have any function to invoke.
     return;
   }
 
