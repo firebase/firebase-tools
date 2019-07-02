@@ -388,9 +388,9 @@ You can probably fix this by running "npm install ${
         break;
       case "DEBUG":
         if (log.data && log.data !== {}) {
-          EmulatorLogger.log("DEBUG", `${log.text} data=${JSON.stringify(log.data)}`);
+          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
         } else {
-          EmulatorLogger.log("DEBUG", log.text);
+          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`);
         }
         break;
       case "INFO":

@@ -521,10 +521,13 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       new EmulatorLog("DEBUG", "default-admin-app-used", "", appOptions).log();
       logDebug("Intializing default app.", appOptions);
-      defaultApp = makeProxiedApp(frb, originalApp, sslCreds);
+      defaultApp = proxyFirebaseApp(frb, originalApp, sslCreds);
       return defaultApp;
     })
     .when("firestore", (target: any) => {
+      // When we call admin.firestore() we want to forward this on to the default app,
+      // but if you access something like admin.firestore.FieldValue we don't want to
+      // do anything.
       const adminFirestoreProxy = new Proxied<typeof admin.firestore>(target.firestore).applied(
         () => {
           return defaultApp.firestore();
@@ -547,7 +550,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   return adminModuleProxy;
 }
 
-function makeProxiedApp(
+function proxyFirebaseApp(
   frb: FunctionsRuntimeBundle,
   original: admin.app.App,
   sslCreds: any
@@ -576,7 +579,8 @@ function makeProxiedApp(
         ...userSettings,
       };
       firestoreTarget.settings(emulatorSettings);
-      logDebug(`Initializing Firestore with custom settings.`, emulatorSettings);
+
+      new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
     } else if (!frb.ports.firestore && frb.triggerId) {
       new EmulatorLog(
         "WARN",
