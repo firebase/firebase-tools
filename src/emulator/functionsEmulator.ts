@@ -387,7 +387,11 @@ You can probably fix this by running "npm install ${
         EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        EmulatorLogger.log("DEBUG", log.text);
+        if (log.data && log.data !== {}) {
+          EmulatorLogger.log("DEBUG", `${log.text} data=${JSON.stringify(log.data)}`);
+        } else {
+          EmulatorLogger.log("DEBUG", log.text);
+        }
         break;
       case "INFO":
         EmulatorLogger.logLabeled("BULLET", "functions", log.text);
