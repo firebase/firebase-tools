@@ -6,9 +6,9 @@ import { pollOperation } from "./operation-poller";
 const ONE_SECOND_MILLIS = 1000;
 
 export enum AppPlatform {
-  IOS = "iOS",
-  ANDROID = "Android",
-  WEB = "Web",
+  IOS = "IOS",
+  ANDROID = "ANDROID",
+  WEB = "WEB",
 }
 
 export interface ShaCertificate {
@@ -141,29 +141,5 @@ export async function createShaCertificate(
         original: err,
       }
     );
-  }
-}
-
-/**
- * TODO: move this function to the command file
- */
-function logPostAppCreationInformation(
-  appMetadata: {
-    appId: string;
-    displayName: string;
-    bundleId?: string;
-    packageName?: string;
-  },
-  appPlatform: AppPlatform
-): void {
-  logger.log(`🎉🎉🎉 Your Firebase ${appPlatform} App is ready! 🎉🎉🎉`);
-  logger.log("");
-  logger.log("App information:");
-  logger.log(`  - App ID: ${appMetadata.appId}`);
-  logger.log(`  - Display name: ${appMetadata.displayName}`);
-  if (appPlatform === AppPlatform.IOS) {
-    logger.log(`  - Bundle ID: ${appMetadata.bundleId}`);
-  } else if (appPlatform === AppPlatform.ANDROID) {
-    logger.log(`  - Package name: ${appMetadata.packageName}`);
   }
 }
