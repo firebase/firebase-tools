@@ -3,9 +3,6 @@ import { StdioOptions } from "child_process";
 import * as clc from "cli-color";
 
 import * as Command from "../command";
-import getProjectNumber = require("../getProjectNumber");
-import requireAuth = require("../requireAuth");
-import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
 import * as FirebaseError from "../error";
 import * as utils from "../utils";
@@ -13,6 +10,7 @@ import * as logger from "../logger";
 import * as controller from "../emulator/controller";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { beforeEmulatorCommand } from "../emulator/commandUtils";
 
 async function runScript(script: string): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
@@ -71,11 +69,7 @@ async function runScript(script: string): Promise<number> {
 }
 
 module.exports = new Command("emulators:exec <script>")
-  .before(async (options: any) => {
-    await requireConfig(options);
-    await requireAuth(options);
-    await getProjectNumber(options);
-  })
+  .before(beforeEmulatorCommand)
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
