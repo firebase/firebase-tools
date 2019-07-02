@@ -18,11 +18,6 @@ const PARENT_RESOURCE: ParentResource = { id: "1111111111111", type: ParentResou
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
 const OPERATION_RESOURCE_NAME_2 = "operations/cp.22222222222222222";
 
-// TODO(caot): Removed when "Deferred Analytics" and "Deferred Location" are launched
-const TIME_ZONE = "America/Los_Angeles";
-const REGION_CODE = "US";
-const LOCATION_ID = "us-central";
-
 describe("projectsCreate", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
@@ -194,7 +189,6 @@ describe("projectsCreate", () => {
         auth: true,
         origin: api.firebaseApiOrigin,
         timeout: 15000,
-        data: { timeZone: TIME_ZONE, regionCode: REGION_CODE, locationId: LOCATION_ID },
       });
     }
 

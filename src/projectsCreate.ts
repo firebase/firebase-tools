@@ -54,17 +54,11 @@ export async function createCloudProject(
  * @return a promise that resolves to the new firebase project information
  */
 export async function addFirebaseToCloudProject(projectId: string): Promise<any> {
-  // TODO(caot): Removed when "Deferred Analytics" and "Deferred Location" are launched
-  const timeZone = "America/Los_Angeles";
-  const regionCode = "US";
-  const locationId = "us-central";
-
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}:addFirebase`, {
       auth: true,
       origin: api.firebaseApiOrigin,
       timeout: 15 * ONE_SECOND_MILLIS,
-      data: { timeZone, regionCode, locationId },
     });
     const projectInfo = await pollOperation<any>({
       pollerName: "Add Firebase Poller",
