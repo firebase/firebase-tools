@@ -2,7 +2,7 @@
 
 var fs = require("fs");
 
-var fetchWebSetup = require("../fetchWebSetup");
+var { fetchWebSetup } = require("../fetchWebSetup");
 
 var INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 

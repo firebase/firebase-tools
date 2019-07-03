@@ -40,6 +40,7 @@ function _uploadSource(source, uploadUrl) {
     },
     json: false,
     origin: api.storageOrigin,
+    logOptions: { skipRequestBody: true },
   });
 }
 

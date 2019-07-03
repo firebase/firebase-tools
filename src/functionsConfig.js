@@ -7,7 +7,6 @@ var api = require("./api");
 var FirebaseError = require("./error");
 var runtimeconfig = require("./gcp/runtimeconfig");
 var getProjectId = require("./getProjectId");
-var getProjectNumber = require("./getProjectNumber");
 var ensureApiEnabled = require("./ensureApiEnabled").ensure;
 
 exports.RESERVED_NAMESPACES = ["firebase"];
@@ -55,16 +54,13 @@ exports.getAppEngineLocation = function(config) {
 };
 
 exports.getFirebaseConfig = function(options) {
-  return getProjectNumber(options)
-    .then(function(projectNumber) {
-      return api.request("GET", "/v1/projects/" + projectNumber + ":getServerAppConfig", {
-        auth: true,
-        origin: api.firedataOrigin,
-      });
+  const projectId = getProjectId(options, false);
+  return api
+    .request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
+      auth: true,
+      origin: api.firebaseApiOrigin,
     })
-    .then(function(response) {
-      return response.body;
-    });
+    .then((response) => response.body);
 };
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"
