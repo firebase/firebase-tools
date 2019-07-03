@@ -12,16 +12,12 @@ var _enableApiWithRetries;
 
 var _checkEnabled = function(projectId, apiName, prefix, silent) {
   return api
-    .request(
-      "GET",
-      "/v1/services/" + apiName + "/projectSettings/" + projectId + "?view=CONSUMER_VIEW",
-      {
-        auth: true,
-        origin: "https://servicemanagement.googleapis.com",
-      }
-    )
+    .request("GET", `/v1/projects/${projectId}/services/${apiName}`, {
+      auth: true,
+      origin: api.serviceUsageOrigin,
+    })
     .then(function(response) {
-      var isEnabled = _.get(response.body, "usageSettings.consumerEnableStatus") === "ENABLED";
+      var isEnabled = _.get(response.body, "state") === "ENABLED";
       if (isEnabled && !silent) {
         utils.logSuccess(clc.bold.green(prefix + ":") + " all necessary APIs are enabled");
       }
@@ -30,17 +26,10 @@ var _checkEnabled = function(projectId, apiName, prefix, silent) {
 };
 
 var _enableApi = function(projectId, apiName) {
-  return api.request(
-    "PATCH",
-    "/v1/services/" + apiName + "/projectSettings/" + projectId + "?updateMask=usageSettings",
-    {
-      auth: true,
-      data: {
-        usageSettings: { consumerEnableStatus: "ENABLED" },
-      },
-      origin: "https://servicemanagement.googleapis.com",
-    }
-  );
+  return api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
+    auth: true,
+    origin: api.serviceUsageOrigin,
+  });
 };
 
 var _pollCheckEnabled = function(projectId, apiName, prefix, enablementRetries, pollRetries) {

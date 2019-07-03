@@ -135,6 +135,10 @@ var api = {
     "https://firebasehosting.googleapis.com"
   ),
   cloudRunApiOrigin: utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com"),
+  serviceUsageOrigin: utils.envOverride(
+    "FIREBASE_SERVICE_USAGE_URL",
+    "https://serviceusage.googleapis.com"
+  ),
 
   setRefreshToken: function(token) {
     refreshToken = token;
