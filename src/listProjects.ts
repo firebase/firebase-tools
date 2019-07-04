@@ -2,7 +2,7 @@ import * as api from "./api";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
 
-const ONE_SECOND_MILLIS = 1000;
+const LIST_PROJECTS_TIMEOUT_MILLIS = 30000;
 const PAGE_SIZE = 1000;
 
 export interface ProjectMetadata {
@@ -38,7 +38,7 @@ export async function listFirebaseProjects(
         {
           auth: true,
           origin: api.firebaseApiOrigin,
-          timeout: 30 * ONE_SECOND_MILLIS,
+          timeout: LIST_PROJECTS_TIMEOUT_MILLIS,
         }
       );
       projects.push(...response.body.results);
