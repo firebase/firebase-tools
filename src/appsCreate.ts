@@ -3,7 +3,7 @@ import * as FirebaseError from "./error";
 import * as logger from "./logger";
 import { pollOperation } from "./operation-poller";
 
-const ONE_SECOND_MILLIS = 1000;
+const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export enum AppPlatform {
   IOS = "IOS",
@@ -24,7 +24,7 @@ export async function createIosApp(
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
     const appData = await pollOperation<any>({
@@ -56,7 +56,7 @@ export async function createAndroidApp(
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/androidApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
     const appData = await pollOperation<any>({
@@ -91,7 +91,7 @@ export async function createWebApp(
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/webApps`, {
       auth: true,
       origin: api.firebaseApiOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
     const appData = await pollOperation<any>({
