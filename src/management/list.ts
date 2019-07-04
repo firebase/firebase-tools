@@ -1,5 +1,5 @@
 import * as api from "../api";
-import { ProjectMetadata } from "./metadata";
+import { FirebaseProjectMetadata } from "./metadata";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 
@@ -12,8 +12,8 @@ const PAGE_SIZE = 1000;
  */
 export async function listFirebaseProjects(
   pageSize: number = PAGE_SIZE
-): Promise<ProjectMetadata[]> {
-  const projects: ProjectMetadata[] = [];
+): Promise<FirebaseProjectMetadata[]> {
+  const projects: FirebaseProjectMetadata[] = [];
   try {
     let nextPageToken = "";
     do {

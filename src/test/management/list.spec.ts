@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as api from "../api";
-import { listFirebaseProjects } from "../management/list";
-import { ProjectMetadata } from "../management/metadata";
-import { mockAuth } from "./helpers";
+import * as api from "../../api";
+import { listFirebaseProjects } from "../../management/list";
+import { FirebaseProjectMetadata } from "../../management/metadata";
+import { mockAuth } from "../helpers";
 
-function generateProjectList(counts: number): ProjectMetadata[] {
+function generateProjectList(counts: number): FirebaseProjectMetadata[] {
   return Array(counts).map((_, i: number) => ({
     name: `projects/project-id-${i}`,
     projectId: `project-id-${i}`,
