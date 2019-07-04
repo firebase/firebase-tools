@@ -3,7 +3,7 @@ import * as FirebaseError from "./error";
 import * as logger from "./logger";
 import { pollOperation } from "./operation-poller";
 
-const ONE_SECOND_MILLIS = 1000;
+const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export enum ParentResourceType {
   ORGANIZATION = "organization",
@@ -28,7 +28,7 @@ export async function createCloudProject(
     const response = await api.request("POST", "/v1/projects", {
       auth: true,
       origin: api.resourceManagerOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
+      timeout: CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS,
       data: { projectId, name: options.displayName || projectId, parent: options.parentResource },
     });
 
@@ -58,7 +58,7 @@ export async function addFirebaseToCloudProject(projectId: string): Promise<any>
     const response = await api.request("POST", `/v1beta1/projects/${projectId}:addFirebase`, {
       auth: true,
       origin: api.firebaseApiOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
+      timeout: CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS,
     });
     const projectInfo = await pollOperation<any>({
       pollerName: "Add Firebase Poller",
