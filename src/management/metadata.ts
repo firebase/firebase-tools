@@ -1,4 +1,4 @@
-export interface ProjectMetadata {
+export interface FirebaseProjectMetadata {
   name: string /* The fully qualified resource name of the Firebase project */;
   projectId: string;
   projectNumber: string;
