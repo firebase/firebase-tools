@@ -1,24 +1,10 @@
-import * as api from "./api";
-import * as FirebaseError from "./error";
-import * as logger from "./logger";
+import * as api from "../api";
+import { ProjectMetadata } from "./metadata";
+import * as FirebaseError from "../error";
+import * as logger from "../logger";
 
 const TIMEOUT_MILLIS = 30000;
 const PAGE_SIZE = 1000;
-
-export interface ProjectMetadata {
-  name: string;
-  projectId: string;
-  projectNumber: string;
-  displayName: string;
-  resources: DefaultResources;
-}
-
-export interface DefaultResources {
-  hostingSite: string;
-  realtimeDatabaseInstance: string;
-  storageBucket: string;
-  locationId: string;
-}
 
 /**
  * Send recurring API requests to list all Firebase projects belong to the current logged in account

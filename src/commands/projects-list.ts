@@ -4,7 +4,8 @@ import * as ora from "ora";
 import Table = require("cli-table");
 
 import * as Command from "../command";
-import { listFirebaseProjects, ProjectMetadata } from "../listProjects";
+import { listFirebaseProjects } from "../management/list";
+import { ProjectMetadata } from "../management/metadata";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
 

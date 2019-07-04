@@ -2,7 +2,8 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../api";
-import { listFirebaseProjects, ProjectMetadata } from "../listProjects";
+import { listFirebaseProjects } from "../management/list";
+import { ProjectMetadata } from "../management/metadata";
 import { mockAuth } from "./helpers";
 
 function generateProjectList(counts: number): ProjectMetadata[] {
