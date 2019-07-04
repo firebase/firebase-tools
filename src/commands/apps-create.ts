@@ -3,13 +3,7 @@ import * as ora from "ora";
 
 import * as Command from "../command";
 import * as FirebaseError from "../error";
-import {
-  AppPlatform,
-  createAndroidApp,
-  createIosApp,
-  createShaCertificate,
-  createWebApp,
-} from "../appsCreate";
+import { AppPlatform, createAndroidApp, createIosApp, createWebApp } from "../appsCreate";
 import { prompt, promptOnce, Question } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
@@ -157,7 +151,6 @@ module.exports = new Command("apps:create [platform] [displayName]")
       "(default to the Firebase project of the current directory)."
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
-  .option("-s, --sha <shaCertificate>", "optional SHA-1 or SHA-256 certificate for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
   .before(requireAuth)
   .action(
