@@ -10,6 +10,7 @@ const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
 const APP_ID = "appId";
 const IOS_APP_BUNDLE_ID = "bundleId";
+const IOS_APP_STORE_ID = "appStoreId";
 const IOS_APP_DISPLAY_NAME = "iOS app";
 const ANDROID_APP_PACKAGE_NAME = "com.google.packageName";
 const ANDROID_APP_DISPLAY_NAME = "Android app";
@@ -37,6 +38,7 @@ describe("appsCreate", () => {
         appId: APP_ID,
         displayName: IOS_APP_DISPLAY_NAME,
         bundleId: IOS_APP_BUNDLE_ID,
+        appStoreId: IOS_APP_STORE_ID,
       };
       const createIosAppStub = createIosAppApiStub().resolves({
         body: { name: OPERATION_RESOURCE_NAME_1 },
@@ -49,6 +51,7 @@ describe("appsCreate", () => {
         await createIosApp(PROJECT_ID, {
           displayName: IOS_APP_DISPLAY_NAME,
           bundleId: IOS_APP_BUNDLE_ID,
+          appStoreId: IOS_APP_STORE_ID,
         })
       ).to.deep.equal(expectedAppMetadata);
       expect(createIosAppStub).to.be.calledOnce;
@@ -64,6 +67,7 @@ describe("appsCreate", () => {
         await createIosApp(PROJECT_ID, {
           displayName: IOS_APP_DISPLAY_NAME,
           bundleId: IOS_APP_BUNDLE_ID,
+          appStoreId: IOS_APP_STORE_ID,
         });
       } catch (e) {
         err = e;
@@ -90,6 +94,7 @@ describe("appsCreate", () => {
         await createIosApp(PROJECT_ID, {
           displayName: IOS_APP_DISPLAY_NAME,
           bundleId: IOS_APP_BUNDLE_ID,
+          appStoreId: IOS_APP_STORE_ID,
         });
       } catch (e) {
         err = e;
@@ -107,7 +112,11 @@ describe("appsCreate", () => {
         auth: true,
         origin: api.firebaseApiOrigin,
         timeout: 15000,
-        data: { displayName: IOS_APP_DISPLAY_NAME, bundleId: IOS_APP_BUNDLE_ID },
+        data: {
+          displayName: IOS_APP_DISPLAY_NAME,
+          bundleId: IOS_APP_BUNDLE_ID,
+          appStoreId: IOS_APP_STORE_ID,
+        },
       });
     }
 

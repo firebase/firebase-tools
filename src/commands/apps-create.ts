@@ -23,6 +23,7 @@ function logPostAppCreationInformation(
     displayName: string;
     bundleId?: string;
     packageName?: string;
+    appStoreId?: string;
   },
   appPlatform: AppPlatform
 ): void {
@@ -36,6 +37,9 @@ function logPostAppCreationInformation(
   }
   if (appPlatform === AppPlatform.IOS) {
     logger.info(`  - Bundle ID: ${appMetadata.bundleId}`);
+    if (appMetadata.appStoreId) {
+      logger.info(`  - App Store ID: ${appMetadata.appStoreId}`);
+    }
   } else if (appPlatform === AppPlatform.ANDROID) {
     logger.info(`  - Package name: ${appMetadata.packageName}`);
   }
@@ -49,8 +53,9 @@ function logPostAppCreationInformation(
 async function initiateIosAppCreation(options: {
   project: string;
   nonInteractive: boolean;
-  displayName: string;
-  bundleId: string;
+  displayName?: string;
+  bundleId?: string;
+  appStoreId?: string;
 }): Promise<any> {
   if (!options.nonInteractive) {
     await prompt(options, [
@@ -60,6 +65,12 @@ async function initiateIosAppCreation(options: {
         default: "",
         name: "bundleId",
         message: "Please specify your iOS app bundle ID: ",
+      },
+      {
+        type: "input",
+        default: "",
+        name: "appStoreId",
+        message: "Please specify your iOS app App Store ID: ",
       },
     ]);
   }
@@ -72,6 +83,7 @@ async function initiateIosAppCreation(options: {
     const appData = await createIosApp(options.project, {
       displayName: options.displayName,
       bundleId: options.bundleId,
+      appStoreId: options.appStoreId,
     });
     spinner.succeed();
     return appData;
@@ -152,6 +164,7 @@ module.exports = new Command("apps:create [platform] [displayName]")
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
+  .option("-s, --app-store-id <appStoreId>", "(optional) app store id for the iOS app")
   .before(requireAuth)
   .action(
     async (

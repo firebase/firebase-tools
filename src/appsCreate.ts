@@ -18,7 +18,7 @@ export enum AppPlatform {
  */
 export async function createIosApp(
   projectId: string,
-  options: { displayName?: string; bundleId: string }
+  options: { displayName?: string; appStoreId?: string; bundleId: string }
 ): Promise<any> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
