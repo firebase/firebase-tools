@@ -11,12 +11,6 @@ export enum AppPlatform {
   WEB = "WEB",
 }
 
-export interface ShaCertificate {
-  name?: string;
-  certType: "SHA_1" | "SHA_256";
-  shaHash: string;
-}
-
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
  * information.
@@ -51,7 +45,7 @@ export async function createIosApp(
 
 /**
  * Send an API request to create a new Firebase Android app and poll the LRO to get the new app
- * information. Optionally add a SHA certificate to the app if specified.
+ * information.
  * @return a promise that resolves to the new Android app information
  */
 export async function createAndroidApp(
@@ -112,34 +106,6 @@ export async function createWebApp(
     throw new FirebaseError(
       `Failed to create Web app for project ${projectId}. See firebase-debug.log for more info.`,
       { exit: 2, original: err }
-    );
-  }
-}
-
-/**
- * Send an API request to create a sha certificate to an Android app.
- * @return a promise that resolves to the new sha certificate information
- */
-export async function createShaCertificate(
-  appId: string,
-  shaCertificate?: ShaCertificate
-): Promise<ShaCertificate> {
-  try {
-    const shaResponse = await api.request("POST", `/v1beta1/projects/-/androidApps/${appId}/sha`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: 15 * ONE_SECOND_MILLIS,
-      data: shaCertificate,
-    });
-    return shaResponse.body;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      "Failed to add sha certificate for your Android app. See firebase-debug.log for more info.",
-      {
-        exit: 2,
-        original: err,
-      }
     );
   }
 }

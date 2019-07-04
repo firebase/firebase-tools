@@ -2,13 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../api";
-import {
-  createAndroidApp,
-  createIosApp,
-  createShaCertificate,
-  createWebApp,
-  ShaCertificate,
-} from "../appsCreate";
+import { createAndroidApp, createIosApp, createWebApp } from "../appsCreate";
 import * as pollUtils from "../operation-poller";
 import { mockAuth } from "./helpers";
 
@@ -20,12 +14,6 @@ const IOS_APP_DISPLAY_NAME = "iOS app";
 const ANDROID_APP_PACKAGE_NAME = "com.google.packageName";
 const ANDROID_APP_DISPLAY_NAME = "Android app";
 const WEB_APP_DISPLAY_NAME = "Web app";
-const SHA_HASH = "C18FA898916277D97FC5270B1BBF0068F247E1C3";
-const SHA_CERTIFICATE: ShaCertificate = {
-  name: `projects/${PROJECT_ID}/androidApps/${APP_ID}/sha/${SHA_HASH}`,
-  certType: "SHA_1",
-  shaHash: SHA_HASH,
-};
 
 describe("appsCreate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -218,42 +206,6 @@ describe("appsCreate", () => {
         apiOrigin: api.firebaseApiOrigin,
         apiVersion: "v1beta1",
         operationResourceName,
-      });
-    }
-  });
-
-  describe("createShaCertificate", () => {
-    it("should resolve with sha certificate if it succeeds", async () => {
-      const createShaStub = createShaCertificateApiStub().resolves({
-        body: SHA_CERTIFICATE,
-      });
-
-      expect(await createShaCertificate(APP_ID, SHA_CERTIFICATE)).to.equal(SHA_CERTIFICATE);
-      expect(createShaStub).to.be.calledOnce;
-    });
-
-    it("should reject if the api call fails", async () => {
-      const expectedError = new Error("Permission denied");
-      const createShaStub = createShaCertificateApiStub().rejects(expectedError);
-
-      let err;
-      try {
-        await createShaCertificate(APP_ID, SHA_CERTIFICATE);
-      } catch (e) {
-        err = e;
-      }
-      expect(err.message).to.equal(
-        "Failed to add sha certificate for your Android app. See firebase-debug.log for more info."
-      );
-      expect(createShaStub).to.be.calledOnce;
-    });
-
-    function createShaCertificateApiStub(): sinon.SinonStub {
-      return apiRequestStub.withArgs("POST", `/v1beta1/projects/-/androidApps/${APP_ID}/sha`, {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: 15000,
-        data: SHA_CERTIFICATE,
       });
     }
   });
