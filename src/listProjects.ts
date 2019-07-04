@@ -2,7 +2,7 @@ import * as api from "./api";
 import * as FirebaseError from "./error";
 import * as logger from "./logger";
 
-const LIST_PROJECTS_TIMEOUT_MILLIS = 30000;
+const TIMEOUT_MILLIS = 30000;
 const PAGE_SIZE = 1000;
 
 export interface ProjectMetadata {
@@ -31,16 +31,7 @@ export async function listFirebaseProjects(
   try {
     let nextPageToken = "";
     do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      const response = await api.request(
-        "GET",
-        `/v1beta1/projects?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: LIST_PROJECTS_TIMEOUT_MILLIS,
-        }
-      );
+      const response = await getPageApiRequest("/v1beta1/projects", pageSize, nextPageToken);
       projects.push(...response.body.results);
       nextPageToken = response.body.nextPageToken;
     } while (nextPageToken);
@@ -53,4 +44,17 @@ export async function listFirebaseProjects(
       { exit: 2, original: err }
     );
   }
+}
+
+async function getPageApiRequest(
+  resource: string,
+  pageSize: number = PAGE_SIZE,
+  nextPageToken?: string
+): Promise<any> {
+  const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+  return await api.request("GET", `${resource}?pageSize=${pageSize}${pageTokenQueryString}`, {
+    auth: true,
+    origin: api.firebaseApiOrigin,
+    timeout: TIMEOUT_MILLIS,
+  });
 }
