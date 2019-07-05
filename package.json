@@ -64,7 +64,7 @@
   },
   "dependencies": {
     "JSONStream": "^1.2.1",
-    "archiver": "^2.1.1",
+    "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
     "chokidar": "^2.1.5",
     "cjson": "^0.3.1",
