@@ -1,12 +1,5 @@
 import * as api from "../api";
-import {
-  AndroidAppMetadata,
-  AppMetadata,
-  AppPlatform,
-  FirebaseProjectMetadata,
-  IosAppMetadata,
-  WebAppMetadata,
-} from "./metadata";
+import { AppMetadata, AppPlatform, FirebaseProjectMetadata } from "./metadata";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 
@@ -48,6 +41,7 @@ export async function listFirebaseProjects(
  */
 export async function listFirebaseApps(
   projectId: string,
+  platform?: AppPlatform,
   pageSize: number = APP_LIST_PAGE_SIZE
 ): Promise<AppMetadata[]> {
   const apps: AppMetadata[] = [];
@@ -55,48 +49,14 @@ export async function listFirebaseApps(
     let nextPageToken = "";
     do {
       const response = await getPageApiRequest(
-        `/v1beta1/projects/${projectId}:searchApps`,
+        getListAppsResourceString(projectId, platform),
         pageSize,
         nextPageToken
       );
       if (response.body.apps) {
-        apps.push(...response.body.apps);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
-
-    return apps;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError("Failed to list Firebase apps. See firebase-debug.log for more info.", {
-      exit: 2,
-      original: err,
-    });
-  }
-}
-
-/**
- * Send recurring API requests to list all Firebase iOS apps of a Firebase project
- * @return a promise that resolves to the list of all iOS Firebase apps.
- */
-export async function listIosApps(
-  projectId: string,
-  pageSize: number = APP_LIST_PAGE_SIZE
-): Promise<IosAppMetadata[]> {
-  const apps: IosAppMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const response = await getPageApiRequest(
-        `/v1beta1/projects/${projectId}/iosApps`,
-        pageSize,
-        nextPageToken
-      );
-      if (response.body.apps) {
-        const appsOnPage = response.body.apps.map((a: any) => ({
-          ...a,
-          platform: AppPlatform.IOS,
-        }));
+        const appsOnPage = response.body.apps.map(
+          (app: any) => (app.platform ? app : { ...app, platform })
+        );
         apps.push(...appsOnPage);
       }
       nextPageToken = response.body.nextPageToken;
@@ -105,85 +65,34 @@ export async function listIosApps(
     return apps;
   } catch (err) {
     logger.debug(err.message);
-    throw new FirebaseError("Failed to list iOS apps. See firebase-debug.log for more info.", {
-      exit: 2,
-      original: err,
-    });
+    throw new FirebaseError(
+      `Failed to list Firebase ${platform} apps. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
   }
 }
 
-/**
- * Send recurring API requests to list all Firebase Android apps of a Firebase project
- * @return a promise that resolves to the list of all Android Firebase apps.
- */
-export async function listAndroidApps(
-  projectId: string,
-  pageSize: number = APP_LIST_PAGE_SIZE
-): Promise<AndroidAppMetadata[]> {
-  const apps: AndroidAppMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const response = await getPageApiRequest(
-        `/v1beta1/projects/${projectId}/androidApps`,
-        pageSize,
-        nextPageToken
-      );
-      if (response.body.apps) {
-        const appsOnPage = response.body.apps.map((a: any) => ({
-          ...a,
-          platform: AppPlatform.ANDROID,
-        }));
-        apps.push(...appsOnPage);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
-
-    return apps;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError("Failed to list Android apps. See firebase-debug.log for more info.", {
-      exit: 2,
-      original: err,
-    });
+function getListAppsResourceString(projectId: string, platform?: AppPlatform): string {
+  let resourceSuffix;
+  switch (platform) {
+    case AppPlatform.IOS:
+      resourceSuffix = "/iosApps";
+      break;
+    case AppPlatform.ANDROID:
+      resourceSuffix = "/androidApps";
+      break;
+    case AppPlatform.WEB:
+      resourceSuffix = "/webApps";
+      break;
+    default:
+      resourceSuffix = ":searchApps";
+      break;
   }
-}
 
-/**
- * Send recurring API requests to list all Firebase Web apps of a Firebase project
- * @return a promise that resolves to the list of all Web Firebase apps.
- */
-export async function listWebApps(
-  projectId: string,
-  pageSize: number = APP_LIST_PAGE_SIZE
-): Promise<WebAppMetadata[]> {
-  const apps: WebAppMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const response = await getPageApiRequest(
-        `/v1beta1/projects/${projectId}/webApps`,
-        pageSize,
-        nextPageToken
-      );
-      if (response.body.apps) {
-        const appsOnPage = response.body.apps.map((a: any) => ({
-          ...a,
-          platform: AppPlatform.WEB,
-        }));
-        apps.push(...appsOnPage);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
-
-    return apps;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError("Failed to list Web apps. See firebase-debug.log for more info.", {
-      exit: 2,
-      original: err,
-    });
-  }
+  return `/v1beta1/projects/${projectId}${resourceSuffix}`;
 }
 
 async function getPageApiRequest(
