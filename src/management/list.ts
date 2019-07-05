@@ -8,7 +8,7 @@ const PAGE_SIZE = 1000;
 
 /**
  * Send recurring API requests to list all Firebase projects belong to the current logged in account
- * @return a promise that resolves to the new cloud project information
+ * @return a promise that resolves to the list of all projects.
  */
 export async function listFirebaseProjects(
   pageSize: number = PAGE_SIZE
