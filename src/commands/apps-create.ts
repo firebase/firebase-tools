@@ -159,7 +159,7 @@ module.exports = new Command("apps:create [platform] [displayName]")
   )
   .option(
     "-p, --project <projectId>",
-    "ID of the Firebase project under which new app is create " +
+    "ID of the Firebase project under which new app is registered " +
       "(default to the Firebase project of the current directory)."
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
