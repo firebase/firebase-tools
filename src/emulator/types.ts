@@ -150,3 +150,26 @@ export class EmulatorLog {
     );
   }
 }
+
+/**
+ * google.firebase.rules.v1.Issue
+ */
+export interface Issue {
+  sourcePosition: SourcePosition;
+  description: string;
+  severity: Severity;
+}
+
+export enum Severity {
+  SEVERITY_UNSPECIFIED = 0,
+  DEPRECATION = 1,
+  WARNING = 2,
+  ERROR = 3,
+}
+
+export interface SourcePosition {
+  fileName: string;
+  fileIndex: number;
+  line: number;
+  column: number;
+}
