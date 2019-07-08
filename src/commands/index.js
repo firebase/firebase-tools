@@ -59,6 +59,7 @@ module.exports = function(client) {
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.create = loadCommand("projects-create");
+  client.projects.list = loadCommand("projects-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
