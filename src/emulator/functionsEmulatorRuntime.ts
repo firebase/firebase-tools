@@ -382,7 +382,10 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         if (bundle.name === "google-gax") {
           const cs = newed.constructSettings;
           newed.constructSettings = (...csArgs: any[]) => {
-            (csArgs[3] as any).authorization = "Bearer owner";
+            const headers = (csArgs[3] as any);
+            if (!headers.authorization) {
+              "Bearer owner";
+            }
             return cs.bind(newed)(...csArgs);
           };
         }
@@ -515,7 +518,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         "WARN",
         "runtime-status",
         "The Cloud Firestore emulator is not running so database operations will fail with a " +
-          "'default credentials' error."
+          "credentials error."
       ).log();
     }
 
@@ -532,8 +535,9 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
       new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
 
-      // TODO: Is there any possible harm in this?
-      config.credential = makeFakeCredentials();
+      // TODO: This is good for RTDB and bad for Firestore, we need to probably have totally separate configurations
+      //       per service.
+      // config.credential = makeFakeCredentials();
 
       if (frb.ports.database) {
         config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
@@ -583,7 +587,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   access a production resource. By removing the auth fields, we help reduce the risk of this situation.
    */
 function ProtectEnvironmentalVariables(): void {
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
+  process.env.GOOGLE_APPLsICATION_CREDENTIALS = "";
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
