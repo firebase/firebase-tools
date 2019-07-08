@@ -66,7 +66,8 @@ export async function listFirebaseApps(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to list Firebase ${platform} apps. See firebase-debug.log for more info.`,
+      `Failed to list Firebase ${platform ? platform + " " : ""}` +
+        "apps. See firebase-debug.log for more info.",
       {
         exit: 2,
         original: err,

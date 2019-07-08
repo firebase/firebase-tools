@@ -38,14 +38,15 @@ module.exports = new Command("apps:list [platform]")
     async (platform: AppPlatform | string = "", options: any): Promise<AppMetadata[]> => {
       const projectId = getProjectId(options);
 
-
       if (platform && !(AppPlatform as any)[platform.toUpperCase()]) {
         throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
       } else {
         platform = platform.toUpperCase();
       }
 
-      const spinner = ora(`Preparing the list of your Firebase ${platform} apps`).start();
+      const spinner = ora(
+        `Preparing the list of your Firebase ${platform ? platform + " " : ""}apps`
+      ).start();
       try {
         const apps = await listFirebaseApps(projectId, platform as AppPlatform);
         spinner.succeed();
