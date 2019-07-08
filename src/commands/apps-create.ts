@@ -2,6 +2,7 @@ import * as clc from "cli-color";
 import * as ora from "ora";
 
 import * as Command from "../command";
+import * as getProjectId from "../getProjectId";
 import * as FirebaseError from "../error";
 import { AppPlatform, createAndroidApp, createIosApp, createWebApp } from "../appsCreate";
 import { prompt, promptOnce, Question } from "../prompt";
@@ -157,11 +158,6 @@ module.exports = new Command("apps:create [platform] [displayName]")
       "[platform] IOS, ANDROID or WEB\n" +
       "[displayName] the display name of the app"
   )
-  .option(
-    "-p, --project <projectId>",
-    "ID of the Firebase project under which new app is registered " +
-      "(default to the Firebase project of the current directory)."
-  )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
   .option("-s, --app-store-id <appStoreId>", "(optional) app store id for the iOS app")
@@ -172,13 +168,7 @@ module.exports = new Command("apps:create [platform] [displayName]")
       displayName: string | undefined,
       options: any
     ): Promise<any> => {
-      if (!options.project) {
-        throw new FirebaseError(
-          "No Firebase project detected.\n" +
-            "Please run the command inside an existing Firebase project directory " +
-            "or use --project option."
-        );
-      }
+      const projectId = getProjectId(options);
 
       if (!options.nonInteractive && !platform) {
         platform = await promptOnce({
