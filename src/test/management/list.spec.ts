@@ -7,7 +7,7 @@ import { FirebaseProjectMetadata } from "../../management/metadata";
 import { mockAuth } from "../helpers";
 
 function generateProjectList(counts: number): FirebaseProjectMetadata[] {
-  return Array(counts).map((_, i: number) => ({
+  return Array.from(Array(counts), (_, i: number) => ({
     name: `projects/project-id-${i}`,
     projectId: `project-id-${i}`,
     displayName: `Project ${i}`,
