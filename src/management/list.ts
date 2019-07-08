@@ -4,21 +4,23 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 
 const TIMEOUT_MILLIS = 30000;
-const PAGE_SIZE = 1000;
+const PROJECT_LIST_PAGE_SIZE = 1000;
 
 /**
  * Send recurring API requests to list all Firebase projects belong to the current logged in account
  * @return a promise that resolves to the list of all projects.
  */
 export async function listFirebaseProjects(
-  pageSize: number = PAGE_SIZE
+  pageSize: number = PROJECT_LIST_PAGE_SIZE
 ): Promise<FirebaseProjectMetadata[]> {
   const projects: FirebaseProjectMetadata[] = [];
   try {
     let nextPageToken = "";
     do {
       const response = await getPageApiRequest("/v1beta1/projects", pageSize, nextPageToken);
-      projects.push(...response.body.results);
+      if (response.body.results) {
+        projects.push(...response.body.results);
+      }
       nextPageToken = response.body.nextPageToken;
     } while (nextPageToken);
 
@@ -34,7 +36,7 @@ export async function listFirebaseProjects(
 
 async function getPageApiRequest(
   resource: string,
-  pageSize: number = PAGE_SIZE,
+  pageSize: number = PROJECT_LIST_PAGE_SIZE,
   nextPageToken?: string
 ): Promise<any> {
   const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
