@@ -74,7 +74,7 @@ describe("listFirebaseProjects", () => {
       err = e;
     }
     expect(err.message).to.equal(
-      "Failed to list Firebase project. See firebase-debug.log for more info."
+      "Failed to list Firebase projects. See firebase-debug.log for more info."
     );
     expect(err.original).to.equal(expectedError);
     expect(listProjectsStub).to.be.calledOnce;
@@ -98,7 +98,7 @@ describe("listFirebaseProjects", () => {
       err = e;
     }
     expect(err.message).to.equal(
-      "Failed to list Firebase project. See firebase-debug.log for more info."
+      "Failed to list Firebase projects. See firebase-debug.log for more info."
     );
     expect(err.original).to.equal(expectedError);
     expect(firstCallStub).to.be.calledOnce;
