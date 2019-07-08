@@ -587,7 +587,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   access a production resource. By removing the auth fields, we help reduce the risk of this situation.
    */
 function ProtectEnvironmentalVariables(): void {
-  process.env.GOOGLE_APPLsICATION_CREDENTIALS = "";
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
