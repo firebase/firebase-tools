@@ -39,7 +39,7 @@ export interface WebAppMetadata extends AppMetadata {
 }
 
 export enum AppPlatform {
-  PLATFORM_UNSPECIFIED = "PLATFORM UNSPECIFIED",
+  PLATFORM_UNSPECIFIED = "PLATFORM_UNSPECIFIED",
   IOS = "IOS",
   ANDROID = "ANDROID",
   WEB = "WEB",
