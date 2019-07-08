@@ -4,3 +4,4 @@
 * Allow running the Firestore and RTDB emulators without a configuration.
 * Allow the Firestore emulator to give more information about invalid rulesets.
 * Hot reload firestore rules on change.
+* Update functions init templates to v3.1.0
