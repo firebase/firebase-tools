@@ -9,14 +9,12 @@ import { prompt, promptOnce, Question } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
 
-function promptDisplayName(): Question {
-  return {
-    type: "input",
-    name: "displayName",
-    default: "",
-    message: "What would you like to call your app? ",
-  };
-}
+const DISPLAY_NAME_QUESTION: Question = {
+  type: "input",
+  name: "displayName",
+  default: "",
+  message: "What would you like to call your app?",
+};
 
 function logPostAppCreationInformation(
   appMetadata: {
@@ -60,18 +58,18 @@ async function initiateIosAppCreation(options: {
 }): Promise<any> {
   if (!options.nonInteractive) {
     await prompt(options, [
-      promptDisplayName(),
+      DISPLAY_NAME_QUESTION,
       {
         type: "input",
         default: "",
         name: "bundleId",
-        message: "Please specify your iOS app bundle ID: ",
+        message: "Please specify your iOS app bundle ID:",
       },
       {
         type: "input",
         default: "",
         name: "appStoreId",
-        message: "Please specify your iOS app App Store ID: ",
+        message: "Please specify your iOS app App Store ID:",
       },
     ]);
   }
@@ -102,12 +100,12 @@ async function initiateAndroidAppCreation(options: {
 }): Promise<any> {
   if (!options.nonInteractive) {
     await prompt(options, [
-      promptDisplayName(),
+      DISPLAY_NAME_QUESTION,
       {
         type: "input",
         default: "",
         name: "packageName",
-        message: "Please specify your Android app package name: ",
+        message: "Please specify your Android app package name:",
       },
     ]);
   }
@@ -135,7 +133,7 @@ async function initiateWebAppCreation(options: {
   displayName: string;
 }): Promise<any> {
   if (!options.nonInteractive) {
-    await prompt(options, [promptDisplayName()]);
+    await prompt(options, [DISPLAY_NAME_QUESTION]);
   }
   if (!options.displayName) {
     throw new FirebaseError("Display name for Web app cannot be empty");
@@ -173,7 +171,7 @@ module.exports = new Command("apps:create [platform] [displayName]")
       if (!options.nonInteractive && !platform) {
         platform = await promptOnce({
           type: "list",
-          message: "Please choose the platform of the app: ",
+          message: "Please choose the platform of the app:",
           choices: [
             { name: "iOS", value: AppPlatform.IOS },
             { name: "Android", value: AppPlatform.ANDROID },
