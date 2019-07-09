@@ -6,3 +6,4 @@
 * Hot reload firestore rules on change.
 * Upgrade archiver dependency to 3.0.0.
 * Update functions init templates to `v3.1.0`
+* Fix emulation of https functions.
