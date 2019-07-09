@@ -122,6 +122,29 @@ ProfileReport.prototype.collectUnindexed = function(data, path) {
   indexNode.times += 1;
 };
 
+ProfileReport.prototype.collectSpeedUnpathed = function(data, opStats) {
+  if (Object.keys(opStats).length === 0) {
+    opStats.times = 0;
+    opStats.millis = 0;
+    opStats.pendingCount = 0;
+    opStats.pendingTime = 0;
+    opStats.rejected = 0;
+  }
+  opStats.times += 1;
+
+  if (data.hasOwnProperty("millis")) {
+    opStats.millis += data.millis;
+  }
+  if (data.hasOwnProperty("pendingTime")) {
+    opStats.pendingCount++;
+    opStats.pendingTime += data.pendingTime;
+  }
+  // Explictly check for false, in case its not defined.
+  if (data.allowed === false) {
+    opStats.rejected += 1;
+  }
+};
+
 ProfileReport.prototype.collectSpeed = function(data, path, opType) {
   if (!_.has(opType, path)) {
     opType[path] = {
@@ -180,11 +203,11 @@ ProfileReport.prototype.collectUnlisten = function(data, path) {
 };
 
 ProfileReport.prototype.collectConnect = function(data) {
-  this.collectSpeed(data, "null", this.state.connectSpeed);
+  this.collectSpeedUnpathed(data, this.state.connectSpeed);
 };
 
 ProfileReport.prototype.collectDisconnect = function(data) {
-  this.collectSpeed(data, "null", this.state.disconnectSpeed);
+  this.collectSpeedUnpathed(data, this.state.disconnectSpeed);
 };
 
 ProfileReport.prototype.collectWrite = function(data, path, bytes) {
@@ -387,7 +410,7 @@ ProfileReport.prototype.renderIncomingBandwidth = function() {
  * developers, we render aggregate statistics for such operations without a
  * `path` table column.
  */
-ProfileReport.prototype.renderUnpathedOperationSpeed = function(pureData, hasSecurity) {
+ProfileReport.prototype.renderUnpathedOperationSpeed = function(speedData, hasSecurity) {
   var head = ["Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
@@ -399,38 +422,23 @@ ProfileReport.prototype.renderUnpathedOperationSpeed = function(pureData, hasSec
       border: this.options.isFile ? [] : ["grey"],
     },
   });
-  var data = this.collapsePaths(pureData, function(s1, s2) {
-    return {
-      times: s1.times + s2.times,
-      millis: s1.millis + s2.millis,
-      pendingCount: s1.pendingCount + s2.pendingCount,
-      pendingTime: s1.pendingTime + s2.pendingTime,
-      rejected: s1.rejected + s2.rejected,
-    };
-  });
-  var paths = _.keys(data);
-  paths = _.orderBy(
-    paths,
-    function(path) {
-      var speed = data[path];
-      return speed.millis / speed.times;
-    },
-    ["desc"]
-  );
-  paths.forEach(function(path) {
-    var speed = data[path];
+  /*
+   * If no unpathed opeartion was seen, the corresponding stats sub-object will
+   * be empty.
+   */
+  if (Object.keys(speedData).length > 0) {
     var row = [
-      speed.times,
-      ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
+      speedData.times,
+      ProfileReport.formatNumber(speedData.millis / speedData.times) + " ms",
       ProfileReport.formatNumber(
-        speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
+        speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
       ) + " ms",
     ];
     if (hasSecurity) {
-      row.push(ProfileReport.formatNumber(speed.rejected));
+      row.push(ProfileReport.formatNumber(speedData.rejected));
     }
     table.push(row);
-  });
+  }
   return table;
 };
 
