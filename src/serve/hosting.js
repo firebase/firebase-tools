@@ -8,14 +8,16 @@ var utils = require("../utils");
 var detectProjectRoot = require("../detectProjectRoot");
 var implicitInit = require("../hosting/implicitInit");
 var initMiddleware = require("../hosting/initMiddleware");
-var functionsProxy = require("../hosting/functionsProxy");
+var functionsProxy = require("../hosting/functionsProxy").default;
+var cloudRunProxy = require("../hosting/cloudRunProxy").default;
 var normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
 var MAX_PORT_ATTEMPTS = 10;
 var _attempts = 0;
+var server;
 
 function _startServer(options, config, port, init) {
-  var server = superstatic({
+  server = superstatic({
     debug: true,
     port: port,
     host: options.host,
@@ -27,6 +29,7 @@ function _startServer(options, config, port, init) {
     },
     rewriters: {
       function: functionsProxy(options),
+      run: cloudRunProxy(options),
     },
   }).listen(function() {
     var siteName = config.target || config.site;
@@ -65,6 +68,9 @@ function _startServer(options, config, port, init) {
 }
 
 function _stop() {
+  if (server) {
+    server.close();
+  }
   return Promise.resolve();
 }
 
@@ -80,7 +86,12 @@ function _start(options) {
   });
 }
 
+function _connect() {
+  return Promise.resolve();
+}
+
 module.exports = {
   start: _start,
+  connect: _connect,
   stop: _stop,
 };

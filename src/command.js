@@ -6,8 +6,6 @@ var logger = require("./logger");
 var utils = require("./utils");
 var FirebaseError = require("./error");
 var clc = require("cli-color");
-var ansiStrip = require("cli-color/strip");
-var getProjectId = require("./getProjectId");
 var RC = require("./rc");
 var Config = require("./config");
 var detectProjectRoot = require("./detectProjectRoot");
@@ -40,6 +38,11 @@ Command.prototype.before = function(fn, args) {
   return this;
 };
 
+Command.prototype.help = function(helpText) {
+  this._help = helpText;
+  return this;
+};
+
 Command.prototype.action = function(fn) {
   this._action = fn;
   return this;
@@ -57,6 +60,12 @@ Command.prototype.register = function(client) {
   this._options.forEach(function(args) {
     cmd.option.apply(cmd, args);
   });
+
+  if (this._help) {
+    cmd.on("--help", () => {
+      console.log(self._help);
+    });
+  }
 
   var self = this;
   cmd.action(function() {
@@ -108,12 +117,10 @@ Command.prototype.register = function(client) {
         }
         var duration = Date.now() - start;
         var errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
-        var projectId = getProjectId(options, true);
-        var preppedMessage = ansiStrip(err.message || "").replace(projectId, "<namespace>");
 
         return Promise.all([
           track(self._name, "error", duration),
-          track(errorEvent, preppedMessage, duration),
+          track(errorEvent, "", duration),
         ]).then(function() {
           client.errorOut(err);
         });

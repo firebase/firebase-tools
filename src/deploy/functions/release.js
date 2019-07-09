@@ -1,5 +1,9 @@
 "use strict";
 
+/**
+ * If you make any changes to this file, run the integration test in scripts/test-functions-deploy.js
+ */
+
 var clc = require("cli-color");
 var _ = require("lodash");
 
@@ -9,12 +13,15 @@ var logger = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
-var prompt = require("../../prompt");
+var runtimeSelector = require("../../runtimeChoiceSelector");
+var { getAppEngineLocation } = require("../../functionsConfig");
+var { promptOnce } = require("../../prompt");
+var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
 
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
 var deployments = [];
-var failedDeployments = 0;
+var failedDeployments = [];
 
 function _startTimer(name, type) {
   timings[name] = { type: type, t0: process.hrtime() };
@@ -73,7 +80,7 @@ var printSuccess = function(op) {
 };
 var printFail = function(op) {
   _endTimer(op.func);
-  failedDeployments += 1;
+  failedDeployments.push(helper.getFunctionName(op.func));
   utils.logWarning(
     clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
   );
@@ -110,13 +117,28 @@ module.exports = function(context, options, payload) {
 
   var projectId = context.projectId;
   var sourceUrl = context.uploadUrl;
+  var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
   // Used in CLI releases v3.4.0 to v3.17.6
   var legacySourceUrlTwo =
     "gs://" + "staging." + context.firebaseConfig.storageBucket + "/firebase-functions-source";
   // Used in CLI releases v3.3.0 and prior
   var legacySourceUrlOne = "gs://" + projectId + "-gcf/" + projectId;
   var functionsInfo = helper.getFunctionsInfo(payload.functions.triggers, projectId);
+  functionsInfo = functionsInfo.map((fn) => {
+    if (
+      fn.eventTrigger &&
+      fn.schedule &&
+      fn.eventTrigger.eventType === "google.pubsub.topic.publish"
+    ) {
+      const [, , , region, , funcName] = fn.name.split("/");
+      const newResource = `${fn.eventTrigger.resource}/firebase-schedule-${funcName}-${region}`;
+      fn.eventTrigger.resource = newResource;
+    }
+    return fn;
+  });
   var uploadedNames = _.map(functionsInfo, "name");
+  var functionFilterGroups = helper.getFilterGroups(options);
+  var deleteReleaseNames, existingScheduledFunctions;
 
   delete payload.functions;
   return gcp.cloudfunctions
@@ -127,10 +149,16 @@ module.exports = function(context, options, payload) {
       };
 
       var existingNames = _.map(existingFunctions, pluckName);
-      var functionFilterGroups = helper.getFilterGroups(options);
+      var isScheduled = function(functionObject) {
+        return _.get(functionObject, "labels.deployment-scheduled") === "true";
+      };
+      existingScheduledFunctions = _.chain(existingFunctions)
+        .filter(isScheduled)
+        .map(pluckName)
+        .value();
       var releaseNames = helper.getReleaseNames(uploadedNames, existingNames, functionFilterGroups);
       // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
-      var deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
+      deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
 
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
 
@@ -143,11 +171,11 @@ module.exports = function(context, options, payload) {
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
           var region = helper.getRegion(name);
-          var runtime = context.runtimeChoice || helper.getDefaultRuntime(options);
+          var runtime = context.runtimeChoice || helper.getDefaultRuntime();
           utils.logBullet(
             clc.bold.cyan("functions: ") +
               "creating " +
-              helper.getRuntimeName(runtime) +
+              runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
               " function " +
               clc.bold(helper.getFunctionLabel(name)) +
               "..."
@@ -238,7 +266,7 @@ module.exports = function(context, options, payload) {
             utils.logBullet(
               clc.bold.cyan("functions: ") +
                 "updating " +
-                helper.getRuntimeName(runtime) +
+                runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
                 " function " +
                 clc.bold(helper.getFunctionLabel(name)) +
                 "..."
@@ -316,7 +344,7 @@ module.exports = function(context, options, payload) {
         ? Promise.resolve(true)
         : options.ignoreExistingFunctions
           ? Promise.resolve(false)
-          : prompt.once({
+          : promptOnce({
               type: "confirm",
               name: "confirm",
               default: false,
@@ -324,7 +352,7 @@ module.exports = function(context, options, payload) {
                 "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
             });
 
-      next.then(function(proceed) {
+      return next.then(function(proceed) {
         if (!proceed) {
           if (deployments.length !== 0) {
             utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
@@ -333,6 +361,8 @@ module.exports = function(context, options, payload) {
         }
         functionsToDelete.forEach(function(name) {
           var functionName = helper.getFunctionName(name);
+          var scheduleName = helper.getScheduleName(name, appEngineLocation);
+          var topicName = helper.getTopicName(name);
           var region = helper.getRegion(name);
 
           utils.logBullet(
@@ -342,18 +372,79 @@ module.exports = function(context, options, payload) {
               "..."
           );
           _startTimer(name, "delete");
-          deployments.push({
-            name: name,
-            retryFunction: function() {
+          var retryFunction;
+          var isScheduledFunction = _.includes(existingScheduledFunctions, name);
+          if (isScheduledFunction) {
+            retryFunction = function() {
+              return gcp.cloudscheduler
+                .deleteJob(scheduleName)
+                .catch((err) => {
+                  // if err.status is 404, the schedule doesnt exist, so catch the error
+                  // if err.status is 403, the project doesnt have the api enabled and there are no schedules to delete, so catch the error
+                  logger.debug(err);
+                  if (
+                    err.context.response.statusCode != 404 &&
+                    err.context.response.statusCode != 403
+                  ) {
+                    throw new FirebaseError(
+                      `Failed to delete schedule for ${functionName} with status ${err.status}`,
+                      err
+                    );
+                  }
+                })
+                .then(() => {
+                  return gcp.pubsub.deleteTopic(topicName);
+                })
+                .catch((err) => {
+                  // if err.status is 404, the topic doesnt exist, so catch the error
+                  // if err.status is 403, the project doesnt have the api enabled and there are no topics to delete, so catch the error
+                  if (
+                    err.context.response.statusCode != 404 &&
+                    err.context.response.statusCode != 403
+                  ) {
+                    throw new FirebaseError(
+                      `Failed to delete topic for ${functionName} with status ${err.status}`,
+                      err
+                    );
+                  }
+                })
+                .then(() => {
+                  return gcp.cloudfunctions.delete({
+                    projectId: projectId,
+                    region: region,
+                    functionName: functionName,
+                  });
+                });
+            };
+          } else {
+            retryFunction = function() {
               return gcp.cloudfunctions.delete({
                 projectId: projectId,
                 region: region,
                 functionName: functionName,
               });
-            },
+            };
+          }
+          deployments.push({
+            name: name,
+            retryFunction: retryFunction,
           });
         });
       });
+    })
+    .then(function() {
+      // filter out functions that are excluded via --only and --except flags
+      var functionsInDeploy = functionsInfo.filter((trigger) => {
+        return functionFilterGroups.length > 0
+          ? _.includes(deleteReleaseNames, trigger.name)
+          : true;
+      });
+      return createOrUpdateSchedulesAndTopics(
+        context.projectId,
+        functionsInDeploy,
+        existingScheduledFunctions,
+        appEngineLocation
+      );
     })
     .then(function() {
       return utils.promiseAllSettled(
@@ -373,7 +464,7 @@ module.exports = function(context, options, payload) {
         .filter({ state: "fulfilled" })
         .map("value")
         .value();
-      failedDeployments += failedCalls.length;
+      failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
         .then(function() {
@@ -385,16 +476,28 @@ module.exports = function(context, options, payload) {
             projectId
           );
         })
-        .then(function() {
+        .then(() => {
           if (deployments.length > 0) {
-            track("Functions Deploy (Result)", "failure", failedDeployments);
-            track("Functions Deploy (Result)", "success", deployments.length - failedDeployments);
-          }
-
-          if (failedDeployments > 0) {
-            logger.info(
-              "\n\nFunctions deploy had errors. To continue deploying other features (such as database), run:"
+            track("Functions Deploy (Result)", "failure", failedDeployments.length);
+            track(
+              "Functions Deploy (Result)",
+              "success",
+              deployments.length - failedDeployments.length
             );
+          }
+          if (failedDeployments.length > 0) {
+            logger.info("\n\nFunctions deploy had errors with the following functions:");
+            const sortedFailedDeployments = failedDeployments.sort();
+            for (let i = 0; i < sortedFailedDeployments.length; i++) {
+              logger.info(`\t${sortedFailedDeployments[i]}`);
+            }
+            logger.info("\n\nTo try redeploying those functions, run:");
+            logger.info(
+              "    " +
+                clc.bold("firebase deploy --only ") +
+                clc.bold(sortedFailedDeployments.map((name) => `functions:${name}`).join(","))
+            );
+            logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));
             return Promise.reject(new FirebaseError("Functions did not deploy properly."));
           }

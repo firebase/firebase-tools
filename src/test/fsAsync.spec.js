@@ -8,11 +8,9 @@ var path = require("path");
 var fsAsync = require("../fsAsync");
 
 var chai = require("chai");
-var chaiAsPromised = require("chai-as-promised");
 var _ = require("lodash");
 
 var expect = chai.expect;
-chai.use(chaiAsPromised);
 
 // These tests work on the following directory structure:
 // <basedir>

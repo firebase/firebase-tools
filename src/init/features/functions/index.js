@@ -5,9 +5,9 @@ var clc = require("cli-color");
 var _ = require("lodash");
 
 var logger = require("../../../logger");
-var prompt = require("../../../prompt");
+var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
-var requireAccess = require("../../../requireAccess");
+var requireAccess = require("../../../requireAccess").requireAccess;
 var scopes = require("../../../scopes");
 
 module.exports = function(setup, config) {

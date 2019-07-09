@@ -109,7 +109,7 @@ The Firebase CLI requires a browser to complete authentication, but is fully
 compatible with CI and other headless environments.
 
 1. On a machine with a browser, install the Firebase CLI.
-2. Run `firebase login:ci` to log in and print out a new access token
+2. Run `firebase login:ci` to log in and print out a new [refresh token](https://developers.google.com/identity/protocols/OAuth2)
    (the current CLI session will not be affected).
 3. Store the output token in a secure but accessible way in your CI system.
 
@@ -126,7 +126,7 @@ will immediately revoke access for the specified token.
 
 ## Using as a Module
 
-The Firebase CLI can also be used programmatically as a standard Node module. This can only be done on your machine, and cannot be done within Cloud Functions. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
 
 ```js
 var client = require('firebase-tools');
@@ -139,6 +139,7 @@ client.list().then(function(data) {
 client.deploy({
   project: 'myfirebase',
   token: process.env.FIREBASE_TOKEN,
+  force: true,
   cwd: '/path/to/project/folder'
 }).then(function() {
   console.log('Rules have been deployed!')
@@ -146,6 +147,9 @@ client.deploy({
   // handle error
 });
 ```
+
+Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically
+because they require access to a local filesystem.
 
 [travis-ci]: https://travis-ci.org/firebase/firebase-tools
 [coveralls]: https://coveralls.io/r/firebase/firebase-tools

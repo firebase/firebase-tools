@@ -1,11 +1,28 @@
 language: node_js
 node_js:
-- '6'
-- '8'
-- '10'
-sudo: false
+  - "8"
+  - "10"
+before_install:
+  - npm i -g 'npm@>=6.9.0'
+before_script:
+  - npm install --package-lock-only
+  - "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
 after_script:
-- nyc report --reporter=text-lcov | coveralls
+  - nyc report --reporter=text-lcov | coveralls
+jobs:
+  include:
+    - stage: hosting functional test
+      if: repo == head_repo OR type == push
+      node_js: "8"
+      before_script: ./scripts/decrypt-app-credentials.sh
+      script: ./scripts/test-hosting.sh
+      after_script: skip
+    - stage: emulator triggers end to end test
+      if: repo == head_repo OR type == push
+      node_js: "8"
+      before_script: skip
+      script: ./scripts/test-triggers-end-to-end.sh
+      after_script: skip
 cache:
   directories:
-  - node_modules
+    - node_modules

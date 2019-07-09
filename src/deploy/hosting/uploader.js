@@ -12,23 +12,15 @@ const hashcache = require("./hashcache");
 const detectProjectRoot = require("../../detectProjectRoot");
 const api = require("../../api");
 const logger = require("../../logger");
-const Queue = require("../../queue");
+const { Queue } = require("../../throttler/queue");
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
 
 function _progressMessage(message, current, total) {
   current = Math.min(current, total);
-  return (
-    message +
-    " [" +
-    current +
-    "/" +
-    total +
-    "] (" +
-    clc.bold.green(Math.floor(((current * 1.0) / total) * 100).toString() + "%") +
-    ")"
-  );
+  const percent = Math.floor(((current * 1.0) / total) * 100).toString();
+  return `${message} [${current}/${total}] (${clc.bold.green(`${percent}%`)})`;
 }
 
 class Uploader {
@@ -99,7 +91,7 @@ class Uploader {
       })
       .then(function() {
         logger.debug("[hosting][populate queue][FINAL]", self.populateQueue.stats());
-        logger.debug("[hosting] uploads queued:", self.uploadQueue.tasks.length);
+        logger.debug("[hosting] uploads queued:", self.uploadQueue.stats().total);
         self.uploadQueue.close();
       });
 
@@ -136,7 +128,7 @@ class Uploader {
       return _progressMessage(
         "uploading new files",
         this.uploadQueue.complete,
-        this.uploadQueue.tasks.length
+        this.uploadQueue.stats().total
       );
     } else {
       return "upload complete";
@@ -187,7 +179,7 @@ class Uploader {
 
   queuePopulate() {
     const pop = this.populateBatch;
-    this.populateQueue.add(pop, "batch" + (this.populateQueue.tasks.length + 1));
+    this.populateQueue.add(pop);
     this.populateBatch = {};
     this.populateQueue.process();
   }

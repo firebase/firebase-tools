@@ -3,17 +3,13 @@
 var _ = require("lodash");
 
 var logger = require("../logger");
-var previews = require("../previews");
 
 var TARGETS = {
   hosting: require("./hosting"),
   functions: require("./functions"),
+  database: require("./database"),
+  firestore: require("./firestore"),
 };
-
-if (previews.emulators) {
-  TARGETS["database"] = require("./database");
-  TARGETS["firestore"] = require("./firestore");
-}
 
 var _serve = function(options) {
   var targetNames = options.targets;
@@ -23,21 +19,30 @@ var _serve = function(options) {
       var target = TARGETS[targetName];
       return target.start(options);
     })
-  ).then(function() {
-    return new Promise(function(resolve) {
-      process.on("SIGINT", function() {
-        logger.info("Shutting down...");
-        return Promise.all(
-          _.forEach(targetNames, function(targetName) {
-            var target = TARGETS[targetName];
-            return target.stop(options);
-          })
-        )
-          .then(resolve)
-          .catch(resolve);
+  )
+    .then(function() {
+      return Promise.all(
+        _.map(targetNames, function(targetName) {
+          var target = TARGETS[targetName];
+          return target.connect();
+        })
+      );
+    })
+    .then(function() {
+      return new Promise(function(resolve) {
+        process.on("SIGINT", function() {
+          logger.info("Shutting down...");
+          return Promise.all(
+            _.map(targetNames, function(targetName) {
+              var target = TARGETS[targetName];
+              return target.stop(options);
+            })
+          )
+            .then(resolve)
+            .catch(resolve);
+        });
       });
     });
-  });
 };
 
 module.exports = _serve;

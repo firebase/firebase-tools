@@ -11,8 +11,8 @@ var FirebaseError = require("./error");
 var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
 var parseBoltRules = require("./parseBoltRules");
-var prompt = require("./prompt");
-var resolveProjectPath = require("./resolveProjectPath");
+var { promptOnce } = require("./prompt");
+var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
 var Config = function(src, options) {
@@ -60,7 +60,14 @@ var Config = function(src, options) {
 };
 
 Config.FILENAME = "firebase.json";
-Config.MATERIALIZE_TARGETS = ["database", "functions", "hosting", "storage", "firestore"];
+Config.MATERIALIZE_TARGETS = [
+  "database",
+  "emulators",
+  "firestore",
+  "functions",
+  "hosting",
+  "storage",
+];
 Config.LEGACY_HOSTING_KEYS = [
   "public",
   "rewrites",
@@ -133,7 +140,14 @@ Config.prototype._parseFile = function(target, filePath) {
         this.notes.databaseRules = "json";
       } else if (target === "database.rules") {
         this.notes.databaseRulesFile = filePath;
-        return fs.readFileSync(fullPath, "utf8");
+        try {
+          return fs.readFileSync(fullPath, "utf8");
+        } catch (e) {
+          if (e.code === "ENOENT") {
+            throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
+          }
+          throw e;
+        }
       }
       return loadCJSON(fullPath);
     /* istanbul ignore-next */
@@ -182,6 +196,9 @@ Config.prototype.readProjectFile = function(p, options) {
     if (options.fallback) {
       return options.fallback;
     }
+    if (e.code === "ENOENT") {
+      throw new FirebaseError(`File not found: ${this.path(p)}`, { original: e });
+    }
     throw e;
   }
 };
@@ -199,7 +216,7 @@ Config.prototype.askWriteProjectFile = function(p, content) {
   var writeTo = this.path(p);
   var next;
   if (fsutils.fileExistsSync(writeTo)) {
-    next = prompt.once({
+    next = promptOnce({
       type: "confirm",
       message: "File " + clc.underline(p) + " already exists. Overwrite?",
       default: false,

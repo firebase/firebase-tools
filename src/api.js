@@ -31,6 +31,9 @@ var _request = function(options, logOptions) {
 
   logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
 
+  options.headers = options.headers || {};
+  options.headers["connection"] = "keep-alive";
+
   return new Promise(function(resolve, reject) {
     var req = request(options, function(err, response, body) {
       if (err) {
@@ -106,6 +109,11 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  cloudschedulerOrigin: utils.envOverride(
+    "FIREBASE_CLOUDSCHEDULER_URL",
+    "https://cloudscheduler.googleapis.com"
+  ),
+  pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
   googleOrigin: utils.envOverride(
     "FIREBASE_TOKEN_URL",
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
@@ -126,12 +134,16 @@ var api = {
     "FIREBASE_HOSTING_API_URL",
     "https://firebasehosting.googleapis.com"
   ),
+  cloudRunApiOrigin: utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com"),
 
   setRefreshToken: function(token) {
     refreshToken = token;
   },
   setAccessToken: function(token) {
     accessToken = token;
+  },
+  getScopes: function() {
+    return commandScopes;
   },
   setScopes: function(s) {
     commandScopes = _.uniq(

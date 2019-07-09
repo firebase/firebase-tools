@@ -5,7 +5,7 @@ var fs = require("fs");
 var path = require("path");
 
 var npmDependencies = require("./npm-dependencies");
-var prompt = require("../../../prompt");
+var { prompt } = require("../../../prompt");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../../../templates/init/functions/typescript/");
 var PACKAGE_LINTING_TEMPLATE = fs.readFileSync(
@@ -39,7 +39,7 @@ module.exports = function(setup, config) {
         return config
           .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
           .then(function() {
-            config.askWriteProjectFile("functions/tslint.json", TSLINT_TEMPLATE);
+            return config.askWriteProjectFile("functions/tslint.json", TSLINT_TEMPLATE);
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');

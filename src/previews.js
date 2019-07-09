@@ -6,8 +6,6 @@ var configstore = require("./configstore");
 var previews = _.assign(
   {
     // insert previews here...
-    kits: false,
-    emulators: false,
   },
   configstore.get("previews")
 );

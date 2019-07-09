@@ -4,12 +4,13 @@ node_modules
 /.nyc_output
 firebase-debug.log
 npm-debug.log
-package-lock.json
 yarn.lock
 .npmrc
 
 .DS_Store
 .idea
 *.iml
+*.tgz
+scripts/*.json
 
 lib/

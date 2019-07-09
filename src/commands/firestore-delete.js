@@ -3,7 +3,7 @@
 var clc = require("cli-color");
 var Command = require("../command");
 var FirestoreDelete = require("../firestore/delete");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var requirePermissions = require("../requirePermissions");
 var utils = require("../utils");
 
@@ -11,7 +11,9 @@ var _getConfirmationMessage = function(deleteOp, options) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
-      clc.bold.yellow.underline("YOUR ENTIRE DATABASE") +
+      clc.bold.yellow.underline("THE ENTIRE DATABASE") +
+      " for " +
+      clc.cyan(options.project) +
       ". Are you sure?"
     );
   }
