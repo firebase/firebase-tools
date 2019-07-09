@@ -431,13 +431,13 @@ async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   }
 
   const httpsProvider = require(httpsProviderResolution);
-  const _onRequestWithOptions = httpsProvider[methodName];
+  const requestWithOptions = httpsProvider[methodName];
 
   httpsProvider[methodName] = (
     handler: (req: Request, resp: Response) => void,
     opts: DeploymentOptions
   ) => {
-    const cf = _onRequestWithOptions(handler, opts);
+    const cf = requestWithOptions(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
