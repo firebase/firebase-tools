@@ -21,6 +21,8 @@ let defaultApp: admin.app.App;
 let adminModuleProxy: typeof admin;
 let hasInitializedFirestore = false;
 
+let developerPkgJSON: PackageJSON | undefined;
+
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
   feature: keyof FunctionsRuntimeFeatures
@@ -201,7 +203,6 @@ async function resolveDeveloperNodeModule(
   frb: FunctionsRuntimeBundle,
   name: string
 ): Promise<ModuleResolution> {
-  // TODO: Can we cache this call?  Should we?
   const pkg = requirePackageJson(frb);
   if (!pkg) {
     new EmulatorLog("SYSTEM", "missing-package-json", "").log();
@@ -272,12 +273,17 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
  * Get the developer's package.json file.
  */
 function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+  if (developerPkgJSON) {
+    return developerPkgJSON;
+  }
+
   try {
     const pkg = require(`${frb.cwd}/package.json`);
-    return {
+    developerPkgJSON = {
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
     };
+    return developerPkgJSON;
   } catch (err) {
     return undefined;
   }
