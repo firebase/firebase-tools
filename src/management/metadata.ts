@@ -14,7 +14,7 @@ export interface DefaultResource {
 }
 
 export interface AppMetadata {
-  name: string /* The fully qualified resource name of the Firebase App*/;
+  name: string /* The fully qualified resource name of the Firebase App */;
   projectId: string;
   appId: string;
   platform: AppPlatform;
