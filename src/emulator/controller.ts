@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as pf from "portfinder";
+import * as path from "path";
 
 import * as utils from "../utils";
 import * as track from "../track";
@@ -14,7 +15,7 @@ import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import * as FirebaseError from "../error";
-import * as path from "path";
+import * as getProjectId from "../getProjectId";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
@@ -102,6 +103,8 @@ export async function startAll(options: any): Promise<void> {
   const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
   options.targets = targets;
 
+  const projectId: string | undefined = getProjectId(options, true);
+
   utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
   if (options.only) {
     const requested: string[] = options.only.split(",");
@@ -130,6 +133,7 @@ export async function startAll(options: any): Promise<void> {
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
+      projectId,
       auto_download: true,
     };
 

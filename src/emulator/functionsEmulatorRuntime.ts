@@ -408,34 +408,49 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<void> {
+async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
+  const pkgJSON = await requirePackageJson(frb);
+
+  // TODO: Simplify after #1459
+  const firebaseFunctionsModule = await resolveDeveloperNodeModule(
+    frb,
+    pkgJSON!,
+    "firebase-functions"
+  );
   const firebaseFunctionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [functionsDir],
+    paths: [frb.cwd],
   });
   const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
-  const httpsProvider = require(httpsProviderResolution);
-  const _onRequestWithOpts = httpsProvider._onRequestWithOpts;
+  // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
+  const functionsVersion = parseVersionString(firebaseFunctionsModule.version!);
+  let methodName = "_onRequestWithOpts";
+  if (functionsVersion.major >= 3 && functionsVersion.minor >= 1) {
+    methodName = "_onRequestWithOptions";
+  }
 
-  httpsProvider._onRequestWithOpts = (
+  const httpsProvider = require(httpsProviderResolution);
+  const requestWithOptions = httpsProvider[methodName];
+
+  httpsProvider[methodName] = (
     handler: (req: Request, resp: Response) => void,
     opts: DeploymentOptions
   ) => {
-    const cf = _onRequestWithOpts(handler, opts);
+    const cf = requestWithOptions(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
 
   /*
-    If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOpts
-    so in theory, we should only need to mock _onRequestWithOpts, however that is not the case
-    because onRequest is defined in the same scope as _onRequestWithOpts, so replacing
-    the definition of _onRequestWithOpts does not replace the link to the original function
+    If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOptions
+    so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
+    because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
+    the definition of _onRequestWithOptions does not replace the link to the original function
     which onRequest uses, so we need to manually force it to use our error-handle-able version.
      */
   httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
-    return httpsProvider._onRequestWithOpts(handler, {});
+    return httpsProvider[methodName](handler, {});
   };
 }
 
@@ -862,7 +877,7 @@ async function main(): Promise<void> {
     await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
-  await InitializeFirebaseFunctionsStubs(frb.cwd);
+  await InitializeFirebaseFunctionsStubs(frb);
   await InitializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
