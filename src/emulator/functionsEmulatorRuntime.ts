@@ -416,26 +416,26 @@ async function InitializeFirebaseFunctionsStubs(functionsDir: string): Promise<v
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
   const httpsProvider = require(httpsProviderResolution);
-  const _onRequestWithOpts = httpsProvider._onRequestWithOpts;
+  const _onRequestWithOptions = httpsProvider._onRequestWithOptions;
 
-  httpsProvider._onRequestWithOpts = (
+  httpsProvider._onRequestWithOptions = (
     handler: (req: Request, resp: Response) => void,
     opts: DeploymentOptions
   ) => {
-    const cf = _onRequestWithOpts(handler, opts);
+    const cf = _onRequestWithOptions(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
 
   /*
-    If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOpts
-    so in theory, we should only need to mock _onRequestWithOpts, however that is not the case
-    because onRequest is defined in the same scope as _onRequestWithOpts, so replacing
-    the definition of _onRequestWithOpts does not replace the link to the original function
+    If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOptions
+    so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
+    because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
+    the definition of _onRequestWithOptions does not replace the link to the original function
     which onRequest uses, so we need to manually force it to use our error-handle-able version.
      */
   httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
-    return httpsProvider._onRequestWithOpts(handler, {});
+    return httpsProvider._onRequestWithOptions(handler, {});
   };
 }
 
