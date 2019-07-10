@@ -765,6 +765,7 @@ You can probably fix this by running "npm install ${
 export interface InvokeRuntimeOpts {
   serializedTriggers?: string;
   env?: { [key: string]: string };
+  ignore_warnings?: boolean;
 }
 export function InvokeRuntime(
   nodeBinary: string,
@@ -775,20 +776,23 @@ export function InvokeRuntime(
 
   const emitter = new EventEmitter();
   const metadata: { [key: string]: any } = {};
-  const runtime = spawn(
-    nodeBinary,
-    [
-      // "--no-warnings",
-      path.join(__dirname, "functionsEmulatorRuntime"),
-      JSON.stringify(frb),
-      opts.serializedTriggers || "",
-    ],
-    {
-      env: { node: nodeBinary, ...opts.env, ...process.env },
-      cwd: frb.cwd,
-      stdio: ["pipe", "pipe", "pipe", "ipc"],
-    }
-  );
+
+  const args = [
+    // "--no-warnings",
+    path.join(__dirname, "functionsEmulatorRuntime"),
+    JSON.stringify(frb),
+    opts.serializedTriggers || "",
+  ];
+
+  if (opts.ignore_warnings) {
+    args.unshift("--no-warnings");
+  }
+
+  const runtime = spawn(nodeBinary, args, {
+    env: { node: nodeBinary, ...opts.env, ...process.env },
+    cwd: frb.cwd,
+    stdio: ["pipe", "pipe", "pipe", "ipc"],
+  });
 
   const buffers: {
     [pipe: string]: {

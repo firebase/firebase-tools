@@ -180,7 +180,7 @@ export class EmulatorLog {
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
     process.stdout.write(nextMsg, () => {
-      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length === 0;
+      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;
       this.flush();
     });
   }
