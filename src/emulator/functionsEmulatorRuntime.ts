@@ -671,8 +671,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
         new EmulatorLog("DEBUG", "runtime-status", "Body" + (req as any).rawBody).log();
         res.on("finish", () => {
-          instance.close();
-          resolveEphemeralServer();
+          instance.close(resolveEphemeralServer);
         });
 
         await RunHTTPS([req, res], func);
