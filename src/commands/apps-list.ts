@@ -60,17 +60,19 @@ module.exports = new Command("apps:list [platform]")
         throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
       }
 
+      let apps;
       const spinner = ora(
         `Preparing the list of your Firebase ${appPlatform ? appPlatform + " " : ""}apps`
       ).start();
       try {
-        const apps = await listFirebaseApps(projectId, { platform: appPlatform });
-        spinner.succeed();
-        logAppsList(apps);
-        return apps;
+        apps = await listFirebaseApps(projectId, { platform: appPlatform });
       } catch (err) {
         spinner.fail();
         throw err;
       }
+
+      spinner.succeed();
+      logAppsList(apps);
+      return apps;
     }
   );
