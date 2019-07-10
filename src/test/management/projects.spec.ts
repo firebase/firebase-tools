@@ -2,8 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../../api";
-import { listFirebaseProjects } from "../../management/list";
-import { FirebaseProjectMetadata } from "../../management/metadata";
+import { FirebaseProjectMetadata, listFirebaseProjects } from "../../management/projects";
 import { mockAuth } from "../helpers";
 
 function generateProjectList(counts: number): FirebaseProjectMetadata[] {
@@ -21,7 +20,7 @@ function generateProjectList(counts: number): FirebaseProjectMetadata[] {
   }));
 }
 
-describe("list", () => {
+describe("Project management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
 
