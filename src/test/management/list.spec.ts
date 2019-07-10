@@ -179,12 +179,20 @@ describe("list", () => {
         ...generateAndroidAppList(appCountsPerPlatform),
         ...generateWebAppList(appCountsPerPlatform),
       ];
-      const listAppsStub = listAppsApiRequestStub().resolves({
-        body: { apps: expectedAppList },
-      });
+      apiRequestStub.onFirstCall().resolves({ body: { apps: expectedAppList } });
 
-      expect(await listFirebaseApps(PROJECT_ID)).to.deep.equal(expectedAppList);
-      expect(listAppsStub).to.be.calledOnce;
+      const apps = await listFirebaseApps(PROJECT_ID);
+
+      expect(apps).to.deep.equal(expectedAppList);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=100`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 30000,
+        }
+      );
     });
 
     it("should resolve with iOS app list", async () => {
@@ -195,14 +203,15 @@ describe("list", () => {
         delete iosApp.platform;
         return iosApp;
       });
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.IOS).resolves({
-        body: { apps: apiResponseAppList },
-      });
+      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS })).to.deep.equal(
-        expectedAppList
+      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS });
+
+      expect(apps).to.deep.equal(expectedAppList);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}/iosApps?pageSize=100`
       );
-      expect(listAppsStub).to.be.calledOnce;
     });
 
     it("should resolve with Android app list", async () => {
@@ -213,14 +222,15 @@ describe("list", () => {
         delete androidApps.platform;
         return androidApps;
       });
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.ANDROID).resolves({
-        body: { apps: apiResponseAppList },
-      });
+      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID })).to.deep.equal(
-        expectedAppList
+      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID });
+
+      expect(apps).to.deep.equal(expectedAppList);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}/androidApps?pageSize=100`
       );
-      expect(listAppsStub).to.be.calledOnce;
     });
 
     it("should resolve with Web app list", async () => {
@@ -231,14 +241,15 @@ describe("list", () => {
         delete webApp.platform;
         return webApp;
       });
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.WEB).resolves({
-        body: { apps: apiResponseAppList },
-      });
+      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB })).to.deep.equal(
-        expectedAppList
+      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB });
+
+      expect(apps).to.deep.equal(expectedAppList);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}/webApps?pageSize=100`
       );
-      expect(listAppsStub).to.be.calledOnce;
     });
 
     it("should concatenate pages to get app list if it succeeds", async () => {
@@ -250,21 +261,28 @@ describe("list", () => {
         ...generateAndroidAppList(appCountsPerPlatform),
         ...generateWebAppList(appCountsPerPlatform),
       ];
-      const firstCallStub = listAppsApiRequestStub(undefined, pageSize).resolves({
-        body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
-      });
-      const secondCallStub = listAppsApiRequestStub(undefined, pageSize, nextPageToken).resolves({
-        body: { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) },
-      });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: expectedAppList.slice(0, pageSize), nextPageToken } })
+        .onSecondCall()
+        .resolves({ body: { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) } });
 
-      expect(await listFirebaseApps(PROJECT_ID, { pageSize })).to.deep.equal(expectedAppList);
-      expect(firstCallStub).to.be.calledOnce;
-      expect(secondCallStub).to.be.calledOnce;
+      const apps = await listFirebaseApps(PROJECT_ID, { pageSize });
+
+      expect(apps).to.deep.equal(expectedAppList);
+      expect(apiRequestStub.firstCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=${pageSize}`
+      );
+      expect(apiRequestStub.secondCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=${pageSize}&pageToken=${nextPageToken}`
+      );
     });
 
     it("should reject if the first api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const listAppsStub = listAppsApiRequestStub().rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -272,11 +290,15 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase apps. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(listAppsStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=100`
+      );
     });
 
     it("should rejects if error is thrown in subsequence api call", async () => {
@@ -285,12 +307,11 @@ describe("list", () => {
       const nextPageToken = "next-page-token";
       const expectedAppList = generateAndroidAppList(appCounts);
       const expectedError = new Error("HTTP Error 400: unexpected error");
-      const firstCallStub = listAppsApiRequestStub(undefined, pageSize).resolves({
-        body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
-      });
-      const secondCallStub = listAppsApiRequestStub(undefined, pageSize, nextPageToken).rejects(
-        expectedError
-      );
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: expectedAppList.slice(0, pageSize), nextPageToken } })
+        .onSecondCall()
+        .rejects(expectedError);
 
       let err;
       try {
@@ -298,17 +319,24 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase apps. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(firstCallStub).to.be.calledOnce;
-      expect(secondCallStub).to.be.calledOnce;
+      expect(apiRequestStub.firstCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=${pageSize}`
+      );
+      expect(apiRequestStub.secondCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}:searchApps?pageSize=${pageSize}&pageToken=${nextPageToken}`
+      );
     });
 
     it("should reject if the list iOS apps fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.IOS).rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -320,12 +348,15 @@ describe("list", () => {
         "Failed to list Firebase IOS apps. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(listAppsStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}/iosApps?pageSize=100`
+      );
     });
 
     it("should reject if the list Android apps fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.ANDROID).rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -333,16 +364,20 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase ANDROID apps. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(listAppsStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/${PROJECT_ID}/androidApps?pageSize=100`
+      );
     });
 
     it("should reject if the list Web apps fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const listAppsStub = listAppsApiRequestStub(AppPlatform.WEB).rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -350,49 +385,15 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase WEB apps. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(listAppsStub).to.be.calledOnce;
-    });
-
-    function getListAppsResourceString(projectId: string, platform?: AppPlatform): string {
-      let resourceSuffix;
-      switch (platform) {
-        case AppPlatform.IOS:
-          resourceSuffix = "/iosApps";
-          break;
-        case AppPlatform.ANDROID:
-          resourceSuffix = "/androidApps";
-          break;
-        case AppPlatform.WEB:
-          resourceSuffix = "/webApps";
-          break;
-        default:
-          resourceSuffix = ":searchApps";
-          break;
-      }
-
-      return `/v1beta1/projects/${projectId}${resourceSuffix}`;
-    }
-
-    function listAppsApiRequestStub(
-      platform?: AppPlatform,
-      pageSize: number = 100,
-      nextPageToken?: string
-    ): sinon.SinonStub {
-      const resource = getListAppsResourceString(PROJECT_ID, platform);
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      return apiRequestStub.withArgs(
+      expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `${resource}?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        }
+        `/v1beta1/projects/${PROJECT_ID}/webApps?pageSize=100`
       );
-    }
+    });
   });
 });
