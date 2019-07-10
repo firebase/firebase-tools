@@ -28,6 +28,7 @@ export enum AppPlatform {
   IOS = "IOS",
   ANDROID = "ANDROID",
   WEB = "WEB",
+  ANY = "ANY",
 }
 
 // TODO(caot): Add API methods related to app management into this file
