@@ -8,7 +8,7 @@ import {
   createCloudProject,
   ParentResource,
   ParentResourceType,
-} from "../projectsCreate";
+} from "../management/projects";
 import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";

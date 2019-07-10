@@ -1,15 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as api from "../api";
+import * as api from "../../api";
 import {
   addFirebaseToCloudProject,
   createCloudProject,
   ParentResource,
   ParentResourceType,
-} from "../projectsCreate";
-import * as pollUtils from "../operation-poller";
-import { mockAuth } from "./helpers";
+} from "../../management/projects";
+import * as pollUtils from "../../operation-poller";
+import { mockAuth } from "../helpers";
 
 const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";
@@ -18,7 +18,7 @@ const PARENT_RESOURCE: ParentResource = { id: "1111111111111", type: ParentResou
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
 const OPERATION_RESOURCE_NAME_2 = "operations/cp.22222222222222222";
 
-describe("projectsCreate", () => {
+describe("Projects management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
