@@ -79,9 +79,6 @@ export class EmulatorLog {
   static CHUNK_DIVIDER = "__CHUNK__";
   static CHUNK_SIZE = 8000;
 
-  private static WAITING_FOR_FLUSH = false;
-  private static LOG_BUFFER: string[] = [];
-
   get date(): Date {
     if (!this.timestamp) {
       return new Date(0);
@@ -90,7 +87,6 @@ export class EmulatorLog {
   }
 
   static waitForFlush(): Promise<void> {
-    process.send && process.send("waitForFlush");
     return new Promise((resolve) => {
       const interval = setInterval(() => {
         if (!EmulatorLog.WAITING_FOR_FLUSH) {
@@ -133,6 +129,9 @@ export class EmulatorLog {
     );
   }
 
+  private static WAITING_FOR_FLUSH = false;
+  private static LOG_BUFFER: string[] = [];
+
   constructor(
     public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
     public type: string,
@@ -169,23 +168,19 @@ export class EmulatorLog {
     this.flush();
   }
 
-  private bufferMessage(msg: string) {
+  private bufferMessage(msg: string): void {
     EmulatorLog.LOG_BUFFER.push(msg);
   }
 
   private flush(): void {
-    process.send && process.send("num: " + EmulatorLog.LOG_BUFFER.length);
     const nextMsg = EmulatorLog.LOG_BUFFER.shift();
     if (!nextMsg) {
       return;
     }
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
-    process.send && process.send("waiting: true");
-
     process.stdout.write(nextMsg, () => {
-      process.send && process.send("flush()");
-      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length == 0;
+      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length === 0;
       this.flush();
     });
   }

@@ -836,7 +836,7 @@ function onData(
   emitter: EventEmitter,
   buffer: { value: string },
   buf: Buffer
-) {
+): void {
   let bufString = buf.toString();
 
   // Remove all chunk markings from the message
