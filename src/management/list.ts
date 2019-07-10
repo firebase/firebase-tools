@@ -8,7 +8,8 @@ const PROJECT_LIST_PAGE_SIZE = 1000;
 const APP_LIST_PAGE_SIZE = 100;
 
 /**
- * Send recurring API requests to list all Firebase projects belong to the current logged in account
+ * Lists all Firebase projects associated with the currently logged-in account. Repeatedly calls the
+ * paginated API until all pages have been read.
  * @return a promise that resolves to the list of all projects.
  */
 export async function listFirebaseProjects(
