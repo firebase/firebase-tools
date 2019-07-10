@@ -3,7 +3,13 @@ import * as sinon from "sinon";
 
 import * as api from "../../api";
 import { listFirebaseApps, listFirebaseProjects } from "../../management/list";
-import { AppMetadata, AppPlatform, FirebaseProjectMetadata } from "../../management/metadata";
+import {
+  AndroidAppMetadata,
+  AppPlatform,
+  FirebaseProjectMetadata,
+  IosAppMetadata,
+  WebAppMetadata,
+} from "../../management/metadata";
 import { mockAuth } from "../helpers";
 
 const PROJECT_ID = "project-id";
@@ -23,12 +29,34 @@ function generateProjectList(counts: number): FirebaseProjectMetadata[] {
   }));
 }
 
-function generateAppList(counts: number, platform: AppPlatform): AppMetadata[] {
+function generateIosAppList(counts: number): IosAppMetadata[] {
   return Array.from(Array(counts), (_, i: number) => ({
     name: `projects/project-id-${i}/apps/app-id-${i}`,
-    projectId: `project-id-${i}`,
+    projectId: `project-id`,
     appId: `app-id-${i}`,
-    platform,
+    platform: AppPlatform.IOS,
+    displayName: `Project ${i}`,
+    bundleId: `bundle-id-${i}`,
+  }));
+}
+
+function generateAndroidAppList(counts: number): AndroidAppMetadata[] {
+  return Array.from(Array(counts), (_, i: number) => ({
+    name: `projects/project-id-${i}/apps/app-id-${i}`,
+    projectId: `project-id`,
+    appId: `app-id-${i}`,
+    platform: AppPlatform.ANDROID,
+    displayName: `Project ${i}`,
+    packageName: `package.name.app${i}`,
+  }));
+}
+
+function generateWebAppList(counts: number): WebAppMetadata[] {
+  return Array.from(Array(counts), (_, i: number) => ({
+    name: `projects/project-id-${i}/apps/app-id-${i}`,
+    projectId: `project-id`,
+    appId: `app-id-${i}`,
+    platform: AppPlatform.WEB,
     displayName: `Project ${i}`,
   }));
 }
@@ -134,8 +162,12 @@ describe("list", () => {
 
   describe("listFirebaseApps", () => {
     it("should resolve with app list if it succeeds with only 1 api call", async () => {
-      const appCounts = 10;
-      const expectedAppList = generateAppList(appCounts, AppPlatform.PLATFORM_UNSPECIFIED);
+      const appCountsPerPlatform = 3;
+      const expectedAppList = [
+        ...generateIosAppList(appCountsPerPlatform),
+        ...generateAndroidAppList(appCountsPerPlatform),
+        ...generateWebAppList(appCountsPerPlatform),
+      ];
       const listAppsStub = listAppsApiRequestStub().resolves({
         body: { apps: expectedAppList },
       });
@@ -146,23 +178,35 @@ describe("list", () => {
 
     it("should resolve with iOS app list", async () => {
       const appCounts = 10;
-      const expectedAppList = generateAppList(appCounts, AppPlatform.IOS);
+      const expectedAppList = generateIosAppList(appCounts);
+      const apiResponseAppList: any[] = expectedAppList.map((app) => {
+        const iosApp: any = { ...app };
+        delete iosApp.platform;
+        return iosApp;
+      });
       const listAppsStub = listAppsApiRequestStub(AppPlatform.IOS).resolves({
-        body: { apps: expectedAppList },
+        body: { apps: apiResponseAppList },
       });
 
-      expect(await listFirebaseApps(PROJECT_ID, AppPlatform.IOS)).to.deep.equal(expectedAppList);
+      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS })).to.deep.equal(
+        expectedAppList
+      );
       expect(listAppsStub).to.be.calledOnce;
     });
 
     it("should resolve with Android app list", async () => {
       const appCounts = 10;
-      const expectedAppList = generateAppList(appCounts, AppPlatform.ANDROID);
+      const expectedAppList = generateAndroidAppList(appCounts);
+      const apiResponseAppList: any[] = expectedAppList.map((app) => {
+        const androidApps: any = { ...app };
+        delete androidApps.platform;
+        return androidApps;
+      });
       const listAppsStub = listAppsApiRequestStub(AppPlatform.ANDROID).resolves({
-        body: { apps: expectedAppList },
+        body: { apps: apiResponseAppList },
       });
 
-      expect(await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID)).to.deep.equal(
+      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID })).to.deep.equal(
         expectedAppList
       );
       expect(listAppsStub).to.be.calledOnce;
@@ -170,30 +214,39 @@ describe("list", () => {
 
     it("should resolve with Web app list", async () => {
       const appCounts = 10;
-      const expectedAppList = generateAppList(appCounts, AppPlatform.WEB);
+      const expectedAppList = generateWebAppList(appCounts);
+      const apiResponseAppList: any[] = expectedAppList.map((app) => {
+        const webApp: any = { ...app };
+        delete webApp.platform;
+        return webApp;
+      });
       const listAppsStub = listAppsApiRequestStub(AppPlatform.WEB).resolves({
-        body: { apps: expectedAppList },
+        body: { apps: apiResponseAppList },
       });
 
-      expect(await listFirebaseApps(PROJECT_ID, AppPlatform.WEB)).to.deep.equal(expectedAppList);
+      expect(await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB })).to.deep.equal(
+        expectedAppList
+      );
       expect(listAppsStub).to.be.calledOnce;
     });
 
     it("should concatenate pages to get app list if it succeeds", async () => {
-      const appCounts = 10;
+      const appCountsPerPlatform = 3;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
-      const expectedAppList = generateAppList(appCounts, AppPlatform.PLATFORM_UNSPECIFIED);
+      const expectedAppList = [
+        ...generateIosAppList(appCountsPerPlatform),
+        ...generateAndroidAppList(appCountsPerPlatform),
+        ...generateWebAppList(appCountsPerPlatform),
+      ];
       const firstCallStub = listAppsApiRequestStub(undefined, pageSize).resolves({
         body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
       });
       const secondCallStub = listAppsApiRequestStub(undefined, pageSize, nextPageToken).resolves({
-        body: { apps: expectedAppList.slice(pageSize, appCounts) },
+        body: { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) },
       });
 
-      expect(await listFirebaseApps(PROJECT_ID, undefined, pageSize)).to.deep.equal(
-        expectedAppList
-      );
+      expect(await listFirebaseApps(PROJECT_ID, { pageSize })).to.deep.equal(expectedAppList);
       expect(firstCallStub).to.be.calledOnce;
       expect(secondCallStub).to.be.calledOnce;
     });
@@ -219,7 +272,7 @@ describe("list", () => {
       const appCounts = 10;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
-      const expectedAppList = generateAppList(appCounts, AppPlatform.PLATFORM_UNSPECIFIED);
+      const expectedAppList = generateAndroidAppList(appCounts);
       const expectedError = new Error("HTTP Error 400: unexpected error");
       const firstCallStub = listAppsApiRequestStub(undefined, pageSize).resolves({
         body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
@@ -230,7 +283,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, undefined, pageSize);
+        await listFirebaseApps(PROJECT_ID, { pageSize });
       } catch (e) {
         err = e;
       }
@@ -248,7 +301,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, AppPlatform.IOS);
+        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS });
       } catch (e) {
         err = e;
       }
@@ -265,7 +318,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID);
+        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID });
       } catch (e) {
         err = e;
       }
@@ -282,7 +335,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, AppPlatform.WEB);
+        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB });
       } catch (e) {
         err = e;
       }
