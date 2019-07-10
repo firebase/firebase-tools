@@ -20,14 +20,14 @@ export interface DefaultProjectResources {
   locationId: string;
 }
 
-export enum ParentResourceType {
+export enum ProjectParentResourceType {
   ORGANIZATION = "organization",
   FOLDER = "folder",
 }
 
-export interface ParentResource {
+export interface ProjectParentResource {
   id: string;
-  type: ParentResourceType;
+  type: ProjectParentResourceType;
 }
 
 /**
@@ -37,7 +37,7 @@ export interface ParentResource {
  */
 export async function createCloudProject(
   projectId: string,
-  options: { displayName?: string; parentResource?: ParentResource }
+  options: { displayName?: string; parentResource?: ProjectParentResource }
 ): Promise<any> {
   try {
     const response = await api.request("POST", "/v1/projects", {

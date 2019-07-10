@@ -6,8 +6,8 @@ import * as FirebaseError from "../error";
 import {
   addFirebaseToCloudProject,
   createCloudProject,
-  ParentResource,
-  ParentResourceType,
+  ProjectParentResource,
+  ProjectParentResourceType,
 } from "../management/projects";
 import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
@@ -15,7 +15,7 @@ import * as logger from "../logger";
 
 async function createFirebaseProject(
   projectId: string,
-  options: { displayName?: string; parentResource?: ParentResource }
+  options: { displayName?: string; parentResource?: ProjectParentResource }
 ): Promise<any> {
   let spinner = ora("Creating Google Cloud Platform project").start();
   try {
@@ -87,9 +87,9 @@ module.exports = new Command("projects:create [projectId]")
 
       let parentResource;
       if (options.organization) {
-        parentResource = { type: ParentResourceType.ORGANIZATION, id: options.organization };
+        parentResource = { type: ProjectParentResourceType.ORGANIZATION, id: options.organization };
       } else if (options.folder) {
-        parentResource = { type: ParentResourceType.FOLDER, id: options.folder };
+        parentResource = { type: ProjectParentResourceType.FOLDER, id: options.folder };
       }
 
       return createFirebaseProject(options.projectId, {

@@ -5,8 +5,8 @@ import * as api from "../../api";
 import {
   addFirebaseToCloudProject,
   createCloudProject,
-  ParentResource,
-  ParentResourceType,
+  ProjectParentResource,
+  ProjectParentResourceType,
 } from "../../management/projects";
 import * as pollUtils from "../../operation-poller";
 import { mockAuth } from "../helpers";
@@ -14,7 +14,10 @@ import { mockAuth } from "../helpers";
 const PROJECT_ID = "the-best-firebase-project";
 const PROJECT_NUMBER = "1234567890";
 const PROJECT_NAME = "The Best Project";
-const PARENT_RESOURCE: ParentResource = { id: "1111111111111", type: ParentResourceType.FOLDER };
+const PARENT_RESOURCE: ProjectParentResource = {
+  id: "1111111111111",
+  type: ProjectParentResourceType.FOLDER,
+};
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
 const OPERATION_RESOURCE_NAME_2 = "operations/cp.22222222222222222";
 
