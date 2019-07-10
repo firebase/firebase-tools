@@ -41,20 +41,21 @@ export async function listFirebaseProjects(
  */
 export async function listFirebaseApps(
   projectId: string,
-  platform?: AppPlatform,
-  pageSize: number = APP_LIST_PAGE_SIZE
+  options: { platform?: AppPlatform; pageSize?: number } = {}
 ): Promise<AppMetadata[]> {
   const apps: AppMetadata[] = [];
+  const { platform, pageSize } = options;
   try {
     let nextPageToken = "";
     do {
       const response = await getPageApiRequest(
         getListAppsResourceString(projectId, platform),
-        pageSize,
+        pageSize || APP_LIST_PAGE_SIZE,
         nextPageToken
       );
       if (response.body.apps) {
         const appsOnPage = response.body.apps.map(
+          // app.platform does not exist if we use the endpoint for a specific platform
           (app: any) => (app.platform ? app : { ...app, platform })
         );
         apps.push(...appsOnPage);
@@ -98,7 +99,7 @@ function getListAppsResourceString(projectId: string, platform?: AppPlatform): s
 
 async function getPageApiRequest(
   resource: string,
-  pageSize: number = PROJECT_LIST_PAGE_SIZE,
+  pageSize: number,
   nextPageToken?: string
 ): Promise<any> {
   const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
