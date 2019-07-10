@@ -122,7 +122,7 @@ describe("list", () => {
 
     it("should reject if the first api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      apiRequestStub.rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
