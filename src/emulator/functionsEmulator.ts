@@ -797,18 +797,33 @@ export function InvokeRuntime(
     if (buffers.hasOwnProperty(id)) {
       const buffer = buffers[id];
       buffer.pipe.on("data", (buf: Buffer) => {
-        buffer.value += buf;
+        let bufString = buf.toString();
+        console.log("received", bufString.length);
+
+        const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
+        while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
+          console.log("removing chunk stuff");
+          bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
+        }
+
+        buffer.value += bufString;
+
+        // If the message was chunked, we need to remove the divider and wait for the rest
+        if (endedWithChunk) {
+          console.log("waiting for next bit...");
+          return;
+        }
+
         const lines = buffer.value.split("\n");
 
         if (lines.length > 1) {
+          // slice(0, -1) returns all elements but the last
           lines.slice(0, -1).forEach((line: string) => {
             const log = EmulatorLog.fromJSON(line);
             emitter.emit("log", log);
 
             if (log.level === "FATAL") {
-              /*
-              Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-               */
+              // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
               emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
               runtime.kill();
             }

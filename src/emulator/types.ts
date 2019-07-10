@@ -75,6 +75,12 @@ export interface Address {
 }
 
 export class EmulatorLog {
+  // Messages over 8192 bytes cause issues
+  static CHUNK_DIVIDER = "__CHUNK__";
+  static CHUNK_SIZE = 8000;
+
+  private static LOG_BUFFER: string[] = [];
+
   get date(): Date {
     if (!this.timestamp) {
       return new Date(0);
@@ -133,7 +139,47 @@ export class EmulatorLog {
   }
 
   log(): void {
-    process.stdout.write(`${this.toString()}\n`);
+    const msg = `${this.toString()}\n`;
+    const chunks = this.chunkString(msg);
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const isLast = i === chunks.length - 1;
+      if (isLast) {
+        this.bufferMessage(chunk);
+      } else {
+        this.bufferMessage(chunk + EmulatorLog.CHUNK_DIVIDER);
+      }
+    }
+
+    this.flush();
+  }
+
+  private bufferMessage(msg: string) {
+    EmulatorLog.LOG_BUFFER.push(msg);
+  }
+
+  private flush(): void {
+    const nextMsg = EmulatorLog.LOG_BUFFER.shift();
+    if (!nextMsg) {
+      return;
+    }
+
+    process.stdout.write(nextMsg);
+    this.flush();
+  }
+
+  private chunkString(msg: string): string[] {
+    const chunks: string[] = [];
+    const numChunks = Math.ceil(msg.length / EmulatorLog.CHUNK_SIZE);
+
+    for (let i = 0; i < numChunks; i++) {
+      const start = i * EmulatorLog.CHUNK_SIZE;
+      const length = EmulatorLog.CHUNK_SIZE;
+      chunks.push(msg.substr(start, length));
+    }
+
+    return chunks;
   }
 
   private toStringCore(pretty = false): string {

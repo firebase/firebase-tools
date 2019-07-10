@@ -898,7 +898,9 @@ async function main(): Promise<void> {
 
   require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
+
+  const triggerLogData = { triggers, triggerDefinitions };
+  new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
 
   if (!frb.triggerId) {
     /*
