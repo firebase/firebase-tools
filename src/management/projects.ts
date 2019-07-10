@@ -10,10 +10,10 @@ export interface FirebaseProjectMetadata {
   projectId: string;
   projectNumber: string;
   displayName: string;
-  resources: DefaultResource;
+  resources: DefaultProjectResources;
 }
 
-export interface DefaultResource {
+export interface DefaultProjectResources {
   hostingSite: string;
   realtimeDatabaseInstance: string;
   storageBucket: string;
