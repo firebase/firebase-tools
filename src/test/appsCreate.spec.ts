@@ -24,8 +24,8 @@ describe("appsCreate", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     mockAuth(sandbox);
-    apiRequestStub = sandbox.stub(api, "request");
-    pollOperationStub = sandbox.stub(pollUtils, "pollOperation");
+    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
   });
 
   afterEach(() => {
@@ -40,27 +40,41 @@ describe("appsCreate", () => {
         bundleId: IOS_APP_BUNDLE_ID,
         appStoreId: IOS_APP_STORE_ID,
       };
-      const createIosAppStub = createIosAppApiStub().resolves({
-        body: { name: OPERATION_RESOURCE_NAME_1 },
-      });
-      const pollStub = pollCreateIosAppOperationStub(OPERATION_RESOURCE_NAME_1).resolves(
-        expectedAppMetadata
-      );
+      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
-      expect(
-        await createIosApp(PROJECT_ID, {
-          displayName: IOS_APP_DISPLAY_NAME,
-          bundleId: IOS_APP_BUNDLE_ID,
-          appStoreId: IOS_APP_STORE_ID,
-        })
-      ).to.deep.equal(expectedAppMetadata);
-      expect(createIosAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
+      const resultAppInfo = await createIosApp(PROJECT_ID, {
+        displayName: IOS_APP_DISPLAY_NAME,
+        bundleId: IOS_APP_BUNDLE_ID,
+        appStoreId: IOS_APP_STORE_ID,
+      });
+
+      expect(resultAppInfo).to.deep.equal(expectedAppMetadata);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/iosApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: IOS_APP_DISPLAY_NAME,
+            bundleId: IOS_APP_BUNDLE_ID,
+            appStoreId: IOS_APP_STORE_ID,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.calledOnceWith({
+        pollerName: "Create iOS app Poller",
+        apiOrigin: api.firebaseApiOrigin,
+        apiVersion: "v1beta1",
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
+      });
     });
 
     it("should reject if app creation api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const createIosAppStub = createIosAppApiStub().rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -72,22 +86,32 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createIosAppStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/iosApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: IOS_APP_DISPLAY_NAME,
+            bundleId: IOS_APP_BUNDLE_ID,
+            appStoreId: IOS_APP_STORE_ID,
+          },
+        }
+      );
       expect(pollOperationStub).to.be.not.called;
     });
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      const createIosAppStub = createIosAppApiStub().resolves({
-        body: { name: OPERATION_RESOURCE_NAME_1 },
-      });
-      const pollStub = pollCreateIosAppOperationStub(OPERATION_RESOURCE_NAME_1).rejects(
-        expectedError
-      );
+      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      pollOperationStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -99,35 +123,32 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create iOS app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createIosAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
-    });
-
-    function createIosAppApiStub(): sinon.SinonStub {
-      return apiRequestStub.withArgs("POST", `/v1beta1/projects/${PROJECT_ID}/iosApps`, {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: 15000,
-        data: {
-          displayName: IOS_APP_DISPLAY_NAME,
-          bundleId: IOS_APP_BUNDLE_ID,
-          appStoreId: IOS_APP_STORE_ID,
-        },
-      });
-    }
-
-    function pollCreateIosAppOperationStub(operationResourceName: string): sinon.SinonStub {
-      return pollOperationStub.withArgs({
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/iosApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: IOS_APP_DISPLAY_NAME,
+            bundleId: IOS_APP_BUNDLE_ID,
+            appStoreId: IOS_APP_STORE_ID,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create iOS app Poller",
         apiOrigin: api.firebaseApiOrigin,
         apiVersion: "v1beta1",
-        operationResourceName,
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
-    }
+    });
   });
 
   describe("createAndroidApp", () => {
@@ -137,26 +158,39 @@ describe("appsCreate", () => {
         displayName: ANDROID_APP_DISPLAY_NAME,
         packageName: ANDROID_APP_PACKAGE_NAME,
       };
-      const createAndroidAppStub = createAndroidAppApiStub().resolves({
-        body: { name: OPERATION_RESOURCE_NAME_1 },
-      });
-      const pollStub = pollCreateAndroidAppOperationStub(OPERATION_RESOURCE_NAME_1).resolves(
-        expectedAppMetadata
-      );
+      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
-      expect(
-        await createAndroidApp(PROJECT_ID, {
-          displayName: ANDROID_APP_DISPLAY_NAME,
-          packageName: ANDROID_APP_PACKAGE_NAME,
-        })
-      ).to.equal(expectedAppMetadata);
-      expect(createAndroidAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
+      const resultAppInfo = await createAndroidApp(PROJECT_ID, {
+        displayName: ANDROID_APP_DISPLAY_NAME,
+        packageName: ANDROID_APP_PACKAGE_NAME,
+      });
+
+      expect(resultAppInfo).to.equal(expectedAppMetadata);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/androidApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: ANDROID_APP_DISPLAY_NAME,
+            packageName: ANDROID_APP_PACKAGE_NAME,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.calledOnceWith({
+        pollerName: "Create Android app Poller",
+        apiOrigin: api.firebaseApiOrigin,
+        apiVersion: "v1beta1",
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
+      });
     });
 
     it("should reject if app creation api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const createAndroidAppStub = createAndroidAppApiStub().rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -167,21 +201,31 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createAndroidAppStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/androidApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: ANDROID_APP_DISPLAY_NAME,
+            packageName: ANDROID_APP_PACKAGE_NAME,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.not.called;
     });
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      const createAndroidAppStub = createAndroidAppApiStub().resolves({
-        body: { name: OPERATION_RESOURCE_NAME_1 },
-      });
-      const pollStub = pollCreateAndroidAppOperationStub(OPERATION_RESOURCE_NAME_1).rejects(
-        expectedError
-      );
+      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      pollOperationStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -192,31 +236,31 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create Android app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createAndroidAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
-    });
-
-    function createAndroidAppApiStub(): sinon.SinonStub {
-      return apiRequestStub.withArgs("POST", `/v1beta1/projects/${PROJECT_ID}/androidApps`, {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: 15000,
-        data: { displayName: ANDROID_APP_DISPLAY_NAME, packageName: ANDROID_APP_PACKAGE_NAME },
-      });
-    }
-
-    function pollCreateAndroidAppOperationStub(operationResourceName: string): sinon.SinonStub {
-      return pollOperationStub.withArgs({
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/androidApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: ANDROID_APP_DISPLAY_NAME,
+            packageName: ANDROID_APP_PACKAGE_NAME,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Android app Poller",
         apiOrigin: api.firebaseApiOrigin,
         apiVersion: "v1beta1",
-        operationResourceName,
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
-    }
+    });
   });
 
   describe("createWebApp", () => {
@@ -225,23 +269,35 @@ describe("appsCreate", () => {
         appId: APP_ID,
         displayName: WEB_APP_DISPLAY_NAME,
       };
-      const createWebAppStub = createWebAppApiStub().resolves({
-        body: { name: OPERATION_RESOURCE_NAME_1 },
-      });
-      const pollStub = pollCreateWebAppOperationStub(OPERATION_RESOURCE_NAME_1).resolves(
-        expectedAppMetadata
-      );
+      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
-      expect(await createWebApp(PROJECT_ID, { displayName: WEB_APP_DISPLAY_NAME })).to.equal(
-        expectedAppMetadata
+      const resultAppInfo = await createWebApp(PROJECT_ID, { displayName: WEB_APP_DISPLAY_NAME });
+
+      expect(resultAppInfo).to.equal(expectedAppMetadata);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/webApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: WEB_APP_DISPLAY_NAME,
+          },
+        }
       );
-      expect(createWebAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
+      expect(pollOperationStub).to.be.calledOnceWith({
+        pollerName: "Create Web app Poller",
+        apiOrigin: api.firebaseApiOrigin,
+        apiVersion: "v1beta1",
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
+      });
     });
 
     it("should reject if app creation api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const createWebAppStub = createWebAppApiStub().rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -249,22 +305,32 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createWebAppStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/webApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: WEB_APP_DISPLAY_NAME,
+          },
+        }
+      );
       expect(pollOperationStub).to.be.not.called;
     });
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      const createWebAppStub = createWebAppApiStub().resolves({
+      apiRequestStub.onFirstCall().resolves({
         body: { name: OPERATION_RESOURCE_NAME_1 },
       });
-      const pollStub = pollCreateWebAppOperationStub(OPERATION_RESOURCE_NAME_1).rejects(
-        expectedError
-      );
+      pollOperationStub.onFirstCall().rejects(expectedError);
 
       let err;
       try {
@@ -272,30 +338,29 @@ describe("appsCreate", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         `Failed to create Web app for project ${PROJECT_ID}. See firebase-debug.log for more info.`
       );
       expect(err.original).to.equal(expectedError);
-      expect(createWebAppStub).to.be.calledOnce;
-      expect(pollStub).to.be.calledOnce;
-    });
-
-    function createWebAppApiStub(): sinon.SinonStub {
-      return apiRequestStub.withArgs("POST", `/v1beta1/projects/${PROJECT_ID}/webApps`, {
-        auth: true,
-        origin: api.firebaseApiOrigin,
-        timeout: 15000,
-        data: { displayName: WEB_APP_DISPLAY_NAME },
-      });
-    }
-
-    function pollCreateWebAppOperationStub(operationResourceName: string): sinon.SinonStub {
-      return pollOperationStub.withArgs({
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta1/projects/${PROJECT_ID}/webApps`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: 15000,
+          data: {
+            displayName: WEB_APP_DISPLAY_NAME,
+          },
+        }
+      );
+      expect(pollOperationStub).to.be.calledOnceWith({
         pollerName: "Create Web app Poller",
         apiOrigin: api.firebaseApiOrigin,
         apiVersion: "v1beta1",
-        operationResourceName,
+        operationResourceName: OPERATION_RESOURCE_NAME_1,
       });
-    }
+    });
   });
 });
