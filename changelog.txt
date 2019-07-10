@@ -8,4 +8,5 @@
 * Upgrade archiver dependency to 3.0.0.
 * Update functions init templates to `v3.1.0`
 * Fix emulation of https functions.
+* Fix bug where calling `clearFirestoreData` against the Firestore Emulator fails if more than 500 documents exist.
 * Fix bug where too many functions would hang the emulator.
