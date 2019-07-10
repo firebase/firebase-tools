@@ -978,6 +978,9 @@ async function main(): Promise<void> {
 if (require.main === module) {
   main()
     .then(() => {
+      return EmulatorLog.waitForFlush();
+    })
+    .then(() => {
       process.exit(0);
     })
     .catch((err) => {

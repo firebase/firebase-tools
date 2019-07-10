@@ -79,6 +79,7 @@ export class EmulatorLog {
   static CHUNK_DIVIDER = "__CHUNK__";
   static CHUNK_SIZE = 8000;
 
+  private static WAITING_FOR_FLUSH = false;
   private static LOG_BUFFER: string[] = [];
 
   get date(): Date {
@@ -87,6 +88,19 @@ export class EmulatorLog {
     }
     return new Date(this.timestamp);
   }
+
+  static waitForFlush(): Promise<void> {
+    process.send && process.send("waitForFlush");
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        if (!EmulatorLog.WAITING_FOR_FLUSH) {
+          resolve();
+          clearInterval(interval);
+        }
+      }, 10);
+    });
+  }
+
   static fromJSON(json: string): EmulatorLog {
     let parsedLog;
     let isNotJSON = false;
@@ -160,13 +174,20 @@ export class EmulatorLog {
   }
 
   private flush(): void {
+    process.send && process.send("num: " + EmulatorLog.LOG_BUFFER.length);
     const nextMsg = EmulatorLog.LOG_BUFFER.shift();
     if (!nextMsg) {
       return;
     }
 
-    process.stdout.write(nextMsg);
-    this.flush();
+    EmulatorLog.WAITING_FOR_FLUSH = true;
+    process.send && process.send("waiting: true");
+
+    process.stdout.write(nextMsg, () => {
+      process.send && process.send("flush()");
+      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length == 0;
+      this.flush();
+    });
   }
 
   private chunkString(msg: string): string[] {

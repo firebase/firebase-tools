@@ -15,7 +15,7 @@ import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types"
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
-import { spawnSync } from "child_process";
+import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
@@ -783,7 +783,11 @@ export function InvokeRuntime(
       JSON.stringify(frb),
       opts.serializedTriggers || "",
     ],
-    { env: { node: nodeBinary, ...opts.env, ...process.env }, cwd: frb.cwd }
+    {
+      env: { node: nodeBinary, ...opts.env, ...process.env },
+      cwd: frb.cwd,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    }
   );
 
   const buffers: {
@@ -791,46 +795,16 @@ export function InvokeRuntime(
       pipe: stream.Readable;
       value: string;
     };
-  } = { stderr: { pipe: runtime.stderr, value: "" }, stdout: { pipe: runtime.stdout, value: "" } };
+  } = {
+    stderr: { pipe: runtime.stderr, value: "" },
+    stdout: { pipe: runtime.stdout, value: "" },
+  };
 
   for (const id in buffers) {
     if (buffers.hasOwnProperty(id)) {
       const buffer = buffers[id];
       buffer.pipe.on("data", (buf: Buffer) => {
-        let bufString = buf.toString();
-        console.log("received", bufString.length);
-
-        const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
-        while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
-          console.log("removing chunk stuff");
-          bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
-        }
-
-        buffer.value += bufString;
-
-        // If the message was chunked, we need to remove the divider and wait for the rest
-        if (endedWithChunk) {
-          console.log("waiting for next bit...");
-          return;
-        }
-
-        const lines = buffer.value.split("\n");
-
-        if (lines.length > 1) {
-          // slice(0, -1) returns all elements but the last
-          lines.slice(0, -1).forEach((line: string) => {
-            const log = EmulatorLog.fromJSON(line);
-            emitter.emit("log", log);
-
-            if (log.level === "FATAL") {
-              // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-              emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-              runtime.kill();
-            }
-          });
-        }
-
-        buffer.value = lines[lines.length - 1];
+        onData(runtime, emitter, buffer, buf);
       });
     }
   }
@@ -843,7 +817,9 @@ export function InvokeRuntime(
 
   return {
     exit: new Promise<number>((resolve) => {
-      runtime.on("exit", resolve);
+      runtime.on("exit", (code: number) => {
+        resolve(code);
+      });
     }),
     ready,
     metadata,
@@ -853,6 +829,45 @@ export function InvokeRuntime(
       emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
     },
   };
+}
+
+function onData(
+  runtime: ChildProcess,
+  emitter: EventEmitter,
+  buffer: { value: string },
+  buf: Buffer
+) {
+  let bufString = buf.toString();
+
+  // Remove all chunk markings from the message
+  const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
+  while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
+    bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
+  }
+  buffer.value += bufString;
+
+  // If the message ended with a chunk divider, we just wait for more to come.
+  if (endedWithChunk) {
+    return;
+  }
+
+  const lines = buffer.value.split("\n");
+
+  if (lines.length > 1) {
+    // slice(0, -1) returns all elements but the last
+    lines.slice(0, -1).forEach((line: string) => {
+      const log = EmulatorLog.fromJSON(line);
+      emitter.emit("log", log);
+
+      if (log.level === "FATAL") {
+        // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+        runtime.kill();
+      }
+    });
+  }
+
+  buffer.value = lines[lines.length - 1];
 }
 
 function waitForLog(
