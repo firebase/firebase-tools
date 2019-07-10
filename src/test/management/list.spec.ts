@@ -28,7 +28,7 @@ describe("list", () => {
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     mockAuth(sandbox);
-    apiRequestStub = sandbox.stub(api, "request");
+    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 
   afterEach(() => {
@@ -39,12 +39,18 @@ describe("list", () => {
     it("should resolve with project list if it succeeds with only 1 api call", async () => {
       const projectCounts = 10;
       const expectedProjectList = generateProjectList(projectCounts);
-      const listProjectsStub = listProjectsApiStub().resolves({
+      apiRequestStub.onFirstCall().resolves({
         body: { results: expectedProjectList },
       });
 
-      expect(await listFirebaseProjects()).to.deep.equal(expectedProjectList);
-      expect(listProjectsStub).to.be.calledOnce;
+      const projects = await listFirebaseProjects();
+
+      expect(projects).to.deep.equal(expectedProjectList);
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000", {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: 30000,
+      });
     });
 
     it("should concatenate pages to get project list if it succeeds with multiple api calls", async () => {
@@ -52,21 +58,31 @@ describe("list", () => {
       const pageSize = 5;
       const nextPageToken = "next-page-token";
       const expectedProjectList = generateProjectList(projectCounts);
-      const firstCallStub = listProjectsApiStub(pageSize).resolves({
-        body: { results: expectedProjectList.slice(0, pageSize), nextPageToken },
-      });
-      const secondCallStub = listProjectsApiStub(pageSize, nextPageToken).resolves({
-        body: { results: expectedProjectList.slice(pageSize, projectCounts) },
-      });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({
+          body: { results: expectedProjectList.slice(0, pageSize), nextPageToken },
+        })
+        .onSecondCall()
+        .resolves({ body: { results: expectedProjectList.slice(pageSize, projectCounts) } });
 
-      expect(await listFirebaseProjects(pageSize)).to.deep.equal(expectedProjectList);
-      expect(firstCallStub).to.be.calledOnce;
-      expect(secondCallStub).to.be.calledOnce;
+      const projects = await listFirebaseProjects(pageSize);
+
+      expect(projects).to.deep.equal(expectedProjectList);
+      expect(apiRequestStub).to.be.calledTwice;
+      expect(apiRequestStub.firstCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects?pageSize=${pageSize}`
+      );
+      expect(apiRequestStub.secondCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects?pageSize=${pageSize}&pageToken=${nextPageToken}`
+      );
     });
 
     it("should reject if the first api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
-      const listProjectsStub = listProjectsApiStub().rejects(expectedError);
+      apiRequestStub.rejects(expectedError);
 
       let err;
       try {
@@ -74,11 +90,12 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase projects. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(listProjectsStub).to.be.calledOnce;
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000");
     });
 
     it("should rejects if error is thrown in subsequence api call", async () => {
@@ -87,10 +104,10 @@ describe("list", () => {
       const nextPageToken = "next-page-token";
       const expectedProjectList = generateProjectList(projectCounts);
       const expectedError = new Error("HTTP Error 400: unexpected error");
-      const firstCallStub = listProjectsApiStub(pageSize).resolves({
+      apiRequestStub.onFirstCall().resolves({
         body: { results: expectedProjectList.slice(0, pageSize), nextPageToken },
       });
-      const secondCallStub = listProjectsApiStub(pageSize, nextPageToken).rejects(expectedError);
+      apiRequestStub.onSecondCall().rejects(expectedError);
 
       let err;
       try {
@@ -98,25 +115,19 @@ describe("list", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase projects. See firebase-debug.log for more info."
       );
       expect(err.original).to.equal(expectedError);
-      expect(firstCallStub).to.be.calledOnce;
-      expect(secondCallStub).to.be.calledOnce;
-    });
-
-    function listProjectsApiStub(pageSize: number = 1000, nextPageToken?: string): sinon.SinonStub {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      return apiRequestStub.withArgs(
+      expect(apiRequestStub.firstCall).to.be.calledWith(
         "GET",
-        `/v1beta1/projects?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: 30000,
-        }
+        `/v1beta1/projects?pageSize=${pageSize}`
       );
-    }
+      expect(apiRequestStub.secondCall).to.be.calledWith(
+        "GET",
+        `/v1beta1/projects?pageSize=${pageSize}&pageToken=${nextPageToken}`
+      );
+    });
   });
 });
