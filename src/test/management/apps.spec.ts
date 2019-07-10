@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as api from "../api";
-import { createAndroidApp, createIosApp, createWebApp } from "../appsCreate";
-import * as pollUtils from "../operation-poller";
-import { mockAuth } from "./helpers";
+import * as api from "../../api";
+import { createAndroidApp, createIosApp, createWebApp } from "../../management/apps";
+import * as pollUtils from "../../operation-poller";
+import { mockAuth } from "../helpers";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";

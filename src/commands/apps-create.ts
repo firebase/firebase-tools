@@ -4,7 +4,7 @@ import * as ora from "ora";
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
 import * as FirebaseError from "../error";
-import { AppPlatform, createAndroidApp, createIosApp, createWebApp } from "../appsCreate";
+import { AppPlatform, createAndroidApp, createIosApp, createWebApp } from "../management/apps";
 import { prompt, promptOnce, Question } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
