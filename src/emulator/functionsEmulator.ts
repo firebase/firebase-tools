@@ -61,7 +61,7 @@ export interface FunctionsRuntimeInstance {
 }
 
 interface RequestWithRawBody extends express.Request {
-  rawBody: string;
+  rawBody: Buffer;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -82,12 +82,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const hub = express();
 
     hub.use((req, res, next) => {
-      let data = "";
-      req.on("data", (chunk: any) => {
-        data += chunk;
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
       });
       req.on("end", () => {
-        (req as RequestWithRawBody).rawBody = data;
+        (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
         next();
       });
     });
@@ -113,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody);
+      const proto = JSON.parse(reqBody.toString());
 
       const runtime = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
