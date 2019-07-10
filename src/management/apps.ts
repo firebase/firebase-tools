@@ -1,18 +1,3 @@
-export interface FirebaseProjectMetadata {
-  name: string /* The fully qualified resource name of the Firebase project */;
-  projectId: string;
-  projectNumber: string;
-  displayName: string;
-  resources: DefaultResource;
-}
-
-export interface DefaultResource {
-  hostingSite: string;
-  realtimeDatabaseInstance: string;
-  storageBucket: string;
-  locationId: string;
-}
-
 export interface AppMetadata {
   name: string /* The fully qualified resource name of the Firebase App */;
   projectId: string;
@@ -44,3 +29,5 @@ export enum AppPlatform {
   ANDROID = "ANDROID",
   WEB = "WEB",
 }
+
+// TODO(caot): Add API methods related to app management into this file
