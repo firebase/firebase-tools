@@ -43,4 +43,5 @@ export enum AppPlatform {
   IOS = "IOS",
   ANDROID = "ANDROID",
   WEB = "WEB",
+  ANY = "ANY",
 }

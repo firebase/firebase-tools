@@ -181,7 +181,7 @@ describe("list", () => {
       ];
       apiRequestStub.onFirstCall().resolves({ body: { apps: expectedAppList } });
 
-      const apps = await listFirebaseApps(PROJECT_ID);
+      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANY);
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -205,7 +205,7 @@ describe("list", () => {
       });
       apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS });
+      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.IOS);
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -224,7 +224,7 @@ describe("list", () => {
       });
       apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID });
+      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID);
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -243,7 +243,7 @@ describe("list", () => {
       });
       apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
 
-      const apps = await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB });
+      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.WEB);
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -267,7 +267,7 @@ describe("list", () => {
         .onSecondCall()
         .resolves({ body: { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) } });
 
-      const apps = await listFirebaseApps(PROJECT_ID, { pageSize });
+      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANY, pageSize);
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub.firstCall).to.be.calledWith(
@@ -286,7 +286,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID);
+        await listFirebaseApps(PROJECT_ID, AppPlatform.ANY);
       } catch (e) {
         err = e;
       }
@@ -315,7 +315,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, { pageSize });
+        await listFirebaseApps(PROJECT_ID, AppPlatform.ANY, pageSize);
       } catch (e) {
         err = e;
       }
@@ -340,7 +340,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.IOS });
+        await listFirebaseApps(PROJECT_ID, AppPlatform.IOS);
       } catch (e) {
         err = e;
       }
@@ -360,7 +360,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.ANDROID });
+        await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID);
       } catch (e) {
         err = e;
       }
@@ -381,7 +381,7 @@ describe("list", () => {
 
       let err;
       try {
-        await listFirebaseApps(PROJECT_ID, { platform: AppPlatform.WEB });
+        await listFirebaseApps(PROJECT_ID, AppPlatform.WEB);
       } catch (e) {
         err = e;
       }

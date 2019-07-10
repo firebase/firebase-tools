@@ -27,11 +27,7 @@ function logAppsList(apps: AppMetadata[]): void {
   }
 }
 
-function getAppPlatform(platform: string): AppPlatform | undefined {
-  if (!platform) {
-    return undefined;
-  }
-
+function getAppPlatform(platform: string): AppPlatform {
   switch (platform.toUpperCase()) {
     case "IOS":
       return AppPlatform.IOS;
@@ -39,6 +35,8 @@ function getAppPlatform(platform: string): AppPlatform | undefined {
       return AppPlatform.ANDROID;
     case "WEB":
       return AppPlatform.WEB;
+    case "": // list all apps if platform is not provided
+      return AppPlatform.ANY;
     default:
       return AppPlatform.PLATFORM_UNSPECIFIED;
   }
@@ -56,16 +54,17 @@ module.exports = new Command("apps:list [platform]")
       const projectId = getProjectId(options);
       const appPlatform = getAppPlatform(platform);
 
-      if (appPlatform && appPlatform === AppPlatform.PLATFORM_UNSPECIFIED) {
+      if (appPlatform === AppPlatform.PLATFORM_UNSPECIFIED) {
         throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
       }
 
       let apps;
       const spinner = ora(
-        `Preparing the list of your Firebase ${appPlatform ? appPlatform + " " : ""}apps`
+        "Preparing the list of your Firebase" +
+          `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
       ).start();
       try {
-        apps = await listFirebaseApps(projectId, { platform: appPlatform });
+        apps = await listFirebaseApps(projectId, appPlatform);
       } catch (err) {
         spinner.fail();
         throw err;

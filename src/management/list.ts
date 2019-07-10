@@ -42,16 +42,16 @@ export async function listFirebaseProjects(
  */
 export async function listFirebaseApps(
   projectId: string,
-  options: { platform?: AppPlatform; pageSize?: number } = {}
+  platform: AppPlatform,
+  pageSize: number = APP_LIST_PAGE_SIZE
 ): Promise<AppMetadata[]> {
   const apps: AppMetadata[] = [];
-  const { platform, pageSize } = options;
   try {
     let nextPageToken = "";
     do {
       const response = await getPageApiRequest(
         getListAppsResourceString(projectId, platform),
-        pageSize || APP_LIST_PAGE_SIZE,
+        pageSize,
         nextPageToken
       );
       if (response.body.apps) {
@@ -68,7 +68,7 @@ export async function listFirebaseApps(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to list Firebase ${platform ? platform + " " : ""}` +
+      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
         "apps. See firebase-debug.log for more info.",
       {
         exit: 2,
@@ -78,7 +78,7 @@ export async function listFirebaseApps(
   }
 }
 
-function getListAppsResourceString(projectId: string, platform?: AppPlatform): string {
+function getListAppsResourceString(projectId: string, platform: AppPlatform): string {
   let resourceSuffix;
   switch (platform) {
     case AppPlatform.IOS:
@@ -90,9 +90,11 @@ function getListAppsResourceString(projectId: string, platform?: AppPlatform): s
     case AppPlatform.WEB:
       resourceSuffix = "/webApps";
       break;
-    default:
-      resourceSuffix = ":searchApps";
+    case AppPlatform.ANY:
+      resourceSuffix = ":searchApps"; // List apps in any platform
       break;
+    default:
+      throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
   }
 
   return `/v1beta1/projects/${projectId}${resourceSuffix}`;
