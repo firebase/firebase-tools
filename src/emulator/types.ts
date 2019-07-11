@@ -156,15 +156,15 @@ export class EmulatorLog {
    * between the emulator runtime and the emulator itself. We were falsely making the assumption
    * that we could pass messages of any length over stdout and the stream reader would always get
    * a whole message in a single "data" callback.
-   * 
+   *
    * Now we chunk the messages into 8000B pieces and then add a signal (CHUNK_DIVIDER) to the
    * end of partial messages that instructs the receiver to wait for the whole message to
    * appear.
-   * 
+   *
    * We use a global boolean to know if all of our messages have been flushed, and the functions
    * emulator can wait on this variable to flip before exiting. This ensures that we never
    * miss a log message that has been queued but has not yet flushed from stdout.
-   * 
+   *
    * Note: it would be better to use ipc via process.send() since that is faster and has
    * extremely large message limits but in some experiments the IPC channel seemed to get
    * full and not flush, so stdout remains.
