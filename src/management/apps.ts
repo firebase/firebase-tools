@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
@@ -6,8 +5,6 @@ import * as logger from "../logger";
 const TIMEOUT_MILLIS = 30000;
 const APP_LIST_PAGE_SIZE = 100;
 
-=======
->>>>>>> tc-prj-management
 export interface AppMetadata {
   name: string /* The fully qualified resource name of the Firebase App */;
   projectId: string;
@@ -41,7 +38,6 @@ export enum AppPlatform {
   ANY = "ANY",
 }
 
-<<<<<<< HEAD
 export function getAppPlatform(platform: string): AppPlatform {
   switch (platform.toUpperCase()) {
     case "IOS":
@@ -127,6 +123,3 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
 
   return `/v1beta1/projects/${projectId}${resourceSuffix}`;
 }
-=======
-// TODO(caot): Add API methods related to app management into this file
->>>>>>> tc-prj-management
