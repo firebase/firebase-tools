@@ -17,10 +17,7 @@ import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
 
-let defaultApp: admin.app.App;
-let adminModuleProxy: typeof admin;
 let hasInitializedFirestore = false;
-
 let proxiedFirestore: typeof admin.firestore;
 let proxiedDatabase: typeof admin.database;
 
@@ -526,7 +523,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Set up global proxied Firestore
   proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
 
-  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+  let adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
     .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
@@ -552,8 +549,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       const originalApp = adminModuleTarget.initializeApp(appOptions);
 
       logDebug("Initializing default app.", appOptions);
-      defaultApp = proxyFirebaseApp(originalApp);
-      return defaultApp;
+      return proxyFirebaseApp(originalApp);
     })
     .when("firestore", (adminModuleTarget) => {
       return proxiedFirestore;
