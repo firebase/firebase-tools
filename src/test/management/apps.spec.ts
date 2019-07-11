@@ -263,6 +263,7 @@ describe("App management", () => {
       } catch (e) {
         err = e;
       }
+
       expect(err.message).to.equal(
         "Failed to list Firebase IOS apps. See firebase-debug.log for more info."
       );
