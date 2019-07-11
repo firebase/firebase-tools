@@ -21,6 +21,9 @@ let defaultApp: admin.app.App;
 let adminModuleProxy: typeof admin;
 let hasInitializedFirestore = false;
 
+let proxiedFirestore: typeof admin.firestore;
+let proxiedDatabase: typeof admin.database;
+
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -404,7 +407,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         if (bundle.name === "google-gax") {
           const cs = newed.constructSettings;
           newed.constructSettings = (...csArgs: any[]) => {
-            const headers = (csArgs[3] as any);
+            const headers = csArgs[3] as any;
             if (!headers.authorization) {
               "Bearer owner";
             }
@@ -518,13 +521,10 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   if (!adminResolution.resolution) {
     throw new Error("Could not resolve 'firebase-admin'");
   }
-
-  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
-  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
-  // we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
-  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
-
   const localAdminModule = require(adminResolution.resolution);
+
+  // Set up global proxied Firestore
+  proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
 
   adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
     .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
@@ -551,22 +551,12 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       };
       const originalApp = adminModuleTarget.initializeApp(appOptions);
 
-      new EmulatorLog("DEBUG", "default-admin-app-used", "", appOptions).log();
-      logDebug("Intializing default app.", appOptions);
-      defaultApp = proxyFirebaseApp(frb, originalApp, sslCreds);
+      logDebug("Initializing default app.", appOptions);
+      defaultApp = proxyFirebaseApp(originalApp);
       return defaultApp;
     })
     .when("firestore", (adminModuleTarget) => {
-      // When we call admin.firestore() we want to forward this on to the default app,
-      // but if you access something like admin.firestore.FieldValue we don't want to
-      // do anything.
-      const adminFirestoreProxy = new Proxied<typeof admin.firestore>(
-        adminModuleTarget.firestore
-      ).applied(() => {
-        return defaultApp.firestore();
-      });
-
-      return adminFirestoreProxy.finalize();
+      return proxiedFirestore;
     })
     .finalize();
 
@@ -582,14 +572,28 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   return adminModuleProxy;
 }
 
-function proxyFirebaseApp(
-  frb: FunctionsRuntimeBundle,
-  original: admin.app.App,
-  sslCreds: any
-): admin.app.App {
-  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    const isEnabled = isFeatureEnabled(frb, "admin_stubs");
+function proxyFirebaseApp(original: admin.app.App): admin.app.App {
+  const appProxy = new Proxied<admin.app.App>(original);
 
+  appProxy.when("firestore", (target: any) => {
+    return proxiedFirestore;
+  });
+
+  return appProxy.finalize();
+}
+
+async function makeProxiedFirestore(
+  frb: FunctionsRuntimeBundle,
+  target: any
+): Promise<typeof admin.firestore> {
+  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
+  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
+  // we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
+  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
+
+  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
+    // TODO: We really need to be checking enabled features elsewhere.
+    const isEnabled = isFeatureEnabled(frb, "admin_stubs");
     if (!isEnabled) {
       if (!hasInitializedFirestore) {
         firestoreTarget.settings(userSettings);
@@ -625,29 +629,24 @@ function proxyFirebaseApp(
     hasInitializedFirestore = true;
   };
 
-  const appProxy = new Proxied<admin.app.App>(original);
-  appProxy.when("firestore", (target: any) => {
-    // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
-    //       but I can't get all the type checking to play nice.
-    const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
-    return firestoreProxy
-      .applied(() => {
-        return new Proxied(target.firestore())
-          .when("settings", (firestoreTarget) => {
-            return (settings: any) => {
-              initializeFirestoreSettings(firestoreTarget, settings);
-            };
-          })
-          .any((firestoreTarget, field) => {
-            initializeFirestoreSettings(firestoreTarget, {});
-            return firestoreProxy.getOriginal(firestoreTarget, field);
-          })
-          .finalize();
-      })
-      .finalize();
-  });
-
-  return appProxy.finalize();
+  // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
+  //       but I can't get all the type checking to play nice.
+  const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
+  return firestoreProxy
+    .applied(() => {
+      return new Proxied(target.firestore())
+        .when("settings", (firestoreTarget) => {
+          return (settings: any) => {
+            initializeFirestoreSettings(firestoreTarget, settings);
+          };
+        })
+        .any((firestoreTarget, field) => {
+          initializeFirestoreSettings(firestoreTarget, {});
+          return firestoreProxy.getOriginal(firestoreTarget, field);
+        })
+        .finalize();
+    })
+    .finalize();
 }
 
 /*
@@ -973,11 +972,6 @@ async function main(): Promise<void> {
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
-
-  if (!defaultApp) {
-    adminModuleProxy.initializeApp();
-    new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
-  }
 
   let seconds = 0;
   const timerId = setInterval(() => {
