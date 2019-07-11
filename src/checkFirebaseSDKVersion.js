@@ -38,7 +38,6 @@ module.exports = function(options) {
       resolve();
     }
   }).then(function(output) {
-    console.log("OPUTPUT", output)
     if (!output || _.isEmpty(output)) {
       return;
     }
