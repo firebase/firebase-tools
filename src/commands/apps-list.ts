@@ -28,9 +28,8 @@ function logAppsList(apps: AppMetadata[]): void {
 
 module.exports = new Command("apps:list [platform]")
   .description(
-    "list the registered apps of a Firebase project\n\n" +
-      "Arguments:\n" +
-      "[platform] IOS, ANDROID or WEB (case insensitive)"
+    "list the registered apps of a Firebase project. " +
+      "Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)"
   )
   .before(requireAuth)
   .action(
