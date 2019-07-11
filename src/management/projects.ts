@@ -130,3 +130,20 @@ export async function listFirebaseProjects(
     );
   }
 }
+
+export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
+  try {
+    const response = await api.request("GET", `/v1beta1/projects/${projectId}`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
+    return response.body;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get Firebase project ${projectId}. See firebase-debug.log for more info.`,
+      { exit: 2, original: err }
+    );
+  }
+}
