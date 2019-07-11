@@ -14,8 +14,10 @@ jobs:
     - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
+      env:
+        - TEST_NAME="Hosting Functional Tests"
       before_script:
-        - echo "==== Hosting Functional Tests ====" 
+        - echo "==== ${TEST_NAME} ====" 
         - ./scripts/decrypt-app-credentials.sh
       script: 
         - ./scripts/test-hosting.sh
@@ -23,9 +25,12 @@ jobs:
     - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
+      env:
+        - TEST_NAME="Hosting Functional Tests"
       before_script:
-        - echo "==== Emulator Triggers End-to-End Test ===="
-      script: ./scripts/test-triggers-end-to-end.sh
+        - echo "==== ${TEST_NAME} ===="
+      script: 
+        - ./scripts/test-triggers-end-to-end.sh
       after_script: skip
 cache:
   directories:
