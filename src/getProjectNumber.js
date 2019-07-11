@@ -9,9 +9,9 @@ module.exports = function(options) {
   }
   var projectId = getProjectId(options);
   return api
-    .request("GET", "/v1/projects/" + projectId, {
+    .request("GET", "/v1beta1/projects/" + projectId, {
       auth: true,
-      origin: api.resourceManagerOrigin,
+      origin: api.firebaseApiOrigin,
     })
     .then(function(response) {
       options.projectNumber = response.body.projectNumber;

@@ -15,3 +15,4 @@
 * Fix issue with npm `6.10` where an internal version check of the `firebase-functions` SDK caused a crash.
 * Fix bug in Firestore emulator where queries with `startAfter` had incorrect boundary behavior.
 * Fix bug where too many functions would hang the emulator.
+* Improves ability of Firebase CLI to be used with service accounts.
