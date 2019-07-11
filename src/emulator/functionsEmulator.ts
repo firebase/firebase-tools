@@ -778,7 +778,6 @@ export function InvokeRuntime(
   const metadata: { [key: string]: any } = {};
 
   const args = [
-    // "--no-warnings",
     path.join(__dirname, "functionsEmulatorRuntime"),
     JSON.stringify(frb),
     opts.serializedTriggers || "",
@@ -821,9 +820,7 @@ export function InvokeRuntime(
 
   return {
     exit: new Promise<number>((resolve) => {
-      runtime.on("exit", (code: number) => {
-        resolve(code);
-      });
+      runtime.on("exit", resolve);
     }),
     ready,
     metadata,
