@@ -721,10 +721,8 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         logDebug(`Ephemeral server used!`);
         const func = trigger.getRawFunction();
 
-        logDebug("Body: " + (req as any).rawBody);
         res.on("finish", () => {
-          instance.close();
-          resolveEphemeralServer();
+          instance.close(resolveEphemeralServer);
         });
 
         await RunHTTPS([req, res], func);
@@ -942,7 +940,9 @@ async function main(): Promise<void> {
 
   require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
+
+  const triggerLogData = { triggers, triggerDefinitions };
+  new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
 
   if (!frb.triggerId) {
     // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
@@ -1013,6 +1013,9 @@ async function main(): Promise<void> {
 
 if (require.main === module) {
   main()
+    .then(() => {
+      return EmulatorLog.waitForFlush();
+    })
     .then(() => {
       process.exit(0);
     })
