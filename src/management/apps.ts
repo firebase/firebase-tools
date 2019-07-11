@@ -1,43 +1,61 @@
 import * as api from "../api";
-import { AppMetadata, AppPlatform, FirebaseProjectMetadata } from "./metadata";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 
 const TIMEOUT_MILLIS = 30000;
-const PROJECT_LIST_PAGE_SIZE = 1000;
 const APP_LIST_PAGE_SIZE = 100;
 
-/**
- * Lists all Firebase projects associated with the currently logged-in account. Repeatedly calls the
- * paginated API until all pages have been read.
- * @return a promise that resolves to the list of all projects.
- */
-export async function listFirebaseProjects(
-  pageSize: number = PROJECT_LIST_PAGE_SIZE
-): Promise<FirebaseProjectMetadata[]> {
-  const projects: FirebaseProjectMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const response = await getPageApiRequest("/v1beta1/projects", pageSize, nextPageToken);
-      if (response.body.results) {
-        projects.push(...response.body.results);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
+export interface AppMetadata {
+  name: string /* The fully qualified resource name of the Firebase App */;
+  projectId: string;
+  appId: string;
+  platform: AppPlatform;
+  displayName?: string;
+}
 
-    return projects;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      "Failed to list Firebase projects. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
-    );
+export interface IosAppMetadata extends AppMetadata {
+  bundleId: string;
+  appStoreId?: string;
+  platform: AppPlatform.IOS;
+}
+
+export interface AndroidAppMetadata extends AppMetadata {
+  packageName: string;
+  platform: AppPlatform.ANDROID;
+}
+
+export interface WebAppMetadata extends AppMetadata {
+  displayName: string;
+  appUrls?: string[];
+  platform: AppPlatform.WEB;
+}
+
+export enum AppPlatform {
+  PLATFORM_UNSPECIFIED = "PLATFORM_UNSPECIFIED",
+  IOS = "IOS",
+  ANDROID = "ANDROID",
+  WEB = "WEB",
+  ANY = "ANY",
+}
+
+export function getAppPlatform(platform: string): AppPlatform {
+  switch (platform.toUpperCase()) {
+    case "IOS":
+      return AppPlatform.IOS;
+    case "ANDROID":
+      return AppPlatform.ANDROID;
+    case "WEB":
+      return AppPlatform.WEB;
+    case "": // list all apps if platform is not provided
+      return AppPlatform.ANY;
+    default:
+      return AppPlatform.PLATFORM_UNSPECIFIED;
   }
 }
 
 /**
- * Send recurring API requests to list all Firebase apps of a Firebase project
+ * Lists all Firebase apps registered in a Firebase project, optionally filtered by a platform.
+ * Repeatedly calls the paginated API until all pages have been read.
  * @return a promise that resolves to the list of all Firebase apps.
  */
 export async function listFirebaseApps(
@@ -49,10 +67,16 @@ export async function listFirebaseApps(
   try {
     let nextPageToken = "";
     do {
-      const response = await getPageApiRequest(
-        getListAppsResourceString(projectId, platform),
-        pageSize,
-        nextPageToken
+      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const response = await api.request(
+        "GET",
+        getListAppsResourceString(projectId, platform) +
+          `?pageSize=${pageSize}${pageTokenQueryString}`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: TIMEOUT_MILLIS,
+        }
       );
       if (response.body.apps) {
         const appsOnPage = response.body.apps.map(
@@ -98,17 +122,4 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
   }
 
   return `/v1beta1/projects/${projectId}${resourceSuffix}`;
-}
-
-async function getPageApiRequest(
-  resource: string,
-  pageSize: number,
-  nextPageToken?: string
-): Promise<any> {
-  const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-  return await api.request("GET", `${resource}?pageSize=${pageSize}${pageTokenQueryString}`, {
-    auth: true,
-    origin: api.firebaseApiOrigin,
-    timeout: TIMEOUT_MILLIS,
-  });
 }

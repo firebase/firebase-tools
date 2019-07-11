@@ -5,8 +5,7 @@ import Table = require("cli-table");
 
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
-import { listFirebaseApps } from "../management/list";
-import { AppMetadata, AppPlatform } from "../management/metadata";
+import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
 import * as FirebaseError from "../error";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
@@ -24,21 +23,6 @@ function logAppsList(apps: AppMetadata[]): void {
     logger.info(table.toString());
   } else {
     logger.info(clc.bold("No apps found."));
-  }
-}
-
-function getAppPlatform(platform: string): AppPlatform {
-  switch (platform.toUpperCase()) {
-    case "IOS":
-      return AppPlatform.IOS;
-    case "ANDROID":
-      return AppPlatform.ANDROID;
-    case "WEB":
-      return AppPlatform.WEB;
-    case "": // list all apps if platform is not provided
-      return AppPlatform.ANY;
-    default:
-      return AppPlatform.PLATFORM_UNSPECIFIED;
   }
 }
 
