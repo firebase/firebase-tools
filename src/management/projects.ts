@@ -16,10 +16,10 @@ export interface FirebaseProjectMetadata {
 }
 
 export interface DefaultProjectResources {
-  hostingSite: string;
-  realtimeDatabaseInstance: string;
-  storageBucket: string;
-  locationId: string;
+  hostingSite?: string;
+  realtimeDatabaseInstance?: string;
+  storageBucket?: string;
+  locationId?: string;
 }
 
 export enum ProjectParentResourceType {
