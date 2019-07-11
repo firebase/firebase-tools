@@ -40,7 +40,6 @@ export async function getProjectInfo(options: any): Promise<ProjectInfo> {
 /**
  * Selects project when --project is passed in.
  * @param options Command line options.
- * @returns A {@link FirebaseProject} object.
  */
 async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
   let project: FirebaseProjectMetadata;
@@ -63,7 +62,6 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
  * Presents user with list of projects to choose from and gets project
  * information for chosen project.
  * @param options Command line options.
- * @returns A {@link FirebaseProject} object.
  */
 async function selectProjectFromList(options: any): Promise<ProjectInfo> {
   const projects: FirebaseProjectMetadata[] = await listFirebaseProjects();
