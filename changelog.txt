@@ -9,3 +9,4 @@
 * Update functions init templates to `v3.1.0`
 * Fix emulation of https functions.
 * Fix bug where calling `clearFirestoreData` against the Firestore Emulator fails if more than 500 documents exist.
+* Fixes a bug where `admin.firestore()` and `app.firestore()` behaved differently.
