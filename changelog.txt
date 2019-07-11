@@ -13,3 +13,4 @@
 * Fixes long responses from emulator being truncated.
 * Fixes a bug where `admin.firestore()` and `app.firestore()` behaved differently.
 * Fix issue with npm `6.10` where an internal version check of the `firebase-functions` SDK caused a crash.
+* Fix bug in Firestore emulator where queries with `startAfter` had incorrect boundary behavior.
