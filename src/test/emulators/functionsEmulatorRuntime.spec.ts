@@ -187,6 +187,48 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
+      it("should provide a stubbed Firestore through admin.firestore()", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+          const admin = require("firebase-admin");
+          admin.initializeApp();
+          const firestore = admin.firestore();
+
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                // Need to use the Firestore object in order to trigger init.
+                const ref = firestore.collection("foo").doc("bar");
+                return true;
+              }),
+          };
+        });
+
+        const logs = await _countLogEntries(runtime);
+        expect(logs["set-firestore-settings"]).to.eq(1);
+      }).timeout(TIMEOUT_MED);
+
+      it("should provide a stubbed Firestore through app.firestore()", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+          const admin = require("firebase-admin");
+          const app = admin.initializeApp();
+          const firestore = app.firestore();
+
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              .onCreate(async () => {
+                // Need to use the Firestore object in order to trigger init.
+                const ref = firestore.collection("foo").doc("bar");
+                return true;
+              }),
+          };
+        });
+
+        const logs = await _countLogEntries(runtime);
+        expect(logs["set-firestore-settings"]).to.eq(1);
+      }).timeout(TIMEOUT_MED);
+
       it("should redirect Firestore write to emulator", async () => {
         const onRequestCopy = _.cloneDeep(
           FunctionRuntimeBundles.onRequest
