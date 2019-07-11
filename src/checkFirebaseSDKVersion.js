@@ -1,5 +1,6 @@
 "use strict";
 
+var _ = require("lodash");
 var clc = require("cli-color");
 var path = require("path");
 
@@ -37,7 +38,7 @@ module.exports = function(options) {
       resolve();
     }
   }).then(function(output) {
-    if (!output) {
+    if (!output || _.isEmpty(output)) {
       return;
     }
     var wanted = output["firebase-functions"].wanted;

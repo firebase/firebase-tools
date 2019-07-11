@@ -9,4 +9,8 @@
 * Update functions init templates to `v3.1.0`
 * Fix emulation of https functions.
 * Fix bug where calling `clearFirestoreData` against the Firestore Emulator fails if more than 500 documents exist.
+* Fix multipart uploads in emulator.
+* Fixes long responses from emulator being truncated.
+* Fixes a bug where `admin.firestore()` and `app.firestore()` behaved differently.
+* Fix issue with npm `6.10` where an internal version check of the `firebase-functions` SDK caused a crash.
 * Fix bug where too many functions would hang the emulator.
