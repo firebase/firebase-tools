@@ -17,8 +17,11 @@ import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
 
-let app: admin.app.App;
+let defaultApp: admin.app.App;
 let adminModuleProxy: typeof admin;
+let hasInitializedFirestore = false;
+
+let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
   frb: FunctionsRuntimeBundle,
@@ -40,14 +43,6 @@ async function requireResolveAsync(
   opts?: { paths: string[] }
 ): Promise<string> {
   return require.resolve(moduleName, opts);
-}
-
-function isConstructor(obj: any): boolean {
-  return !!obj.prototype && !!obj.prototype.constructor.name;
-}
-
-function isExists(obj: any): boolean {
-  return obj !== undefined;
 }
 
 /**
@@ -78,12 +73,17 @@ interface ModuleResolution {
   declared: boolean;
   installed: boolean;
   version?: string;
+  resolution?: string;
 }
 
 interface ModuleVersion {
   major: number;
   minor: number;
   patch: number;
+}
+
+interface ProxyTarget extends Object {
+  [key: string]: any;
 }
 
 /*
@@ -99,21 +99,21 @@ interface ModuleVersion {
   obj.value == 1;
   obj.incremented == 2;
    */
-class Proxied<T> {
-  proxy: any;
-  private anyValue?: (target: any, key: string) => any;
+class Proxied<T extends ProxyTarget> {
+  proxy: T;
+  private anyValue?: (target: T, key: string) => any;
   private appliedValue?: () => any;
   private rewrites: {
-    [key: string]: (target: any, key: string) => any;
+    [key: string]: (target: T, key: string) => any;
   } = {};
 
-  constructor(private original: any) {
-    /*
-      When initialized an original object is passed. This object is supplied to both .when()
-      and .any() functions so the original value of the object is accessible. When no
-      .any() is provided, the original value of the object is returned when the field
-      key does not match any known rewrite.
-      */
+  /**
+   * When initialized an original object is passed. This object is supplied to both .when()
+   * and .any() functions so the original value of the object is accessible. When no
+   * .any() is provided, the original value of the object is returned when the field
+   * key does not match any known rewrite.
+   */
+  constructor(private original: T) {
     this.proxy = new Proxy(this.original, {
       get: (target, key) => {
         key = key.toString();
@@ -137,56 +137,78 @@ class Proxied<T> {
     });
   }
 
-  when(key: string, value: (target: any, key: string) => any): Proxied<T> {
-    /*
-      Calling .when("a", () => "b") will rewrite obj["a"] to be equal to "b"
-       */
+  /**
+   * Calling .when("a", () => "b") will rewrite obj["a"] to be equal to "b"
+   */
+  when(key: string, value: (target: T, key: string) => any): Proxied<T> {
     this.rewrites[key] = value;
     return this as Proxied<T>;
   }
 
-  any(value: (target: any, key: string) => any): Proxied<T> {
-    /*
-      Calling .any(() => "b") will rewrite all fields on obj to be equal to "b"
-       */
+  /**
+   * Calling .any(() => "b") will rewrite all fields on obj to be equal to "b"
+   */
+  any(value: (target: T, key: string) => any): Proxied<T> {
     this.anyValue = value;
     return this as Proxied<T>;
   }
 
+  /**
+   * Calling .applied(() => "b") will make obj() equal to "b"
+   */
   applied(value: () => any): Proxied<T> {
-    /*
-      Calling .applied(() => "b") will make obj() equal to "b"
-       */
     this.appliedValue = value;
     return this as Proxied<T>;
   }
 
-  getOriginal(target: any, key: string): any {
+  /**
+   * Gets a property from the original object.
+   */
+  getOriginal(target: T, key: string): any {
     const value = target[key];
 
-    if (!isExists(value)) {
+    if (!this.isExists(value)) {
       return undefined;
-    } else if (isConstructor(value) || typeof value !== "function") {
+    } else if (this.isConstructor(value) || typeof value !== "function") {
       return value;
     } else {
       return value.bind(target);
     }
   }
 
+  /**
+   * Run the original target.
+   */
   applyOriginal(target: any, thisArg: any, argArray: any[]): any {
     return target.apply(thisArg, argArray);
   }
 
+  /**
+   * Return the final proxied object.
+   */
   finalize(): T {
     return this.proxy as T;
+  }
+
+  private isConstructor(obj: any): boolean {
+    return !!obj.prototype && !!obj.prototype.constructor.name;
+  }
+
+  private isExists(obj: any): boolean {
+    return obj !== undefined;
   }
 }
 
 async function resolveDeveloperNodeModule(
   frb: FunctionsRuntimeBundle,
-  pkg: PackageJSON,
   name: string
 ): Promise<ModuleResolution> {
+  const pkg = requirePackageJson(frb);
+  if (!pkg) {
+    new EmulatorLog("SYSTEM", "missing-package-json", "").log();
+    throw new Error("Could not find package.json");
+  }
+
   const dependencies = pkg.dependencies;
   const devDependencies = pkg.devDependencies;
   const isInPackageJSON = dependencies[name] || devDependencies[name];
@@ -197,35 +219,32 @@ async function resolveDeveloperNodeModule(
   }
 
   // Once we know it's in the package.json, make sure it's actually `npm install`ed
-  const modResolution = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
-
-  if (!modResolution) {
+  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
+  if (!resolveResult) {
     return { declared: true, installed: false };
   }
 
-  const modPackageJSON = require(path.join(findModuleRoot(name, modResolution), "package.json"));
+  const modPackageJSON = require(path.join(findModuleRoot(name, resolveResult), "package.json"));
 
-  return {
+  const moduleResolution: ModuleResolution = {
     declared: true,
     installed: true,
     version: modPackageJSON.version,
+    resolution: resolveResult,
   };
+
+  logDebug(`Resolved module ${name}`, moduleResolution);
+  return moduleResolution;
 }
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
-  const pkg = requirePackageJson(frb);
-  if (!pkg) {
-    new EmulatorLog("SYSTEM", "missing-package-json", "").log();
-    return false;
-  }
-
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: 8 },
     { name: "firebase-functions", isDev: false, minVersion: 3 },
   ];
 
   for (const modBundle of modBundles) {
-    const resolution = await resolveDeveloperNodeModule(frb, pkg, modBundle.name);
+    const resolution = await resolveDeveloperNodeModule(frb, modBundle.name);
 
     /*
     If there's no reference to the module in their package.json, prompt them to install it
@@ -254,12 +273,17 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
  * Get the developer's package.json file.
  */
 function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
+  if (developerPkgJSON) {
+    return developerPkgJSON;
+  }
+
   try {
     const pkg = require(`${frb.cwd}/package.json`);
-    return {
+    developerPkgJSON = {
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
     };
+    return developerPkgJSON;
   } catch (err) {
     return undefined;
   }
@@ -320,13 +344,11 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     };
 
     networkingModules.push(gaxModule);
-    new EmulatorLog("DEBUG", "runtime-status", `Found google-gax at ${gaxPath}`).log();
+    logDebug(`Found google-gax at ${gaxPath}`);
   } catch (err) {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
+    logDebug(
       `Couldn't find @google-cloud/firestore or google-gax, this may be okay if using @google-cloud/firestore@2.0.0`
-    ).log();
+    );
   }
 
   const history: { [href: string]: boolean } = {};
@@ -394,7 +416,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     return { name: bundle.name, status: "mocked" };
   });
 
-  new EmulatorLog("DEBUG", "runtime-status", "Outgoing network have been stubbed.", results).log();
+  logDebug("Outgoing network have been stubbed.", results);
 }
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
@@ -409,22 +431,19 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const pkgJSON = await requirePackageJson(frb);
+  const firebaseFunctionsResolution = await resolveDeveloperNodeModule(frb, "firebase-functions");
+  if (!firebaseFunctionsResolution.resolution) {
+    throw new Error("Could not resolve 'firebase-functions'");
+  }
 
-  // TODO: Simplify after #1459
-  const firebaseFunctionsModule = await resolveDeveloperNodeModule(
-    frb,
-    pkgJSON!,
-    "firebase-functions"
+  const firebaseFunctionsRoot = findModuleRoot(
+    "firebase-functions",
+    firebaseFunctionsResolution.resolution
   );
-  const firebaseFunctionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [frb.cwd],
-  });
-  const firebaseFunctionsRoot = findModuleRoot("firebase-functions", firebaseFunctionsResolution);
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  const functionsVersion = parseVersionString(firebaseFunctionsModule.version!);
+  const functionsVersion = parseVersionString(firebaseFunctionsResolution.version!);
   let methodName = "_onRequestWithOpts";
   if (functionsVersion.major >= 3 && functionsVersion.minor >= 1) {
     methodName = "_onRequestWithOptions";
@@ -492,29 +511,88 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
     but it's hard to catch and better than accidentally talking to prod.
    */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
-  const adminResolution = await requireResolveAsync("firebase-admin", { paths: [frb.cwd] });
-  const localAdminModule = require(adminResolution);
+  const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
+  if (!adminResolution.resolution) {
+    throw new Error("Could not resolve 'firebase-admin'");
+  }
 
-  let hasInitializedSettings = false;
-  /*
-  If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
-  then there's probably something really wrong (like a failed node-gyp build). If that's the case
-  we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
-   */
+  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
+  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
+  // we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
   const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
-  const initializeSettings = (userSettings: any) => {
+
+  const localAdminModule = require(adminResolution.resolution);
+
+  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+    .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
+      if (appName) {
+        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
+        return adminModuleTarget.initializeApp(opts, appName);
+      }
+
+      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+      config.credential = makeFakeCredentials();
+
+      if (frb.ports.database) {
+        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
+      }
+
+      const appOptions = {
+        ...config,
+        ...opts,
+      };
+      const originalApp = adminModuleTarget.initializeApp(appOptions);
+
+      new EmulatorLog("DEBUG", "default-admin-app-used", "", appOptions).log();
+      logDebug("Intializing default app.", appOptions);
+      defaultApp = proxyFirebaseApp(frb, originalApp, sslCreds);
+      return defaultApp;
+    })
+    .when("firestore", (adminModuleTarget) => {
+      // When we call admin.firestore() we want to forward this on to the default app,
+      // but if you access something like admin.firestore.FieldValue we don't want to
+      // do anything.
+      const adminFirestoreProxy = new Proxied<typeof admin.firestore>(
+        adminModuleTarget.firestore
+      ).applied(() => {
+        return defaultApp.firestore();
+      });
+
+      return adminFirestoreProxy.finalize();
+    })
+    .finalize();
+
+  // Stub the admin module in the require cache
+  require.cache[adminResolution.resolution] = {
+    exports: adminModuleProxy,
+  };
+
+  logDebug("firebase-admin has been stubbed.", {
+    adminResolution,
+  });
+
+  return adminModuleProxy;
+}
+
+function proxyFirebaseApp(
+  frb: FunctionsRuntimeBundle,
+  original: admin.app.App,
+  sslCreds: any
+): admin.app.App {
+  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
 
     if (!isEnabled) {
-      if (!hasInitializedSettings) {
-        app.firestore().settings(userSettings);
-        hasInitializedSettings = true;
+      if (!hasInitializedFirestore) {
+        firestoreTarget.settings(userSettings);
+        hasInitializedFirestore = true;
       }
       return;
     }
 
-    if (!hasInitializedSettings && frb.ports.firestore) {
-      app.firestore().settings({
+    if (!hasInitializedFirestore && frb.ports.firestore) {
+      const emulatorSettings = {
         projectId: frb.projectId,
         port: frb.ports.firestore,
         servicePath: "localhost",
@@ -524,7 +602,10 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
           Authorization: "Bearer owner",
         },
         ...userSettings,
-      });
+      };
+      firestoreTarget.settings(emulatorSettings);
+
+      new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
     } else if (!frb.ports.firestore && frb.triggerId) {
       new EmulatorLog(
         "WARN",
@@ -534,61 +615,32 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       ).log();
     }
 
-    hasInitializedSettings = true;
+    hasInitializedFirestore = true;
   };
 
-  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
-    .when("initializeApp", (adminModuleTarget) => (opts: any, appName: any) => {
-      if (appName) {
-        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
-        return adminModuleTarget.initializeApp(opts, appName);
-      }
+  const appProxy = new Proxied<admin.app.App>(original);
+  appProxy.when("firestore", (target: any) => {
+    // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
+    //       but I can't get all the type checking to play nice.
+    const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
+    return firestoreProxy
+      .applied(() => {
+        return new Proxied(target.firestore())
+          .when("settings", (firestoreTarget) => {
+            return (settings: any) => {
+              initializeFirestoreSettings(firestoreTarget, settings);
+            };
+          })
+          .any((firestoreTarget, field) => {
+            initializeFirestoreSettings(firestoreTarget, {});
+            return firestoreProxy.getOriginal(firestoreTarget, field);
+          })
+          .finalize();
+      })
+      .finalize();
+  });
 
-      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
-
-      // TODO: Is there any possible harm in this?
-      config.credential = makeFakeCredentials();
-
-      if (frb.ports.database) {
-        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
-      }
-
-      app = adminModuleTarget.initializeApp({
-        ...config,
-        ...opts,
-      });
-      return app;
-    })
-    .when("firestore", (adminModuleTarget) => {
-      const proxied = new Proxied<typeof admin.firestore>(adminModuleTarget.firestore);
-      return proxied
-        .applied(() => {
-          return new Proxied(adminModuleTarget.firestore())
-            .when("settings", () => {
-              return (settings: any) => {
-                initializeSettings(settings);
-              };
-            })
-            .any((target, field) => {
-              initializeSettings({});
-              return proxied.getOriginal(target, field);
-            })
-            .finalize();
-        })
-        .finalize();
-    })
-    .finalize();
-
-  require.cache[adminResolution] = {
-    exports: adminModuleProxy,
-  };
-
-  new EmulatorLog("DEBUG", "runtime-status", "firebase-admin has been stubbed.", {
-    adminResolution,
-  }).log();
-  return adminModuleProxy;
+  return appProxy.finalize();
 }
 
 /*
@@ -620,17 +672,17 @@ async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<vo
   });
 
   const ff = require(functionsResolution);
-  new EmulatorLog("DEBUG", "runtime-status", "Checked functions.config()", {
+  logDebug("Checked functions.config()", {
     config: ff.config(),
-  }).log();
+  });
 
   const originalConfig = ff.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      new EmulatorLog("DEBUG", "runtime-status", "config() parent accessed!", {
+      logDebug("config() parent accessed!", {
         parentKey,
         parentConfig,
-      }).log();
+      });
 
       return new Proxied(parentConfig[parentKey] || ({} as { [key: string]: any }))
         .any((childConfig, childKey) => {
@@ -666,7 +718,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
       try {
-        new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server used!`).log();
+        logDebug(`Ephemeral server used!`);
         const func = trigger.getRawFunction();
 
         res.on("finish", () => {
@@ -726,11 +778,7 @@ async function ProcessBackground(
   new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
 
   const proto = frb.proto;
-  new EmulatorLog(
-    "DEBUG",
-    "runtime-status",
-    `ProcessBackground: proto=${JSON.stringify(proto)}`
-  ).log();
+  logDebug("ProcessBackground", proto);
 
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
@@ -741,11 +789,7 @@ async function ProcessBackground(
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
   if (context.resource && context.resource.name) {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
-      `ProcessBackground: lifting resource.name from resource ${JSON.stringify(context.resource)}`
-    ).log();
+    logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
     context.resource = context.resource.name;
   }
 
@@ -771,14 +815,14 @@ async function Run(func: () => Promise<any>): Promise<any> {
 
   console.log = log;
 
-  new EmulatorLog("DEBUG", "runtime-status", `Ephemeral server survived.`).log();
+  logDebug(`Ephemeral server survived.`);
   if (caughtErr) {
     throw caughtErr;
   }
 }
 
 async function RunBackground(proto: any, func: CloudFunction<any>): Promise<any> {
-  new EmulatorLog("DEBUG", "runtime-status", `RunBackground: proto=${JSON.stringify(proto)}`).log();
+  logDebug("RunBackground", proto);
 
   await Run(() => {
     return func(proto.data, proto.context);
@@ -828,14 +872,18 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
   }).log();
 }
 
+function logDebug(msg: string, data?: any): void {
+  new EmulatorLog("DEBUG", "runtime-status", msg, data).log();
+}
+
 async function main(): Promise<void> {
   const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
   const serializedFunctionTrigger = process.argv[3];
 
-  new EmulatorLog("DEBUG", "runtime-status", "Functions runtime initialized.", {
+  logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
-  }).log();
+  });
 
   const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
 
@@ -845,11 +893,7 @@ async function main(): Promise<void> {
     }).log();
   }
 
-  new EmulatorLog(
-    "DEBUG",
-    "runtime-status",
-    `Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`
-  ).log();
+  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
   const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
@@ -899,10 +943,8 @@ async function main(): Promise<void> {
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
 
   if (!frb.triggerId) {
-    /*
-      This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
-      expected, so we don't have any function to invoke.
-     */
+    // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
+    // expected, so we don't have any function to invoke.
     return;
   }
 
@@ -914,20 +956,16 @@ async function main(): Promise<void> {
     ).log();
     return;
   } else {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
-      `Trigger "${frb.triggerId}" has been found, beginning invocation!`
-    ).log();
+    logDebug(`Trigger "${frb.triggerId}" has been found, beginning invocation!`);
   }
 
   const trigger = triggers[frb.triggerId];
-  new EmulatorLog("DEBUG", "runtime-status", "", trigger.definition).log();
+  logDebug("", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
-  new EmulatorLog("DEBUG", "runtime-status", `Running ${frb.triggerId} in mode ${mode}`).log();
+  logDebug(`Running ${frb.triggerId} in mode ${mode}`);
 
-  if (!app) {
+  if (!defaultApp) {
     adminModuleProxy.initializeApp();
     new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
   }
