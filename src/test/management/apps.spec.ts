@@ -2,7 +2,13 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../../api";
-import { createAndroidApp, createIosApp, createWebApp } from "../../management/apps";
+import {
+  AppPlatform,
+  createAndroidApp,
+  createIosApp,
+  createWebApp,
+  getAppPlatform,
+} from "../../management/apps";
 import * as pollUtils from "../../operation-poller";
 import { mockAuth } from "../helpers";
 
@@ -30,6 +36,35 @@ describe("appsCreate", () => {
 
   afterEach(() => {
     sandbox.restore();
+  });
+
+  describe("getAppPlatform", () => {
+    it("should return the iOS platform", () => {
+      expect(getAppPlatform("IOS")).to.equal(AppPlatform.IOS);
+      expect(getAppPlatform("iOS")).to.equal(AppPlatform.IOS);
+      expect(getAppPlatform("Ios")).to.equal(AppPlatform.IOS);
+    });
+
+    it("should return the Android platform", () => {
+      expect(getAppPlatform("Android")).to.equal(AppPlatform.ANDROID);
+      expect(getAppPlatform("ANDROID")).to.equal(AppPlatform.ANDROID);
+      expect(getAppPlatform("aNDroiD")).to.equal(AppPlatform.ANDROID);
+    });
+
+    it("should return the Web platform", () => {
+      expect(getAppPlatform("Web")).to.equal(AppPlatform.WEB);
+      expect(getAppPlatform("WEB")).to.equal(AppPlatform.WEB);
+      expect(getAppPlatform("wEb")).to.equal(AppPlatform.WEB);
+    });
+
+    it("should return the ANY platform", () => {
+      expect(getAppPlatform("")).to.equal(AppPlatform.ANY);
+    });
+
+    it("should return the AppPlatform.PLATFORM_UNSPECIFIED", () => {
+      expect(getAppPlatform("unknown")).to.equal(AppPlatform.PLATFORM_UNSPECIFIED);
+      expect(getAppPlatform("iOSS")).to.equal(AppPlatform.PLATFORM_UNSPECIFIED);
+    });
   });
 
   describe("createIosApp", () => {

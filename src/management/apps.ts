@@ -38,6 +38,21 @@ export enum AppPlatform {
   ANY = "ANY",
 }
 
+export function getAppPlatform(platform: string): AppPlatform {
+  switch (platform.toUpperCase()) {
+    case "IOS":
+      return AppPlatform.IOS;
+    case "ANDROID":
+      return AppPlatform.ANDROID;
+    case "WEB":
+      return AppPlatform.WEB;
+    case "": // list all apps if platform is not provided
+      return AppPlatform.ANY;
+    default:
+      return AppPlatform.PLATFORM_UNSPECIFIED;
+  }
+}
+
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
  * information.
@@ -46,7 +61,7 @@ export enum AppPlatform {
 export async function createIosApp(
   projectId: string,
   options: { displayName?: string; appStoreId?: string; bundleId: string }
-): Promise<any> {
+): Promise<IosAppMetadata> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
       auth: true,
@@ -78,7 +93,7 @@ export async function createIosApp(
 export async function createAndroidApp(
   projectId: string,
   options: { displayName?: string; packageName: string }
-): Promise<any> {
+): Promise<AndroidAppMetadata> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/androidApps`, {
       auth: true,
@@ -113,7 +128,7 @@ export async function createAndroidApp(
 export async function createWebApp(
   projectId: string,
   options: { displayName?: string }
-): Promise<any> {
+): Promise<WebAppMetadata> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}/webApps`, {
       auth: true,

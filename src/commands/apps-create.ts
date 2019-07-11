@@ -4,7 +4,16 @@ import * as ora from "ora";
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
 import * as FirebaseError from "../error";
-import { AppPlatform, createAndroidApp, createIosApp, createWebApp } from "../management/apps";
+import {
+  AndroidAppMetadata,
+  AppPlatform,
+  createAndroidApp,
+  createIosApp,
+  createWebApp,
+  getAppPlatform,
+  IosAppMetadata,
+  WebAppMetadata,
+} from "../management/apps";
 import { prompt, promptOnce, Question } from "../prompt";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
@@ -16,14 +25,27 @@ const DISPLAY_NAME_QUESTION: Question = {
   message: "What would you like to call your app?",
 };
 
+interface CreateFirebaseAppOptions {
+  project: string;
+  nonInteractive: boolean;
+  displayName?: string;
+}
+
+interface CreateIosAppOptions extends CreateFirebaseAppOptions {
+  bundleId?: string;
+  appStoreId?: string;
+}
+
+interface CreateAndroidAppOptions extends CreateFirebaseAppOptions {
+  packageName: string;
+}
+
+interface CreateWebAppOptions extends CreateFirebaseAppOptions {
+  displayName: string;
+}
+
 function logPostAppCreationInformation(
-  appMetadata: {
-    appId: string;
-    displayName: string;
-    bundleId?: string;
-    packageName?: string;
-    appStoreId?: string;
-  },
+  appMetadata: IosAppMetadata | AndroidAppMetadata | WebAppMetadata,
   appPlatform: AppPlatform
 ): void {
   logger.info("");
@@ -35,12 +57,13 @@ function logPostAppCreationInformation(
     logger.info(`  - Display name: ${appMetadata.displayName}`);
   }
   if (appPlatform === AppPlatform.IOS) {
-    logger.info(`  - Bundle ID: ${appMetadata.bundleId}`);
-    if (appMetadata.appStoreId) {
-      logger.info(`  - App Store ID: ${appMetadata.appStoreId}`);
+    const iosAppMetadata = appMetadata as IosAppMetadata;
+    logger.info(`  - Bundle ID: ${iosAppMetadata.bundleId}`);
+    if (iosAppMetadata.appStoreId) {
+      logger.info(`  - App Store ID: ${iosAppMetadata.appStoreId}`);
     }
   } else if (appPlatform === AppPlatform.ANDROID) {
-    logger.info(`  - Package name: ${appMetadata.packageName}`);
+    logger.info(`  - Package name: ${(appMetadata as AndroidAppMetadata).packageName}`);
   }
 
   // TODO(caot): Uncomment this after apps:sdkconfig command is implemented
@@ -49,13 +72,7 @@ function logPostAppCreationInformation(
   // logger.info(`  firebase apps:sdkconfig ${appMetadata.appId}`);
 }
 
-async function initiateIosAppCreation(options: {
-  project: string;
-  nonInteractive: boolean;
-  displayName?: string;
-  bundleId?: string;
-  appStoreId?: string;
-}): Promise<any> {
+async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
     await prompt(options, [
       DISPLAY_NAME_QUESTION,
@@ -92,12 +109,9 @@ async function initiateIosAppCreation(options: {
   }
 }
 
-async function initiateAndroidAppCreation(options: {
-  project: string;
-  nonInteractive: boolean;
-  displayName: string;
-  packageName: string;
-}): Promise<any> {
+async function initiateAndroidAppCreation(
+  options: CreateAndroidAppOptions
+): Promise<AndroidAppMetadata> {
   if (!options.nonInteractive) {
     await prompt(options, [
       DISPLAY_NAME_QUESTION,
@@ -127,11 +141,7 @@ async function initiateAndroidAppCreation(options: {
   }
 }
 
-async function initiateWebAppCreation(options: {
-  project: string;
-  nonInteractive: boolean;
-  displayName: string;
-}): Promise<any> {
+async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
   if (!options.nonInteractive) {
     await prompt(options, [DISPLAY_NAME_QUESTION]);
   }
@@ -151,21 +161,14 @@ async function initiateWebAppCreation(options: {
 
 module.exports = new Command("apps:create [platform] [displayName]")
   .description(
-    "create a new Firebase app\n\n" +
-      "Arguments:\n" +
-      "[platform] IOS, ANDROID or WEB\n" +
-      "[displayName] the display name of the app"
+    "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)."
   )
   .option("-a, --package-name <packageName>", "required package name for the Android app")
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
   .option("-s, --app-store-id <appStoreId>", "(optional) app store id for the iOS app")
   .before(requireAuth)
   .action(
-    async (
-      platform: AppPlatform | string | undefined,
-      displayName: string | undefined,
-      options: any
-    ): Promise<any> => {
+    async (platform: string = "", displayName: string | undefined, options: any): Promise<any> => {
       const projectId = getProjectId(options);
 
       if (!options.nonInteractive && !platform) {
@@ -179,18 +182,18 @@ module.exports = new Command("apps:create [platform] [displayName]")
           ],
         });
       }
-      if (!platform) {
+
+      const appPlatform = getAppPlatform(platform);
+      if (appPlatform === AppPlatform.ANY /* platform is not provided */) {
         throw new FirebaseError("App platform must be provided");
-      } else if (!(AppPlatform as any)[platform.toUpperCase()]) {
+      } else if (appPlatform === AppPlatform.PLATFORM_UNSPECIFIED /* Unknown platform */) {
         throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
-      } else {
-        platform = platform.toUpperCase();
       }
 
-      logger.info(`Create your ${platform} app in project ${clc.bold(options.project)}:`);
+      logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);
       options.displayName = displayName; // add displayName into options to pass into prompt function
       let appData;
-      switch (platform) {
+      switch (appPlatform) {
         case AppPlatform.IOS:
           appData = await initiateIosAppCreation(options);
           break;
@@ -200,9 +203,11 @@ module.exports = new Command("apps:create [platform] [displayName]")
         case AppPlatform.WEB:
           appData = await initiateWebAppCreation(options);
           break;
+        default:
+          throw new FirebaseError("Unexpected error. This should not happen");
       }
 
-      logPostAppCreationInformation(appData, platform as AppPlatform);
+      logPostAppCreationInformation(appData, appPlatform);
       return appData;
     }
   );
