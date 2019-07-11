@@ -721,10 +721,8 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         logDebug(`Ephemeral server used!`);
         const func = trigger.getRawFunction();
 
-        logDebug("Body: " + (req as any).rawBody);
         res.on("finish", () => {
-          instance.close();
-          resolveEphemeralServer();
+          instance.close(resolveEphemeralServer);
         });
 
         await RunHTTPS([req, res], func);
