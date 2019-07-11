@@ -940,7 +940,9 @@ async function main(): Promise<void> {
 
   require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
+
+  const triggerLogData = { triggers, triggerDefinitions };
+  new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
 
   if (!frb.triggerId) {
     // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
@@ -1011,6 +1013,9 @@ async function main(): Promise<void> {
 
 if (require.main === module) {
   main()
+    .then(() => {
+      return EmulatorLog.waitForFlush();
+    })
     .then(() => {
       process.exit(0);
     })
