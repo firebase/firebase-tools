@@ -11,16 +11,20 @@ after_script:
   - nyc report --reporter=text-lcov | coveralls
 jobs:
   include:
-    - stage: hosting functional test
+    - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
-      before_script: ./scripts/decrypt-app-credentials.sh
-      script: ./scripts/test-hosting.sh
+      before_script:
+        - echo "==== Hosting Functional Tests ====" 
+        - ./scripts/decrypt-app-credentials.sh
+      script: 
+        - ./scripts/test-hosting.sh
       after_script: skip
-    - stage: emulator triggers end to end test
+    - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
-      before_script: skip
+      before_script:
+        - echo "==== Emulator Triggers End-to-End Test ===="
       script: ./scripts/test-triggers-end-to-end.sh
       after_script: skip
 cache:
