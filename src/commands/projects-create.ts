@@ -77,7 +77,7 @@ module.exports = new Command("projects:create [projectId]")
             type: "input",
             name: "displayName",
             default: "",
-            message: "What would you like to call your project? (default to your project ID)",
+            message: "What would you like to call your project? (defaults to your project ID)",
           },
         ]);
       }
