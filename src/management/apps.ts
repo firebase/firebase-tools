@@ -3,6 +3,8 @@ import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
 
+const TIMEOUT_MILLIS = 30000;
+const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export interface AppMetadata {
@@ -150,4 +152,75 @@ export async function createWebApp(
       { exit: 2, original: err }
     );
   }
+}
+
+/**
+ * Lists all Firebase apps registered in a Firebase project, optionally filtered by a platform.
+ * Repeatedly calls the paginated API until all pages have been read.
+ * @return a promise that resolves to the list of all Firebase apps.
+ */
+export async function listFirebaseApps(
+  projectId: string,
+  platform: AppPlatform,
+  pageSize: number = APP_LIST_PAGE_SIZE
+): Promise<AppMetadata[]> {
+  const apps: AppMetadata[] = [];
+  try {
+    let nextPageToken = "";
+    do {
+      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const response = await api.request(
+        "GET",
+        getListAppsResourceString(projectId, platform) +
+          `?pageSize=${pageSize}${pageTokenQueryString}`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: TIMEOUT_MILLIS,
+        }
+      );
+      if (response.body.apps) {
+        const appsOnPage = response.body.apps.map(
+          // app.platform does not exist if we use the endpoint for a specific platform
+          (app: any) => (app.platform ? app : { ...app, platform })
+        );
+        apps.push(...appsOnPage);
+      }
+      nextPageToken = response.body.nextPageToken;
+    } while (nextPageToken);
+
+    return apps;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
+        "apps. See firebase-debug.log for more info.",
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+function getListAppsResourceString(projectId: string, platform: AppPlatform): string {
+  let resourceSuffix;
+  switch (platform) {
+    case AppPlatform.IOS:
+      resourceSuffix = "/iosApps";
+      break;
+    case AppPlatform.ANDROID:
+      resourceSuffix = "/androidApps";
+      break;
+    case AppPlatform.WEB:
+      resourceSuffix = "/webApps";
+      break;
+    case AppPlatform.ANY:
+      resourceSuffix = ":searchApps"; // List apps in any platform
+      break;
+    default:
+      throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
+  }
+
+  return `/v1beta1/projects/${projectId}${resourceSuffix}`;
 }
