@@ -17,9 +17,15 @@ import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
 
+const DATABASE_APP = "__database__";
+
 let hasInitializedFirestore = false;
+
+let defaultApp: admin.app.App;
+let databaseApp: admin.app.App;
+
+// TODO: Should the proxied database be global as well?
 let proxiedFirestore: typeof admin.firestore;
-let proxiedDatabase: typeof admin.database;
 
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -100,6 +106,14 @@ interface ProxyTarget extends Object {
   obj.incremented == 2;
    */
 class Proxied<T extends ProxyTarget> {
+  private static isConstructor(obj: any): boolean {
+    return !!obj.prototype && !!obj.prototype.constructor.name;
+  }
+
+  private static isExists(obj: any): boolean {
+    return obj !== undefined;
+  }
+
   proxy: T;
   private anyValue?: (target: T, key: string) => any;
   private appliedValue?: () => any;
@@ -164,12 +178,12 @@ class Proxied<T extends ProxyTarget> {
   /**
    * Gets a property from the original object.
    */
-  getOriginal(target: T, key: string): any {
+  getOriginal(target: any, key: string): any {
     const value = target[key];
 
-    if (!this.isExists(value)) {
+    if (!Proxied.isExists(value)) {
       return undefined;
-    } else if (this.isConstructor(value) || typeof value !== "function") {
+    } else if (Proxied.isConstructor(value) || typeof value !== "function") {
       return value;
     } else {
       return value.bind(target);
@@ -188,14 +202,6 @@ class Proxied<T extends ProxyTarget> {
    */
   finalize(): T {
     return this.proxy as T;
-  }
-
-  private isConstructor(obj: any): boolean {
-    return !!obj.prototype && !!obj.prototype.constructor.name;
-  }
-
-  private isExists(obj: any): boolean {
-    return obj !== undefined;
   }
 }
 
@@ -406,7 +412,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
           newed.constructSettings = (...csArgs: any[]) => {
             const headers = csArgs[3] as any;
             if (!headers.authorization) {
-              "Bearer owner";
+              headers.authorization = "Bearer owner";
             }
             return cs.bind(newed)(...csArgs);
           };
@@ -501,6 +507,10 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
   }
 }
 
+function getDefaultConfig(): any {
+  return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+}
+
 /*
     This stub is the most important and one of the only non-optional stubs. This feature redirects
     writes from the admin SDK back into emulated resources. Currently, this is only Firestore writes.
@@ -513,7 +523,7 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
     failing in some way and admin is attempting to access prod resources. This error isn't pretty,
     but it's hard to catch and better than accidentally talking to prod.
    */
-async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
+async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
   if (!adminResolution.resolution) {
     throw new Error("Could not resolve 'firebase-admin'");
@@ -523,59 +533,92 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Set up global proxied Firestore
   proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
 
-  let adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+  // Configuration from the environment
+  const defaultConfig = getDefaultConfig();
+
+  // Configuration for taking to the RTDB emulator
+  const databaseConfig = getDefaultConfig();
+  if (frb.ports.database) {
+    databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+    databaseConfig.credential = makeFakeCredentials();
+    new EmulatorLog("SYSTEM", `Overriding database URL: ${defaultConfig.databaseURL}`, "").log();
+  }
+
+  const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
+  const proxiedAdminModule = adminModuleProxy
     .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
       }
 
-      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${config}`).log();
-
-      // TODO: This is good for RTDB and bad for Firestore, we need to probably have totally separate configurations
-      //       per service.
-      // config.credential = makeFakeCredentials();
-
-      if (frb.ports.database) {
-        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
-      }
-
-      const appOptions = {
-        ...config,
+      const defaultAppOptions = {
+        ...defaultConfig,
         ...opts,
       };
-      const originalApp = adminModuleTarget.initializeApp(appOptions);
+      defaultApp = proxyFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
 
-      logDebug("Initializing default app.", appOptions);
-      return proxyFirebaseApp(originalApp);
+      // The app which contains the right setting for the database is initialized here and then
+      // used elsewhere by name.
+      const databaseAppOptions = {
+        ...databaseConfig,
+        ...opts,
+      };
+      databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
+
+      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultConfig}`).log();
+      logDebug("Initializing default app.", defaultAppOptions);
+      return defaultApp;
     })
-    .when("firestore", (adminModuleTarget) => {
-      return proxiedFirestore;
+    .when("firestore", (target) => {
+      // TODO: Centralize this logic
+      if (frb.ports.firestore) {
+        return proxiedFirestore;
+      } else {
+        return adminModuleProxy.getOriginal(target, "firestore");
+      }
+    })
+    .when("database", (target) => {
+      return makeProxiedDatabase(target);
     })
     .finalize();
 
   // Stub the admin module in the require cache
   require.cache[adminResolution.resolution] = {
-    exports: adminModuleProxy,
+    exports: proxiedAdminModule,
   };
 
   logDebug("firebase-admin has been stubbed.", {
     adminResolution,
   });
-
-  return adminModuleProxy;
 }
 
-function proxyFirebaseApp(original: admin.app.App): admin.app.App {
+function proxyFirebaseApp(frb: FunctionsRuntimeBundle, original: admin.app.App): admin.app.App {
   const appProxy = new Proxied<admin.app.App>(original);
 
   appProxy.when("firestore", (target: any) => {
-    return proxiedFirestore;
+    // TODO: Centralize this logic
+    if (frb.ports.firestore) {
+      return proxiedFirestore;
+    } else {
+      return appProxy.getOriginal(target, "firestore");
+    }
+  });
+
+  appProxy.when("database", (target: any) => {
+    return makeProxiedDatabase(target);
   });
 
   return appProxy.finalize();
+}
+
+function makeProxiedDatabase(target: any): typeof admin.database {
+  const databaseProxy = new Proxied<typeof admin.database>(target.database);
+  databaseProxy.applied(() => {
+    return databaseApp.database();
+  });
+
+  return databaseProxy.finalize();
 }
 
 async function makeProxiedFirestore(
