@@ -410,10 +410,13 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         if (bundle.name === "google-gax") {
           const cs = newed.constructSettings;
           newed.constructSettings = (...csArgs: any[]) => {
-            const headers = csArgs[3] as any;
-            if (!headers.authorization) {
-              headers.authorization = "Bearer owner";
-            }
+            // TODO: It doesn't seem like we need this anymore ... but maybe we do
+            //       if we want to support old versions of the Firestore SDK?
+            //
+            // const headers = csArgs[3] as any;
+            // if (!headers.authorization) {
+            //   headers.authorization = "Bearer owner";
+            // }
             return cs.bind(newed)(...csArgs);
           };
         }
@@ -631,7 +634,7 @@ async function makeProxiedFirestore(
   const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    // TODO: We really need to be checking enabled features elsewhere.
+    // TODO: This is the wrong place to check feature enablement
     const isEnabled = isFeatureEnabled(frb, "admin_stubs");
     if (!isEnabled) {
       if (!hasInitializedFirestore) {
@@ -641,6 +644,7 @@ async function makeProxiedFirestore(
       return;
     }
 
+    // TODO: Is this the right place to check if the port is set?  Do we need this here?
     if (!hasInitializedFirestore && frb.ports.firestore) {
       const emulatorSettings = {
         projectId: frb.projectId,
@@ -657,6 +661,7 @@ async function makeProxiedFirestore(
 
       new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
     } else if (!frb.ports.firestore && frb.triggerId) {
+      // TODO: This log is no longer correct, but we do want to warn about writes to prod somewhere.
       new EmulatorLog(
         "WARN",
         "runtime-status",
