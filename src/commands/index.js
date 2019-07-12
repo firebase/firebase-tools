@@ -60,6 +60,7 @@ module.exports = function(client) {
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.projects = {};
+  client.projects.list = loadCommand("projects-list");
   client.projects.create = loadCommand("projects-create");
   client.serve = loadCommand("serve");
   client.setup = {};
