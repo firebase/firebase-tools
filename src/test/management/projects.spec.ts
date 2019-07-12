@@ -7,6 +7,7 @@ import {
   createCloudProject,
   FirebaseProjectMetadata,
   getFirebaseProject,
+  getProjectPage,
   listFirebaseProjects,
   ProjectParentResource,
   ProjectParentResourceType,
@@ -27,6 +28,8 @@ const HOSTING_SITE = "fake.google.com";
 const DATABASE_INSTANCE = "instance-database";
 const STORAGE_BUCKET = "bucket-1";
 const LOCATION_ID = "location-id";
+const PAGE_TOKEN = "page-token";
+const NEXT_PAGE_TOKEN = "next-page-token";
 
 function generateProjectList(counts: number): FirebaseProjectMetadata[] {
   return Array.from(Array(counts), (_, i: number) => ({
@@ -236,6 +239,80 @@ describe("Project management", () => {
         apiVersion: "v1beta1",
         operationResourceName: OPERATION_RESOURCE_NAME_2,
       });
+    });
+  });
+
+  describe("getProjectPage", () => {
+    it("should resolve with a project page if it succeeds (no input token)", async () => {
+      const pageSize = 10;
+      const expectedProjectList = generateProjectList(pageSize);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
+      });
+
+      const projectPage = await getProjectPage(pageSize);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10", {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: 30000,
+      });
+    });
+
+    it("should resolve with a project page if it succeeds (with input token)", async () => {
+      const pageSize = 10;
+      const expectedProjectList = generateProjectList(pageSize);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
+      });
+
+      const projectPage = await getProjectPage(pageSize, PAGE_TOKEN);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects?pageSize=10&pageToken=${PAGE_TOKEN}`
+      );
+    });
+
+    it("should resolve with a project page if it succeeds with no next page token", async () => {
+      const pageSize = 10;
+      const projectCounts = 5;
+      const expectedProjectList = generateProjectList(projectCounts);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList },
+      });
+
+      const projectPage = await getProjectPage(pageSize);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.be.undefined;
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10");
+    });
+
+    it("should reject if the api call fails", async () => {
+      const pageSize = 100;
+      const expectedError = new Error("HTTP Error 404: Not Found");
+      apiRequestStub.onFirstCall().rejects(expectedError);
+
+      let err;
+      try {
+        await getProjectPage(pageSize, PAGE_TOKEN);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        "Failed to list Firebase projects. See firebase-debug.log for more info."
+      );
+      expect(err.original).to.equal(expectedError);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects?pageSize=100&pageToken=${PAGE_TOKEN}`
+      );
     });
   });
 
