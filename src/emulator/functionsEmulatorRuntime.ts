@@ -178,7 +178,7 @@ class Proxied<T extends ProxyTarget> {
   /**
    * Gets a property from the original object.
    */
-  getOriginal(target: any, key: string): any {
+  getOriginal(target: T, key: string): any {
     const value = target[key];
 
     if (!Proxied.isExists(value)) {

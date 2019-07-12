@@ -138,29 +138,6 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should auto-initialize admin when the app is not initialized by user code", async () => {
-        const onCreateCopy = _.cloneDeep(
-          FunctionRuntimeBundles.onRequest
-        ) as FunctionsRuntimeBundle;
-        onCreateCopy.ports = {}; // Delete the ports so initialization doesn't try to connect to Firestore
-        const runtime = InvokeRuntimeWithFunctions(onCreateCopy, () => {
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                require("firebase-admin")
-                  .firestore()
-                  .doc("a/b")
-                  .get();
-              }),
-          };
-        });
-
-        const logs = await _countLogEntries(runtime);
-
-        expect(logs["admin-auto-initialized"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
-
       it("should route all sub-fields accordingly", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp();
