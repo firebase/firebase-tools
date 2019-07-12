@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 import * as ora from "ora";
-// TODO(caot): Replace with proper import
 import Table = require("cli-table");
 
 import * as Command from "../command";
