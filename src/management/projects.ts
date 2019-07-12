@@ -12,14 +12,14 @@ export interface FirebaseProjectMetadata {
   projectId: string;
   projectNumber: string;
   displayName: string;
-  resources: DefaultProjectResources;
+  resources?: DefaultProjectResources;
 }
 
 export interface DefaultProjectResources {
-  hostingSite: string;
-  realtimeDatabaseInstance: string;
-  storageBucket: string;
-  locationId: string;
+  hostingSite?: string;
+  realtimeDatabaseInstance?: string;
+  storageBucket?: string;
+  locationId?: string;
 }
 
 export enum ProjectParentResourceType {
@@ -126,6 +126,26 @@ export async function listFirebaseProjects(
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list Firebase projects. See firebase-debug.log for more info.",
+      { exit: 2, original: err }
+    );
+  }
+}
+
+/**
+ * Gets the Firebase project information identified by the specified project ID
+ */
+export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
+  try {
+    const response = await api.request("GET", `/v1beta1/projects/${projectId}`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
+    return response.body;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get Firebase project ${projectId}. See firebase-debug.log for more info.`,
       { exit: 2, original: err }
     );
   }

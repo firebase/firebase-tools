@@ -1,10 +1,13 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import * as firebaseApi from "../../firebaseApi";
 import * as Config from "../../config";
 import * as FirebaseError from "../../error";
-import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
+import {
+  FirebaseProjectMetadata,
+  getFirebaseProject,
+  listFirebaseProjects,
+} from "../../management/projects";
 import * as logger from "../../logger";
 import { promptOnce, Question } from "../../prompt";
 import * as utils from "../../utils";
@@ -14,13 +17,13 @@ const NEW_PROJECT = "[create a new project]";
 
 /**
  * Used in init flows to keep information about the project - basically
- * a shorter version of {@link FirebaseProject} with some additional fields.
+ * a shorter version of {@link FirebaseProjectMetadata} with some additional fields.
  */
 export interface ProjectInfo {
-  id: string; // maps to FirebaseProject.projectId
+  id: string; // maps to FirebaseProjectMetadata.projectId
   label?: string;
-  instance?: string; // maps to FirebaseProject.resources.realtimeDatabaseInstance
-  location?: string; // maps to FirebaseProject.resources.locationId
+  instance?: string; // maps to FirebaseProjectMetadata.resources.realtimeDatabaseInstance
+  location?: string; // maps to FirebaseProjectMetadata.resources.locationId
 }
 
 /**
@@ -37,12 +40,11 @@ export async function getProjectInfo(options: any): Promise<ProjectInfo> {
 /**
  * Selects project when --project is passed in.
  * @param options Command line options.
- * @returns A {@link FirebaseProject} object.
  */
 async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
-  let project: FirebaseProject;
+  let project: FirebaseProjectMetadata;
   try {
-    project = await getProject(options.project);
+    project = await getFirebaseProject(options.project);
   } catch (e) {
     throw new FirebaseError(`Error getting project ${options.project}: ${e}`);
   }
@@ -60,11 +62,10 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
  * Presents user with list of projects to choose from and gets project
  * information for chosen project.
  * @param options Command line options.
- * @returns A {@link FirebaseProject} object.
  */
 async function selectProjectFromList(options: any): Promise<ProjectInfo> {
-  const projects: FirebaseProject[] = await listProjects();
-  let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
+  const projects: FirebaseProjectMetadata[] = await listFirebaseProjects();
+  let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
     return {
       name: `${p.projectId} (${p.displayName})`,
       value: p.projectId,
@@ -92,7 +93,7 @@ async function selectProjectFromList(options: any): Promise<ProjectInfo> {
     return { id: projectId };
   }
 
-  let project: FirebaseProject | undefined;
+  let project: FirebaseProjectMetadata | undefined;
   project = projects.find((p) => p.projectId === projectId);
   const pId = choices.find((p) => p.value === projectId);
   const label = pId ? pId.name : "";
@@ -127,7 +128,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
-    const rcProject: FirebaseProject = await firebaseApi.getProject(projectFromRcFile);
+    const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
     setup.projectId = projectFromRcFile;
     setup.projectLocation = _.get(rcProject, "resources.locationId");
     return;

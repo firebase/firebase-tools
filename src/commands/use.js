@@ -3,7 +3,7 @@
 var Command = require("../command");
 var logger = require("../logger");
 var requireAuth = require("../requireAuth");
-var firebaseApi = require("../firebaseApi");
+var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
 var clc = require("cli-color");
 var utils = require("../utils");
 var _ = require("lodash");
@@ -60,8 +60,7 @@ module.exports = new Command("use [alias_or_project_id]")
       var aliasedProject = options.rc.get(["projects", newActive]);
       var project = null;
       const lookupProject = aliasedProject || newActive;
-      return firebaseApi
-        .getProject(lookupProject)
+      return getFirebaseProject(lookupProject)
         .then((foundProject) => {
           project = foundProject;
         })
@@ -120,7 +119,7 @@ module.exports = new Command("use [alias_or_project_id]")
             " instead."
         );
       }
-      return firebaseApi.listProjects().then(function(projects) {
+      return listFirebaseProjects().then(function(projects) {
         var results = {};
         return prompt(results, [
           {
