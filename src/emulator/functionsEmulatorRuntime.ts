@@ -24,8 +24,8 @@ let hasInitializedFirestore = false;
 let defaultApp: admin.app.App;
 let databaseApp: admin.app.App;
 
-// TODO: Should the proxied database be global as well?
 let proxiedFirestore: typeof admin.firestore;
+let proxiedDatabase: typeof admin.database;
 
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -179,6 +179,7 @@ class Proxied<T extends ProxyTarget> {
    * Gets a property from the original object.
    */
   getOriginal(target: T, key: string): any {
+    // TODO: I think this can be static?
     const value = target[key];
 
     if (!Proxied.isExists(value)) {
@@ -407,20 +408,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         return original(...args);
       } catch (e) {
         const newed = new original(...args);
-        if (bundle.name === "google-gax") {
-          const cs = newed.constructSettings;
-          newed.constructSettings = (...csArgs: any[]) => {
-            // TODO: It doesn't seem like we need this anymore ... but maybe we do
-            //       if we want to support old versions of the Firestore SDK?
-            //
-            // const headers = csArgs[3] as any;
-            // if (!headers.authorization) {
-            //   headers.authorization = "Bearer owner";
-            // }
-            return cs.bind(newed)(...csArgs);
-          };
-        }
-
         return newed;
       }
     };
@@ -514,19 +501,21 @@ function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
 }
 
-/*
-    This stub is the most important and one of the only non-optional stubs. This feature redirects
-    writes from the admin SDK back into emulated resources. Currently, this is only Firestore writes.
-    To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
-    unauthenticated app.
-
-    We also mock out .settings() so we can merge the emulator settings with the developer's.
-
-    If you ever see an error from the admin SDK related to default credentials, that means this mock is
-    failing in some way and admin is attempting to access prod resources. This error isn't pretty,
-    but it's hard to catch and better than accidentally talking to prod.
-   */
+/**
+ * This stub is the most important and one of the only non - optional stubs.This feature redirects
+ * writes from the admin SDK back into emulated resources.
+ *
+ * To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
+ * unauthenticated app.
+ *
+ * We also mock out.settings() so we can merge the emulator settings with the developer's.
+ */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
+  if (!isFeatureEnabled(frb, "admin_stubs")) {
+    logDebug("Admin stubs disabled, not stubbing Firebase Admin");
+    return;
+  }
+
   const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
   if (!adminResolution.resolution) {
     throw new Error("Could not resolve 'firebase-admin'");
@@ -541,11 +530,8 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
   // Configuration for taking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
-  if (frb.ports.database) {
-    databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-    databaseConfig.credential = makeFakeCredentials();
-    new EmulatorLog("SYSTEM", `Overriding database URL: ${defaultConfig.databaseURL}`, "").log();
-  }
+  databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+  databaseConfig.credential = makeFakeCredentials();
 
   const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
   const proxiedAdminModule = adminModuleProxy
@@ -553,28 +539,31 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
+      } else {
+        new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultConfig}`).log();
       }
 
       const defaultAppOptions = {
         ...defaultConfig,
         ...opts,
       };
-      defaultApp = proxyFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
+      defaultApp = makeProxiedFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
+      logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
-      // The app which contains the right setting for the database is initialized here and then
-      // used elsewhere by name.
+      // The Realtime Database proxy relies on calling 'initializeApp()' with certain options
+      // (such as credential) that can interfere with other services. Therefore we keep
+      // RTDB isolated in its own FirebaseApp.
       const databaseAppOptions = {
         ...databaseConfig,
         ...opts,
       };
       databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
+      proxiedDatabase = makeProxiedDatabase(adminModuleTarget);
 
-      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultConfig}`).log();
-      logDebug("Initializing default app.", defaultAppOptions);
       return defaultApp;
     })
     .when("firestore", (target) => {
-      // TODO: Centralize this logic
+      // TODO: One-time log about talking to production
       if (frb.ports.firestore) {
         return proxiedFirestore;
       } else {
@@ -582,7 +571,12 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }
     })
     .when("database", (target) => {
-      return makeProxiedDatabase(target);
+      // TODO: One-time log about talking to production
+      if (frb.ports.database) {
+        return proxiedDatabase;
+      } else {
+        return adminModuleProxy.getOriginal(target, "database");
+      }
     })
     .finalize();
 
@@ -596,32 +590,35 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   });
 }
 
-function proxyFirebaseApp(frb: FunctionsRuntimeBundle, original: admin.app.App): admin.app.App {
+function makeProxiedFirebaseApp(
+  frb: FunctionsRuntimeBundle,
+  original: admin.app.App
+): admin.app.App {
   const appProxy = new Proxied<admin.app.App>(original);
-
-  appProxy.when("firestore", (target: any) => {
-    // TODO: Centralize this logic
-    if (frb.ports.firestore) {
-      return proxiedFirestore;
-    } else {
-      return appProxy.getOriginal(target, "firestore");
-    }
-  });
-
-  appProxy.when("database", (target: any) => {
-    return makeProxiedDatabase(target);
-  });
-
-  return appProxy.finalize();
+  return appProxy
+    .when("firestore", (target: any) => {
+      if (frb.ports.firestore) {
+        return proxiedFirestore;
+      } else {
+        return appProxy.getOriginal(target, "firestore");
+      }
+    })
+    .when("database", (target: any) => {
+      if (frb.ports.database) {
+        return proxiedDatabase;
+      } else {
+        return appProxy.getOriginal(target, "database");
+      }
+    })
+    .finalize();
 }
 
-function makeProxiedDatabase(target: any): typeof admin.database {
-  const databaseProxy = new Proxied<typeof admin.database>(target.database);
-  databaseProxy.applied(() => {
-    return databaseApp.database();
-  });
-
-  return databaseProxy.finalize();
+function makeProxiedDatabase(target: typeof admin): typeof admin.database {
+  return new Proxied<typeof admin.database>(target.database)
+    .applied(() => {
+      return databaseApp.database();
+    })
+    .finalize();
 }
 
 async function makeProxiedFirestore(
@@ -634,16 +631,6 @@ async function makeProxiedFirestore(
   const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    // TODO: This is the wrong place to check feature enablement
-    const isEnabled = isFeatureEnabled(frb, "admin_stubs");
-    if (!isEnabled) {
-      if (!hasInitializedFirestore) {
-        firestoreTarget.settings(userSettings);
-        hasInitializedFirestore = true;
-      }
-      return;
-    }
-
     // TODO: Is this the right place to check if the port is set?  Do we need this here?
     if (!hasInitializedFirestore && frb.ports.firestore) {
       const emulatorSettings = {
@@ -660,21 +647,11 @@ async function makeProxiedFirestore(
       firestoreTarget.settings(emulatorSettings);
 
       new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
-    } else if (!frb.ports.firestore && frb.triggerId) {
-      // TODO: This log is no longer correct, but we do want to warn about writes to prod somewhere.
-      new EmulatorLog(
-        "WARN",
-        "runtime-status",
-        "The Cloud Firestore emulator is not running so database operations will fail with a " +
-          "'default credentials' error."
-      ).log();
     }
 
     hasInitializedFirestore = true;
   };
 
-  // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
-  //       but I can't get all the type checking to play nice.
   const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
   return firestoreProxy
     .applied(() => {
