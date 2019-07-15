@@ -36,12 +36,12 @@ const TEST_PROJECT_INFO: ProjectInfo = {
 
 describe("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-  let listProjectsStub: sinon.SinonStub;
+  let getProjectPageStub: sinon.SinonStub;
   let getProjectStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
-    listProjectsStub = sandbox.stub(projectManager, "listFirebaseProjects");
+    getProjectPageStub = sandbox.stub(projectManager, "getProjectPage");
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
     promptStub = sandbox.stub(prompt, "promptOnce");
   });
@@ -51,19 +51,43 @@ describe("project", () => {
   });
 
   describe("getProjectInfo", () => {
-    it("should get correct project info when no project supplied", async () => {
+    it("should get project from list if it is able to list all projects", async () => {
       const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      getProjectPageStub.resolves({
+        projects: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
+      });
       promptStub.returns("my-project-123");
 
       const project = await getProjectInfo(options);
 
       expect(project).to.deep.equal(TEST_PROJECT_INFO);
+      expect(getProjectPageStub).to.be.calledWith(100);
+      expect(getProjectStub).to.be.not.called;
+      expect(promptStub).to.be.calledOnce;
+      expect(promptStub.firstCall.args[0].type).to.equal("list");
+    });
+
+    it("should prompt project id if it is not able to list all projects", async () => {
+      const options = {};
+      getProjectPageStub.resolves({
+        projects: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT],
+        nextPageToken: "token",
+      });
+      getProjectStub.resolves(TEST_FIREBASE_PROJECT);
+      promptStub.returns("my-project-123");
+
+      const project = await getProjectInfo(options);
+
+      expect(project).to.deep.equal(TEST_PROJECT_INFO);
+      expect(getProjectPageStub).to.be.calledWith(100);
+      expect(getProjectStub).to.be.calledWith("my-project-123");
+      expect(promptStub).to.be.calledOnce;
+      expect(promptStub.firstCall.args[0].type).to.equal("input");
     });
 
     it("should set instance and location to undefined when resources not provided", async () => {
       const options = {};
-      listProjectsStub.returns([ANOTHER_FIREBASE_PROJECT]);
+      getProjectPageStub.returns({ projects: [ANOTHER_FIREBASE_PROJECT] });
       promptStub.returns("another-project");
 
       const project = await getProjectInfo(options);
@@ -74,35 +98,38 @@ describe("project", () => {
         instance: undefined,
         location: undefined,
       });
+      expect(getProjectPageStub).to.be.calledWith(100);
+      expect(getProjectStub).to.be.not.called;
+      expect(promptStub).to.be.calledOnce;
+      expect(promptStub.firstCall.args[0].type).to.equal("list");
     });
 
     it("should get the correct project info when --project is supplied", async () => {
-      const options = { project: "my-project" };
+      const options = { project: "my-project-123" };
       getProjectStub.returns(TEST_FIREBASE_PROJECT);
 
       const project = await getProjectInfo(options);
 
       expect(project).to.deep.equal(TEST_PROJECT_INFO);
+      expect(getProjectStub).to.be.calledWith("my-project-123");
+      expect(promptStub).to.be.not.called;
     });
 
-    it("should return correct project info when choosing new project", async () => {
-      const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+    it("should throw error when getFirebaseProject throw an error", async () => {
+      const options = { project: "my-project-123" };
+      getProjectStub.rejects("failed to get project");
 
-      const project = await getProjectInfo(options);
+      let err;
+      try {
+        await getProjectInfo(options);
+      } catch (e) {
+        err = e;
+      }
 
-      expect(project).to.deep.equal({ id: "[create a new project]" });
-    });
-
-    it("should return correct project info when choosing not to set up project", async () => {
-      const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
-
-      const project = await getProjectInfo(options);
-
-      expect(project).to.deep.equal({ id: "[don't setup a default project]" });
+      expect(err.message).to.equal(
+        "Error getting project my-project-123. Please make sure the project exists and belongs to your account."
+      );
+      expect(getProjectStub).to.be.calledWith("my-project-123");
     });
   });
 
@@ -110,6 +137,7 @@ describe("project", () => {
     it("should set up the correct properties in the project", async () => {
       const options = { project: "my-project" };
       const setup = { config: {}, rcfile: {} };
+      promptStub.onFirstCall().returns("Use an existing project");
       getProjectStub.returns(TEST_FIREBASE_PROJECT);
 
       await doSetup(setup, {}, options);
@@ -118,24 +146,26 @@ describe("project", () => {
       expect(_.get(setup, "instance")).to.deep.equal("my-project");
       expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
       expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+      expect(promptStub).to.be.calledOnce;
     });
 
     it("should set up the correct properties when choosing new project", async () => {
       const options = {};
       const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+      getProjectPageStub.returns({ projects: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT] });
+      promptStub.onFirstCall().returns("Create a new project");
 
       await doSetup(setup, {}, options);
 
       expect(_.get(setup, "createProject")).to.deep.equal(true);
+      expect(promptStub).to.be.calledOnce;
     });
 
     it("should set up the correct properties when not choosing a project", async () => {
       const options = {};
       const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
+      getProjectPageStub.returns({ projects: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT] });
+      promptStub.returns("Don't setup a default project");
 
       await doSetup(setup, {}, options);
 
@@ -151,6 +181,7 @@ describe("project", () => {
 
       expect(_.get(setup, "projectId")).to.equal("my-project");
       expect(_.get(setup, "projectLocation")).to.equal("us-central");
+      expect(promptStub).to.be.not.called;
     });
   });
 });

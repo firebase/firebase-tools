@@ -6,14 +6,16 @@ import * as FirebaseError from "../../error";
 import {
   FirebaseProjectMetadata,
   getFirebaseProject,
-  listFirebaseProjects,
+  getProjectPage,
 } from "../../management/projects";
 import * as logger from "../../logger";
 import { promptOnce, Question } from "../../prompt";
 import * as utils from "../../utils";
 
-const NO_PROJECT = "[don't setup a default project]";
-const NEW_PROJECT = "[create a new project]";
+const MAXIMUM_PROMPT_LIST = 100;
+const NO_PROJECT = "Don't setup a default project";
+const USE_PROJECT = "Use an existing project";
+const NEW_PROJECT = "Create a new project";
 
 /**
  * Used in init flows to keep information about the project - basically
@@ -32,48 +34,60 @@ export interface ProjectInfo {
  */
 export async function getProjectInfo(options: any): Promise<ProjectInfo> {
   if (options.project) {
-    return selectProjectFromOptions(options);
+    return getProjectFromId(options.project);
   }
-  return selectProjectFromList(options);
+  return selectProjectInteractively();
 }
 
 /**
  * Selects project when --project is passed in.
  * @param options Command line options.
  */
-async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
+async function getProjectFromId(projectId: string): Promise<ProjectInfo> {
   let project: FirebaseProjectMetadata;
   try {
-    project = await getFirebaseProject(options.project);
+    project = await getFirebaseProject(projectId);
   } catch (e) {
-    throw new FirebaseError(`Error getting project ${options.project}: ${e}`);
+    throw new FirebaseError(
+      `Error getting project ${projectId}. Please make sure the project exists and belongs to your account.`
+    );
   }
-  const projectId = project.projectId;
-  const name = project.displayName;
-  return {
-    id: projectId,
-    label: `${projectId} (${name})`,
-    instance: _.get(project, "resources.realtimeDatabaseInstance"),
-    location: _.get(project, "resources.locationId"),
-  };
+  return toProjectInfo(project);
+}
+
+async function selectProjectInteractively(
+  pageSize: number = MAXIMUM_PROMPT_LIST
+): Promise<ProjectInfo> {
+  const { projects, nextPageToken } = await getProjectPage(pageSize);
+  if (nextPageToken) {
+    // Prompt user for project ID if we can't list all projects in 1 page
+    return selectProjectByPrompting();
+  }
+  return selectProjectFromList(projects);
+}
+
+async function selectProjectByPrompting(): Promise<ProjectInfo> {
+  const projectId = await promptOnce({
+    type: "input",
+    message: "Please input your project ID ",
+  });
+
+  return getProjectFromId(projectId);
 }
 
 /**
- * Presents user with list of projects to choose from and gets project
- * information for chosen project.
- * @param options Command line options.
+ * Presents user with list of projects to choose from and gets project information for chosen project.
  */
-async function selectProjectFromList(options: any): Promise<ProjectInfo> {
-  const projects: FirebaseProjectMetadata[] = await listFirebaseProjects();
+async function selectProjectFromList(
+  projects: FirebaseProjectMetadata[] = []
+): Promise<ProjectInfo> {
   let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
     return {
-      name: `${p.projectId} (${p.displayName})`,
+      name: `${p.projectId}` + (p.displayName ? ` (${p.displayName})` : ""),
       value: p.projectId,
     };
   });
   choices = _.orderBy(choices, ["name"], ["asc"]);
-  choices.unshift({ name: NO_PROJECT, value: NO_PROJECT });
-  choices.push({ name: NEW_PROJECT, value: NEW_PROJECT });
 
   if (choices.length >= 25) {
     utils.logBullet(
@@ -89,20 +103,24 @@ async function selectProjectFromList(options: any): Promise<ProjectInfo> {
     message: "Select a default Firebase project for this directory:",
     choices,
   });
-  if (projectId === NEW_PROJECT || projectId === NO_PROJECT) {
-    return { id: projectId };
-  }
 
   let project: FirebaseProjectMetadata | undefined;
   project = projects.find((p) => p.projectId === projectId);
-  const pId = choices.find((p) => p.value === projectId);
-  const label = pId ? pId.name : "";
 
+  if (!project) {
+    throw new FirebaseError("Unexpected error. Chosen project must exist");
+  }
+
+  return toProjectInfo(project);
+}
+
+function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
+  const { projectId, displayName, resources } = projectMetaData;
   return {
     id: projectId,
-    label,
-    instance: _.get(project, "resources.realtimeDatabaseInstance"),
-    location: _.get(project, "resources.locationId"),
+    label: `${projectId}` + (displayName ? ` (${displayName})` : ""),
+    instance: _.get(resources, "realtimeDatabaseInstance"),
+    location: _.get(resources, "locationId"),
   };
 }
 
@@ -134,20 +152,30 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     return;
   }
 
-  const projectInfo = await getProjectInfo(options);
-  if (projectInfo.id === NEW_PROJECT) {
+  const choices = [
+    { name: USE_PROJECT, value: USE_PROJECT },
+    { name: NEW_PROJECT, value: NEW_PROJECT },
+    { name: NO_PROJECT, value: NO_PROJECT },
+  ];
+  const projectSetupOption: string = await promptOnce({
+    type: "list",
+    name: "id",
+    message: "Please select an option:",
+    choices,
+  });
+
+  if (projectSetupOption === USE_PROJECT) {
+    const projectInfo = await getProjectInfo(options);
+    utils.logBullet(`Using project ${projectInfo.label}`);
+
+    // write "default" alias and activate it immediately
+    _.set(setup.rcfile, "projects.default", projectInfo.id);
+    setup.projectId = projectInfo.id;
+    setup.instance = projectInfo.instance;
+    setup.projectLocation = projectInfo.location;
+    utils.makeActiveProject(config.projectDir, projectInfo.id);
+  } else if (projectSetupOption === NEW_PROJECT) {
+    // TODO(caot): Implement create a new project
     setup.createProject = true;
-    return;
-  } else if (projectInfo.id === NO_PROJECT) {
-    return;
   }
-
-  utils.logBullet(`Using project ${projectInfo.label}`);
-
-  // write "default" alias and activate it immediately
-  _.set(setup.rcfile, "projects.default", projectInfo.id);
-  setup.projectId = projectInfo.id;
-  setup.instance = projectInfo.instance;
-  setup.projectLocation = projectInfo.location;
-  utils.makeActiveProject(config.projectDir, projectInfo.id);
 }
