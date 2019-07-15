@@ -39,9 +39,41 @@ function InvokeRuntimeWithFunctions(
   });
 }
 
-function _is_verbose(runtime: FunctionsRuntimeInstance): void {
-  runtime.events.on("log", (el: EmulatorLog) => {
-    process.stdout.write(el.toPrettyString() + "\n");
+function CallHTTPSFunction(
+  runtime: FunctionsRuntimeInstance,
+  frb: FunctionsRuntimeBundle,
+  headers: any,
+  requestData: string | undefined
+): Promise<string> {
+  headers = headers || {};
+
+  return new Promise((resolve, reject) => {
+    const req = request(
+      {
+        socketPath: runtime.metadata.socketPath,
+        path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
+        method: "POST",
+        headers,
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+
+        res.on("end", () => {
+          resolve(data);
+        });
+      }
+    );
+
+    req.on("error", reject);
+
+    if (requestData) {
+      req.write(requestData);
+    }
+
+    req.end();
   });
 }
 
@@ -164,7 +196,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should provide a stubbed Firestore through admin.firestore()", async () => {
+      it("should provide a stubbed Firestore through ADMIN.firestore()", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
@@ -185,7 +217,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["set-firestore-settings"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should provide a stubbed Firestore through app.firestore()", async () => {
+      it("should provide a stubbed Firestore through APP.firestore()", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           const app = admin.initializeApp();
@@ -204,6 +236,33 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = await _countLogEntries(runtime);
         expect(logs["set-firestore-settings"]).to.eq(1);
+      }).timeout(TIMEOUT_MED);
+
+      it("should provide the same stubs through admin-global or through the default app", async () => {
+        const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
+          const admin = require("firebase-admin");
+          const app = admin.initializeApp();
+
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                firestoreEqual: app.firestore() === admin.firestore(),
+                databaseEqual: app.database() === admin.database(),
+              });
+            }),
+          };
+        });
+
+        await runtime.ready;
+        const data = await CallHTTPSFunction(
+          runtime,
+          FunctionRuntimeBundles.onRequest,
+          {},
+          undefined
+        );
+        await runtime.exit;
+
+        expect(JSON.parse(data)).to.eql({ firestoreEqual: true, databaseEqual: true });
       }).timeout(TIMEOUT_MED);
 
       it("should redirect Firestore write to emulator", async () => {
@@ -236,24 +295,10 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${onRequestCopy.projectId}/us-central1/${onRequestCopy.triggerId}`,
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data).error).to.exist;
-                resolve();
-              });
-            }
-          ).end();
-        });
-
+        const data = await CallHTTPSFunction(runtime, onRequestCopy, {}, undefined);
         await runtime.exit;
+
+        expect(JSON.parse(data).error).to.exist;
       }).timeout(TIMEOUT_MED);
 
       it("should merge .settings() with emulator settings", async () => {
@@ -371,24 +416,10 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}/`,
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
-                resolve();
-              });
-            }
-          ).end();
-        });
-
+        const data = await CallHTTPSFunction(runtime, frb, {}, undefined);
         await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with form data", async () => {
@@ -405,33 +436,19 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-
-        await new Promise((resolve) => {
-          const reqData = "name=sparky";
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              method: "post",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Content-Length": reqData.length,
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-                resolve();
-              });
-            }
-          );
-          req.write(reqData);
-          req.end();
-        });
-
+        const reqData = "name=sparky";
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": reqData.length,
+          },
+          reqData
+        );
         await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with JSON data", async () => {
@@ -448,32 +465,19 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          const reqData = '{"name": "sparky"}';
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              method: "post",
-              headers: {
-                "Content-Type": "application/json",
-                "Content-Length": reqData.length,
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
-                resolve();
-              });
-            }
-          );
-          req.write(reqData);
-          req.end();
-        });
-
+        const reqData = '{"name": "sparky"}';
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "Content-Type": "application/json",
+            "Content-Length": reqData.length,
+          },
+          reqData
+        );
         await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with text data", async () => {
@@ -490,32 +494,19 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          const reqData = "name is sparky";
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              method: "post",
-              headers: {
-                "Content-Type": "text/plain",
-                "Content-Length": reqData.length,
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal("name is sparky");
-                resolve();
-              });
-            }
-          );
-          req.write(reqData);
-          req.end();
-        });
-
+        const reqData = "name is sparky";
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "Content-Type": "text/plain",
+            "Content-Length": reqData.length,
+          },
+          reqData
+        );
         await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal("name is sparky");
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request with any other type", async () => {
@@ -532,33 +523,20 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          const reqData = "name is sparky";
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              method: "post",
-              headers: {
-                "Content-Type": "gibber/ish",
-                "Content-Length": reqData.length,
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data).type).to.deep.equal("Buffer");
-                expect(JSON.parse(data).data.length).to.deep.equal(14);
-                resolve();
-              });
-            }
-          );
-          req.write(reqData);
-          req.end();
-        });
-
+        const reqData = "name is sparky";
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "Content-Type": "gibber/ish",
+            "Content-Length": reqData.length,
+          },
+          reqData
+        );
         await runtime.exit;
+
+        expect(JSON.parse(data).type).to.deep.equal("Buffer");
+        expect(JSON.parse(data).data.length).to.deep.equal(14);
       }).timeout(TIMEOUT_MED);
 
       it("should handle a POST request and store rawBody", async () => {
@@ -575,32 +553,19 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          const reqData = "How are you?";
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              method: "post",
-              headers: {
-                "Content-Type": "gibber/ish",
-                "Content-Length": reqData.length,
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(data).to.equal(reqData);
-                resolve();
-              });
-            }
-          );
-          req.write(reqData);
-          req.end();
-        });
-
+        const reqData = "How are you?";
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "Content-Type": "gibber/ish",
+            "Content-Length": reqData.length,
+          },
+          reqData
+        );
         await runtime.exit;
+
+        expect(data).to.equal(reqData);
       }).timeout(TIMEOUT_MED);
 
       it("should forward request to Express app", async () => {
@@ -608,8 +573,10 @@ describe("FunctionsEmulator-Runtime", () => {
         const runtime = InvokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           const app = require("express")();
-          app.get("/", (req: express.Request, res: express.Response) => {
-            res.json(req.query);
+          app.all("/", (req: express.Request, res: express.Response) => {
+            res.json({
+              hello: req.header("x-hello"),
+            });
           });
           return {
             function_id: require("firebase-functions").https.onRequest(app),
@@ -617,24 +584,17 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          const req = request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}?hello=world`,
-              method: "get",
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
-                resolve();
-              });
-            }
-          );
-          req.end();
-        });
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "x-hello": "world",
+          },
+          undefined
+        );
+        await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
 
         await runtime.exit;
       }).timeout(TIMEOUT_MED);
@@ -653,27 +613,17 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-              headers: {
-                "x-forwarded-host": "real-hostname",
-              },
-            },
-            (res) => {
-              let data = "";
-              res.on("data", (chunk) => (data += chunk));
-              res.on("end", () => {
-                expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
-                resolve();
-              });
-            }
-          ).end();
-        });
-
+        const data = await CallHTTPSFunction(
+          runtime,
+          frb,
+          {
+            "x-forwarded-host": "real-hostname",
+          },
+          undefined
+        );
         await runtime.exit;
+
+        expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
       }).timeout(TIMEOUT_MED);
     });
 
@@ -806,24 +756,14 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const logs = _countLogEntries(runtime);
-
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-            },
-            (res) => {
-              res.on("end", resolve);
-              res.on("error", resolve);
-            }
-          )
-            .on("error", resolve)
-            .end();
-        });
-
+        try {
+          await CallHTTPSFunction(runtime, frb, {}, undefined);
+        } catch (e) {
+          // No-op
+        }
         await runtime.exit;
+
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -841,24 +781,14 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const logs = _countLogEntries(runtime);
-
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-            },
-            (res) => {
-              res.on("end", resolve);
-              res.on("error", resolve);
-            }
-          )
-            .on("error", resolve)
-            .end();
-        });
-
+        try {
+          await CallHTTPSFunction(runtime, frb, {}, undefined);
+        } catch {
+          // No-op
+        }
         await runtime.exit;
+
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -877,21 +807,13 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const logs = _countLogEntries(runtime);
         await runtime.ready;
-        await new Promise((resolve) => {
-          request(
-            {
-              socketPath: runtime.metadata.socketPath,
-              path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-            },
-            (res) => {
-              res.on("end", resolve);
-              res.on("error", resolve);
-            }
-          )
-            .on("error", resolve)
-            .end();
-        });
+        try {
+          await CallHTTPSFunction(runtime, frb, {}, undefined);
+        } catch {
+          // No-op
+        }
         await runtime.exit;
+
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
     });

@@ -106,6 +106,28 @@ interface ProxyTarget extends Object {
   obj.incremented == 2;
    */
 class Proxied<T extends ProxyTarget> {
+  /**
+   * Gets a property from the original object.
+   */
+  static getOriginal(target: any, key: string): any {
+    const value = target[key];
+
+    if (!Proxied.isExists(value)) {
+      return undefined;
+    } else if (Proxied.isConstructor(value) || typeof value !== "function") {
+      return value;
+    } else {
+      return value.bind(target);
+    }
+  }
+
+  /**
+   * Run the original target.
+   */
+  static applyOriginal(target: any, thisArg: any, argArray: any[]): any {
+    return target.apply(thisArg, argArray);
+  }
+
   private static isConstructor(obj: any): boolean {
     return !!obj.prototype && !!obj.prototype.constructor.name;
   }
@@ -139,13 +161,13 @@ class Proxied<T extends ProxyTarget> {
           return this.anyValue(target, key);
         }
 
-        return this.getOriginal(target, key);
+        return Proxied.getOriginal(target, key);
       },
       apply: (target, thisArg, argArray) => {
         if (this.appliedValue) {
           return this.appliedValue.apply(thisArg, argArray);
         } else {
-          return this.applyOriginal(target, thisArg, argArray);
+          return Proxied.applyOriginal(target, thisArg, argArray);
         }
       },
     });
@@ -173,29 +195,6 @@ class Proxied<T extends ProxyTarget> {
   applied(value: () => any): Proxied<T> {
     this.appliedValue = value;
     return this as Proxied<T>;
-  }
-
-  /**
-   * Gets a property from the original object.
-   */
-  getOriginal(target: T, key: string): any {
-    // TODO: I think this can be static?
-    const value = target[key];
-
-    if (!Proxied.isExists(value)) {
-      return undefined;
-    } else if (Proxied.isConstructor(value) || typeof value !== "function") {
-      return value;
-    } else {
-      return value.bind(target);
-    }
-  }
-
-  /**
-   * Run the original target.
-   */
-  applyOriginal(target: any, thisArg: any, argArray: any[]): any {
-    return target.apply(thisArg, argArray);
   }
 
   /**
@@ -567,7 +566,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       if (frb.ports.firestore) {
         return proxiedFirestore;
       } else {
-        return adminModuleProxy.getOriginal(target, "firestore");
+        return Proxied.getOriginal(target, "firestore");
       }
     })
     .when("database", (target) => {
@@ -575,7 +574,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       if (frb.ports.database) {
         return proxiedDatabase;
       } else {
-        return adminModuleProxy.getOriginal(target, "database");
+        return Proxied.getOriginal(target, "database");
       }
     })
     .finalize();
@@ -600,14 +599,14 @@ function makeProxiedFirebaseApp(
       if (frb.ports.firestore) {
         return proxiedFirestore;
       } else {
-        return appProxy.getOriginal(target, "firestore");
+        return Proxied.getOriginal(target, "firestore");
       }
     })
     .when("database", (target: any) => {
       if (frb.ports.database) {
         return proxiedDatabase;
       } else {
-        return appProxy.getOriginal(target, "database");
+        return Proxied.getOriginal(target, "database");
       }
     })
     .finalize();
@@ -663,7 +662,7 @@ async function makeProxiedFirestore(
         })
         .any((firestoreTarget, field) => {
           initializeFirestoreSettings(firestoreTarget, {});
-          return firestoreProxy.getOriginal(firestoreTarget, field);
+          return Proxied.getOriginal(firestoreTarget, field);
         })
         .finalize();
     })
