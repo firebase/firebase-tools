@@ -202,12 +202,13 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
           const firestore = admin.firestore();
 
+          // Need to use the Firestore object in order to trigger init.
+          const ref = firestore.collection("foo").doc("bar");
+
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                // Need to use the Firestore object in order to trigger init.
-                const ref = firestore.collection("foo").doc("bar");
                 return true;
               }),
           };
@@ -223,12 +224,13 @@ describe("FunctionsEmulator-Runtime", () => {
           const app = admin.initializeApp();
           const firestore = app.firestore();
 
+          // Need to use the Firestore object in order to trigger init.
+          const ref = firestore.collection("foo").doc("bar");
+
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async () => {
-                // Need to use the Firestore object in order to trigger init.
-                const ref = firestore.collection("foo").doc("bar");
                 return true;
               }),
           };
@@ -246,8 +248,16 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                firestoreEqual: app.firestore() === admin.firestore(),
-                databaseEqual: app.database() === admin.database(),
+                appFirestoreSettings: app.firestore()._settings,
+                adminFirestoreSettings: admin.firestore()._settings,
+                appDatabaseRef: app
+                  .database()
+                  .ref()
+                  .toString(),
+                adminDatabaseRef: admin
+                  .database()
+                  .ref()
+                  .toString(),
               });
             }),
           };
@@ -262,7 +272,9 @@ describe("FunctionsEmulator-Runtime", () => {
         );
         await runtime.exit;
 
-        expect(JSON.parse(data)).to.eql({ firestoreEqual: true, databaseEqual: true });
+        const info = JSON.parse(data);
+        expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
+        expect(info.appDatabaseRef).to.eq(info.adminDatabaseRef);
       }).timeout(TIMEOUT_MED);
 
       it("should redirect Firestore write to emulator", async () => {
