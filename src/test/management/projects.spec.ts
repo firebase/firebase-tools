@@ -379,7 +379,7 @@ describe("Project management", () => {
       expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000");
     });
 
-    it("should rejects if error is thrown in subsequence api call", async () => {
+    it("should reject if error is thrown in subsequence api call", async () => {
       const projectCounts = 10;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
@@ -450,7 +450,8 @@ describe("Project management", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to get Firebase project ${PROJECT_ID}. See firebase-debug.log for more info.`
+        `Failed to get Firebase project ${PROJECT_ID}. ` +
+          "Please make sure the project exists and your account has permission to access it."
       );
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith("GET", `/v1beta1/projects/${PROJECT_ID}`, {

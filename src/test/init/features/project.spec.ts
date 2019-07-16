@@ -117,7 +117,8 @@ describe("project", () => {
 
     it("should throw error when getFirebaseProject throw an error", async () => {
       const options = { project: "my-project-123" };
-      getProjectStub.rejects("failed to get project");
+      const expectedError = new Error("Failed to get project");
+      getProjectStub.rejects(expectedError);
 
       let err;
       try {
@@ -126,9 +127,7 @@ describe("project", () => {
         err = e;
       }
 
-      expect(err.message).to.equal(
-        "Error getting project my-project-123. Please make sure the project exists and belongs to your account."
-      );
+      expect(err).to.equal(expectedError);
       expect(getProjectStub).to.be.calledWith("my-project-123");
     });
   });
@@ -165,7 +164,7 @@ describe("project", () => {
       const options = {};
       const setup = { config: {}, rcfile: {} };
       getProjectPageStub.returns({ projects: [TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT] });
-      promptStub.returns("Don't setup a default project");
+      promptStub.returns("Don't set up a default project");
 
       await doSetup(setup, {}, options);
 

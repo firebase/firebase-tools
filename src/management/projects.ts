@@ -168,7 +168,8 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get Firebase project ${projectId}. See firebase-debug.log for more info.`,
+      `Failed to get Firebase project ${projectId}` +
+        ". Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
   }

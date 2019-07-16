@@ -13,9 +13,9 @@ import { promptOnce, Question } from "../../prompt";
 import * as utils from "../../utils";
 
 const MAXIMUM_PROMPT_LIST = 100;
-const NO_PROJECT = "Don't setup a default project";
-const USE_PROJECT = "Use an existing project";
-const NEW_PROJECT = "Create a new project";
+const OPTION_NO_PROJECT = "Don't set up a default project";
+const OPTION_USE_PROJECT = "Use an existing project";
+const OPTION_NEW_PROJECT = "Create a new project";
 
 /**
  * Used in init flows to keep information about the project - basically
@@ -34,25 +34,9 @@ export interface ProjectInfo {
  */
 export async function getProjectInfo(options: any): Promise<ProjectInfo> {
   if (options.project) {
-    return getProjectFromId(options.project);
+    return toProjectInfo(await getFirebaseProject(options.project));
   }
   return selectProjectInteractively();
-}
-
-/**
- * Selects project when --project is passed in.
- * @param options Command line options.
- */
-async function getProjectFromId(projectId: string): Promise<ProjectInfo> {
-  let project: FirebaseProjectMetadata;
-  try {
-    project = await getFirebaseProject(projectId);
-  } catch (e) {
-    throw new FirebaseError(
-      `Error getting project ${projectId}. Please make sure the project exists and belongs to your account.`
-    );
-  }
-  return toProjectInfo(project);
 }
 
 async function selectProjectInteractively(
@@ -69,10 +53,10 @@ async function selectProjectInteractively(
 async function selectProjectByPrompting(): Promise<ProjectInfo> {
   const projectId = await promptOnce({
     type: "input",
-    message: "Please input your project ID ",
+    message: "Please input the project ID you would like to use:",
   });
 
-  return getProjectFromId(projectId);
+  return toProjectInfo(await getFirebaseProject(projectId));
 }
 
 /**
@@ -83,7 +67,7 @@ async function selectProjectFromList(
 ): Promise<ProjectInfo> {
   let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
     return {
-      name: `${p.projectId}` + (p.displayName ? ` (${p.displayName})` : ""),
+      name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
       value: p.projectId,
     };
   });
@@ -153,9 +137,9 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   }
 
   const choices = [
-    { name: USE_PROJECT, value: USE_PROJECT },
-    { name: NEW_PROJECT, value: NEW_PROJECT },
-    { name: NO_PROJECT, value: NO_PROJECT },
+    { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
+    { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
+    { name: OPTION_NO_PROJECT, value: OPTION_NO_PROJECT },
   ];
   const projectSetupOption: string = await promptOnce({
     type: "list",
@@ -164,7 +148,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     choices,
   });
 
-  if (projectSetupOption === USE_PROJECT) {
+  if (projectSetupOption === OPTION_USE_PROJECT) {
     const projectInfo = await getProjectInfo(options);
     utils.logBullet(`Using project ${projectInfo.label}`);
 
@@ -174,7 +158,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     setup.instance = projectInfo.instance;
     setup.projectLocation = projectInfo.location;
     utils.makeActiveProject(config.projectDir, projectInfo.id);
-  } else if (projectSetupOption === NEW_PROJECT) {
+  } else if (projectSetupOption === OPTION_NEW_PROJECT) {
     // TODO(caot): Implement create a new project
     setup.createProject = true;
   }
