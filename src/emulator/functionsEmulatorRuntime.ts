@@ -20,6 +20,8 @@ import * as _ from "lodash";
 const DATABASE_APP = "__database__";
 
 let hasInitializedFirestore = false;
+let hasAccessedFirestore = false;
+let hasAccessedDatabase = false;
 
 let defaultApp: admin.app.App;
 let databaseApp: admin.app.App;
@@ -63,7 +65,6 @@ function makeFakeCredentials(): any {
       });
     },
 
-    // TODO: Should we fill in the parts of the certificate we like?
     getCertificate: () => {
       return {};
     },
@@ -562,18 +563,18 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       return defaultApp;
     })
     .when("firestore", (target) => {
-      // TODO: One-time log about talking to production
       if (frb.ports.firestore) {
         return proxiedFirestore;
       } else {
+        warnAboutFirestoreProd();
         return Proxied.getOriginal(target, "firestore");
       }
     })
     .when("database", (target) => {
-      // TODO: One-time log about talking to production
       if (frb.ports.database) {
         return proxiedDatabase;
       } else {
+        warnAboutDatabaseProd();
         return Proxied.getOriginal(target, "database");
       }
     })
@@ -599,6 +600,7 @@ function makeProxiedFirebaseApp(
       if (frb.ports.firestore) {
         return proxiedFirestore;
       } else {
+        warnAboutFirestoreProd();
         return Proxied.getOriginal(target, "firestore");
       }
     })
@@ -606,6 +608,7 @@ function makeProxiedFirebaseApp(
       if (frb.ports.database) {
         return proxiedDatabase;
       } else {
+        warnAboutDatabaseProd();
         return Proxied.getOriginal(target, "database");
       }
     })
@@ -630,7 +633,6 @@ async function makeProxiedFirestore(
   const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    // TODO: Is this the right place to check if the port is set?  Do we need this here?
     if (!hasInitializedFirestore && frb.ports.firestore) {
       const emulatorSettings = {
         projectId: frb.projectId,
@@ -667,6 +669,32 @@ async function makeProxiedFirestore(
         .finalize();
     })
     .finalize();
+}
+
+function warnAboutFirestoreProd(): void {
+  if (hasAccessedFirestore) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN",
+    "runtime-status",
+    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
+  ).log();
+  hasAccessedFirestore = true;
+}
+
+function warnAboutDatabaseProd(): void {
+  if (hasAccessedDatabase) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN",
+    "runtime-status",
+    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
+  ).log();
+  hasAccessedDatabase = true;
 }
 
 /*
