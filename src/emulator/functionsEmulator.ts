@@ -15,7 +15,7 @@ import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types"
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
-import { spawnSync } from "child_process";
+import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
@@ -61,7 +61,7 @@ export interface FunctionsRuntimeInstance {
 }
 
 interface RequestWithRawBody extends express.Request {
-  rawBody: string;
+  rawBody: Buffer;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -82,12 +82,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const hub = express();
 
     hub.use((req, res, next) => {
-      let data = "";
-      req.on("data", (chunk: any) => {
-        data += chunk;
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
       });
       req.on("end", () => {
-        (req as RequestWithRawBody).rawBody = data;
+        (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
         next();
       });
     });
@@ -113,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
       const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody);
+      const proto = JSON.parse(reqBody.toString());
 
       const runtime = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
@@ -763,6 +763,7 @@ You can probably fix this by running "npm install ${
 export interface InvokeRuntimeOpts {
   serializedTriggers?: string;
   env?: { [key: string]: string };
+  ignore_warnings?: boolean;
 }
 export function InvokeRuntime(
   nodeBinary: string,
@@ -773,47 +774,38 @@ export function InvokeRuntime(
 
   const emitter = new EventEmitter();
   const metadata: { [key: string]: any } = {};
-  const runtime = spawn(
-    nodeBinary,
-    [
-      // "--no-warnings",
-      path.join(__dirname, "functionsEmulatorRuntime"),
-      JSON.stringify(frb),
-      opts.serializedTriggers || "",
-    ],
-    { env: { node: nodeBinary, ...opts.env, ...process.env }, cwd: frb.cwd }
-  );
+
+  const args = [
+    path.join(__dirname, "functionsEmulatorRuntime"),
+    JSON.stringify(frb),
+    opts.serializedTriggers || "",
+  ];
+
+  if (opts.ignore_warnings) {
+    args.unshift("--no-warnings");
+  }
+
+  const runtime = spawn(nodeBinary, args, {
+    env: { node: nodeBinary, ...opts.env, ...process.env },
+    cwd: frb.cwd,
+    stdio: ["pipe", "pipe", "pipe", "ipc"],
+  });
 
   const buffers: {
     [pipe: string]: {
       pipe: stream.Readable;
       value: string;
     };
-  } = { stderr: { pipe: runtime.stderr, value: "" }, stdout: { pipe: runtime.stdout, value: "" } };
+  } = {
+    stderr: { pipe: runtime.stderr, value: "" },
+    stdout: { pipe: runtime.stdout, value: "" },
+  };
 
   for (const id in buffers) {
     if (buffers.hasOwnProperty(id)) {
       const buffer = buffers[id];
       buffer.pipe.on("data", (buf: Buffer) => {
-        buffer.value += buf;
-        const lines = buffer.value.split("\n");
-
-        if (lines.length > 1) {
-          lines.slice(0, -1).forEach((line: string) => {
-            const log = EmulatorLog.fromJSON(line);
-            emitter.emit("log", log);
-
-            if (log.level === "FATAL") {
-              /*
-              Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-               */
-              emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-              runtime.kill();
-            }
-          });
-        }
-
-        buffer.value = lines[lines.length - 1];
+        onData(runtime, emitter, buffer, buf);
       });
     }
   }
@@ -836,6 +828,45 @@ export function InvokeRuntime(
       emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
     },
   };
+}
+
+function onData(
+  runtime: ChildProcess,
+  emitter: EventEmitter,
+  buffer: { value: string },
+  buf: Buffer
+): void {
+  let bufString = buf.toString();
+
+  // Remove all chunk markings from the message
+  const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
+  while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
+    bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
+  }
+  buffer.value += bufString;
+
+  // If the message ended with a chunk divider, we just wait for more to come.
+  if (endedWithChunk) {
+    return;
+  }
+
+  const lines = buffer.value.split("\n");
+
+  if (lines.length > 1) {
+    // slice(0, -1) returns all elements but the last
+    lines.slice(0, -1).forEach((line: string) => {
+      const log = EmulatorLog.fromJSON(line);
+      emitter.emit("log", log);
+
+      if (log.level === "FATAL") {
+        // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+        runtime.kill();
+      }
+    });
+  }
+
+  buffer.value = lines[lines.length - 1];
 }
 
 function waitForLog(

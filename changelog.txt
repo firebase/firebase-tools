@@ -1,13 +1,1 @@
-* Auto-download Firestore and RTDB emulators when using `emulators:start`.
-* Make `functions:shell` respect the `--port` argument.
-* Improve error message when `firebase serve` can't acquire the right port.
-* Allow running the Firestore and RTDB emulators without a configuration.
-* Fixes bug where profiler table rendering crashes due to undefined `path`.
-* Allow the Firestore emulator to give more information about invalid rulesets.
-* Hot reload firestore rules on change.
-* Upgrade archiver dependency to 3.0.0.
-* Update functions init templates to `v3.1.0`
-* Fix emulation of https functions.
-* Fix bug where calling `clearFirestoreData` against the Firestore Emulator fails if more than 500 documents exist.
-* Fixes a bug where `admin.firestore()` and `app.firestore()` behaved differently.
-* Fix issue with npm `6.10` where an internal version check of the `firebase-functions` SDK caused a crash.
+* Fixes issue deploying scheduled functions in for non `us-central` project locations.

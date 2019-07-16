@@ -33,6 +33,9 @@ function InvokeRuntimeWithFunctions(
 ): FunctionsRuntimeInstance {
   const serializedTriggers = triggers.toString();
 
+  opts = opts || {};
+  opts.ignore_warnings = true;
+
   return InvokeRuntime(process.execPath, frb, {
     ...opts,
     serializedTriggers,
@@ -199,6 +202,7 @@ describe("FunctionsEmulator-Runtime", () => {
           if (el.level !== "USER") {
             return;
           }
+
           expect(JSON.parse(el.text)).to.deep.eq({ operand: 4 });
         });
 
@@ -649,6 +653,7 @@ describe("FunctionsEmulator-Runtime", () => {
           if (el.level !== "USER") {
             return;
           }
+
           expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
         });
 
