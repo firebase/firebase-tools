@@ -156,18 +156,5 @@ module.exports = new Command("init [feature]")
         }
         logger.info();
         utils.logSuccess("Firebase initialization complete!");
-
-        if (setup.createProject) {
-          logger.info();
-          logger.info(
-            clc.bold.cyan("Project creation is only available from the Firebase Console")
-          );
-          logger.info(
-            "Please visit",
-            clc.underline("https://console.firebase.google.com"),
-            "to create a new project, then run",
-            clc.bold("firebase use --add")
-          );
-        }
       });
   });
