@@ -7,6 +7,10 @@ const TIMEOUT_MILLIS = 30000;
 const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
+const IOS_CONFIG_FILE_NAME = "GoogleService-Info.plist";
+const ANDROID_CONFIG_FILE_NAME = "google-services.json";
+const WEB_CONFIG_FILE_NAME = "google-config.js";
+
 export interface AppMetadata {
   name: string /* The fully qualified resource name of the Firebase App */;
   projectId: string;
@@ -30,6 +34,11 @@ export interface WebAppMetadata extends AppMetadata {
   displayName: string;
   appUrls?: string[];
   platform: AppPlatform.WEB;
+}
+
+export interface AppConfigurationData {
+  fileName: string;
+  fileContents: string | object /* file content in ascii format */;
 }
 
 export enum AppPlatform {
@@ -223,4 +232,60 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
   }
 
   return `/v1beta1/projects/${projectId}${resourceSuffix}`;
+}
+
+/**
+ * Gets the configuration artifact associated with the specified a Firebase app
+ * @return a promise that resolves to configuration file content of the requested app
+ */
+export async function getAppConfig(
+  appId: string,
+  platform: AppPlatform
+): Promise<AppConfigurationData> {
+  try {
+    const response = await api.request("GET", getAppConfigResourceString(appId, platform));
+    return parseConfigFromResponse(response.body, platform);
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get ${platform} app configuration. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+function getAppConfigResourceString(appId: string, platform: AppPlatform): string {
+  let platformResource;
+  switch (platform) {
+    case AppPlatform.IOS:
+      platformResource = "iosApps";
+      break;
+    case AppPlatform.ANDROID:
+      platformResource = "androidApps";
+      break;
+    case AppPlatform.WEB:
+      platformResource = "webApps";
+      break;
+    default:
+      // This should never happen
+      throw new FirebaseError("Unexpected app platform");
+  }
+
+  return `/v1beta1/projects/-/${platformResource}/${appId}/config`;
+}
+
+function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
+  if (platform === AppPlatform.WEB) {
+    return { fileName: WEB_CONFIG_FILE_NAME, fileContents: responseBody };
+  } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
+    return {
+      fileName: platform === AppPlatform.ANDROID ? ANDROID_CONFIG_FILE_NAME : IOS_CONFIG_FILE_NAME,
+      fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("ascii"),
+    };
+  }
+  // This should never happen
+  throw new FirebaseError("Unexpected app platform");
 }
