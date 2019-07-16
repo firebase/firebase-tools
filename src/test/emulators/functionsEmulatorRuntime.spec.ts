@@ -39,21 +39,26 @@ function InvokeRuntimeWithFunctions(
   });
 }
 
-function CallHTTPSFunction(
+/**
+ * Three step process:
+ *   1) Wait for the runtime to be ready.
+ *   2) Call the runtime with the specified bundle and collect all data.
+ *   3) Wait for the runtime to exit
+ */
+async function CallHTTPSFunction(
   runtime: FunctionsRuntimeInstance,
   frb: FunctionsRuntimeBundle,
-  headers: any,
-  requestData: string | undefined
+  options: any = {},
+  requestData?: string
 ): Promise<string> {
-  headers = headers || {};
-
-  return new Promise((resolve, reject) => {
+  await runtime.ready;
+  const dataPromise = new Promise<string>((resolve, reject) => {
     const req = request(
       {
         socketPath: runtime.metadata.socketPath,
         path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
         method: "POST",
-        headers,
+        ...options,
       },
       (res) => {
         let data = "";
@@ -75,6 +80,11 @@ function CallHTTPSFunction(
 
     req.end();
   });
+
+  const result = await dataPromise;
+  await runtime.exit;
+
+  return result;
 }
 
 describe("FunctionsEmulator-Runtime", () => {
@@ -263,14 +273,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
-        const data = await CallHTTPSFunction(
-          runtime,
-          FunctionRuntimeBundles.onRequest,
-          {},
-          undefined
-        );
-        await runtime.exit;
+        const data = await CallHTTPSFunction(runtime, FunctionRuntimeBundles.onRequest);
 
         const info = JSON.parse(data);
         expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
@@ -306,9 +309,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
-        const data = await CallHTTPSFunction(runtime, onRequestCopy, {}, undefined);
-        await runtime.exit;
+        const data = await CallHTTPSFunction(runtime, onRequestCopy);
 
         expect(JSON.parse(data).error).to.exist;
       }).timeout(TIMEOUT_MED);
@@ -427,9 +428,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
-        const data = await CallHTTPSFunction(runtime, frb, {}, undefined);
-        await runtime.exit;
+        const data = await CallHTTPSFunction(runtime, frb);
 
         expect(JSON.parse(data)).to.deep.equal({ from_trigger: true });
       }).timeout(TIMEOUT_MED);
@@ -447,18 +446,18 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
         const reqData = "name=sparky";
         const data = await CallHTTPSFunction(
           runtime,
           frb,
           {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Content-Length": reqData.length,
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "Content-Length": reqData.length,
+            },
           },
           reqData
         );
-        await runtime.exit;
 
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
       }).timeout(TIMEOUT_MED);
@@ -476,18 +475,18 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
         const reqData = '{"name": "sparky"}';
         const data = await CallHTTPSFunction(
           runtime,
           frb,
           {
-            "Content-Type": "application/json",
-            "Content-Length": reqData.length,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": reqData.length,
+            },
           },
           reqData
         );
-        await runtime.exit;
 
         expect(JSON.parse(data)).to.deep.equal({ name: "sparky" });
       }).timeout(TIMEOUT_MED);
@@ -505,18 +504,18 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
         const reqData = "name is sparky";
         const data = await CallHTTPSFunction(
           runtime,
           frb,
           {
-            "Content-Type": "text/plain",
-            "Content-Length": reqData.length,
+            headers: {
+              "Content-Type": "text/plain",
+              "Content-Length": reqData.length,
+            },
           },
           reqData
         );
-        await runtime.exit;
 
         expect(JSON.parse(data)).to.deep.equal("name is sparky");
       }).timeout(TIMEOUT_MED);
@@ -534,18 +533,18 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
         const reqData = "name is sparky";
         const data = await CallHTTPSFunction(
           runtime,
           frb,
           {
-            "Content-Type": "gibber/ish",
-            "Content-Length": reqData.length,
+            headers: {
+              "Content-Type": "gibber/ish",
+              "Content-Length": reqData.length,
+            },
           },
           reqData
         );
-        await runtime.exit;
 
         expect(JSON.parse(data).type).to.deep.equal("Buffer");
         expect(JSON.parse(data).data.length).to.deep.equal(14);
@@ -564,18 +563,18 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
         const reqData = "How are you?";
         const data = await CallHTTPSFunction(
           runtime,
           frb,
           {
-            "Content-Type": "gibber/ish",
-            "Content-Length": reqData.length,
+            headers: {
+              "Content-Type": "gibber/ish",
+              "Content-Length": reqData.length,
+            },
           },
           reqData
         );
-        await runtime.exit;
 
         expect(data).to.equal(reqData);
       }).timeout(TIMEOUT_MED);
@@ -595,20 +594,13 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
-        const data = await CallHTTPSFunction(
-          runtime,
-          frb,
-          {
+        const data = await CallHTTPSFunction(runtime, frb, {
+          headers: {
             "x-hello": "world",
           },
-          undefined
-        );
-        await runtime.exit;
+        });
 
         expect(JSON.parse(data)).to.deep.equal({ hello: "world" });
-
-        await runtime.exit;
       }).timeout(TIMEOUT_MED);
 
       it("should handle `x-forwarded-host`", async () => {
@@ -624,16 +616,11 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        await runtime.ready;
-        const data = await CallHTTPSFunction(
-          runtime,
-          frb,
-          {
+        const data = await CallHTTPSFunction(runtime, frb, {
+          headers: {
             "x-forwarded-host": "real-hostname",
           },
-          undefined
-        );
-        await runtime.exit;
+        });
 
         expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
       }).timeout(TIMEOUT_MED);
@@ -768,13 +755,12 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const logs = _countLogEntries(runtime);
-        await runtime.ready;
+
         try {
-          await CallHTTPSFunction(runtime, frb, {}, undefined);
+          await CallHTTPSFunction(runtime, frb);
         } catch (e) {
           // No-op
         }
-        await runtime.exit;
 
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
@@ -793,13 +779,12 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const logs = _countLogEntries(runtime);
-        await runtime.ready;
+
         try {
-          await CallHTTPSFunction(runtime, frb, {}, undefined);
+          await CallHTTPSFunction(runtime, frb);
         } catch {
           // No-op
         }
-        await runtime.exit;
 
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
@@ -818,13 +803,12 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const logs = _countLogEntries(runtime);
-        await runtime.ready;
+
         try {
-          await CallHTTPSFunction(runtime, frb, {}, undefined);
+          await CallHTTPSFunction(runtime, frb);
         } catch {
           // No-op
         }
-        await runtime.exit;
 
         expect((await logs)["runtime-error"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
