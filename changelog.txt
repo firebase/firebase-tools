@@ -1,0 +1,1 @@
+* Fixes issue deploying scheduled functions in for non `us-central` project locations.
