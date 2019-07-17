@@ -32,6 +32,7 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     expectedSize: 17097803,
     expectedChecksum: "102c8de422db81933a0f29fede5a80a0",
     localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.0.0.jar"),
+    namePrefix: "firebase-database-emulator",
   },
   firestore: {
     name: Emulators.FIRESTORE,
@@ -43,6 +44,7 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     expectedSize: 57896541,
     expectedChecksum: "8e27495a42ee5ab6507e1069b36545d4",
     localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.6.2.jar"),
+    namePrefix: "cloud-firestore-emulator",
   },
 };
 
