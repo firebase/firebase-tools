@@ -12,17 +12,11 @@ const DEFAULT_STATUS: NonNullable<FirebaseErrorOptions["status"]> = 500;
 
 export class FirebaseError extends Error implements FirebaseErrorOptions {
   readonly children: unknown[];
-
   readonly context: unknown | undefined;
-
   readonly exit: number;
-
   readonly message: string;
-
   readonly name = "FirebaseError";
-
   readonly original: Error | undefined;
-
   readonly status: number;
 
   constructor(
