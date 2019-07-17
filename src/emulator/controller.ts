@@ -11,7 +11,7 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { ALL_EMULATORS, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { DatabaseEmulator } from "../emulator/databaseEmulator";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import { FirebaseError } from "../error";
@@ -166,22 +166,37 @@ export async function startAll(options: any): Promise<void> {
 
   if (shouldStart(options, Emulators.DATABASE)) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
-    let databaseEmulator;
+
+    const args: DatabaseEmulatorArgs = {
+      host: databaseAddr.host,
+      port: databaseAddr.port,
+      projectId,
+      auto_download: true,
+    };
+
     if (shouldStart(options, Emulators.FUNCTIONS)) {
       const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-      databaseEmulator = new DatabaseEmulator({
-        host: databaseAddr.host,
-        port: databaseAddr.port,
-        functions_emulator_host: functionsAddr.host,
-        functions_emulator_port: functionsAddr.port,
-        auto_download: true,
-      });
-    } else {
-      databaseEmulator = new DatabaseEmulator({
-        host: databaseAddr.host,
-        port: databaseAddr.port,
-      });
+      args.functions_emulator_host = functionsAddr.host;
+      args.functions_emulator_port = functionsAddr.port;
     }
+
+    const rulesLocalPath = options.config.get("database.rules");
+    if (rulesLocalPath) {
+      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      if (fs.existsSync(rules)) {
+        args.rules = rules;
+      } else {
+        utils.logWarning(
+          `Database rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist, starting Database emulator without rules.`
+        );
+      }
+    } else {
+      utils.logWarning(`No Database rules file specified in firebase.json, using default rules.`);
+    }
+
+    const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
   }
 
