@@ -16,7 +16,7 @@
     "lint:js": "eslint 'src/**/*.js'",
     "lint:ts": "tslint --config tslint.json --project tsconfig.json",
     "lint:fix": "npm run lint:fix:js && npm run lint:fix:ts",
-    "lint:fix:js": "eslint  --fix 'src/**/*.js'",
+    "lint:fix:js": "eslint --fix 'src/**/*.js'",
     "lint:fix:ts": "tslint --config tslint.json --fix --project tsconfig.json",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build",
