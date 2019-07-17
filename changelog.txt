@@ -1,0 +1,1 @@
+* Allow the RTDB emulator to hot-reload rules file on changes.
