@@ -1,2 +1,2 @@
-* Fixes issue deploying scheduled functions in for non `us-central` project locations.
+* Allow the RTDB emulator to hot-reload rules file on changes.
 * Allows emulated Cloud Functions to talk to production RTDB/Firestore if the emulators are not running.
