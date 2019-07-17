@@ -16,6 +16,7 @@ import {
 } from "../../management/apps";
 import * as pollUtils from "../../operation-poller";
 import { mockAuth } from "../helpers";
+import { inspect } from "util";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -710,7 +711,7 @@ describe("App management", () => {
 
       expect(configData).to.deep.equal({
         fileName: "google-config.js",
-        fileContents: mockWebConfig,
+        fileContents: inspect(mockWebConfig, { compact: false }),
       });
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",

@@ -2,6 +2,7 @@ import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
+import { inspect } from "util";
 
 const TIMEOUT_MILLIS = 30000;
 const APP_LIST_PAGE_SIZE = 100;
@@ -38,7 +39,7 @@ export interface WebAppMetadata extends AppMetadata {
 
 export interface AppConfigurationData {
   fileName: string;
-  fileContents: string | object /* file content in ascii format */;
+  fileContents: string /* file content in ascii format */;
 }
 
 export enum AppPlatform {
@@ -243,7 +244,11 @@ export async function getAppConfig(
   platform: AppPlatform
 ): Promise<AppConfigurationData> {
   try {
-    const response = await api.request("GET", getAppConfigResourceString(appId, platform));
+    const response = await api.request("GET", getAppConfigResourceString(appId, platform), {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
     return parseConfigFromResponse(response.body, platform);
   } catch (err) {
     logger.debug(err.message);
@@ -279,7 +284,10 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    return { fileName: WEB_CONFIG_FILE_NAME, fileContents: responseBody };
+    return {
+      fileName: WEB_CONFIG_FILE_NAME,
+      fileContents: inspect(responseBody, { compact: false }),
+    };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
       fileName: platform === AppPlatform.ANDROID ? ANDROID_CONFIG_FILE_NAME : IOS_CONFIG_FILE_NAME,

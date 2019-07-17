@@ -16,6 +16,7 @@ module.exports = function(client) {
   client.apps = {};
   client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
+  client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
