@@ -14,23 +14,19 @@ tmp.setGracefulCleanup();
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE;
 
-module.exports = (name: DownloadableEmulator) => {
+module.exports = async (name: DownloadableEmulator) => {
   const emulator = javaEmulators.get(name);
   utils.logLabeledBullet(name, `downloading ${path.basename(emulator.localPath)}...`);
   fs.ensureDirSync(emulator.cacheDir);
 
-  return downloadToTmp(emulator.remoteUrl)
-    .then((tmpfile) =>
-      validateSize(tmpfile, emulator.expectedSize)
-        .then(() => validateChecksum(tmpfile, emulator.expectedChecksum))
-        .then(() => {
-          fs.copySync(tmpfile, emulator.localPath);
-          fs.chmodSync(emulator.localPath, 0o755);
-        })
-    )
-    .then(() => {
-      removeOldJars(emulator);
-    });
+  const tmpfile = await downloadToTmp(emulator.remoteUrl);
+  await validateSize(tmpfile, emulator.expectedSize);
+  await validateChecksum(tmpfile, emulator.expectedChecksum);
+
+  fs.copySync(tmpfile, emulator.localPath);
+  fs.chmodSync(emulator.localPath, 0o755);
+
+  await removeOldJars(emulator);
 };
 
 function removeOldJars(emulator: JavaEmulatorDetails): void {
