@@ -33,7 +33,7 @@ module.exports = (name: DownloadableEmulator) => {
     });
 };
 
-function removeOldJars(emulator: JavaEmulatorDetails) {
+function removeOldJars(emulator: JavaEmulatorDetails): void {
   const current = emulator.localPath;
   const files = fs.readdirSync(emulator.cacheDir);
 

@@ -184,6 +184,14 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   const hasEmulator = fs.existsSync(emulator.localPath);
   if (!hasEmulator) {
     if (args.auto_download) {
+      if (process.env.CI) {
+        utils.logWarning(
+          `It appears you are running in a CI environment. You can avoid downloading the ${
+            emulator.name
+          } emulator repeatedly by caching the ${emulator.cacheDir} directory.`
+        );
+      }
+
       await downloadEmulator(targetName);
     } else {
       utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
