@@ -206,7 +206,7 @@ describe("project", () => {
       });
     });
 
-    describe('with "Don\'t set up a default project" option', () => {
+    describe(`with "Don't set up a default project" option`, () => {
       it("should set up the correct properties when not choosing a project", async () => {
         const options = {};
         const setup = { config: {}, rcfile: {} };
