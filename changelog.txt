@@ -1,2 +1,0 @@
-* Fixes issue deploying scheduled functions for non `us-central` project locations.
-* Cleans up unnecessary emulator JAR files when a new one is downloaded.
