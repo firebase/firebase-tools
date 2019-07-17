@@ -37,11 +37,11 @@ export class FirebaseError extends Error implements FirebaseErrorOptions {
   ) {
     super();
 
-    this.message = message;
     this.children = children;
     this.context = context;
-    this.status = status;
     this.exit = exit;
+    this.message = message;
     this.original = original;
+    this.status = status;
   }
 }
