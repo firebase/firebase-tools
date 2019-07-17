@@ -67,6 +67,7 @@ export interface JavaEmulatorDetails {
   expectedSize: number;
   expectedChecksum: string;
   localPath: string;
+  namePrefix: string;
 }
 
 export interface Address {
