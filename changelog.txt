@@ -1,1 +1,2 @@
 * Fixes issue deploying scheduled functions for non `us-central` project locations.
+* Allow the RTDB emulator to hot-reload rules file on changes.
