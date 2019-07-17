@@ -11,15 +11,23 @@ after_script:
   - nyc report --reporter=text-lcov | coveralls
 jobs:
   include:
+    - name: lint
+      node_js: "10"
+      script: npm run lint
+      stage: verify
+    - name: format
+      node_js: "10"
+      script: npm run format
+      stage: verify
     - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
       env:
         - TEST_NAME="Hosting Functional Tests"
       before_script:
-        - echo "==== ${TEST_NAME} ====" 
+        - echo "==== ${TEST_NAME} ===="
         - ./scripts/decrypt-app-credentials.sh
-      script: 
+      script:
         - ./scripts/test-hosting.sh
       after_script: skip
     - stage: Integration Tests
@@ -29,7 +37,7 @@ jobs:
         - TEST_NAME="Emulator End-to-End Tests"
       before_script:
         - echo "==== ${TEST_NAME} ===="
-      script: 
+      script:
         - ./scripts/test-triggers-end-to-end.sh
       after_script: skip
 cache:
