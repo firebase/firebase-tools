@@ -45,7 +45,7 @@ describe("project", () => {
   beforeEach(() => {
     getProjectPageStub = sandbox.stub(projectManager, "getProjectPage");
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
-    createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProject");
+    createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
   });
@@ -159,7 +159,11 @@ describe("project", () => {
       it("should create a new project and set up the correct properties", async () => {
         const options = {};
         const setup = { config: {}, rcfile: {} };
-        promptOnceStub.onFirstCall().resolves("Create a new project");
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Create a new project")
+          .onSecondCall()
+          .resolves(false);
         const fakePromptFn = (promptAnswer: any) => {
           promptAnswer.projectId = "my-project-123";
           promptAnswer.displayName = "my-project";
@@ -176,8 +180,52 @@ describe("project", () => {
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
         expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
-        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptOnceStub).to.be.calledTwice;
         expect(promptStub).to.be.calledOnce;
+        expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
+          displayName: "my-project",
+          parentResource: undefined,
+        });
+      });
+
+      it("should create a new project with parent resource", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Create a new project")
+          .onSecondCall()
+          .resolves(true)
+          .onThirdCall()
+          .resolves(projectManager.ProjectParentResourceType.FOLDER)
+          .onCall(3)
+          .resolves("12345");
+
+        const fakePromptFn = (promptAnswer: any) => {
+          promptAnswer.projectId = "my-project-123";
+          promptAnswer.displayName = "my-project";
+        };
+        promptStub
+          .withArgs({}, projectManager.PROJECTS_CREATE_QUESTIONS)
+          .onFirstCall()
+          .callsFake(fakePromptFn);
+        createFirebaseProjectStub.resolves(TEST_FIREBASE_PROJECT);
+
+        await doSetup(setup, {}, options);
+
+        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
+        expect(_.get(setup, "instance")).to.deep.equal("my-project");
+        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(promptOnceStub.callCount).to.equal(4);
+        expect(promptStub).to.be.calledOnce;
+        expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
+          displayName: "my-project",
+          parentResource: {
+            id: "12345",
+            type: projectManager.ProjectParentResourceType.FOLDER,
+          },
+        });
       });
 
       it("should throw if project ID is empty after prompt", async () => {

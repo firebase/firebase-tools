@@ -1,7 +1,7 @@
 import * as Command from "../command";
 import * as FirebaseError from "../error";
 import {
-  createFirebaseProject,
+  createFirebaseProjectAndLog,
   ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
@@ -43,7 +43,7 @@ module.exports = new Command("projects:create [projectId]")
         parentResource = { type: ProjectParentResourceType.FOLDER, id: options.folder };
       }
 
-      return createFirebaseProject(options.projectId, {
+      return createFirebaseProjectAndLog(options.projectId, {
         displayName: options.displayName,
         parentResource,
       });

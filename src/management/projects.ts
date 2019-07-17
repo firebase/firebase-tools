@@ -57,7 +57,7 @@ export const PROJECTS_CREATE_QUESTIONS: Question[] = [
   },
 ];
 
-export async function createFirebaseProject(
+export async function createFirebaseProjectAndLog(
   projectId: string,
   options: { displayName?: string; parentResource?: ProjectParentResource }
 ): Promise<FirebaseProjectMetadata> {
@@ -71,7 +71,11 @@ export async function createFirebaseProject(
     spinner.succeed();
 
     logger.info("");
-    logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
+    if (process.platform === "win32") {
+      logger.info("=== Your Firebase project is ready! ===");
+    } else {
+      logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
+    }
     logger.info("");
     logger.info("Project information:");
     logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);

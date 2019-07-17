@@ -4,10 +4,12 @@ import * as _ from "lodash";
 import * as Config from "../../config";
 import * as FirebaseError from "../../error";
 import {
-  createFirebaseProject,
+  createFirebaseProjectAndLog,
   FirebaseProjectMetadata,
   getFirebaseProject,
   getProjectPage,
+  ProjectParentResource,
+  ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../../management/projects";
 import * as logger from "../../logger";
@@ -100,7 +102,38 @@ async function selectProjectFromList(
   return toProjectInfo(project);
 }
 
-async function createNewProject(): Promise<ProjectInfo> {
+async function promptParentResource(): Promise<ProjectParentResource | undefined> {
+  const confirm = await promptOnce({
+    type: "confirm",
+    message: "Do you want to create your project under a Google Cloud Platform parent resource?",
+  });
+
+  if (!confirm) {
+    return undefined;
+  }
+
+  const type: ProjectParentResourceType = await promptOnce({
+    type: "list",
+    name: "type",
+    message: "Please select the parent resource type:",
+    choices: [
+      { name: ProjectParentResourceType.FOLDER, value: ProjectParentResourceType.FOLDER },
+      {
+        name: ProjectParentResourceType.ORGANIZATION,
+        value: ProjectParentResourceType.ORGANIZATION,
+      },
+    ],
+  });
+  const id: string = await promptOnce({
+    type: "input",
+    name: "parentResourceString",
+    message: `Please input ${type} ID:`,
+  });
+
+  return { id, type };
+}
+
+async function promptAndCreateNewProject(): Promise<ProjectInfo> {
   const promptAnswer: { projectId?: string; displayName?: string } = {};
   await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
 
@@ -108,11 +141,12 @@ async function createNewProject(): Promise<ProjectInfo> {
     throw new FirebaseError("Project ID cannot be empty");
   }
 
-  // TODO(caot): Support create a new project under a parent resource (organization or folder)
+  const parentResource = await promptParentResource();
 
   return toProjectInfo(
-    await createFirebaseProject(promptAnswer.projectId, {
+    await createFirebaseProjectAndLog(promptAnswer.projectId, {
       displayName: promptAnswer.displayName,
+      parentResource,
     })
   );
 }
@@ -171,7 +205,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   if (projectSetupOption === OPTION_USE_PROJECT) {
     projectInfo = await getProjectInfo(options);
   } else if (projectSetupOption === OPTION_NEW_PROJECT) {
-    projectInfo = await createNewProject();
+    projectInfo = await promptAndCreateNewProject();
   } else {
     // Do nothing if use choose NO_PROJECT
     return;
