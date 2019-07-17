@@ -11,14 +11,6 @@ after_script:
   - nyc report --reporter=text-lcov | coveralls
 jobs:
   include:
-    - name: lint
-      node_js: "10"
-      script: npm run lint
-      stage: Verify
-    - name: format
-      node_js: "10"
-      script: npm run format
-      stage: Verify
     - stage: Integration Tests
       if: repo == head_repo OR type == push
       node_js: "8"
@@ -40,6 +32,14 @@ jobs:
       script:
         - ./scripts/test-triggers-end-to-end.sh
       after_script: skip
+    - name: format
+      node_js: "10"
+      script: npm run format
+      stage: Verify
+    - name: lint
+      node_js: "10"
+      script: npm run lint
+      stage: Verify
 cache:
   directories:
     - node_modules
