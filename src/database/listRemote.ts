@@ -2,7 +2,7 @@ import * as request from "request";
 import { Response } from "request";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 

@@ -7,7 +7,7 @@ var tar = require("tar");
 var tmp = require("tmp");
 
 var { listFiles } = require("./listFiles");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 
 module.exports = function(options) {

@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var clc = require("cli-color");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 /**
  * Tries to determine the correct app name for commands that

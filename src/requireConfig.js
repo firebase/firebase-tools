@@ -1,6 +1,6 @@
 "use strict";
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 module.exports = function(options) {
   if (options.config) {

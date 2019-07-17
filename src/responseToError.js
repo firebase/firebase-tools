@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 module.exports = function(response, body) {
   if (typeof body === "string" && response.statusCode === 404) {

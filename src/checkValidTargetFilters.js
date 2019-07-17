@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 module.exports = function(options) {
   function numFilters(targetTypes) {

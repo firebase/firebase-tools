@@ -6,7 +6,7 @@ var fs = require("fs");
 var _ = require("lodash");
 var readline = require("readline");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var utils = require("./utils");
 

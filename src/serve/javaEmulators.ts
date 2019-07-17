@@ -1,7 +1,7 @@
 import { Emulators, JavaEmulatorCommand, JavaEmulatorDetails } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import * as logger from "../logger";

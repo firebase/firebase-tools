@@ -3,7 +3,7 @@ import * as _ from "lodash";
 
 import * as firebaseApi from "../../firebaseApi";
 import * as Config from "../../config";
-import * as FirebaseError from "../../error";
+import { FirebaseError } from "../../error";
 import { FirebaseProject, getProject, listProjects } from "../../firebaseApi";
 import * as logger from "../../logger";
 import { promptOnce, Question } from "../../prompt";

@@ -14,7 +14,7 @@ import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;

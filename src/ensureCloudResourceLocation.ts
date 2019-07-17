@@ -1,4 +1,4 @@
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 
 /**
  * Simple helper function that returns an error with a helpful
