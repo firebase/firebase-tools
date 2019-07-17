@@ -64,12 +64,14 @@ async function selectProjectFromOptions(options: any): Promise<ProjectInfo> {
  */
 async function selectProjectFromList(options: any): Promise<ProjectInfo> {
   const projects: FirebaseProject[] = await listProjects();
-  let choices = projects.filter((p: FirebaseProject) => !!p).map((p) => {
-    return {
-      name: `${p.projectId} (${p.displayName})`,
-      value: p.projectId,
-    };
-  });
+  let choices = projects
+    .filter((p: FirebaseProject) => !!p)
+    .map((p) => {
+      return {
+        name: `${p.projectId} (${p.displayName})`,
+        value: p.projectId,
+      };
+    });
   choices = _.orderBy(choices, ["name"], ["asc"]);
   choices.unshift({ name: NO_PROJECT, value: NO_PROJECT });
   choices.push({ name: NEW_PROJECT, value: NEW_PROJECT });

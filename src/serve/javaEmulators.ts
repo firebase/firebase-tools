@@ -186,9 +186,7 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
     if (args.auto_download) {
       if (process.env.CI) {
         utils.logWarning(
-          `It appears you are running in a CI environment. You can avoid downloading the ${
-            emulator.name
-          } emulator repeatedly by caching the ${emulator.cacheDir} directory.`
+          `It appears you are running in a CI environment. You can avoid downloading the ${emulator.name} emulator repeatedly by caching the ${emulator.cacheDir} directory.`
         );
       }
 

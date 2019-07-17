@@ -285,9 +285,7 @@ export class FirestoreIndexes {
    * @param spec the new field override specification.
    */
   async patchField(project: string, spec: Spec.FieldOverride): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/${
-      spec.collectionGroup
-    }/fields/${spec.fieldPath}`;
+    const url = `projects/${project}/databases/(default)/collectionGroups/${spec.collectionGroup}/fields/${spec.fieldPath}`;
 
     const indexes = spec.indexes.map((index) => {
       return {
@@ -319,9 +317,7 @@ export class FirestoreIndexes {
    * Create a new index on the specified project.
    */
   createIndex(project: string, index: Spec.Index): Promise<any> {
-    const url = `projects/${project}/databases/(default)/collectionGroups/${
-      index.collectionGroup
-    }/indexes`;
+    const url = `projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
     return api.request("POST", "/v1beta2/" + url, {
       auth: true,
       data: {

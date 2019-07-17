@@ -65,9 +65,7 @@ export default function(
     }
     logger.info(`[hosting] Cloud Run rewrite ${JSON.stringify(rewrite)} triggered`);
 
-    const textIdentifier = `Cloud Run service "${rewrite.run.serviceId}" for region "${
-      rewrite.run.region
-    }"`;
+    const textIdentifier = `Cloud Run service "${rewrite.run.serviceId}" for region "${rewrite.run.region}"`;
     return getCloudRunUrl(rewrite, getProjectId(options, false))
       .then((url) => proxyRequestHandler(url, textIdentifier))
       .catch(errorRequestHandler);

@@ -283,9 +283,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "googleapis-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Google API requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n   - Be careful, this may be a production service.`
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
@@ -297,9 +295,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "functions-config-missing-value":
         EmulatorLogger.log(
           "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${
-            systemLog.data.valuePath
-          }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
@@ -324,21 +320,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "uninstalled-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed. This package is in your package.json, but it's not available. \
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
 You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
-You can probably fix this by running "npm install ${
-            systemLog.data.name
-          }@latest" in your functions directory.`
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":
@@ -525,9 +515,7 @@ You can probably fix this by running "npm install ${
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               EmulatorLogger.log(
                 "INFO",
-                `Ignoring trigger "${
-                  definition.name
-                }" because the service "${service}" is not yet supported.`
+                `Ignoring trigger "${definition.name}" because the service "${service}" is not yet supported.`
               );
               break;
           }
@@ -553,9 +541,7 @@ You can probably fix this by running "npm install ${
     if (!databasePort) {
       EmulatorLogger.log(
         "INFO",
-        `Ignoring trigger "${
-          definition.name
-        }" because the Realtime Database emulator is not running.`
+        `Ignoring trigger "${definition.name}" because the Realtime Database emulator is not running.`
       );
       return Promise.resolve();
     }
@@ -599,9 +585,7 @@ You can probably fix this by running "npm install ${
       } else {
         EmulatorLogger.log(
           "WARN",
-          `No project in use. Registering function trigger for sentinel namespace '${
-            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-          }'`
+          `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
         );
       }
       request.put(
@@ -623,9 +607,7 @@ You can probably fix this by running "npm install ${
             EmulatorLogger.logLabeled(
               "SUCCESS",
               "functions",
-              `Trigger "${
-                definition.name
-              }" has been acknowledged by the Realtime Database emulator.`
+              `Trigger "${definition.name}" has been acknowledged by the Realtime Database emulator.`
             );
           }
 
@@ -655,9 +637,7 @@ You can probably fix this by running "npm install ${
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
       request.put(
-        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
-          definition.name
-        }`,
+        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${definition.name}`,
         {
           body: bundle,
         },
