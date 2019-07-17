@@ -1,3 +1,5 @@
+import { defaultTo } from "lodash";
+
 interface FirebaseErrorOptions {
   children?: unknown[];
   context?: unknown;
@@ -19,23 +21,14 @@ export class FirebaseError extends Error implements FirebaseErrorOptions {
   readonly original: Error | undefined;
   readonly status: number;
 
-  constructor(
-    message: string,
-    {
-      children = DEFAULT_CHILDREN,
-      context,
-      exit = DEFAULT_EXIT,
-      original,
-      status = DEFAULT_STATUS,
-    }: FirebaseErrorOptions = {}
-  ) {
+  constructor(message: string, options: FirebaseErrorOptions = {}) {
     super();
 
-    this.children = children;
-    this.context = context;
-    this.exit = exit;
+    this.children = defaultTo(options.children, DEFAULT_CHILDREN);
+    this.context = options.context;
+    this.exit = defaultTo(options.exit, DEFAULT_EXIT);
     this.message = message;
-    this.original = original;
-    this.status = status;
+    this.original = options.original;
+    this.status = defaultTo(options.status, DEFAULT_STATUS);
   }
 }
