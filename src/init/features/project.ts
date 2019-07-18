@@ -9,7 +9,7 @@ import {
   getProjectPage,
 } from "../../management/projects";
 import * as logger from "../../logger";
-import { promptOnce, Question } from "../../prompt";
+import { promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 
 const MAXIMUM_PROMPT_LIST = 100;
