@@ -85,6 +85,25 @@ describe("project", () => {
       expect(promptStub.firstCall.args[0].type).to.equal("input");
     });
 
+    it("should throw if there's no project", async () => {
+      const options = {};
+      getProjectPageStub.resolves({
+        projects: [],
+      });
+
+      let err;
+      try {
+        const project = await getProjectInfo(options);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal("There is no Firebase project associated with this account.");
+      expect(getProjectPageStub).to.be.calledWith(100);
+      expect(getProjectStub).to.be.not.called;
+      expect(promptStub).to.be.not.called;
+    });
+
     it("should set instance and location to undefined when resources not provided", async () => {
       const options = {};
       getProjectPageStub.returns({ projects: [ANOTHER_FIREBASE_PROJECT] });

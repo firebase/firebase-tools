@@ -43,6 +43,9 @@ async function selectProjectInteractively(
   pageSize: number = MAXIMUM_PROMPT_LIST
 ): Promise<ProjectInfo> {
   const { projects, nextPageToken } = await getProjectPage(pageSize);
+  if (projects.length === 0) {
+    throw new FirebaseError("There is no Firebase project associated with this account.");
+  }
   if (nextPageToken) {
     // Prompt user for project ID if we can't list all projects in 1 page
     return selectProjectByPrompting();
