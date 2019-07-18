@@ -159,11 +159,7 @@ describe("project", () => {
       it("should create a new project and set up the correct properties", async () => {
         const options = {};
         const setup = { config: {}, rcfile: {} };
-        promptOnceStub
-          .onFirstCall()
-          .resolves("Create a new project")
-          .onSecondCall()
-          .resolves(false);
+        promptOnceStub.onFirstCall().resolves("Create a new project");
         const fakePromptFn = (promptAnswer: any) => {
           promptAnswer.projectId = "my-project-123";
           promptAnswer.displayName = "my-project";
@@ -180,51 +176,10 @@ describe("project", () => {
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
         expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
-        expect(promptOnceStub).to.be.calledTwice;
+        expect(promptOnceStub).to.be.calledOnce;
         expect(promptStub).to.be.calledOnce;
         expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
           displayName: "my-project",
-          parentResource: undefined,
-        });
-      });
-
-      it("should create a new project with parent resource", async () => {
-        const options = {};
-        const setup = { config: {}, rcfile: {} };
-        promptOnceStub
-          .onFirstCall()
-          .resolves("Create a new project")
-          .onSecondCall()
-          .resolves(true)
-          .onThirdCall()
-          .resolves(projectManager.ProjectParentResourceType.FOLDER)
-          .onCall(3)
-          .resolves("12345");
-
-        const fakePromptFn = (promptAnswer: any) => {
-          promptAnswer.projectId = "my-project-123";
-          promptAnswer.displayName = "my-project";
-        };
-        promptStub
-          .withArgs({}, projectManager.PROJECTS_CREATE_QUESTIONS)
-          .onFirstCall()
-          .callsFake(fakePromptFn);
-        createFirebaseProjectStub.resolves(TEST_FIREBASE_PROJECT);
-
-        await doSetup(setup, {}, options);
-
-        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
-        expect(_.get(setup, "instance")).to.deep.equal("my-project");
-        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
-        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
-        expect(promptOnceStub.callCount).to.equal(4);
-        expect(promptStub).to.be.calledOnce;
-        expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
-          displayName: "my-project",
-          parentResource: {
-            id: "12345",
-            type: projectManager.ProjectParentResourceType.FOLDER,
-          },
         });
       });
 

@@ -8,8 +8,6 @@ import {
   FirebaseProjectMetadata,
   getFirebaseProject,
   getProjectPage,
-  ProjectParentResource,
-  ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../../management/projects";
 import * as logger from "../../logger";
@@ -102,51 +100,21 @@ async function selectProjectFromList(
   return toProjectInfo(project);
 }
 
-async function promptParentResource(): Promise<ProjectParentResource | undefined> {
-  const confirm = await promptOnce({
-    type: "confirm",
-    message: "Do you want to create your project under a Google Cloud Platform parent resource?",
-  });
-
-  if (!confirm) {
-    return undefined;
-  }
-
-  const type: ProjectParentResourceType = await promptOnce({
-    type: "list",
-    name: "type",
-    message: "Please select the parent resource type:",
-    choices: [
-      { name: ProjectParentResourceType.FOLDER, value: ProjectParentResourceType.FOLDER },
-      {
-        name: ProjectParentResourceType.ORGANIZATION,
-        value: ProjectParentResourceType.ORGANIZATION,
-      },
-    ],
-  });
-  const id: string = await promptOnce({
-    type: "input",
-    name: "parentResourceString",
-    message: `Please input ${type} ID:`,
-  });
-
-  return { id, type };
-}
-
 async function promptAndCreateNewProject(): Promise<ProjectInfo> {
+  utils.logBullet(
+    "If you want to create a project in a Google Cloud organization or folder, please use " +
+      `"firebase projects:create" instead, and return to this command when you've created the project.`
+  );
+
   const promptAnswer: { projectId?: string; displayName?: string } = {};
   await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
-
   if (!promptAnswer.projectId) {
     throw new FirebaseError("Project ID cannot be empty");
   }
 
-  const parentResource = await promptParentResource();
-
   return toProjectInfo(
     await createFirebaseProjectAndLog(promptAnswer.projectId, {
       displayName: promptAnswer.displayName,
-      parentResource,
     })
   );
 }
