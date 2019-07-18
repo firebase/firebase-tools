@@ -12,7 +12,7 @@ const DEFAULT_CHILDREN: NonNullable<FirebaseErrorOptions["children"]> = [];
 const DEFAULT_EXIT: NonNullable<FirebaseErrorOptions["exit"]> = 1;
 const DEFAULT_STATUS: NonNullable<FirebaseErrorOptions["status"]> = 500;
 
-export class FirebaseError extends Error implements FirebaseErrorOptions {
+export class FirebaseError extends Error {
   readonly children: unknown[];
   readonly context: unknown | undefined;
   readonly exit: number;
