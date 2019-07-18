@@ -15,15 +15,11 @@ import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 
 async function selectAppInteractively(
-  options: any,
+  projectId: string,
   appPlatform: AppPlatform
 ): Promise<AppMetadata> {
-  let projectId = options.project;
   if (!projectId) {
-    projectId = await promptOnce({
-      type: "input",
-      message: "Please input the project ID you would like to use:",
-    });
+    throw new FirebaseError("Project ID must not be empty.");
   }
 
   const apps: AppMetadata[] = await listFirebaseApps(projectId, appPlatform);
@@ -69,7 +65,16 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         if (options.nonInteractive) {
           throw new FirebaseError("App ID must not be empty.");
         }
-        const appMetadata: AppMetadata = await selectAppInteractively(options, appPlatform);
+
+        if (!options.project) {
+          // TODO(caot): select project from a list
+          options.project = await promptOnce({
+            type: "input",
+            message: "Please input the project ID you would like to use:",
+          });
+        }
+
+        const appMetadata: AppMetadata = await selectAppInteractively(options.project, appPlatform);
         appId = appMetadata.appId;
         appPlatform = appMetadata.platform;
       }

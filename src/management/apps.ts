@@ -275,7 +275,6 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
       platformResource = "webApps";
       break;
     default:
-      // This should never happen
       throw new FirebaseError("Unexpected app platform");
   }
 
@@ -294,6 +293,5 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
       fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("ascii"),
     };
   }
-  // This should never happen
   throw new FirebaseError("Unexpected app platform");
 }
