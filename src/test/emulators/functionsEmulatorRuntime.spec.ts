@@ -5,11 +5,11 @@ import {
   InvokeRuntimeOpts,
 } from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
-import { request } from "http";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
+import * as request from "request";
 import * as express from "express";
 import * as _ from "lodash";
 
@@ -56,32 +56,28 @@ async function CallHTTPSFunction(
 ): Promise<string> {
   await runtime.ready;
   const dataPromise = new Promise<string>((resolve, reject) => {
-    const req = request(
-      {
-        socketPath: runtime.metadata.socketPath,
-        path: `/${frb.projectId}/us-central1/${frb.triggerId}`,
-        method: "POST",
-        ...options,
-      },
-      (res) => {
-        let data = "";
-        res.on("data", (chunk) => {
-          data += chunk;
-        });
-
-        res.on("end", () => {
-          resolve(data);
-        });
-      }
-    );
-
-    req.on("error", reject);
+    const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
+    const requestOptions: request.CoreOptions = {
+      method: "POST",
+      ...options,
+    };
 
     if (requestData) {
-      req.write(requestData);
+      requestOptions.body = requestData;
     }
 
-    req.end();
+    request(
+      `http://unix:${runtime.metadata.socketPath}:${path}`,
+      requestOptions,
+      (err, res, body) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve(body);
+      }
+    );
   });
 
   const result = await dataPromise;
@@ -210,7 +206,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should provide a stubbed Firestore through ADMIN.firestore()", async () => {
+      it("should provide a stubbed Firestore through admin.firestore()", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
@@ -232,7 +228,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["set-firestore-settings"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should provide a stubbed Firestore through APP.firestore()", async () => {
+      it("should provide a stubbed Firestore through app.firestore()", async () => {
         const runtime = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           const admin = require("firebase-admin");
           const app = admin.initializeApp();

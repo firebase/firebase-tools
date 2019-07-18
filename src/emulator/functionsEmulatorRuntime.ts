@@ -502,13 +502,13 @@ function getDefaultConfig(): any {
 }
 
 /**
- * This stub is the most important and one of the only non - optional stubs.This feature redirects
+ * This stub is the most important and one of the only non-optional stubs.This feature redirects
  * writes from the admin SDK back into emulated resources.
  *
  * To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
  * unauthenticated app.
  *
- * We also mock out.settings() so we can merge the emulator settings with the developer's.
+ * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   if (!isFeatureEnabled(frb, "admin_stubs")) {
@@ -528,7 +528,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Configuration from the environment
   const defaultConfig = getDefaultConfig();
 
-  // Configuration for taking to the RTDB emulator
+  // Configuration for talking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
   databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
   databaseConfig.credential = makeFakeCredentials();
@@ -629,7 +629,7 @@ async function makeProxiedFirestore(
 ): Promise<typeof admin.firestore> {
   // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
   // then there's probably something really wrong (like a failed node-gyp build). If that's the case
-  // we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
+  // we should swallow the error here and allow the error to raise in user-code so they can debug appropriately.
   const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
