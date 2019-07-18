@@ -3,12 +3,12 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 
 import { doSetup, getProjectInfo, ProjectInfo } from "../../../init/features/project";
-import * as firebaseApi from "../../../firebaseApi";
+import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
 
-const TEST_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
+const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "my-project-123",
-  projectNumber: 123456789,
+  projectNumber: "123456789",
   displayName: "my-project",
   name: "projects/my-project",
   resources: {
@@ -19,9 +19,9 @@ const TEST_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
   },
 };
 
-const ANOTHER_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
+const ANOTHER_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "another-project",
-  projectNumber: 987654321,
+  projectNumber: "987654321",
   displayName: "another-project",
   name: "projects/another-project",
   resources: {},
@@ -41,8 +41,8 @@ describe("project", () => {
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
-    listProjectsStub = sandbox.stub(firebaseApi, "listProjects");
-    getProjectStub = sandbox.stub(firebaseApi, "getProject");
+    listProjectsStub = sandbox.stub(projectManager, "listFirebaseProjects");
+    getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
     promptStub = sandbox.stub(prompt, "promptOnce");
   });
 
