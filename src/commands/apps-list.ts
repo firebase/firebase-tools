@@ -50,7 +50,7 @@ module.exports = new Command("apps:list [platform]")
 
       let apps;
       const spinner = ora(
-        "Preparing the list of your Firebase" +
+        "Preparing the list of your Firebase " +
           `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
       ).start();
       try {
