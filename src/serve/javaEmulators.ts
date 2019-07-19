@@ -120,7 +120,10 @@ async function _runBinary(
       return;
     }
 
-    utils.logLabeledBullet(emulator.name, `Logging to ${clc.bold(_getLogFileName(emulator.name))}`);
+    utils.logLabeledBullet(
+      emulator.name,
+      `Emulator logging to ${clc.bold(_getLogFileName(emulator.name))}`
+    );
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
