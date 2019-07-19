@@ -1,7 +1,11 @@
 import * as api from "../api";
+import * as clc from "cli-color";
+import * as ora from "ora";
+
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
+import { Question } from "inquirer";
 
 const TIMEOUT_MILLIS = 30000;
 const PROJECT_LIST_PAGE_SIZE = 1000;
@@ -34,6 +38,56 @@ export enum ProjectParentResourceType {
 export interface ProjectParentResource {
   id: string;
   type: ProjectParentResourceType;
+}
+
+export const PROJECTS_CREATE_QUESTIONS: Question[] = [
+  {
+    type: "input",
+    name: "projectId",
+    default: "",
+    message:
+      "Please specify a unique project id " +
+      `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
+  },
+  {
+    type: "input",
+    name: "displayName",
+    default: "",
+    message: "What would you like to call your project? (defaults to your project ID)",
+  },
+];
+
+export async function createFirebaseProjectAndLog(
+  projectId: string,
+  options: { displayName?: string; parentResource?: ProjectParentResource }
+): Promise<FirebaseProjectMetadata> {
+  let spinner = ora("Creating Google Cloud Platform project").start();
+  try {
+    await createCloudProject(projectId, options);
+    spinner.succeed();
+
+    spinner = ora("Adding Firebase to Google Cloud project").start();
+    const projectInfo = await addFirebaseToCloudProject(projectId);
+    spinner.succeed();
+
+    logger.info("");
+    if (process.platform === "win32") {
+      logger.info("=== Your Firebase project is ready! ===");
+    } else {
+      logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
+    }
+    logger.info("");
+    logger.info("Project information:");
+    logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
+    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+    logger.info("");
+    logger.info("Firebase console is available at");
+    logger.info(`https://console.firebase.google.com/project/${clc.bold(projectId)}/overview`);
+    return projectInfo;
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
 }
 
 /**

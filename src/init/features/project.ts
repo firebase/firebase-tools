@@ -4,12 +4,14 @@ import * as _ from "lodash";
 import * as Config from "../../config";
 import * as FirebaseError from "../../error";
 import {
+  createFirebaseProjectAndLog,
   FirebaseProjectMetadata,
   getFirebaseProject,
   getProjectPage,
+  PROJECTS_CREATE_QUESTIONS,
 } from "../../management/projects";
 import * as logger from "../../logger";
-import { promptOnce } from "../../prompt";
+import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 
 const MAXIMUM_PROMPT_LIST = 100;
@@ -101,6 +103,25 @@ async function selectProjectFromList(
   return toProjectInfo(project);
 }
 
+async function promptAndCreateNewProject(): Promise<ProjectInfo> {
+  utils.logBullet(
+    "If you want to create a project in a Google Cloud organization or folder, please use " +
+      `"firebase projects:create" instead, and return to this command when you've created the project.`
+  );
+
+  const promptAnswer: { projectId?: string; displayName?: string } = {};
+  await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
+  if (!promptAnswer.projectId) {
+    throw new FirebaseError("Project ID cannot be empty");
+  }
+
+  return toProjectInfo(
+    await createFirebaseProjectAndLog(promptAnswer.projectId, {
+      displayName: promptAnswer.displayName,
+    })
+  );
+}
+
 function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
   const { projectId, displayName, resources } = projectMetaData;
   return {
@@ -134,7 +155,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
-    setup.projectId = projectFromRcFile;
+    setup.projectId = rcProject.projectId;
     setup.projectLocation = _.get(rcProject, "resources.locationId");
     return;
   }
@@ -151,18 +172,21 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     choices,
   });
 
+  let projectInfo;
   if (projectSetupOption === OPTION_USE_PROJECT) {
-    const projectInfo = await getProjectInfo(options);
-    utils.logBullet(`Using project ${projectInfo.label}`);
-
-    // write "default" alias and activate it immediately
-    _.set(setup.rcfile, "projects.default", projectInfo.id);
-    setup.projectId = projectInfo.id;
-    setup.instance = projectInfo.instance;
-    setup.projectLocation = projectInfo.location;
-    utils.makeActiveProject(config.projectDir, projectInfo.id);
+    projectInfo = await getProjectInfo(options);
   } else if (projectSetupOption === OPTION_NEW_PROJECT) {
-    // TODO(caot): Implement create a new project
-    setup.createProject = true;
+    projectInfo = await promptAndCreateNewProject();
+  } else {
+    // Do nothing if use choose NO_PROJECT
+    return;
   }
+
+  utils.logBullet(`Using project ${projectInfo.label}`);
+  // write "default" alias and activate it immediately
+  _.set(setup.rcfile, "projects.default", projectInfo.id);
+  setup.projectId = projectInfo.id;
+  setup.instance = projectInfo.instance;
+  setup.projectLocation = projectInfo.location;
+  utils.makeActiveProject(config.projectDir, projectInfo.id);
 }
