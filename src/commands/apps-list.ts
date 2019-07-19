@@ -12,17 +12,17 @@ import * as logger from "../logger";
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
 function logAppsList(apps: AppMetadata[]): void {
-  if (apps.length > 0) {
-    const tableHead = ["App Display Name", "App ID", "Platform"];
-    const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    apps.forEach(({ appId, displayName, platform }) => {
-      table.push([displayName || NOT_SPECIFIED, appId, platform]);
-    });
-
-    logger.info(table.toString());
-  } else {
+  if (apps.length === 0) {
     logger.info(clc.bold("No apps found."));
+    return;
   }
+  const tableHead = ["App Display Name", "App ID", "Platform"];
+  const table = new Table({ head: tableHead, style: { head: ["green"] } });
+  apps.forEach(({ appId, displayName, platform }) => {
+    table.push([displayName || NOT_SPECIFIED, appId, platform]);
+  });
+
+  logger.info(table.toString());
 }
 
 function logAppCounts(counts: number = 0): void {
