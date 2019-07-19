@@ -31,6 +31,14 @@ function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: 
   logger.info(table.toString());
 }
 
+function logProjectCounts(counts: number = 0): void {
+  if (counts === 0) {
+    return;
+  }
+  logger.info("");
+  logger.info(`${counts} project(s) total.`);
+}
+
 module.exports = new Command("projects:list")
   .description("list all Firebase projects you have access to")
   .before(requireAuth)
@@ -48,6 +56,7 @@ module.exports = new Command("projects:list")
 
       spinner.succeed();
       logProjectsList(projects, options.project);
+      logProjectCounts(projects.length);
       return projects;
     }
   );
