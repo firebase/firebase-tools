@@ -198,10 +198,23 @@ export class EmulatorLog {
     }
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
-    process.stdout.write(nextMsg, () => {
-      EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;
-      this.flush();
-    });
+    if (process.send) {
+      // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
+      // but the node docs assert that it has an optional callback.
+      // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
+      (process.send as any)(nextMsg, undefined, {}, (err: any) => {
+        if (err) {
+          process.stderr.write(err);
+        }
+
+        EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;
+        this.flush();
+      });
+    } else {
+      process.stderr.write(
+        "subprocess.send() is undefined, cannot communicate with Functions Runtime."
+      );
+    }
   }
 
   private chunkString(msg: string): string[] {

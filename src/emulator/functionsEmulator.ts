@@ -585,7 +585,6 @@ You can probably fix this by running "npm install ${
       "functions",
       `Setting up Realtime Database trigger "${definition.name}"`
     );
-    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
       let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
       if (projectId !== "") {
@@ -800,6 +799,11 @@ export function InvokeRuntime(
     stderr: { pipe: runtime.stderr, value: "" },
     stdout: { pipe: runtime.stdout, value: "" },
   };
+
+  const ipcBuffer = { value: "" };
+  runtime.on("message", (message: any) => {
+    onData(runtime, emitter, ipcBuffer, message);
+  });
 
   for (const id in buffers) {
     if (buffers.hasOwnProperty(id)) {
