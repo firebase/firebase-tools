@@ -25,6 +25,14 @@ function logAppsList(apps: AppMetadata[]): void {
   }
 }
 
+function logAppCounts(counts: number = 0): void {
+  if (counts === 0) {
+    return;
+  }
+  logger.info("");
+  logger.info(`${counts} app(s) total.`);
+}
+
 module.exports = new Command("apps:list [platform]")
   .description(
     "list the registered apps of a Firebase project. " +
@@ -54,6 +62,7 @@ module.exports = new Command("apps:list [platform]")
 
       spinner.succeed();
       logAppsList(apps);
+      logAppCounts(apps.length);
       return apps;
     }
   );
