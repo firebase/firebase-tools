@@ -841,18 +841,7 @@ function onData(
   buf: Buffer
 ): void {
   let bufString = buf.toString();
-
-  // Remove all chunk markings from the message
-  const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
-  while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
-    bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
-  }
   buffer.value += bufString;
-
-  // If the message ended with a chunk divider, we just wait for more to come.
-  if (endedWithChunk) {
-    return;
-  }
 
   const lines = buffer.value.split("\n");
 

@@ -76,10 +76,6 @@ export interface Address {
 }
 
 export class EmulatorLog {
-  // Messages over 8192 bytes cause issues
-  static CHUNK_DIVIDER = "__CHUNK__";
-  static CHUNK_SIZE = 8000;
-
   get date(): Date {
     if (!this.timestamp) {
       return new Date(0);
@@ -153,37 +149,13 @@ export class EmulatorLog {
   }
 
   /**
-   * As discovered in #1486, some very large log messages (>8192B) were not being properly passed
-   * between the emulator runtime and the emulator itself. We were falsely making the assumption
-   * that we could pass messages of any length over stdout and the stream reader would always get
-   * a whole message in a single "data" callback.
-   *
-   * Now we chunk the messages into 8000B pieces and then add a signal (CHUNK_DIVIDER) to the
-   * end of partial messages that instructs the receiver to wait for the whole message to
-   * appear.
-   *
    * We use a global boolean to know if all of our messages have been flushed, and the functions
    * emulator can wait on this variable to flip before exiting. This ensures that we never
-   * miss a log message that has been queued but has not yet flushed from stdout.
-   *
-   * Note: it would be better to use ipc via process.send() since that is faster and has
-   * extremely large message limits but in some experiments the IPC channel seemed to get
-   * full and not flush, so stdout remains.
+   * miss a log message that has been queued but has not yet flushed.
    */
   log(): void {
     const msg = `${this.toString()}\n`;
-    const chunks = this.chunkString(msg);
-
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const isLast = i === chunks.length - 1;
-      if (isLast) {
-        this.bufferMessage(chunk);
-      } else {
-        this.bufferMessage(chunk + EmulatorLog.CHUNK_DIVIDER);
-      }
-    }
-
+    this.bufferMessage(msg);
     this.flush();
   }
 
@@ -215,19 +187,6 @@ export class EmulatorLog {
         "subprocess.send() is undefined, cannot communicate with Functions Runtime."
       );
     }
-  }
-
-  private chunkString(msg: string): string[] {
-    const chunks: string[] = [];
-    const numChunks = Math.ceil(msg.length / EmulatorLog.CHUNK_SIZE);
-
-    for (let i = 0; i < numChunks; i++) {
-      const start = i * EmulatorLog.CHUNK_SIZE;
-      const length = EmulatorLog.CHUNK_SIZE;
-      chunks.push(msg.substr(start, length));
-    }
-
-    return chunks;
   }
 
   private toStringCore(pretty = false): string {
