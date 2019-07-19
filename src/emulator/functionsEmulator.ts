@@ -585,6 +585,7 @@ You can probably fix this by running "npm install ${
       "functions",
       `Setting up Realtime Database trigger "${definition.name}"`
     );
+    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise((resolve, reject) => {
       let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
       if (projectId !== "") {
