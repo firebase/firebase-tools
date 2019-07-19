@@ -1,2 +1,3 @@
 * Allow the RTDB emulator to hot-reload rules file on changes.
 * Allows emulated Cloud Functions to talk to production RTDB/Firestore if the emulators are not running.
+* Fixes an issue where internal logs would sometimes appear in stdout.

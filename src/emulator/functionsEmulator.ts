@@ -840,8 +840,7 @@ function onData(
   buffer: { value: string },
   buf: Buffer
 ): void {
-  let bufString = buf.toString();
-  buffer.value += bufString;
+  buffer.value += buf.toString();
 
   const lines = buffer.value.split("\n");
 
