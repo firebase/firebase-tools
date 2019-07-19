@@ -1,25 +1,33 @@
 import * as api from "../api";
+import * as clc from "cli-color";
+import * as ora from "ora";
+
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
+import { Question } from "inquirer";
 
 const TIMEOUT_MILLIS = 30000;
 const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
+export interface FirebaseProjectPage {
+  projects: FirebaseProjectMetadata[];
+  nextPageToken?: string;
+}
 export interface FirebaseProjectMetadata {
   name: string /* The fully qualified resource name of the Firebase project */;
   projectId: string;
   projectNumber: string;
   displayName: string;
-  resources: DefaultProjectResources;
+  resources?: DefaultProjectResources;
 }
 
 export interface DefaultProjectResources {
-  hostingSite: string;
-  realtimeDatabaseInstance: string;
-  storageBucket: string;
-  locationId: string;
+  hostingSite?: string;
+  realtimeDatabaseInstance?: string;
+  storageBucket?: string;
+  locationId?: string;
 }
 
 export enum ProjectParentResourceType {
@@ -30,6 +38,56 @@ export enum ProjectParentResourceType {
 export interface ProjectParentResource {
   id: string;
   type: ProjectParentResourceType;
+}
+
+export const PROJECTS_CREATE_QUESTIONS: Question[] = [
+  {
+    type: "input",
+    name: "projectId",
+    default: "",
+    message:
+      "Please specify a unique project id " +
+      `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
+  },
+  {
+    type: "input",
+    name: "displayName",
+    default: "",
+    message: "What would you like to call your project? (defaults to your project ID)",
+  },
+];
+
+export async function createFirebaseProjectAndLog(
+  projectId: string,
+  options: { displayName?: string; parentResource?: ProjectParentResource }
+): Promise<FirebaseProjectMetadata> {
+  let spinner = ora("Creating Google Cloud Platform project").start();
+  try {
+    await createCloudProject(projectId, options);
+    spinner.succeed();
+
+    spinner = ora("Adding Firebase to Google Cloud project").start();
+    const projectInfo = await addFirebaseToCloudProject(projectId);
+    spinner.succeed();
+
+    logger.info("");
+    if (process.platform === "win32") {
+      logger.info("=== Your Firebase project is ready! ===");
+    } else {
+      logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
+    }
+    logger.info("");
+    logger.info("Project information:");
+    logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
+    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
+    logger.info("");
+    logger.info("Firebase console is available at");
+    logger.info(`https://console.firebase.google.com/project/${clc.bold(projectId)}/overview`);
+    return projectInfo;
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
 }
 
 /**
@@ -94,38 +152,78 @@ export async function addFirebaseToCloudProject(projectId: string): Promise<any>
 }
 
 /**
- * Lists all Firebase projects associated with the currently logged-in account. Repeatedly calls the
- * paginated API until all pages have been read.
- * @return a promise that resolves to the list of all projects.
+ * Lists Firebase projects in a page using the paginated API, identified by the page token and its
+ * size.
  */
-export async function listFirebaseProjects(
-  pageSize: number = PROJECT_LIST_PAGE_SIZE
-): Promise<FirebaseProjectMetadata[]> {
-  const projects: FirebaseProjectMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      const response = await api.request(
-        "GET",
-        `/v1beta1/projects?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: TIMEOUT_MILLIS,
-        }
-      );
-      if (response.body.results) {
-        projects.push(...response.body.results);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
+export async function getProjectPage(
+  pageSize: number = PROJECT_LIST_PAGE_SIZE,
+  pageToken?: string
+): Promise<FirebaseProjectPage> {
+  let apiResponse;
 
-    return projects;
+  try {
+    const pageTokenQueryString = pageToken ? `&pageToken=${pageToken}` : "";
+    apiResponse = await api.request(
+      "GET",
+      `/v1beta1/projects?pageSize=${pageSize}${pageTokenQueryString}`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: TIMEOUT_MILLIS,
+      }
+    );
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
       "Failed to list Firebase projects. See firebase-debug.log for more info.",
+      { exit: 2, original: err }
+    );
+  }
+
+  const projectPage: FirebaseProjectPage = { projects: [] };
+  if (apiResponse.body.results) {
+    projectPage.projects.push(...apiResponse.body.results);
+  }
+  if (apiResponse.body.nextPageToken) {
+    projectPage.nextPageToken = apiResponse.body.nextPageToken;
+  }
+  return projectPage;
+}
+
+/**
+ * Lists all Firebase projects associated with the currently logged-in account. Repeatedly calls the
+ * paginated API until all pages have been read.
+ * @return a promise that resolves to the list of all projects.
+ */
+export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseProjectMetadata[]> {
+  const projects: FirebaseProjectMetadata[] = [];
+  let nextPageToken;
+
+  do {
+    const projectPage: FirebaseProjectPage = await getProjectPage(pageSize, nextPageToken);
+    projects.push(...projectPage.projects);
+    nextPageToken = projectPage.nextPageToken;
+  } while (nextPageToken);
+
+  return projects;
+}
+
+/**
+ * Gets the Firebase project information identified by the specified project ID
+ */
+export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
+  try {
+    const response = await api.request("GET", `/v1beta1/projects/${projectId}`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
+    return response.body;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get Firebase project ${projectId}` +
+        ". Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
   }
