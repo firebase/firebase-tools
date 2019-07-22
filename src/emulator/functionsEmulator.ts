@@ -696,10 +696,10 @@ You can probably fix this by running "npm install ${
       triggerId: "",
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE)
+        database: EmulatorRegistry.getPort(Emulators.DATABASE),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
-    }
+    };
   }
 
   /**

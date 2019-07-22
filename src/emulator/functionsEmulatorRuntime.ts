@@ -53,24 +53,6 @@ async function requireResolveAsync(
   return require.resolve(moduleName, opts);
 }
 
-/**
- * See admin.credential.Credential.
- */
-function makeFakeCredentials(): any {
-  return {
-    getAccessToken: () => {
-      return Promise.resolve({
-        expires_in: 1000000,
-        access_token: "owner",
-      });
-    },
-
-    getCertificate: () => {
-      return {};
-    },
-  };
-}
-
 interface PackageJSON {
   dependencies: { [name: string]: any };
   devDependencies: { [name: string]: any };
@@ -526,7 +508,6 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Configuration for talking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
   databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-  databaseConfig.credential = makeFakeCredentials();
 
   const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
   const proxiedAdminModule = adminModuleProxy
