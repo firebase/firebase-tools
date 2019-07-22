@@ -2,3 +2,4 @@
 * Allows emulated Cloud Functions to talk to production RTDB/Firestore if the emulators are not running.
 * Fixes an issue where internal logs would sometimes appear in stdout.
 * Improves RTDB emulator support for JWT algorithms and arbitrary Google Cloud auth tokens.
+* Fixes an issue with false noisy logging about emulators not running.
