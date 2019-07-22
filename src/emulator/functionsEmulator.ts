@@ -410,7 +410,6 @@ You can probably fix this by running "npm install ${
   }
 
   readonly projectId: string = "";
-  readonly bundleTemplate: FunctionsRuntimeBundle;
   nodeBinary: string = "";
 
   private server?: http.Server;
@@ -427,14 +426,6 @@ You can probably fix this by running "npm install ${
       this.options.config.get("functions.source")
     );
 
-    this.bundleTemplate = {
-      cwd: this.functionsDir,
-      projectId: this.projectId,
-      triggerId: "",
-      ports: {},
-      disabled_features: this.args.disabledRuntimeFeatures,
-    };
-
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
@@ -446,7 +437,7 @@ You can probably fix this by running "npm install ${
     this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
 
     const { host, port } = this.getInfo();
-    this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
+    this.server = FunctionsEmulator.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(
       port,
       host
     );
@@ -479,7 +470,7 @@ You can probably fix this by running "npm install ${
 
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
-      const runtime = InvokeRuntime(this.nodeBinary, this.bundleTemplate);
+      const runtime = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
 
       runtime.events.on("log", (el: EmulatorLog) => {
         FunctionsEmulator.handleRuntimeLog(el);
@@ -696,6 +687,19 @@ You can probably fix this by running "npm install ${
 
   getTriggers(): EmulatedTriggerDefinition[] {
     return this.triggers;
+  }
+
+  getBaseBundle(): FunctionsRuntimeBundle {
+    return {
+      cwd: this.functionsDir,
+      projectId: this.projectId,
+      triggerId: "",
+      ports: {
+        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getPort(Emulators.DATABASE)
+      },
+      disabled_features: this.args.disabledRuntimeFeatures,
+    }
   }
 
   /**
