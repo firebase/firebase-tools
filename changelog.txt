@@ -1,4 +1,4 @@
 * Allow the RTDB emulator to hot-reload rules file on changes.
 * Allows emulated Cloud Functions to talk to production RTDB/Firestore if the emulators are not running.
 * Fixes an issue where internal logs would sometimes appear in stdout.
-* Database emulator should accept all jwt algorithms and arbitrary gauth tokens
+* Improves emulator support for JWT algorithms and arbitrary gauth tokens.
