@@ -175,7 +175,7 @@ describe("database and firestore emulator function triggers", function () {
   var test;
 
   before(function (done) {
-    expect(FIREBASE_PROJECT).to.not.be.an('undefined', 'Must set FIREBASE_PROJECT ($FBTOOLS_TARGET_PROJECT)');
+    expect(FIREBASE_PROJECT).to.not.be.an('undefined');
     expect(FIREBASE_PROJECT).to.not.be.null;
     this.timeout(TEST_SETUP_TIMEOUT);
     async.series([
@@ -214,6 +214,9 @@ describe("database and firestore emulator function triggers", function () {
                   access_token: "owner",
                 });
               },
+              getCertificate: () => {
+                return {};
+              }
             }
           });
 
