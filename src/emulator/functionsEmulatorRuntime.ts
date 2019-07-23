@@ -53,8 +53,8 @@ async function requireResolveAsync(
   return require.resolve(moduleName, opts);
 }
 
-/**	
- * See admin.credential.Credential.	
+/**
+ * See admin.credential.Credential.
  */
 function makeFakeCredentials(): any {
   return {
@@ -69,7 +69,7 @@ function makeFakeCredentials(): any {
       return {};
     },
   };
-}	
+}
 
 interface PackageJSON {
   dependencies: { [name: string]: any };
