@@ -25,12 +25,12 @@ function logAppsList(apps: AppMetadata[]): void {
   logger.info(table.toString());
 }
 
-function logAppCounts(counts: number = 0): void {
-  if (counts === 0) {
+function logAppCount(count: number = 0): void {
+  if (count === 0) {
     return;
   }
   logger.info("");
-  logger.info(`${counts} app(s) total.`);
+  logger.info(`${count} app(s) total.`);
 }
 
 module.exports = new Command("apps:list [platform]")
@@ -62,7 +62,7 @@ module.exports = new Command("apps:list [platform]")
 
       spinner.succeed();
       logAppsList(apps);
-      logAppCounts(apps.length);
+      logAppCount(apps.length);
       return apps;
     }
   );
