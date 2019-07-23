@@ -28,10 +28,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.0.0.jar",
-    expectedSize: 17097803,
-    expectedChecksum: "102c8de422db81933a0f29fede5a80a0",
-    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.0.0.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.1.0.jar",
+    expectedSize: 17122506,
+    expectedChecksum: "4b6c494eb2711cee32c6af6cb7ecda07",
+    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.1.0.jar"),
     namePrefix: "firebase-database-emulator",
   },
   firestore: {
@@ -120,7 +120,10 @@ async function _runBinary(
       return;
     }
 
-    utils.logLabeledBullet(emulator.name, `Logging to ${clc.bold(_getLogFileName(emulator.name))}`);
+    utils.logLabeledBullet(
+      emulator.name,
+      `Emulator logging to ${clc.bold(_getLogFileName(emulator.name))}`
+    );
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
