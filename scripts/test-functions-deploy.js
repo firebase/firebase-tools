@@ -32,7 +32,7 @@ var sinon = require("sinon");
 var functionsSource = __dirname + "/assets/functions_to_test.js";
 var projectDir = __dirname + "/test-project";
 var projectId = process.argv[2] || "functions-integration-test";
-var region = process.argv[3] ||"us-central1";
+var region = process.argv[3] || "us-central1";
 var httpsTrigger = `https://${region}-${projectId}.cloudfunctions.net/httpsAction`;
 var localFirebase = __dirname + "/../lib/bin/firebase.js";
 var TIMEOUT = 40000;
@@ -73,7 +73,7 @@ var preTest = function() {
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
 
-  return functionsConfig.getFirebaseConfig({project: projectId}).then(function(config){
+  return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
     app = firebase.initializeApp(config);
     try {
       execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
@@ -150,18 +150,23 @@ var testDelete = function() {
 
 var testDeleteWithFilter = function() {
   return new Promise(function(resolve) {
-    exec(`${localFirebase} functions:delete nested -f --project=${projectId}`, { cwd: tmpDir }, function(err, stdout) {
-      console.log(stdout);
-      expect(err).to.be.null;
-      resolve(checkFunctionsListMatch(["httpsAction"]));
-    });
+    exec(
+      `${localFirebase} functions:delete nested -f --project=${projectId}`,
+      { cwd: tmpDir },
+      function(err, stdout) {
+        console.log(stdout);
+        expect(err).to.be.null;
+        resolve(checkFunctionsListMatch(["httpsAction"]));
+      }
+    );
   });
 };
 
 var testUnknownFilter = function() {
   return new Promise(function(resolve) {
     exec(
-      "> functions/index.js &&" + `${localFirebase} deploy --only functions:unknownFilter --project=${projectId}`,
+      "> functions/index.js &&" +
+        `${localFirebase} deploy --only functions:unknownFilter --project=${projectId}`,
       { cwd: tmpDir },
       function(err, stdout) {
         console.log(stdout);
@@ -253,7 +258,6 @@ var triggerSchedule = function(job) {
     });
 };
 
-
 var saveToStorage = function() {
   var uuid = getUuid();
   var contentLength = Buffer.byteLength(uuid, "utf8");
@@ -290,7 +294,9 @@ var testFunctionsTrigger = function() {
   var checkGcsAction = saveToStorage().then(function(uuid) {
     return waitForAck(uuid, "storage triggered function");
   });
-  var checkScheduleAction = triggerSchedule("firebase-schedule-pubsubScheduleAction-us-central1").then(function(uuid) {
+  var checkScheduleAction = triggerSchedule(
+    "firebase-schedule-pubsubScheduleAction-us-central1"
+  ).then(function(/* uuid */) {
     return true;
   });
   return Promise.all([
@@ -305,10 +311,11 @@ var testFunctionsTrigger = function() {
 
 var main = function() {
   preTest()
-    .then(function(){
+    .then(function() {
       console.log("Done pretest prep.");
       return testCreateUpdate();
-    }).then(function() {
+    })
+    .then(function() {
       console.log(clc.green("\u2713 Test passed: creating functions"));
       return testCreateUpdate();
     })
