@@ -1,46 +1,12 @@
-import * as clc from "cli-color";
-import * as ora from "ora";
-
 import * as Command from "../command";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import {
-  addFirebaseToCloudProject,
-  createCloudProject,
-  ProjectParentResource,
+  createFirebaseProjectAndLog,
   ProjectParentResourceType,
+  PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
 import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
-import * as logger from "../logger";
-
-async function createFirebaseProject(
-  projectId: string,
-  options: { displayName?: string; parentResource?: ProjectParentResource }
-): Promise<any> {
-  let spinner = ora("Creating Google Cloud Platform project").start();
-  try {
-    await createCloudProject(projectId, options);
-    spinner.succeed();
-
-    spinner = ora("Adding Firebase to Google Cloud project").start();
-    const projectInfo = await addFirebaseToCloudProject(projectId);
-    spinner.succeed();
-
-    logger.info("");
-    logger.info("🎉🎉🎉 Your Firebase project is ready! 🎉🎉🎉");
-    logger.info("");
-    logger.info("Project information:");
-    logger.info(`   - Project ID: ${clc.bold(projectInfo.projectId)}`);
-    logger.info(`   - Project Name: ${clc.bold(projectInfo.displayName)}`);
-    logger.info("");
-    logger.info("Firebase console is available at");
-    logger.info(`https://console.firebase.google.com/project/${clc.bold(projectId)}/overview`);
-    return projectInfo;
-  } catch (err) {
-    spinner.fail();
-    throw err;
-  }
-}
 
 module.exports = new Command("projects:create [projectId]")
   .description("create a new firebase project")
@@ -64,22 +30,7 @@ module.exports = new Command("projects:create [projectId]")
         );
       }
       if (!options.nonInteractive) {
-        await prompt(options, [
-          {
-            type: "input",
-            name: "projectId",
-            default: "",
-            message:
-              "Please specify a unique project id " +
-              `(${clc.yellow("warning")}: cannot be modified afterward) [6-30 characters]:\n`,
-          },
-          {
-            type: "input",
-            name: "displayName",
-            default: "",
-            message: "What would you like to call your project? (defaults to your project ID)",
-          },
-        ]);
+        await prompt(options, PROJECTS_CREATE_QUESTIONS);
       }
       if (!options.projectId) {
         throw new FirebaseError("Project ID cannot be empty");
@@ -92,7 +43,7 @@ module.exports = new Command("projects:create [projectId]")
         parentResource = { type: ProjectParentResourceType.FOLDER, id: options.folder };
       }
 
-      return createFirebaseProject(options.projectId, {
+      return createFirebaseProjectAndLog(options.projectId, {
         displayName: options.displayName,
         parentResource,
       });
