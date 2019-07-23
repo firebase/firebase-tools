@@ -176,8 +176,9 @@ describe("database and firestore emulator function triggers", function () {
   var test;
 
   before(function (done) {
+    this.timeout(TEST_SETUP_TIMEOUT);
     expect(FIREBASE_PROJECT).to.not.be.an('undefined');
-    expect(FIREBASE_PROJECT).to.not.be.null;;
+    expect(FIREBASE_PROJECT).to.not.be.null;
     async.series([
       function (done) {
         readConfig(function (err, config) {
@@ -258,7 +259,7 @@ describe("database and firestore emulator function triggers", function () {
         done();
       }
     ], done);
-  }).timeout(TEST_SETUP_TIMEOUT);
+  });
 
   it("should write to the database emulator", function (done) {
     test.writeToRtdb(function (err, response) {
