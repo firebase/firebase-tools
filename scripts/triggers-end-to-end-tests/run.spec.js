@@ -31,9 +31,9 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 20000;
-const EMULATORS_STARTUP_DELAY_MS = 7000;
-const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 2000;
+const EMULATORS_STARTUP_DELAY_MS = 10000;
+const EMULATORS_WRITE_DELAY_MS = 10000;
+const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 
 /*
  * Realtime Database and Firestore documents we used to verify
@@ -271,7 +271,7 @@ describe("database and firestore emulator function triggers", function () {
   });
 
   it("should write to the firestore emulator", function (done) {
-    this.timeout(EMULATORS_WRITE_DELAY_MS * 2);
+    this.timeout(EMULATORS_WRITE_DELAY_MS);
 
     test.writeToFirestore(function (err, response) {
       expect(err).to.be.null;
