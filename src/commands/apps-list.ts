@@ -12,17 +12,25 @@ import * as logger from "../logger";
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
 function logAppsList(apps: AppMetadata[]): void {
-  if (apps.length > 0) {
-    const tableHead = ["App Display Name", "App ID", "Platform"];
-    const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    apps.forEach(({ appId, displayName, platform }) => {
-      table.push([displayName || NOT_SPECIFIED, appId, platform]);
-    });
-
-    logger.info(table.toString());
-  } else {
+  if (apps.length === 0) {
     logger.info(clc.bold("No apps found."));
+    return;
   }
+  const tableHead = ["App Display Name", "App ID", "Platform"];
+  const table = new Table({ head: tableHead, style: { head: ["green"] } });
+  apps.forEach(({ appId, displayName, platform }) => {
+    table.push([displayName || NOT_SPECIFIED, appId, platform]);
+  });
+
+  logger.info(table.toString());
+}
+
+function logAppCount(count: number = 0): void {
+  if (count === 0) {
+    return;
+  }
+  logger.info("");
+  logger.info(`${count} app(s) total.`);
 }
 
 module.exports = new Command("apps:list [platform]")
@@ -42,7 +50,7 @@ module.exports = new Command("apps:list [platform]")
 
       let apps;
       const spinner = ora(
-        "Preparing the list of your Firebase" +
+        "Preparing the list of your Firebase " +
           `${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps`
       ).start();
       try {
@@ -54,6 +62,7 @@ module.exports = new Command("apps:list [platform]")
 
       spinner.succeed();
       logAppsList(apps);
+      logAppCount(apps.length);
       return apps;
     }
   );
