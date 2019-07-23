@@ -4,7 +4,7 @@ import fs = require("fs");
 
 import gcp = require("./gcp");
 import logger = require("./logger");
-import FirebaseError = require("./error");
+import { FirebaseError } from "./error";
 import utils = require("./utils");
 
 import { prompt } from "./prompt";

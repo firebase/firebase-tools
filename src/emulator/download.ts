@@ -2,7 +2,7 @@ import * as crypto from "crypto";
 import * as request from "request";
 import * as ProgressBar from "progress";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { Emulators, JavaEmulatorDetails } from "./types";
 import * as javaEmulators from "../serve/javaEmulators";

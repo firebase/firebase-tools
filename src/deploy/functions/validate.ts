@@ -1,4 +1,4 @@
-import * as FirebaseError from "../../error";
+import { FirebaseError } from "../../error";
 import * as _ from "lodash";
 import * as path from "path";
 import * as clc from "cli-color";

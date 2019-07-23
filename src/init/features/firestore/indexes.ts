@@ -1,7 +1,7 @@
 import clc = require("cli-color");
 import fs = require("fs");
 
-import FirebaseError = require("../../../error");
+import { FirebaseError } from "../../../error";
 import iv2 = require("../../../firestore/indexes");
 import fsutils = require("../../../fsutils");
 import { prompt, promptOnce } from "../../../prompt";

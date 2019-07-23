@@ -4,7 +4,7 @@ var _ = require("lodash");
 var querystring = require("querystring");
 var request = require("request");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");

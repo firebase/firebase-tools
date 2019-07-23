@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import { Readable } from "stream";
 
 import * as configstore from "./configstore";
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 import * as logger from "./logger";
 
 const IS_WINDOWS = process.platform === "win32";

@@ -5,7 +5,7 @@ var ProgressBar = require("progress");
 
 var api = require("../api");
 var firestore = require("../gcp/firestore");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 var logger = require("../logger");
 var utils = require("../utils");
 

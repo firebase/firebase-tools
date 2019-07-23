@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as inquirer from "inquirer";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 
 describe("prompt", () => {

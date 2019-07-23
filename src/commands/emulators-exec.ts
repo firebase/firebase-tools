@@ -4,7 +4,7 @@ import * as clc from "cli-color";
 
 import * as Command from "../command";
 import { Emulators } from "../emulator/types";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import * as controller from "../emulator/controller";

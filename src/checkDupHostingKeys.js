@@ -5,7 +5,7 @@ var _ = require("lodash");
 var utils = require("./utils");
 var clc = require("cli-color");
 var Config = require("./config");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
 
 module.exports = function(options) {

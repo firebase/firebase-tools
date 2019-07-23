@@ -8,7 +8,7 @@ var fs = require("fs");
 var path = require("path");
 var tmp = require("tmp");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var functionsConfig = require("./functionsConfig");
 var getProjectId = require("./getProjectId");
 var logger = require("./logger");

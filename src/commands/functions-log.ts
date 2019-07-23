@@ -3,7 +3,7 @@ import * as opn from "open";
 import * as qs from "querystring";
 
 import * as Command from "../command";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";

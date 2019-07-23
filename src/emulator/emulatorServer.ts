@@ -1,7 +1,7 @@
 import { EmulatorInstance } from "./types";
 import { EmulatorRegistry } from "./registry";
 import * as controller from "./controller";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 
 /**
  * Wrapper object to expose an EmulatorInstance for "firebase serve" that

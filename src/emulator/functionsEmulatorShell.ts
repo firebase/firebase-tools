@@ -4,7 +4,7 @@ import { FunctionsEmulator } from "./functionsEmulator";
 import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 
 interface FunctionsShellController {

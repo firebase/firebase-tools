@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import * as FirebaseError from "../../../error";
+import { FirebaseError } from "../../../error";
 import * as firestore from "../../../init/features/firestore";
 import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";

@@ -4,7 +4,7 @@ var JSONSchema = require("jsonschema");
 var jsonschema = new JSONSchema.Validator();
 var request = require("request");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 var NAMED_SCHEMAS = {
   firebase:

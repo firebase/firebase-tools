@@ -1,7 +1,7 @@
 "use strict";
 
 var logError = require("./logError");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 module.exports = function(client, error) {
   if (error.name !== "FirebaseError") {

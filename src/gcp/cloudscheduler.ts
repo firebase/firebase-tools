@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as api from "../api";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1beta1";

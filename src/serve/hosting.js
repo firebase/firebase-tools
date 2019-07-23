@@ -1,7 +1,7 @@
 "use strict";
 
 var clc = require("cli-color");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 
 var superstatic = require("superstatic").server;
 var utils = require("../utils");

@@ -3,7 +3,7 @@ import * as path from "path";
 import * as clc from "cli-color";
 import * as semver from "semver";
 
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 import * as utils from "./utils";
 
 // have to require this because no @types/cjson available
