@@ -180,14 +180,10 @@ export async function getProjectPage(
     );
   }
 
-  const projectPage: FirebaseProjectPage = { projects: [] };
-  if (apiResponse.body.results) {
-    projectPage.projects.push(...apiResponse.body.results);
-  }
-  if (apiResponse.body.nextPageToken) {
-    projectPage.nextPageToken = apiResponse.body.nextPageToken;
-  }
-  return projectPage;
+  return {
+    projects: apiResponse.body.results || [],
+    nextPageToken: apiResponse.body.nextPageToken,
+  };
 }
 
 /**
@@ -222,8 +218,8 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get Firebase project ${projectId}` +
-        ". Please make sure the project exists and your account has permission to access it.",
+      `Failed to get Firebase project ${projectId}. ` +
+        "Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
   }
