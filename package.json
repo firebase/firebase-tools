@@ -66,7 +66,7 @@
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
-    "chokidar": "^2.1.5",
+    "chokidar": "^3.0.2",
     "cjson": "^0.3.1",
     "cli-color": "^1.2.0",
     "cli-table": "^0.3.1",
