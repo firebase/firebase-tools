@@ -1,6 +1,7 @@
 import * as Command from "../command";
 import * as controller from "../emulator/controller";
 import { beforeEmulatorCommand } from "../emulator/commandUtils";
+import * as utils from "../utils";
 
 module.exports = new Command("emulators:start")
   .before(beforeEmulatorCommand)
@@ -19,6 +20,8 @@ module.exports = new Command("emulators:start")
       await controller.cleanShutdown();
       throw e;
     }
+
+    utils.logSuccess("All emulators started, it is now safe to connect.");
 
     // Hang until explicitly killed
     await new Promise((res, rej) => {
