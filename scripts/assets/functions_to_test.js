@@ -36,7 +36,9 @@ exports.gcsAction = functions.storage.object().onChange(function(event) {
     .set(uuid);
 });
 
-exports.pubsubScheduleAction = functions.pubsub.schedule("every 10 minutes").onPublish(function(event) {
-  console.log("Received scheduled event:", event);
-  return true;
-});
+exports.pubsubScheduleAction = functions.pubsub
+  .schedule("every 10 minutes")
+  .onPublish(function(event) {
+    console.log("Received scheduled event:", event);
+    return true;
+  });

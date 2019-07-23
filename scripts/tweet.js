@@ -5,7 +5,7 @@ const Twitter = require("twitter");
 
 function printUsage() {
   console.error(
-`
+    `
 Usage: tweet.js <version>
 
 Credentials must be stored in "twitter.json" in this directory.
