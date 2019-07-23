@@ -3,3 +3,4 @@
 * Fixes an issue where internal logs would sometimes appear in stdout.
 * Improves RTDB emulator support for JWT algorithms and arbitrary Google Cloud auth tokens.
 * Fixes an issue where functions:shell logs could be double escaped.
+* Fixes an issue with false noisy logging about emulators not running.

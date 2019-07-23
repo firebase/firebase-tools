@@ -511,11 +511,6 @@ function getDefaultConfig(): any {
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  if (!isFeatureEnabled(frb, "admin_stubs")) {
-    logDebug("Admin stubs disabled, not stubbing Firebase Admin");
-    return;
-  }
-
   const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
   if (!adminResolution.resolution) {
     throw new Error("Could not resolve 'firebase-admin'");
@@ -973,8 +968,12 @@ async function main(): Promise<void> {
     await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
+  // TODO: Should this feature have a flag as well or is it required?
   await InitializeFirebaseFunctionsStubs(frb);
-  await InitializeFirebaseAdminStubs(frb);
+
+  if (isFeatureEnabled(frb, "admin_stubs")) {
+    await InitializeFirebaseAdminStubs(frb);
+  }
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
