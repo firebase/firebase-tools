@@ -206,17 +206,6 @@ describe("database and firestore emulator function triggers", function() {
           admin.initializeApp({
             projectId: FIREBASE_PROJECT,
             databaseURL: "http://localhost:" + test.rtdb_emulator_port + "?ns=" + FIREBASE_PROJECT,
-            credential: {
-              getAccessToken: () => {
-                return Promise.resolve({
-                  expires_in: 1000000,
-                  access_token: "owner",
-                });
-              },
-              getCertificate: () => {
-                return {};
-              },
-            },
           });
 
           test.database_client = admin.database();
