@@ -32,8 +32,9 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
  */
 const TEST_SETUP_TIMEOUT = 20000;
 const EMULATORS_STARTUP_DELAY_MS = 10000;
-const EMULATORS_WRITE_DELAY_MS = 10000;
+const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
 
 /*
  * Realtime Database and Firestore documents we used to verify
@@ -176,8 +177,7 @@ describe("database and firestore emulator function triggers", function () {
 
   before(function (done) {
     expect(FIREBASE_PROJECT).to.not.be.an('undefined');
-    expect(FIREBASE_PROJECT).to.not.be.null;
-    this.timeout(TEST_SETUP_TIMEOUT);
+    expect(FIREBASE_PROJECT).to.not.be.null;;
     async.series([
       function (done) {
         readConfig(function (err, config) {
@@ -258,21 +258,17 @@ describe("database and firestore emulator function triggers", function () {
         done();
       }
     ], done);
-  });
+  }).timeout(TEST_SETUP_TIMEOUT);
 
   it("should write to the database emulator", function (done) {
-    this.timeout(EMULATORS_WRITE_DELAY_MS);
-
     test.writeToRtdb(function (err, response) {
       expect(err).to.be.null;
       expect(response.statusCode).to.equal(200);
       done(err);
     });
-  });
+  }).timeout(EMULATOR_TEST_TIMEOUT);
 
   it("should write to the firestore emulator", function (done) {
-    this.timeout(EMULATORS_WRITE_DELAY_MS);
-
     test.writeToFirestore(function (err, response) {
       expect(err).to.be.null;
       expect(response.statusCode).to.equal(200);
@@ -286,7 +282,7 @@ describe("database and firestore emulator function triggers", function () {
        */
       setTimeout(done, EMULATORS_WRITE_DELAY_MS);
     });
-  });
+  }).timeout(EMULATOR_TEST_TIMEOUT);
 
   it("should have have triggered cloud functions", function (done) {
     expect(test.rtdb_trigger_count).to.equal(1);
@@ -297,14 +293,13 @@ describe("database and firestore emulator function triggers", function () {
      */
     expect(test.success()).to.equal(true);
     done();
-  });
+  }).timeout(EMULATOR_TEST_TIMEOUT);
 
   after(function (done) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     if (test) {
       test.stopEmulators(done);
       return;
     }
     done();
-  });
+  }).timeout(EMULATORS_SHUTDOWN_DELAY_MS);
 });
