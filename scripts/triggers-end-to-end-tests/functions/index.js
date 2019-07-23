@@ -54,6 +54,7 @@ exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
 exports.firestoreReaction = functions.firestore
   .document(START_DOCUMENT_NAME)
   .onWrite(async (/* change, ctx */) => {
+    console.log("App Options", JSON.stringify(admin.app().options));
     console.log(FIRESTORE_FUNCTION_LOG);
     /*
      * Write back a completion timestamp to the firestore emulator. The test
