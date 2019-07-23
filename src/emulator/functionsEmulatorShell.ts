@@ -69,7 +69,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     };
 
     FunctionsEmulator.startFunctionRuntime(
-      this.emu.bundleTemplate,
+      this.emu.getBaseBundle(),
       name,
       this.emu.nodeBinary,
       proto
