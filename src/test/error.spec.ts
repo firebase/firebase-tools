@@ -16,7 +16,16 @@ describe("error", () => {
     });
 
     it("should persist all options", () => {
-      const allOptions: Required<ConstructorParameters<typeof FirebaseError>[1]> = {
+      /**
+       * All possible options that might be provided to `FirebaseError`.
+       */
+      type FirebaseErrorOptions = ConstructorParameters<typeof FirebaseError>[1];
+
+      /*
+       * The following `Required` ensures all options are defined, so the test
+       * covers all properties.
+       */
+      const allOptions: Required<FirebaseErrorOptions> = {
         children: ["test-child-1", "test-child-2"],
         context: "test-context",
         exit: 123,
