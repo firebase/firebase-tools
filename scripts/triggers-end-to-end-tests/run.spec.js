@@ -177,8 +177,10 @@ describe("database and firestore emulator function triggers", function () {
 
   before(function (done) {
     this.timeout(TEST_SETUP_TIMEOUT);
+    
     expect(FIREBASE_PROJECT).to.not.be.an('undefined');
     expect(FIREBASE_PROJECT).to.not.be.null;
+
     async.series([
       function (done) {
         readConfig(function (err, config) {
@@ -262,14 +264,18 @@ describe("database and firestore emulator function triggers", function () {
   });
 
   it("should write to the database emulator", function (done) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
     test.writeToRtdb(function (err, response) {
       expect(err).to.be.null;
       expect(response.statusCode).to.equal(200);
       done(err);
     });
-  }).timeout(EMULATOR_TEST_TIMEOUT);
+  });
 
   it("should write to the firestore emulator", function (done) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
     test.writeToFirestore(function (err, response) {
       expect(err).to.be.null;
       expect(response.statusCode).to.equal(200);
@@ -283,7 +289,7 @@ describe("database and firestore emulator function triggers", function () {
        */
       setTimeout(done, EMULATORS_WRITE_DELAY_MS);
     });
-  }).timeout(EMULATOR_TEST_TIMEOUT);
+  });
 
   it("should have have triggered cloud functions", function (done) {
     expect(test.rtdb_trigger_count).to.equal(1);
@@ -294,13 +300,14 @@ describe("database and firestore emulator function triggers", function () {
      */
     expect(test.success()).to.equal(true);
     done();
-  }).timeout(EMULATOR_TEST_TIMEOUT);
+  });
 
   after(function (done) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     if (test) {
       test.stopEmulators(done);
       return;
     }
     done();
-  }).timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+  });
 });
