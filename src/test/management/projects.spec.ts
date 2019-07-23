@@ -6,6 +6,8 @@ import {
   addFirebaseToCloudProject,
   createCloudProject,
   FirebaseProjectMetadata,
+  getFirebaseProject,
+  getProjectPage,
   listFirebaseProjects,
   ProjectParentResource,
   ProjectParentResourceType,
@@ -22,6 +24,12 @@ const PARENT_RESOURCE: ProjectParentResource = {
 };
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
 const OPERATION_RESOURCE_NAME_2 = "operations/cp.22222222222222222";
+const HOSTING_SITE = "fake.google.com";
+const DATABASE_INSTANCE = "instance-database";
+const STORAGE_BUCKET = "bucket-1";
+const LOCATION_ID = "location-id";
+const PAGE_TOKEN = "page-token";
+const NEXT_PAGE_TOKEN = "next-page-token";
 
 function generateProjectList(counts: number): FirebaseProjectMetadata[] {
   return Array.from(Array(counts), (_, i: number) => ({
@@ -234,6 +242,80 @@ describe("Project management", () => {
     });
   });
 
+  describe("getProjectPage", () => {
+    it("should resolve with a project page if it succeeds (no input token)", async () => {
+      const pageSize = 10;
+      const expectedProjectList = generateProjectList(pageSize);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
+      });
+
+      const projectPage = await getProjectPage(pageSize);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10", {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: 30000,
+      });
+    });
+
+    it("should resolve with a project page if it succeeds (with input token)", async () => {
+      const pageSize = 10;
+      const expectedProjectList = generateProjectList(pageSize);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList, nextPageToken: NEXT_PAGE_TOKEN },
+      });
+
+      const projectPage = await getProjectPage(pageSize, PAGE_TOKEN);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.equal(NEXT_PAGE_TOKEN);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects?pageSize=10&pageToken=${PAGE_TOKEN}`
+      );
+    });
+
+    it("should resolve with a project page if it succeeds with no next page token", async () => {
+      const pageSize = 10;
+      const projectCounts = 5;
+      const expectedProjectList = generateProjectList(projectCounts);
+      apiRequestStub.onFirstCall().resolves({
+        body: { results: expectedProjectList },
+      });
+
+      const projectPage = await getProjectPage(pageSize);
+
+      expect(projectPage.projects).to.deep.equal(expectedProjectList);
+      expect(projectPage.nextPageToken).to.be.undefined;
+      expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=10");
+    });
+
+    it("should reject if the api call fails", async () => {
+      const pageSize = 100;
+      const expectedError = new Error("HTTP Error 404: Not Found");
+      apiRequestStub.onFirstCall().rejects(expectedError);
+
+      let err;
+      try {
+        await getProjectPage(pageSize, PAGE_TOKEN);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        "Failed to list Firebase projects. See firebase-debug.log for more info."
+      );
+      expect(err.original).to.equal(expectedError);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects?pageSize=100&pageToken=${PAGE_TOKEN}`
+      );
+    });
+  });
+
   describe("listFirebaseProjects", () => {
     it("should resolve with project list if it succeeds with only 1 api call", async () => {
       const projectCounts = 10;
@@ -297,7 +379,7 @@ describe("Project management", () => {
       expect(apiRequestStub).to.be.calledOnceWith("GET", "/v1beta1/projects?pageSize=1000");
     });
 
-    it("should rejects if error is thrown in subsequence api call", async () => {
+    it("should reject if error is thrown in subsequence api call", async () => {
       const projectCounts = 10;
       const pageSize = 5;
       const nextPageToken = "next-page-token";
@@ -327,6 +409,56 @@ describe("Project management", () => {
         "GET",
         `/v1beta1/projects?pageSize=${pageSize}&pageToken=${nextPageToken}`
       );
+    });
+  });
+
+  describe("getFirebaseProject", () => {
+    it("should resolve with project information if it succeeds", async () => {
+      const expectedProjectInfo: FirebaseProjectMetadata = {
+        name: `projects/${PROJECT_ID}`,
+        projectId: PROJECT_ID,
+        displayName: PROJECT_NAME,
+        projectNumber: PROJECT_NUMBER,
+        resources: {
+          hostingSite: HOSTING_SITE,
+          realtimeDatabaseInstance: DATABASE_INSTANCE,
+          storageBucket: STORAGE_BUCKET,
+          locationId: LOCATION_ID,
+        },
+      };
+      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+
+      const projects = await getFirebaseProject(PROJECT_ID);
+
+      expect(projects).to.deep.equal(expectedProjectInfo);
+      expect(apiRequestStub).to.be.calledOnceWith("GET", `/v1beta1/projects/${PROJECT_ID}`, {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: 30000,
+      });
+    });
+
+    it("should reject if the api call fails", async () => {
+      const expectedError = new Error("HTTP Error 404: Not Found");
+      apiRequestStub.onFirstCall().rejects(expectedError);
+
+      let err;
+      try {
+        await getFirebaseProject(PROJECT_ID);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        `Failed to get Firebase project ${PROJECT_ID}. ` +
+          "Please make sure the project exists and your account has permission to access it."
+      );
+      expect(err.original).to.equal(expectedError);
+      expect(apiRequestStub).to.be.calledOnceWith("GET", `/v1beta1/projects/${PROJECT_ID}`, {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: 30000,
+      });
     });
   });
 });

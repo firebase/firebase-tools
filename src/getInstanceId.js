@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var firebaseApi = require("./firebaseApi");
+var { getFirebaseProject } = require("./management/projects");
 var logger = require("./logger");
 
 /**
@@ -11,7 +11,7 @@ var logger = require("./logger");
  * @returns {Promise<String>} The instance ID
  */
 module.exports = function(options) {
-  return firebaseApi.getProject(options.project).then(function(project) {
+  return getFirebaseProject(options.project).then(function(project) {
     if (!_.has(project, "resources.realtimeDatabaseInstance")) {
       logger.debug(
         "[WARNING] Unable to fetch default resources. Falling back to project id (" +
