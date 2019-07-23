@@ -1,15 +1,14 @@
+import * as util from "util";
+
 import * as api from "../api";
 import * as FirebaseError from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
-import { inspect } from "util";
 
 const TIMEOUT_MILLIS = 30000;
 const APP_LIST_PAGE_SIZE = 100;
 const CREATE_APP_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
-const IOS_CONFIG_FILE_NAME = "GoogleService-Info.plist";
-const ANDROID_CONFIG_FILE_NAME = "google-services.json";
 const WEB_CONFIG_FILE_NAME = "google-config.js";
 
 export interface AppMetadata {
@@ -39,7 +38,7 @@ export interface WebAppMetadata extends AppMetadata {
 
 export interface AppConfigurationData {
   fileName: string;
-  fileContents: string /* file content in ascii format */;
+  fileContents: string /* file contents in utf8 format */;
 }
 
 export enum AppPlatform {
@@ -243,13 +242,13 @@ export async function getAppConfig(
   appId: string,
   platform: AppPlatform
 ): Promise<AppConfigurationData> {
+  let response;
   try {
-    const response = await api.request("GET", getAppConfigResourceString(appId, platform), {
+    response = await api.request("GET", getAppConfigResourceString(appId, platform), {
       auth: true,
       origin: api.firebaseApiOrigin,
       timeout: TIMEOUT_MILLIS,
     });
-    return parseConfigFromResponse(response.body, platform);
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
@@ -260,6 +259,7 @@ export async function getAppConfig(
       }
     );
   }
+  return parseConfigFromResponse(response.body, platform);
 }
 
 function getAppConfigResourceString(appId: string, platform: AppPlatform): string {
@@ -285,12 +285,12 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
   if (platform === AppPlatform.WEB) {
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: inspect(responseBody, { compact: false }),
+      fileContents: util.inspect(responseBody, { compact: false }),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
-      fileName: platform === AppPlatform.ANDROID ? ANDROID_CONFIG_FILE_NAME : IOS_CONFIG_FILE_NAME,
-      fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("ascii"),
+      fileName: responseBody.configFilename,
+      fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("utf8"),
     };
   }
   throw new FirebaseError("Unexpected app platform");

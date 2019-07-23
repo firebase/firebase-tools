@@ -67,8 +67,8 @@ function logPostAppCreationInformation(
   }
 
   logger.info("");
-  logger.info("Run this command to print out your config file:");
-  logger.info(`  firebase apps:sdkconfig ${appMetadata.appId}`);
+  logger.info("You can run this command to print out your new app's Google Services config:");
+  logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId}`);
 }
 
 async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {

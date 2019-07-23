@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as util from "util";
 
 import * as api from "../../api";
 import {
@@ -16,7 +17,6 @@ import {
 } from "../../management/apps";
 import * as pollUtils from "../../operation-poller";
 import { mockAuth } from "../helpers";
-import { inspect } from "util";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -668,7 +668,9 @@ describe("App management", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
       const mockBase64Content = "dGVzdCBpT1MgY29uZmlndXJhdGlvbg==";
       const expectedConfigFileContent = "test iOS configuration";
-      apiRequestStub.onFirstCall().resolves({ body: { configFileContents: mockBase64Content } });
+      apiRequestStub.onFirstCall().resolves({
+        body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
+      });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
 
@@ -685,7 +687,9 @@ describe("App management", () => {
     it("should resolve with Android app configuration if it succeeds", async () => {
       const mockBase64Content = "dGVzdCBBbmRyb2lkIGNvbmZpZ3VyYXRpb24=";
       const expectedConfigFileContent = "test Android configuration";
-      apiRequestStub.onFirstCall().resolves({ body: { configFileContents: mockBase64Content } });
+      apiRequestStub.onFirstCall().resolves({
+        body: { configFilename: "google-services.json", configFileContents: mockBase64Content },
+      });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.ANDROID);
 
@@ -711,7 +715,7 @@ describe("App management", () => {
 
       expect(configData).to.deep.equal({
         fileName: "google-config.js",
-        fileContents: inspect(mockWebConfig, { compact: false }),
+        fileContents: util.inspect(mockWebConfig, { compact: false }),
       });
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
