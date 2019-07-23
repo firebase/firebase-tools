@@ -10,7 +10,7 @@ import * as prompt from "../../../prompt";
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let writeProjectFileStub: sinon.SinonStub;
-  let promptStub: sinon.SinonStub;
+  let promptStub: sinon.SinonStub<[prompt.Question], Promise<string>>;
 
   beforeEach(() => {
     writeProjectFileStub = sandbox.stub(Config.prototype, "writeProjectFile");
@@ -29,7 +29,7 @@ describe("storage", () => {
         projectId: "my-project-123",
         projectLocation: "us-central",
       };
-      promptStub.returns("storage.rules");
+      promptStub.resolves("storage.rules");
       writeProjectFileStub.resolves();
 
       await doSetup(setup, new Config("/path/to/src", {}));

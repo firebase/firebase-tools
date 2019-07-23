@@ -12,8 +12,8 @@ const cjson = require("cjson");
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-    let resolvePpathStub: sinon.SinonStub;
-    let dirExistsStub: sinon.SinonStub;
+    let resolvePpathStub: sinon.SinonStub<[string, string], string>;
+    let dirExistsStub: sinon.SinonStub<[string], boolean>;
 
     beforeEach(() => {
       resolvePpathStub = sandbox.stub(projectPath, "resolveProjectPath");
@@ -85,7 +85,7 @@ describe("validate", () => {
   describe("packageJsonIsValid", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
     let cjsonLoadStub: sinon.SinonStub;
-    let fileExistsStub: sinon.SinonStub;
+    let fileExistsStub: sinon.SinonStub<[string], boolean>;
 
     beforeEach(() => {
       fileExistsStub = sandbox.stub(fsutils, "fileExistsSync");

@@ -36,9 +36,12 @@ const TEST_PROJECT_INFO: ProjectInfo = {
 
 describe("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-  let listProjectsStub: sinon.SinonStub;
-  let getProjectStub: sinon.SinonStub;
-  let promptStub: sinon.SinonStub;
+  let listProjectsStub: sinon.SinonStub<
+    [string?, firebaseApi.FirebaseProject[]?],
+    Promise<firebaseApi.FirebaseProject[]>
+  >;
+  let getProjectStub: sinon.SinonStub<[string], Promise<firebaseApi.FirebaseProject>>;
+  let promptStub: sinon.SinonStub<[prompt.Question], Promise<string>>;
 
   beforeEach(() => {
     listProjectsStub = sandbox.stub(firebaseApi, "listProjects");
@@ -53,8 +56,8 @@ describe("project", () => {
   describe("getProjectInfo", () => {
     it("should get correct project info when no project supplied", async () => {
       const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("my-project-123");
+      listProjectsStub.resolves([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("my-project-123");
 
       const project = await getProjectInfo(options);
 
@@ -63,8 +66,8 @@ describe("project", () => {
 
     it("should set instance and location to undefined when resources not provided", async () => {
       const options = {};
-      listProjectsStub.returns([ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("another-project");
+      listProjectsStub.resolves([ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("another-project");
 
       const project = await getProjectInfo(options);
 
@@ -78,7 +81,7 @@ describe("project", () => {
 
     it("should get the correct project info when --project is supplied", async () => {
       const options = { project: "my-project" };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
+      getProjectStub.resolves(TEST_FIREBASE_PROJECT);
 
       const project = await getProjectInfo(options);
 
@@ -87,8 +90,8 @@ describe("project", () => {
 
     it("should return correct project info when choosing new project", async () => {
       const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+      listProjectsStub.resolves([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("[create a new project]");
 
       const project = await getProjectInfo(options);
 
@@ -97,8 +100,8 @@ describe("project", () => {
 
     it("should return correct project info when choosing not to set up project", async () => {
       const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
+      listProjectsStub.resolves([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("[don't setup a default project]");
 
       const project = await getProjectInfo(options);
 
@@ -110,7 +113,7 @@ describe("project", () => {
     it("should set up the correct properties in the project", async () => {
       const options = { project: "my-project" };
       const setup = { config: {}, rcfile: {} };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
+      getProjectStub.resolves(TEST_FIREBASE_PROJECT);
 
       await doSetup(setup, {}, options);
 
@@ -123,8 +126,8 @@ describe("project", () => {
     it("should set up the correct properties when choosing new project", async () => {
       const options = {};
       const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+      listProjectsStub.resolves([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("[create a new project]");
 
       await doSetup(setup, {}, options);
 
@@ -134,8 +137,8 @@ describe("project", () => {
     it("should set up the correct properties when not choosing a project", async () => {
       const options = {};
       const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
+      listProjectsStub.resolves([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
+      promptStub.resolves("[don't setup a default project]");
 
       await doSetup(setup, {}, options);
 
@@ -145,7 +148,7 @@ describe("project", () => {
     it("should set project location even if .firebaserc is already set up", async () => {
       const options = {};
       const setup = { config: {}, rcfile: { projects: { default: "my-project" } } };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
+      getProjectStub.resolves(TEST_FIREBASE_PROJECT);
 
       await doSetup(setup, {}, options);
 

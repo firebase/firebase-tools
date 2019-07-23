@@ -17,7 +17,7 @@ describe("getRuntimeName", () => {
 describe("getRuntimeChoice", () => {
   const sandbox = sinon.createSandbox();
   let cjsonStub: sinon.SinonStub;
-  let warningSpy: sinon.SinonSpy;
+  let warningSpy: sinon.SinonSpy<[string, string?], void>;
 
   beforeEach(() => {
     cjsonStub = sandbox.stub(cjson, "load");

@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 
 describe("prompt", () => {
-  let inquirerStub: sinon.SinonStub;
+  let inquirerStub: sinon.SinonStub<[inquirer.Questions<any>], Promise<any>>;
   const PROMPT_RESPONSES = {
     lint: true,
     project: "the-best-project-ever",

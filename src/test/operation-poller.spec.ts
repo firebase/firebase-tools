@@ -16,7 +16,7 @@ const API_OPTIONS = { auth: true, origin: TEST_ORIGIN };
 describe("OperationPoller", () => {
   describe("poll", () => {
     let sandbox: sinon.SinonSandbox;
-    let stubApiRequest: sinon.SinonStub;
+    let stubApiRequest: sinon.SinonStub<[string?, string?, any?], Promise<any>>;
     let pollerOptions: OperationPollerOptions;
 
     beforeEach(() => {
