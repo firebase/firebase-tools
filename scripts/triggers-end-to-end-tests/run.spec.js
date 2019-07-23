@@ -30,9 +30,10 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 20000;
-const EMULATORS_STARTUP_DELAY_MS = 7000;
+const EMULATORS_STARTUP_DELAY_MS = 10000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
-const EMULATORS_SHUTDOWN_DELAY_MS = 2000;
+const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
+const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
 
 /*
  * Realtime Database and Firestore documents we used to verify
@@ -170,9 +171,11 @@ describe("database and firestore emulator function triggers", function() {
   var test;
 
   before(function(done) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
     expect(FIREBASE_PROJECT).to.not.be.an("undefined");
     expect(FIREBASE_PROJECT).to.not.be.null;
-    this.timeout(TEST_SETUP_TIMEOUT);
+
     async.series(
       [
         function(done) {
@@ -285,7 +288,7 @@ describe("database and firestore emulator function triggers", function() {
   });
 
   it("should write to the database emulator", function(done) {
-    this.timeout(EMULATORS_WRITE_DELAY_MS);
+    this.timeout(EMULATOR_TEST_TIMEOUT);
 
     test.writeToRtdb(function(err, response) {
       expect(err).to.be.null;
@@ -295,7 +298,7 @@ describe("database and firestore emulator function triggers", function() {
   });
 
   it("should write to the firestore emulator", function(done) {
-    this.timeout(EMULATORS_WRITE_DELAY_MS * 2);
+    this.timeout(EMULATOR_TEST_TIMEOUT);
 
     test.writeToFirestore(function(err, response) {
       expect(err).to.be.null;
