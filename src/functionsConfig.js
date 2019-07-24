@@ -1,13 +1,13 @@
 "use strict";
 
 var _ = require("lodash");
-
 var clc = require("cli-color");
+
 var api = require("./api");
-var { FirebaseError } = require("./error");
-var runtimeconfig = require("./gcp/runtimeconfig");
-var getProjectId = require("./getProjectId");
 var ensureApiEnabled = require("./ensureApiEnabled").ensure;
+var { FirebaseError } = require("./error");
+var getProjectId = require("./getProjectId");
+var runtimeconfig = require("./gcp/runtimeconfig");
 
 exports.RESERVED_NAMESPACES = ["firebase"];
 

@@ -95,4 +95,53 @@ describe("utils", () => {
       ]);
     });
   });
+
+  describe("promiseProps", () => {
+    it("should resolve all promises", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: "2",
+      });
+    });
+
+    it("should pass through objects", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: ["bar"],
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: ["bar"],
+      });
+    });
+
+    it("should reject if a promise rejects", async () => {
+      const o = {
+        foo: new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("1"));
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      return expect(utils.promiseProps(o)).to.eventually.be.rejected;
+    });
+  });
 });

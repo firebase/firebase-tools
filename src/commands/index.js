@@ -71,5 +71,14 @@ module.exports = function(client) {
   client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
+  if (previews.mods) {
+    client.mods = loadCommand("mods");
+    client.mods.configure = loadCommand("mods-configure");
+    client.mods.info = loadCommand("mods-info");
+    client.mods.install = loadCommand("mods-install");
+    client.mods.list = loadCommand("mods-list");
+    client.mods.uninstall = loadCommand("mods-uninstall");
+    client.mods.update = loadCommand("mods-update");
+  }
   return client;
 };

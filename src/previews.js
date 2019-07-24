@@ -6,6 +6,7 @@ var configstore = require("./configstore");
 var previews = _.assign(
   {
     // insert previews here...
+    mods: false,
   },
   configstore.get("previews")
 );

@@ -1,8 +1,9 @@
 "use strict";
 var _ = require("lodash");
+
 var ensureApiEnabled = require("../../ensureApiEnabled");
-var functionsConfig = require("../../functionsConfig");
 var getProjectId = require("../../getProjectId");
+var getServerAppConfig = require("../../getServerAppConfig");
 var validator = require("./validate");
 
 module.exports = function(context, options, payload) {
@@ -33,7 +34,7 @@ module.exports = function(context, options, payload) {
   ])
     .then(function(results) {
       _.set(context, "runtimeConfigEnabled", results[1]);
-      return functionsConfig.getFirebaseConfig(options);
+      return getServerAppConfig(projectId);
     })
     .then(function(result) {
       _.set(context, "firebaseConfig", result);
