@@ -31,6 +31,5 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   } else {
     await requireConfig(options);
     await requireAuth(options);
-    await getProjectNumber(options);
   }
 }
