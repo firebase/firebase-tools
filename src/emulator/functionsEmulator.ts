@@ -434,7 +434,12 @@ You can probably fix this by running "npm install ${
     this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
 
     // TODO: This call requires authentication, which we should remove eventually
-    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
+    try {
+      this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
+    } catch (e) {
+      utils.logWarning(`Could not fetch config for project ${clc.bold(this.projectId)}.`);
+      throw e;
+    }
 
     const { host, port } = this.getInfo();
     this.server = FunctionsEmulator.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(
