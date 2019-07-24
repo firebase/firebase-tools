@@ -103,16 +103,16 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         return configData;
       }
 
-      const fileName =
-        options.out === true || options.out === "" ? configData.fileName : options.out;
-      if (fs.existsSync(fileName)) {
+      const shouldUseDefaultFilename = options.out === true || options.out === "";
+      const filename = shouldUseDefaultFilename ? configData.fileName : options.out;
+      if (fs.existsSync(filename)) {
         if (options.nonInteractive) {
-          throw new FirebaseError(`${fileName} already exists`);
+          throw new FirebaseError(`${filename} already exists`);
         }
         const overwrite = await promptOnce({
           type: "confirm",
           default: false,
-          message: `${fileName} already exists. Do you want to overwrite?`,
+          message: `${filename} already exists. Do you want to overwrite?`,
         });
 
         if (!overwrite) {
@@ -120,8 +120,8 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         }
       }
 
-      fs.writeFileSync(fileName, configData.fileContents);
-      logger.info(`App configuration is written in ${fileName}`);
+      fs.writeFileSync(filename, configData.fileContents);
+      logger.info(`App configuration is written in ${filename}`);
 
       return configData;
     }
