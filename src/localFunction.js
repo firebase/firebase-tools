@@ -132,7 +132,7 @@ LocalFunction.prototype._requestCallBack = function(err, response, body) {
   // and pretty-print it. We can't blindly stringify because stringifying
   // a string results in some ugly escaping.
   var bodyString = body;
-  if (typeof body === "string" || body instanceof string) {
+  if (typeof body === "string") {
     try {
       bodyString = JSON.stringify(JSON.parse(bodyString), null, 2);
     } catch (e) {
