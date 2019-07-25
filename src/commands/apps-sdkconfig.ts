@@ -19,9 +19,16 @@ async function selectAppInteractively(
   projectId: string,
   appPlatform: AppPlatform
 ): Promise<AppMetadata> {
+  if (!projectId) {
+    throw new FirebaseError("Project ID must not be empty.");
+  }
+
   const apps: AppMetadata[] = await listFirebaseApps(projectId, appPlatform);
   if (apps.length === 0) {
-    throw new FirebaseError("There is no app associated with this Firebase project");
+    throw new FirebaseError(
+      `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
+        "associated with this Firebase project"
+    );
   }
 
   const choices = apps.map((app: any) => {
@@ -45,10 +52,10 @@ async function selectAppInteractively(
 
 module.exports = new Command("apps:sdkconfig [platform] [appId]")
   .description(
-    "print the configuration of a Firebase app. " +
+    "print the Google Services config of a Firebase app. " +
       "[platform] can be IOS, ANDROID or WEB (case insensitive)"
   )
-  .option("-o, --out", "(optional) write config output to a file")
+  .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(
     async (platform: string = "", appId: string = "", options: any): Promise<any> => {
@@ -86,27 +93,30 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       logger.info(`=== Your app configuration is ready ===`);
       logger.info("");
 
-      const { fileName, fileContents } = configData;
-      if (!options.out) {
-        logger.info(fileContents);
+      if (options.out === undefined) {
+        logger.info(configData.fileContents);
         return configData;
       }
 
-      let overwrite = true;
-      if (fs.existsSync(fileName)) {
+      const shouldUseDefaultFilename = options.out === true || options.out === "";
+      const filename = shouldUseDefaultFilename ? configData.fileName : options.out;
+      if (fs.existsSync(filename)) {
         if (options.nonInteractive) {
-          throw new FirebaseError(`${fileName} already exists`);
+          throw new FirebaseError(`${filename} already exists`);
         }
-        overwrite = await promptOnce({
+        const overwrite = await promptOnce({
           type: "confirm",
-          message: `${fileName} already exists. Do you want to overwrite?`,
+          default: false,
+          message: `${filename} already exists. Do you want to overwrite?`,
         });
+
+        if (!overwrite) {
+          return configData;
+        }
       }
 
-      if (overwrite) {
-        fs.writeFileSync(fileName, fileContents);
-        logger.info(`App configuration is written in ${fileName}`);
-      }
+      fs.writeFileSync(filename, configData.fileContents);
+      logger.info(`App configuration is written in ${filename}`);
 
       return configData;
     }

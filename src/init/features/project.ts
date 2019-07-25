@@ -12,7 +12,7 @@ import {
 } from "../../management/projects";
 import * as logger from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
-import { logBullet, makeActiveProject } from "../../utils";
+import * as utils from "../../utils";
 
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
@@ -40,7 +40,7 @@ function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
 }
 
 async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
-  logBullet(
+  utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
       `"firebase projects:create" instead, and return to this command when you've created the project.`
   );
@@ -74,7 +74,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
 
   const projectFromRcFile = _.get(setup.rcfile, "projects.default");
   if (projectFromRcFile) {
-    logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
+    utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
     const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
@@ -101,16 +101,16 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   } else if (projectSetupOption === OPTION_NEW_PROJECT) {
     projectMetaData = await promptAndCreateNewProject();
   } else {
-    // Do nothing if use choose NO_PROJECT
+    // Do nothing if user chooses NO_PROJECT
     return;
   }
 
   const { id, label, instance, location } = toProjectInfo(projectMetaData);
-  logBullet(`Using project ${label}`);
+  utils.logBullet(`Using project ${label}`);
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", id);
   setup.projectId = id;
   setup.instance = instance;
   setup.projectLocation = location;
-  makeActiveProject(config.projectDir, id);
+  utils.makeActiveProject(config.projectDir, id);
 }

@@ -8,7 +8,7 @@ import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
 import { Question } from "inquirer";
 import { promptOnce } from "../prompt";
-import { logBullet } from "../utils";
+import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
@@ -143,7 +143,7 @@ async function selectProjectFromList(
   choices = _.orderBy(choices, ["name"], ["asc"]);
 
   if (choices.length >= 25) {
-    logBullet(
+    utils.logBullet(
       `Don't want to scroll through all your projects? If you know your project ID, ` +
         `you can initialize it directly using ${clc.bold(
           "firebase init --project <project_id>"
@@ -257,14 +257,10 @@ export async function getProjectPage(
     );
   }
 
-  const projectPage: FirebaseProjectPage = { projects: [] };
-  if (apiResponse.body.results) {
-    projectPage.projects.push(...apiResponse.body.results);
-  }
-  if (apiResponse.body.nextPageToken) {
-    projectPage.nextPageToken = apiResponse.body.nextPageToken;
-  }
-  return projectPage;
+  return {
+    projects: apiResponse.body.results || [],
+    nextPageToken: apiResponse.body.nextPageToken,
+  };
 }
 
 /**
@@ -299,8 +295,8 @@ export async function getFirebaseProject(projectId: string): Promise<FirebasePro
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get Firebase project ${projectId}` +
-        ". Please make sure the project exists and your account has permission to access it.",
+      `Failed to get Firebase project ${projectId}. ` +
+        "Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
   }
