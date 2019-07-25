@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 
+import { getFirebaseConfig } from "../functionsConfig";
 import { FirebaseError } from "../error";
-import * as getServerAppConfig from "../getServerAppConfig";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
@@ -29,7 +29,7 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
  * Gets Firebase project specific param values.
  */
 export async function getFirebaseProjectParams(projectId: string): Promise<any> {
-  const body = await getServerAppConfig(projectId);
+  const body = await getFirebaseConfig({ project: projectId });
 
   // This env variable is needed for parameter-less initialization of firebase-admin
   const FIREBASE_CONFIG = JSON.stringify({
