@@ -9,6 +9,7 @@ import {
   getAppPlatform,
   listFirebaseApps,
 } from "../management/apps";
+import { getOrPromptDesiredProject } from "../management/projects";
 import * as FirebaseError from "../error";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
@@ -18,10 +19,6 @@ async function selectAppInteractively(
   projectId: string,
   appPlatform: AppPlatform
 ): Promise<AppMetadata> {
-  if (!projectId) {
-    throw new FirebaseError("Project ID must not be empty.");
-  }
-
   const apps: AppMetadata[] = await listFirebaseApps(projectId, appPlatform);
   if (apps.length === 0) {
     throw new FirebaseError("There is no app associated with this Firebase project");
@@ -66,15 +63,9 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
           throw new FirebaseError("App ID must not be empty.");
         }
 
-        if (!options.project) {
-          // TODO(caot): select project from a list
-          options.project = await promptOnce({
-            type: "input",
-            message: "Please input the project ID you would like to use:",
-          });
-        }
+        const { projectId } = await getOrPromptDesiredProject(options);
 
-        const appMetadata: AppMetadata = await selectAppInteractively(options.project, appPlatform);
+        const appMetadata: AppMetadata = await selectAppInteractively(projectId, appPlatform);
         appId = appMetadata.appId;
         appPlatform = appMetadata.platform;
       }
