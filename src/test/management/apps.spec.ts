@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as util from "util";
 
 import * as api from "../../api";
 import {
@@ -8,6 +9,7 @@ import {
   createAndroidApp,
   createIosApp,
   createWebApp,
+  getAppConfig,
   getAppPlatform,
   IosAppMetadata,
   listFirebaseApps,
@@ -658,6 +660,87 @@ describe("App management", () => {
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
         `/v1beta1/projects/${PROJECT_ID}/webApps?pageSize=100`
+      );
+    });
+  });
+
+  describe("getAppConfig", () => {
+    it("should resolve with iOS app configuration if it succeeds", async () => {
+      const mockBase64Content = "dGVzdCBpT1MgY29uZmlndXJhdGlvbg==";
+      const expectedConfigFileContent = "test iOS configuration";
+      apiRequestStub.onFirstCall().resolves({
+        body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
+      });
+
+      const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
+
+      expect(configData).to.deep.equal({
+        fileName: "GoogleService-Info.plist",
+        fileContents: expectedConfigFileContent,
+      });
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/iosApps/${APP_ID}/config`
+      );
+    });
+
+    it("should resolve with Android app configuration if it succeeds", async () => {
+      const mockBase64Content = "dGVzdCBBbmRyb2lkIGNvbmZpZ3VyYXRpb24=";
+      const expectedConfigFileContent = "test Android configuration";
+      apiRequestStub.onFirstCall().resolves({
+        body: { configFilename: "google-services.json", configFileContents: mockBase64Content },
+      });
+
+      const configData = await getAppConfig(APP_ID, AppPlatform.ANDROID);
+
+      expect(configData).to.deep.equal({
+        fileName: "google-services.json",
+        fileContents: expectedConfigFileContent,
+      });
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/androidApps/${APP_ID}/config`
+      );
+    });
+
+    it("should resolve with Web app configuration if it succeeds", async () => {
+      const mockWebConfig = {
+        projectId: PROJECT_ID,
+        appId: APP_ID,
+        apiKey: "api-key",
+      };
+      apiRequestStub.onFirstCall().resolves({ body: mockWebConfig });
+
+      const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
+
+      expect(configData).to.deep.equal({
+        fileName: "google-config.js",
+        fileContents: util.inspect(mockWebConfig, { compact: false }),
+      });
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/webApps/${APP_ID}/config`
+      );
+    });
+
+    it("should reject if api request fails", async () => {
+      const expectedError = new Error("HTTP Error 404: Not Found");
+      apiRequestStub.onFirstCall().rejects(expectedError);
+
+      let err;
+      try {
+        await getAppConfig(APP_ID, AppPlatform.ANDROID);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        "Failed to get ANDROID app configuration. See firebase-debug.log for more info."
+      );
+      expect(err.original).to.equal(expectedError);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/androidApps/${APP_ID}/config`
       );
     });
   });
