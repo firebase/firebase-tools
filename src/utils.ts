@@ -106,7 +106,7 @@ export function logWarning(message: string, type = "warn"): void {
  * Log an info statement with a gray bullet at the start of the line.
  */
 export function logLabeledWarning(label: string, message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} ${label}:`), message);
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
 }
 
 /**
