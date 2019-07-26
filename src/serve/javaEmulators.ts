@@ -28,10 +28,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.1.1.jar",
-    expectedSize: 17122118,
-    expectedChecksum: "4e85811fd09cafe0b6f216c771e8a25f",
-    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.1.1.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.1.2.jar",
+    expectedSize: 17124145,
+    expectedChecksum: "8bb21d19172a519fa69c5575b2fa221f",
+    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.1.2.jar"),
     namePrefix: "firebase-database-emulator",
   },
   firestore: {
