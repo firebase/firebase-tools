@@ -1,3 +1,1 @@
-* Fixed bug causing Realtime Database emulator to serve errors on the `.inspect/coverage.json` route.
-* Fixed bug causing Realtime Database emulator to reject requests with `Host` headers not containing `"localhost"`.
 * Allow passing `GOOGLE_APPLICATION_CREDENTIALS` environment variable into the functions emulator.

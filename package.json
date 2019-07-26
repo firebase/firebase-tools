@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.2.0",
+  "version": "7.2.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -87,7 +87,7 @@
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.14",
-    "marked": "^0.6.2",
+    "marked": "^0.7.0",
     "marked-terminal": "^3.1.1",
     "minimatch": "^3.0.4",
     "open": "^6.3.0",
