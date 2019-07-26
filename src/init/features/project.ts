@@ -7,7 +7,7 @@ import {
   createFirebaseProjectAndLog,
   FirebaseProjectMetadata,
   getFirebaseProject,
-  getOrPromptDesiredProject,
+  getOrPromptProject,
   PROJECTS_CREATE_QUESTIONS,
 } from "../../management/projects";
 import * as logger from "../../logger";
@@ -97,7 +97,7 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
 
   let projectMetaData;
   if (projectSetupOption === OPTION_USE_PROJECT) {
-    projectMetaData = await getOrPromptDesiredProject(options);
+    projectMetaData = await getOrPromptProject(options);
   } else if (projectSetupOption === OPTION_NEW_PROJECT) {
     projectMetaData = await promptAndCreateNewProject();
   } else {
@@ -105,12 +105,12 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     return;
   }
 
-  const { id, label, instance, location } = toProjectInfo(projectMetaData);
-  utils.logBullet(`Using project ${label}`);
+  const projectInfo = toProjectInfo(projectMetaData);
+  utils.logBullet(`Using project ${projectInfo.label}`);
   // write "default" alias and activate it immediately
-  _.set(setup.rcfile, "projects.default", id);
-  setup.projectId = id;
-  setup.instance = instance;
-  setup.projectLocation = location;
-  utils.makeActiveProject(config.projectDir, id);
+  _.set(setup.rcfile, "projects.default", projectInfo.id);
+  setup.projectId = projectInfo.id;
+  setup.instance = projectInfo.instance;
+  setup.projectLocation = projectInfo.location;
+  utils.makeActiveProject(config.projectDir, projectInfo.id);
 }

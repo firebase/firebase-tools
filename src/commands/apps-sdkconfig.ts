@@ -9,7 +9,7 @@ import {
   getAppPlatform,
   listFirebaseApps,
 } from "../management/apps";
-import { getOrPromptDesiredProject } from "../management/projects";
+import { getOrPromptProject } from "../management/projects";
 import * as FirebaseError from "../error";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
@@ -70,7 +70,7 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
           throw new FirebaseError("App ID must not be empty.");
         }
 
-        const { projectId } = await getOrPromptDesiredProject(options);
+        const { projectId } = await getOrPromptProject(options);
 
         const appMetadata: AppMetadata = await selectAppInteractively(projectId, appPlatform);
         appId = appMetadata.appId;

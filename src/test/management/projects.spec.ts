@@ -84,7 +84,7 @@ describe("Project management", () => {
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     });
 
-    describe("getOrPromptDesiredProject", () => {
+    describe("getOrPromptProject", () => {
       it("should get project from list if it is able to list all projects", async () => {
         const options = {};
         apiRequestStub.onFirstCall().resolves({
@@ -94,7 +94,7 @@ describe("Project management", () => {
         });
         promptOnceStub.resolves("my-project-123");
 
-        const project = await projectManager.getOrPromptDesiredProject(options);
+        const project = await projectManager.getOrPromptProject(options);
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.calledOnce;
@@ -115,7 +115,7 @@ describe("Project management", () => {
           .resolves({ body: TEST_FIREBASE_PROJECT });
         promptOnceStub.resolves("my-project-123");
 
-        const project = await projectManager.getOrPromptDesiredProject(options);
+        const project = await projectManager.getOrPromptProject(options);
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.calledOnce;
@@ -128,7 +128,7 @@ describe("Project management", () => {
 
         let err;
         try {
-          await projectManager.getOrPromptDesiredProject(options);
+          await projectManager.getOrPromptProject(options);
         } catch (e) {
           err = e;
         }
@@ -141,7 +141,7 @@ describe("Project management", () => {
         const options = { project: "my-project-123" };
         apiRequestStub.resolves({ body: TEST_FIREBASE_PROJECT });
 
-        const project = await projectManager.getOrPromptDesiredProject(options);
+        const project = await projectManager.getOrPromptProject(options);
 
         expect(project).to.deep.equal(TEST_FIREBASE_PROJECT);
         expect(promptOnceStub).to.be.not.called;
@@ -154,7 +154,7 @@ describe("Project management", () => {
 
         let err;
         try {
-          await projectManager.getOrPromptDesiredProject(options);
+          await projectManager.getOrPromptProject(options);
         } catch (e) {
           err = e;
         }

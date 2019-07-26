@@ -98,7 +98,7 @@ export async function createFirebaseProjectAndLog(
 /**
  * Get the user's desired project, prompting if necessary.
  */
-export async function getOrPromptDesiredProject(options: any): Promise<FirebaseProjectMetadata> {
+export async function getOrPromptProject(options: any): Promise<FirebaseProjectMetadata> {
   if (options.project) {
     return await getFirebaseProject(options.project);
   }

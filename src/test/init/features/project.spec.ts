@@ -38,14 +38,14 @@ describe("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
   let getProjectStub: sinon.SinonStub;
   let createFirebaseProjectStub: sinon.SinonStub;
-  let getOrPromptDesiredProjectStub: sinon.SinonStub;
+  let getOrPromptProjectStub: sinon.SinonStub;
   let promptOnceStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
 
   beforeEach(() => {
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
     createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
-    getOrPromptDesiredProjectStub = sandbox.stub(projectManager, "getOrPromptDesiredProject");
+    getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
   });
@@ -60,7 +60,7 @@ describe("project", () => {
         const options = { project: "my-project" };
         const setup = { config: {}, rcfile: {} };
         promptOnceStub.onFirstCall().resolves("Use an existing project");
-        getOrPromptDesiredProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
 
         await doSetup(setup, {}, options);
 
@@ -69,7 +69,7 @@ describe("project", () => {
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
         expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
         expect(promptOnceStub).to.be.calledOnce;
-        expect(getOrPromptDesiredProjectStub).to.be.calledOnceWith(options);
+        expect(getOrPromptProjectStub).to.be.calledOnceWith(options);
       });
     });
 
