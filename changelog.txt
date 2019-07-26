@@ -1,0 +1,1 @@
+* Allow passing `GOOGLE_APPLICATION_CREDENTIALS` environment variable into the functions emulator.
