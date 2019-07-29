@@ -48,10 +48,12 @@ export default new Command("mods:configure <instanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
+      const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
-        options.params
+        options.params,
+        currentLocation
       );
 
       spinner.start();

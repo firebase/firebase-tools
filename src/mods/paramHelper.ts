@@ -58,7 +58,8 @@ export function getParamsWithCurrentValuesAsDefaults(
 export async function getParams(
   projectId: string,
   paramSpecs: modsApi.Param[],
-  envFilePath?: string
+  envFilePath?: string,
+  lockedLocation?: string
 ): Promise<{ [key: string]: string }> {
   let commandLineParams;
   if (envFilePath) {
@@ -79,9 +80,23 @@ export async function getParams(
     params = populateDefaultParams(commandLineParams, paramSpecs);
     validateCommandLineParams(params, paramSpecs);
   } else {
-    params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
+    params = await askUserForParam.ask(paramSpecs, firebaseProjectParams, lockedLocation);
   }
   track("Mod Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  return params;
+}
+
+export function lockLocation(params: modsApi.Param[], location: string): modsApi.Param[] {
+  const locationParam = _.find(params, (param) => {
+    return param.param === "LOCATION";
+  });
+  if (locationParam && locationParam) {
+    locationParam.default = location;
+    locationParam.description = "Location cannot be changed after an instance is created.";
+    _.remove(_.get(locationParam, "options", []), (opt) => {
+      return opt.value === location;
+    });
+  }
   return params;
 }
 
