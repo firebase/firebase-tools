@@ -157,8 +157,7 @@ async function selectProjectFromList(
     choices,
   });
 
-  let project: FirebaseProjectMetadata | undefined;
-  project = projects.find((p) => p.projectId === projectId);
+  const project = projects.find((p) => p.projectId === projectId);
 
   if (!project) {
     throw new FirebaseError("Unexpected error. Chosen project must exist");
