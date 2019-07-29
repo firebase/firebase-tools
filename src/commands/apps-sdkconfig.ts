@@ -9,7 +9,8 @@ import {
   getAppPlatform,
   listFirebaseApps,
 } from "../management/apps";
-import * as FirebaseError from "../error";
+import { getOrPromptProject } from "../management/projects";
+import { FirebaseError } from "../error";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
@@ -69,15 +70,9 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
           throw new FirebaseError("App ID must not be empty.");
         }
 
-        if (!options.project) {
-          // TODO(caot): select project from a list
-          options.project = await promptOnce({
-            type: "input",
-            message: "Please input the project ID you would like to use:",
-          });
-        }
+        const { projectId } = await getOrPromptProject(options);
 
-        const appMetadata: AppMetadata = await selectAppInteractively(options.project, appPlatform);
+        const appMetadata: AppMetadata = await selectAppInteractively(projectId, appPlatform);
         appId = appMetadata.appId;
         appPlatform = appMetadata.platform;
       }

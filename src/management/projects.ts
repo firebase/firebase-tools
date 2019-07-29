@@ -1,13 +1,17 @@
 import * as api from "../api";
 import * as clc from "cli-color";
 import * as ora from "ora";
+import * as _ from "lodash";
 
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import { pollOperation } from "../operation-poller";
 import { Question } from "inquirer";
+import { promptOnce } from "../prompt";
+import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
+const MAXIMUM_PROMPT_LIST = 100;
 const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
@@ -15,6 +19,7 @@ export interface FirebaseProjectPage {
   projects: FirebaseProjectMetadata[];
   nextPageToken?: string;
 }
+
 export interface FirebaseProjectMetadata {
   name: string /* The fully qualified resource name of the Firebase project */;
   projectId: string;
@@ -88,6 +93,77 @@ export async function createFirebaseProjectAndLog(
     spinner.fail();
     throw err;
   }
+}
+
+/**
+ * Get the user's desired project, prompting if necessary.
+ */
+export async function getOrPromptProject(options: any): Promise<FirebaseProjectMetadata> {
+  if (options.project) {
+    return await getFirebaseProject(options.project);
+  }
+  return selectProjectInteractively();
+}
+
+async function selectProjectInteractively(
+  pageSize: number = MAXIMUM_PROMPT_LIST
+): Promise<FirebaseProjectMetadata> {
+  const { projects, nextPageToken } = await getProjectPage(pageSize);
+  if (projects.length === 0) {
+    throw new FirebaseError("There is no Firebase project associated with this account.");
+  }
+  if (nextPageToken) {
+    // Prompt user for project ID if we can't list all projects in 1 page
+    return selectProjectByPrompting();
+  }
+  return selectProjectFromList(projects);
+}
+
+async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
+  const projectId = await promptOnce({
+    type: "input",
+    message: "Please input the project ID you would like to use:",
+  });
+
+  return await getFirebaseProject(projectId);
+}
+
+/**
+ * Presents user with list of projects to choose from and gets project information for chosen project.
+ */
+async function selectProjectFromList(
+  projects: FirebaseProjectMetadata[] = []
+): Promise<FirebaseProjectMetadata> {
+  let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
+    return {
+      name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
+      value: p.projectId,
+    };
+  });
+  choices = _.orderBy(choices, ["name"], ["asc"]);
+
+  if (choices.length >= 25) {
+    utils.logBullet(
+      `Don't want to scroll through all your projects? If you know your project ID, ` +
+        `you can initialize it directly using ${clc.bold(
+          "firebase init --project <project_id>"
+        )}.\n`
+    );
+  }
+  const projectId: string = await promptOnce({
+    type: "list",
+    name: "id",
+    message: "Select a default Firebase project for this directory:",
+    choices,
+  });
+
+  const project = projects.find((p) => p.projectId === projectId);
+
+  if (!project) {
+    throw new FirebaseError("Unexpected error. Chosen project must exist");
+  }
+
+  return project;
 }
 
 /**
