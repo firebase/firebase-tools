@@ -1,7 +1,7 @@
 import * as util from "util";
 
 import * as api from "../api";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { pollOperation } from "../operation-poller";
 

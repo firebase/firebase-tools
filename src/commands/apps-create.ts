@@ -3,7 +3,7 @@ import * as ora from "ora";
 
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import {
   AndroidAppMetadata,
   AppPlatform,

@@ -7,14 +7,13 @@ import {
   createFirebaseProjectAndLog,
   FirebaseProjectMetadata,
   getFirebaseProject,
-  getProjectPage,
+  getOrPromptProject,
   PROJECTS_CREATE_QUESTIONS,
 } from "../../management/projects";
 import * as logger from "../../logger";
 import { prompt, promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 
-const MAXIMUM_PROMPT_LIST = 100;
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
 const OPTION_NEW_PROJECT = "Create a new project";
@@ -30,98 +29,6 @@ export interface ProjectInfo {
   location?: string; // maps to FirebaseProjectMetadata.resources.locationId
 }
 
-/**
- * Get the user's desired project, prompting if necessary.
- * @returns A {@link ProjectInfo} object.
- */
-export async function getProjectInfo(options: any): Promise<ProjectInfo> {
-  if (options.project) {
-    return toProjectInfo(await getFirebaseProject(options.project));
-  }
-  return selectProjectInteractively();
-}
-
-async function selectProjectInteractively(
-  pageSize: number = MAXIMUM_PROMPT_LIST
-): Promise<ProjectInfo> {
-  const { projects, nextPageToken } = await getProjectPage(pageSize);
-  if (projects.length === 0) {
-    throw new FirebaseError("There is no Firebase project associated with this account.");
-  }
-  if (nextPageToken) {
-    // Prompt user for project ID if we can't list all projects in 1 page
-    return selectProjectByPrompting();
-  }
-  return selectProjectFromList(projects);
-}
-
-async function selectProjectByPrompting(): Promise<ProjectInfo> {
-  const projectId = await promptOnce({
-    type: "input",
-    message: "Please input the project ID you would like to use:",
-  });
-
-  return toProjectInfo(await getFirebaseProject(projectId));
-}
-
-/**
- * Presents user with list of projects to choose from and gets project information for chosen project.
- */
-async function selectProjectFromList(
-  projects: FirebaseProjectMetadata[] = []
-): Promise<ProjectInfo> {
-  let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
-    return {
-      name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
-      value: p.projectId,
-    };
-  });
-  choices = _.orderBy(choices, ["name"], ["asc"]);
-
-  if (choices.length >= 25) {
-    utils.logBullet(
-      `Don't want to scroll through all your projects? If you know your project ID, ` +
-        `you can initialize it directly using ${clc.bold(
-          "firebase init --project <project_id>"
-        )}.\n`
-    );
-  }
-  const projectId: string = await promptOnce({
-    type: "list",
-    name: "id",
-    message: "Select a default Firebase project for this directory:",
-    choices,
-  });
-
-  let project: FirebaseProjectMetadata | undefined;
-  project = projects.find((p) => p.projectId === projectId);
-
-  if (!project) {
-    throw new FirebaseError("Unexpected error. Chosen project must exist");
-  }
-
-  return toProjectInfo(project);
-}
-
-async function promptAndCreateNewProject(): Promise<ProjectInfo> {
-  utils.logBullet(
-    "If you want to create a project in a Google Cloud organization or folder, please use " +
-      `"firebase projects:create" instead, and return to this command when you've created the project.`
-  );
-
-  const promptAnswer: { projectId?: string; displayName?: string } = {};
-  await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
-  if (!promptAnswer.projectId) {
-    throw new FirebaseError("Project ID cannot be empty");
-  }
-
-  return toProjectInfo(
-    await createFirebaseProjectAndLog(promptAnswer.projectId, {
-      displayName: promptAnswer.displayName,
-    })
-  );
-}
-
 function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
   const { projectId, displayName, resources } = projectMetaData;
   return {
@@ -130,6 +37,22 @@ function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
     instance: _.get(resources, "realtimeDatabaseInstance"),
     location: _.get(resources, "locationId"),
   };
+}
+
+async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
+  utils.logBullet(
+    "If you want to create a project in a Google Cloud organization or folder, please use " +
+      `"firebase projects:create" instead, and return to this command when you've created the project.`
+  );
+  const promptAnswer: { projectId?: string; displayName?: string } = {};
+  await prompt(promptAnswer, PROJECTS_CREATE_QUESTIONS);
+  if (!promptAnswer.projectId) {
+    throw new FirebaseError("Project ID cannot be empty");
+  }
+
+  return await createFirebaseProjectAndLog(promptAnswer.projectId, {
+    displayName: promptAnswer.displayName,
+  });
 }
 
 /**
@@ -172,16 +95,17 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     choices,
   });
 
-  let projectInfo;
+  let projectMetaData;
   if (projectSetupOption === OPTION_USE_PROJECT) {
-    projectInfo = await getProjectInfo(options);
+    projectMetaData = await getOrPromptProject(options);
   } else if (projectSetupOption === OPTION_NEW_PROJECT) {
-    projectInfo = await promptAndCreateNewProject();
+    projectMetaData = await promptAndCreateNewProject();
   } else {
-    // Do nothing if use choose NO_PROJECT
+    // Do nothing if user chooses NO_PROJECT
     return;
   }
 
+  const projectInfo = toProjectInfo(projectMetaData);
   utils.logBullet(`Using project ${projectInfo.label}`);
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", projectInfo.id);
