@@ -8,6 +8,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import * as controller from "../emulator/controller";
+import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import { beforeEmulatorCommand } from "../emulator/commandUtils";
@@ -16,6 +17,13 @@ async function runScript(script: string): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   const env: NodeJS.ProcessEnv = { ...process.env };
+
+  const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
+  if (databaseInstance) {
+    const info = databaseInstance.getInfo();
+    const address = `${info.host}:${info.port}`;
+    env[DatabaseEmulator.DATABASE_EMULATOR_ENV] = address;
+  }
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
