@@ -16,13 +16,6 @@ describe("askUserForParam", () => {
     validationRegex: "^[a-z,A-Z]*$",
   };
 
-  const testLocationSpec = {
-    param: "LOCATION",
-    type: ParamType.SELECT,
-    label: "Location",
-    options: [{ value: "us-central1" }],
-  };
-
   describe("checkResponse", () => {
     let logWarningSpy: sinon.SinonSpy;
     beforeEach(() => {
@@ -226,8 +219,7 @@ describe("askUserForParam", () => {
     beforeEach(() => {
       subVarSpy = sinon.spy(modsHelper, "substituteParams");
       promptStub = sinon.stub(prompt, "promptOnce");
-      promptStub.onFirstCall().returns("ValidName");
-      promptStub.onSecondCall().returns("us-central1");
+      promptStub.returns("ValidName");
     });
 
     afterEach(() => {
@@ -239,21 +231,6 @@ describe("askUserForParam", () => {
       const spec = [testSpec];
       const firebaseProjectVars = { PROJECT_ID: "my-project" };
       await ask(spec, firebaseProjectVars);
-      expect(subVarSpy.calledWith(spec, firebaseProjectVars)).to.be.true;
-    });
-
-    it("should prompt for LOCATION if a lockedLocation is not provided", async () => {
-      const spec = [testSpec, testLocationSpec];
-      const firebaseProjectVars = { PROJECT_ID: "my-project" };
-      await ask(spec, firebaseProjectVars);
-      expect(promptStub).to.have.been.calledTwice;
-    });
-
-    it("should not prompt for LOCATION if a lockedLocation is provided", async () => {
-      const spec = [testSpec, testLocationSpec];
-      const firebaseProjectVars = { PROJECT_ID: "my-project" };
-      await ask(spec, firebaseProjectVars, "us-central1");
-      expect(promptStub).to.have.been.calledOnce;
       expect(subVarSpy.calledWith(spec, firebaseProjectVars)).to.be.true;
     });
   });

@@ -135,13 +135,11 @@ export function getInquirerDefault(options: ParamOption[], def: string): string 
  * Prompt users for params based on paramSpecs defined by the mod developer.
  * @param paramSpecs Array of params to ask the user about, parsed from mod.yaml.
  * @param firebaseProjectParams Autopopulated Firebase project-specific params
- * @param lockedLocation (optional) A location to coerce the LOCATION param to instead of prompting
  * @return Promisified map of env vars to values.
  */
 export async function ask(
   paramSpecs: Param[],
-  firebaseProjectParams: { [key: string]: string },
-  lockedLocation?: string
+  firebaseProjectParams: { [key: string]: string }
 ): Promise<{ [key: string]: string }> {
   if (_.isEmpty(paramSpecs)) {
     logger.debug("No params were specified for this mod.");
@@ -153,11 +151,7 @@ export async function ask(
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {
-      if (lockedLocation && paramSpec.param === "LOCATION") {
-        result.LOCATION = lockedLocation;
-      } else {
-        result[paramSpec.param] = await askForParam(paramSpec);
-      }
+      result[paramSpec.param] = await askForParam(paramSpec);
     };
   });
   // chaining together the promises so they get executed one after another

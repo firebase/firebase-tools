@@ -48,13 +48,18 @@ export default new Command("mods:configure <instanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
+      let removedLocation = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.param === "LOCATION";
+      }).length;
       const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
-        options.params,
-        currentLocation
+        options.params
       );
+      if (removedLocation) {
+        params.LOCATION = currentLocation;
+      }
 
       spinner.start();
       const res = await modsApi.configureInstance(projectId, instanceId, params);

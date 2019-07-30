@@ -58,8 +58,7 @@ export function getParamsWithCurrentValuesAsDefaults(
 export async function getParams(
   projectId: string,
   paramSpecs: modsApi.Param[],
-  envFilePath?: string,
-  lockedLocation?: string
+  envFilePath?: string
 ): Promise<{ [key: string]: string }> {
   let commandLineParams;
   if (envFilePath) {
@@ -80,7 +79,7 @@ export async function getParams(
     params = populateDefaultParams(commandLineParams, paramSpecs);
     validateCommandLineParams(params, paramSpecs);
   } else {
-    params = await askUserForParam.ask(paramSpecs, firebaseProjectParams, lockedLocation);
+    params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
   }
   track("Mod Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
