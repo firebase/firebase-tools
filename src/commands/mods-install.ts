@@ -41,7 +41,9 @@ async function installMod(options: InstallModOptions): Promise<void> {
   const spinner = ora.default("Installing your mod instance. This usually takes 3 to 5 minutes...");
   try {
     logger.info(clc.bold(spec.displayName));
-    logger.info(spec.preinstallContent);
+    if (spec.preinstallContent) {
+      logger.info(marked(spec.preinstallContent));
+    }
     await checkProjectBilling(projectId, spec.name, spec.billingRequired);
     const roles = spec.roles ? spec.roles.map((role: modsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.name, projectId, roles);
@@ -81,7 +83,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
     utils.logLabeledSuccess(
       logPrefix,
       `successfully installed ${clc.bold(spec.name)}, ` +
-        `its Instance ID is ${clc.bold(instanceId)}.`
+      `its Instance ID is ${clc.bold(instanceId)}.`
     );
     const usageInstruction =
       _.get(response, "configuration.populatedPostinstallContent") ||
