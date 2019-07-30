@@ -589,14 +589,12 @@ You can probably fix this by running "npm install ${
       return Promise.reject();
     }
 
-    const bundle = JSON.stringify(
-      {
-        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-        path: result[1], // path stored in the first capture group
-        event: definition.eventTrigger.eventType,
-        topic: `projects/${projectId}/topics/${definition.name}`,
-      },
-    );
+    const bundle = JSON.stringify({
+      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+      path: result[1], // path stored in the first capture group
+      event: definition.eventTrigger.eventType,
+      topic: `projects/${projectId}/topics/${definition.name}`,
+    });
 
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
     return new Promise<boolean>((resolve, reject) => {
