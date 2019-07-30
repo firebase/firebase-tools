@@ -83,7 +83,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
     utils.logLabeledSuccess(
       logPrefix,
       `successfully installed ${clc.bold(spec.name)}, ` +
-      `its Instance ID is ${clc.bold(instanceId)}.`
+        `its Instance ID is ${clc.bold(instanceId)}.`
     );
     const usageInstruction =
       _.get(response, "configuration.populatedPostinstallContent") ||
