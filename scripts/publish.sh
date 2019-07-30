@@ -68,8 +68,8 @@ cd "${REPOSITORY_NAME}"
 echo "Cloned repository."
 
 echo "Making sure there is a changelog..."
-if [ ! -s changelog.txt ]; then
-  echo "changelog.txt is empty. aborting."
+if [ ! -s changelog.md ]; then
+  echo "changelog.md is empty. aborting."
   exit 1
 fi
 echo "Made sure there is a changelog."
@@ -92,7 +92,7 @@ RELEASE_NOTES_FILE=$(mktemp)
 echo "[DEBUG] ${RELEASE_NOTES_FILE}"
 echo "v${NEW_VERSION}" >> "${RELEASE_NOTES_FILE}"
 echo "" >> "${RELEASE_NOTES_FILE}"
-cat changelog.txt >> "${RELEASE_NOTES_FILE}"
+cat changelog.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
 echo "Publishing to npm..."
@@ -100,9 +100,9 @@ npm publish
 echo "Published to npm."
 
 echo "Cleaning up release notes..."
-rm changelog.txt
-touch changelog.txt
-git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" changelog.txt
+rm changelog.md
+touch changelog.md
+git commit -m "[firebase-release] Removed change log and reset repo after ${NEW_VERSION} release" changelog.md
 echo "Cleaned up release notes."
 
 echo "Pushing to GitHub..."
