@@ -86,20 +86,6 @@ export async function getParams(
   return params;
 }
 
-export function lockLocation(params: modsApi.Param[], location: string): modsApi.Param[] {
-  const locationParam = _.find(params, (param) => {
-    return param.param === "LOCATION";
-  });
-  if (locationParam && locationParam) {
-    locationParam.default = location;
-    locationParam.description = "Location cannot be changed after an instance is created.";
-    _.remove(_.get(locationParam, "options", []), (opt) => {
-      return opt.value === location;
-    });
-  }
-  return params;
-}
-
 /**
  * Displays params that exist in spec but not newSpec,
  * and then prompts user for any params in newSpec that are not in spec.
