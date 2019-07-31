@@ -103,7 +103,7 @@ export async function addFirebaseToCloudProjectAndLog(
   return projectInfo;
 }
 
-export function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
+function logNewFirebaseProjectInfo(projectInfo: FirebaseProjectMetadata): void {
   logger.info("");
   if (process.platform === "win32") {
     logger.info("=== Your Firebase project is ready! ===");
