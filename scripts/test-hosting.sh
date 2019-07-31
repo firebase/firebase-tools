@@ -3,7 +3,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CWD="$(pwd)"
 
-$DIR/set-default-credentials.sh
+source $DIR/set-default-credentials.sh
 
 TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
 
