@@ -72,13 +72,26 @@ export async function createFirebaseProjectAndLog(
   projectId: string,
   options: { displayName?: string; parentResource?: ProjectParentResource }
 ): Promise<FirebaseProjectMetadata> {
-  let projectInfo;
-  let spinner = ora("Creating Google Cloud Platform project").start();
+  const spinner = ora("Creating Google Cloud Platform project").start();
 
   try {
     await createCloudProject(projectId, options);
     spinner.succeed();
-    spinner = ora("Adding Firebase to Google Cloud project").start();
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  return addFirebaseToCloudProjectAndLog(projectId);
+}
+
+export async function addFirebaseToCloudProjectAndLog(
+  projectId: string
+): Promise<FirebaseProjectMetadata> {
+  let projectInfo;
+  const spinner = ora("Adding Firebase resources to Google Cloud Platform project").start();
+
+  try {
     projectInfo = await addFirebaseToCloudProject(projectId);
   } catch (err) {
     spinner.fail();
