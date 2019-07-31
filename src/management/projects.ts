@@ -179,6 +179,49 @@ async function selectProjectFromList(
   return project;
 }
 
+function getProjectId(cloudProject: CloudProjectInfo): string {
+  const resourceName = cloudProject.project;
+  // According to
+  // https://firebase.google.com/docs/projects/api/reference/rest/v1beta1/availableProjects/list#projectinfo,
+  // resource name has the format of "projects/projectId"
+  return resourceName.substring(resourceName.lastIndexOf("/") + 1);
+}
+
+/**
+ * Prompt user to select an available GCP project to add Firebase resources
+ */
+export async function promptAvailableProjectId(): Promise<string> {
+  const { projects, nextPageToken } = await getAvailableCloudProjectPage(MAXIMUM_PROMPT_LIST);
+  if (projects.length === 0) {
+    throw new FirebaseError(
+      "There are no available Google Cloud projects to add Firebase services."
+    );
+  }
+
+  if (nextPageToken) {
+    // Prompt for project ID if we can't list all projects in 1 page
+    return await promptOnce({
+      type: "input",
+      message: "Please input the ID of the Google Cloud Project you would like to add Firebase:",
+    });
+  } else {
+    let choices = projects.filter((p: CloudProjectInfo) => !!p).map((p) => {
+      const projectId = getProjectId(p);
+      return {
+        name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
+        value: projectId,
+      };
+    });
+    choices = _.orderBy(choices, ["name"], ["asc"]);
+    return await promptOnce({
+      type: "list",
+      name: "id",
+      message: "Select the Google Cloud Platform project you would like to add Firebase:",
+      choices,
+    });
+  }
+}
+
 /**
  * Send an API request to create a new Google Cloud Platform project and poll the LRO to get the
  * new project information.

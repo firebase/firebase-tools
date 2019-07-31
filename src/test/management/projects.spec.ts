@@ -44,6 +44,18 @@ const ANOTHER_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   resources: {},
 };
 
+const TEST_CLOUD_PROJECT: projectManager.CloudProjectInfo = {
+  project: "projects/my-project-123",
+  displayName: "my-project",
+  locationId: "us-central",
+};
+
+const ANOTHER_CLOUD_PROJECT: projectManager.CloudProjectInfo = {
+  project: "projects/another-project",
+  displayName: "another-project",
+  locationId: "us-central",
+};
+
 function generateFirebaseProjectList(counts: number): projectManager.FirebaseProjectMetadata[] {
   return Array.from(Array(counts), (_, i: number) => ({
     name: `projects/project-id-${i}`,
@@ -144,7 +156,7 @@ describe("Project management", () => {
         expect(err.message).to.equal(
           "There are no Firebase projects associated with this account."
         );
-        expect(promptStub).to.be.not.called;
+        expect(promptOnceStub).to.be.not.called;
       });
 
       it("should get the correct project info when --project is supplied", async () => {
@@ -174,6 +186,55 @@ describe("Project management", () => {
             ". Please make sure the project exists and your account has permission to access it."
         );
         expect(err.original).to.equal(expectedError);
+        expect(promptOnceStub).to.be.not.called;
+      });
+    });
+
+    describe("promptAvailableProjectId", () => {
+      it("should select project from list if it is able to list all projects", async () => {
+        apiRequestStub.onFirstCall().resolves({
+          body: {
+            projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
+          },
+        });
+        promptOnceStub.resolves("my-project-123");
+
+        const projectId = await projectManager.promptAvailableProjectId();
+
+        expect(projectId).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptOnceStub.firstCall.args[0].type).to.equal("list");
+      });
+
+      it("should prompt project id if it is not able to list all projects", async () => {
+        apiRequestStub.onFirstCall().resolves({
+          body: {
+            projectInfo: [TEST_CLOUD_PROJECT, ANOTHER_CLOUD_PROJECT],
+            nextPageToken: "token",
+          },
+        });
+        promptOnceStub.resolves("my-project-123");
+
+        const projectId = await projectManager.promptAvailableProjectId();
+
+        expect(projectId).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptOnceStub.firstCall.args[0].type).to.equal("input");
+      });
+
+      it("should throw if there's no project", async () => {
+        apiRequestStub.onFirstCall().resolves({ body: { projectInfo: [] } });
+
+        let err;
+        try {
+          await projectManager.promptAvailableProjectId();
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err.message).to.equal(
+          "There are no available Google Cloud projects to add Firebase services."
+        );
         expect(promptOnceStub).to.be.not.called;
       });
     });
