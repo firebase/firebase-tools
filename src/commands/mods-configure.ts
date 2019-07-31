@@ -48,16 +48,16 @@ export default new Command("mods:configure <instanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
-      const removedLocation = _.remove(paramSpecWithNewDefaults, (param) => {
+      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.param === "LOCATION";
-      }).length;
+      });
       const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
-      if (removedLocation) {
+      if (removedLocations.length) {
         params.LOCATION = currentLocation;
       }
 
