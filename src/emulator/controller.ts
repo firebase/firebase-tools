@@ -198,6 +198,13 @@ export async function startAll(options: any): Promise<void> {
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    utils.logLabeledBullet(
+      Emulators.DATABASE,
+      `For testing set ${clc.bold(
+        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+      )}`
+    );
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {
