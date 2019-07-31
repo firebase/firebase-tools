@@ -2,6 +2,7 @@ import * as _ from "lodash";
 
 import * as api from "./api";
 import * as utils from "./utils";
+import { FirebaseError } from "./error";
 
 const POLL_INTERVAL = 10000; // 10 seconds
 const POLLS_BEFORE_RETRY = 12; // Retry enabling the API after 2 minutes
@@ -10,7 +11,7 @@ export async function check(
   projectId: string,
   apiName: string,
   prefix: string,
-  silent: boolean
+  silent: boolean = false
 ): Promise<boolean> {
   const response = await api.request("GET", `/v1/projects/${projectId}/services/${apiName}`, {
     auth: true,
@@ -35,7 +36,7 @@ export async function ensure(
   projectId: string,
   apiName: string,
   prefix: string,
-  silent: boolean
+  silent: boolean = false
 ): Promise<void> {
   if (!silent) {
     utils.logLabeledBullet(prefix, "ensuring necessary APIs are enabled...");
@@ -50,14 +51,14 @@ export async function ensure(
   return enableApiWithRetries(projectId, apiName, prefix, silent);
 }
 
-const pollCheckEnabled = async (
+async function pollCheckEnabled(
   projectId: string,
   apiName: string,
   prefix: string,
   silent: boolean,
   enablementRetries: number,
-  pollRetries = 0
-): Promise<void> => {
+  pollRetries: number = 0
+): Promise<void> {
   if (pollRetries > POLLS_BEFORE_RETRY) {
     return enableApiWithRetries(projectId, apiName, prefix, silent, enablementRetries + 1);
   }
@@ -73,20 +74,20 @@ const pollCheckEnabled = async (
     utils.logLabeledBullet(prefix, "waiting for APIs to activate...");
   }
   return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries, pollRetries + 1);
-};
+}
 
-const enableApiWithRetries = async (
+async function enableApiWithRetries(
   projectId: string,
   apiName: string,
   prefix: string,
   silent: boolean,
   enablementRetries = 0
-) => {
+): Promise<void> {
   if (enablementRetries > 1) {
-    return utils.reject(
+    throw new FirebaseError(
       "Timed out while waiting for APIs to enable. Please try again in a few minutes."
     );
   }
   await enable(projectId, apiName);
   return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries);
-};
+}
