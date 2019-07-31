@@ -15,4 +15,4 @@ if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
 fi
 export GOOGLE_APPLICATION_CREDENTIALS
 
-echo ""
+echo "Application Default Credentials: ${GOOGLE_APPLICATION_CREDENTIALS}"
