@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -e
-
-./set-default-credentials.sh
-
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CWD="$(pwd)"
+
+$DIR/set-default-credentials.sh
+
 TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
 
 echo "Running in ${CWD}"
