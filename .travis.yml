@@ -29,6 +29,7 @@ jobs:
         - TEST_NAME="Emulator End-to-End Tests"
       before_script:
         - echo "==== ${TEST_NAME} ===="
+        - ./scripts/decrypt-app-credentials.sh
       script: 
         - ./scripts/test-triggers-end-to-end.sh
       after_script: skip
