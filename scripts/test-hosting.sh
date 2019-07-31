@@ -1,20 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-if [ "${TRAVIS}" != "true" ]; then
-  TRAVIS_COMMIT="localtesting"
-  TRAVIS_JOB_ID="$(echo $RANDOM)"
-  TRAVIS_REPO_SLUG="firebase/firebase-tools"
-fi
+./set-default-credentials.sh
 
 CWD="$(pwd)"
 TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
-
-GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
-if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
-  GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
-fi
-export GOOGLE_APPLICATION_CREDENTIALS
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"

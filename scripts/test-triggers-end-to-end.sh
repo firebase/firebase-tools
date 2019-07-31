@@ -1,6 +1,7 @@
 #!/bin/bash
-
 set -xe
+
+./set-default-credentials.sh
 
 FIREBASE_CLI="./lib/bin/firebase.js"
 
