@@ -692,16 +692,6 @@ function warnAboutDatabaseProd(): void {
   hasAccessedDatabase = true;
 }
 
-/*
-  Here we set up some environment configs, but more importantly, we break GOOGLE_APPLICATION_CREDENTIALS
-  and FIREBASE_CONFIG so that there's no way we (google-auth) can automatically auth. This is a safety
-  fallback for situations where a stub does not properly redirect to the emulator and we attempt to
-  access a production resource. By removing the auth fields, we help reduce the risk of this situation.
-   */
-function ProtectEnvironmentalVariables(): void {
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
-}
-
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
@@ -956,8 +946,14 @@ async function main(): Promise<void> {
   }
 
   InitializeEnvironmentalVariables(frb);
-  if (isFeatureEnabled(frb, "protect_env")) {
-    ProtectEnvironmentalVariables();
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    new EmulatorLog(
+      "WARN",
+      "runtime-status",
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
+        process.env.GOOGLE_APPLICATION_CREDENTIALS
+      }. Non-emulated services will access production using these credentials. Be careful!`
+    ).log();
   }
 
   if (isFeatureEnabled(frb, "network_filtering")) {

@@ -398,10 +398,10 @@ You can probably fix this by running "npm install ${
         EmulatorLogger.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        EmulatorLogger.log("WARN", log.text);
+        EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;
       case "FATAL":
-        EmulatorLogger.log("WARN", log.text);
+        EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;
       default:
         EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
@@ -518,19 +518,19 @@ You can probably fix this by running "npm install ${
             type: Constants.getServiceName(service),
           };
 
+          let added = false;
           switch (service) {
             case Constants.SERVICE_FIRESTORE:
-              await this.addFirestoreTrigger(this.projectId, definition);
+              added = await this.addFirestoreTrigger(this.projectId, definition);
               break;
             case Constants.SERVICE_REALTIME_DATABASE:
-              await this.addRealtimeDatabaseTrigger(this.projectId, definition);
+              added = await this.addRealtimeDatabaseTrigger(this.projectId, definition);
               break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
-              result.ignored = true;
               break;
           }
-
+          result.ignored = !added;
           triggerResults.push(result);
         }
 
@@ -540,17 +540,17 @@ You can probably fix this by running "npm install ${
       const successTriggers = triggerResults.filter((r) => !r.ignored);
       for (const result of successTriggers) {
         const msg = result.details
-          ? `[${result.type}] function ${clc.bold(result.name)} initialized (${result.details}).`
-          : `[${result.type}] function ${clc.bold(result.name)} initialized.`;
-        EmulatorLogger.logLabeled("SUCCESS", "functions", msg);
+          ? `${clc.bold(result.type)} function initialized (${result.details}).`
+          : `${clc.bold(result.type)} function initialized.`;
+        EmulatorLogger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
       }
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
-        const msg = `Function ${clc.bold(result.name)} ignored because the emulator for ${
+        const msg = `function ignored because the ${
           result.type
-        } does not exist or is not running.`;
-        EmulatorLogger.logLabeled("BULLET", "functions", msg);
+        } emulator does not exist or is not running.`;
+        EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
 
@@ -566,16 +566,10 @@ You can probably fix this by running "npm install ${
   addRealtimeDatabaseTrigger(
     projectId: string,
     definition: EmulatedTriggerDefinition
-  ): Promise<any> {
+  ): Promise<boolean> {
     const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
     if (!databasePort) {
-      EmulatorLogger.log(
-        "INFO",
-        `Ignoring trigger "${
-          definition.name
-        }" because the Realtime Database emulator is not running.`
-      );
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
     if (definition.eventTrigger === undefined) {
       EmulatorLogger.log(
@@ -595,17 +589,15 @@ You can probably fix this by running "npm install ${
       return Promise.reject();
     }
 
-    const bundle = JSON.stringify([
-      {
-        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-        path: result[1], // path stored in the first capture group
-        event: definition.eventTrigger.eventType,
-        topic: `projects/${projectId}/topics/${definition.name}`,
-      },
-    ]);
+    const bundle = JSON.stringify({
+      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+      path: result[1], // path stored in the first capture group
+      event: definition.eventTrigger.eventType,
+      topic: `projects/${projectId}/topics/${definition.name}`,
+    });
 
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
       if (projectId !== "") {
         setTriggersPath += `?ns=${projectId}`;
@@ -617,7 +609,7 @@ You can probably fix this by running "npm install ${
           }'`
         );
       }
-      request.put(
+      request.post(
         setTriggersPath,
         {
           auth: {
@@ -632,26 +624,22 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          resolve();
+          resolve(true);
         }
       );
     });
   }
 
-  addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
+  addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
-      EmulatorLogger.log(
-        "INFO",
-        `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
-      );
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       request.put(
         `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
           definition.name
@@ -666,7 +654,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          resolve();
+          resolve(true);
         }
       );
     });
