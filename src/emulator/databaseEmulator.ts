@@ -20,6 +20,8 @@ export interface DatabaseEmulatorArgs {
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
+  static DATABASE_EMULATOR_ENV = "FIREBASE_DATABASE_EMULATOR_HOST";
+
   rulesWatcher?: chokidar.FSWatcher;
 
   constructor(private args: DatabaseEmulatorArgs) {}
