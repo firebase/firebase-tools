@@ -81,10 +81,9 @@ TriggerEndToEndTest.prototype.startEmulators = function startEmulators() {
   var self = this;
   self.emulators_process = subprocess.spawn("node", [
     PROJECT_ROOT + "/lib/bin/firebase.js",
-    "--debug",
+    "emulators:start",
     "--project",
     FIREBASE_PROJECT,
-    "emulators:start",
   ]);
 
   self.emulators_process.stdout.on("data", function(data) {
