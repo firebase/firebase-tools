@@ -60,7 +60,7 @@ export function getAppPlatform(platform: string): AppPlatform {
     case "": // list all apps if platform is not provided
       return AppPlatform.ANY;
     default:
-      return AppPlatform.PLATFORM_UNSPECIFIED;
+      throw new FirebaseError("Unexpected platform. Only iOS, Android, and Web apps are supported");
   }
 }
 

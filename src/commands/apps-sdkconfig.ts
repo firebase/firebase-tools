@@ -61,10 +61,6 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
     async (platform: string = "", appId: string = "", options: any): Promise<any> => {
       let appPlatform = getAppPlatform(platform);
 
-      if (appPlatform === AppPlatform.PLATFORM_UNSPECIFIED) {
-        throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps.");
-      }
-
       if (!appId) {
         if (options.nonInteractive) {
           throw new FirebaseError("App ID must not be empty.");

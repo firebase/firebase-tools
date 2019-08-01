@@ -17,6 +17,7 @@ import {
 } from "../../management/apps";
 import * as pollUtils from "../../operation-poller";
 import { mockAuth } from "../helpers";
+import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "the-best-firebase-project";
 const OPERATION_RESOURCE_NAME_1 = "operations/cp.11111111111111111";
@@ -99,9 +100,11 @@ describe("App management", () => {
       expect(getAppPlatform("")).to.equal(AppPlatform.ANY);
     });
 
-    it("should return the AppPlatform.PLATFORM_UNSPECIFIED", () => {
-      expect(getAppPlatform("unknown")).to.equal(AppPlatform.PLATFORM_UNSPECIFIED);
-      expect(getAppPlatform("iOSS")).to.equal(AppPlatform.PLATFORM_UNSPECIFIED);
+    it("should throw if the platform is unknown", () => {
+      expect(() => getAppPlatform("unknown")).to.throw(
+        FirebaseError,
+        "Unexpected platform. Only iOS, Android, and Web apps are supported"
+      );
     });
   });
 

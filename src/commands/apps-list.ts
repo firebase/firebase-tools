@@ -44,10 +44,6 @@ module.exports = new Command("apps:list [platform]")
       const projectId = getProjectId(options);
       const appPlatform = getAppPlatform(platform);
 
-      if (appPlatform === AppPlatform.PLATFORM_UNSPECIFIED) {
-        throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
-      }
-
       let apps;
       const spinner = ora(
         "Preparing the list of your Firebase " +
