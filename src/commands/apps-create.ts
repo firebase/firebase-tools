@@ -185,8 +185,6 @@ module.exports = new Command("apps:create [platform] [displayName]")
       const appPlatform = getAppPlatform(platform);
       if (appPlatform === AppPlatform.ANY /* platform is not provided */) {
         throw new FirebaseError("App platform must be provided");
-      } else if (appPlatform === AppPlatform.PLATFORM_UNSPECIFIED /* Unknown platform */) {
-        throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
       }
 
       logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);

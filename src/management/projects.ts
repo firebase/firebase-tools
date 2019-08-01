@@ -160,7 +160,7 @@ async function selectProjectFromList(
   const project = projects.find((p) => p.projectId === projectId);
 
   if (!project) {
-    throw new FirebaseError("Unexpected error. Chosen project must exist");
+    throw new FirebaseError("Unexpected error. Project does not exist");
   }
 
   return project;
