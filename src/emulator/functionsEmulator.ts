@@ -413,7 +413,6 @@ You can probably fix this by running "npm install ${
   nodeBinary: string = "";
 
   private server?: http.Server;
-  private firebaseConfig: any;
   private functionsDir: string = "";
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
@@ -432,15 +431,6 @@ You can probably fix this by running "npm install ${
 
   async start(): Promise<void> {
     this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
-
-    // TODO: This call requires authentication, which we should remove eventually
-    try {
-      this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-    } catch (e) {
-      utils.logWarning(`Could not fetch config for project ${clc.bold(this.projectId)}.`);
-      throw e;
-    }
-
     const { host, port } = this.getInfo();
     this.server = FunctionsEmulator.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(
       port,
