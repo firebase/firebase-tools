@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as request from "request";
 import * as clc from "cli-color";
 import * as path from "path";
+import * as pf from "portfinder";
 
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
@@ -54,7 +55,35 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    return javaEmulators.start(Emulators.FIRESTORE, this.args);
+    // Make a copy of the args
+    const commandLineArgs: any = Object.assign({}, this.args);
+
+    // Find a port for WebChannel traffic
+    const host = this.getInfo().host;
+    const basePort = this.getInfo().port;
+    const port = basePort + 1;
+    const stopPort = port + 10;
+    try {
+      const webChannelPort = await pf.getPortPromise({
+        port,
+        stopPort,
+      });
+
+      // TODO: This should eventually be webchannel_port
+      commandLineArgs["webchannel-port"] = webChannelPort;
+
+      utils.logLabeledBullet(
+        "firestore",
+        `Serving WebChannel traffic on at ${clc.bold(`http://${host}:${webChannelPort}`)}`
+      );
+    } catch (e) {
+      utils.logLabeledWarning(
+        "firestore",
+        `Not serving WebChannel traffic, unable to find an open port in range ${port}:${stopPort}]`
+      );
+    }
+
+    return javaEmulators.start(Emulators.FIRESTORE, commandLineArgs);
   }
 
   async connect(): Promise<void> {

@@ -57,7 +57,7 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
-    optionalArgs: ["port", "host", "rules", "functions_emulator"],
+    optionalArgs: ["port", "webchannel-port", "host", "rules", "functions_emulator"],
   },
 };
 
@@ -203,6 +203,6 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(`Starting emulator ${targetName} with args ${JSON.stringify(args)}`);
+  logger.debug(`Starting emulator ${targetName} with command ${JSON.stringify(command)}`);
   return _runBinary(emulator, command);
 }
