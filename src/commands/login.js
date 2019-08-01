@@ -34,6 +34,9 @@ module.exports = new Command("login")
       return Promise.resolve(user);
     }
 
+    utils.logBullet(
+      "Firebase optionally collects CLI usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
+    );
     return prompt(options, [
       {
         type: "confirm",
@@ -45,7 +48,7 @@ module.exports = new Command("login")
         configstore.set("usage", options.collectUsage);
         if (options.collectUsage) {
           utils.logBullet(
-            "Usage data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy). Collected data is not used for identification. To change your preference, run `firebase logout` and log in again."
+            "To change your data collection preference at any time, run `firebase logout` and log in again."
           );
         }
         return auth.login(options.localhost);
