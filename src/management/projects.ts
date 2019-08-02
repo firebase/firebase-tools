@@ -273,7 +273,9 @@ export async function createCloudProject(
  * to get the new Firebase project information.
  * @return a promise that resolves to the new firebase project information
  */
-export async function addFirebaseToCloudProject(projectId: string): Promise<any> {
+export async function addFirebaseToCloudProject(
+  projectId: string
+): Promise<FirebaseProjectMetadata> {
   try {
     const response = await api.request("POST", `/v1beta1/projects/${projectId}:addFirebase`, {
       auth: true,
@@ -357,10 +359,8 @@ export async function getAvailableCloudProjectPage(
   pageSize: number = PROJECT_LIST_PAGE_SIZE,
   pageToken?: string
 ): Promise<ProjectPage<CloudProjectInfo>> {
-  let projectPage;
-
   try {
-    projectPage = await getProjectPage<CloudProjectInfo>("/v1beta1/availableProjects", {
+    return await getProjectPage<CloudProjectInfo>("/v1beta1/availableProjects", {
       responseKey: "projectInfo",
       pageSize,
       pageToken,
@@ -372,8 +372,6 @@ export async function getAvailableCloudProjectPage(
       { exit: 2, original: err }
     );
   }
-
-  return projectPage;
 }
 
 /**
