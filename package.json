@@ -20,7 +20,8 @@
   },
   "files": [
     "lib",
-    "templates"
+    "templates",
+    "runtime"
   ],
   "repository": {
     "type": "git",
