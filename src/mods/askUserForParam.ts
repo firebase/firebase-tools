@@ -61,7 +61,7 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(`\n${clc.bold(label)}: ${marked(description).trim()}`);
-
+  // tslint:disable
   while (!valid) {
     switch (paramSpec.type) {
       case ParamType.SELECT:
@@ -101,12 +101,14 @@ export async function askForParam(paramSpec: Param): Promise<string> {
         break;
       default:
         // Default to ParamType.STRING
+        console.log('made it to default');
         response = await promptOnce({
           name: paramSpec.param,
           type: "input",
           default: paramSpec.default,
           message: `Enter a value for ${label}:`,
         });
+        console.log("not past tho");
     }
 
     valid = checkResponse(response, paramSpec);

@@ -55,7 +55,7 @@ const SPEC = {
   params: TEST_PARAMS,
 };
 
-describe("paramHelper", () => {
+describe.only("paramHelper", () => {
   describe("getParams", () => {
     let fsStub: sinon.SinonStub;
     let dotenvStub: sinon.SinonStub;
@@ -250,12 +250,17 @@ describe("paramHelper", () => {
 
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
+    let getFirebaseVariableStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      getFirebaseVariableStub = sinon
+        .stub(modsHelper, "getFirebaseProjectParams")
+        .resolves({ PROJECT_ID });
     });
 
     afterEach(() => {
       promptStub.restore();
+      getFirebaseVariableStub.restore();
     });
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
