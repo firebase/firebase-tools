@@ -263,10 +263,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -297,10 +302,15 @@ describe("paramHelper", () => {
       promptStub.resolves("Fail");
       const newSpec = _.cloneDeep(SPEC);
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -316,10 +326,15 @@ describe("paramHelper", () => {
       newSpec.params = TEST_PARAMS_2;
 
       expect(
-        paramHelper.promptForNewParams(SPEC, newSpec, {
-          A_PARAMETER: "value",
-          ANOTHER_PARAMETER: "value",
-        })
+        paramHelper.promptForNewParams(
+          SPEC,
+          newSpec,
+          {
+            A_PARAMETER: "value",
+            ANOTHER_PARAMETER: "value",
+          },
+          PROJECT_ID
+        )
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;

@@ -10,6 +10,7 @@ import * as modsApi from "./modsApi";
 import {
   getFirebaseProjectParams,
   populateDefaultParams,
+  substituteParams,
   validateCommandLineParams,
 } from "../mods/modsHelper";
 import * as askUserForParam from "../mods/askUserForParam";
@@ -96,18 +97,14 @@ export async function getParams(
 export async function promptForNewParams(
   spec: modsApi.ModSpec,
   newSpec: modsApi.ModSpec,
-  currentParams: { [option: string]: string }
+  currentParams: { [option: string]: string },
+  projectId: string
 ): Promise<any> {
-  const paramsDiffDeletions = _.differenceWith(
-    spec.params,
-    _.get(newSpec, "params", []),
-    _.isEqual
-  );
-  const paramsDiffAdditions = _.differenceWith(
-    newSpec.params,
-    _.get(spec, "params", []),
-    _.isEqual
-  );
+  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
+  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
+  const firebaseProjectParams = await getFirebaseProjectParams(projectId);
+  paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
+  paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
