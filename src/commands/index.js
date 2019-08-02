@@ -13,6 +13,10 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.apps = {};
+  client.apps.list = loadCommand("apps-list");
+  client.apps.create = loadCommand("apps-create");
+  client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
@@ -57,6 +61,9 @@ module.exports = function(client) {
   client.login.ci = loadCommand("login-ci");
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
+  client.projects = {};
+  client.projects.list = loadCommand("projects-list");
+  client.projects.create = loadCommand("projects-create");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
