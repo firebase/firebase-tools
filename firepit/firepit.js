@@ -639,9 +639,85 @@ function ImitateFirebaseTools(binPath) {
 
 /*
   -------------------------------------
-  Other Functions
+  Core Functions
   -------------------------------------
  */
+
+async function createRuntimeBinaries() {
+  /*
+    As discussed in the introduction, Firepit isn't *just* firebase-tools, it's also npm and node.
+    We need it to act as several CLI tools in order to support firebase-tools because it shells out
+    to these other commands in some situations.
+
+    In order to support this we add a few special scripts onto the users's path so when a user (or
+    script) invokes "npm" or "node" it redirects back into Firepit so we can control the environment
+    regardless of how that command was invoked.
+
+    To do this cross-platform, we need to create both shell and batch scripts (for nix / windows).
+    These scripts are kept very minimal, as you can see in runtimeBins, they're mostly one line or
+    two.
+
+    Each of the platform-specific scripts like "shell" or "node.bat" do the absolute minimum work
+    needed to act as an executable binary, then immediately redirect the arguments passed to it
+    back into Firepit via the "shell.js" or "node.js" scripts. (See runtime.js for contents). These
+    two scripts do the majority of heavy lifting in terms of imitating npm or node.
+
+    Originally, we implemented the node / npm stand-ins in pure bash or batch, however there was
+    way too much platform specific code, by redirecting us back into Firepit (and Node) we add
+    another process, but we also dramatically reduce per-platform code. The Node code is
+    cross-platform and works perfectly everywhere. It's also easier to test because any *nix
+    machine can functionally test the same code that would run on Windows or vice-versa.
+   */
+  const runtimeBins = {
+    /* Linux / OSX */
+    shell: `"${unsafeNodePath}"  ${runtimeBinsPath}/shell.js "$@"`,
+    node: `"${unsafeNodePath}"  ${runtimeBinsPath}/node.js "$@"`,
+    npm: `"${unsafeNodePath}" "${
+      FindTool("npm/bin/npm-cli")[0]
+      }" ${npmArgs.join(" ")} "$@"`,
+
+    /* Windows */
+    "node.bat": `@echo off
+"${unsafeNodePath}"  ${runtimeBinsPath}\\node.js %*`,
+    "shell.bat": `@echo off
+"${unsafeNodePath}"  ${runtimeBinsPath}\\shell.js %*`,
+    "npm.bat": `@echo off
+node "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")}  %*`,
+
+    /* Runtime scripts */
+    "shell.js": `${appendToPath.toString()}\n${getSafeCrossPlatformPath.toString()}\n(${runtime.Script_ShellJS.toString()})()`,
+    "node.js": `(${runtime.Script_NodeJS.toString()})()`,
+
+    /* Config files */
+    npmrc: `prefix = ${installPath}`
+  };
+
+  /*
+    We handle creating the runtimeBins files by looping through and writing files. There's nothing
+    special or interesting here.
+   */
+
+  try {
+    shell.mkdir("-p", runtimeBinsPath);
+  } catch (err) {
+    debug(err);
+  }
+
+  if (!flags["disable-write"]) {
+    Object.keys(runtimeBins).forEach(filename => {
+      const runtimeBinPath = path.join(runtimeBinsPath, filename);
+      try {
+        shell.rm("-rf", runtimeBinPath);
+      } catch (err) {
+        debug(err);
+      }
+      fs.writeFileSync(runtimeBinPath, runtimeBins[filename]);
+      shell.chmod("+x", runtimeBinPath);
+    });
+  }
+  debug("Runtime binaries created.");
+}
+
 
 async function SetupFirebaseTools() {
   /*
@@ -703,6 +779,12 @@ async function SetupFirebaseTools() {
     When installing remotely, npm automatically links the firebase-tools script to a binary folder,
     however sometimes this doesn't happen as expected, so we manually call shell.ln (link) to create
     a symlink regardless of the install type.
+
+    This step ensures that whether the firebase-tools install was created from the remote or
+    local install that the binary still exists in the same place.
+
+    Note we can not simply move firebase.js because it uses imports relative to it's position in
+    the node_modules tree.
    */
   debug(
     shell
@@ -729,6 +811,12 @@ async function SetupFirebaseTools() {
   process.argv = original_argv;
 }
 
+/*
+  -------------------------------------
+  Other / Helper Functions
+  -------------------------------------
+ */
+
 function uninstallLegacyFirepit() {
   /*
     There are two situations where we should trash the Firepit install directory.
@@ -736,10 +824,19 @@ function uninstallLegacyFirepit() {
     1) We're using an old firepit version where the "cli" folder exists
     2) We're using an old firebase-tools version where the version is different than ours.
    */
+
+  /*
+    To detect an old-style Firepit install, we look for the "cli" folder, a folder which has
+    been renmaed in new Firepit builds.
+   */
   const isLegacyFirepit = !shell.ls(
     path.join(homePath, ".cache", "firebase", "cli")
   ).code;
 
+  /*
+    To check for mismatched firebase-tools versions, we find the package.json and read the version
+    manually then compare it to ours.
+   */
   let installedFirebaseToolsPackage = {};
   const installedFirebaseToolsPackagePath = path.join(
     homePath,
@@ -780,8 +877,13 @@ function uninstallLegacyFirepit() {
 
 async function getFirebaseToolsCommand() {
   /*
-    This helper function produces a full "firebase-tools" command which uses VerifyNodePath
-    to ensure that it's invoked with the correct arguments.
+    This helper function produces an absolute, cross-platform "firebase" command reference.
+
+    It outputs either "c:\path\to\firebase.exe" or "c:\path\to\firebase.exe path\to\firebase.js"
+    As discussed above, whether running the firepit binary results in a Node.js runtime or the
+    "firebase" command can change (seemingly randomly, but it's not) depending on if we're
+    inside of an existing pkg process. Doing this check ensures that we get a command which
+    when ran results in "firebase" being ran regardless of environment.
    */
   const isRuntime = await VerifyNodePath(safeNodePath);
   debug(`Node path ${safeNodePath} is runtime? ${isRuntime}`);
@@ -807,12 +909,18 @@ async function VerifyNodePath(nodePath) {
 
     ./firepit check.js --tool:runtime-check
 
-    This allows us to determine if the current environment is internal to pkg or not.
+    This allows us to determine if the current environment is internal to pkg or not. When it's
+    internal, meaning that the invocation of firepit is a direct child of another firepit process
+    then ./firepit will invoke the node runtime which is bundled within the firepit binary.
 
-    If it's internal, then the ./firepit call will run check.js and return a checkmark. If it's not
-    then it will return a log from the Firepit script.
+    When it's not internal, it will run the firepit scripts.
 
-    We use this to ensure that we pass the "is:node" flag when needed.
+    This check works because with these flags ./firepit call will run check.js and return a
+    checkmark if it's acting as the Node runtime and if it's not it will just log something
+    else and exit.
+
+    We use this to ensure that we can always build a command which invokes the Firebase CLI
+    regardless of where the process is actually being spawned.
    */
   const runtimeCheckPath = await getSafeCrossPlatformPath(
     isWindows,
@@ -856,8 +964,8 @@ async function VerifyNodePath(nodePath) {
 
 function FindTool(bin) {
   /*
-    When locating firebase-tools, npm, node, etc they could all be hiding
-    inside the firepit exe or in the npm cache.
+    This method returns a list of files which match the script name provided. We use this to
+    locate npm, firebase-tools, etc.
    */
 
   const potentialPaths = [
@@ -877,54 +985,11 @@ function FindTool(bin) {
     .filter(p => p);
 }
 
-async function createRuntimeBinaries() {
-  const runtimeBins = {
-    /* Linux / OSX */
-    shell: `"${unsafeNodePath}"  ${runtimeBinsPath}/shell.js "$@"`,
-    node: `"${unsafeNodePath}"  ${runtimeBinsPath}/node.js "$@"`,
-    npm: `"${unsafeNodePath}" "${
-      FindTool("npm/bin/npm-cli")[0]
-    }" ${npmArgs.join(" ")} "$@"`,
-
-    /* Windows */
-    "node.bat": `@echo off
-"${unsafeNodePath}"  ${runtimeBinsPath}\\node.js %*`,
-    "shell.bat": `@echo off
-"${unsafeNodePath}"  ${runtimeBinsPath}\\shell.js %*`,
-    "npm.bat": `@echo off
-node "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")}  %*`,
-
-    /* Runtime scripts */
-    "shell.js": `${appendToPath.toString()}\n${getSafeCrossPlatformPath.toString()}\n(${runtime.Script_ShellJS.toString()})()`,
-    "node.js": `(${runtime.Script_NodeJS.toString()})()`,
-
-    /* Config files */
-    npmrc: `prefix = ${installPath}`
-  };
-
-  try {
-    shell.mkdir("-p", runtimeBinsPath);
-  } catch (err) {
-    debug(err);
-  }
-
-  if (!flags["disable-write"]) {
-    Object.keys(runtimeBins).forEach(filename => {
-      const runtimeBinPath = path.join(runtimeBinsPath, filename);
-      try {
-        fs.unlinkSync(runtimeBinPath);
-      } catch (err) {
-        debug(err);
-      }
-      fs.writeFileSync(runtimeBinPath, runtimeBins[filename]);
-      shell.chmod("+x", runtimeBinPath);
-    });
-  }
-  debug("Runtime binaries created.");
-}
-
-
 function SetWindowTitle(title) {
+  /*
+    This method *attempts* to set the terminal window title to something pretty so it doesn't
+    show the internal shell'ing we do. It kinda works, but fails silently, so I've left it in.
+   */
   if (isWindows) {
     process.title = title;
   } else {
@@ -934,16 +999,42 @@ function SetWindowTitle(title) {
 
 
 /*
--------------------------------------
-Shared Firepit / Runtime Functions
+  -------------------------------------
+  Shared Functions
+  -------------------------------------
 
-Are invoked in both Firepit and in the Runtime scripts.
--------------------------------------
+  These methods are very special and should be edited carefully. They must be pure JavaScript
+  functions which do not rely on any global state or imports.
+
+  If you look at createRuntimeBinaries() and see the runtimeBins scripts, you'll see that we
+  call getSafeCrossPlatformPath.toString() and appendToPath.toString() and put them into the
+  scripts which we place on the filesystem. We do this because the scripts in ./runtime.js
+  depend on these functions and since we need to create single JavaScript files to drop onto
+  the user's filesystem, we concat them together.
+
+  This is fairly dangerous, but we don't have many options.
  */
 
 async function getSafeCrossPlatformPath(isWin, path) {
+  /*
+    This function generates "safe" DOS style file paths on Windows.
+
+    For example:
+
+    unsafePath: C:\Program Files\Java\jdk1.6.0_22
+    safePath: C:\PROGRA~1\Java\JDK16~1.0_2
+
+    These paths remove spaces and special characters which could interfere with the terminal.
+    In theory, it should be possible to avoid this, but because of issues in npm, we need to be
+    extra safe about spaces.
+   */
   if (!isWin) return path;
 
+  /*
+    This is perhaps the biggest hack in Firepit, we shell out to command and run a small script
+    which returns the DOS-formatted version of a path. This is not fast, but it's (apparently)
+    the only way to fetch the safe version of a path
+   */
   let command = `for %I in ("${path}") do echo %~sI`;
   return new Promise(resolve => {
     const cmd = require("child_process").spawn(`cmd`, ["/c", command], {
@@ -971,6 +1062,11 @@ async function getSafeCrossPlatformPath(isWin, path) {
 }
 
 function appendToPath(isWin, pathsToAppend) {
+  /*
+    This method handles appending a folder to the user's PATH directory in a cross-platform way.
+
+    Windows uses ";" to delimit paths and *nix uses ":"
+   */
   const PATH = process.env.PATH;
   const pathSeperator = isWin ? ";" : ":";
 
@@ -981,6 +1077,9 @@ function appendToPath(isWin, pathsToAppend) {
 }
 
 function debug(...msg) {
+  /*
+    This method creates a debug log which can go to stdout or a file depending on --tool: flags.
+   */
   if (!debug.log) debug.log = [];
 
   if (flags["log-debug"]) {

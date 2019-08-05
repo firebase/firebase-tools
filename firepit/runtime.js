@@ -13,13 +13,13 @@
 // limitations under the License.
 
 /*
--------------------------------------
-Runtime Scripts
+  -------------------------------------
+  Runtime Scripts
+  -------------------------------------
 
-These functions are not invoked in firepit,
-but are written to the filesystem (via Function.toString())
-and then invoked from platform-specific .bat or .sh scripts
--------------------------------------
+  These functions are not invoked in firepit,
+  but are written to the filesystem (via Function.toString())
+  and then invoked from platform-specific .bat or .sh scripts
  */
 
 exports.Script_NodeJS = function() {
