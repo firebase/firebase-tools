@@ -12,6 +12,7 @@ import { logPrefix } from "../mods/modsHelper";
 import * as paramHelper from "../mods/paramHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -58,6 +59,10 @@ export default new Command("mods:configure <instanceId>")
         options.params
       );
       if (removedLocations.length) {
+        logger.info(
+          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
+            `Please uninstall and reinstall this mod to change location.`
+        );
         params.LOCATION = currentLocation;
       }
 
