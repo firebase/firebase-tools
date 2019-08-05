@@ -9,7 +9,7 @@
     "ship": "gsutil -m cp dist/* gs://fir-tools-builds/firepit/ && gsutil iam ch allUsers:objectViewer gs://fir-tools-builds"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.2",
     "npm": "^6.10.2",
