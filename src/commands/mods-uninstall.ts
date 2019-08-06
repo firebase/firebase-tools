@@ -79,14 +79,18 @@ export default new Command("mods:uninstall <modInstanceId>")
           projectId,
           instance.serviceAccountEmail
         );
-        if (_.get(saDeletionRes, "body.error") && _.get(saDeletionRes, "body.error.code") !== 404) {
-          throw new FirebaseError("Unable to delete service account");
-        } else if (_.get(saDeletionRes, "body.error.code") === 404) {
-          spinner.succeed(
-            ` ${clc.green.bold(logPrefix)}: service account ${clc.bold(
-              instance.serviceAccountEmail
-            )} was previously deleted.`
-          );
+        if (_.get(saDeletionRes, "body.error")) {
+          if (_.get(saDeletionRes, "body.error.code") === 404) {
+            spinner.succeed(
+              ` ${clc.green.bold(logPrefix)}: service account ${clc.bold(
+                instance.serviceAccountEmail
+              )} was previously deleted.`
+            );
+          } else {
+            throw new FirebaseError("Unable to delete service account", {
+              original: saDeletionRes.body.error,
+            });
+          }
         } else {
           spinner.succeed(
             ` ${clc.green.bold(logPrefix)}: deleted service account ${clc.bold(
