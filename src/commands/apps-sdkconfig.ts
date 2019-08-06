@@ -3,6 +3,7 @@ import * as fs from "fs-extra";
 
 import * as Command from "../command";
 import {
+  AppConfigurationData,
   AppMetadata,
   AppPlatform,
   getAppConfig,
@@ -58,7 +59,11 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(
-    async (platform: string = "", appId: string = "", options: any): Promise<any> => {
+    async (
+      platform: string = "",
+      appId: string = "",
+      options: any
+    ): Promise<AppConfigurationData> => {
       let appPlatform = getAppPlatform(platform);
 
       if (!appId) {
