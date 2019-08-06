@@ -20,6 +20,7 @@ export interface FirestoreEmulatorArgs {
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
+  webchannel_port?: number;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
@@ -55,9 +56,6 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    // Make a copy of the args
-    const commandLineArgs: any = Object.assign({}, this.args);
-
     // Find a port for WebChannel traffic
     const host = this.getInfo().host;
     const basePort = this.getInfo().port;
@@ -68,9 +66,7 @@ export class FirestoreEmulator implements EmulatorInstance {
         port,
         stopPort,
       });
-
-      // TODO: This should eventually be webchannel_port
-      commandLineArgs["webchannel-port"] = webChannelPort;
+      this.args.webchannel_port = webChannelPort;
 
       utils.logLabeledBullet(
         "firestore",
@@ -83,7 +79,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       );
     }
 
-    return javaEmulators.start(Emulators.FIRESTORE, commandLineArgs);
+    return javaEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
   async connect(): Promise<void> {
