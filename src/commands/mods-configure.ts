@@ -12,7 +12,7 @@ import { logPrefix } from "../mods/modsHelper";
 import * as paramHelper from "../mods/paramHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
-import { logger } from "..";
+import * as logger from "../logger";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
