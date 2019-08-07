@@ -6,6 +6,7 @@ import * as getProjectId from "../getProjectId";
 import { FirebaseError } from "../error";
 import {
   AndroidAppMetadata,
+  AppMetadata,
   AppPlatform,
   createAndroidApp,
   createIosApp,
@@ -167,7 +168,11 @@ module.exports = new Command("apps:create [platform] [displayName]")
   .option("-s, --app-store-id <appStoreId>", "(optional) app store id for the iOS app")
   .before(requireAuth)
   .action(
-    async (platform: string = "", displayName: string | undefined, options: any): Promise<any> => {
+    async (
+      platform: string = "",
+      displayName: string | undefined,
+      options: any
+    ): Promise<AppMetadata> => {
       const projectId = getProjectId(options);
 
       if (!options.nonInteractive && !platform) {
