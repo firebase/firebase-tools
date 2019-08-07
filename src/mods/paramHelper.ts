@@ -104,7 +104,7 @@ export async function promptForNewParams(
 
   let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
   paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
-  
+
   let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
   paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
 
