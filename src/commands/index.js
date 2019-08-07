@@ -75,8 +75,6 @@ module.exports = function(client) {
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
-  client.tools = {};
-  client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
   if (previews.mods) {
