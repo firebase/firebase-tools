@@ -8,6 +8,7 @@ import {
   AppPlatform,
   getAppConfig,
   getAppPlatform,
+  getWebAppConfig,
   listFirebaseApps,
 } from "../management/apps";
 import { getOrPromptProject } from "../management/projects";
@@ -19,13 +20,20 @@ import { promptOnce } from "../prompt";
 async function selectAppInteractively(
   projectId: string,
   appPlatform: AppPlatform
-): Promise<AppMetadata> {
+): Promise<AppMetadata | undefined> {
   if (!projectId) {
     throw new FirebaseError("Project ID must not be empty.");
   }
 
   const apps: AppMetadata[] = await listFirebaseApps(projectId, appPlatform);
   if (apps.length === 0) {
+    if (appPlatform === AppPlatform.WEB) {
+      logger.warn(
+        `clc.redWarning: There is no web app associated with ${projectId}. ` +
+          `You can create one with "firebase apps:create web" command `
+      );
+      return undefined;
+    }
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
         "associated with this Firebase project"
@@ -40,6 +48,13 @@ async function selectAppInteractively(
       value: app,
     };
   });
+
+  if (appPlatform === AppPlatform.WEB) {
+    choices.push({
+      name: "Print configuration without a web app (not recommended)",
+      value: undefined,
+    });
+  }
 
   return await promptOnce({
     type: "list",
@@ -65,17 +80,18 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       options: any
     ): Promise<AppConfigurationData> => {
       let appPlatform = getAppPlatform(platform);
+      let projectId = options.project;
 
-      if (!appId) {
-        if (options.nonInteractive) {
-          throw new FirebaseError("App ID must not be empty.");
-        }
+      if (!appId && !options.nonInteractive) {
+        projectId = (await getOrPromptProject(options)).projectId;
 
-        const { projectId } = await getOrPromptProject(options);
+        const appMetadata = await selectAppInteractively(projectId, appPlatform);
+        appId = appMetadata ? appMetadata.appId : "";
+        appPlatform = appMetadata ? appMetadata.platform : appPlatform;
+      }
 
-        const appMetadata: AppMetadata = await selectAppInteractively(projectId, appPlatform);
-        appId = appMetadata.appId;
-        appPlatform = appMetadata.platform;
+      if (!appId && appPlatform !== AppPlatform.WEB) {
+        throw new FirebaseError("App ID must not be empty for non Web apps.");
       }
 
       let configData;
@@ -83,7 +99,9 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         `Downloading configuration data of your Firebase ${appPlatform} app`
       ).start();
       try {
-        configData = await getAppConfig(appId, appPlatform);
+        configData = appId
+          ? await getAppConfig(appId, appPlatform)
+          : await getWebAppConfig(projectId);
       } catch (err) {
         spinner.fail();
         throw err;

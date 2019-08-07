@@ -281,6 +281,27 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
   return `/v1beta1/projects/-/${platformResource}/${appId}/config`;
 }
 
+export async function getWebAppConfig(projectId: string): Promise<AppConfigurationData> {
+  let response;
+  try {
+    response = await api.request("GET", `/v1beta1/projects/${projectId}/webApps/-/config`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get WEB app configuration. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+  return parseConfigFromResponse(response.body, AppPlatform.WEB);
+}
+
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
     const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
