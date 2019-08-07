@@ -102,12 +102,9 @@ export async function promptForNewParams(
 ): Promise<any> {
   let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
   let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
-  // tslint:disable
   const firebaseProjectParams = await getFirebaseProjectParams(projectId);
   paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
-  console.log(paramsDiffDeletions)
   paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
-  console.log(paramsDiffAdditions)
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
@@ -116,12 +113,9 @@ export async function promptForNewParams(
     });
   }
   if (paramsDiffAdditions.length) {
-    console.log("hello from joe");
     logger.info("Please configure the following new params:");
     for (const param of paramsDiffAdditions) {
-      console.log('bouta promtped');
       const chosenValue = await askUserForParam.askForParam(param);
-      console.log('promtped');
       currentParams[param.param] = chosenValue;
     }
   }

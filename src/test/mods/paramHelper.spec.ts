@@ -330,7 +330,7 @@ describe.only("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      expect(
+      await expect(
         paramHelper.promptForNewParams(
           SPEC,
           newSpec,
