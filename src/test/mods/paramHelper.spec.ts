@@ -259,8 +259,7 @@ describe("paramHelper", () => {
     });
 
     afterEach(() => {
-      promptStub.restore();
-      getFirebaseVariableStub.restore();
+      sinon.restore();
     });
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
