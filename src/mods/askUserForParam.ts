@@ -61,6 +61,7 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(`\n${clc.bold(label)}: ${marked(description).trim()}`);
+
   while (!valid) {
     switch (paramSpec.type) {
       case ParamType.SELECT:

@@ -55,7 +55,7 @@ const SPEC = {
   params: TEST_PARAMS,
 };
 
-describe.only("paramHelper", () => {
+describe("paramHelper", () => {
   describe("getParams", () => {
     let fsStub: sinon.SinonStub;
     let dotenvStub: sinon.SinonStub;
