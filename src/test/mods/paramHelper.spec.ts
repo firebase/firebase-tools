@@ -37,7 +37,7 @@ const TEST_PARAMS_2 = [
     param: "NEW_PARAMETER",
     label: "New Param",
     type: ParamType.STRING,
-    default: "default",
+    default: "${PROJECT_ID}",
   },
   {
     param: "THIRD_PARAMETER",
@@ -286,7 +286,7 @@ describe("paramHelper", () => {
       expect(promptStub.callCount).to.equal(2);
       expect(promptStub.firstCall.args).to.eql([
         {
-          default: "default",
+          default: "test-proj",
           message: "Enter a value for New Param:",
           name: "NEW_PARAMETER",
           type: "input",
