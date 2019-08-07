@@ -100,11 +100,14 @@ export async function promptForNewParams(
   currentParams: { [option: string]: string },
   projectId: string
 ): Promise<any> {
-  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
-  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
   const firebaseProjectParams = await getFirebaseProjectParams(projectId);
+
+  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
   paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
+  
+  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
   paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
+
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
