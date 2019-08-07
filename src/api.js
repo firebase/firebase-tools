@@ -252,6 +252,11 @@ var api = {
       return Promise.reject(err);
     });
   },
+
+  /**
+   * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
+   * TODO: remove this function after deprecating `list` command
+   */
   getProjects: function() {
     return api
       .request("GET", "/v1/projects", {
