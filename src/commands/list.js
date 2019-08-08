@@ -13,11 +13,11 @@ var logger = require("../logger");
  * TODO: Remove this command 6 months after launching `projects:list` command
  */
 module.exports = new Command("list")
-  .description("list the Firebase projects you have access to")
+  .description("[DEPRECATED] list the Firebase projects you have access to")
   .before(requireAuth)
   .action(function(options) {
     logger.warn(
-      "This command is deprecated. Instead, use 'firebase projects:list' command to list your projects"
+      "This command is deprecated. Instead, use 'firebase projects:list' command to list your projects."
     );
     return api.getProjects().then(function(projects) {
       var tableHead = ["Name", "Project ID / Instance", "Permissions"];
