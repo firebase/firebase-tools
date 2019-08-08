@@ -39,6 +39,8 @@ describe("project", () => {
   let getProjectStub: sinon.SinonStub;
   let createFirebaseProjectStub: sinon.SinonStub;
   let getOrPromptProjectStub: sinon.SinonStub;
+  let addFirebaseProjectStub: sinon.SinonStub;
+  let promptAvailableProjectIdStub: sinon.SinonStub;
   let promptOnceStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
 
@@ -46,6 +48,8 @@ describe("project", () => {
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
     createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
     getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
+    addFirebaseProjectStub = sandbox.stub(projectManager, "addFirebaseToCloudProjectAndLog");
+    promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
   });
@@ -124,6 +128,49 @@ describe("project", () => {
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptStub).to.be.calledOnce;
         expect(createFirebaseProjectStub).to.be.not.called;
+      });
+    });
+
+    describe('with "Add Firebase resources to GCP project" option', () => {
+      it("should add firebase resources and set up the correct properties", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Add Firebase to an existing Google Cloud Platform project");
+        promptAvailableProjectIdStub.onFirstCall().resolves("my-project-123");
+        addFirebaseProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+
+        await doSetup(setup, {}, options);
+
+        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
+        expect(_.get(setup, "instance")).to.deep.equal("my-project");
+        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptAvailableProjectIdStub).to.be.calledOnce;
+        expect(addFirebaseProjectStub).to.be.calledOnceWith("my-project-123");
+      });
+
+      it("should throw if project ID is empty after prompt", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Add Firebase to an existing Google Cloud Platform project");
+        promptAvailableProjectIdStub.onFirstCall().resolves("");
+
+        let err;
+        try {
+          await doSetup(setup, {}, options);
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err.message).to.equal("Project ID cannot be empty");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptAvailableProjectIdStub).to.be.calledOnce;
+        expect(addFirebaseProjectStub).to.be.not.called;
       });
     });
 
