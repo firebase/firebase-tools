@@ -5,4 +5,4 @@
 * Add new app management commands: `apps:create`, `apps:list`, `apps:sdkconfig`.
 * Improve `init` command to be able to create a new project.
 * Automatically choose a port for the Firestore emulator to serve WebChannel traffic.
-* Deprecate `list` command.
+* Mark `list` command as deprecated.
