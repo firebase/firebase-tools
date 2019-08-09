@@ -11,10 +11,12 @@ var JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "
 
 /**
  * This command is deprecated in favor of `apps:sdkconfig web` command
- * TODO: Remove this command after launching `apps:sdkconfig` command
+ * TODO: Remove this command after 02/09/2020
  */
 module.exports = new Command("setup:web")
-  .description("[DEPRECATED: use `apps:sdkconfig web`] display this project's setup information for the Firebase JS SDK")
+  .description(
+    "[DEPRECATED: use `apps:sdkconfig web`] display this project's setup information for the Firebase JS SDK"
+  )
   .before(requirePermissions, [])
   .action(function(options) {
     logger.warn(
