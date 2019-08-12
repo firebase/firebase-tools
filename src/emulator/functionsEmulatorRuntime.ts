@@ -696,6 +696,14 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
+  const nodeVersion = parseVersionString(process.versions.node);
+  if (nodeVersion.major >= 10) {
+    const triggerId = frb.triggerId || "";
+    process.env.FUNCTION_TARGET = triggerId.replace(/-/g, ".");
+    process.env.K_SERVICE = triggerId;
+    process.env.K_REVISION = "0";
+  }
+
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
