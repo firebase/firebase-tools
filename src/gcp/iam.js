@@ -43,6 +43,7 @@ function deleteServiceAccount(projectId, accountEmail) {
     {
       auth: true,
       origin: api.iamOrigin,
+      resolveOnHTTPError: true,
     }
   );
 }
