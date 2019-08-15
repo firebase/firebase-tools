@@ -1,8 +1,0 @@
-{
-  "name": "functions",
-  "description": "Firebase Functions",
-  "dependencies": {
-    "firebase-admin": "~5.8",
-    "firebase-functions": "^0.8"
-  }
-}
