@@ -302,6 +302,47 @@ describe("paramHelper", () => {
       ]);
     });
 
+    it("should populate the spec with the default value if it is returned by prompt", async () => {
+      promptStub.onFirstCall().resolves("test-proj");
+      promptStub.onSecondCall().resolves("user input");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_2;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        NEW_PARAMETER: "test-proj",
+        THIRD_PARAMETER: "user input",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub.callCount).to.equal(2);
+      expect(promptStub.firstCall.args).to.eql([
+        {
+          default: "test-proj",
+          message: "Enter a value for New Param:",
+          name: "NEW_PARAMETER",
+          type: "input",
+        },
+      ]);
+      expect(promptStub.secondCall.args).to.eql([
+        {
+          default: "default",
+          message: "Enter a value for 3:",
+          name: "THIRD_PARAMETER",
+          type: "input",
+        },
+      ]);
+    });
+
     it("shouldn't prompt if there are no new params", async () => {
       promptStub.resolves("Fail");
       const newSpec = _.cloneDeep(SPEC);
