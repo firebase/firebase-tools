@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { populatePostinstall } from "../../mods/populatePostinstall";
+import { populatePostinstall } from "../../extensions/populatePostinstall";
 
 describe("populatePostinstallInstructions", () => {
   const instructions = "These are instructions, param foo is ${param:FOO}";

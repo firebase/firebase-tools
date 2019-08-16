@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
-import * as generateInstanceId from "../../mods/generateInstanceId";
-import * as modsHelper from "../../mods/modsHelper";
+import * as generateInstanceId from "../../extensions/generateInstanceId";
+import * as modsHelper from "../../extensions/modsHelper";
 import * as prompt from "../../prompt";
 
 describe("modsHelper", () => {

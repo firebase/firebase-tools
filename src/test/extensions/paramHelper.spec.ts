@@ -6,9 +6,9 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import * as logger from "../../logger";
-import { ModInstance, ParamType } from "../../mods/modsApi";
-import * as modsHelper from "../../mods/modsHelper";
-import * as paramHelper from "../../mods/paramHelper";
+import { ModInstance, ParamType } from "../../extensions/modsApi";
+import * as modsHelper from "../../extensions/modsHelper";
+import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "test-proj";
@@ -129,7 +129,7 @@ describe("paramHelper", () => {
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
-          " do not exist in the spec for this mod: A_THIRD_PARAMETER, A_FOURTH_PARAMETER."
+          " do not exist in the extension spec: A_THIRD_PARAMETER, A_FOURTH_PARAMETER."
       );
     });
 

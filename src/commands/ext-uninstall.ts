@@ -5,14 +5,14 @@ import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { iam } from "../gcp";
-import * as modsApi from "../mods/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../mods/modsHelper";
+import * as modsApi from "../extensions/modsApi";
+import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
 import { promptOnce } from "../prompt";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 
-export default new Command("mods:uninstall <modInstanceId>")
-  .description("uninstall a mod that is installed in your Firebase project by instance ID")
+export default new Command("ext:uninstall <extensionInstanceId>")
+  .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, [
     // TODO: This doesn't exist yet. Uncomment when it does.
@@ -26,7 +26,7 @@ export default new Command("mods:uninstall <modInstanceId>")
       instance = await modsApi.getInstance(projectId, instanceId);
     } catch (err) {
       if (err.status === 404) {
-        return utils.reject(`No mod instance ${instanceId} in project ${projectId}.`, {
+        return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
           exit: 1,
         });
       }
@@ -40,7 +40,7 @@ export default new Command("mods:uninstall <modInstanceId>")
             .map((resource: modsApi.Resource) => `- ${resource.type}: ${resource.name} \n`)
             .join("")
         : "";
-      const modDeletionMessage = `You are about to uninstall mod ${clc.bold(
+      const modDeletionMessage = `You are about to uninstall extension ${clc.bold(
         instanceId
       )} from project ${clc.bold(projectId)}.\n${resourcesMessage}Are you sure?`;
       const confirmedModDeletion = await promptOnce({
@@ -58,7 +58,7 @@ export default new Command("mods:uninstall <modInstanceId>")
             .map((role: modsApi.Role) => `- ${role.role} \n`)
             .join("")
         : ". \n";
-      const serviceAccountDeletionMessage = `This mod used service account ${clc.bold(
+      const serviceAccountDeletionMessage = `This extension used service account ${clc.bold(
         instance.serviceAccountEmail
       )} ${rolesMessage}Do you want to delete this service account?`;
       confirmedServiceAccountDeletion = await promptOnce({
@@ -104,7 +104,7 @@ export default new Command("mods:uninstall <modInstanceId>")
       if (err instanceof FirebaseError) {
         throw err;
       }
-      return utils.reject(`Error occurred uninstalling mod ${instanceId}`, { original: err });
+      return utils.reject(`Error occurred uninstalling extension ${instanceId}`, { original: err });
     }
     utils.logLabeledSuccess(logPrefix, `uninstalled ${instanceId}`);
   });

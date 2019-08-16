@@ -7,11 +7,11 @@ import TerminalRenderer = require("marked-terminal");
 import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { resolveSource } from "../mods/resolveSource";
-import * as modsApi from "../mods/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../mods/modsHelper";
-import * as paramHelper from "../mods/paramHelper";
-import { displayChanges, update } from "../mods/updateHelper";
+import { resolveSource } from "../extensions/resolveSource";
+import * as modsApi from "../extensions/modsApi";
+import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
+import * as paramHelper from "../extensions/paramHelper";
+import { displayChanges, update } from "../extensions/updateHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 
@@ -22,8 +22,8 @@ marked.setOptions({
 /**
  * Command for updating an existing mod instance
  */
-export default new Command("mods:update <instanceId>")
-  .description("update an existing mod instance to the latest version")
+export default new Command("ext:update <instanceId>")
+  .description("update an existing extension instance to the latest version")
   .before(requirePermissions, [
     // this doesn't exist yet, uncomment when it does
     // "firebasemods.instances.update"
@@ -41,9 +41,12 @@ export default new Command("mods:update <instanceId>")
         existingInstance = await modsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
-          return utils.reject(`No mod instance ${instanceId} found in project ${projectId}.`, {
-            exit: 1,
-          });
+          return utils.reject(
+            `No extension instance ${instanceId} found in project ${projectId}.`,
+            {
+              exit: 1,
+            }
+          );
         }
         throw err;
       }

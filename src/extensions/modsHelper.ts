@@ -5,11 +5,11 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
-import { generateInstanceId } from "../mods/generateInstanceId";
+import { generateInstanceId } from "./generateInstanceId";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 
-export const logPrefix = "mods";
+export const logPrefix = "extensions";
 
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
@@ -109,7 +109,7 @@ export function validateCommandLineParams(envVars: any, paramSpec: any): void {
       return paramList.indexOf(key) === -1;
     });
     logger.info(
-      "Warning: The following params were specified in your env file but do not exist in the spec for this mod: " +
+      "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
         `${misnamedParams.join(", ")}.`
     );
   }
@@ -135,7 +135,7 @@ export function validateCommandLineParams(envVars: any, paramSpec: any): void {
 export async function getValidInstanceId(projectId: string, modName: string): Promise<string> {
   let instanceId = await generateInstanceId(projectId, modName);
   if (instanceId !== modName) {
-    logger.info(`A mod named ${modName} already exists in project ${projectId}.`);
+    logger.info(`An extension named ${modName} already exists in project ${projectId}.`);
     instanceId = await promptForValidInstanceId(instanceId);
   }
   return instanceId;
@@ -169,6 +169,6 @@ export async function ensureModsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   await Promise.all([
     ensure(projectId, "deploymentmanager.googleapis.com", "deploymentManager", true),
-    ensure(projectId, "firebasemods.googleapis.com", "mods", options.markdown),
+    ensure(projectId, "firebasemods.googleapis.com", "extensions", options.markdown),
   ]);
 }

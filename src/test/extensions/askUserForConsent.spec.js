@@ -7,7 +7,7 @@ const chai = require("chai");
 chai.use(require("chai-as-promised"));
 const sinon = require("sinon");
 
-const askUserForConsent = require("../../mods/askUserForConsent");
+const askUserForConsent = require("../../extensions/askUserForConsent");
 
 const expect = chai.expect;
 

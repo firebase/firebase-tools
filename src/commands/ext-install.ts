@@ -4,23 +4,23 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import { populatePostinstall } from "../mods/populatePostinstall";
-import * as askUserForConsent from "../mods/askUserForConsent";
-import * as checkProjectBilling from "../mods/checkProjectBilling";
+import { populatePostinstall } from "../extensions/populatePostinstall";
+import * as askUserForConsent from "../extensions/askUserForConsent";
+import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import * as Command from "../command";
 import { FirebaseError } from "../error";
-import { getRandomString } from "../mods/generateInstanceId";
+import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
-import { createServiceAccountAndSetRoles } from "../mods/rolesHelper";
-import * as modsApi from "../mods/modsApi";
-import { resolveSource } from "../mods/resolveSource";
-import * as paramHelper from "../mods/paramHelper";
+import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
+import * as modsApi from "../extensions/modsApi";
+import { resolveSource } from "../extensions/resolveSource";
+import * as paramHelper from "../extensions/paramHelper";
 import {
   ensureModsApiEnabled,
   getValidInstanceId,
   logPrefix,
   promptForValidInstanceId,
-} from "../mods/modsHelper";
+} from "../extensions/modsHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -38,7 +38,9 @@ interface InstallModOptions {
 async function installMod(options: InstallModOptions): Promise<void> {
   const { projectId, source, paramFilePath } = options;
   const spec = source.spec;
-  const spinner = ora.default("Installing your mod instance. This usually takes 3 to 5 minutes...");
+  const spinner = ora.default(
+    "Installing your extension instance. This usually takes 3 to 5 minutes..."
+  );
   try {
     await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
     const roles = spec.roles ? spec.roles.map((role: modsApi.Role) => role.role) : [];
@@ -94,15 +96,17 @@ async function installMod(options: InstallModOptions): Promise<void> {
     if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred installing mod: ${err.message}`, { original: err });
+    throw new FirebaseError(`Error occurred installing extension: ${err.message}`, {
+      original: err,
+    });
   }
 }
 
 /**
  * Command for installing a mod
  */
-export default new Command("mods:install <modName>")
-  .description("install a mod, given <modName> or <modName@versionNumber>")
+export default new Command("ext:install <extensionName>")
+  .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, [
     // this doesn't exist yet, uncomment when it does
@@ -122,7 +126,7 @@ export default new Command("mods:install <modName>")
       });
     } catch (err) {
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred installing the mod: ${err.message}`, {
+        throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
           original: err,
         });
       }

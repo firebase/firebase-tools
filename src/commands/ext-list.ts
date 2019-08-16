@@ -1,11 +1,11 @@
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
-import { listMods } from "../mods/listMods";
-import { ensureModsApiEnabled } from "../mods/modsHelper";
+import { listMods } from "../extensions/listMods";
+import { ensureModsApiEnabled } from "../extensions/modsHelper";
 import * as requirePermissions from "../requirePermissions";
 
-module.exports = new Command("mods:list")
-  .description("list all the mods that are installed in your Firebase project")
+module.exports = new Command("ext:list")
+  .description("list all the extensions that are installed in your Firebase project")
   .before(requirePermissions, [
     // TODO: this doesn't exist yet, uncomment when it does
     // "firebasemods.instances.list"

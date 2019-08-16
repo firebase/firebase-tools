@@ -23,7 +23,7 @@ export async function resolveSource(modName: string): Promise<string> {
   const modsRegistry = await getModRegistry();
   const mod = _.get(modsRegistry, name);
   if (!mod) {
-    throw new FirebaseError(`Unable to find mod named ${clc.bold(name)}.`);
+    throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
   }
   // The version to search for when a user passes a version x.y.z or no version
   const seekVersion = version || "latest";
@@ -35,7 +35,7 @@ export async function resolveSource(modName: string): Promise<string> {
     _.get(mod, ["versions", seekVersion]) || _.get(mod, ["versions", versionFromLabel]);
   if (!source) {
     throw new FirebaseError(
-      `Could not resolve version ${clc.bold(version)} of mod ${clc.bold(name)}.`
+      `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(name)}.`
     );
   }
   return source;

@@ -2,9 +2,9 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 
 import * as Command from "../command";
-import { resolveSource } from "../mods/resolveSource";
-import * as modsApi from "../mods/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../mods/modsHelper";
+import { resolveSource } from "../extensions/resolveSource";
+import * as modsApi from "../extensions/modsApi";
+import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
 import * as logger from "../logger";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
@@ -14,8 +14,10 @@ import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /firebasemods\..+\.function/;
 
-export default new Command("mods:info <modName>")
-  .description("display information about a mod by name (modName@x.y.z for a specific version)")
+export default new Command("ext:info <extensionName>")
+  .description(
+    "display information about an extension by name (extensionName@x.y.z for a specific version)"
+  )
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
   .before(requirePermissions, [
     // this doesn't exist yet, uncomment when it does
@@ -81,7 +83,7 @@ export default new Command("mods:info <modName>")
     }
     if (spec.roles) {
       lines.push("", "**Access Required**:");
-      lines.push("", "This mod will operate with the following project IAM roles:");
+      lines.push("", "This extension will operate with the following project IAM roles:");
       _.forEach(spec.roles, (role) => {
         lines.push(`* ${role.role}` + (role.reason ? ` (Reason: ${role.reason})` : ""));
       });
@@ -97,8 +99,8 @@ export default new Command("mods:info <modName>")
       logger.info(marked(lines.join("\n")));
       utils.logLabeledBullet(
         logPrefix,
-        `to install this mod, type ` +
-          clc.bold(`firebase mods:install ${modName} --project=YOUR_PROJECT`)
+        `to install this extension, type ` +
+          clc.bold(`firebase ext:install ${modName} --project=YOUR_PROJECT`)
       );
     }
   });

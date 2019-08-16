@@ -50,7 +50,7 @@ function _prompt(modName, projectId, roles) {
 
   return _formatDescription(modName, projectId, roles)
     .then(function(message) {
-      utils.logLabeledBullet("mods", message);
+      utils.logLabeledBullet("extensions", message);
       const question = {
         name: "consent",
         type: "confirm",
