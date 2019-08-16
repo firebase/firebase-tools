@@ -1,4 +1,24 @@
 const _ = require("lodash");
+const { FirebaseError } = require("../../error");
+
+/**
+ * patternBase contains the logic for extracting exactly one glob/regexp from
+ * a Hosting rewrite/redirect/header specification
+ */
+function patternBase(type, spec) {
+  const glob = spec.source || spec.glob;
+  const regex = spec.regex;
+
+  if (glob && regex) {
+    throw new FirebaseError("Cannot specify a " + type + " pattern with both a glob and regex.");
+  } else if (glob) {
+    return { glob: glob };
+  } else if (regex) {
+    return { regex: regex };
+  } else {
+    throw new FirebaseError("Cannot specify a " + type + " with no pattern (either a glob or regex required).")
+  }
+}
 
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
@@ -14,7 +34,7 @@ module.exports = function(config) {
   // rewrites
   if (_.isArray(config.rewrites)) {
     out.rewrites = config.rewrites.map(function(rewrite) {
-      const vRewrite = { glob: rewrite.source };
+      const vRewrite = patternBase(rewrite);
       if (rewrite.destination) {
         vRewrite.path = rewrite.destination;
       } else if (rewrite.function) {
@@ -31,7 +51,8 @@ module.exports = function(config) {
   // redirects
   if (_.isArray(config.redirects)) {
     out.redirects = config.redirects.map(function(redirect) {
-      const vRedirect = { glob: redirect.source, location: redirect.destination };
+      const vRedirect = patternBase(redirect);
+      vRedirect.location = redirect.destination;
       if (redirect.type) {
         vRedirect.statusCode = redirect.type;
       }
@@ -42,7 +63,7 @@ module.exports = function(config) {
   // headers
   if (_.isArray(config.headers)) {
     out.headers = config.headers.map(function(header) {
-      const vHeader = { glob: header.source };
+      const vHeader = patternBase(header);
       vHeader.headers = {};
       (header.headers || []).forEach(function(h) {
         vHeader.headers[h.key] = h.value;
