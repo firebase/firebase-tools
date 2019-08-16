@@ -170,6 +170,6 @@ export async function ensureModsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
   await Promise.all([
     ensure(projectId, "deploymentmanager.googleapis.com", "deploymentManager", true),
-    ensure(projectId, "firebasemods.googleapis.com", "mods", false),
+    ensure(projectId, "firebasemods.googleapis.com", "mods", options.markdown),
   ]);
 }

@@ -12,6 +12,7 @@ import { logPrefix } from "../mods/modsHelper";
 import * as paramHelper from "../mods/paramHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
+import * as logger from "../logger";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -48,11 +49,22 @@ export default new Command("mods:configure <instanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
+      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.param === "LOCATION";
+      });
+      const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
+      if (removedLocations.length) {
+        logger.info(
+          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
+            `Please uninstall and reinstall this mod to change location.`
+        );
+        params.LOCATION = currentLocation;
+      }
 
       spinner.start();
       const res = await modsApi.configureInstance(projectId, instanceId, params);
