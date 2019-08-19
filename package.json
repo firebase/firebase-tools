@@ -92,7 +92,7 @@
     "minimatch": "^3.0.4",
     "open": "^6.3.0",
     "ora": "^3.4.0",
-    "portfinder": "^1.0.13",
+    "portfinder": "1.0.21",
     "progress": "^2.0.3",
     "request": "^2.87.0",
     "semver": "^5.0.3",
