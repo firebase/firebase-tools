@@ -13,6 +13,7 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.appdistribution = loadCommand("appdistribution-distribute");
   client.apps = {};
   client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
