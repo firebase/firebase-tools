@@ -7,11 +7,12 @@ import TerminalRenderer = require("marked-terminal");
 import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import * as modsApi from "../mods/modsApi";
-import { logPrefix } from "../mods/modsHelper";
-import * as paramHelper from "../mods/paramHelper";
+import * as modsApi from "../extensions/modsApi";
+import { logPrefix } from "../extensions/modsHelper";
+import * as paramHelper from "../extensions/paramHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
+import * as logger from "../logger";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -20,8 +21,8 @@ marked.setOptions({
 /**
  * Command for configuring an existing mod instance
  */
-export default new Command("mods:configure <instanceId>")
-  .description("configure an existing mod instance")
+export default new Command("ext:configure <instanceId>")
+  .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
     // this doesn't exist yet, uncomment when it does
@@ -39,20 +40,34 @@ export default new Command("mods:configure <instanceId>")
         existingInstance = await modsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
-          return utils.reject(`No mod instance ${instanceId} found in project ${projectId}.`, {
-            exit: 1,
-          });
+          return utils.reject(
+            `No extension instance ${instanceId} found in project ${projectId}.`,
+            {
+              exit: 1,
+            }
+          );
         }
         throw err;
       }
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
+      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.param === "LOCATION";
+      });
+      const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
+      if (removedLocations.length) {
+        logger.info(
+          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
+            `Please uninstall and reinstall this extension to change location.`
+        );
+        params.LOCATION = currentLocation;
+      }
 
       spinner.start();
       const res = await modsApi.configureInstance(projectId, instanceId, params);

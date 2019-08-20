@@ -46,7 +46,7 @@ export function displayChangesNoInput(spec: modsApi.ModSpec, newSpec: modsApi.Mo
   }
 
   if (spec.billingRequired && !newSpec.billingRequired) {
-    lines.push("", "**Billing is no longer required for this mod.**");
+    lines.push("", "**Billing is no longer required for this extension.**");
   }
   logger.info(marked(lines.join("\n")));
   return lines;
@@ -126,7 +126,7 @@ export async function displayChangesRequiringConfirmation(
   if (!spec.billingRequired && newSpec.billingRequired) {
     await getConsent(
       "billingRequired",
-      "Billing is now required for the new version of this mod. Would you like to continue?"
+      "Billing is now required for the new version of this extension. Would you like to continue?"
     );
   }
 }
@@ -145,7 +145,7 @@ async function getConsent(field: string, message: string): Promise<void> {
   });
   if (!consent) {
     throw new FirebaseError(
-      `Without explicit consent for the change to ${field}, we cannot update this mod instance.`,
+      `Without explicit consent for the change to ${field}, we cannot update this extension instance.`,
       { exit: 2 }
     );
   }
@@ -165,7 +165,7 @@ export async function displayChanges(
 ): Promise<void> {
   logger.info(
     "This update contains the following changes. " +
-      "If at any point you choose not to continue, the mod will not be updated and the changes will be discarded:"
+      "If at any point you choose not to continue, the extension will not be updated and the changes will be discarded:"
   );
   displayChangesNoInput(spec, newSpec);
   await displayChangesRequiringConfirmation(spec, newSpec);
