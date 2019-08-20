@@ -3,24 +3,26 @@ import * as clc from "cli-color";
 
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
-import * as modsHelper from "../mods/modsHelper";
-import { listMods } from "../mods/listMods";
+import * as modsHelper from "../extensions/modsHelper";
+import { listMods } from "../extensions/listMods";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
-module.exports = new Command("mods")
-  .description("display information on how to use mods commands and mods installed to your project")
+module.exports = new Command("ext")
+  .description(
+    "display information on how to use ext commands and extensions installed to your project"
+  )
   .before(requirePermissions, ["deploymentmanager.deployments.get"])
   .action((options: any) => {
     const projectId = getProjectId(options);
     const commands = [
-      "mods-configure",
-      "mods-info",
-      "mods-install",
-      "mods-list",
-      "mods-uninstall",
-      "mods-update",
+      "ext-configure",
+      "ext-info",
+      "ext-install",
+      "ext-list",
+      "ext-uninstall",
+      "ext-update",
     ];
 
     _.forEach(commands, (command) => {

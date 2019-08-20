@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as marked from "marked";
 
-import { Param, ParamOption, ParamType } from "../mods/modsApi";
+import { Param, ParamOption, ParamType } from "./modsApi";
 import { FirebaseError } from "../error";
 import { logPrefix, substituteParams } from "./modsHelper";
 import { convertModOptionToLabeledList, modOptionToValue, onceWithJoin } from "./utils";
@@ -142,11 +142,11 @@ export async function ask(
   firebaseProjectParams: { [key: string]: string }
 ): Promise<{ [key: string]: string }> {
   if (_.isEmpty(paramSpecs)) {
-    logger.debug("No params were specified for this mod.");
+    logger.debug("No params were specified for this extension.");
     return {};
   }
 
-  utils.logLabeledBullet(logPrefix, "answer the questions below to configure your mod:");
+  utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
   const substituted = substituteParams(paramSpecs, firebaseProjectParams) as Param[];
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {

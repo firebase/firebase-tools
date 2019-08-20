@@ -4,7 +4,7 @@ import * as nock from "nock";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
-import * as rolesHelper from "../../mods/rolesHelper";
+import * as rolesHelper from "../../extensions/rolesHelper";
 
 const PROJECT_ID = "test-proj";
 const INSTANCE_ID = "test-instance";
@@ -20,7 +20,7 @@ describe("createServiceAccountAndSetRoles", () => {
     nock.cleanAll();
   });
 
-  it("should create a service account named mod-{instanceId} and set roles on it", async () => {
+  it("should create a service account named ext-{instanceId} and set roles on it", async () => {
     nock(api.iamOrigin)
       .post(`/${IAM_VERSION}/projects/${PROJECT_ID}/serviceAccounts`)
       .reply(200, { email: TEST_SERVICE_ACCOUNT_EMAIL });
@@ -61,8 +61,8 @@ describe("createServiceAccountAndSetRoles", () => {
       rolesHelper.createServiceAccountAndSetRoles(PROJECT_ID, TEST_ROLES, INSTANCE_ID)
     ).to.be.rejectedWith(
       FirebaseError,
-      "A service account mod-test-instance already exists in project test-proj. " +
-        "Please delete it or choose a different mod instance id."
+      "A service account ext-test-instance already exists in project test-proj. " +
+        "Please delete it or choose a different extension instance id."
     );
   });
 

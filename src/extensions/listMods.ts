@@ -12,13 +12,13 @@ export async function listMods(projectId: string): Promise<{ instances: ModInsta
   if (instances.length < 1) {
     utils.logLabeledBullet(
       logPrefix,
-      `there are no mods installed for project ${clc.bold(projectId)}.`
+      `there are no extensions installed on project ${clc.bold(projectId)}.`
     );
     return { instances: [] };
   }
 
   const table = new Table({
-    head: ["Mod Instance ID", "State", "Mod Version", "Create Time", "Update Time"],
+    head: ["Extension Instance ID", "State", "Extension Version", "Create Time", "Update Time"],
     style: { head: ["yellow"] },
   });
 
@@ -34,7 +34,7 @@ export async function listMods(projectId: string): Promise<{ instances: ModInsta
     ]);
   });
 
-  utils.logLabeledBullet(logPrefix, `list of mods installed in ${clc.bold(projectId)}:`);
+  utils.logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
   logger.info(table.toString());
   return { instances: sorted };
 }

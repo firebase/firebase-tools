@@ -4,7 +4,7 @@ const chai = require("chai");
 chai.use(require("chai-as-promised"));
 const sinon = require("sinon");
 
-const checkProjectBilling = require("../../mods/checkProjectBilling");
+const checkProjectBilling = require("../../extensions/checkProjectBilling");
 const prompt = require("../../prompt");
 const cloudbilling = require("../../gcp/cloudbilling");
 

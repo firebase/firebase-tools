@@ -77,14 +77,14 @@ module.exports = function(client) {
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
 
-  if (previews.mods) {
-    client.mods = loadCommand("mods");
-    client.mods.configure = loadCommand("mods-configure");
-    client.mods.info = loadCommand("mods-info");
-    client.mods.install = loadCommand("mods-install");
-    client.mods.list = loadCommand("mods-list");
-    client.mods.uninstall = loadCommand("mods-uninstall");
-    client.mods.update = loadCommand("mods-update");
+  if (previews.mods || previews.ext) {
+    client.ext = loadCommand("ext");
+    client.ext.configure = loadCommand("ext-configure");
+    client.ext.info = loadCommand("ext-info");
+    client.ext.install = loadCommand("ext-install");
+    client.ext.list = loadCommand("ext-list");
+    client.ext.uninstall = loadCommand("ext-uninstall");
+    client.ext.update = loadCommand("ext-update");
   }
   return client;
 };

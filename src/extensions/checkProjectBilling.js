@@ -49,7 +49,8 @@ function _openBillingAccount(projectId, url, open) {
     .promptOnce({
       name: "continue",
       type: "confirm",
-      message: "Press enter when finished upgrading your project to continue setting up your mod.",
+      message:
+        "Press enter when finished upgrading your project to continue setting up your extension.",
       default: true,
     })
     .then(() => {

@@ -1,11 +1,16 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { ask, askForParam, checkResponse, getInquirerDefault } from "../../mods/askUserForParam";
+import {
+  ask,
+  askForParam,
+  checkResponse,
+  getInquirerDefault,
+} from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../mods/modsApi";
-import * as modsHelper from "../../mods/modsHelper";
+import { ParamType } from "../../extensions/modsApi";
+import * as modsHelper from "../../extensions/modsHelper";
 
 describe("askUserForParam", () => {
   const testSpec = {

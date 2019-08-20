@@ -4,7 +4,7 @@ import * as nock from "nock";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
-import * as modsApi from "../../mods/modsApi";
+import * as modsApi from "../../extensions/modsApi";
 
 const VERSION = "v1beta1";
 
