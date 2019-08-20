@@ -1,16 +1,16 @@
-import * as fs from "fs";
-import { ReadStream } from "fs";
+import * as fs from "fs-extra";
+import { FirebaseError } from "../error";
 
 export enum DistributionFileType {
   IPA = "ipa",
   APK = "apk",
 }
 
+/**
+ * Object representing an APK or IPa file. Used for uploading app distributions.
+ */
 export class Distribution {
-  path: string;
-  fileType: DistributionFileType;
-
-  constructor(path: string, fileType: DistributionFileType) {
+  constructor(private readonly path: string, private readonly fileType: DistributionFileType) {
     this.path = path;
     this.fileType = fileType;
   }
@@ -19,7 +19,7 @@ export class Distribution {
     return fs.statSync(this.path).size;
   }
 
-  readStream(): ReadStream {
+  readStream(): fs.ReadStream {
     return fs.createReadStream(this.path);
   }
 
@@ -29,6 +29,8 @@ export class Distribution {
         return "ios";
       case DistributionFileType.APK:
         return "android";
+      default:
+        throw new FirebaseError("Unsupported distribution file format, should be .ipa or .apk");
     }
   }
 }
