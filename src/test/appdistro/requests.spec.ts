@@ -26,10 +26,7 @@ describe("distribution", () => {
     it("should throw a Firebase Error if retry count >= AppDistributionRequests.MAX_POLLING_RETRIES", () => {
       return expect(
         distribution.pollReleaseIdByHash("mock-hash", AppDistributionRequests.MAX_POLLING_RETRIES)
-      )
-        .to.be.rejectedWith(FirebaseError)
-        .and.have.property("message")
-        .contain("Can't find release");
+      ).to.be.rejectedWith(FirebaseError, "Can't find release");
     });
   });
 });
