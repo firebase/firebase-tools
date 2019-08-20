@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
-import { generateInstanceId } from "../../mods/generateInstanceId";
-import * as modsApi from "../../mods/modsApi";
+import { generateInstanceId } from "../../extensions/generateInstanceId";
+import * as modsApi from "../../extensions/modsApi";
 
 const TEST_NAME = "image-resizer";
 

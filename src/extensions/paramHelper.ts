@@ -11,8 +11,8 @@ import {
   getFirebaseProjectParams,
   populateDefaultParams,
   validateCommandLineParams,
-} from "../mods/modsHelper";
-import * as askUserForParam from "../mods/askUserForParam";
+} from "./modsHelper";
+import * as askUserForParam from "./askUserForParam";
 import * as track from "../track";
 
 /**

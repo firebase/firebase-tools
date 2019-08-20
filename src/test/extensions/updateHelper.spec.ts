@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
-import * as updateHelper from "../../mods/updateHelper";
+import * as updateHelper from "../../extensions/updateHelper";
 import * as prompt from "../../prompt";
 
 const SPEC = {
@@ -73,7 +73,7 @@ describe("updateHelper", () => {
 
       const loggedLines = updateHelper.displayChangesNoInput(SPEC, newSpec);
 
-      const expected = ["", "**Billing is no longer required for this mod.**"];
+      const expected = ["", "**Billing is no longer required for this extension.**"];
       expect(loggedLines).to.eql(expected);
     });
 
@@ -159,7 +159,7 @@ describe("updateHelper", () => {
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain(
-        "Billing is now required for the new version of this mod. Would you like to continue?"
+        "Billing is now required for the new version of this extension. Would you like to continue?"
       );
     });
 
@@ -172,7 +172,7 @@ describe("updateHelper", () => {
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).to.be.rejectedWith(
         FirebaseError,
-        "Without explicit consent for the change to license, we cannot update this mod instance."
+        "Without explicit consent for the change to license, we cannot update this extension instance."
       );
 
       expect(promptStub.callCount).to.equal(1);
@@ -185,7 +185,7 @@ describe("updateHelper", () => {
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).to.be.rejectedWith(
         FirebaseError,
-        "Without explicit consent for the change to license, we cannot update this mod instance."
+        "Without explicit consent for the change to license, we cannot update this extension instance."
       );
     });
 

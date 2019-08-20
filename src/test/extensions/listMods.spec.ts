@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as modsApi from "../../mods/modsApi";
-import { listMods } from "../../mods/listMods";
+import * as modsApi from "../../extensions/modsApi";
+import { listMods } from "../../extensions/listMods";
 
 const MOCK_INSTANCES = [
   {

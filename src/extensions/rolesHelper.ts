@@ -77,16 +77,16 @@ export async function createServiceAccountAndSetRoles(
   try {
     serviceAccount = await iam.createServiceAccount(
       projectId,
-      `mod-${shortenedInstanceId}`,
-      `Runtime service account for Firebase Mod ${instanceId}`,
-      `Firebase Mod ${instanceId} service account`
+      `ext-${shortenedInstanceId}`,
+      `Runtime service account for Firebase Extension ${instanceId}`,
+      `Firebase Extension ${instanceId} service account`
     );
   } catch (err) {
     if (err.status === 409) {
       // if the service account already exists
       return utils.reject(
-        `A service account mod-${shortenedInstanceId} already exists in project ${projectId}. ` +
-          `Please delete it or choose a different mod instance id.`,
+        `A service account ext-${shortenedInstanceId} already exists in project ${projectId}. ` +
+          `Please delete it or choose a different extension instance id.`,
         {
           exit: 1,
           status: 409,
