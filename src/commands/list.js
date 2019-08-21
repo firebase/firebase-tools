@@ -10,7 +10,7 @@ var logger = require("../logger");
 
 /**
  * This command is deprecated in favor of `projects:list` command
- * TODO: Remove this command after 02/09/2020.
+ * TODO: Remove this command
  */
 module.exports = new Command("list")
   .description("[DEPRECATED: use `projects:list`] list the Firebase projects you have access to")
