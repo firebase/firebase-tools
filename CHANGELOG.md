@@ -1,0 +1,1 @@
+* Mark `tools:migrate` command as deprecated.
