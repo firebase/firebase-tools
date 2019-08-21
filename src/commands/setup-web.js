@@ -11,7 +11,7 @@ var JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "
 
 /**
  * This command is deprecated in favor of `apps:sdkconfig web` command
- * TODO: Remove this command after 02/09/2020
+ * TODO: Remove this command
  */
 module.exports = new Command("setup:web")
   .description(
