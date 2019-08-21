@@ -255,7 +255,7 @@ var api = {
 
   /**
    * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
-   * TODO: remove this function after 02/09/2020
+   * TODO: remove this function
    */
   getProjects: function() {
     logger.debug(
