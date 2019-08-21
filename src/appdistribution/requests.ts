@@ -118,7 +118,7 @@ export class AppDistributionRequests {
     testers: string[] = [],
     groups: string[] = []
   ): Promise<void> {
-    if (!testers && !groups) {
+    if (testers.length === 0 && groups.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
       return Promise.resolve();
     }
