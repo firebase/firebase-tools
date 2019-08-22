@@ -117,12 +117,10 @@ describe("distribution", () => {
   });
 
   describe("addReleaseNotes", () => {
-    it("should return immediately when no release notes are specified", (done) => {
+    it("should return immediately when no release notes are specified", async (done) => {
       const apiSpy = sandbox.spy(api, "request");
-      expect(distribution.addReleaseNotes("fake-release-id", "")).to.eventually.be.fulfilled.notify(
-        done
-      );
-      expect(apiSpy.notCalled).to.be.true;
+      await expect(distribution.addReleaseNotes("fake-release-id", "")).to.eventually.be.fulfilled;
+      expect(apiSpy).to.not.be.called;
     });
 
     it("should throw error when request fails", () => {
@@ -147,10 +145,10 @@ describe("distribution", () => {
   });
 
   describe("enableAccess", () => {
-    it("should return immediately when testers and groups are empty", (done) => {
+    it("should return immediately when testers and groups are empty", async (done) => {
       const apiSpy = sandbox.spy(api, "request");
-      expect(distribution.enableAccess("fake-release-id")).to.eventually.be.fulfilled.notify(done);
-      expect(apiSpy.notCalled).to.be.true;
+      await expect(distribution.enableAccess("fake-release-id")).to.eventually.be.fulfilled;
+      expect(apiSpy).to.not.be.called;
     });
 
     describe("when request fails", () => {

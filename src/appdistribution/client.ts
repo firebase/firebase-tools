@@ -14,9 +14,7 @@ export class AppDistributionClient {
   static MAX_POLLING_RETRIES = 30;
   static POLLING_INTERVAL_MS = 1000;
 
-  constructor(private readonly appId: string) {
-    this.appId = appId;
-  }
+  constructor(private readonly appId: string) {}
 
   async provisionApp(): Promise<void> {
     await api.request("POST", `/v1alpha/apps/${this.appId}`, {
@@ -57,7 +55,7 @@ export class AppDistributionClient {
     return _.get(apiResponse, "response.headers.etag");
   }
 
-  async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<any> {
+  async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<Promise<string> | string> {
     try {
       return await this.getReleaseIdByHash(hash);
     } catch (err) {
@@ -89,7 +87,7 @@ export class AppDistributionClient {
   async addReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
-      return Promise.resolve();
+      return;
     }
 
     utils.logBullet("adding release notes...");
@@ -120,7 +118,7 @@ export class AppDistributionClient {
   ): Promise<void> {
     if (emails.length === 0 && groupIds.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
-      return Promise.resolve();
+      return;
     }
 
     utils.logBullet("adding testers/groups...");

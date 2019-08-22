@@ -26,9 +26,8 @@ function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string
   } else if (releaseNotesFile) {
     ensureFileExists(releaseNotesFile);
     return fs.readFileSync(releaseNotesFile, "utf8");
-  } else {
-    return "";
   }
+  return "";
 }
 
 function getTestersOrGroups(value: string, file: string): string[] {
