@@ -10,7 +10,7 @@ const pkg = require("../../package.json");
 /**
  * Proxies HTTPS requests to the App Distribution server backend.
  */
-export class AppDistributionRequests {
+export class AppDistributionClient {
   static MAX_POLLING_RETRIES = 30;
   static POLLING_INTERVAL_MS = 1000;
 
@@ -61,12 +61,12 @@ export class AppDistributionRequests {
     try {
       return await this.getReleaseIdByHash(hash);
     } catch (err) {
-      if (retryCount >= AppDistributionRequests.MAX_POLLING_RETRIES) {
+      if (retryCount >= AppDistributionClient.MAX_POLLING_RETRIES) {
         throw new FirebaseError(`failed to find the uploaded release: ${err.message}`, { exit: 1 });
       }
 
       await new Promise((resolve) =>
-        setTimeout(resolve, AppDistributionRequests.POLLING_INTERVAL_MS)
+        setTimeout(resolve, AppDistributionClient.POLLING_INTERVAL_MS)
       );
 
       return this.pollReleaseIdByHash(hash, retryCount + 1);
@@ -115,10 +115,10 @@ export class AppDistributionRequests {
 
   async enableAccess(
     releaseId: string,
-    testers: string[] = [],
-    groups: string[] = []
+    emails: string[] = [],
+    groupIds: string[] = []
   ): Promise<void> {
-    if (testers.length === 0 && groups.length === 0) {
+    if (emails.length === 0 && groupIds.length === 0) {
       utils.logWarning("no testers or groups specified, skipping");
       return Promise.resolve();
     }
@@ -126,8 +126,8 @@ export class AppDistributionRequests {
     utils.logBullet("adding testers/groups...");
 
     const data = {
-      emails: testers,
-      groupIds: groups,
+      emails,
+      groupIds,
     };
 
     try {

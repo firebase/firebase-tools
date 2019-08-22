@@ -1,12 +1,11 @@
 import * as fs from "fs-extra";
-import * as crypto from "crypto";
 
 import * as Command from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
 import * as req from "../appdistribution/requests";
 import { FirebaseError } from "../error";
-import { Distribution, DistributionFileType } from "../appdistribution/distribution";
+import { Distribution } from "../appdistribution/distribution";
 
 function ensureFileExists(file: string, message = ""): void {
   if (!fs.existsSync(file)) {
@@ -19,23 +18,6 @@ function getAppId(appId: string): string {
     throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
   }
   return appId;
-}
-
-function getDistribution(distributionFile: string): Distribution {
-  if (!distributionFile) {
-    throw new FirebaseError("must specify a distribution file");
-  }
-
-  const distributionType = distributionFile.split(".").pop();
-  if (
-    distributionType !== DistributionFileType.IPA &&
-    distributionType !== DistributionFileType.APK
-  ) {
-    throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
-  }
-
-  ensureFileExists(distributionFile, "verify that file points to a distribution");
-  return new Distribution(distributionFile, distributionType);
 }
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
@@ -86,11 +68,11 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
   .before(requireAuth)
   .action(async (file: string, options: any) => {
     const appId = getAppId(options.app);
-    const distribution = getDistribution(file);
+    const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
-    const requests = new req.AppDistributionRequests(appId);
+    const requests = new req.AppDistributionClient(appId);
 
     try {
       await requests.provisionApp();
@@ -98,14 +80,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       throw new FirebaseError(`failed to provision app with ${err.message}`, { exit: 1 });
     }
 
-    const releaseHash = await new Promise<string>((resolve) => {
-      const hash = crypto.createHash("sha1");
-      const stream = distribution.readStream();
-      stream.on("data", (data) => hash.update(data));
-      stream.on("end", () => {
-        return resolve(hash.digest("hex"));
-      });
-    });
+    const releaseHash = await distribution.releaseHash();
 
     // Upload the distribution if it hasn't been uploaded before
     let releaseId: string;

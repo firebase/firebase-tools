@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { AppDistributionRequests } from "../../appdistribution/requests";
+import { AppDistributionClient } from "../../appdistribution/requests";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
 
 describe("distribution", () => {
   const appId = "1:12345789:ios:abc123def456";
-  const distribution = new AppDistributionRequests(appId);
+  const distribution = new AppDistributionClient(appId);
 
   let sandbox: sinon.SinonSandbox;
 
@@ -64,10 +64,10 @@ describe("distribution", () => {
 
   describe("pollReleaseIdByHash", () => {
     describe("when request fails", () => {
-      it("should throw error when retry count >= AppDistributionRequests.MAX_POLLING_RETRIES", () => {
+      it("should throw error when retry count >= AppDistributionClient.MAX_POLLING_RETRIES", () => {
         sandbox.stub(distribution, "getReleaseIdByHash").rejects(new Error("Can't find release"));
         return expect(
-          distribution.pollReleaseIdByHash("mock-hash", AppDistributionRequests.MAX_POLLING_RETRIES)
+          distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
         ).to.be.rejectedWith(FirebaseError, "Can't find release");
       });
     });
@@ -76,7 +76,7 @@ describe("distribution", () => {
       const releaseId = "fake-release-id";
       sandbox.stub(distribution, "getReleaseIdByHash").resolves(releaseId);
       return expect(
-        distribution.pollReleaseIdByHash("mock-hash", AppDistributionRequests.MAX_POLLING_RETRIES)
+        distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
       ).to.eventually.eq(releaseId);
     });
   });
