@@ -3,7 +3,7 @@ import * as fs from "fs-extra";
 import * as Command from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
-import * as req from "../appdistribution/requests";
+import { AppDistributionClient } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution } from "../appdistribution/distribution";
 
@@ -72,7 +72,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
-    const requests = new req.AppDistributionClient(appId);
+    const requests = new AppDistributionClient(appId);
 
     try {
       await requests.provisionApp();

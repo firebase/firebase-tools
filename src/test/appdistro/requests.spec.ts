@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { AppDistributionClient } from "../../appdistribution/requests";
+import { AppDistributionClient } from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
