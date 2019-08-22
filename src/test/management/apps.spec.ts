@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as util from "util";
+import * as fs from "fs";
 
 import * as api from "../../api";
 import {
@@ -65,12 +66,14 @@ describe("App management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
+  let readFileSyncStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
+    readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
   });
 
   afterEach(() => {
@@ -713,12 +716,13 @@ describe("App management", () => {
         apiKey: "api-key",
       };
       apiRequestStub.onFirstCall().resolves({ body: mockWebConfig });
+      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
 
       expect(configData).to.deep.equal({
         fileName: "google-config.js",
-        fileContents: util.inspect(mockWebConfig, { compact: false }),
+        fileContents: JSON.stringify(mockWebConfig, null, 2),
       });
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
