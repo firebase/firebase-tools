@@ -6,7 +6,7 @@ var api = require("./api");
 
 /**
  * This function is deprecated due to its functionality is no longer relevant for the commands.
- * TODO: remove this function
+ * TODO: remove this function when tools:migrate is removed.
  */
 module.exports = function(id) {
   return api.getProjects().then(function(projects) {
