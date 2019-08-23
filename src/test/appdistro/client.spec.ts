@@ -5,7 +5,7 @@ import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
 
-describe.only("distribution", () => {
+describe("distribution", () => {
   const appId = "1:12345789:ios:abc123def456";
   const distribution = new AppDistributionClient(appId);
 
