@@ -55,7 +55,7 @@ export class AppDistributionClient {
     return _.get(apiResponse, "response.headers.etag");
   }
 
-  async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<Promise<string> | string> {
+  async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<string> {
     try {
       return await this.getReleaseIdByHash(hash);
     } catch (err) {
