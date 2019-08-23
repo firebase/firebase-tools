@@ -5,7 +5,7 @@ import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
 
-describe("distribution", () => {
+describe.only("distribution", () => {
   const appId = "1:12345789:ios:abc123def456";
   const distribution = new AppDistributionClient(appId);
 
@@ -20,19 +20,26 @@ describe("distribution", () => {
     sandbox.restore();
   });
 
-  describe("provisionApp", () => {
-    it("should throw error when request fails", () => {
+  describe("getApp", () => {
+    it("should throw error when app does not exist", () => {
       nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}`)
-        .reply(400, {});
-      return expect(distribution.provisionApp()).to.be.rejected;
+        .get(`/v1alpha/apps/${appId}`)
+        .reply(404, {});
+      return expect(distribution.getApp()).to.be.rejected;
     });
 
     it("should resolve when request succeeds", () => {
       nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}`)
+        .get(`/v1alpha/apps/${appId}`)
         .reply(200, {});
-      return expect(distribution.provisionApp()).to.be.fulfilled;
+      return expect(distribution.getApp()).to.be.fulfilled;
+    });
+
+    it("should throw an error when the request fails", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}`)
+        .reply(404, {});
+      return expect(distribution.getApp()).to.be.rejected;
     });
   });
 
