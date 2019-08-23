@@ -8,6 +8,17 @@ import { FirebaseError } from "../error";
 const pkg = require("../../package.json");
 
 /**
+ * Helper interface for an app that is provisioned with App Distribution
+ */
+export interface AppDistributionApp {
+  projectNumber: string;
+  appId: string;
+  platform: string;
+  bundleId: string;
+  contactEmail: string;
+}
+
+/**
  * Proxies HTTPS requests to the App Distribution server backend.
  */
 export class AppDistributionClient {
@@ -16,13 +27,13 @@ export class AppDistributionClient {
 
   constructor(private readonly appId: string) {}
 
-  async provisionApp(): Promise<void> {
-    await api.request("POST", `/v1alpha/apps/${this.appId}`, {
+  async getApp(): Promise<AppDistributionApp> {
+    utils.logBullet("getting app details...");
+
+    return await api.request("GET", `/v1alpha/apps/${this.appId}`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
-
-    utils.logSuccess("provisioned for app distribution");
   }
 
   async getJwtToken(): Promise<string> {
