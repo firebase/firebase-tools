@@ -78,16 +78,15 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       app = await requests.getApp();
     } catch (err) {
       throw new FirebaseError(
-        "your app could not be found, make sure to onboard your app with App " +
-          "Distribution in the Firebase console",
+        "App Distribution is not enabled for app ${appId}. Please visit the Firebase Console to get started.",
         { exit: 1 }
       );
     }
 
     if (!app.contactEmail) {
       throw new FirebaseError(
-        "we could not find a contact email associated with this app, make sure to " +
-          "set this within App Distribution in the Firebase console.",
+        "We could not find a contact email associated with this app. Please visit App Distribution within " +
+          "the Firebase Console to set one up.",
         { exit: 1 }
       );
     }
