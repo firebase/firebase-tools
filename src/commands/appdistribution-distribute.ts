@@ -3,7 +3,7 @@ import * as fs from "fs-extra";
 import * as Command from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
-import { AppDistributionClient } from "../appdistribution/client";
+import { AppDistributionApp, AppDistributionClient } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution } from "../appdistribution/distribution";
 
@@ -72,11 +72,23 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     const testers = getTestersOrGroups(options.testers, options.testersFile);
     const groups = getTestersOrGroups(options.groups, options.groupsFile);
     const requests = new AppDistributionClient(appId);
+    let app: AppDistributionApp;
 
     try {
-      await requests.provisionApp();
+      app = await requests.getApp();
     } catch (err) {
-      throw new FirebaseError(`failed to provision app with ${err.message}`, { exit: 1 });
+      throw new FirebaseError(
+        `App Distribution is not enabled for app ${appId}. Please visit the Firebase Console to get started.`,
+        { exit: 1 }
+      );
+    }
+
+    if (!app.contactEmail) {
+      throw new FirebaseError(
+        `We could not find a contact email for app ${appId}. Please visit App Distribution within ` +
+          "the Firebase Console to set one up.",
+        { exit: 1 }
+      );
     }
 
     const releaseHash = await distribution.releaseHash();
