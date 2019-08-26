@@ -1,4 +1,4 @@
-import * as util from "util";
+import * as fs from "fs";
 
 import * as api from "../api";
 import { FirebaseError } from "../error";
@@ -283,9 +283,10 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
+    const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: util.inspect(responseBody, { compact: false }),
+      fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {

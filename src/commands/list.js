@@ -8,10 +8,17 @@ var Table = require("cli-table");
 var _ = require("lodash");
 var logger = require("../logger");
 
+/**
+ * This command is deprecated in favor of `projects:list` command
+ * TODO: Remove this command
+ */
 module.exports = new Command("list")
-  .description("list the Firebase projects you have access to")
+  .description("[DEPRECATED: use `projects:list`] list the Firebase projects you have access to")
   .before(requireAuth)
   .action(function(options) {
+    logger.warn(
+      "This command is deprecated. Instead, use 'firebase projects:list' command to list your projects."
+    );
     return api.getProjects().then(function(projects) {
       var tableHead = ["Name", "Project ID / Instance", "Permissions"];
       var table = new Table({
