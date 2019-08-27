@@ -37,7 +37,7 @@ const TEST_PARAMS_2 = [
     param: "NEW_PARAMETER",
     label: "New Param",
     type: ParamType.STRING,
-    default: "default",
+    default: "${PROJECT_ID}",
   },
   {
     param: "THIRD_PARAMETER",
@@ -250,12 +250,16 @@ describe("paramHelper", () => {
 
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
+    let getFirebaseVariableStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      getFirebaseVariableStub = sinon
+        .stub(modsHelper, "getFirebaseProjectParams")
+        .resolves({ PROJECT_ID });
     });
 
     afterEach(() => {
-      promptStub.restore();
+      sinon.restore();
     });
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
@@ -263,10 +267,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -277,7 +286,48 @@ describe("paramHelper", () => {
       expect(promptStub.callCount).to.equal(2);
       expect(promptStub.firstCall.args).to.eql([
         {
+          default: "test-proj",
+          message: "Enter a value for New Param:",
+          name: "NEW_PARAMETER",
+          type: "input",
+        },
+      ]);
+      expect(promptStub.secondCall.args).to.eql([
+        {
           default: "default",
+          message: "Enter a value for 3:",
+          name: "THIRD_PARAMETER",
+          type: "input",
+        },
+      ]);
+    });
+
+    it("should populate the spec with the default value if it is returned by prompt", async () => {
+      promptStub.onFirstCall().resolves("test-proj");
+      promptStub.onSecondCall().resolves("user input");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_2;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        NEW_PARAMETER: "test-proj",
+        THIRD_PARAMETER: "user input",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub.callCount).to.equal(2);
+      expect(promptStub.firstCall.args).to.eql([
+        {
+          default: "test-proj",
           message: "Enter a value for New Param:",
           name: "NEW_PARAMETER",
           type: "input",
@@ -297,10 +347,15 @@ describe("paramHelper", () => {
       promptStub.resolves("Fail");
       const newSpec = _.cloneDeep(SPEC);
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -315,11 +370,16 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      expect(
-        paramHelper.promptForNewParams(SPEC, newSpec, {
-          A_PARAMETER: "value",
-          ANOTHER_PARAMETER: "value",
-        })
+      await expect(
+        paramHelper.promptForNewParams(
+          SPEC,
+          newSpec,
+          {
+            A_PARAMETER: "value",
+            ANOTHER_PARAMETER: "value",
+          },
+          PROJECT_ID
+        )
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;
