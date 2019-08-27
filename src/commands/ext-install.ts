@@ -108,10 +108,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
 export default new Command("ext:install <extensionName>")
   .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.create"
-  ])
+  .before(requirePermissions, ["firebasemods.instances.create"])
   .before(ensureModsApiEnabled)
   .action(async (modName: string, options: any) => {
     try {

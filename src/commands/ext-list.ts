@@ -6,10 +6,7 @@ import * as requirePermissions from "../requirePermissions";
 
 module.exports = new Command("ext:list")
   .description("list all the extensions that are installed in your Firebase project")
-  .before(requirePermissions, [
-    // TODO: this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.list"
-  ])
+  .before(requirePermissions, ["firebasemods.instances.list"])
   .before(ensureModsApiEnabled)
   .action((options: any) => {
     const projectId = getProjectId(options);

@@ -24,11 +24,7 @@ marked.setOptions({
 export default new Command("ext:configure <instanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.update"
-    // "firebasemods.instances.get"
-  ])
+  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`

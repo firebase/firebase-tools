@@ -14,10 +14,7 @@ import * as utils from "../utils";
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requirePermissions, [
-    // TODO: This doesn't exist yet. Uncomment when it does.
-    // "firebasemods.instances.delete"
-  ])
+  .before(requirePermissions, ["firebasemods.instances.delete"])
   .before(ensureModsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const projectId = getProjectId(options);

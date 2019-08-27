@@ -19,10 +19,7 @@ export default new Command("ext:info <extensionName>")
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
   )
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.sources.get"
-  ])
+  .before(requirePermissions, ["firebasemods.sources.get"])
   .before(ensureModsApiEnabled)
   .action(async (modName: string, options: any) => {
     const sourceUrl = await resolveSource(modName);
