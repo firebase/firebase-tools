@@ -147,7 +147,7 @@ export async function ask(
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams(paramSpecs, firebaseProjectParams) as Param[];
+  const substituted = substituteParams(paramSpecs, firebaseProjectParams);
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {

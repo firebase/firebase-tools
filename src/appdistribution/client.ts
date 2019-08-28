@@ -30,10 +30,12 @@ export class AppDistributionClient {
   async getApp(): Promise<AppDistributionApp> {
     utils.logBullet("getting app details...");
 
-    return await api.request("GET", `/v1alpha/apps/${this.appId}`, {
+    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
+
+    return _.get(apiResponse, "body");
   }
 
   async getJwtToken(): Promise<string> {

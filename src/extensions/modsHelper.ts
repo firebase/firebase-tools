@@ -5,6 +5,7 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
+import { Param } from "./modsApi";
 import { generateInstanceId } from "./generateInstanceId";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
@@ -55,7 +56,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
  * @param params params to substitute the placeholders for
  * @return Resources object with substituted params
  */
-export function substituteParams(original: object[], params: { [key: string]: string }): object[] {
+export function substituteParams(original: object[], params: { [key: string]: string }): Param[] {
   const startingString = JSON.stringify(original);
   const reduceFunction = (intermediateResult: string, paramVal: string, paramKey: string) => {
     const regex = new RegExp("\\$\\{" + paramKey + "\\}", "g");

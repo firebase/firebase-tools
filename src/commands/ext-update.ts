@@ -56,7 +56,12 @@ export default new Command("ext:update <instanceId>")
       const newSource = await modsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
       await displayChanges(currentSpec, newSpec);
-      const newParams = await paramHelper.promptForNewParams(currentSpec, newSpec, currentParams);
+      const newParams = await paramHelper.promptForNewParams(
+        currentSpec,
+        newSpec,
+        currentParams,
+        projectId
+      );
       const rolesToRemove = _.differenceWith(
         currentSpec.roles,
         _.get(newSpec, "roles", []),
