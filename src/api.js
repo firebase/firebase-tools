@@ -99,6 +99,14 @@ var api = {
     "https://logging.googleapis.com"
   ),
   adminOrigin: utils.envOverride("FIREBASE_ADMIN_URL", "https://admin.firebase.com"),
+  appDistributionOrigin: utils.envOverride(
+    "FIREBASE_APP_DISTRIBUTION_URL",
+    "https://firebaseappdistribution.googleapis.com"
+  ),
+  appDistributionUploadOrigin: utils.envOverride(
+    "FIREBASE_APP_DISTRIBUTION_UPLOAD_URL",
+    "https://appdistribution-uploads.crashlytics.com"
+  ),
   appengineOrigin: utils.envOverride("FIREBASE_APPENGINE_URL", "https://appengine.googleapis.com"),
   authOrigin: utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com"),
   consoleOrigin: utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com"),
@@ -252,7 +260,15 @@ var api = {
       return Promise.reject(err);
     });
   },
+
+  /**
+   * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
+   * TODO: remove this function
+   */
   getProjects: function() {
+    logger.debug(
+      `[WARNING] ${new Error("getProjects() is deprecated - update the implementation").stack}`
+    );
     return api
       .request("GET", "/v1/projects", {
         auth: true,

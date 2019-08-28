@@ -12,6 +12,9 @@ export interface WebConfig {
   messagingSenderId?: string;
 }
 
+/**
+ * TODO: deprecate this function in favor of `getAppConfig()` in `/src/management/apps.ts`
+ */
 export async function fetchWebSetup(options: any): Promise<WebConfig> {
   const projectId = getProjectId(options, false);
   const response = await api.request("GET", `/v1beta1/projects/${projectId}/webApps/-/config`, {
