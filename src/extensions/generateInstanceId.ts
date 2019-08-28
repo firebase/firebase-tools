@@ -12,9 +12,7 @@ export async function generateInstanceId(projectId: string, modName: string): Pr
     if (_.get(instanceRes, "error.code") === 404) {
       return modName;
     }
-    const msg =
-      "Unexpected error when generating instance ID: " + _.get(instanceRes, "error.message");
-    throw new FirebaseError(msg, {
+    throw new FirebaseError("Unexpected error when generating instance ID:", {
       original: instanceRes.error,
     });
   }
