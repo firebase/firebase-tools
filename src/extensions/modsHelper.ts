@@ -167,8 +167,5 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
 
 export async function ensureModsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
-  await Promise.all([
-    ensure(projectId, "deploymentmanager.googleapis.com", "deploymentManager", true),
-    ensure(projectId, "firebasemods.googleapis.com", "extensions", options.markdown),
-  ]);
+  return await ensure(projectId, "firebasemods.googleapis.com", "extensions", options.markdown);
 }
