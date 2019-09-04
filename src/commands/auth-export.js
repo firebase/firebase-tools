@@ -41,5 +41,10 @@ module.exports = new Command("auth:export [dataFile]")
         writeStream.write("]}");
       }
       writeStream.end();
+      return new Promise((resolve, reject) => {
+        writeStream.on("finish", resolve);
+        writeStream.on("close", resolve);
+        writeStream.on("error", reject);
+      });
     });
   });
