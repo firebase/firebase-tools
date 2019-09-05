@@ -47,6 +47,10 @@ module.exports = function(setup, config) {
             name: "TypeScript",
             value: "typescript",
           },
+          {
+            name: "CoffeeScript",
+            value: "coffeescript",
+          },
         ],
       },
     ]).then(function() {
