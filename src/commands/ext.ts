@@ -3,10 +3,8 @@ import * as clc from "cli-color";
 
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
-import * as modsHelper from "../extensions/modsHelper";
-import { listMods } from "../extensions/listMods";
+import { listExtensions } from "../extensions/listExtensions";
 import * as requirePermissions from "../requirePermissions";
-import * as utils from "../utils";
 import * as logger from "../logger";
 
 module.exports = new Command("ext")
@@ -41,5 +39,5 @@ module.exports = new Command("ext")
       logger.info();
     });
 
-    return listMods(projectId);
+    return listExtensions(projectId);
   });

@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
-import { Role } from "./modsApi";
+import { Role } from "./extensionsApi";
 import { iam } from "../gcp";
 import { getRandomString } from "./generateInstanceId";
 
@@ -60,10 +60,10 @@ export function grantRoles(
 }
 
 /**
- * Creates a new service account to use with an instance of ModSpec,
+ * Creates a new service account to use with an instance of ExtensionSpec,
  * then gives it the appropriate IAM policies, and returns the email
  *
- * @param source a ModSpec
+ * @param source a ExtensionSpec
  * @returns the email of the created service account
  */
 export async function createServiceAccountAndSetRoles(
