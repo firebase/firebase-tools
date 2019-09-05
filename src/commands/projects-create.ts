@@ -2,6 +2,7 @@ import * as Command from "../command";
 import { FirebaseError } from "../error";
 import {
   createFirebaseProjectAndLog,
+  FirebaseProjectMetadata,
   ProjectParentResourceType,
   PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
@@ -21,7 +22,7 @@ module.exports = new Command("projects:create [projectId]")
   )
   .before(requireAuth)
   .action(
-    async (projectId: string | undefined, options: any): Promise<any> => {
+    async (projectId: string | undefined, options: any): Promise<FirebaseProjectMetadata> => {
       options.projectId = projectId; // add projectId into options to pass into prompt function
 
       if (options.organization && options.folder) {

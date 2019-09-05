@@ -186,7 +186,7 @@ var _loginWithLocalhost = function(port) {
 
     server.listen(port, function() {
       logger.info();
-      logger.info("Visit this URL on any device to log in:");
+      logger.info("Visit this URL on this device to log in:");
       logger.info(clc.bold.underline(authUrl));
       logger.info();
       logger.info("Waiting for authentication...");

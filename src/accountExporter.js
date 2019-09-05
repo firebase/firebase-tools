@@ -158,6 +158,11 @@ var serialExportUsers = function(projectId, options) {
       if (userList && userList.length > 0) {
         _writeUsersToFile(userList, options.format, options.writeStream);
         utils.logSuccess("Exported " + userList.length + " account(s) successfully.");
+        // The identitytoolkit API do not return a nextPageToken value
+        // consistently when the last page is reached
+        if (!ret.body.nextPageToken) {
+          return;
+        }
         options.nextPageToken = ret.body.nextPageToken;
         return serialExportUsers(projectId, options);
       }

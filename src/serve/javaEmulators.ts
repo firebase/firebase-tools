@@ -40,10 +40,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.7.0.jar",
-    expectedSize: 59234749,
-    expectedChecksum: "8438fa31a7bf80ce96fe72cc32b7adb7",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.7.0.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.8.2.jar",
+    expectedSize: 59921526,
+    expectedChecksum: "19680ca7dc7b6849e3e234c469ed66b2",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.8.2.jar"),
     namePrefix: "cloud-firestore-emulator",
   },
 };
@@ -57,7 +57,7 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
-    optionalArgs: ["port", "host", "rules", "functions_emulator"],
+    optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
   },
 };
 
@@ -203,6 +203,6 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(`Starting emulator ${targetName} with args ${JSON.stringify(args)}`);
+  logger.debug(`Starting emulator ${targetName} with command ${JSON.stringify(command)}`);
   return _runBinary(emulator, command);
 }

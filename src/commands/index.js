@@ -13,6 +13,10 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  if (previews.appdistribution) {
+    client.appdistribution = {};
+    client.appdistribution.distribute = loadCommand("appdistribution-distribute");
+  }
   client.apps = {};
   client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
@@ -62,6 +66,7 @@ module.exports = function(client) {
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.projects = {};
+  client.projects.addfirebase = loadCommand("projects-addfirebase");
   client.projects.list = loadCommand("projects-list");
   client.projects.create = loadCommand("projects-create");
   client.serve = loadCommand("serve");
@@ -78,14 +83,14 @@ module.exports = function(client) {
   client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
-  if (previews.mods) {
-    client.mods = loadCommand("mods");
-    client.mods.configure = loadCommand("mods-configure");
-    client.mods.info = loadCommand("mods-info");
-    client.mods.install = loadCommand("mods-install");
-    client.mods.list = loadCommand("mods-list");
-    client.mods.uninstall = loadCommand("mods-uninstall");
-    client.mods.update = loadCommand("mods-update");
+  if (previews.mods || previews.ext) {
+    client.ext = loadCommand("ext");
+    client.ext.configure = loadCommand("ext-configure");
+    client.ext.info = loadCommand("ext-info");
+    client.ext.install = loadCommand("ext-install");
+    client.ext.list = loadCommand("ext-list");
+    client.ext.uninstall = loadCommand("ext-uninstall");
+    client.ext.update = loadCommand("ext-update");
   }
   return client;
 };
