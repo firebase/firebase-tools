@@ -1,13 +1,28 @@
 /*
   -------------------------------------
-  Runtime Scripts
+  Introduction: Runtime Scripts
   -------------------------------------
 
-  These functions are not invoked in firepit,
+  These functions are not invoked in the main firepit runtime
   but are written to the filesystem (via Function.toString())
   and then invoked from platform-specific .bat or .sh scripts
+
+  Each of these scripts is designed to mimic a specific command
+  which the Firebase CLI shells out to. It takes the same arguments
+  and routes them to the correct place based on what the
+  top-level command is.
  */
 
+/*
+  -------------------------------------
+  "node" Command
+  -------------------------------------
+
+  This function, when placed into a script with the function
+  wrapper will take a command like "node ./script.js --foo'
+  and correctly spawn "./script.js" while preserving the
+  "--foo" argument.
+*/
 exports.Script_NodeJS = function() {
   const [script, ...otherArgs] = process.argv.slice(2);
   require("child_process")
@@ -21,6 +36,19 @@ exports.Script_NodeJS = function() {
     });
 };
 
+/*
+  -------------------------------------
+  "sh" Command
+  -------------------------------------
+
+  This function, when placed into a script with the function
+  wrapper replicates the behavior of the system shell.
+
+  The main change is that it adds locations onto the
+  environment's PATH so it can locate our other shimmed
+  tools. It finds references to "node" and ensures that
+  they be redirected back into Firepit as well.
+*/
 exports.Script_ShellJS = async function() {
   const path = require("path");
   const child_process = require("child_process");

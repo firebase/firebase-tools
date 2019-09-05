@@ -21,7 +21,7 @@
   "files": [
     "lib",
     "templates",
-    "runtime"
+    "standalone"
   ],
   "repository": {
     "type": "git",

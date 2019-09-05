@@ -157,7 +157,7 @@ async function CheckIsLoggedIn() {
 }
 
 function SimpleSpinner(message) {
-  const icons = ["", ".", "..", "..."];
+  const icons = ["[/]", "[-]", "[\\]", "[-]", "[|]"];
   let index = 0;
 
   const cancel = setInterval(() => {
@@ -174,26 +174,5 @@ function SimpleSpinner(message) {
     readline.clearLine(process.stdout, 0);
     readline.cursorTo(process.stdout, 0, null);
     process.stdout.write(final_message);
-  };
-}
-
-function FancySpinner(message) {
-  const icons = ["⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"];
-  let index = 0;
-
-  const cancel = setInterval(() => {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0, null);
-    process.stdout.write(chalk.white(icons[index]) + " " + message);
-
-    index++;
-    index %= icons.length;
-  }, 100);
-
-  return (icon, final_message) => {
-    clearInterval(cancel);
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0, null);
-    process.stdout.write(chalk.white(icon) + " " + final_message);
   };
 }
