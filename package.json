@@ -20,7 +20,8 @@
   },
   "files": [
     "lib",
-    "templates"
+    "templates",
+    "standalone"
   ],
   "repository": {
     "type": "git",
