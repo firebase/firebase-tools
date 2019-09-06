@@ -1,0 +1,1 @@
+* Ensures `auth:export` results are fully flushed to the output file.
