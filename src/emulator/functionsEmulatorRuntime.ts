@@ -15,6 +15,7 @@ import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import * as semver from "semver";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -73,6 +74,7 @@ function makeFakeCredentials(): any {
 }
 
 interface PackageJSON {
+  engines?: { node?: string };
   dependencies: { [name: string]: any };
   devDependencies: { [name: string]: any };
 }
@@ -288,6 +290,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   try {
     const pkg = require(`${frb.cwd}/package.json`);
     developerPkgJSON = {
+      engines: pkg.engines || {},
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
     };
@@ -697,14 +700,6 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
-  const nodeVersion = parseVersionString(process.versions.node);
-  if (nodeVersion.major >= 10) {
-    const triggerId = frb.triggerId || "";
-    process.env.FUNCTION_TARGET = triggerId.replace(/-/g, ".");
-    process.env.K_SERVICE = triggerId;
-    process.env.K_REVISION = "0";
-  }
-
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
@@ -712,6 +707,25 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
     projectId: process.env.GCLOUD_PROJECT,
   });
+
+  // Runtime values are based on information from the bundle. Proper information for this is
+  // available once the target code has been loaded, which is too late.
+  const service = frb.triggerId || "";
+  const target = service.replace(/-/g, ".");
+  const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+
+  // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+  // https://cloud.google.com/functions/docs/env-var
+  const pkg = requirePackageJson(frb);
+  if (pkg && pkg.engines && pkg.engines.node) {
+    if (semver.satisfies("10.0.0", pkg.engines.node)) {
+      process.env.FUNCTION_TARGET = target;
+      process.env.FUNCTION_SIGNATURE_TYPE = mode;
+      process.env.K_SERVICE = service;
+      process.env.K_REVISION = "1";
+      process.env.PORT = "80";
+    }
+  }
 }
 
 async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
