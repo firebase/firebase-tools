@@ -4,6 +4,7 @@ import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
+  EmulatedTriggerType,
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
