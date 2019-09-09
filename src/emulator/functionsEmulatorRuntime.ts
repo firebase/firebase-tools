@@ -708,22 +708,24 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     projectId: process.env.GCLOUD_PROJECT,
   });
 
-  // Runtime values are based on information from the bundle. Proper information for this is
-  // available once the target code has been loaded, which is too late.
-  const service = frb.triggerId || "";
-  const target = service.replace(/-/g, ".");
-  const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+  if (frb.triggerId) {
+    // Runtime values are based on information from the bundle. Proper information for this is
+    // available once the target code has been loaded, which is too late.
+    const service = frb.triggerId || "";
+    const target = service.replace(/-/g, ".");
+    const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
-  // Setup predefined environment variables for Node.js 10 and subsequent runtimes
-  // https://cloud.google.com/functions/docs/env-var
-  const pkg = requirePackageJson(frb);
-  if (pkg && pkg.engines && pkg.engines.node) {
-    if (semver.satisfies("10.0.0", pkg.engines.node)) {
-      process.env.FUNCTION_TARGET = target;
-      process.env.FUNCTION_SIGNATURE_TYPE = mode;
-      process.env.K_SERVICE = service;
-      process.env.K_REVISION = "1";
-      process.env.PORT = "80";
+    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+    // https://cloud.google.com/functions/docs/env-var
+    const pkg = requirePackageJson(frb);
+    if (pkg && pkg.engines && pkg.engines.node) {
+      if (semver.satisfies("10.0.0", pkg.engines.node)) {
+        process.env.FUNCTION_TARGET = target;
+        process.env.FUNCTION_SIGNATURE_TYPE = mode;
+        process.env.K_SERVICE = service;
+        process.env.K_REVISION = "1";
+        process.env.PORT = "80";
+      }
     }
   }
 }
