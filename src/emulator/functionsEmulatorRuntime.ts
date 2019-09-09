@@ -15,7 +15,6 @@ import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
-import * as semver from "semver";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -719,7 +718,8 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     // https://cloud.google.com/functions/docs/env-var
     const pkg = requirePackageJson(frb);
     if (pkg && pkg.engines && pkg.engines.node) {
-      if (semver.satisfies("10.0.0", pkg.engines.node)) {
+      const nodeVersion = parseVersionString(pkg.engines.node);
+      if (nodeVersion.major >= 10) {
         process.env.FUNCTION_TARGET = target;
         process.env.FUNCTION_SIGNATURE_TYPE = mode;
         process.env.K_SERVICE = service;
