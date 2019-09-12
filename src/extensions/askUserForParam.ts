@@ -60,7 +60,11 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   let response = "";
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
-  logger.info(`\n${clc.bold(label)}: ${marked(description).trim()}`);
+  logger.info(
+    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
+      description
+    ).trim()}`
+  );
 
   while (!valid) {
     switch (paramSpec.type) {
