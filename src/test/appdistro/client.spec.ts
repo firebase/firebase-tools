@@ -158,6 +158,14 @@ describe("distribution", () => {
       expect(apiSpy).to.not.be.called;
     });
 
+    it("should resolve when request succeeds", () => {
+      const releaseId = "fake-release-id";
+      nock(api.appDistributionOrigin)
+        .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`)
+        .reply(200, {});
+      return expect(distribution.enableAccess(releaseId, ["tester1"], ["group1"])).to.be.fulfilled;
+    });
+
     describe("when request fails", () => {
       let testers: string[];
       let groups: string[];
@@ -206,14 +214,6 @@ describe("distribution", () => {
           distribution.enableAccess(releaseId, ["tester1"], ["group1"])
         ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups");
       });
-    });
-
-    describe("should resolve when request succeeds", () => {
-      const releaseId = "fake-release-id";
-      nock(api.appDistributionOrigin)
-        .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`)
-        .reply(200, {});
-      return expect(distribution.enableAccess(releaseId, ["tester1"], ["group1"])).to.be.fulfilled;
     });
   });
 });

@@ -4,6 +4,7 @@ import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
+  EmulatedTriggerType,
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
@@ -72,6 +73,7 @@ function makeFakeCredentials(): any {
 }
 
 interface PackageJSON {
+  engines?: { node?: string };
   dependencies: { [name: string]: any };
   devDependencies: { [name: string]: any };
 }
@@ -287,6 +289,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   try {
     const pkg = require(`${frb.cwd}/package.json`);
     developerPkgJSON = {
+      engines: pkg.engines || {},
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
     };
@@ -703,6 +706,28 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
     projectId: process.env.GCLOUD_PROJECT,
   });
+
+  if (frb.triggerId) {
+    // Runtime values are based on information from the bundle. Proper information for this is
+    // available once the target code has been loaded, which is too late.
+    const service = frb.triggerId || "";
+    const target = service.replace(/-/g, ".");
+    const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+
+    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+    // https://cloud.google.com/functions/docs/env-var
+    const pkg = requirePackageJson(frb);
+    if (pkg && pkg.engines && pkg.engines.node) {
+      const nodeVersion = parseVersionString(pkg.engines.node);
+      if (nodeVersion.major >= 10) {
+        process.env.FUNCTION_TARGET = target;
+        process.env.FUNCTION_SIGNATURE_TYPE = mode;
+        process.env.K_SERVICE = service;
+        process.env.K_REVISION = "1";
+        process.env.PORT = "80";
+      }
+    }
+  }
 }
 
 async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {

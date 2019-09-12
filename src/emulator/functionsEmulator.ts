@@ -19,6 +19,7 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
+  EmulatedTriggerType,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
@@ -125,6 +126,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtime = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
         triggerId,
+        EmulatedTriggerType.BACKGROUND,
         nodeBinary,
         proto
       );
@@ -166,7 +168,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
-      const runtime = FunctionsEmulator.startFunctionRuntime(bundleTemplate, triggerId, nodeBinary);
+      const runtime = FunctionsEmulator.startFunctionRuntime(
+        bundleTemplate,
+        triggerId,
+        EmulatedTriggerType.HTTPS,
+        nodeBinary
+      );
 
       runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
@@ -258,6 +265,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   static startFunctionRuntime(
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
+    triggerType: EmulatedTriggerType,
     nodeBinary: string,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
@@ -270,6 +278,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       proto,
       triggerId,
+      triggerType,
     };
 
     const runtime = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
@@ -677,6 +686,7 @@ You can probably fix this by running "npm install ${
       cwd: this.functionsDir,
       projectId: this.projectId,
       triggerId: "",
+      triggerType: undefined,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),

@@ -3,7 +3,10 @@ import { FunctionsEmulator, FunctionsRuntimeInstance } from "../../emulator/func
 import * as supertest from "supertest";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
 import * as logger from "../../logger";
-import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import {
+  EmulatedTriggerType,
+  FunctionsRuntimeBundle,
+} from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
@@ -22,10 +25,11 @@ function UseFunctions(triggers: () => {}): void {
   FunctionsEmulator.startFunctionRuntime = (
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
+    triggerType: EmulatedTriggerType,
     nodeBinary: string,
     proto?: any
   ): FunctionsRuntimeInstance => {
-    return startFunctionRuntime(bundleTemplate, triggerId, nodeBinary, proto, {
+    return startFunctionRuntime(bundleTemplate, triggerId, triggerType, nodeBinary, proto, {
       serializedTriggers,
     });
   };

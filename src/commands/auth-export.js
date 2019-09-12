@@ -41,5 +41,12 @@ module.exports = new Command("auth:export [dataFile]")
         writeStream.write("]}");
       }
       writeStream.end();
+      // Ensure process ends only when all data have been flushed
+      // to the output file
+      return new Promise(function(resolve, reject) {
+        writeStream.on("finish", resolve);
+        writeStream.on("close", resolve);
+        writeStream.on("error", reject);
+      });
     });
   });
