@@ -40,7 +40,7 @@ Command | Description
 **login** | Authenticate to your Firebase account. Requires access to a web browser.
 **logout** | Sign out of the Firebase CLI.
 **login:ci** | Generate an authentication token for use in non-interactive environments.
-**list** | Print a list of all of your Firebase projects.
+**projects:list** | Print a list of all of your Firebase projects.
 **setup:web** | Print out SDK setup information for the Firebase JS SDK.
 **use** | Set active Firebase project, manage project aliases.
 **open** | Quickly open a browser to relevant project resources.
