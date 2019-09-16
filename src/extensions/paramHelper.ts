@@ -6,13 +6,13 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
-import * as modsApi from "./modsApi";
+import * as extensionsApi from "./extensionsApi";
 import {
   getFirebaseProjectParams,
   populateDefaultParams,
   substituteParams,
   validateCommandLineParams,
-} from "./modsHelper";
+} from "./extensionsHelper";
 import * as askUserForParam from "./askUserForParam";
 import * as track from "../track";
 
@@ -24,9 +24,9 @@ import * as track from "../track";
  * @param newDefaults a map of { PARAM_NAME: default_value }
  */
 function setNewDefaults(
-  params: modsApi.Param[],
+  params: extensionsApi.Param[],
   newDefaults: { [key: string]: string }
-): modsApi.Param[] {
+): extensionsApi.Param[] {
   params.forEach((param) => {
     if (newDefaults[param.param.toUpperCase()]) {
       param.default = newDefaults[param.param.toUpperCase()];
@@ -36,14 +36,14 @@ function setNewDefaults(
 }
 
 /**
- * Returns a copy of the params for a mod instance with the defaults set to the instance's current param values
- * @param modInstance the mod instance to change the default params of
+ * Returns a copy of the params for a extension instance with the defaults set to the instance's current param values
+ * @param extensionInstance the extension instance to change the default params of
  */
 export function getParamsWithCurrentValuesAsDefaults(
-  modInstance: modsApi.ModInstance
-): modsApi.Param[] {
-  const specParams = _.cloneDeep(_.get(modInstance, "configuration.source.spec.params", []));
-  const currentParams = _.cloneDeep(_.get(modInstance, "configuration.params", {}));
+  extensionInstance: extensionsApi.ExtensionInstance
+): extensionsApi.Param[] {
+  const specParams = _.cloneDeep(_.get(extensionInstance, "config.source.spec.params", []));
+  const currentParams = _.cloneDeep(_.get(extensionInstance, "config.params", {}));
   return setNewDefaults(specParams, currentParams);
 }
 
@@ -52,13 +52,13 @@ export function getParamsWithCurrentValuesAsDefaults(
  * reading the env file passed in the --params command line option
  * or prompting the user for each param.
  * @param projectId the id of the project in use
- * @param paramSpecs a list of params, ie. modSpec.params
+ * @param paramSpecs a list of params, ie. extensionSpec.params
  * @param envFilePath a path to an env file containing param values
  * @throws FirebaseError if an invalid env file is passed in
  */
 export async function getParams(
   projectId: string,
-  paramSpecs: modsApi.Param[],
+  paramSpecs: extensionsApi.Param[],
   envFilePath?: string
 ): Promise<{ [key: string]: string }> {
   let commandLineParams;
@@ -66,13 +66,13 @@ export async function getParams(
     try {
       const buf = fs.readFileSync(path.resolve(envFilePath));
       commandLineParams = dotenv.parse(buf.toString().trim(), { debug: true });
-      track("Mod Env File", "Present");
+      track("Extension Env File", "Present");
     } catch (err) {
-      track("Mod Env File", "Invalid");
+      track("Extension Env File", "Invalid");
       throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
     }
   } else {
-    track("Mod Env File", "Not Present");
+    track("Extension Env File", "Not Present");
   }
   const firebaseProjectParams = await getFirebaseProjectParams(projectId);
   let params: any;
@@ -82,7 +82,7 @@ export async function getParams(
   } else {
     params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
   }
-  track("Mod Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
   return params;
 }
 
@@ -90,13 +90,13 @@ export async function getParams(
  * Displays params that exist in spec but not newSpec,
  * and then prompts user for any params in newSpec that are not in spec.
  *
- * @param spec A current modSpec
- * @param newSpec A modSpec to compare to
+ * @param spec A current extensionSpec
+ * @param newSpec A extensionSpec to compare to
  * @param currentParams A set of current params and their values
  */
 export async function promptForNewParams(
-  spec: modsApi.ModSpec,
-  newSpec: modsApi.ModSpec,
+  spec: extensionsApi.ExtensionSpec,
+  newSpec: extensionsApi.ExtensionSpec,
   currentParams: { [option: string]: string },
   projectId: string
 ): Promise<any> {

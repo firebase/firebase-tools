@@ -9,8 +9,8 @@ import {
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 
 describe("askUserForParam", () => {
   const testSpec = {
@@ -222,7 +222,7 @@ describe("askUserForParam", () => {
     let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
-      subVarSpy = sinon.spy(modsHelper, "substituteParams");
+      subVarSpy = sinon.spy(extensionsHelper, "substituteParams");
       promptStub = sinon.stub(prompt, "promptOnce");
       promptStub.returns("ValidName");
     });

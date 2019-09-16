@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import * as modsApi from "../../extensions/modsApi";
-import { listMods } from "../../extensions/listMods";
+import * as extensionsApi from "../../extensions/extensionsApi";
+import { listExtensions } from "../../extensions/listExtensions";
 
 const MOCK_INSTANCES = [
   {
@@ -10,7 +10,7 @@ const MOCK_INSTANCES = [
     createTime: "2019-05-19T00:20:10.416947Z",
     updateTime: "2019-05-19T00:20:10.416947Z",
     state: "ACTIVE",
-    configuration: {
+    config: {
       name:
         "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
       createTime: "2019-05-19T00:20:10.416947Z",
@@ -21,7 +21,7 @@ const MOCK_INSTANCES = [
     createTime: "2019-06-19T00:20:10.416947Z",
     updateTime: "2019-06-19T00:21:06.722782Z",
     state: "ACTIVE",
-    configuration: {
+    config: {
       name:
         "projects/my-test-proj/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
       createTime: "2019-06-19T00:21:06.722782Z",
@@ -31,29 +31,29 @@ const MOCK_INSTANCES = [
 
 const PROJECT_ID = "my-test-proj";
 
-describe("listMods", () => {
+describe("listExtensions", () => {
   let listInstancesStub: sinon.SinonStub;
 
   beforeEach(() => {
-    listInstancesStub = sinon.stub(modsApi, "listInstances");
+    listInstancesStub = sinon.stub(extensionsApi, "listInstances");
   });
 
   afterEach(() => {
     listInstancesStub.restore();
   });
 
-  it("should return an empty array if no mods have been installed", async () => {
+  it("should return an empty array if no extensions have been installed", async () => {
     listInstancesStub.returns(Promise.resolve([]));
 
-    const result = await listMods(PROJECT_ID);
+    const result = await listExtensions(PROJECT_ID);
 
     expect(result).to.eql({ instances: [] });
   });
 
-  it("should return a sorted array of mod instances", async () => {
+  it("should return a sorted array of extension instances", async () => {
     listInstancesStub.returns(Promise.resolve(MOCK_INSTANCES));
 
-    const result = await listMods(PROJECT_ID);
+    const result = await listExtensions(PROJECT_ID);
 
     const expected = [
       {
@@ -61,7 +61,7 @@ describe("listMods", () => {
         createTime: "2019-06-19T00:20:10.416947Z",
         updateTime: "2019-06-19T00:21:06.722782Z",
         state: "ACTIVE",
-        configuration: {
+        config: {
           name:
             "projects/my-test-proj/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
           createTime: "2019-06-19T00:21:06.722782Z",
@@ -72,7 +72,7 @@ describe("listMods", () => {
         createTime: "2019-05-19T00:20:10.416947Z",
         updateTime: "2019-05-19T00:20:10.416947Z",
         state: "ACTIVE",
-        configuration: {
+        config: {
           name:
             "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
           createTime: "2019-05-19T00:20:10.416947Z",
