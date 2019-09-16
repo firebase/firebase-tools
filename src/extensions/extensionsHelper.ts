@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
-import { Param } from "./modsApi";
+import { Param } from "./extensionsApi";
 import { generateInstanceId } from "./generateInstanceId";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";

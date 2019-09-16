@@ -254,7 +254,7 @@ describe("paramHelper", () => {
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
+        .stub(extensionsHelper, "getFirebaseProjectParams")
         .resolves({ PROJECT_ID });
     });
 
