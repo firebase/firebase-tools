@@ -22,7 +22,7 @@ export interface AppDistributionApp {
  * Proxies HTTPS requests to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  static MAX_POLLING_RETRIES = 30;
+  static MAX_POLLING_RETRIES = 15;
   static POLLING_INTERVAL_MS = 1000;
 
   constructor(private readonly appId: string) {}

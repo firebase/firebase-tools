@@ -77,10 +77,16 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     try {
       app = await requests.getApp();
     } catch (err) {
-      throw new FirebaseError(
-        `App Distribution is not enabled for app ${appId}. Please visit the Firebase Console to get started.`,
-        { exit: 1 }
-      );
+      if (err.status === 404) {
+        throw new FirebaseError(
+          `App Distribution could not find your app ${appId}. ` +
+            `Make sure to onboard your app by pressing the "Get started" ` +
+            "button on the App Distribution page in the Firebase console: " +
+            "https://console.firebase.google.com/project/_/appdistribution",
+          { exit: 1 }
+        );
+      }
+      throw new FirebaseError(`failed to fetch app information. ${err.message}`, { exit: 1 });
     }
 
     if (!app.contactEmail) {
