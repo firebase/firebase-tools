@@ -28,7 +28,7 @@ export function checkResponse(response: string, spec: Param): boolean {
     const re = new RegExp(spec.validationRegex);
     let valid = true;
     _.forEach(responses, (resp) => {
-      if (!re.test(resp)) {
+      if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
           `${resp} is not a valid answer since it` +
           ` does not fit the regular expression "${spec.validationRegex}"`;
