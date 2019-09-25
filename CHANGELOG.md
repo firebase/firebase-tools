@@ -1,0 +1,1 @@
+- Removed some features from the preview list.
