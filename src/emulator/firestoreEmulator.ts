@@ -20,7 +20,6 @@ export interface FirestoreEmulatorArgs {
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
-  webchannel_port?: number;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
@@ -54,29 +53,6 @@ export class FirestoreEmulator implements EmulatorInstance {
           utils.logLabeledSuccess("firestore", "Rules updated.");
         }
       });
-    }
-
-    // Find a port for WebChannel traffic
-    const host = this.getInfo().host;
-    const basePort = this.getInfo().port;
-    const port = basePort + 1;
-    const stopPort = port + 10;
-    try {
-      const webChannelPort = await pf.getPortPromise({
-        port,
-        stopPort,
-      });
-      this.args.webchannel_port = webChannelPort;
-
-      utils.logLabeledBullet(
-        "firestore",
-        `Serving WebChannel traffic on at ${clc.bold(`http://${host}:${webChannelPort}`)}`
-      );
-    } catch (e) {
-      utils.logLabeledWarning(
-        "firestore",
-        `Not serving WebChannel traffic, unable to find an open port in range ${port}:${stopPort}]`
-      );
     }
 
     return javaEmulators.start(Emulators.FIRESTORE, this.args);
