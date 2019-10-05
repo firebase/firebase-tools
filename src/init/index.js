@@ -6,6 +6,31 @@ var clc = require("cli-color");
 var logger = require("../logger");
 var features = require("./features");
 var utils = require("../utils");
+var requirePermissions = require("../requirePermissions");
+
+var TARGET_PERMISSIONS = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+};
 
 var init = function(setup, config, options) {
   var nextFeature = setup.features.shift();
@@ -18,10 +43,19 @@ var init = function(setup, config, options) {
       );
     }
 
+    // check permissions if the initialization is on an existing project
+    var checkPermissions = Promise.resolve();
+    if (setup.projectId) {
+      var projectOptions = { project: setup.projectId };
+      checkPermissions = requirePermissions(projectOptions, TARGET_PERMISSIONS[nextFeature]);
+    }
+
     logger.info(clc.bold("\n" + clc.white("=== ") + _.capitalize(nextFeature) + " Setup"));
-    return Promise.resolve(features[nextFeature](setup, config, options)).then(function() {
-      return init(setup, config, options);
-    });
+
+    return checkPermissions
+      .then(() => features[nextFeature](setup, config, options))
+      .then(() => init(setup, config, options))
+      .catch((err) => utils.reject(err.message));
   }
   return Promise.resolve();
 };
