@@ -55,7 +55,7 @@ export async function createOrUpdateSchedulesAndTopics(
     } else {
       await createOrReplaceJob(
         Object.assign(trigger.schedule as { schedule: string }, {
-          name: `projects/${projectId}/locations/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`,
+          name: `projects/${projectId}/locations/${region}/jobs/firebase-schedule-${functionName}-${region}`,
           pubsubTarget: {
             topicName: `projects/${projectId}/topics/firebase-schedule-${functionName}-${region}`,
             attributes: {
