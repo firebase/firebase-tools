@@ -11,32 +11,8 @@ var Command = require("../command");
 var deploy = require("../deploy");
 var requireConfig = require("../requireConfig");
 var filterTargets = require("../filterTargets");
-
-// in order of least time-consuming to most time-consuming
-var VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
-var TARGET_PERMISSIONS = {
-  database: ["firebasedatabase.instances.update"],
-  hosting: ["firebasehosting.sites.update"],
-  functions: [
-    "cloudfunctions.functions.list",
-    "cloudfunctions.functions.create",
-    "cloudfunctions.functions.get",
-    "cloudfunctions.functions.update",
-    "cloudfunctions.functions.delete",
-    "cloudfunctions.operations.get",
-  ],
-  firestore: [
-    "datastore.indexes.list",
-    "datastore.indexes.create",
-    "datastore.indexes.update",
-    "datastore.indexes.delete",
-  ],
-  storage: [
-    "firebaserules.releases.create",
-    "firebaserules.rulesets.create",
-    "firebaserules.releases.update",
-  ],
-};
+var VALID_TARGETS = require("../firebasePermissions").VALID_TARGETS;
+var TARGET_PERMISSIONS = require("../firebasePermissions").TARGET_PERMISSIONS;
 
 module.exports = new Command("deploy")
   .description("deploy code and assets to your Firebase project")

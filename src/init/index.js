@@ -7,30 +7,7 @@ var logger = require("../logger");
 var features = require("./features");
 var utils = require("../utils");
 var requirePermissions = require("../requirePermissions");
-
-var TARGET_PERMISSIONS = {
-  database: ["firebasedatabase.instances.update"],
-  hosting: ["firebasehosting.sites.update"],
-  functions: [
-    "cloudfunctions.functions.list",
-    "cloudfunctions.functions.create",
-    "cloudfunctions.functions.get",
-    "cloudfunctions.functions.update",
-    "cloudfunctions.functions.delete",
-    "cloudfunctions.operations.get",
-  ],
-  firestore: [
-    "datastore.indexes.list",
-    "datastore.indexes.create",
-    "datastore.indexes.update",
-    "datastore.indexes.delete",
-  ],
-  storage: [
-    "firebaserules.releases.create",
-    "firebaserules.rulesets.create",
-    "firebaserules.releases.update",
-  ],
-};
+var TARGET_PERMISSIONS = require("../firebasePermissions").TARGET_PERMISSIONS;
 
 var init = function(setup, config, options) {
   var nextFeature = setup.features.shift();
