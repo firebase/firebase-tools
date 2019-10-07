@@ -132,6 +132,7 @@
     "@types/sinon-chai": "^3.2.2",
     "@types/supertest": "^2.0.6",
     "@types/tar": "^4.0.0",
+    "@types/tcp-port-used": "^1.0.0",
     "@types/tmp": "^0.1.0",
     "@types/uuid": "^3.4.4",
     "@types/winston": "^2.4.4",

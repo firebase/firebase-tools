@@ -2,10 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-
-// No typings exist for this library.
-// tslint:disable-next-line:no-var-requires
-const tcpport = require("tcp-port-used");
+import * as tcpport from "tcp-port-used";
 
 import * as utils from "../utils";
 import * as track from "../track";
