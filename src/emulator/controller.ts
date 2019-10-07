@@ -4,7 +4,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 // No typings exist for this library.
-const tcpport = require('tcp-port-used');
+// tslint:disable-next-line:no-var-requires
+const tcpport = require("tcp-port-used");
 
 import * as utils from "../utils";
 import * as track from "../track";
@@ -26,7 +27,6 @@ export async function checkPortOpen(port: number): Promise<boolean> {
     const inUse = await tcpport.check(port);
     return !inUse;
   } catch (e) {
-    console.warn(e);
     return false;
   }
 }
