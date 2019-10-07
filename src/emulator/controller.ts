@@ -1,8 +1,10 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
-import * as pf from "portfinder";
 import * as path from "path";
+
+// No typings exist for this library.
+const tcpport = require('tcp-port-used');
 
 import * as utils from "../utils";
 import * as track from "../track";
@@ -21,9 +23,10 @@ export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
 export async function checkPortOpen(port: number): Promise<boolean> {
   try {
-    await pf.getPortPromise({ port, stopPort: port });
-    return true;
+    const inUse = await tcpport.check(port);
+    return !inUse;
   } catch (e) {
+    console.warn(e);
     return false;
   }
 }
@@ -31,17 +34,11 @@ export async function checkPortOpen(port: number): Promise<boolean> {
 export async function waitForPortClosed(port: number): Promise<void> {
   const interval = 250;
   const timeout = 30000;
-
-  let elapsed = 0;
-  while (elapsed < timeout) {
-    const open = await checkPortOpen(port);
-    if (!open) {
-      return;
-    }
-    await new Promise((r) => setTimeout(r, interval));
-    elapsed += interval;
+  try {
+    await tcpport.waitUntilUsed(port, interval, timeout);
+  } catch (e) {
+    throw new FirebaseError(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
   }
-  throw new FirebaseError(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
 }
 
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {

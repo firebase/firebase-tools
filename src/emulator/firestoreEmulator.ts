@@ -4,7 +4,6 @@ import * as fs from "fs";
 import * as request from "request";
 import * as clc from "cli-color";
 import * as path from "path";
-import * as pf from "portfinder";
 
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
