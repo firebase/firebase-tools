@@ -76,7 +76,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       utils.logLabeledWarning(
         "firestore",
         `Support for WebChannel on a separate port (${webChannelPort}) is DEPRECATED and will go away soon. ` +
-        'Please use port above instead.'
+        "Please use port above instead."
       );
     } catch (e) {
       // We don't need to take any action here since the emulator will still
