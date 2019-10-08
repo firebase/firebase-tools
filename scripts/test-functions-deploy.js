@@ -8,6 +8,10 @@
  * If parameters ommited:
  * - projectId defaults to `functions-integration-test`
  * - region defaults to `us-central1`
+ * 
+ * NOTE: You'll see a warning which says, "Warning, FIREBASE_CONFIG and GCLOUD_PROJECT environment
+ * variables are missing. Initializing firebase-admin will fail". This is safe to ignore. It came from
+ * "var functions = require("firebase-functions")". "admin.initializeApp" is stubbed out in "parseFunctionsList".
  */
 
 var expect = require("chai").expect;
@@ -65,13 +69,15 @@ var getUuid = function() {
   return Math.floor(Math.random() * 100000000000).toString();
 };
 
-var preTest = function() {
+var preTest = async function() {
   var dir = tmp.dirSync({ prefix: "fntest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  execSync("npm install", { cwd: tmpDir + "/functions" });
+  execSync("npm install", { cwd: tmpDir + "/functions", stdio: "ignore", stderr: "ignore" });
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
+  var accessToken = (await api.getAccessToken()).access_token;
+  api.setAccessToken(accessToken);
 
   return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
     app = firebase.initializeApp(config);
@@ -244,7 +250,7 @@ var publishPubsub = function(topic) {
 };
 
 var triggerSchedule = function(job) {
-  // we can't pass along a uuid thru scheduler to test the full trigger, s
+  // we can't pass along a uuid thru scheduler to test the full trigger,
   // so instead we run the job to make sure that the scheduler job and pub sub topic were created correctly
   return api
     .request("POST", `/v1/projects/${projectId}/locations/us-central1/jobs/${job}:run`, {
@@ -254,7 +260,7 @@ var triggerSchedule = function(job) {
     })
     .then(function(resp) {
       expect(resp.status).to.equal(200);
-      return Promise.resolve(uuid);
+      return Promise.resolve();
     });
 };
 
@@ -344,11 +350,11 @@ var main = function() {
         clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
       );
     })
+    .then(postTest)
     .catch(function(err) {
       console.log(clc.red("Error while running tests: "), err);
       return Promise.resolve();
-    })
-    .then(postTest);
+    });
 };
 
 main();
