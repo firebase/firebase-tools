@@ -119,7 +119,7 @@ var validateOptions = function(options, fileName) {
   return exportOptions;
 };
 
-var _writeUsersToFile = (function() {
+var _createWriteUsersToFile = function() {
   var jsonSep = "";
   return function(userList, format, writeStream) {
     userList.map(function(user) {
@@ -136,9 +136,12 @@ var _writeUsersToFile = (function() {
       }
     });
   };
-})();
+};
 
 var serialExportUsers = function(projectId, options) {
+  if (!options.writeUsersToFile) {
+    options.writeUsersToFile = _createWriteUsersToFile();
+  }
   var postBody = {
     targetProjectId: projectId,
     maxResults: options.batchSize,
@@ -156,7 +159,7 @@ var serialExportUsers = function(projectId, options) {
     .then(function(ret) {
       var userList = ret.body.users;
       if (userList && userList.length > 0) {
-        _writeUsersToFile(userList, options.format, options.writeStream);
+        options.writeUsersToFile(userList, options.format, options.writeStream);
         utils.logSuccess("Exported " + userList.length + " account(s) successfully.");
         // The identitytoolkit API do not return a nextPageToken value
         // consistently when the last page is reached
