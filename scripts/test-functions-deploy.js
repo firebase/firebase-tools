@@ -8,7 +8,7 @@
  * If parameters ommited:
  * - projectId defaults to `functions-integration-test`
  * - region defaults to `us-central1`
- * 
+ *
  * NOTE: You'll see a warning which says, "Warning, FIREBASE_CONFIG and GCLOUD_PROJECT environment
  * variables are missing. Initializing firebase-admin will fail". This is safe to ignore. It came from
  * "var functions = require("firebase-functions")". "admin.initializeApp" is stubbed out in "parseFunctionsList".
@@ -66,7 +66,7 @@ var preTest = async function() {
   api.setScopes(scopes.CLOUD_PLATFORM);
   var accessToken = (await api.getAccessToken()).access_token;
   api.setAccessToken(accessToken);
-  
+
   return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
     process.env.GCLOUD_PROJECT = projectId;
     process.env.FIREBASE_CONFIG = JSON.stringify(config);
@@ -349,9 +349,9 @@ var main = function() {
       console.log(clc.red("Error while running tests: "), err);
       return Promise.resolve(err);
     })
-    .then(function(err){
+    .then(function(err) {
       postTest(!!err);
-    })
+    });
 };
 
 main();
