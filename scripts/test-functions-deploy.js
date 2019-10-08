@@ -29,9 +29,6 @@ var functionsConfig = require("../lib/functionsConfig");
 
 var clc = require("cli-color");
 var firebase = require("firebase");
-var functions = require("firebase-functions");
-var admin = require("firebase-admin");
-var sinon = require("sinon");
 
 var functionsSource = __dirname + "/assets/functions_to_test.js";
 var projectDir = __dirname + "/test-project";
@@ -51,17 +48,8 @@ var deleteAllFunctions = function() {
 };
 
 var parseFunctionsList = function() {
-  var configStub = sinon.stub(functions, "config").returns({
-    firebase: {
-      databaseURL: "https://not-a-project.firebaseio.com",
-      storageBucket: "not-a-project.appspot.com",
-    },
-  });
-  var adminStub = sinon.stub(admin, "initializeApp");
   var triggers = [];
   extractTriggers(require(functionsSource), triggers);
-  configStub.restore();
-  adminStub.restore();
   return _.map(triggers, "name");
 };
 
@@ -78,8 +66,10 @@ var preTest = async function() {
   api.setScopes(scopes.CLOUD_PLATFORM);
   var accessToken = (await api.getAccessToken()).access_token;
   api.setAccessToken(accessToken);
-
+  
   return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
+    process.env.GCLOUD_PROJECT = projectId;
+    process.env.FIREBASE_CONFIG = JSON.stringify(config);
     app = firebase.initializeApp(config);
     try {
       execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
@@ -89,14 +79,19 @@ var preTest = async function() {
   });
 };
 
-var postTest = function() {
+var postTest = function(errored) {
   fs.remove(tmpDir);
-  try {
-    execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
-  } catch (e) {
-    // do nothing
+  delete process.env.GCLOUD_PROJECT;
+  delete process.env.FIREBASE_CONFIG;
+  // If tests were successful, clean up functions and database. Otherwise, leave them for debugging purposes.
+  if (!errored) {
+    try {
+      execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
+    } catch (e) {
+      // do nothing
+    }
+    execSync(`${localFirebase} database:remove / -y --project=${projectId}`, { cwd: tmpDir });
   }
-  execSync(`${localFirebase} database:remove / -y --project=${projectId}`, { cwd: tmpDir });
   console.log("Done post-test cleanup.");
   process.exit();
 };
@@ -350,11 +345,13 @@ var main = function() {
         clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
       );
     })
-    .then(postTest)
     .catch(function(err) {
       console.log(clc.red("Error while running tests: "), err);
-      return Promise.resolve();
-    });
+      return Promise.resolve(err);
+    })
+    .then(function(err){
+      postTest(!!err);
+    })
 };
 
 main();
