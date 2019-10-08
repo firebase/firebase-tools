@@ -4,6 +4,7 @@ import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
+  EmulatedTriggerType,
   findModuleRoot,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
@@ -17,9 +18,17 @@ import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
 
-let defaultApp: admin.app.App;
-let adminModuleProxy: typeof admin;
+const DATABASE_APP = "__database__";
+
 let hasInitializedFirestore = false;
+let hasAccessedFirestore = false;
+let hasAccessedDatabase = false;
+
+let defaultApp: admin.app.App;
+let databaseApp: admin.app.App;
+
+let proxiedFirestore: typeof admin.firestore;
+let proxiedDatabase: typeof admin.database;
 
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -57,7 +66,6 @@ function makeFakeCredentials(): any {
       });
     },
 
-    // TODO: Should we fill in the parts of the certificate we like?
     getCertificate: () => {
       return {};
     },
@@ -65,6 +73,7 @@ function makeFakeCredentials(): any {
 }
 
 interface PackageJSON {
+  engines?: { node?: string };
   dependencies: { [name: string]: any };
   devDependencies: { [name: string]: any };
 }
@@ -100,6 +109,36 @@ interface ProxyTarget extends Object {
   obj.incremented == 2;
    */
 class Proxied<T extends ProxyTarget> {
+  /**
+   * Gets a property from the original object.
+   */
+  static getOriginal(target: any, key: string): any {
+    const value = target[key];
+
+    if (!Proxied.isExists(value)) {
+      return undefined;
+    } else if (Proxied.isConstructor(value) || typeof value !== "function") {
+      return value;
+    } else {
+      return value.bind(target);
+    }
+  }
+
+  /**
+   * Run the original target.
+   */
+  static applyOriginal(target: any, thisArg: any, argArray: any[]): any {
+    return target.apply(thisArg, argArray);
+  }
+
+  private static isConstructor(obj: any): boolean {
+    return !!obj.prototype && !!obj.prototype.constructor.name;
+  }
+
+  private static isExists(obj: any): boolean {
+    return obj !== undefined;
+  }
+
   proxy: T;
   private anyValue?: (target: T, key: string) => any;
   private appliedValue?: () => any;
@@ -125,13 +164,13 @@ class Proxied<T extends ProxyTarget> {
           return this.anyValue(target, key);
         }
 
-        return this.getOriginal(target, key);
+        return Proxied.getOriginal(target, key);
       },
       apply: (target, thisArg, argArray) => {
         if (this.appliedValue) {
           return this.appliedValue.apply(thisArg, argArray);
         } else {
-          return this.applyOriginal(target, thisArg, argArray);
+          return Proxied.applyOriginal(target, thisArg, argArray);
         }
       },
     });
@@ -162,40 +201,10 @@ class Proxied<T extends ProxyTarget> {
   }
 
   /**
-   * Gets a property from the original object.
-   */
-  getOriginal(target: T, key: string): any {
-    const value = target[key];
-
-    if (!this.isExists(value)) {
-      return undefined;
-    } else if (this.isConstructor(value) || typeof value !== "function") {
-      return value;
-    } else {
-      return value.bind(target);
-    }
-  }
-
-  /**
-   * Run the original target.
-   */
-  applyOriginal(target: any, thisArg: any, argArray: any[]): any {
-    return target.apply(thisArg, argArray);
-  }
-
-  /**
    * Return the final proxied object.
    */
   finalize(): T {
     return this.proxy as T;
-  }
-
-  private isConstructor(obj: any): boolean {
-    return !!obj.prototype && !!obj.prototype.constructor.name;
-  }
-
-  private isExists(obj: any): boolean {
-    return obj !== undefined;
   }
 }
 
@@ -280,6 +289,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   try {
     const pkg = require(`${frb.cwd}/package.json`);
     developerPkgJSON = {
+      engines: pkg.engines || {},
       dependencies: pkg.dependencies || {},
       devDependencies: pkg.devDependencies || {},
     };
@@ -401,14 +411,6 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         return original(...args);
       } catch (e) {
         const newed = new original(...args);
-        if (bundle.name === "google-gax") {
-          const cs = newed.constructSettings;
-          newed.constructSettings = (...csArgs: any[]) => {
-            (csArgs[3] as any).authorization = "Bearer owner";
-            return cs.bind(newed)(...csArgs);
-          };
-        }
-
         return newed;
       }
     };
@@ -498,99 +500,137 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
   }
 }
 
-/*
-    This stub is the most important and one of the only non-optional stubs. This feature redirects
-    writes from the admin SDK back into emulated resources. Currently, this is only Firestore writes.
-    To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
-    unauthenticated app.
+function getDefaultConfig(): any {
+  return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+}
 
-    We also mock out .settings() so we can merge the emulator settings with the developer's.
-
-    If you ever see an error from the admin SDK related to default credentials, that means this mock is
-    failing in some way and admin is attempting to access prod resources. This error isn't pretty,
-    but it's hard to catch and better than accidentally talking to prod.
-   */
-async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<typeof admin> {
+/**
+ * This stub is the most important and one of the only non-optional stubs.This feature redirects
+ * writes from the admin SDK back into emulated resources.
+ *
+ * To do this, we replace initializeApp so it drops the developers config options and returns a restricted,
+ * unauthenticated app.
+ *
+ * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
+ */
+async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
   if (!adminResolution.resolution) {
     throw new Error("Could not resolve 'firebase-admin'");
   }
-
-  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
-  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
-  // we should silently fail here and allow the error to raise in user-code so they can debug appropriately.
-  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
-
   const localAdminModule = require(adminResolution.resolution);
 
-  adminModuleProxy = new Proxied<typeof admin>(localAdminModule)
+  // Set up global proxied Firestore
+  proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
+
+  // Configuration from the environment
+  const defaultConfig = getDefaultConfig();
+
+  // Configuration for talking to the RTDB emulator
+  const databaseConfig = getDefaultConfig();
+  databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
+  databaseConfig.credential = makeFakeCredentials();
+
+  const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
+  const proxiedAdminModule = adminModuleProxy
     .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
       if (appName) {
         new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
         return adminModuleTarget.initializeApp(opts, appName);
+      } else {
+        new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultConfig}`).log();
       }
 
-      const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-      config.credential = makeFakeCredentials();
-
-      if (frb.ports.database) {
-        config.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-        new EmulatorLog("SYSTEM", `Overriding database URL: ${config.databaseURL}`, "").log();
-      }
-
-      const appOptions = {
-        ...config,
+      const defaultAppOptions = {
+        ...defaultConfig,
         ...opts,
       };
-      const originalApp = adminModuleTarget.initializeApp(appOptions);
+      defaultApp = makeProxiedFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
+      logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
-      new EmulatorLog("DEBUG", "default-admin-app-used", "", appOptions).log();
-      logDebug("Intializing default app.", appOptions);
-      defaultApp = proxyFirebaseApp(frb, originalApp, sslCreds);
+      // The Realtime Database proxy relies on calling 'initializeApp()' with certain options
+      // (such as credential) that can interfere with other services. Therefore we keep
+      // RTDB isolated in its own FirebaseApp.
+      const databaseAppOptions = {
+        ...databaseConfig,
+        ...opts,
+      };
+      databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
+      proxiedDatabase = makeProxiedDatabase(adminModuleTarget);
+
       return defaultApp;
     })
-    .when("firestore", (adminModuleTarget) => {
-      // When we call admin.firestore() we want to forward this on to the default app,
-      // but if you access something like admin.firestore.FieldValue we don't want to
-      // do anything.
-      const adminFirestoreProxy = new Proxied<typeof admin.firestore>(
-        adminModuleTarget.firestore
-      ).applied(() => {
-        return defaultApp.firestore();
-      });
-
-      return adminFirestoreProxy.finalize();
+    .when("firestore", (target) => {
+      if (frb.ports.firestore) {
+        return proxiedFirestore;
+      } else {
+        warnAboutFirestoreProd();
+        return Proxied.getOriginal(target, "firestore");
+      }
+    })
+    .when("database", (target) => {
+      if (frb.ports.database) {
+        return proxiedDatabase;
+      } else {
+        warnAboutDatabaseProd();
+        return Proxied.getOriginal(target, "database");
+      }
     })
     .finalize();
 
   // Stub the admin module in the require cache
   require.cache[adminResolution.resolution] = {
-    exports: adminModuleProxy,
+    exports: proxiedAdminModule,
   };
 
   logDebug("firebase-admin has been stubbed.", {
     adminResolution,
   });
-
-  return adminModuleProxy;
 }
 
-function proxyFirebaseApp(
+function makeProxiedFirebaseApp(
   frb: FunctionsRuntimeBundle,
-  original: admin.app.App,
-  sslCreds: any
+  original: admin.app.App
 ): admin.app.App {
-  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    const isEnabled = isFeatureEnabled(frb, "admin_stubs");
-
-    if (!isEnabled) {
-      if (!hasInitializedFirestore) {
-        firestoreTarget.settings(userSettings);
-        hasInitializedFirestore = true;
+  const appProxy = new Proxied<admin.app.App>(original);
+  return appProxy
+    .when("firestore", (target: any) => {
+      if (frb.ports.firestore) {
+        return proxiedFirestore;
+      } else {
+        warnAboutFirestoreProd();
+        return Proxied.getOriginal(target, "firestore");
       }
-      return;
-    }
+    })
+    .when("database", (target: any) => {
+      if (frb.ports.database) {
+        return proxiedDatabase;
+      } else {
+        warnAboutDatabaseProd();
+        return Proxied.getOriginal(target, "database");
+      }
+    })
+    .finalize();
+}
 
+function makeProxiedDatabase(target: typeof admin): typeof admin.database {
+  return new Proxied<typeof admin.database>(target.database)
+    .applied(() => {
+      return databaseApp.database();
+    })
+    .finalize();
+}
+
+async function makeProxiedFirestore(
+  frb: FunctionsRuntimeBundle,
+  target: any
+): Promise<typeof admin.firestore> {
+  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
+  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
+  // we should swallow the error here and allow the error to raise in user-code so they can debug appropriately.
+  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
+
+  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
     if (!hasInitializedFirestore && frb.ports.firestore) {
       const emulatorSettings = {
         projectId: frb.projectId,
@@ -606,51 +646,53 @@ function proxyFirebaseApp(
       firestoreTarget.settings(emulatorSettings);
 
       new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
-    } else if (!frb.ports.firestore && frb.triggerId) {
-      new EmulatorLog(
-        "WARN",
-        "runtime-status",
-        "The Cloud Firestore emulator is not running so database operations will fail with a " +
-          "'default credentials' error."
-      ).log();
     }
 
     hasInitializedFirestore = true;
   };
 
-  const appProxy = new Proxied<admin.app.App>(original);
-  appProxy.when("firestore", (target: any) => {
-    // TODO: this 'typeof admin.firestore' should probably be 'Firestore' from @google-cloud/firestore
-    //       but I can't get all the type checking to play nice.
-    const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
-    return firestoreProxy
-      .applied(() => {
-        return new Proxied(target.firestore())
-          .when("settings", (firestoreTarget) => {
-            return (settings: any) => {
-              initializeFirestoreSettings(firestoreTarget, settings);
-            };
-          })
-          .any((firestoreTarget, field) => {
-            initializeFirestoreSettings(firestoreTarget, {});
-            return firestoreProxy.getOriginal(firestoreTarget, field);
-          })
-          .finalize();
-      })
-      .finalize();
-  });
-
-  return appProxy.finalize();
+  const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
+  return firestoreProxy
+    .applied(() => {
+      return new Proxied(target.firestore())
+        .when("settings", (firestoreTarget) => {
+          return (settings: any) => {
+            initializeFirestoreSettings(firestoreTarget, settings);
+          };
+        })
+        .any((firestoreTarget, field) => {
+          initializeFirestoreSettings(firestoreTarget, {});
+          return Proxied.getOriginal(firestoreTarget, field);
+        })
+        .finalize();
+    })
+    .finalize();
 }
 
-/*
-  Here we set up some environment configs, but more importantly, we break GOOGLE_APPLICATION_CREDENTIALS
-  and FIREBASE_CONFIG so that there's no way we (google-auth) can automatically auth. This is a safety
-  fallback for situations where a stub does not properly redirect to the emulator and we attempt to
-  access a production resource. By removing the auth fields, we help reduce the risk of this situation.
-   */
-function ProtectEnvironmentalVariables(): void {
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
+function warnAboutFirestoreProd(): void {
+  if (hasAccessedFirestore) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN",
+    "runtime-status",
+    "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
+  ).log();
+  hasAccessedFirestore = true;
+}
+
+function warnAboutDatabaseProd(): void {
+  if (hasAccessedDatabase) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN",
+    "runtime-status",
+    "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
+  ).log();
+  hasAccessedDatabase = true;
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
@@ -664,6 +706,28 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
     projectId: process.env.GCLOUD_PROJECT,
   });
+
+  if (frb.triggerId) {
+    // Runtime values are based on information from the bundle. Proper information for this is
+    // available once the target code has been loaded, which is too late.
+    const service = frb.triggerId || "";
+    const target = service.replace(/-/g, ".");
+    const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
+
+    // Setup predefined environment variables for Node.js 10 and subsequent runtimes
+    // https://cloud.google.com/functions/docs/env-var
+    const pkg = requirePackageJson(frb);
+    if (pkg && pkg.engines && pkg.engines.node) {
+      const nodeVersion = parseVersionString(pkg.engines.node);
+      if (nodeVersion.major >= 10) {
+        process.env.FUNCTION_TARGET = target;
+        process.env.FUNCTION_SIGNATURE_TYPE = mode;
+        process.env.K_SERVICE = service;
+        process.env.K_REVISION = "1";
+        process.env.PORT = "80";
+      }
+    }
+  }
 }
 
 async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
@@ -907,8 +971,14 @@ async function main(): Promise<void> {
   }
 
   InitializeEnvironmentalVariables(frb);
-  if (isFeatureEnabled(frb, "protect_env")) {
-    ProtectEnvironmentalVariables();
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    new EmulatorLog(
+      "WARN",
+      "runtime-status",
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
+        process.env.GOOGLE_APPLICATION_CREDENTIALS
+      }. Non-emulated services will access production using these credentials. Be careful!`
+    ).log();
   }
 
   if (isFeatureEnabled(frb, "network_filtering")) {
@@ -919,8 +989,12 @@ async function main(): Promise<void> {
     await InitializeFunctionsConfigHelper(frb.cwd);
   }
 
+  // TODO: Should this feature have a flag as well or is it required?
   await InitializeFirebaseFunctionsStubs(frb);
-  await InitializeFirebaseAdminStubs(frb);
+
+  if (isFeatureEnabled(frb, "admin_stubs")) {
+    await InitializeFirebaseAdminStubs(frb);
+  }
 
   let triggers: EmulatedTriggerMap;
   const triggerDefinitions: EmulatedTriggerDefinition[] = [];
@@ -966,11 +1040,6 @@ async function main(): Promise<void> {
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
-
-  if (!defaultApp) {
-    adminModuleProxy.initializeApp();
-    new EmulatorLog("SYSTEM", "admin-auto-initialized", "").log();
-  }
 
   let seconds = 0;
   const timerId = setInterval(() => {

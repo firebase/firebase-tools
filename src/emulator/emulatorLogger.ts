@@ -77,6 +77,9 @@ export class EmulatorLogger {
       case "SUCCESS":
         utils.logLabeledSuccess(label, text);
         break;
+      case "WARN":
+        utils.logLabeledWarning(label, text);
+        break;
     }
   }
 

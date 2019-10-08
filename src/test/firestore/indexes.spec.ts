@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { FirestoreIndexes } from "../../firestore/indexes";
-import * as FirebaseError from "../../error";
+import { FirebaseError } from "../../error";
 import * as API from "../../firestore/indexes-api";
 import * as Spec from "../../firestore/indexes-spec";
 import * as sort from "../../firestore/indexes-sort";

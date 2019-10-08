@@ -6,7 +6,7 @@ var requirePermissions = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 
 var utils = require("../utils");
 var querystring = require("querystring");

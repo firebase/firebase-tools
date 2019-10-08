@@ -19,6 +19,7 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
   EmulatedTriggerMap,
+  EmulatedTriggerType,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
@@ -62,6 +63,13 @@ export interface FunctionsRuntimeInstance {
 
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
+}
+
+interface TriggerDescription {
+  name: string;
+  type: string;
+  details?: string;
+  ignored?: boolean;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -118,6 +126,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const runtime = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
         triggerId,
+        EmulatedTriggerType.BACKGROUND,
         nodeBinary,
         proto
       );
@@ -159,7 +168,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
-      const runtime = FunctionsEmulator.startFunctionRuntime(bundleTemplate, triggerId, nodeBinary);
+      const runtime = FunctionsEmulator.startFunctionRuntime(
+        bundleTemplate,
+        triggerId,
+        EmulatedTriggerType.HTTPS,
+        nodeBinary
+      );
 
       runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
@@ -251,6 +265,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   static startFunctionRuntime(
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
+    triggerType: EmulatedTriggerType,
     nodeBinary: string,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
@@ -263,6 +278,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       proto,
       triggerId,
+      triggerType,
     };
 
     const runtime = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
@@ -347,12 +363,6 @@ You can probably fix this by running "npm install ${
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
-      case "admin-auto-initialized":
-        utils.logBullet(
-          "Your code does not appear to initialize the 'firebase-admin' module, so we've done it automatically.\n" +
-            "   - Learn more: https://firebase.google.com/docs/admin/setup"
-        );
-        break;
       case "function-code-resolution-failed":
         EmulatorLogger.log("WARN", systemLog.data.error);
         const helper = ["We were unable to load your functions code. (see above)"];
@@ -397,10 +407,10 @@ You can probably fix this by running "npm install ${
         EmulatorLogger.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        EmulatorLogger.log("WARN", log.text);
+        EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;
       case "FATAL":
-        EmulatorLogger.log("WARN", log.text);
+        EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;
       default:
         EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
@@ -409,11 +419,9 @@ You can probably fix this by running "npm install ${
   }
 
   readonly projectId: string = "";
-  readonly bundleTemplate: FunctionsRuntimeBundle;
   nodeBinary: string = "";
 
   private server?: http.Server;
-  private firebaseConfig: any;
   private functionsDir: string = "";
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
@@ -426,26 +434,14 @@ You can probably fix this by running "npm install ${
       this.options.config.get("functions.source")
     );
 
-    this.bundleTemplate = {
-      cwd: this.functionsDir,
-      projectId: this.projectId,
-      triggerId: "",
-      ports: {},
-      disabled_features: this.args.disabledRuntimeFeatures,
-    };
-
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
 
   async start(): Promise<void> {
     this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
-
-    // TODO: This call requires authentication, which we should remove eventually
-    this.firebaseConfig = await functionsConfig.getFirebaseConfig(this.options);
-
     const { host, port } = this.getInfo();
-    this.server = FunctionsEmulator.createHubServer(this.bundleTemplate, this.nodeBinary).listen(
+    this.server = FunctionsEmulator.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(
       port,
       host
     );
@@ -478,7 +474,7 @@ You can probably fix this by running "npm install ${
 
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
-      const runtime = InvokeRuntime(this.nodeBinary, this.bundleTemplate);
+      const runtime = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
 
       runtime.events.on("log", (el: EmulatorLog) => {
         FunctionsEmulator.handleRuntimeLog(el);
@@ -494,6 +490,8 @@ You can probably fix this by running "npm install ${
 
       this.triggers = triggerDefinitions;
 
+      const triggerResults: TriggerDescription[] = [];
+
       for (const definition of toSetup) {
         if (definition.httpsTrigger) {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
@@ -507,32 +505,51 @@ You can probably fix this by running "npm install ${
             region
           );
 
-          EmulatorLogger.logLabeled(
-            "BULLET",
-            "functions",
-            `HTTP trigger initialized at ${clc.bold(url)}`
-          );
+          triggerResults.push({
+            name: definition.name,
+            type: "http",
+            details: url,
+          });
         } else {
           const service: string = getFunctionService(definition);
+          const result: TriggerDescription = {
+            name: definition.name,
+            type: Constants.getServiceName(service),
+          };
+
+          let added = false;
           switch (service) {
             case Constants.SERVICE_FIRESTORE:
-              await this.addFirestoreTrigger(this.projectId, definition);
+              added = await this.addFirestoreTrigger(this.projectId, definition);
               break;
             case Constants.SERVICE_REALTIME_DATABASE:
-              await this.addRealtimeDatabaseTrigger(this.projectId, definition);
+              added = await this.addRealtimeDatabaseTrigger(this.projectId, definition);
               break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
-              EmulatorLogger.log(
-                "INFO",
-                `Ignoring trigger "${
-                  definition.name
-                }" because the service "${service}" is not yet supported.`
-              );
               break;
           }
+          result.ignored = !added;
+          triggerResults.push(result);
         }
+
         this.knownTriggerIDs[definition.name] = true;
+      }
+
+      const successTriggers = triggerResults.filter((r) => !r.ignored);
+      for (const result of successTriggers) {
+        const msg = result.details
+          ? `${clc.bold(result.type)} function initialized (${result.details}).`
+          : `${clc.bold(result.type)} function initialized.`;
+        EmulatorLogger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
+      }
+
+      const ignoreTriggers = triggerResults.filter((r) => r.ignored);
+      for (const result of ignoreTriggers) {
+        const msg = `function ignored because the ${
+          result.type
+        } emulator does not exist or is not running.`;
+        EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
 
@@ -548,16 +565,10 @@ You can probably fix this by running "npm install ${
   addRealtimeDatabaseTrigger(
     projectId: string,
     definition: EmulatedTriggerDefinition
-  ): Promise<any> {
+  ): Promise<boolean> {
     const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
     if (!databasePort) {
-      EmulatorLogger.log(
-        "INFO",
-        `Ignoring trigger "${
-          definition.name
-        }" because the Realtime Database emulator is not running.`
-      );
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
     if (definition.eventTrigger === undefined) {
       EmulatorLogger.log(
@@ -577,22 +588,15 @@ You can probably fix this by running "npm install ${
       return Promise.reject();
     }
 
-    const bundle = JSON.stringify([
-      {
-        name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-        path: result[1], // path stored in the first capture group
-        event: definition.eventTrigger.eventType,
-        topic: `projects/${projectId}/topics/${definition.name}`,
-      },
-    ]);
+    const bundle = JSON.stringify({
+      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+      path: result[1], // path stored in the first capture group
+      event: definition.eventTrigger.eventType,
+      topic: `projects/${projectId}/topics/${definition.name}`,
+    });
 
-    EmulatorLogger.logLabeled(
-      "BULLET",
-      "functions",
-      `Setting up Realtime Database trigger "${definition.name}"`
-    );
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
-    return new Promise((resolve, reject) => {
+    return new Promise<boolean>((resolve, reject) => {
       let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
       if (projectId !== "") {
         setTriggersPath += `?ns=${projectId}`;
@@ -604,7 +608,7 @@ You can probably fix this by running "npm install ${
           }'`
         );
       }
-      request.put(
+      request.post(
         setTriggersPath,
         {
           auth: {
@@ -619,41 +623,22 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (res.statusCode === 200) {
-            EmulatorLogger.logLabeled(
-              "SUCCESS",
-              "functions",
-              `Trigger "${
-                definition.name
-              }" has been acknowledged by the Realtime Database emulator.`
-            );
-          }
-
-          resolve();
+          resolve(true);
         }
       );
     });
   }
 
-  addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<any> {
+  addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
     const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
     if (!firestorePort) {
-      EmulatorLogger.log(
-        "INFO",
-        `Ignoring trigger "${definition.name}" because the Cloud Firestore emulator is not running.`
-      );
-      return Promise.resolve();
+      return Promise.resolve(false);
     }
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
-    EmulatorLogger.logLabeled(
-      "BULLET",
-      "functions",
-      `Setting up Cloud Firestore trigger "${definition.name}"`
-    );
-
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
-    return new Promise((resolve, reject) => {
+
+    return new Promise<boolean>((resolve, reject) => {
       request.put(
         `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
           definition.name
@@ -668,15 +653,7 @@ You can probably fix this by running "npm install ${
             return;
           }
 
-          if (res.statusCode === 200) {
-            EmulatorLogger.logLabeled(
-              "SUCCESS",
-              "functions",
-              `Trigger "${definition.name}" has been acknowledged by the Cloud Firestore emulator.`
-            );
-          }
-
-          resolve();
+          resolve(true);
         }
       );
     });
@@ -702,6 +679,20 @@ You can probably fix this by running "npm install ${
 
   getTriggers(): EmulatedTriggerDefinition[] {
     return this.triggers;
+  }
+
+  getBaseBundle(): FunctionsRuntimeBundle {
+    return {
+      cwd: this.functionsDir,
+      projectId: this.projectId,
+      triggerId: "",
+      triggerType: undefined,
+      ports: {
+        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getPort(Emulators.DATABASE),
+      },
+      disabled_features: this.args.disabledRuntimeFeatures,
+    };
   }
 
   /**
@@ -807,6 +798,11 @@ export function InvokeRuntime(
     stdout: { pipe: runtime.stdout, value: "" },
   };
 
+  const ipcBuffer = { value: "" };
+  runtime.on("message", (message: any) => {
+    onData(runtime, emitter, ipcBuffer, message);
+  });
+
   for (const id in buffers) {
     if (buffers.hasOwnProperty(id)) {
       const buffer = buffers[id];
@@ -842,19 +838,7 @@ function onData(
   buffer: { value: string },
   buf: Buffer
 ): void {
-  let bufString = buf.toString();
-
-  // Remove all chunk markings from the message
-  const endedWithChunk = bufString.endsWith(EmulatorLog.CHUNK_DIVIDER);
-  while (bufString.indexOf(EmulatorLog.CHUNK_DIVIDER) >= 0) {
-    bufString = bufString.replace(EmulatorLog.CHUNK_DIVIDER, "");
-  }
-  buffer.value += bufString;
-
-  // If the message ended with a chunk divider, we just wait for more to come.
-  if (endedWithChunk) {
-    return;
-  }
+  buffer.value += buf.toString();
 
   const lines = buffer.value.split("\n");
 

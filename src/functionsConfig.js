@@ -1,13 +1,13 @@
 "use strict";
 
 var _ = require("lodash");
-
 var clc = require("cli-color");
+
 var api = require("./api");
-var FirebaseError = require("./error");
-var runtimeconfig = require("./gcp/runtimeconfig");
-var getProjectId = require("./getProjectId");
 var ensureApiEnabled = require("./ensureApiEnabled").ensure;
+var { FirebaseError } = require("./error");
+var getProjectId = require("./getProjectId");
+var runtimeconfig = require("./gcp/runtimeconfig");
 
 exports.RESERVED_NAMESPACES = ["firebase"];
 
@@ -45,9 +45,9 @@ exports.idsToVarName = function(projectId, configId, varId) {
 };
 
 exports.getAppEngineLocation = function(config) {
-  var appEngineLocation = config.cloudResourceLocation;
+  var appEngineLocation = config.locationId;
   if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
-    // For some regions, such as us-central1, the cloudResourceLocation has the trailing digit cut off
+    // For some regions, such as us-central1, the locationId has the trailing digit cut off
     appEngineLocation = appEngineLocation + "1";
   }
   return appEngineLocation || "us-central1";

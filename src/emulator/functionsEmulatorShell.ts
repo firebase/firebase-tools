@@ -1,10 +1,14 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  EmulatedTriggerType,
+  getFunctionRegion,
+} from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 
 interface FunctionsShellController {
@@ -69,8 +73,9 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     };
 
     FunctionsEmulator.startFunctionRuntime(
-      this.emu.bundleTemplate,
+      this.emu.getBaseBundle(),
       name,
+      EmulatedTriggerType.BACKGROUND,
       this.emu.nodeBinary,
       proto
     );

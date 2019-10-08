@@ -1,8 +1,8 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
-import * as pf from "portfinder";
 import * as path from "path";
+import * as tcpport from "tcp-port-used";
 
 import * as utils from "../utils";
 import * as track from "../track";
@@ -11,18 +11,18 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { ALL_EMULATORS, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { DatabaseEmulator } from "../emulator/databaseEmulator";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
 import { HostingEmulator } from "../emulator/hostingEmulator";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
 export async function checkPortOpen(port: number): Promise<boolean> {
   try {
-    await pf.getPortPromise({ port, stopPort: port });
-    return true;
+    const inUse = await tcpport.check(port);
+    return !inUse;
   } catch (e) {
     return false;
   }
@@ -31,17 +31,11 @@ export async function checkPortOpen(port: number): Promise<boolean> {
 export async function waitForPortClosed(port: number): Promise<void> {
   const interval = 250;
   const timeout = 30000;
-
-  let elapsed = 0;
-  while (elapsed < timeout) {
-    const open = await checkPortOpen(port);
-    if (!open) {
-      return;
-    }
-    await new Promise((r) => setTimeout(r, interval));
-    elapsed += interval;
+  try {
+    await tcpport.waitUntilUsed(port, interval, timeout);
+  } catch (e) {
+    throw new FirebaseError(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
   }
-  throw new FirebaseError(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
 }
 
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {
@@ -166,23 +160,45 @@ export async function startAll(options: any): Promise<void> {
 
   if (shouldStart(options, Emulators.DATABASE)) {
     const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
-    let databaseEmulator;
+
+    const args: DatabaseEmulatorArgs = {
+      host: databaseAddr.host,
+      port: databaseAddr.port,
+      projectId,
+      auto_download: true,
+    };
+
     if (shouldStart(options, Emulators.FUNCTIONS)) {
       const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-      databaseEmulator = new DatabaseEmulator({
-        host: databaseAddr.host,
-        port: databaseAddr.port,
-        functions_emulator_host: functionsAddr.host,
-        functions_emulator_port: functionsAddr.port,
-        auto_download: true,
-      });
-    } else {
-      databaseEmulator = new DatabaseEmulator({
-        host: databaseAddr.host,
-        port: databaseAddr.port,
-      });
+      args.functions_emulator_host = functionsAddr.host;
+      args.functions_emulator_port = functionsAddr.port;
     }
+
+    const rulesLocalPath = options.config.get("database.rules");
+    if (rulesLocalPath) {
+      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      if (fs.existsSync(rules)) {
+        args.rules = rules;
+      } else {
+        utils.logWarning(
+          `Database rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist, starting Database emulator without rules.`
+        );
+      }
+    } else {
+      utils.logWarning(`No Database rules file specified in firebase.json, using default rules.`);
+    }
+
+    const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    utils.logLabeledBullet(
+      Emulators.DATABASE,
+      `For testing set ${clc.bold(
+        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+      )}`
+    );
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {

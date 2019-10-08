@@ -7,7 +7,7 @@ var fs = require("fs-extra");
 var path = require("path");
 
 var detectProjectRoot = require("./detectProjectRoot");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
 var parseBoltRules = require("./parseBoltRules");

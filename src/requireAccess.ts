@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 
 import * as getInstanceId from "./getInstanceId";
 import * as getProjectId from "./getProjectId";
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 import * as identifierToProjectId from "./identifierToProjectId";
 import * as requireAuth from "./requireAuth";
 

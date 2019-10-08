@@ -19,12 +19,12 @@ export async function createOrUpdateSchedulesAndTopics(
   let schedulerEnabled = false;
   if (triggersWithSchedules.length) {
     await Promise.all([
-      ensure(projectId, "cloudscheduler.googleapis.com", "scheduler"),
-      ensure(projectId, "pubsub.googleapis.com", "pubsub"),
+      ensure(projectId, "cloudscheduler.googleapis.com", "scheduler", false),
+      ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
     ]);
     schedulerEnabled = true;
   } else {
-    schedulerEnabled = await check(projectId, "cloudscheduler.googleapis.com", "scheduler");
+    schedulerEnabled = await check(projectId, "cloudscheduler.googleapis.com", "scheduler", false);
   }
   for (const trigger of triggers) {
     const [, , , region, , functionName] = trigger.name.split("/");

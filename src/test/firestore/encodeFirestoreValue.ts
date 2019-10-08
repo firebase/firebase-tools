@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import * as FirebaseError from "../../error";
+import { FirebaseError } from "../../error";
 import { encodeFirestoreValue } from "../../firestore/encodeFirestoreValue";
 
 describe("encodeFirestoreValue", () => {

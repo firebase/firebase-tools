@@ -1,7 +1,6 @@
 import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
-import getProjectNumber = require("../getProjectNumber");
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
@@ -20,6 +19,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
 
+  const requiresAuth = controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
+
   const canStartWithoutConfig =
     options.only &&
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
@@ -30,7 +31,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     options.config = DEFAULT_CONFIG;
   } else {
     await requireConfig(options);
-    await requireAuth(options);
-    await getProjectNumber(options);
+    if (requiresAuth) {
+      await requireAuth(options);
+    }
   }
 }

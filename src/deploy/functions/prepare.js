@@ -1,5 +1,7 @@
 "use strict";
+
 var _ = require("lodash");
+
 var ensureApiEnabled = require("../../ensureApiEnabled");
 var functionsConfig = require("../../functionsConfig");
 var getProjectId = require("../../getProjectId");

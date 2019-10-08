@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../api";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import { OperationPollerOptions, pollOperation } from "../operation-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
 import { mockAuth } from "./helpers";

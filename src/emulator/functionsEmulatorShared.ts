@@ -8,6 +8,11 @@ import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
 
+export enum EmulatedTriggerType {
+  BACKGROUND = "BACKGROUND",
+  HTTPS = "HTTPS",
+}
+
 export interface EmulatedTriggerDefinition {
   entryPoint: string;
   name: string;
@@ -33,6 +38,7 @@ export interface FunctionsRuntimeBundle {
   projectId: string;
   proto?: any;
   triggerId?: string;
+  triggerType?: EmulatedTriggerType;
   ports: {
     firestore?: number;
     database?: number;
@@ -46,7 +52,6 @@ export interface FunctionsRuntimeFeatures {
   network_filtering?: boolean;
   timeout?: boolean;
   memory_limiting?: boolean;
-  protect_env?: boolean;
   admin_stubs?: boolean;
 }
 

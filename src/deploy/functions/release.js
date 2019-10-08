@@ -7,7 +7,7 @@
 var clc = require("cli-color");
 var _ = require("lodash");
 
-var FirebaseError = require("../../error");
+var { FirebaseError } = require("../../error");
 var gcp = require("../../gcp");
 var logger = require("../../logger");
 var track = require("../../track");

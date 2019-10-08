@@ -2,30 +2,52 @@ import * as crypto from "crypto";
 import * as request from "request";
 import * as ProgressBar from "progress";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { Emulators } from "./types";
+import { Emulators, JavaEmulatorDetails } from "./types";
 import * as javaEmulators from "../serve/javaEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
+import * as path from "path";
 
 tmp.setGracefulCleanup();
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE;
 
-module.exports = (name: DownloadableEmulator) => {
+module.exports = async (name: DownloadableEmulator) => {
   const emulator = javaEmulators.get(name);
-  utils.logLabeledBullet(name, "downloading emulator...");
+  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.localPath)}...`);
   fs.ensureDirSync(emulator.cacheDir);
-  return downloadToTmp(emulator.remoteUrl).then((tmpfile) =>
-    validateSize(tmpfile, emulator.expectedSize)
-      .then(() => validateChecksum(tmpfile, emulator.expectedChecksum))
-      .then(() => {
-        fs.copySync(tmpfile, emulator.localPath);
-        fs.chmodSync(emulator.localPath, 0o755);
-      })
-  );
+
+  const tmpfile = await downloadToTmp(emulator.remoteUrl);
+  await validateSize(tmpfile, emulator.expectedSize);
+  await validateChecksum(tmpfile, emulator.expectedChecksum);
+
+  fs.copySync(tmpfile, emulator.localPath);
+  fs.chmodSync(emulator.localPath, 0o755);
+
+  await removeOldJars(emulator);
 };
+
+function removeOldJars(emulator: JavaEmulatorDetails): void {
+  const current = emulator.localPath;
+  const files = fs.readdirSync(emulator.cacheDir);
+
+  for (const file of files) {
+    const fullFilePath = path.join(emulator.cacheDir, file);
+
+    if (file.indexOf(emulator.namePrefix) < 0) {
+      // This file is not related to this emulator, could be a JAR
+      // from a different emulator or just a random file.
+      continue;
+    }
+
+    if (fullFilePath !== current) {
+      utils.logLabeledBullet(emulator.name, `Removing outdated emulator: ${file}`);
+      fs.removeSync(fullFilePath);
+    }
+  }
+}
 
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.

@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import { Readable } from "stream";
 
 import * as configstore from "./configstore";
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 import * as logger from "./logger";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -103,9 +103,16 @@ export function logWarning(message: string, type = "warn"): void {
 }
 
 /**
+ * Log an info statement with a gray bullet at the start of the line.
+ */
+export function logLabeledWarning(label: string, message: string, type = "warn"): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
+}
+
+/**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<void> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
@@ -212,4 +219,42 @@ export function promiseAllSettled(promises: Array<Promise<any>>): Promise<Settle
     }
   });
   return Promise.all(wrappedPromises);
+}
+
+/**
+ * Runs a given function (that returns a Promise) repeatedly while the given
+ * sync check returns false. Resolves with the value that passed the check.
+ */
+export async function promiseWhile<T>(
+  action: () => Promise<T>,
+  check: (value: T) => boolean,
+  interval = 2500
+): Promise<T> {
+  return new Promise<T>((resolve, promiseReject) => {
+    const run = async () => {
+      try {
+        const res = await action();
+        if (check(res)) {
+          return resolve(res);
+        }
+        setTimeout(run, interval);
+      } catch (err) {
+        return promiseReject(err);
+      }
+    };
+    run();
+  });
+}
+
+/**
+ * Resolves all Promises at every key in the given object. If a value is not a
+ * Promise, it is returned as-is.
+ */
+export async function promiseProps(obj: any): Promise<any> {
+  const resultObj: any = {};
+  const promises = _.keys(obj).map(async (key) => {
+    const r = await Promise.resolve(obj[key]);
+    resultObj[key] = r;
+  });
+  return Promise.all(promises).then(() => resultObj);
 }

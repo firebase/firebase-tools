@@ -12,9 +12,21 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
+  static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
+
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
-  static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
+
+  static getServiceName(service: string): string {
+    switch (service) {
+      case this.SERVICE_FIRESTORE:
+        return "firestore";
+      case this.SERVICE_REALTIME_DATABASE:
+        return "database";
+      default:
+        return service;
+    }
+  }
 
   static getDefaultHost(emulator: Emulators): string {
     return DEFAULT_HOST;

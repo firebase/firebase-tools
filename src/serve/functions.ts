@@ -18,7 +18,6 @@ module.exports = {
         network_filtering: true,
         timeout: true,
         memory_limiting: true,
-        protect_env: true,
         admin_stubs: true,
       };
     }

@@ -1,7 +1,7 @@
 import { Emulators, JavaEmulatorCommand, JavaEmulatorDetails } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -28,10 +28,11 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.0.0.jar",
-    expectedSize: 17097803,
-    expectedChecksum: "102c8de422db81933a0f29fede5a80a0",
-    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.0.0.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.2.0.jar",
+    expectedSize: 17131418,
+    expectedChecksum: "d9d825b2f321e05ca8dc9b758eec6ba6",
+    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.2.0.jar"),
+    namePrefix: "firebase-database-emulator",
   },
   firestore: {
     name: Emulators.FIRESTORE,
@@ -39,10 +40,11 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.6.2.jar",
-    expectedSize: 57896541,
-    expectedChecksum: "8e27495a42ee5ab6507e1069b36545d4",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.6.2.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.9.0.jar",
+    expectedSize: 60831386,
+    expectedChecksum: "36e64e09ecda06a05d1d3d1bb5450b33",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.9.0.jar"),
+    namePrefix: "cloud-firestore-emulator",
   },
 };
 
@@ -50,12 +52,12 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
-    optionalArgs: ["port", "host", "rules", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
   },
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
-    optionalArgs: ["port", "host", "rules", "functions_emulator"],
+    optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
   },
 };
 
@@ -118,7 +120,10 @@ async function _runBinary(
       return;
     }
 
-    utils.logLabeledBullet(emulator.name, `Logging to ${clc.bold(_getLogFileName(emulator.name))}`);
+    utils.logLabeledBullet(
+      emulator.name,
+      `Emulator logging to ${clc.bold(_getLogFileName(emulator.name))}`
+    );
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
@@ -182,6 +187,14 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   const hasEmulator = fs.existsSync(emulator.localPath);
   if (!hasEmulator) {
     if (args.auto_download) {
+      if (process.env.CI) {
+        utils.logWarning(
+          `It appears you are running in a CI environment. You can avoid downloading the ${
+            emulator.name
+          } emulator repeatedly by caching the ${emulator.cacheDir} directory.`
+        );
+      }
+
       await downloadEmulator(targetName);
     } else {
       utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
@@ -190,6 +203,6 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(`Starting emulator ${targetName} with args ${JSON.stringify(args)}`);
+  logger.debug(`Starting emulator ${targetName} with command ${JSON.stringify(command)}`);
   return _runBinary(emulator, command);
 }
