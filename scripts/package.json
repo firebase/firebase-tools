@@ -9,8 +9,6 @@
   "author": "Firebase",
   "license": "MIT",
   "dependencies": {
-    "firebase": "^3.5.0",
-    "firebase-admin": "latest",
-    "firebase-functions": "latest"
+    "firebase": "^3.5.0"
   }
 }
