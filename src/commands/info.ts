@@ -1,5 +1,7 @@
 import * as clc from "cli-color";
+/* tslint:disable */
 const envinfo = require("envinfo");
+/* tslint:enable */
 import * as logger from "../logger";
 
 import * as Command from "../command";
