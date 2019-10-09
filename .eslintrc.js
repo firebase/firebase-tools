@@ -36,7 +36,6 @@ module.exports = {
         {
             "files": ["*.js"],
             "rules": {
-                "guard-for-in": "warn", // TODO(bkendall): remove, allow to error.
                 "no-extra-boolean-cast": "warn", // TODO(bkendall): remove, allow to error.
                 "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
                 "no-redeclare": "warn", // TODO(bkendall): remove, allow to error.
