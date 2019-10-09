@@ -42,7 +42,6 @@ module.exports = {
                 "no-redeclare": "warn", // TODO(bkendall): remove, allow to error.
                 "no-undef": "warn", // TODO(bkendall): remove, allow to error.
                 "no-var": "warn", // TODO(bkendall): remove, allow to error.
-                "one-var": "warn", // TODO(bkendall): remove, allow to error.
                 "prefer-rest-params": "warn", // TODO(bkendall): remove, allow to error.
             },
         },
