@@ -32,9 +32,9 @@ exports.load = function(cwd, name) {
 exports.dump = function(cwd, name, data) {
   let st = "";
   let count = 0;
-  for (const path of data) {
+  for (const [path, d] of data) {
     count++;
-    st += path + "," + data[path].mtime + "," + data[path].hash + "\n";
+    st += path + "," + d.mtime + "," + d.hash + "\n";
   }
   try {
     fs.outputFileSync(cachePath(cwd, name), st, { encoding: "utf8" });
