@@ -13,13 +13,11 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-  if (previews.appdistribution) {
-    client.appdistribution = {};
-    client.appdistribution.distribute = loadCommand("appdistribution-distribute");
-  }
+  client.appdistribution = {};
+  client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.apps = {};
-  client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
+  client.apps.list = loadCommand("apps-list");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
@@ -44,6 +42,13 @@ module.exports = function(client) {
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.ext = loadCommand("ext");
+  client.ext.configure = loadCommand("ext-configure");
+  client.ext.info = loadCommand("ext-info");
+  client.ext.install = loadCommand("ext-install");
+  client.ext.list = loadCommand("ext-list");
+  client.ext.uninstall = loadCommand("ext-uninstall");
+  client.ext.update = loadCommand("ext-update");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
@@ -67,8 +72,8 @@ module.exports = function(client) {
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
-  client.projects.list = loadCommand("projects-list");
   client.projects.create = loadCommand("projects-create");
+  client.projects.list = loadCommand("projects-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
@@ -83,14 +88,5 @@ module.exports = function(client) {
   client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
-  if (previews.mods || previews.ext) {
-    client.ext = loadCommand("ext");
-    client.ext.configure = loadCommand("ext-configure");
-    client.ext.info = loadCommand("ext-info");
-    client.ext.install = loadCommand("ext-install");
-    client.ext.list = loadCommand("ext-list");
-    client.ext.uninstall = loadCommand("ext-uninstall");
-    client.ext.update = loadCommand("ext-update");
-  }
   return client;
 };

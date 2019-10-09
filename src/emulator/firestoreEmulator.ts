@@ -56,27 +56,31 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    // Find a port for WebChannel traffic
+    // Firestore Emulator now serves WebChannel on the same port as gRPC, but
+    // for backward compatibility reasons, let's tell it to ALSO serve
+    // WebChannel on port+1, if it is available.
     const host = this.getInfo().host;
     const basePort = this.getInfo().port;
     const port = basePort + 1;
-    const stopPort = port + 10;
     try {
       const webChannelPort = await pf.getPortPromise({
         port,
-        stopPort,
+        stopPort: port,
       });
       this.args.webchannel_port = webChannelPort;
 
       utils.logLabeledBullet(
         "firestore",
-        `Serving WebChannel traffic on at ${clc.bold(`http://${host}:${webChannelPort}`)}`
+        `Serving ALL traffic (including WebChannel) on ${clc.bold(`http://${host}:${basePort}`)}`
       );
-    } catch (e) {
       utils.logLabeledWarning(
         "firestore",
-        `Not serving WebChannel traffic, unable to find an open port in range ${port}:${stopPort}]`
+        `Support for WebChannel on a separate port (${webChannelPort}) is DEPRECATED and will go away soon. ` +
+          "Please use port above instead."
       );
+    } catch (e) {
+      // We don't need to take any action here since the emulator will still
+      // serve WebChannel on the main port anyway.
     }
 
     return javaEmulators.start(Emulators.FIRESTORE, this.args);
