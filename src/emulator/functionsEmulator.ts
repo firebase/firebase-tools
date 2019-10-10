@@ -411,6 +411,9 @@ You can probably fix this by running "npm install ${
       case "WARN":
         EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;
+      case "WARN_ONCE":
+        EmulatorLogger.logLabeled("WARN_ONCE", "functions", log.text);
+        break;
       case "FATAL":
         EmulatorLogger.logLabeled("WARN", "functions", log.text);
         break;

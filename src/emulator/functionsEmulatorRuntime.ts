@@ -21,8 +21,6 @@ import * as _ from "lodash";
 const DATABASE_APP = "__database__";
 
 let hasInitializedFirestore = false;
-let hasAccessedFirestore = false;
-let hasAccessedDatabase = false;
 
 let defaultApp: admin.app.App;
 let databaseApp: admin.app.App;
@@ -83,6 +81,13 @@ interface ModuleResolution {
   installed: boolean;
   version?: string;
   resolution?: string;
+}
+
+interface SuccessfulModuleResolution {
+  declared: true;
+  installed: true;
+  version: string;
+  resolution: string;
 }
 
 interface ModuleVersion {
@@ -244,6 +249,18 @@ async function resolveDeveloperNodeModule(
 
   logDebug(`Resolved module ${name}`, moduleResolution);
   return moduleResolution;
+}
+
+async function assertResolveDeveloperNodeModule(
+  frb: FunctionsRuntimeBundle,
+  name: string
+): Promise<SuccessfulModuleResolution> {
+  const resolution = await resolveDeveloperNodeModule(frb, name);
+  if (!(resolution.installed && resolution.declared && resolution.resolution && resolution.version)) {
+    throw new Error(`Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`);
+  }
+
+  return resolution as SuccessfulModuleResolution;
 }
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
@@ -433,11 +450,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const firebaseFunctionsResolution = await resolveDeveloperNodeModule(frb, "firebase-functions");
-  if (!firebaseFunctionsResolution.resolution) {
-    throw new Error("Could not resolve 'firebase-functions'");
-  }
-
+  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution
@@ -514,11 +527,11 @@ function getDefaultConfig(): any {
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
-  if (!adminResolution.resolution) {
-    throw new Error("Could not resolve 'firebase-admin'");
-  }
+  const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
   const localAdminModule = require(adminResolution.resolution);
+
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const localFunctionsModel = require(functionsResolution.resolution);
 
   // Set up global proxied Firestore
   proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
@@ -557,6 +570,20 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       };
       databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
       proxiedDatabase = makeProxiedDatabase(adminModuleTarget);
+
+      // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
+      // point to the right place.
+      const functionsVersion = parseVersionString(functionsResolution.version)
+      if (functionsVersion.major >= 3 && functionsVersion.minor >= 3) {
+        localFunctionsModel.app.setEmulatedAdminApp(defaultApp);
+      } else {
+        new EmulatorLog(
+          "WARN_ONCE",
+          "runtime-status", 
+          `You're using firebase-functions v${
+              functionsResolution.version
+          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`).log()
+      }
 
       return defaultApp;
     })
@@ -670,29 +697,19 @@ async function makeProxiedFirestore(
 }
 
 function warnAboutFirestoreProd(): void {
-  if (hasAccessedFirestore) {
-    return;
-  }
-
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
-  hasAccessedFirestore = true;
 }
 
 function warnAboutDatabaseProd(): void {
-  if (hasAccessedDatabase) {
-    return;
-  }
-
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
-  hasAccessedDatabase = true;
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
