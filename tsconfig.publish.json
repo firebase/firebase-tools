@@ -7,14 +7,12 @@
     "outDir": "lib",
     "removeComments": true,
     "target": "es2015",
-    "sourceMap": true,
+    "sourceMap": false,
     "typeRoots": [
       "node_modules/@types",
       "src/types"
     ]
   },
-  "include": [
-    "src/**/*",
-    "scripts/**/*"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["src/test/**/*"]
 }
