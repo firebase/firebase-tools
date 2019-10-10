@@ -587,7 +587,9 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         new EmulatorLog(
           "WARN_ONCE",
           "runtime-status",
-          `You're using firebase-functions v${functionsResolution.version}, please upgrade to firebase-functions v3.3.0 or higher for best results.`
+          `You're using firebase-functions v${
+            functionsResolution.version
+          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`
         ).log();
       }
 
@@ -998,7 +1000,9 @@ async function main(): Promise<void> {
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
+        process.env.GOOGLE_APPLICATION_CREDENTIALS
+      }. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 
