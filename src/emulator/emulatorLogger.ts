@@ -18,7 +18,7 @@ const TYPE_VERBOSITY: { [type in LogType]: number } = {
   SUCCESS: 1,
   USER: 2,
   WARN: 2,
-  WARN_ONCE: 2
+  WARN_ONCE: 2,
 };
 
 export enum Verbosity {
@@ -29,7 +29,7 @@ export enum Verbosity {
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
-  static warnOnceCache: { [text:string]: boolean } = {};
+  static warnOnceCache: { [text: string]: boolean } = {};
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,

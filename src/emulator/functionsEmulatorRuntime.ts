@@ -256,8 +256,12 @@ async function assertResolveDeveloperNodeModule(
   name: string
 ): Promise<SuccessfulModuleResolution> {
   const resolution = await resolveDeveloperNodeModule(frb, name);
-  if (!(resolution.installed && resolution.declared && resolution.resolution && resolution.version)) {
-    throw new Error(`Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`);
+  if (
+    !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
+  ) {
+    throw new Error(
+      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`
+    );
   }
 
   return resolution as SuccessfulModuleResolution;
@@ -450,7 +454,10 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(
+    frb,
+    "firebase-functions"
+  );
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution
@@ -573,16 +580,15 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
-      const functionsVersion = parseVersionString(functionsResolution.version)
+      const functionsVersion = parseVersionString(functionsResolution.version);
       if (functionsVersion.major >= 3 && functionsVersion.minor >= 3) {
         localFunctionsModel.app.setEmulatedAdminApp(defaultApp);
       } else {
         new EmulatorLog(
           "WARN_ONCE",
-          "runtime-status", 
-          `You're using firebase-functions v${
-              functionsResolution.version
-          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`).log()
+          "runtime-status",
+          `You're using firebase-functions v${functionsResolution.version}, please upgrade to firebase-functions v3.3.0 or higher for best results.`
+        ).log();
       }
 
       return defaultApp;
@@ -992,9 +998,7 @@ async function main(): Promise<void> {
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 

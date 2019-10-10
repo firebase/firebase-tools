@@ -299,25 +299,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "googleapis-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Google API requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n   - Be careful, this may be a production service.`
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
         EmulatorLogger.log(
           "WARN",
-          `External network resource requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n - Be careful, this may be a production service.`
+          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
         EmulatorLogger.log(
           "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${
-            systemLog.data.valuePath
-          }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
@@ -342,21 +336,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "uninstalled-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed. This package is in your package.json, but it's not available. \
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
 You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
-You can probably fix this by running "npm install ${
-            systemLog.data.name
-          }@latest" in your functions directory.`
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":
@@ -551,9 +539,7 @@ You can probably fix this by running "npm install ${
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
-        const msg = `function ignored because the ${
-          result.type
-        } emulator does not exist or is not running.`;
+        const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
         EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
@@ -608,9 +594,7 @@ You can probably fix this by running "npm install ${
       } else {
         EmulatorLogger.log(
           "WARN",
-          `No project in use. Registering function trigger for sentinel namespace '${
-            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-          }'`
+          `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
         );
       }
       request.post(
@@ -645,9 +629,7 @@ You can probably fix this by running "npm install ${
 
     return new Promise<boolean>((resolve, reject) => {
       request.put(
-        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
-          definition.name
-        }`,
+        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${definition.name}`,
         {
           body: bundle,
         },
