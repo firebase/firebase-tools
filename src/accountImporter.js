@@ -174,7 +174,6 @@ var _validateRequiredParameters = function(options) {
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
-    case "MD5":
     case "SHA1":
       var roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 1 || roundsNum > 8192) {
@@ -184,6 +183,7 @@ var _validateRequiredParameters = function(options) {
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
+    case "MD5":
     case "SHA256":
     case "SHA512":
       var roundsNum = parseInt(options.rounds, 10);
