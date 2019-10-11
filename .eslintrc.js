@@ -16,7 +16,6 @@ module.exports = {
         "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
-        "prefer-spread": "warn", // TODO(bkendall): remove, allow to error.
         "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
         "valid-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
     },

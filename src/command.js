@@ -58,7 +58,7 @@ Command.prototype.register = function(client) {
     cmd.description(this._description);
   }
   this._options.forEach(function(args) {
-    cmd.option.apply(cmd, args);
+    cmd.option(...args);
   });
 
   if (this._help) {
@@ -206,7 +206,7 @@ Command.prototype.runner = function(...args) {
         });
       });
       return result.then(function() {
-        return self._action.apply(self, args);
+        return self._action(...args);
       });
     } catch (e) {
       return Promise.reject(e);

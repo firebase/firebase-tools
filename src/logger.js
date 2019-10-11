@@ -19,7 +19,7 @@ const logger = expandErrors(new winston.Logger());
 const debug = logger.debug;
 logger.debug = function(...args) {
   args[0] = "[" + new Date().toISOString() + "] " + (args[0] || "");
-  debug.apply(null, args);
+  debug(...args);
 };
 
 logger.exitOnError = false;
