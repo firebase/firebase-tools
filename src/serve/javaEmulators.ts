@@ -111,12 +111,25 @@ async function _runBinary(
 ): Promise<void> {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
-    emulator.instance = childProcess.spawn(command.binary, command.args, {
-      stdio: ["inherit", "pipe", "pipe"],
-    });
+    try {
+      emulator.instance = childProcess.spawn(command.binary, command.args, {
+        stdio: ["inherit", "pipe", "pipe"],
+      });
+    } catch (e) {
+      if (e.code === "EACCES") {
+        // Known issue when WSL users don't have java
+        // https://github.com/Microsoft/WSL/issues/3886
+        utils.logLabeledWarning(
+          emulator.name,
+          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
+        );
+      }
+
+      _fatal(emulator, e);
+    }
 
     if (emulator.instance == null) {
-      utils.logWarning(`Could not spawn child process for emulator ${emulator.name}`);
+      utils.logLabeledWarning(emulator.name, "Could not spawn child process for emulator.");
       return;
     }
 
