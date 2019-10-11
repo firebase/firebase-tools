@@ -11,10 +11,7 @@ import {
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
-import {
-  parseVersionString,
-  compareVersionStrings
-} from "./functionsEmulatorUtils"
+import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";

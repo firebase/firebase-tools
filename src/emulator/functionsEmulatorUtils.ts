@@ -1,6 +1,9 @@
-/*
-Please be careful when adding require/imports to this file, it is pulled into functionsEmulatorRuntime
-which is ran in a separate node process, so it is likely to have unintended side-effects for you.
+/**
+ * Please be careful when adding require/imports to this file, it is pulled into functionsEmulatorRuntime
+ * which is ran in a separate node process, so it is likely to have unintended side-effects for you.
+ *
+ * TODO(samstern): Merge this with functionsEmulatorShared
+ * TODO(samstern): Audit dependencies of functionsEmulatorShared
  */
 
 const wildcardRegex = new RegExp("{[^/{}]*}");
@@ -88,8 +91,8 @@ export function parseVersionString(version?: string): ModuleVersion {
 }
 
 /**
- * Compare two SemVer version strings. 
- * 
+ * Compare two SemVer version strings.
+ *
  * Returns:
  *   - Positive number if a is greater.
  *   - Negative number if b is greater.
