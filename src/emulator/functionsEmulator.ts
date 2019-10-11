@@ -461,8 +461,8 @@ You can probably fix this by running "npm install ${
 
     const watcher = chokidar.watch(this.functionsDir, {
       ignored: [
-        /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-        /(^|[\/\\])\../, // Ignore files which begin the a period
+        /.+?[\\/]node_modules[\\/].+?/, // Ignore node_modules
+        /(^|[/\\])\../, // Ignore files which begin the a period
         /.+\.log/, // Ignore files which have a .log extension
       ],
       persistent: true,

@@ -26,7 +26,7 @@ describe("prompt", () => {
       const o = { nonInteractive: true };
       const qs: prompt.Question[] = [{ name: "foo" }];
 
-      expect(prompt.prompt(o, qs)).to.be.rejectedWith(FirebaseError, /required.+non\-interactive/);
+      expect(prompt.prompt(o, qs)).to.be.rejectedWith(FirebaseError, /required.+non-interactive/);
     });
 
     it("should utilize inquirer to prompt for the questions", async () => {
