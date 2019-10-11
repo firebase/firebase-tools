@@ -144,8 +144,8 @@ var validateOptions = function(options) {
   if (!hashOptions.valid) {
     return hashOptions;
   }
-  var hashInputOrder = !!options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
-  if (!!hashInputOrder) {
+  var hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
+  if (hashInputOrder) {
     if (hashInputOrder != "SALT_FIRST" && hashInputOrder != "PASSWORD_FIRST") {
       return utils.reject("Unknown password hash order flag", { exit: 1 });
     } else {
