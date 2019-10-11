@@ -25,8 +25,8 @@ Command.prototype.description = function(description) {
   return this;
 };
 
-Command.prototype.option = function() {
-  this._options.push(arguments);
+Command.prototype.option = function(...args) {
+  this._options.push(...args);
   return this;
 };
 
@@ -68,12 +68,12 @@ Command.prototype.register = function(client) {
   }
 
   var self = this;
-  cmd.action(function() {
+  cmd.action(function(...args) {
     var runner = self.runner();
     var start = new Date().getTime();
-    var options = _.last(_.toArray(arguments));
+    var options = _.last(args);
     var argCount = cmd._args.length;
-    if (arguments.length - 1 > argCount) {
+    if (args.length - 1 > argCount) {
       return client.errorOut(
         new FirebaseError(
           "Too many arguments. Run " +
@@ -85,7 +85,7 @@ Command.prototype.register = function(client) {
     }
 
     runner
-      .apply(self, arguments)
+      .apply(self, args)
       .then(function(result) {
         if (utils.getInheritedOption(options, "json")) {
           console.log(
@@ -187,10 +187,10 @@ Command.prototype.applyRC = function(options) {
   }
 };
 
-Command.prototype.runner = function() {
+Command.prototype.runner = function(...args) {
   var self = this;
   return function() {
-    var args = _.toArray(arguments);
+    var args = _.toArray(args);
     // always provide at least an empty object for options
     if (args.length === 0) {
       args.push({});
