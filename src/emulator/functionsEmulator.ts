@@ -307,7 +307,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "unidentified-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`
+          `External network resource requested!\n   - URL: "${
+            systemLog.data.href
+          }"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":

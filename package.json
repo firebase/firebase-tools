@@ -10,7 +10,7 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rm -rf lib",
-    "format": "npm run lint -- --fix",
+    "format": "npm run lint -- --fix --quiet",
     "lint": "eslint '**/*.{js,ts}'",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
