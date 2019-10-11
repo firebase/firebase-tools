@@ -121,7 +121,7 @@ async function _runBinary(
         // https://github.com/Microsoft/WSL/issues/3886
         utils.logLabeledWarning(
           emulator.name,
-          `Could not spawn child process for emulator, do you have java installed?`
+          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
         );
       }
 
