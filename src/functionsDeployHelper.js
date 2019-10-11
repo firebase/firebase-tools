@@ -59,14 +59,15 @@ function logFilters(existingNames, releaseNames, functionFilterGroups) {
   logger.debug("> [functions] filtering triggers to: " + JSON.stringify(releaseNames, null, 2));
   track("Functions Deploy with Filter", "", releaseNames.length);
 
+  let list;
   if (existingNames.length > 0) {
-    var list = _.map(existingNames, function(name) {
+    list = _.map(existingNames, function(name) {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "current functions in project: " + list);
   }
   if (releaseNames.length > 0) {
-    var list = _.map(releaseNames, function(name) {
+    list = _.map(releaseNames, function(name) {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "uploading functions in project: " + list);
