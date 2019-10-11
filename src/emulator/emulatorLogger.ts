@@ -29,7 +29,7 @@ export enum Verbosity {
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
-  static warnOnceCache: { [text: string]: boolean } = {};
+  static warnOnceCache = new Set<String>();
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
@@ -58,9 +58,9 @@ export class EmulatorLogger {
         utils.logWarning(text);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache[text]) {
+        if (!this.warnOnceCache.has(text)) {
           utils.logWarning(text);
-          this.warnOnceCache[text] = true;
+          this.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
@@ -90,9 +90,9 @@ export class EmulatorLogger {
         utils.logLabeledWarning(label, text);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache[text]) {
+        if (!this.warnOnceCache.has(text)) {
           utils.logLabeledWarning(label, text);
-          this.warnOnceCache[text] = true;
+          this.warnOnceCache.add(text);
         }
         break;
     }

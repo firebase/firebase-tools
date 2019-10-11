@@ -11,6 +11,10 @@ import {
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
+import {
+  parseVersionString,
+  compareVersionStrings
+} from "./functionsEmulatorUtils"
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
@@ -88,12 +92,6 @@ interface SuccessfulModuleResolution {
   installed: true;
   version: string;
   resolution: string;
-}
-
-interface ModuleVersion {
-  major: number;
-  minor: number;
-  patch: number;
 }
 
 interface ProxyTarget extends Object {
@@ -269,8 +267,8 @@ async function assertResolveDeveloperNodeModule(
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 8 },
-    { name: "firebase-functions", isDev: false, minVersion: 3 },
+    { name: "firebase-admin", isDev: false, minVersion: "8.0.0" },
+    { name: "firebase-functions", isDev: false, minVersion: "3.0.0" },
   ];
 
   for (const modBundle of modBundles) {
@@ -289,8 +287,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
       return false;
     }
 
-    const versionInfo = parseVersionString(resolution.version);
-    if (versionInfo.major < modBundle.minVersion) {
+    if (compareVersionStrings(resolution.version, modBundle.minVersion) < 0) {
       new EmulatorLog("SYSTEM", "out-of-date-module", "", modBundle).log();
       return false;
     }
@@ -318,23 +315,6 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   } catch (err) {
     return undefined;
   }
-}
-
-/**
- * Parse a semver version string into parts, filling in 0s where empty.
- */
-function parseVersionString(version?: string): ModuleVersion {
-  const parts = (version || "0").split(".");
-
-  // Make sure "parts" always has 3 elements. Extras are ignored.
-  parts.push("0");
-  parts.push("0");
-
-  return {
-    major: parseInt(parts[0], 10),
-    minor: parseInt(parts[1], 10),
-    patch: parseInt(parts[2], 10),
-  };
 }
 
 /*
@@ -465,9 +445,8 @@ async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  const functionsVersion = parseVersionString(firebaseFunctionsResolution.version!);
   let methodName = "_onRequestWithOpts";
-  if (functionsVersion.major >= 3 && functionsVersion.minor >= 1) {
+  if (compareVersionStrings(firebaseFunctionsResolution.version, "3.1.0") >= 0) {
     methodName = "_onRequestWithOptions";
   }
 
@@ -538,7 +517,7 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   const localAdminModule = require(adminResolution.resolution);
 
   const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
-  const localFunctionsModel = require(functionsResolution.resolution);
+  const localFunctionsModule = require(functionsResolution.resolution);
 
   // Set up global proxied Firestore
   proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
@@ -580,9 +559,8 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
-      const functionsVersion = parseVersionString(functionsResolution.version);
-      if (functionsVersion.major >= 3 && functionsVersion.minor >= 3) {
-        localFunctionsModel.app.setEmulatedAdminApp(defaultApp);
+      if (localFunctionsModule.app.setEmulatedAdminApp) {
+        localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
       } else {
         new EmulatorLog(
           "WARN_ONCE",
