@@ -126,7 +126,7 @@ async function _runBinary(
     }
 
     if (emulator.instance == null) {
-      utils.logWarning(emulator.name, "Could not spawn child process for emulator.");
+      utils.logLabeledWarning(emulator.name, "Could not spawn child process for emulator.");
       return;
     }
 
