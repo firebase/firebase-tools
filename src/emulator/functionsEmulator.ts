@@ -307,7 +307,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       case "unidentified-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Unknown network resource requested!\n   - URL: "${systemLog.data.href}"`
+          `External network resource requested!\n   - URL: "${
+            systemLog.data.href
+          }"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
@@ -408,6 +410,9 @@ You can probably fix this by running "npm install ${
         break;
       case "WARN":
         EmulatorLogger.logLabeled("WARN", "functions", log.text);
+        break;
+      case "WARN_ONCE":
+        EmulatorLogger.logLabeled("WARN_ONCE", "functions", log.text);
         break;
       case "FATAL":
         EmulatorLogger.logLabeled("WARN", "functions", log.text);

@@ -9,7 +9,7 @@ function cachePath(cwd, name) {
 exports.load = function(cwd, name) {
   try {
     const out = {};
-    lines = fs.readFileSync(cachePath(cwd, name), {
+    const lines = fs.readFileSync(cachePath(cwd, name), {
       encoding: "utf8",
     });
     lines.split("\n").forEach(function(line) {
@@ -32,9 +32,9 @@ exports.load = function(cwd, name) {
 exports.dump = function(cwd, name, data) {
   let st = "";
   let count = 0;
-  for (let path in data) {
+  for (const [path, d] of data) {
     count++;
-    st += path + "," + data[path].mtime + "," + data[path].hash + "\n";
+    st += path + "," + d.mtime + "," + d.hash + "\n";
   }
   try {
     fs.outputFileSync(cachePath(cwd, name), st, { encoding: "utf8" });

@@ -1,10 +1,19 @@
-/*
-Please be careful when adding require/imports to this file, it is pulled into functionsEmulatorRuntime
-which is ran in a separate node process, so it is likely to have unintended side-effects for you.
+/**
+ * Please be careful when adding require/imports to this file, it is pulled into functionsEmulatorRuntime
+ * which is ran in a separate node process, so it is likely to have unintended side-effects for you.
+ *
+ * TODO(samstern): Merge this with functionsEmulatorShared
+ * TODO(samstern): Audit dependencies of functionsEmulatorShared
  */
 
 const wildcardRegex = new RegExp("{[^/{}]*}");
 const wildcardKeyRegex = new RegExp("^{(.+)}$");
+
+export interface ModuleVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
 
 export function extractParamsFromPath(
   wildcardPath: string,
@@ -62,4 +71,48 @@ export function removePathSegments(path: string, count: number): string {
     .split("/")
     .slice(count)
     .join("/");
+}
+
+/**
+ * Parse a semver version string into parts, filling in 0s where empty.
+ */
+export function parseVersionString(version?: string): ModuleVersion {
+  const parts = (version || "0").split(".");
+
+  // Make sure "parts" always has 3 elements. Extras are ignored.
+  parts.push("0");
+  parts.push("0");
+
+  return {
+    major: parseInt(parts[0], 10),
+    minor: parseInt(parts[1], 10),
+    patch: parseInt(parts[2], 10),
+  };
+}
+
+/**
+ * Compare two SemVer version strings.
+ *
+ * Returns:
+ *   - Positive number if a is greater.
+ *   - Negative number if b is greater.
+ *   - Zero if they are the same.
+ */
+export function compareVersionStrings(a?: string, b?: string) {
+  const versionA = parseVersionString(a);
+  const versionB = parseVersionString(b);
+
+  if (versionA.major != versionB.major) {
+    return versionA.major - versionB.major;
+  }
+
+  if (versionA.minor != versionB.minor) {
+    return versionA.minor - versionB.minor;
+  }
+
+  if (versionA.patch != versionB.patch) {
+    return versionA.patch - versionB.patch;
+  }
+
+  return 0;
 }

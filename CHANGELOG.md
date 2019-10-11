@@ -1,3 +1,5 @@
 * Added support for managing the Realtime Database setting `strictTriggerValidation`.
 * Fixes trigger parser to not rely on prototype methods (#1687).
-* Verifies required permissions on feature initialization [#1669](https://github.com/firebase/firebase-tools/pull/1669).
+* Fixes bug where standalone CLI would hang in the Android Studio integrated terminal.
+* Fixes a bug where accessing refs from background function arguments would point to prod (#1682).
+* Verifies required permissions on feature initialization.
