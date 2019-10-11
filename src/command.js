@@ -26,7 +26,7 @@ Command.prototype.description = function(description) {
 };
 
 Command.prototype.option = function(...args) {
-  this._options.push(...args);
+  this._options.push(args);
   return this;
 };
 
@@ -187,10 +187,9 @@ Command.prototype.applyRC = function(options) {
   }
 };
 
-Command.prototype.runner = function(...args) {
+Command.prototype.runner = function() {
   var self = this;
-  return function() {
-    var args = _.toArray(args);
+  return function(...args) {
     // always provide at least an empty object for options
     if (args.length === 0) {
       args.push({});
