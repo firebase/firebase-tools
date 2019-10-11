@@ -5,9 +5,10 @@ var clc = require("cli-color");
 
 var cloudfunctions = require("./gcp/cloudfunctions");
 var cloudscheduler = require("./gcp/cloudscheduler");
-var pubsub = require("./gcp/pubsub");
+var FirebaseError = require("./error");
 var helper = require("./functionsDeployHelper");
 var logger = require("./logger");
+var pubsub = require("./gcp/pubsub");
 var track = require("./track");
 var utils = require("./utils");
 
@@ -50,8 +51,9 @@ var printTooManyOps = function(projectId) {
 
 module.exports = function(functionsToDelete, projectId, appEngineLocation) {
   deletes = _.map(functionsToDelete, function(name) {
-    var scheduleName = helper.getScheduleName(name, appEngineLocation);
-    var topicName = helper.getTopicName(name);
+    const scheduleName = helper.getScheduleName(name, appEngineLocation);
+    const topicName = helper.getTopicName(name);
+    const functionName = helper.getFunctionName(name);
     return {
       name: name,
       retryFunction: function() {
@@ -84,7 +86,7 @@ module.exports = function(functionsToDelete, projectId, appEngineLocation) {
             return cloudfunctions.delete({
               projectId: projectId,
               region: helper.getRegion(name),
-              functionName: helper.getFunctionName(name),
+              functionName,
             });
           });
       },
