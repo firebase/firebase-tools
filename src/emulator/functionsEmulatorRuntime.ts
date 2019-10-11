@@ -25,6 +25,8 @@ import * as _ from "lodash";
 const DATABASE_APP = "__database__";
 
 let hasInitializedFirestore = false;
+let hasAccessedFirestore = false;
+let hasAccessedDatabase = false;
 
 let defaultApp: admin.app.App;
 let databaseApp: admin.app.App;
@@ -683,19 +685,31 @@ async function makeProxiedFirestore(
 }
 
 function warnAboutFirestoreProd(): void {
+  if (hasAccessedFirestore) {
+    return;
+  }
+
   new EmulatorLog(
-    "WARN_ONCE",
+    "WARN",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
+
+  hasAccessedFirestore = true;
 }
 
 function warnAboutDatabaseProd(): void {
+  if (hasAccessedDatabase) {
+    return;
+  }
+
   new EmulatorLog(
     "WARN_ONCE",
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
+
+  hasAccessedDatabase = true;
 }
 
 function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
