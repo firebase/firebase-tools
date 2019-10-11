@@ -119,7 +119,10 @@ async function _runBinary(
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
-        utils.logLabeledWarning(emulator.name, `Could not spawn child process for emulator, do you have java installed?`);
+        utils.logLabeledWarning(
+          emulator.name,
+          `Could not spawn child process for emulator, do you have java installed?`
+        );
       }
 
       _fatal(emulator, e);
