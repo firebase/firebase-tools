@@ -4,8 +4,8 @@
     "checkJs": false,
     "module": "commonjs",
     "strict": true,
-    "outDir": "lib",
-    "removeComments": true,
+    "outDir": "dev",
+    "removeComments": false,
     "target": "es2015",
     "sourceMap": true,
     "typeRoots": [
@@ -13,5 +13,5 @@
       "src/types"
     ]
   },
-  "include": ["src/**/*"]
+  "include": ["scripts/**/*"]
 }

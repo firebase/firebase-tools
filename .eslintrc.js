@@ -51,7 +51,7 @@ module.exports = {
     "globals": {},
     "parserOptions": {
         "ecmaVersion": "2017",
-        "project": ["tsconfig.json"],
+        "project": ["tsconfig.json", "tsconfig.dev.json"],
         "sourceType": "module",
     },
     "plugins": [
