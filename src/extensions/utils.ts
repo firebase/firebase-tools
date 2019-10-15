@@ -1,5 +1,5 @@
 import { promptOnce } from "../prompt";
-import { ParamOption } from "./modsApi";
+import { ParamOption } from "./extensionsApi";
 
 // Modified version of the once function from prompt, to return as a joined string.
 export async function onceWithJoin(question: any): Promise<string> {
@@ -15,8 +15,8 @@ interface ListItem {
   checked: boolean;
 }
 
-// Convert mod option to Inquirer-friendly list for the prompt, with all items unchecked.
-export function convertModOptionToLabeledList(options: ParamOption[]): ListItem[] {
+// Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
+export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
   return options.map(
     (option: ParamOption): ListItem => {
       return {
@@ -27,9 +27,10 @@ export function convertModOptionToLabeledList(options: ParamOption[]): ListItem[
   );
 }
 
-// Match a label to a ModOption.Value. When a SELECT or MULTISELECT mod is in the prompt and a user is asked to pick
+// Match a label to a ExtensionValue.
+// When a SELECT or MULTISELECT extension is in the prompt and a user is asked to pick
 // options, these options are displayed as ParamOption.label if present, otherwise as ParamOption.value.
-export function modOptionToValue(label: string, options: ParamOption[]): string {
+export function extensionOptionToValue(label: string, options: ParamOption[]): string {
   for (const option of options) {
     if (label === option.label || label === option.value) {
       return option.value;

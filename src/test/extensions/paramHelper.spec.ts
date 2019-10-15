@@ -6,8 +6,8 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import * as logger from "../../logger";
-import { ModInstance, ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ExtensionInstance, ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
@@ -67,7 +67,7 @@ describe("paramHelper", () => {
       fsStub = sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
       getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
+        .stub(extensionsHelper, "getFirebaseProjectParams")
         .resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
@@ -167,11 +167,11 @@ describe("paramHelper", () => {
 
   describe("getParamsWithCurrentValuesAsDefaults", () => {
     let params: { [key: string]: string };
-    let testInstance: ModInstance;
+    let testInstance: ExtensionInstance;
     beforeEach(() => {
       params = { A_PARAMETER: "new default" };
       testInstance = {
-        configuration: {
+        config: {
           source: {
             name: "",
             packageUri: "",
@@ -216,13 +216,13 @@ describe("paramHelper", () => {
     });
 
     it("should change existing defaults to the current state and leave other values unchanged", () => {
-      _.get(testInstance, "configuration.source.spec.params", []).push({
+      _.get(testInstance, "config.source.spec.params", []).push({
         param: "THIRD",
         label: "3rd",
         default: "default",
         type: ParamType.STRING,
       });
-      testInstance.configuration.params.THIRD = "New Default";
+      testInstance.config.params.THIRD = "New Default";
       const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
 
       expect(newParams).to.eql([
@@ -254,7 +254,7 @@ describe("paramHelper", () => {
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
+        .stub(extensionsHelper, "getFirebaseProjectParams")
         .resolves({ PROJECT_ID });
     });
 

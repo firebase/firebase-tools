@@ -50,8 +50,35 @@ const defaultWriteSizeLimit: DatabaseSetting = {
     "defaultWriteSizeLimit must be either small, medium, large or unlimited. (tiny is not allowed)",
 };
 
+const strictTriggerValidation: DatabaseSetting = {
+  path: "strictTriggerValidation",
+  description: `
+      Strict validation is enabled by default for write operations that trigger
+      events. Any write operations that trigger more than 1000 Cloud Functions or a
+      single event greater than 1 MB in size will fail and return an error reporting
+      the limit that was hit. This might mean that some Cloud Functions aren't
+      triggered at all if they fail the pre-validation.
+
+      If you're performing a larger write operation (for example, deleting your
+      entire database), you might want to disable this validation, as the errors
+      themselves might block the operation.
+  `,
+  parseInput: (input: string) => {
+    switch (input) {
+      case "true":
+        return true;
+      case "false":
+        return false;
+      default:
+        return undefined;
+    }
+  },
+  parseInputErrorMessge: "strictTriggerValidation must be 'true' or 'false'",
+};
+
 export const DATABASE_SETTINGS: Map<string, DatabaseSetting> = new Map();
 DATABASE_SETTINGS.set(defaultWriteSizeLimit.path, defaultWriteSizeLimit);
+DATABASE_SETTINGS.set(strictTriggerValidation.path, strictTriggerValidation);
 
 export const HELP_TEXT: string =
   "\nAvailable Settings:\n" +

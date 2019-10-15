@@ -1,5 +1,5 @@
 {
-  "trailingComma": "es5",
+  "arrowParens": "always",
   "printWidth": 100,
-  "arrowParens": "always"
+  "trailingComma": "es5"
 }

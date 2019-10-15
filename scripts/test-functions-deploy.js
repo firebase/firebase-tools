@@ -25,9 +25,6 @@ var functionsConfig = require("../lib/functionsConfig");
 
 var clc = require("cli-color");
 var firebase = require("firebase");
-var functions = require("firebase-functions");
-var admin = require("firebase-admin");
-var sinon = require("sinon");
 
 var functionsSource = __dirname + "/assets/functions_to_test.js";
 var projectDir = __dirname + "/test-project";
@@ -47,17 +44,8 @@ var deleteAllFunctions = function() {
 };
 
 var parseFunctionsList = function() {
-  var configStub = sinon.stub(functions, "config").returns({
-    firebase: {
-      databaseURL: "https://not-a-project.firebaseio.com",
-      storageBucket: "not-a-project.appspot.com",
-    },
-  });
-  var adminStub = sinon.stub(admin, "initializeApp");
   var triggers = [];
   extractTriggers(require(functionsSource), triggers);
-  configStub.restore();
-  adminStub.restore();
   return _.map(triggers, "name");
 };
 
@@ -65,15 +53,19 @@ var getUuid = function() {
   return Math.floor(Math.random() * 100000000000).toString();
 };
 
-var preTest = function() {
+var preTest = async function() {
   var dir = tmp.dirSync({ prefix: "fntest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
-  execSync("npm install", { cwd: tmpDir + "/functions" });
+  execSync("npm install", { cwd: tmpDir + "/functions", stdio: "ignore", stderr: "ignore" });
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
+  var accessToken = (await api.getAccessToken()).access_token;
+  api.setAccessToken(accessToken);
 
   return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
+    process.env.GCLOUD_PROJECT = projectId;
+    process.env.FIREBASE_CONFIG = JSON.stringify(config);
     app = firebase.initializeApp(config);
     try {
       execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
@@ -83,14 +75,19 @@ var preTest = function() {
   });
 };
 
-var postTest = function() {
+var postTest = function(errored) {
   fs.remove(tmpDir);
-  try {
-    execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
-  } catch (e) {
-    // do nothing
+  delete process.env.GCLOUD_PROJECT;
+  delete process.env.FIREBASE_CONFIG;
+  // If tests were successful, clean up functions and database. Otherwise, leave them for debugging purposes.
+  if (!errored) {
+    try {
+      execSync(deleteAllFunctions(), { cwd: tmpDir, stdio: "ignore" });
+    } catch (e) {
+      // do nothing
+    }
+    execSync(`${localFirebase} database:remove / -y --project=${projectId}`, { cwd: tmpDir });
   }
-  execSync(`${localFirebase} database:remove / -y --project=${projectId}`, { cwd: tmpDir });
   console.log("Done post-test cleanup.");
   process.exit();
 };
@@ -244,7 +241,7 @@ var publishPubsub = function(topic) {
 };
 
 var triggerSchedule = function(job) {
-  // we can't pass along a uuid thru scheduler to test the full trigger, s
+  // we can't pass along a uuid thru scheduler to test the full trigger,
   // so instead we run the job to make sure that the scheduler job and pub sub topic were created correctly
   return api
     .request("POST", `/v1/projects/${projectId}/locations/us-central1/jobs/${job}:run`, {
@@ -254,7 +251,7 @@ var triggerSchedule = function(job) {
     })
     .then(function(resp) {
       expect(resp.status).to.equal(200);
-      return Promise.resolve(uuid);
+      return Promise.resolve();
     });
 };
 
@@ -346,9 +343,11 @@ var main = function() {
     })
     .catch(function(err) {
       console.log(clc.red("Error while running tests: "), err);
-      return Promise.resolve();
+      return Promise.resolve(err);
     })
-    .then(postTest);
+    .then(function(err) {
+      postTest(!!err);
+    });
 };
 
 main();

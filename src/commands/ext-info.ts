@@ -3,8 +3,8 @@ import * as _ from "lodash";
 
 import * as Command from "../command";
 import { resolveSource } from "../extensions/resolveSource";
-import * as modsApi from "../extensions/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
+import * as extensionsApi from "../extensions/extensionsApi";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as logger from "../logger";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
@@ -12,24 +12,21 @@ import * as utils from "../utils";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
-const FUNCTION_TYPE_REGEX = /firebasemods\..+\.function/;
+const FUNCTION_TYPE_REGEX = /\..+\.function/;
 
 export default new Command("ext:info <extensionName>")
   .description(
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
   )
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.sources.get"
-  ])
-  .before(ensureModsApiEnabled)
-  .action(async (modName: string, options: any) => {
-    const sourceUrl = await resolveSource(modName);
-    const source = await modsApi.getSource(sourceUrl);
+  .before(requirePermissions, ["firebasemods.sources.get"])
+  .before(ensureExtensionsApiEnabled)
+  .action(async (extensionName: string, options: any) => {
+    const sourceUrl = await resolveSource(extensionName);
+    const source = await extensionsApi.getSource(sourceUrl);
     const spec = source.spec;
     if (!options.markdown) {
-      utils.logLabeledBullet(logPrefix, `information about ${modName}:\n`);
+      utils.logLabeledBullet(logPrefix, `information about ${extensionName}:\n`);
     }
 
     const lines: string[] = [];
@@ -100,7 +97,7 @@ export default new Command("ext:info <extensionName>")
       utils.logLabeledBullet(
         logPrefix,
         `to install this extension, type ` +
-          clc.bold(`firebase ext:install ${modName} --project=YOUR_PROJECT`)
+          clc.bold(`firebase ext:install ${extensionName} --project=YOUR_PROJECT`)
       );
     }
   });

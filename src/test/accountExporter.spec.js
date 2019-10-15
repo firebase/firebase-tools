@@ -120,42 +120,7 @@ describe("accountExporter", function() {
       for (var i = 0; i < 20; i++) {
         trailingCommas.push(",");
       }
-      nock("https://www.googleapis.com")
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(0, 3),
-          nextPageToken: "3",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "3",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(3, 6),
-          nextPageToken: "6",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "6",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: userList.slice(6, 7),
-          nextPageToken: "7",
-        })
-        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
-          maxResults: 3,
-          nextPageToken: "7",
-          targetProjectId: "test-project-id",
-        })
-        .reply(200, {
-          users: [],
-          nextPageToken: "7",
-        });
+      mockAllUsersRequests();
 
       return serialExportUsers("test-project-id", {
         format: "csv",
@@ -225,5 +190,77 @@ describe("accountExporter", function() {
         expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + "," + os.EOL);
       });
     });
+
+    it("should not emit redundant comma in JSON on consecutive calls", function() {
+      mockAllUsersRequests();
+
+      const correctString =
+        '{\n  "localId": "0",\n  "email": "test0@test.org",\n  "displayName": "John Tester0"\n}';
+
+      const firstWriteSpy = sinon.spy();
+      return serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: { write: firstWriteSpy, end: function() {} },
+      }).then(function() {
+        expect(firstWriteSpy.args[0][0]).to.be.eq(
+          correctString,
+          "The first call did not emit the correct string"
+        );
+
+        mockAllUsersRequests();
+
+        const secondWriteSpy = sinon.spy();
+        return serialExportUsers("test-project-id", {
+          format: "JSON",
+          batchSize: 3,
+          writeStream: { write: secondWriteSpy, end: function() {} },
+        }).then(() => {
+          expect(secondWriteSpy.args[0][0]).to.be.eq(
+            correctString,
+            "The second call did not emit the correct string"
+          );
+        });
+      });
+    });
+
+    function mockAllUsersRequests() {
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+          nextPageToken: "3",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          nextPageToken: "3",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(3, 6),
+          nextPageToken: "6",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          nextPageToken: "6",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(6, 7),
+          nextPageToken: "7",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          nextPageToken: "7",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [],
+          nextPageToken: "7",
+        });
+    }
   });
 });

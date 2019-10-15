@@ -7,8 +7,8 @@ import TerminalRenderer = require("marked-terminal");
 import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import * as modsApi from "../extensions/modsApi";
-import { logPrefix } from "../extensions/modsHelper";
+import * as extensionsApi from "../extensions/extensionsApi";
+import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
@@ -19,16 +19,12 @@ marked.setOptions({
 });
 
 /**
- * Command for configuring an existing mod instance
+ * Command for configuring an existing extension instance
  */
 export default new Command("ext:configure <instanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.update"
-    // "firebasemods.instances.get"
-  ])
+  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -37,7 +33,7 @@ export default new Command("ext:configure <instanceId>")
       const projectId = getProjectId(options, false);
       let existingInstance;
       try {
-        existingInstance = await modsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
           return utils.reject(
@@ -55,7 +51,7 @@ export default new Command("ext:configure <instanceId>")
       const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
         return param.param === "LOCATION";
       });
-      const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
+      const currentLocation = _.get(existingInstance, "config.params.LOCATION");
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
@@ -70,7 +66,7 @@ export default new Command("ext:configure <instanceId>")
       }
 
       spinner.start();
-      const res = await modsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
       return res;

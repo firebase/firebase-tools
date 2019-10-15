@@ -115,7 +115,7 @@ var api = {
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
-  firebaseModsRegistryOrigin: utils.envOverride(
+  firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
     "https://mods-registry.firebaseapp.com"
   ),
@@ -136,7 +136,10 @@ var api = {
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://firebaseapp.com"),
   iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
-  modsOrigin: utils.envOverride("FIREBASE_EXT_URL", "https://firebasemods.googleapis.com"),
+  extensionsOrigin: utils.envOverride(
+    "FIREBASE_EXT_URL",
+    "https://firebaseextensions.googleapis.com"
+  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",

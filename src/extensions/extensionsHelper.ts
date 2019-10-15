@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
-import { Param } from "./modsApi";
+import { Param } from "./extensionsApi";
 import { generateInstanceId } from "./generateInstanceId";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
@@ -49,7 +49,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
 }
 
 /**
- * This function substitutes params used in the mod spec with values.
+ * This function substitutes params used in the extension spec with values.
  * (e.g If the original object contains `path/${FOO}` and the param FOO has the value of "bar",
  * then it will become `path/bar`)
  * @param original Object containing strings that have placeholders that look like`${}`
@@ -66,9 +66,9 @@ export function substituteParams(original: object[], params: { [key: string]: st
 }
 
 /**
- * Sets params equal to defaults given in mod.yaml if not already set in .env file.
+ * Sets params equal to defaults given in extension.yaml if not already set in .env file.
  * @param paramVars JSON object of params to values parsed from .env file
- * @param spec information on params parsed from mod.yaml
+ * @param spec information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(paramVars: any, paramSpec: any): any {
@@ -93,7 +93,7 @@ export function populateDefaultParams(paramVars: any, paramSpec: any): any {
 /**
  * Validates command-line params supplied by developer.
  * @param envVars JSON object of params to values parsed from .env file
- * @param paramSpec information on params parsed from mod.yaml
+ * @param paramSpec information on params parsed from extension.yaml
  */
 export function validateCommandLineParams(envVars: any, paramSpec: any): void {
   if (_.size(envVars) < _.size(paramSpec)) {
@@ -128,15 +128,18 @@ export function validateCommandLineParams(envVars: any, paramSpec: any): void {
 }
 
 /**
- * Prompts the user for an instanceId if the modName is already being used by a different instance.
+ * Prompts the user for an instanceId if the extensionName is already being used by a different instance.
  * If the user provides an invalid instanceId, prompts the user again until they provide a valid one.
  * @param projectId the id of the project where this instance will exist
- * @param modName the name of the mod that this instance will be running
+ * @param extensionName the name of the extension that this instance will be running
  */
-export async function getValidInstanceId(projectId: string, modName: string): Promise<string> {
-  let instanceId = await generateInstanceId(projectId, modName);
-  if (instanceId !== modName) {
-    logger.info(`An extension named ${modName} already exists in project ${projectId}.`);
+export async function getValidInstanceId(
+  projectId: string,
+  extensionName: string
+): Promise<string> {
+  let instanceId = await generateInstanceId(projectId, extensionName);
+  if (instanceId !== extensionName) {
+    logger.info(`An extension named ${extensionName} already exists in project ${projectId}.`);
     instanceId = await promptForValidInstanceId(instanceId);
   }
   return instanceId;
@@ -166,10 +169,12 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
   return newInstanceId;
 }
 
-export async function ensureModsApiEnabled(options: any): Promise<void> {
+export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
   const projectId = getProjectId(options);
-  await Promise.all([
-    ensure(projectId, "deploymentmanager.googleapis.com", "deploymentManager", true),
-    ensure(projectId, "firebasemods.googleapis.com", "extensions", options.markdown),
-  ]);
+  return await ensure(
+    projectId,
+    "firebaseextensions.googleapis.com",
+    "extensions",
+    options.markdown
+  );
 }

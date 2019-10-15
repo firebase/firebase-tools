@@ -2,36 +2,36 @@ import * as _ from "lodash";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 
-const VERSION = "v1beta1";
+const VERSION = "v1beta";
 
-export interface ModInstance {
+export interface ExtensionInstance {
   name: string;
   createTime: string;
   updateTime: string;
   state: string;
-  configuration: ModConfiguration;
+  config: ExtensionConfig;
   lastOperationName?: string;
   serviceAccountEmail: string;
 }
 
-export interface ModConfiguration {
+export interface ExtensionConfig {
   name: string;
   createTime: string;
-  source: ModSource;
+  source: ExtensionSource;
   params: {
     [key: string]: any;
   };
   populatedPostinstallContent?: string;
 }
 
-export interface ModSource {
+export interface ExtensionSource {
   name: string;
   packageUri: string;
   hash: string;
-  spec: ModSpec;
+  spec: ExtensionSpec;
 }
 
-export interface ModSpec {
+export interface ExtensionSpec {
   specVersion?: string;
   name: string;
   version?: string;
@@ -96,36 +96,36 @@ export interface ParamOption {
 }
 
 /**
- * Create a new mod instance, given a mod source path, a set of params, and a service account
+ * Create a new extension instance, given a extension source path, a set of params, and a service account
  *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance
- * @param modSource the ModSource to create an instance of
- * @param params params to configure the mod instance
- * @param serviceAccountEmail the email of the service account to use for creating the ModInstance
+ * @param extensionSource the ExtensionSource to create an instance of
+ * @param params params to configure the extension instance
+ * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
  */
 export async function createInstance(
   projectId: string,
   instanceId: string,
-  modSource: ModSource,
+  extensionSource: ExtensionSource,
   params: { [key: string]: string },
   serviceAccountEmail: string
-): Promise<ModInstance> {
+): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
-    origin: api.modsOrigin,
+    origin: api.extensionsOrigin,
     data: {
       name: `projects/${projectId}/instances/${instanceId}`,
-      configuration: {
-        source: { name: modSource.name },
+      config: {
+        source: { name: extensionSource.name },
         params,
       },
       serviceAccountEmail,
     },
   });
-  const pollRes = await operationPoller.pollOperation<ModInstance>({
-    apiOrigin: api.modsOrigin,
-    apiVersion: "v1beta1",
+  const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
@@ -144,12 +144,12 @@ export async function deleteInstance(projectId: string, instanceId: string): Pro
     `/${VERSION}/projects/${projectId}/instances/${instanceId}`,
     {
       auth: true,
-      origin: api.modsOrigin,
+      origin: api.extensionsOrigin,
     }
   );
   const pollRes = await operationPoller.pollOperation({
-    apiOrigin: api.modsOrigin,
-    apiVersion: "v1beta1",
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
     operationResourceName: deleteRes.body.name,
     masterTimeout: 600000,
   });
@@ -173,7 +173,7 @@ export async function getInstance(
     _.assign(
       {
         auth: true,
-        origin: api.modsOrigin,
+        origin: api.extensionsOrigin,
       },
       options
     )
@@ -182,16 +182,16 @@ export async function getInstance(
 }
 
 /**
- * Returns a list of all installed mod instances on the project with projectId.
+ * Returns a list of all installed extension instances on the project with projectId.
  *
  * @param projectId the project to list instances for
  */
-export async function listInstances(projectId: string): Promise<ModInstance[]> {
+export async function listInstances(projectId: string): Promise<ExtensionInstance[]> {
   const instances: any[] = [];
   const getNextPage = async (pageToken?: string) => {
     const res = await api.request("GET", `/${VERSION}/projects/${projectId}/instances`, {
       auth: true,
-      origin: api.modsOrigin,
+      origin: api.extensionsOrigin,
       query: {
         pageSize: 100,
         pageToken,
@@ -207,19 +207,19 @@ export async function listInstances(projectId: string): Promise<ModInstance[]> {
 }
 
 /**
- * Configure a mod instance, given an project id, instance id, and a set of params
+ * Configure a extension instance, given an project id, instance id, and a set of params
  *
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
- * @param params params to configure the mod instance
+ * @param params params to configure the extension instance
  */
 export async function configureInstance(
   projectId: string,
   instanceId: string,
   params: { [option: string]: string }
 ): Promise<any> {
-  const res = await patchInstance(projectId, instanceId, "configuration.params", {
-    configuration: {
+  const res = await patchInstance(projectId, instanceId, "config.params", {
+    config: {
       params,
     },
   });
@@ -227,30 +227,25 @@ export async function configureInstance(
 }
 
 /**
- * Update the version of a mod instance, given an project id, instance id, and a set of params
+ * Update the version of a extension instance, given an project id, instance id, and a set of params
  *
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
- * @param ModSource the source for the version of the mod to update to
- * @param params params to configure the mod instance
+ * @param ExtensionSource the source for the version of the extension to update to
+ * @param params params to configure the extension instance
  */
 export async function updateInstance(
   projectId: string,
   instanceId: string,
-  modSource: ModSource,
+  extensionSource: ExtensionSource,
   params: { [option: string]: string }
 ): Promise<any> {
-  const res = await patchInstance(
-    projectId,
-    instanceId,
-    "configuration.params,configuration.source.name",
-    {
-      configuration: {
-        source: { name: modSource.name },
-        params,
-      },
-    }
-  );
+  const res = await patchInstance(projectId, instanceId, "config.params,config.source.name", {
+    config: {
+      source: { name: extensionSource.name },
+      params,
+    },
+  });
   return res;
 }
 
@@ -265,7 +260,7 @@ async function patchInstance(
     `/${VERSION}/projects/${projectId}/instances/${instanceId}`,
     {
       auth: true,
-      origin: api.modsOrigin,
+      origin: api.extensionsOrigin,
       query: {
         updateMask,
       },
@@ -273,23 +268,23 @@ async function patchInstance(
     }
   );
   const pollRes = await operationPoller.pollOperation({
-    apiOrigin: api.modsOrigin,
-    apiVersion: "v1beta1",
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
     operationResourceName: updateRes.body.name,
     masterTimeout: 600000,
   });
   return pollRes;
 }
 
-/** Get a mod source by its fully qualified path
+/** Get a extension source by its fully qualified path
  *
- * @param sourceName the fully qualified path of the mod source (/projects/<projectId>/sources/<sourceId>)
+ * @param sourceName the fully qualified path of the extension source (/projects/<projectId>/sources/<sourceId>)
  */
-export function getSource(sourceName: string): Promise<ModSource> {
+export function getSource(sourceName: string): Promise<ExtensionSource> {
   return api
     .request("GET", `/${VERSION}/${sourceName}`, {
       auth: true,
-      origin: api.modsOrigin,
+      origin: api.extensionsOrigin,
     })
     .then((res) => {
       return res.body;

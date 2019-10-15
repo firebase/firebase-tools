@@ -8,8 +8,8 @@ import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { resolveSource } from "../extensions/resolveSource";
-import * as modsApi from "../extensions/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
+import * as extensionsApi from "../extensions/extensionsApi";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { displayChanges, update } from "../extensions/updateHelper";
 import * as requirePermissions from "../requirePermissions";
@@ -20,16 +20,12 @@ marked.setOptions({
 });
 
 /**
- * Command for updating an existing mod instance
+ * Command for updating an existing extension instance
  */
 export default new Command("ext:update <instanceId>")
   .description("update an existing extension instance to the latest version")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.update"
-    // "firebasemods.instances.get"
-  ])
-  .before(ensureModsApiEnabled)
+  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
+  .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -38,7 +34,7 @@ export default new Command("ext:update <instanceId>")
       const projectId = getProjectId(options, false);
       let existingInstance;
       try {
-        existingInstance = await modsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
           return utils.reject(
@@ -50,10 +46,13 @@ export default new Command("ext:update <instanceId>")
         }
         throw err;
       }
-      const currentSpec: modsApi.ModSpec = _.get(existingInstance, "configuration.source.spec");
-      const currentParams = _.get(existingInstance, "configuration.params");
+      const currentSpec: extensionsApi.ExtensionSpec = _.get(
+        existingInstance,
+        "config.source.spec"
+      );
+      const currentParams = _.get(existingInstance, "config.params");
       const sourceUrl = await resolveSource(currentSpec.name);
-      const newSource = await modsApi.getSource(sourceUrl);
+      const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
       await displayChanges(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(

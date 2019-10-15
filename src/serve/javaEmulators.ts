@@ -40,10 +40,10 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.8.4.jar",
-    expectedSize: 60090442,
-    expectedChecksum: "45967ccda9f453f836b924e8bb1aea17",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.8.4.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.9.0.jar",
+    expectedSize: 60831386,
+    expectedChecksum: "36e64e09ecda06a05d1d3d1bb5450b33",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.9.0.jar"),
     namePrefix: "cloud-firestore-emulator",
   },
 };
@@ -111,12 +111,25 @@ async function _runBinary(
 ): Promise<void> {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
-    emulator.instance = childProcess.spawn(command.binary, command.args, {
-      stdio: ["inherit", "pipe", "pipe"],
-    });
+    try {
+      emulator.instance = childProcess.spawn(command.binary, command.args, {
+        stdio: ["inherit", "pipe", "pipe"],
+      });
+    } catch (e) {
+      if (e.code === "EACCES") {
+        // Known issue when WSL users don't have java
+        // https://github.com/Microsoft/WSL/issues/3886
+        utils.logLabeledWarning(
+          emulator.name,
+          `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
+        );
+      }
+
+      _fatal(emulator, e);
+    }
 
     if (emulator.instance == null) {
-      utils.logWarning(`Could not spawn child process for emulator ${emulator.name}`);
+      utils.logLabeledWarning(emulator.name, "Could not spawn child process for emulator.");
       return;
     }
 

@@ -130,7 +130,7 @@ export class EmulatorLog {
   private static LOG_BUFFER: string[] = [];
 
   constructor(
-    public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
+    public level: "DEBUG" | "INFO" | "WARN" | "WARN_ONCE" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
     public type: string,
     public text: string,
     public data?: any,

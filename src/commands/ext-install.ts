@@ -12,15 +12,15 @@ import { FirebaseError } from "../error";
 import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
-import * as modsApi from "../extensions/modsApi";
+import * as extensionsApi from "../extensions/extensionsApi";
 import { resolveSource } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  ensureModsApiEnabled,
+  ensureExtensionsApiEnabled,
   getValidInstanceId,
   logPrefix,
   promptForValidInstanceId,
-} from "../extensions/modsHelper";
+} from "../extensions/extensionsHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -29,13 +29,13 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-interface InstallModOptions {
+interface InstallExtensionOptions {
   paramFilePath?: string;
   projectId: string;
-  source: modsApi.ModSource;
+  source: extensionsApi.ExtensionSource;
 }
 
-async function installMod(options: InstallModOptions): Promise<void> {
+async function installExtension(options: InstallExtensionOptions): Promise<void> {
   const { projectId, source, paramFilePath } = options;
   const spec = source.spec;
   const spinner = ora.default(
@@ -43,7 +43,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
   );
   try {
     await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
-    const roles = spec.roles ? spec.roles.map((role: modsApi.Role) => role.role) : [];
+    const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
@@ -69,7 +69,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
         }
       }
     }
-    const response = await modsApi.createInstance(
+    const response = await extensionsApi.createInstance(
       projectId,
       instanceId,
       source,
@@ -84,7 +84,7 @@ async function installMod(options: InstallModOptions): Promise<void> {
         `its Instance ID is ${clc.bold(instanceId)}.`
     );
     const usageInstruction =
-      _.get(response, "configuration.populatedPostinstallContent") ||
+      _.get(response, "config.populatedPostinstallContent") ||
       populatePostinstall(source.spec.postinstallContent || "", params);
     if (usageInstruction) {
       utils.logLabeledBullet(logPrefix, `usage instructions:\n${marked(usageInstruction)}`);
@@ -103,23 +103,20 @@ async function installMod(options: InstallModOptions): Promise<void> {
 }
 
 /**
- * Command for installing a mod
+ * Command for installing a extension
  */
 export default new Command("ext:install <extensionName>")
   .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.create"
-  ])
-  .before(ensureModsApiEnabled)
-  .action(async (modName: string, options: any) => {
+  .before(requirePermissions, ["firebasemods.instances.create"])
+  .before(ensureExtensionsApiEnabled)
+  .action(async (extensionName: string, options: any) => {
     try {
       const projectId = getProjectId(options, false);
       const paramFilePath = options.params;
-      const sourceUrl = await resolveSource(modName);
-      const source = await modsApi.getSource(sourceUrl);
-      return installMod({
+      const sourceUrl = await resolveSource(extensionName);
+      const source = await extensionsApi.getSource(sourceUrl);
+      return installExtension({
         paramFilePath,
         projectId,
         source,

@@ -2,12 +2,14 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import Table = require("cli-table");
 
-import { listInstances, ModInstance } from "./modsApi";
-import { logPrefix } from "./modsHelper";
+import { ExtensionInstance, listInstances } from "./extensionsApi";
+import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
-export async function listMods(projectId: string): Promise<{ instances: ModInstance[] }> {
+export async function listExtensions(
+  projectId: string
+): Promise<{ instances: ExtensionInstance[] }> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
     utils.logLabeledBullet(
@@ -28,7 +30,7 @@ export async function listMods(projectId: string): Promise<{ instances: ModInsta
     table.push([
       _.last(instance.name.split("/")),
       instance.state,
-      _.get(instance, "configuration.source.spec.version", ""),
+      _.get(instance, "config.source.spec.version", ""),
       instance.createTime,
       instance.updateTime,
     ]);

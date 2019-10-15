@@ -5,8 +5,8 @@ import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { iam } from "../gcp";
-import * as modsApi from "../extensions/modsApi";
-import { ensureModsApiEnabled, logPrefix } from "../extensions/modsHelper";
+import * as extensionsApi from "../extensions/extensionsApi";
+import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
@@ -14,16 +14,13 @@ import * as utils from "../utils";
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requirePermissions, [
-    // TODO: This doesn't exist yet. Uncomment when it does.
-    // "firebasemods.instances.delete"
-  ])
-  .before(ensureModsApiEnabled)
+  .before(requirePermissions, ["firebasemods.instances.delete"])
+  .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const projectId = getProjectId(options);
     let instance;
     try {
-      instance = await modsApi.getInstance(projectId, instanceId);
+      instance = await extensionsApi.getInstance(projectId, instanceId);
     } catch (err) {
       if (err.status === 404) {
         return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
@@ -34,28 +31,28 @@ export default new Command("ext:uninstall <extensionInstanceId>")
     }
     let confirmedServiceAccountDeletion;
     if (!options.force) {
-      const resourcesMessage = _.get(instance, "configuration.source.spec.resources", []).length
+      const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
         ? "This will delete the following resources \n" +
-          instance.configuration.source.spec.resources
-            .map((resource: modsApi.Resource) => `- ${resource.type}: ${resource.name} \n`)
+          instance.config.source.spec.resources
+            .map((resource: extensionsApi.Resource) => `- ${resource.type}: ${resource.name} \n`)
             .join("")
         : "";
-      const modDeletionMessage = `You are about to uninstall extension ${clc.bold(
+      const extensionDeletionMessage = `You are about to uninstall extension ${clc.bold(
         instanceId
       )} from project ${clc.bold(projectId)}.\n${resourcesMessage}Are you sure?`;
-      const confirmedModDeletion = await promptOnce({
+      const confirmedExtensionDeletion = await promptOnce({
         type: "confirm",
         default: true,
-        message: modDeletionMessage,
+        message: extensionDeletionMessage,
       });
-      if (!confirmedModDeletion) {
+      if (!confirmedExtensionDeletion) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
 
-      const rolesMessage = _.get(instance, "configuration.source.spec.roles", []).length
+      const rolesMessage = _.get(instance, "config.source.spec.roles", []).length
         ? " which had the following authorized roles in your project:\n" +
-          instance.configuration.source.spec.roles
-            .map((role: modsApi.Role) => `- ${role.role} \n`)
+          instance.config.source.spec.roles
+            .map((role: extensionsApi.Role) => `- ${role.role} \n`)
             .join("")
         : ". \n";
       const serviceAccountDeletionMessage = `This extension used service account ${clc.bold(
@@ -73,7 +70,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
     );
     spinner.start();
     try {
-      await modsApi.deleteInstance(projectId, instanceId);
+      await extensionsApi.deleteInstance(projectId, instanceId);
       if (confirmedServiceAccountDeletion || options.force) {
         const saDeletionRes = await iam.deleteServiceAccount(
           projectId,

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "module": "commonjs",
+    "strict": true,
+    "outDir": "dev",
+    "removeComments": false,
+    "target": "es2015",
+    "sourceMap": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ]
+  },
+  "include": ["scripts/**/*"]
+}

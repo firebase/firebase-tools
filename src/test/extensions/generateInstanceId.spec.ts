@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
 import { generateInstanceId } from "../../extensions/generateInstanceId";
-import * as modsApi from "../../extensions/modsApi";
+import * as extensionsApi from "../../extensions/extensionsApi";
 
 const TEST_NAME = "image-resizer";
 
@@ -11,21 +11,21 @@ describe("generateInstanceId", () => {
   let getInstanceStub: sinon.SinonStub;
 
   beforeEach(() => {
-    getInstanceStub = sinon.stub(modsApi, "getInstance");
+    getInstanceStub = sinon.stub(extensionsApi, "getInstance");
   });
 
   afterEach(() => {
     getInstanceStub.restore();
   });
 
-  it("should return modSpec.name if no mod with that name exists yet", async () => {
+  it("should return extensionSpec.name if no extension with that name exists yet", async () => {
     getInstanceStub.resolves({ error: { code: 404 } });
 
     const instanceId = await generateInstanceId("proj", TEST_NAME);
     expect(instanceId).to.equal(TEST_NAME);
   });
 
-  it("should return modSpec.name plus a random string if a mod named modSpec.name exists", async () => {
+  it("should return extensionSpec.name plus a random string if a extension with that name exists", async () => {
     getInstanceStub.resolves({ name: TEST_NAME });
 
     const instanceId = await generateInstanceId("proj", TEST_NAME);

@@ -7,8 +7,9 @@ import * as logger from "../logger";
  * SUCCESS - useful to humans, similar to bullet but in a 'success' style.
  * USER - logged by user code, always show to humans.
  * WARN - warnings from our code that humans need.
+ * WARN_ONCE - warnings from our code that humans need, but only once per session.
  */
-type LogType = "DEBUG" | "INFO" | "BULLET" | "SUCCESS" | "USER" | "WARN";
+type LogType = "DEBUG" | "INFO" | "BULLET" | "SUCCESS" | "USER" | "WARN" | "WARN_ONCE";
 
 const TYPE_VERBOSITY: { [type in LogType]: number } = {
   DEBUG: 0,
@@ -17,6 +18,7 @@ const TYPE_VERBOSITY: { [type in LogType]: number } = {
   SUCCESS: 1,
   USER: 2,
   WARN: 2,
+  WARN_ONCE: 2,
 };
 
 export enum Verbosity {
@@ -27,6 +29,7 @@ export enum Verbosity {
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
+  static warnOnceCache = new Set<String>();
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
@@ -54,6 +57,12 @@ export class EmulatorLogger {
       case "WARN":
         utils.logWarning(text);
         break;
+      case "WARN_ONCE":
+        if (!this.warnOnceCache.has(text)) {
+          utils.logWarning(text);
+          this.warnOnceCache.add(text);
+        }
+        break;
       case "SUCCESS":
         utils.logSuccess(text);
         break;
@@ -79,6 +88,12 @@ export class EmulatorLogger {
         break;
       case "WARN":
         utils.logLabeledWarning(label, text);
+        break;
+      case "WARN_ONCE":
+        if (!this.warnOnceCache.has(text)) {
+          utils.logLabeledWarning(label, text);
+          this.warnOnceCache.add(text);
+        }
         break;
     }
   }
