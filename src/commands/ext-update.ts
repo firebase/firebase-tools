@@ -75,7 +75,7 @@ export default new Command("ext:update <instanceId>")
         rolesToRemove,
         serviceAccountEmail: existingInstance.serviceAccountEmail,
         billingRequired: newSpec.billingRequired,
-      }
+      };
       if (!_.isEqual(newParams, currentParams)) {
         updateOptions.params = newParams;
       }

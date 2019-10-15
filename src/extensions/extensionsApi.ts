@@ -240,17 +240,17 @@ export async function updateInstance(
   extensionSource: ExtensionSource,
   params?: { [option: string]: string }
 ): Promise<any> {
-  const body:any = {
+  const body: any = {
     config: {
       source: { name: extensionSource.name },
     },
-  }
-  let updateMask = "config.source.name"
+  };
+  let updateMask = "config.source.name";
   if (params) {
     body.params = params;
     updateMask += ",config.params";
   }
-  return await patchInstance(projectId, instanceId, updateMask, body );
+  return await patchInstance(projectId, instanceId, updateMask, body);
 }
 
 async function patchInstance(
