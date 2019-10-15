@@ -7,6 +7,10 @@ module.exports = new Command("emulators:start")
   .before(beforeEmulatorCommand)
   .description("start the local Firebase emulators")
   .option(
+    "--functionsMode <mode>",
+    "Control functions execution mode. Valid options are: default, debug"
+  )
+  .option(
     "--only <list>",
     "only run specific emulators. " +
       "This is a comma separated list of emulators to start. " +
