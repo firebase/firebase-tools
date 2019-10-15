@@ -261,7 +261,7 @@ describe("extensions", () => {
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
         MY_PARAM: "value",
       });
-      
+
       expect(nock.isDone()).to.be.true;
     });
 
