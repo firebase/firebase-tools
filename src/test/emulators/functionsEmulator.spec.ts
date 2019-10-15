@@ -8,6 +8,7 @@ import {
   FunctionsRuntimeBundle,
 } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
+import { WorkQueue, WorkMode } from "../../emulator/workQueue";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   // tslint:disable-next-line:no-var-requires
@@ -49,7 +50,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id")
       .expect(200)
@@ -71,7 +76,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id/")
       .expect(200)
@@ -93,7 +102,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id/a/b")
       .expect(200)
@@ -115,7 +128,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -137,7 +154,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -159,7 +180,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .post("/fake-project-id/us-central1/function_id/sub/route/a")
       .send({ hello: "world" })
@@ -182,7 +207,11 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      FunctionsEmulator.createHubServer(
+        new WorkQueue(WorkMode.CONCURRENT),
+        FunctionRuntimeBundles.template,
+        process.execPath
+      )
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a?hello=world")
       .expect(200)

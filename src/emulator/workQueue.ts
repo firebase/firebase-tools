@@ -27,7 +27,7 @@ export class WorkQueue {
 
   /**
    * Submit an entry to the queue and run it according to the WorkMode.
-   * 
+   *
    * Note: make sure start() has been called at some point.
    */
   submit(entry: Work) {
