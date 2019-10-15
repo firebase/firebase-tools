@@ -261,6 +261,7 @@ describe("extensions", () => {
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
         MY_PARAM: "value",
       });
+      
       expect(nock.isDone()).to.be.true;
     });
 
@@ -276,6 +277,7 @@ describe("extensions", () => {
         .reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
+
       expect(nock.isDone()).to.be.true;
     });
 
@@ -288,6 +290,7 @@ describe("extensions", () => {
       await expect(
         extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
+
       expect(nock.isDone()).to.be.true;
     });
   });
