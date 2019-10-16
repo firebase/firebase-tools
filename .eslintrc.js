@@ -29,6 +29,8 @@ module.exports = {
         {
             "files": ["*.ts"],
             "extends": [
+                // All rules after what would be `eslint:recommended` above
+                // need to be re-iterated here (since they override eachother).
                 "plugin:@typescript-eslint/eslint-recommended",
                 "plugin:@typescript-eslint/recommended",
                 "plugin:@typescript-eslint/recommended-requiring-type-checking",
@@ -37,6 +39,7 @@ module.exports = {
                 "prettier/@typescript-eslint",
             ],
             "rules": Object.assign(
+                // Typescript specific rules.
                 {
                     "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
@@ -53,6 +56,7 @@ module.exports = {
                     "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
                 },
+                // eslint rules.
                 {
                     "camelcase": "warn", // TODO(bkendall): remove, allow to error.
                     "new-cap": "warn", // TODO(bkendall): remove, allow to error.
