@@ -16,6 +16,7 @@ module.exports = {
         "prettier/prettier": "error",
         "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
         "no-restricted-globals": ["error", "name", "length"],
+        "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
         "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.

@@ -11,7 +11,7 @@ const logger = require("../logger");
 const path = require("path");
 
 function runCommand(command, childOptions) {
-  const escapedCommand = command.replace(/"/g, '\\"');
+  const escapedCommand = command.replace(/\"/g, '\\"');
   const translatedCommand =
     '"' +
     process.execPath +

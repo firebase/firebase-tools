@@ -148,7 +148,7 @@ export async function getValidInstanceId(
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId;
-  const instanceIdRegex = /^[a-z][a-z\d-]*[a-z\d]$/;
+  const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
     newInstanceId = await promptOnce({
       type: "input",
