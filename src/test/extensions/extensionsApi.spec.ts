@@ -192,7 +192,7 @@ describe("extensions", () => {
 
       await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
       expect(nock.isDone()).to.be.true;
-    });
+    }).timeout(2000);
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
@@ -232,6 +232,65 @@ describe("extensions", () => {
       await expect(extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
         FirebaseError
       );
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("updateInstance", () => {
+    const testSource: extensionsApi.ExtensionSource = {
+      name: "abc123",
+      packageUri: "www.google.com/pack.zip",
+      hash: "abc123",
+      spec: { name: "abc123", resources: [], sourceUrl: "www.google.com/pack.zip" },
+    };
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should include config.param in updateMask is params are changed", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name,config.params" })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: false })
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true });
+
+      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
+        MY_PARAM: "value",
+      });
+
+      expect(nock.isDone()).to.be.true;
+    }).timeout(2000);
+
+    it("should not include config.param in updateMask is params aren't changed", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name" })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: false })
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true });
+
+      await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
+
+      expect(nock.isDone()).to.be.true;
+    }).timeout(2000);
+
+    it("should throw a FirebaseError if update returns an error response", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.source.name,config.params" })
+        .reply(500);
+
+      await expect(
+        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
+
       expect(nock.isDone()).to.be.true;
     });
   });
