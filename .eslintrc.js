@@ -44,6 +44,7 @@ module.exports = {
                     "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
+                    "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
                     "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
                     "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
