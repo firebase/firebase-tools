@@ -1,4 +1,4 @@
-const globalRules = {
+const GLOBAL_RULES = {
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-restricted-globals": ["error", "name", "length"], // This is a keeper.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
@@ -24,7 +24,7 @@ module.exports = {
         {
             "prettier/prettier": "error",
         },
-        globalRules),
+        GLOBAL_RULES),
     "overrides": [
         {
             "files": ["*.ts"],
@@ -62,7 +62,7 @@ module.exports = {
                     "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
                     "require-atomic-updates": "warn", // TODO(bkendall): remove, allow to error.
                 }, 
-                globalRules),
+                GLOBAL_RULES),
         },
         {
             "files": ["*.js"],
