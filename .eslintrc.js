@@ -1,14 +1,3 @@
-const GLOBAL_RULES = {
-    "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
-    "no-restricted-globals": ["error", "name", "length"], // This is a keeper.
-    "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
-    "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
-    "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
-    "prefer-spread": "warn", // TODO(bkendall): remove, allow to error.
-    "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
-    "valid-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
-}
-
 module.exports = {
     "env": {
         "es6": true,
@@ -16,62 +5,65 @@ module.exports = {
     },
     "extends": [
         "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
         "google",
         "prettier",
         "prettier/@typescript-eslint",
     ],
-    "rules": Object.assign(
-        {
-            "prettier/prettier": "error",
-        },
-        GLOBAL_RULES),
+    "rules": {
+        "prettier/prettier": "error",
+        "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
+        "no-restricted-globals": ["error", "name", "length"],
+        "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
+        "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
+        "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
+        "prefer-spread": "warn", // TODO(bkendall): remove, allow to error.
+        "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
+        "valid-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
+    },
     "overrides": [
         {
             "files": ["*.ts"],
-            "extends": [
-                // All rules after what would be `eslint:recommended` above
-                // need to be re-iterated here (since they override eachother).
-                "plugin:@typescript-eslint/eslint-recommended",
-                "plugin:@typescript-eslint/recommended",
-                "plugin:@typescript-eslint/recommended-requiring-type-checking",
-                "google",
-                "prettier",
-                "prettier/@typescript-eslint",
-            ],
-            "rules": Object.assign(
-                // Typescript specific rules.
-                {
-                    "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
-                    "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/prefer-string-starts-ends-with": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
-                    "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
-                },
-                // eslint rules.
-                {
-                    "camelcase": "warn", // TODO(bkendall): remove, allow to error.
-                    "new-cap": "warn", // TODO(bkendall): remove, allow to error.
-                    "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
-                    "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
-                    "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-                    "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
-                    "require-atomic-updates": "warn", // TODO(bkendall): remove, allow to error.
-                }, 
-                GLOBAL_RULES),
+            "rules": {
+                "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
+                "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/prefer-string-starts-ends-with": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
+                "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
+                "camelcase": "warn", // TODO(bkendall): remove, allow to error.
+                "new-cap": "warn", // TODO(bkendall): remove, allow to error.
+                "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
+                "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
+                "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
+                "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
+                "require-atomic-updates": "warn", // TODO(bkendall): remove, allow to error.
+            },
         },
         {
             "files": ["*.js"],
             "rules": {
+                "@typescript-eslint/camelcase": "off",
+                "@typescript-eslint/explicit-function-return-type": "off",
+                "@typescript-eslint/no-empty-function": "off",
+                "@typescript-eslint/no-misused-promises": "off",
+                "@typescript-eslint/no-this-alias": "off",
+                "@typescript-eslint/no-use-before-define": "off",
+                "@typescript-eslint/no-var-requires": "off",
+                "@typescript-eslint/prefer-includes": "off",
+                "@typescript-eslint/prefer-regexp-exec": "off",
+                "@typescript-eslint/unbound-method": "off",
                 "no-extra-boolean-cast": "warn", // TODO(bkendall): remove, allow to error.
                 "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
                 "no-redeclare": "warn", // TODO(bkendall): remove, allow to error.
