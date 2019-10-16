@@ -46,6 +46,20 @@ const TEST_PARAMS_2 = [
     default: "default",
   },
 ];
+const TEST_PARAMS_3 = [
+  {
+    param: "A_PARAMETER",
+    label: "Param",
+    type: ParamType.STRING,
+  },
+  {
+    param: "ANOTHER_PARAMETER",
+    label: "Another Param",
+    default: "default",
+    type: ParamType.STRING,
+    description: "Something new",
+  },
+];
 
 const SPEC = {
   name: "test",
@@ -300,6 +314,29 @@ describe("paramHelper", () => {
           type: "input",
         },
       ]);
+    });
+
+    it("should not prompt the user for params that did not change type or param", async () => {
+      promptStub.resolves("Fail");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_3;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        A_PARAMETER: "value",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub).not.to.have.been.called;
     });
 
     it("should populate the spec with the default value if it is returned by prompt", async () => {
