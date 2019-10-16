@@ -101,11 +101,13 @@ export async function promptForNewParams(
   projectId: string
 ): Promise<any> {
   const firebaseProjectParams = await getFirebaseProjectParams(projectId);
-
-  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), _.isEqual);
+  const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
+    return param1.type === param2.type && param1.param === param2.param;
+  };
+  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), comparer);
   paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
 
-  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), _.isEqual);
+  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), comparer);
   paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
 
   if (paramsDiffDeletions.length) {

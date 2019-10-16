@@ -189,7 +189,7 @@ export interface UpdateOptions {
   projectId: string;
   instanceId: string;
   source: extensionsApi.ExtensionSource;
-  params: { [key: string]: string };
+  params?: { [key: string]: string };
   rolesToAdd: extensionsApi.Role[];
   rolesToRemove: extensionsApi.Role[];
   serviceAccountEmail: string;

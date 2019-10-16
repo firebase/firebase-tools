@@ -11,7 +11,7 @@ import { resolveSource } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
-import { displayChanges, update } from "../extensions/updateHelper";
+import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 
@@ -67,16 +67,19 @@ export default new Command("ext:update <instanceId>")
         _.isEqual
       );
       spinner.start();
-      await update({
+      const updateOptions: UpdateOptions = {
         projectId,
         instanceId,
         source: newSource,
-        params: newParams,
         rolesToAdd: _.get(newSpec, "roles", []),
         rolesToRemove,
         serviceAccountEmail: existingInstance.serviceAccountEmail,
         billingRequired: newSpec.billingRequired,
-      });
+      };
+      if (!_.isEqual(newParams, currentParams)) {
+        updateOptions.params = newParams;
+      }
+      await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
     } catch (err) {
