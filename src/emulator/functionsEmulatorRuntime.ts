@@ -1109,8 +1109,7 @@ async function main(): Promise<void> {
   });
 
   process.on("message", async (message: string) => {
-    // TODO: Log message receipt in a better way
-    console.log("GOT MESSAGE");
+    // TODO: Log message receipt
 
     let runtimeArgs: FunctionsRuntimeArgs;
     try {
@@ -1140,7 +1139,7 @@ async function main(): Promise<void> {
     try {
       await InvokeTrigger(runtimeArgs.frb, triggers);
       await EmulatorLog.waitForFlush();
-      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" });
+      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
     } catch (err) {
       new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
       process.exit(1);

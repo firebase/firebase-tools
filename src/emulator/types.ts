@@ -1,4 +1,5 @@
 import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
 
 export enum Emulators {
   FUNCTIONS = "functions",
@@ -202,6 +203,28 @@ export class EmulatorLog {
       pretty ? 2 : 0
     );
   }
+}
+
+// Should this be a static function of EmulatorLog?  Probably.
+export function waitForLog(
+  emitter: EventEmitter,
+  level: string,
+  type: string,
+  filter?: (el: EmulatorLog) => boolean
+): Promise<EmulatorLog> {
+  return new Promise((resolve, reject) => {
+    emitter.on("log", (el: EmulatorLog) => {
+      const levelTypeMatch = el.level === level && el.type === type;
+      let filterMatch = true;
+      if (filter) {
+        filterMatch = filter(el);
+      }
+
+      if (levelTypeMatch && filterMatch) {
+        resolve(el);
+      }
+    });
+  });
 }
 
 /**

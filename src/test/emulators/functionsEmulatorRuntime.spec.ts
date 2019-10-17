@@ -36,10 +36,11 @@ function InvokeRuntimeWithFunctions(
   opts = opts || {};
   opts.ignore_warnings = true;
 
+  // TODO: I think we always want to invoke a new one here
   return InvokeRuntime(process.execPath, frb, {
     ...opts,
     serializedTriggers,
-  });
+  }).runtime;
 }
 
 /**
