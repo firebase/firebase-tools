@@ -175,6 +175,7 @@ var _validateRequiredParameters = function(options) {
         );
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
+    case "MD5":
     case "SHA1":
     case "SHA256":
     case "SHA512":
