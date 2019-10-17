@@ -179,10 +179,12 @@ var _validateRequiredParameters = function(options) {
     case "SHA1":
     case "SHA256":
     case "SHA512":
+      // MD5 is [0,8192] but SHA1, SHA256, and SHA512 are [1,8192]
       roundsNum = parseInt(options.rounds, 10);
-      if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 8192) {
+      var minRounds = hashAlgo === "MD5" ? 0 : 1;
+      if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
         return utils.reject(
-          "Must provide valid rounds(0..8192) for hash algorithm " + options.hashAlgo,
+          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
           { exit: 1 }
         );
       }

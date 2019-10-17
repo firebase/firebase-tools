@@ -1,0 +1,1 @@
+* Fixes a bug where rounds=0 was accepted for SHA1 hashes (#1617).
