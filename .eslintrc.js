@@ -19,7 +19,6 @@ module.exports = {
         "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
-        "prefer-spread": "warn", // TODO(bkendall): remove, allow to error.
         "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
         "valid-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
     },
@@ -64,11 +63,8 @@ module.exports = {
                 "@typescript-eslint/prefer-includes": "off",
                 "@typescript-eslint/prefer-regexp-exec": "off",
                 "@typescript-eslint/unbound-method": "off",
-                "no-extra-boolean-cast": "warn", // TODO(bkendall): remove, allow to error.
                 "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
-                "no-redeclare": "warn", // TODO(bkendall): remove, allow to error.
                 "no-var": "warn", // TODO(bkendall): remove, allow to error.
-                "prefer-rest-params": "warn", // TODO(bkendall): remove, allow to error.
             },
         },
         {
