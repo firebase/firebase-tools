@@ -58,6 +58,14 @@ module.exports = new Command("serve")
   })
   .action((options) => {
     options.targets = filterOnly(VALID_EMULATORS, options.only);
+    if (options.targets.indexOf("database") >= 0 || options.targets.indexOf("firestore") >= 0) {
+      utils.logWarning(
+        `${clc.bold(
+          "firebase emulators:start"
+        )} is the preferred way to start the Realtime Database or Cloud Firestore emulators.`
+      );
+    }
+
     if (options.targets.length > 0) {
       return serve(options);
     }
