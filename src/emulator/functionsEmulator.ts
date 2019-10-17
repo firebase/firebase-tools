@@ -24,6 +24,7 @@ import {
   FunctionsRuntimeFeatures,
   getFunctionRegion,
   getFunctionService,
+  FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -59,6 +60,8 @@ export interface FunctionsRuntimeInstance {
   exit: Promise<number>;
   // A function to manually kill the child process
   kill: (signal?: string) => void;
+  // Send an IPC message to the child process
+  send: (args: FunctionsRuntimeArgs) => boolean;
 }
 
 interface RequestWithRawBody extends express.Request {
@@ -70,6 +73,65 @@ interface TriggerDescription {
   type: string;
   details?: string;
   ignored?: boolean;
+}
+
+enum RuntimeWorkerState {
+  IDLE,
+  BUSY,
+  DONE,
+}
+
+class RuntimeWorker {
+  state: RuntimeWorkerState;
+  triggerId: string;
+  runtime: FunctionsRuntimeInstance;
+
+  constructor(triggerId: string, runtime: FunctionsRuntimeInstance) {
+    this.state = RuntimeWorkerState.IDLE;
+    this.triggerId = triggerId;
+    this.runtime = runtime;
+
+    this.runtime.events.on("log", (el: EmulatorLog) => {
+      if (el.type === "runtime-status") {
+        if (el.data.state === "idle") {
+          this.state = RuntimeWorkerState.IDLE;
+        }
+      }
+    });
+
+    this.runtime.exit.then(() => {
+      this.state = RuntimeWorkerState.DONE;
+    });
+  }
+
+  execute(frb: FunctionsRuntimeBundle, serializedTriggers?: string) {
+    this.state = RuntimeWorkerState.BUSY;
+
+    // TODO: handle errors
+    // TODO: what about serialized triggers
+    const args: FunctionsRuntimeArgs = { frb, serializedTriggers };
+    this.runtime.send(args);
+  }
+}
+
+class RuntimeWorkerPool {
+  workers: { [triggerId: string]: Array<RuntimeWorker> } = {};
+
+  getIdleWorker(triggerId: string): RuntimeWorker | undefined {
+    // TODO: Clean up 'DONE' workers
+    if (!this.workers[triggerId]) {
+      this.workers[triggerId] = [];
+      return undefined;
+    }
+
+    for (const worker of this.workers[triggerId]) {
+      if (worker.state === RuntimeWorkerState.IDLE) {
+        return worker;
+      }
+    }
+
+    return undefined;
+  }
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -777,11 +839,7 @@ export function InvokeRuntime(
   const emitter = new EventEmitter();
   const metadata: { [key: string]: any } = {};
 
-  const args = [
-    path.join(__dirname, "functionsEmulatorRuntime"),
-    JSON.stringify(frb),
-    opts.serializedTriggers || "",
-  ];
+  const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
   if (opts.ignore_warnings) {
     args.unshift("--no-warnings");
@@ -818,12 +876,12 @@ export function InvokeRuntime(
   }
 
   const ready = waitForLog(emitter, "SYSTEM", "runtime-status", (log) => {
-    return log.text === "ready";
+    return log.data.state === "ready";
   }).then((el) => {
     metadata.socketPath = el.data.socketPath;
   });
 
-  return {
+  const result = {
     exit: new Promise<number>((resolve) => {
       runtime.on("exit", resolve);
     }),
@@ -834,7 +892,17 @@ export function InvokeRuntime(
       runtime.kill(signal);
       emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
     },
+    send: (args: FunctionsRuntimeArgs) => {
+      return runtime.send(JSON.stringify(args));
+    },
   };
+
+  result.send({
+    frb,
+    serializedTriggers: opts.serializedTriggers,
+  });
+
+  return result;
 }
 
 function onData(

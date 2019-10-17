@@ -10,6 +10,7 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
+  FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
@@ -20,6 +21,8 @@ import { URL } from "url";
 import * as _ from "lodash";
 
 const DATABASE_APP = "__database__";
+
+let triggers: EmulatedTriggerMap | undefined;
 
 let hasInitializedFirestore = false;
 let hasAccessedFirestore = false;
@@ -844,7 +847,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       functionRouter
     );
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", socketPath }).log();
     });
   });
 }
@@ -853,7 +856,7 @@ async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
+  new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
 
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
@@ -954,17 +957,63 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", msg, data).log();
 }
 
-async function main(): Promise<void> {
-  const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
-  const serializedFunctionTrigger = process.argv[3];
+async function InvokeTrigger(
+  frb: FunctionsRuntimeBundle,
+  triggers: EmulatedTriggerMap
+): Promise<void> {
+  if (!frb.triggerId) {
+    return Promise.reject("frb.triggerId unexpectedly null");
+  }
 
-  logDebug("Functions runtime initialized.", {
-    cwd: process.cwd(),
-    node_version: process.versions.node,
-  });
+  const trigger = triggers[frb.triggerId];
+  logDebug("", trigger.definition);
+  const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
-  const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
+  logDebug(`Running ${frb.triggerId} in mode ${mode}`);
 
+  let seconds = 0;
+  const timerId = setInterval(() => {
+    seconds++;
+  }, 1000);
+
+  let timeoutId;
+  if (isFeatureEnabled(frb, "timeout")) {
+    timeoutId = setTimeout(() => {
+      new EmulatorLog(
+        "WARN",
+        "runtime-status",
+        `Your function timed out after ~${trigger.definition.timeout ||
+          "60s"}. To configure this timeout, see
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+      ).log();
+      return Promise.reject("Function timed out.");
+    }, trigger.timeoutMs);
+  }
+
+  switch (mode) {
+    case "BACKGROUND":
+      await ProcessBackground(frb, triggers[frb.triggerId]);
+      break;
+    case "HTTPS":
+      await ProcessHTTPS(frb, triggers[frb.triggerId]);
+      break;
+  }
+
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+  clearInterval(timerId);
+  new EmulatorLog(
+    "INFO",
+    "runtime-status",
+    `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
+  ).log();
+}
+
+async function InitializeRuntime(
+  frb: FunctionsRuntimeBundle,
+  serializedFunctionTrigger?: string
+): Promise<EmulatedTriggerMap | undefined> {
   if (frb.triggerId) {
     new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
       frb,
@@ -981,7 +1030,7 @@ async function main(): Promise<void> {
       "runtime-status",
       `Your functions could not be parsed due to an issue with your node_modules (see above)`
     ).log();
-    return;
+    return undefined;
   }
 
   InitializeEnvironmentalVariables(frb);
@@ -1022,7 +1071,7 @@ async function main(): Promise<void> {
       triggerModule = require(frb.cwd);
     } catch (err) {
       await moduleResolutionDetective(frb, err);
-      return;
+      return undefined;
     }
   }
 
@@ -1032,78 +1081,75 @@ async function main(): Promise<void> {
   const triggerLogData = { triggers, triggerDefinitions };
   new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
 
+  // TODO: Remove this
   if (!frb.triggerId) {
     // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
     // expected, so we don't have any function to invoke.
-    return;
+    return triggers;
   }
 
+  // TODO: Move this
   if (!triggers[frb.triggerId]) {
     new EmulatorLog(
       "FATAL",
       "runtime-status",
       `Could not find trigger "${frb.triggerId}" in your functions directory.`
     ).log();
-    return;
   } else {
     logDebug(`Trigger "${frb.triggerId}" has been found, beginning invocation!`);
   }
 
-  const trigger = triggers[frb.triggerId];
-  logDebug("", trigger.definition);
-  const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
+  return triggers;
+}
 
-  logDebug(`Running ${frb.triggerId} in mode ${mode}`);
+async function main(): Promise<void> {
+  logDebug("Functions runtime initialized.", {
+    cwd: process.cwd(),
+    node_version: process.versions.node,
+  });
 
-  let seconds = 0;
-  const timerId = setInterval(() => {
-    seconds++;
-  }, 1000);
+  process.on("message", async (message: string) => {
+    // TODO: Log message receipt in a better way
+    console.log("GOT MESSAGE");
 
-  let timeoutId;
-  if (isFeatureEnabled(frb, "timeout")) {
-    timeoutId = setTimeout(() => {
-      new EmulatorLog(
-        "WARN",
-        "runtime-status",
-        `Your function timed out after ~${trigger.definition.timeout ||
-          "60s"}. To configure this timeout, see
-      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
-      ).log();
-      process.exit();
-    }, trigger.timeoutMs);
-  }
+    let runtimeArgs: FunctionsRuntimeArgs;
+    try {
+      runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
+    } catch (e) {
+      // TODO: Handle
+      return;
+    }
 
-  switch (mode) {
-    case "BACKGROUND":
-      await ProcessBackground(frb, triggers[frb.triggerId]);
-      break;
-    case "HTTPS":
-      await ProcessHTTPS(frb, triggers[frb.triggerId]);
-      break;
-  }
+    // This part is where we do the initialization
+    if (!triggers) {
+      triggers = await InitializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
+    }
 
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-  clearInterval(timerId);
-  new EmulatorLog(
-    "INFO",
-    "runtime-status",
-    `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
-  ).log();
+    // If we don't have triggers by now, we can't run
+    // TODO: Instead of returning undefined should the above function try/catch?
+    if (!triggers) {
+      process.exit(1);
+      return;
+    }
+
+    // If there's no trigger id it's just a diagnostic call
+    if (!runtimeArgs.frb.triggerId) {
+      return;
+    }
+
+    try {
+      await InvokeTrigger(runtimeArgs.frb, triggers);
+      await EmulatorLog.waitForFlush();
+      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" });
+    } catch (err) {
+      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+      process.exit(1);
+    }
+  });
 }
 
 if (require.main === module) {
-  main()
-    .then(() => {
-      return EmulatorLog.waitForFlush();
-    })
-    .then(() => {
-      process.exit(0);
-    })
-    .catch((err) => {
-      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      process.exit(1);
-    });
+  // TODO: How do we keep the process around?
+  // TODO: Who is waiting for us to exit?
+  main();
 }
