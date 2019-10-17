@@ -213,7 +213,7 @@ export function waitForLog(
   filter?: (el: EmulatorLog) => boolean
 ): Promise<EmulatorLog> {
   return new Promise((resolve, reject) => {
-    emitter.on("log", (el: EmulatorLog) => {
+    const listener = (el: EmulatorLog) => {
       const levelTypeMatch = el.level === level && el.type === type;
       let filterMatch = true;
       if (filter) {
@@ -221,9 +221,11 @@ export function waitForLog(
       }
 
       if (levelTypeMatch && filterMatch) {
+        emitter.removeListener("log", listener);
         resolve(el);
       }
-    });
+    };
+    emitter.on("log", listener);
   });
 }
 

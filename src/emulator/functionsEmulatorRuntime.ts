@@ -962,7 +962,7 @@ async function InvokeTrigger(
   triggers: EmulatedTriggerMap
 ): Promise<void> {
   if (!frb.triggerId) {
-    return Promise.reject("frb.triggerId unexpectedly null");
+    throw new Error("frb.triggerId unexpectedly null");
   }
 
   const trigger = triggers[frb.triggerId];
@@ -986,7 +986,7 @@ async function InvokeTrigger(
           "60s"}. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
-      return Promise.reject("Function timed out.");
+      throw new Error("Function timed out.");
     }, trigger.timeoutMs);
   }
 
@@ -1110,6 +1110,7 @@ async function main(): Promise<void> {
 
   process.on("message", async (message: string) => {
     // TODO: Log message receipt
+    console.log("got message, size=", message.length);
 
     let runtimeArgs: FunctionsRuntimeArgs;
     try {
@@ -1137,9 +1138,13 @@ async function main(): Promise<void> {
     }
 
     try {
+      console.log("1 - INVOKING");
       await InvokeTrigger(runtimeArgs.frb, triggers);
-      await EmulatorLog.waitForFlush();
+      console.log("2 - IDLING");
       new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
+      console.log("3 - FLUSHING");
+      await EmulatorLog.waitForFlush();
+      console.log("4 - DONE");
     } catch (err) {
       new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
       process.exit(1);

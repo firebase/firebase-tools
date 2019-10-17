@@ -144,20 +144,24 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
+      // TODO: Restore this!
       // This "waiter" must be established before we block on "ready" since we expect
       // this log entry to happen during the readying.
-      const triggerLogPromise = waitForLog(worker.runtime.events, "SYSTEM", "triggers-parsed");
+      // const triggerLogPromise = waitForLog(worker.runtime.events, "SYSTEM", "triggers-parsed");
 
       EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
-      await worker.runtime.ready;
+      await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
+        return log.data.state === "ready";
+      });
       EmulatorLogger.log("DEBUG", JSON.stringify(worker.runtime.metadata));
 
-      const triggerLog = await triggerLogPromise;
-      const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
+      // TODO: Restore this!
+      // const triggerLog = await triggerLogPromise;
+      // const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
 
-      const trigger = triggerMap[triggerId];
-      const service = getFunctionService(trigger.definition);
-      track(EVENT_INVOKE, service);
+      // const trigger = triggerMap[triggerId];
+      // const service = getFunctionService(trigger.definition);
+      // track(EVENT_INVOKE, service);
 
       await worker.waitForIdleOrExit();
       return res.json({ status: "acknowledged" });
@@ -182,13 +186,18 @@ export class FunctionsEmulator implements EmulatorInstance {
         nodeBinary
       );
 
+      // TODO: Need to do much more careful management of these listeners
       worker.runtime.events.on("log", (el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.status(500).send(el.text);
         }
       });
 
-      await worker.runtime.ready;
+      const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
+        return log.data.state === "ready";
+      });
+      worker.runtime.metadata = log.data.socketPath;
+
       logger.debug(JSON.stringify(worker.runtime.metadata));
       track(EVENT_INVOKE, "https");
 
@@ -289,7 +298,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const worker = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
-    worker.runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
+    // TODO: Why did we use the bind form?
+    // worker.runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
     return worker;
   }
 
@@ -832,6 +842,7 @@ export function InvokeRuntime(
     }
   }
 
+  // TODO: Hate this, never liked it
   const ready = waitForLog(emitter, "SYSTEM", "runtime-status", (log) => {
     return log.data.state === "ready";
   }).then((el) => {
@@ -856,6 +867,9 @@ export function InvokeRuntime(
 
   console.log("CREATING NEW WORKER");
   const newWorker = WORKER_POOL.addWorker(frb.triggerId, runtime);
+  newWorker.runtime.events.on("log", (log: EmulatorLog) => {
+    FunctionsEmulator.handleRuntimeLog(log);
+  });
   newWorker.execute(frb, opts.serializedTriggers);
   return newWorker;
 }
