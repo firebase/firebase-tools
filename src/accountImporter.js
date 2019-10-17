@@ -176,7 +176,7 @@ var _validateRequiredParameters = function(options) {
       }
       return { hashAlgo: hashAlgo, hashKey: options.hashKey, valid: true };
     case "SHA1":
-      var roundsNum = parseInt(options.rounds, 10);
+      roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 1 || roundsNum > 8192) {
         return utils.reject(
           "Must provide valid rounds(1..8192) for hash algorithm " + options.hashAlgo,
