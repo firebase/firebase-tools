@@ -138,7 +138,8 @@ module.exports = function(context, options, payload) {
   });
   var uploadedNames = _.map(functionsInfo, "name");
   var functionFilterGroups = helper.getFilterGroups(options);
-  var deleteReleaseNames, existingScheduledFunctions;
+  var deleteReleaseNames;
+  var existingScheduledFunctions;
 
   delete payload.functions;
   return gcp.cloudfunctions

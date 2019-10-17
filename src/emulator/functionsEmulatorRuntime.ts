@@ -11,6 +11,7 @@ import {
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
+import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
@@ -85,10 +86,11 @@ interface ModuleResolution {
   resolution?: string;
 }
 
-interface ModuleVersion {
-  major: number;
-  minor: number;
-  patch: number;
+interface SuccessfulModuleResolution {
+  declared: true;
+  installed: true;
+  version: string;
+  resolution: string;
 }
 
 interface ProxyTarget extends Object {
@@ -246,10 +248,26 @@ async function resolveDeveloperNodeModule(
   return moduleResolution;
 }
 
+async function assertResolveDeveloperNodeModule(
+  frb: FunctionsRuntimeBundle,
+  name: string
+): Promise<SuccessfulModuleResolution> {
+  const resolution = await resolveDeveloperNodeModule(frb, name);
+  if (
+    !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
+  ) {
+    throw new Error(
+      `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`
+    );
+  }
+
+  return resolution as SuccessfulModuleResolution;
+}
+
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: 8 },
-    { name: "firebase-functions", isDev: false, minVersion: 3 },
+    { name: "firebase-admin", isDev: false, minVersion: "8.0.0" },
+    { name: "firebase-functions", isDev: false, minVersion: "3.0.0" },
   ];
 
   for (const modBundle of modBundles) {
@@ -268,8 +286,7 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
       return false;
     }
 
-    const versionInfo = parseVersionString(resolution.version);
-    if (versionInfo.major < modBundle.minVersion) {
+    if (compareVersionStrings(resolution.version, modBundle.minVersion) < 0) {
       new EmulatorLog("SYSTEM", "out-of-date-module", "", modBundle).log();
       return false;
     }
@@ -297,23 +314,6 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   } catch (err) {
     return undefined;
   }
-}
-
-/**
- * Parse a semver version string into parts, filling in 0s where empty.
- */
-function parseVersionString(version?: string): ModuleVersion {
-  const parts = (version || "0").split(".");
-
-  // Make sure "parts" always has 3 elements. Extras are ignored.
-  parts.push("0");
-  parts.push("0");
-
-  return {
-    major: parseInt(parts[0], 10),
-    minor: parseInt(parts[1], 10),
-    patch: parseInt(parts[2], 10),
-  };
 }
 
 /*
@@ -433,11 +433,10 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
 async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const firebaseFunctionsResolution = await resolveDeveloperNodeModule(frb, "firebase-functions");
-  if (!firebaseFunctionsResolution.resolution) {
-    throw new Error("Could not resolve 'firebase-functions'");
-  }
-
+  const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(
+    frb,
+    "firebase-functions"
+  );
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution
@@ -445,9 +444,8 @@ async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  const functionsVersion = parseVersionString(firebaseFunctionsResolution.version!);
   let methodName = "_onRequestWithOpts";
-  if (functionsVersion.major >= 3 && functionsVersion.minor >= 1) {
+  if (compareVersionStrings(firebaseFunctionsResolution.version, "3.1.0") >= 0) {
     methodName = "_onRequestWithOptions";
   }
 
@@ -514,11 +512,11 @@ function getDefaultConfig(): any {
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
 async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
-  const adminResolution = await resolveDeveloperNodeModule(frb, "firebase-admin");
-  if (!adminResolution.resolution) {
-    throw new Error("Could not resolve 'firebase-admin'");
-  }
+  const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
   const localAdminModule = require(adminResolution.resolution);
+
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const localFunctionsModule = require(functionsResolution.resolution);
 
   // Set up global proxied Firestore
   proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
@@ -557,6 +555,20 @@ async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       };
       databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
       proxiedDatabase = makeProxiedDatabase(adminModuleTarget);
+
+      // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
+      // point to the right place.
+      if (localFunctionsModule.app.setEmulatedAdminApp) {
+        localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
+      } else {
+        new EmulatorLog(
+          "WARN_ONCE",
+          "runtime-status",
+          `You're using firebase-functions v${
+            functionsResolution.version
+          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`
+        ).log();
+      }
 
       return defaultApp;
     })
@@ -679,6 +691,7 @@ function warnAboutFirestoreProd(): void {
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
+
   hasAccessedFirestore = true;
 }
 
@@ -688,10 +701,11 @@ function warnAboutDatabaseProd(): void {
   }
 
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
+
   hasAccessedDatabase = true;
 }
 
