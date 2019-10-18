@@ -1084,25 +1084,6 @@ async function InitializeRuntime(
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
-
-  // TODO: Remove this
-  if (!frb.triggerId) {
-    // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
-    // expected, so we don't have any function to invoke.
-    return triggers;
-  }
-
-  // TODO: Move this
-  if (!triggers[frb.triggerId]) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Could not find trigger "${frb.triggerId}" in your functions directory.`
-    ).log();
-  } else {
-    logDebug(`Trigger "${frb.triggerId}" has been found, beginning invocation!`);
-  }
-
   return triggers;
 }
 
@@ -1122,7 +1103,8 @@ async function main(): Promise<void> {
     try {
       runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
     } catch (e) {
-      // TODO(samstern): Handle
+      new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
+      await flushAndExit(1);
       return;
     }
 
@@ -1130,8 +1112,7 @@ async function main(): Promise<void> {
       triggers = await InitializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
     }
 
-    // If we don't have triggers by now, we can't run
-    // TODO: Instead of returning undefined should the above function try/catch?
+    // If we don't have triggers by now, we can't run.
     if (!triggers) {
       await flushAndExit(1);
       return;
@@ -1141,6 +1122,16 @@ async function main(): Promise<void> {
     if (!runtimeArgs.frb.triggerId) {
       await flushAndExit(0);
       return;
+    }
+
+    if (!triggers[runtimeArgs.frb.triggerId]) {
+      new EmulatorLog(
+        "FATAL",
+        "runtime-status",
+        `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
+      ).log();
+    } else {
+      logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
     }
 
     try {
@@ -1162,7 +1153,5 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  // TODO: How do we keep the process around?
-  // TODO: Who is waiting for us to exit?
   main();
 }

@@ -42,6 +42,11 @@ const EVENT_INVOKE = "functions:invoke";
  */
 const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
 
+/**
+ * Global pool of FunctionsRuntimeWorkers.
+ */
+const WORKER_POOL = new RuntimeWorkerPool();
+
 export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
@@ -75,9 +80,6 @@ interface TriggerDescription {
   details?: string;
   ignored?: boolean;
 }
-
-// TODO: Global state bad?
-const WORKER_POOL = new RuntimeWorkerPool();
 
 export class FunctionsEmulator implements EmulatorInstance {
   static getHttpFunctionUrl(
@@ -144,7 +146,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
-      // TODO: Is this a race condition?  Could 'ready' happen before we're listening for it?
+      // TODO(samstern): Is this a race condition?  Could 'ready' happen before we're listening for it?
       EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
       const log = await worker.waitForSystemLog((evt) => {
         return evt.data.state === "ready";
@@ -241,7 +243,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // If the original request had a body, forward that over the connection.
       // TODO: Why is this not handled by the pipe?
-      if (reqBody.length > 0) {
+      if (reqBody) {
         runtimeReq.write(reqBody);
         runtimeReq.end();
       }
