@@ -55,9 +55,10 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
-  await EmulatorLog.waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
+  const log = await EmulatorLog.waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
     return el.data.state === "ready";
   });
+  runtime.metadata.socketPath = log.data.socketPath;
 
   const dataPromise = new Promise<string>((resolve, reject) => {
     const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
@@ -277,8 +278,10 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
+        console.log('Calling function');
         const data = await CallHTTPSFunction(runtime, FunctionRuntimeBundles.onRequest);
 
+        console.log('Okie dokie');
         const info = JSON.parse(data);
         expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
         expect(info.appDatabaseRef).to.eq(info.adminDatabaseRef);
