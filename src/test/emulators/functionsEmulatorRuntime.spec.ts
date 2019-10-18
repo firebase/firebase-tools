@@ -55,6 +55,7 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
+  // TODO
   await runtime.ready;
   const dataPromise = new Promise<string>((resolve, reject) => {
     const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;

@@ -196,7 +196,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
         return log.data.state === "ready";
       });
-      worker.runtime.metadata = log.data.socketPath;
+      worker.runtime.metadata.socketPath = log.data.socketPath;
 
       logger.debug(JSON.stringify(worker.runtime.metadata));
       track(EVENT_INVOKE, "https");
@@ -206,9 +206,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         `[functions] Runtime ready! Sending request! ${JSON.stringify(worker.runtime.metadata)}`
       );
 
-      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
-      // situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
-      // consuming yet another port which is probably faster as well.
+      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
+      // cause unexpected situations - not to mention CORS troubles and this enables us to use
+      // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
       const runtimeReq = http.request(
         {
           method,

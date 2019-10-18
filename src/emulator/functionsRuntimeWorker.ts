@@ -21,14 +21,12 @@ export class RuntimeWorker {
     this.runtime.events.on("log", (log: EmulatorLog) => {
       if (log.type === "runtime-status") {
         if (log.data.state === "idle") {
-          console.log("Worker going idle");
           this.state = RuntimeWorkerState.IDLE;
         }
       }
     });
 
     this.runtime.exit.then(() => {
-      console.log("Worker exiting");
       this.state = RuntimeWorkerState.DONE;
     });
   }
@@ -38,8 +36,6 @@ export class RuntimeWorker {
 
     // TODO: handle errors
     const args: FunctionsRuntimeArgs = { frb, serializedTriggers };
-
-    console.log("executing: " + frb.triggerId);
     this.runtime.send(args);
   }
 

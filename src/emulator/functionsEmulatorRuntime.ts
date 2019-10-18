@@ -1003,11 +1003,15 @@ async function InvokeTrigger(
     clearTimeout(timeoutId);
   }
   clearInterval(timerId);
+
   new EmulatorLog(
     "INFO",
     "runtime-status",
     `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
   ).log();
+
+  // This signals that we could take another request
+  new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
 }
 
 async function InitializeRuntime(
@@ -1110,7 +1114,6 @@ async function main(): Promise<void> {
 
   process.on("message", async (message: string) => {
     // TODO: Log message receipt
-    console.log("got message, size=", message.length);
 
     let runtimeArgs: FunctionsRuntimeArgs;
     try {
@@ -1138,13 +1141,8 @@ async function main(): Promise<void> {
     }
 
     try {
-      console.log("1 - INVOKING");
       await InvokeTrigger(runtimeArgs.frb, triggers);
-      console.log("2 - IDLING");
-      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
-      console.log("3 - FLUSHING");
       await EmulatorLog.waitForFlush();
-      console.log("4 - DONE");
     } catch (err) {
       new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
       process.exit(1);
