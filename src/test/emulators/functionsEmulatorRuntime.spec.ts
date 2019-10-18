@@ -4,7 +4,7 @@ import {
   InvokeRuntime,
   InvokeRuntimeOpts,
 } from "../../emulator/functionsEmulator";
-import { EmulatorLog, waitForLog } from "../../emulator/types";
+import { EmulatorLog } from "../../emulator/types";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
@@ -55,7 +55,7 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
-  await waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
+  await EmulatorLog.waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
     return el.data.state === "ready";
   });
 

@@ -95,6 +95,29 @@ export class EmulatorLog {
     });
   }
 
+  static waitForLog(
+    emitter: EventEmitter,
+    level: string,
+    type: string,
+    filter?: (el: EmulatorLog) => boolean
+  ): Promise<EmulatorLog> {
+    return new Promise((resolve, reject) => {
+      const listener = (el: EmulatorLog) => {
+        const levelTypeMatch = el.level === level && el.type === type;
+        let filterMatch = true;
+        if (filter) {
+          filterMatch = filter(el);
+        }
+
+        if (levelTypeMatch && filterMatch) {
+          emitter.removeListener("log", listener);
+          resolve(el);
+        }
+      };
+      emitter.on("log", listener);
+    });
+  }
+
   static fromJSON(json: string): EmulatorLog {
     let parsedLog;
     let isNotJSON = false;
@@ -203,30 +226,6 @@ export class EmulatorLog {
       pretty ? 2 : 0
     );
   }
-}
-
-// Should this be a static function of EmulatorLog?  Probably.
-export function waitForLog(
-  emitter: EventEmitter,
-  level: string,
-  type: string,
-  filter?: (el: EmulatorLog) => boolean
-): Promise<EmulatorLog> {
-  return new Promise((resolve, reject) => {
-    const listener = (el: EmulatorLog) => {
-      const levelTypeMatch = el.level === level && el.type === type;
-      let filterMatch = true;
-      if (filter) {
-        filterMatch = filter(el);
-      }
-
-      if (levelTypeMatch && filterMatch) {
-        emitter.removeListener("log", listener);
-        resolve(el);
-      }
-    };
-    emitter.on("log", listener);
-  });
 }
 
 /**

@@ -11,7 +11,7 @@ import * as utils from "../utils";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators, waitForLog } from "./types";
+import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types";
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
@@ -136,24 +136,22 @@ export class FunctionsEmulator implements EmulatorInstance {
         proto
       );
 
-      const errorListener = (el: EmulatorLog) => {
+      worker.onLogs((el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.send(el.text);
         }
-      };
-      worker.runtime.events.on("log", errorListener);
+      });
 
       // TODO: Is this a race condition?  Could 'ready' happen before we're listening for it?
       EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
-      const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (evt) => {
+      const log = await worker.waitForSystemLog((evt) => {
         return evt.data.state === "ready";
       });
 
       // For analytics, track the invoked service
       track(EVENT_INVOKE, log.data.service);
 
-      await worker.waitForIdleOrExit();
-      worker.runtime.events.removeListener("log", errorListener);
+      await worker.waitForNotBusy();
       return res.json({ status: "acknowledged" });
     };
 
@@ -176,15 +174,14 @@ export class FunctionsEmulator implements EmulatorInstance {
         nodeBinary
       );
 
-      const errorListener = (el: EmulatorLog) => {
+      worker.onLogs((el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.status(500).send(el.text);
         }
-      };
-      worker.runtime.events.on("log", errorListener);
+      });
 
-      const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
-        return log.data.state === "ready";
+      const log = await worker.waitForSystemLog((el) => {
+        return el.data.state === "ready";
       });
       worker.runtime.metadata.socketPath = log.data.socketPath;
 
@@ -257,8 +254,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           res.end();
         });
 
-      await worker.waitForIdleOrExit();
-      worker.runtime.events.removeListener("log", errorListener);
+      await worker.waitForNotBusy();
     };
 
     // The ordering here is important. The longer routes (background)
@@ -487,7 +483,7 @@ You can probably fix this by running "npm install ${
        */
       const worker = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
 
-      const triggerParseEvent = await waitForLog(
+      const triggerParseEvent = await EmulatorLog.waitForLog(
         worker.runtime.events,
         "SYSTEM",
         "triggers-parsed"
@@ -781,11 +777,11 @@ export function InvokeRuntime(
 ): RuntimeWorker {
   opts = opts || {};
 
-  const worker = WORKER_POOL.getIdleWorker(frb.triggerId);
-  if (worker) {
-    console.log("USING EXISTING WORKER");
-    worker.execute(frb, opts.serializedTriggers);
-    return worker;
+  // If we can use an existing worker there is almost nothing to do.
+  const idleWorker = WORKER_POOL.getIdleWorker(frb.triggerId);
+  if (idleWorker) {
+    idleWorker.execute(frb, opts.serializedTriggers);
+    return idleWorker;
   }
 
   const emitter = new EventEmitter();
@@ -842,13 +838,12 @@ export function InvokeRuntime(
     },
   };
 
-  console.log("CREATING NEW WORKER");
-  const newWorker = WORKER_POOL.addWorker(frb.triggerId, runtime);
-  newWorker.runtime.events.on("log", (log: EmulatorLog) => {
+  const worker = WORKER_POOL.addWorker(frb.triggerId, runtime);
+  worker.onLogs((log: EmulatorLog) => {
     FunctionsEmulator.handleRuntimeLog(log);
-  });
-  newWorker.execute(frb, opts.serializedTriggers);
-  return newWorker;
+  }, true /* listen forever */);
+  worker.execute(frb, opts.serializedTriggers);
+  return worker;
 }
 
 function onData(

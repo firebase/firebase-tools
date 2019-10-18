@@ -1,20 +1,26 @@
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
-import { EmulatorLog, waitForLog } from "./types";
+import { EmulatorLog } from "./types";
 import { FunctionsRuntimeBundle, FunctionsRuntimeArgs } from "./functionsEmulatorShared";
+import { EventEmitter } from "events";
+import { list } from "tar";
 
-export enum RuntimeWorkerState {
-  IDLE,
-  BUSY,
-  DONE,
+type LogListener = (el: EmulatorLog) => any;
+
+enum RuntimeWorkerState {
+  IDLE = "IDLE",
+  BUSY = "BUSY",
+  FINISHED = "FINISHED",
 }
 
 export class RuntimeWorker {
-  state: RuntimeWorkerState;
-  triggerId: string;
-  runtime: FunctionsRuntimeInstance;
+  readonly triggerId: string;
+  readonly runtime: FunctionsRuntimeInstance;
+
+  private logListeners: Array<LogListener> = [];
+  private stateEvents: EventEmitter = new EventEmitter();
+  private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
   constructor(triggerId: string, runtime: FunctionsRuntimeInstance) {
-    this.state = RuntimeWorkerState.IDLE;
     this.triggerId = triggerId;
     this.runtime = runtime;
 
@@ -27,7 +33,7 @@ export class RuntimeWorker {
     });
 
     this.runtime.exit.then(() => {
-      this.state = RuntimeWorkerState.DONE;
+      this.state = RuntimeWorkerState.FINISHED;
     });
   }
 
@@ -37,20 +43,45 @@ export class RuntimeWorker {
     this.runtime.send(args);
   }
 
-  waitForIdleOrExit(): Promise<any> {
-    if (this.state === RuntimeWorkerState.IDLE) {
+  get state(): RuntimeWorkerState {
+    return this._state;
+  }
+
+  set state(state: RuntimeWorkerState) {
+    if (state === RuntimeWorkerState.IDLE) {
+      // Remove all of the log listeners every time we move to IDLE
+      for (const l of this.logListeners) {
+        this.runtime.events.removeListener("log", l);
+      }
+      this.logListeners = [];
+    }
+
+    this._state = state;
+    this.stateEvents.emit(this._state);
+  }
+
+  onLogs(listener: LogListener, forever: boolean = false) {
+    if (!forever) {
+      this.logListeners.push(listener);
+    }
+
+    this.runtime.events.on("log", listener);
+  }
+
+  waitForNotBusy(): Promise<any> {
+    if (this.state !== RuntimeWorkerState.BUSY) {
       return Promise.resolve();
     }
 
     return new Promise((res) => {
-      // Idle event (via log)
-      waitForLog(this.runtime.events, "SYSTEM", "runtime-status", (log: EmulatorLog) => {
-        return log.data.state === "idle";
-      }).then(res);
-
-      // Exit event (via process)
-      this.runtime.exit.then(res);
+      // Finish on either IDLE or FINISHED states
+      this.stateEvents.once(RuntimeWorkerState.IDLE, res);
+      this.stateEvents.once(RuntimeWorkerState.FINISHED, res);
     });
+  }
+
+  waitForSystemLog(filter: (el: EmulatorLog) => boolean): Promise<EmulatorLog> {
+    return EmulatorLog.waitForLog(this.runtime.events, "SYSTEM", "runtime-status", filter);
   }
 }
 
@@ -58,7 +89,7 @@ export class RuntimeWorkerPool {
   workers: { [triggerId: string]: Array<RuntimeWorker> } = {};
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
-    this.clearDoneWorkers();
+    this.cleanUpWorkers();
 
     const key = this.getTriggerKey(triggerId);
     if (!this.workers[key]) {
@@ -92,20 +123,20 @@ export class RuntimeWorkerPool {
     return triggerId || "__diagnostic__";
   }
 
-  private clearDoneWorkers() {
+  private cleanUpWorkers() {
     Object.keys(this.workers).forEach((key: string) => {
       const keyWorkers = this.workers[key];
 
-      // For each done worker, detach any event listeners.
+      // For each finished worker, detach any event listeners.
       for (const w of keyWorkers) {
-        if (w.state === RuntimeWorkerState.DONE) {
+        if (w.state === RuntimeWorkerState.FINISHED) {
           w.runtime.events.removeAllListeners();
         }
       }
 
-      // Drop all 'DONE" workers from the pool
+      // Drop all finished workers from the pool
       const notDoneWorkers = keyWorkers.filter((worker) => {
-        return worker.state !== RuntimeWorkerState.DONE;
+        return worker.state !== RuntimeWorkerState.FINISHED;
       });
       this.workers[key] = notDoneWorkers;
     });
