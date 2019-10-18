@@ -57,7 +57,9 @@ export interface FunctionsRuntimeInstance {
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
-  // A function to manually kill the child process
+  // A function to manually kill the child process as normal cleanup
+  shutdown: () => void;
+  // A function to manually kill the child process in case of errors
   kill: (signal?: string) => void;
   // Send an IPC message to the child process
   send: (args: FunctionsRuntimeArgs) => boolean;
@@ -481,6 +483,11 @@ You can probably fix this by running "npm install ${
 
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
+
+      // Before loading any triggers we need to make sure there are no 'stale' workers
+      // in the pool that would cause us to run old code.
+      WORKER_POOL.refresh();
+
       const worker = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
@@ -829,6 +836,9 @@ export function InvokeRuntime(
     }),
     metadata,
     events: emitter,
+    shutdown: () => {
+      childProcess.kill();
+    },
     kill: (signal?: string) => {
       childProcess.kill(signal);
       emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
