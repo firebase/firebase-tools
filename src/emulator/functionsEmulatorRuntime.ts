@@ -856,7 +856,11 @@ async function ProcessBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
+  const service = trigger.definition.eventTrigger
+    ? trigger.definition.eventTrigger.service
+    : "unknown";
+
+  new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", service }).log();
 
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);

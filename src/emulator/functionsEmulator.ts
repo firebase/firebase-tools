@@ -51,8 +51,6 @@ export interface FunctionsEmulatorArgs {
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
 export interface FunctionsRuntimeInstance {
-  // A promise which is fulfilled when the runtime is ready to accept requests
-  ready: Promise<void>;
   // A map of arbitrary data from the runtime (ports, etc)
   metadata: { [key: string]: any };
   // An emitter which sends our EmulatorLog events from the runtime.
@@ -138,32 +136,24 @@ export class FunctionsEmulator implements EmulatorInstance {
         proto
       );
 
-      worker.runtime.events.on("log", (el: EmulatorLog) => {
+      const errorListener = (el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.send(el.text);
         }
-      });
+      };
+      worker.runtime.events.on("log", errorListener);
 
-      // TODO: Restore this!
-      // This "waiter" must be established before we block on "ready" since we expect
-      // this log entry to happen during the readying.
-      // const triggerLogPromise = waitForLog(worker.runtime.events, "SYSTEM", "triggers-parsed");
-
+      // TODO: Is this a race condition?  Could 'ready' happen before we're listening for it?
       EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
-      await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
-        return log.data.state === "ready";
+      const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (evt) => {
+        return evt.data.state === "ready";
       });
-      EmulatorLogger.log("DEBUG", JSON.stringify(worker.runtime.metadata));
 
-      // TODO: Restore this!
-      // const triggerLog = await triggerLogPromise;
-      // const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
-
-      // const trigger = triggerMap[triggerId];
-      // const service = getFunctionService(trigger.definition);
-      // track(EVENT_INVOKE, service);
+      // For analytics, track the invoked service
+      track(EVENT_INVOKE, log.data.service);
 
       await worker.waitForIdleOrExit();
+      worker.runtime.events.removeListener("log", errorListener);
       return res.json({ status: "acknowledged" });
     };
 
@@ -186,12 +176,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         nodeBinary
       );
 
-      // TODO: Need to do much more careful management of these listeners
-      worker.runtime.events.on("log", (el: EmulatorLog) => {
+      const errorListener = (el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.status(500).send(el.text);
         }
-      });
+      };
+      worker.runtime.events.on("log", errorListener);
 
       const log = await waitForLog(worker.runtime.events, "SYSTEM", "runtime-status", (log) => {
         return log.data.state === "ready";
@@ -268,6 +258,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         });
 
       await worker.waitForIdleOrExit();
+      worker.runtime.events.removeListener("log", errorListener);
     };
 
     // The ordering here is important. The longer routes (background)
@@ -298,8 +289,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const worker = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
-    // TODO: Why did we use the bind form?
-    // worker.runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
     return worker;
   }
 
@@ -497,10 +486,6 @@ You can probably fix this by running "npm install ${
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
       const worker = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
-
-      worker.runtime.events.on("log", (el: EmulatorLog) => {
-        FunctionsEmulator.handleRuntimeLog(el);
-      });
 
       const triggerParseEvent = await waitForLog(
         worker.runtime.events,
@@ -842,18 +827,10 @@ export function InvokeRuntime(
     }
   }
 
-  // TODO: Hate this, never liked it
-  const ready = waitForLog(emitter, "SYSTEM", "runtime-status", (log) => {
-    return log.data.state === "ready";
-  }).then((el) => {
-    metadata.socketPath = el.data.socketPath;
-  });
-
   const runtime: FunctionsRuntimeInstance = {
     exit: new Promise<number>((resolve) => {
       childProcess.on("exit", resolve);
     }),
-    ready,
     metadata,
     events: emitter,
     kill: (signal?: string) => {

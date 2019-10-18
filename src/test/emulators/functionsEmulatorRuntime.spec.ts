@@ -4,7 +4,7 @@ import {
   InvokeRuntime,
   InvokeRuntimeOpts,
 } from "../../emulator/functionsEmulator";
-import { EmulatorLog } from "../../emulator/types";
+import { EmulatorLog, waitForLog } from "../../emulator/types";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
@@ -55,8 +55,10 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
-  // TODO
-  await runtime.ready;
+  await waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
+    return el.data.state === "ready";
+  });
+
   const dataPromise = new Promise<string>((resolve, reject) => {
     const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
     const requestOptions: request.CoreOptions = {

@@ -33,8 +33,6 @@ export class RuntimeWorker {
 
   async execute(frb: FunctionsRuntimeBundle, serializedTriggers?: string) {
     this.state = RuntimeWorkerState.BUSY;
-
-    // TODO: handle errors
     const args: FunctionsRuntimeArgs = { frb, serializedTriggers };
     this.runtime.send(args);
   }
@@ -60,9 +58,9 @@ export class RuntimeWorkerPool {
   workers: { [triggerId: string]: Array<RuntimeWorker> } = {};
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
-    const key = this.getTriggerKey(triggerId);
+    this.clearDoneWorkers();
 
-    // TODO: Clean up 'DONE' workers
+    const key = this.getTriggerKey(triggerId);
     if (!this.workers[key]) {
       this.workers[key] = [];
       return undefined;
@@ -92,5 +90,24 @@ export class RuntimeWorkerPool {
 
   private getTriggerKey(triggerId?: string) {
     return triggerId || "__diagnostic__";
+  }
+
+  private clearDoneWorkers() {
+    Object.keys(this.workers).forEach((key: string) => {
+      const keyWorkers = this.workers[key];
+
+      // For each done worker, detach any event listeners.
+      for (const w of keyWorkers) {
+        if (w.state === RuntimeWorkerState.DONE) {
+          w.runtime.events.removeAllListeners();
+        }
+      }
+
+      // Drop all 'DONE" workers from the pool
+      const notDoneWorkers = keyWorkers.filter((worker) => {
+        return worker.state !== RuntimeWorkerState.DONE;
+      });
+      this.workers[key] = notDoneWorkers;
+    });
   }
 }
