@@ -155,7 +155,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // For analytics, track the invoked service
       track(EVENT_INVOKE, log.data.service);
 
-      await worker.waitForNotBusy();
+      await worker.waitForDone();
       return res.json({ status: "acknowledged" });
     };
 
@@ -258,7 +258,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           res.end();
         });
 
-      await worker.waitForNotBusy();
+      await worker.waitForDone();
     };
 
     // The ordering here is important. The longer routes (background)

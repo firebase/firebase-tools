@@ -277,10 +277,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        console.log("Calling function");
         const data = await CallHTTPSFunction(runtime, FunctionRuntimeBundles.onRequest);
-
-        console.log("Okie dokie");
         const info = JSON.parse(data);
         expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
         expect(info.appDatabaseRef).to.eq(info.adminDatabaseRef);

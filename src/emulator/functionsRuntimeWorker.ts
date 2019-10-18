@@ -7,7 +7,7 @@ import { EmulatorLogger } from "./emulatorLogger";
 
 type LogListener = (el: EmulatorLog) => any;
 
-enum RuntimeWorkerState {
+export enum RuntimeWorkerState {
   // Worker is ready to accept new work
   IDLE = "IDLE",
 
@@ -27,8 +27,9 @@ export class RuntimeWorker {
   readonly triggerId: string;
   readonly runtime: FunctionsRuntimeInstance;
 
+  stateEvents: EventEmitter = new EventEmitter();
+
   private logListeners: Array<LogListener> = [];
-  private stateEvents: EventEmitter = new EventEmitter();
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
   constructor(triggerId: string, runtime: FunctionsRuntimeInstance) {
@@ -91,8 +92,8 @@ export class RuntimeWorker {
     this.runtime.events.on("log", listener);
   }
 
-  waitForNotBusy(): Promise<any> {
-    if (this.state !== RuntimeWorkerState.BUSY) {
+  waitForDone(): Promise<any> {
+    if (this.state === RuntimeWorkerState.IDLE || this.state === RuntimeWorkerState.FINISHED) {
       return Promise.resolve();
     }
 
