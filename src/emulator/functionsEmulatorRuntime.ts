@@ -969,6 +969,10 @@ async function InvokeTrigger(
     throw new Error("frb.triggerId unexpectedly null");
   }
 
+  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
+    frb,
+  }).log();
+
   const trigger = triggers[frb.triggerId];
   logDebug("", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
@@ -1019,12 +1023,6 @@ async function InitializeRuntime(
   frb: FunctionsRuntimeBundle,
   serializedFunctionTrigger?: string
 ): Promise<EmulatedTriggerMap | undefined> {
-  if (frb.triggerId) {
-    new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
-      frb,
-    }).log();
-  }
-
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
   const verified = await verifyDeveloperNodeModules(frb);

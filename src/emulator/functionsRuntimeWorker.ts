@@ -98,9 +98,15 @@ export class RuntimeWorker {
     }
 
     return new Promise((res) => {
+      const listener = () => {
+        this.stateEvents.removeListener(RuntimeWorkerState.IDLE, listener);
+        this.stateEvents.removeListener(RuntimeWorkerState.FINISHED, listener);
+        res();
+      };
+
       // Finish on either IDLE or FINISHED states
-      this.stateEvents.once(RuntimeWorkerState.IDLE, res);
-      this.stateEvents.once(RuntimeWorkerState.FINISHED, res);
+      this.stateEvents.once(RuntimeWorkerState.IDLE, listener);
+      this.stateEvents.once(RuntimeWorkerState.FINISHED, listener);
     });
   }
 
