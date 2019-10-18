@@ -1013,9 +1013,6 @@ async function InvokeTrigger(
     "runtime-status",
     `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
   ).log();
-
-  // This signals that we could take another request
-  new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
 }
 
 async function InitializeRuntime(
@@ -1086,8 +1083,7 @@ async function InitializeRuntime(
   require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
-  const triggerLogData = { triggers, triggerDefinitions };
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
+  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
 
   // TODO: Remove this
   if (!frb.triggerId) {
@@ -1110,6 +1106,11 @@ async function InitializeRuntime(
   return triggers;
 }
 
+async function flushAndExit(code: number) {
+  await EmulatorLog.waitForFlush();
+  process.exit(code);
+}
+
 async function main(): Promise<void> {
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
@@ -1117,17 +1118,14 @@ async function main(): Promise<void> {
   });
 
   process.on("message", async (message: string) => {
-    // TODO: Log message receipt
-
     let runtimeArgs: FunctionsRuntimeArgs;
     try {
       runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
     } catch (e) {
-      // TODO: Handle
+      // TODO(samstern): Handle
       return;
     }
 
-    // This part is where we do the initialization
     if (!triggers) {
       triggers = await InitializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
     }
@@ -1135,21 +1133,30 @@ async function main(): Promise<void> {
     // If we don't have triggers by now, we can't run
     // TODO: Instead of returning undefined should the above function try/catch?
     if (!triggers) {
-      process.exit(1);
+      await flushAndExit(1);
       return;
     }
 
-    // If there's no trigger id it's just a diagnostic call
+    // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
     if (!runtimeArgs.frb.triggerId) {
+      await flushAndExit(0);
       return;
     }
 
     try {
       await InvokeTrigger(runtimeArgs.frb, triggers);
-      await EmulatorLog.waitForFlush();
+
+      // If we were passed serialized triggers we have to exit the runtime after,
+      // otherwise we can go IDLE and await another request.
+      if (runtimeArgs.serializedTriggers) {
+        await flushAndExit(0);
+      } else {
+        new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
+        await EmulatorLog.waitForFlush();
+      }
     } catch (err) {
       new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      process.exit(1);
+      await flushAndExit(1);
     }
   });
 }

@@ -239,7 +239,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // If the original request had a body, forward that over the connection.
       // TODO: Why is this not handled by the pipe?
-      if (reqBody) {
+      if (reqBody.length > 0) {
         runtimeReq.write(reqBody);
         runtimeReq.end();
       }
