@@ -674,6 +674,7 @@ You can probably fix this by running "npm install ${
   }
 
   async stop(): Promise<void> {
+    WORKER_POOL.exit();
     Promise.resolve(this.server && this.server.close());
   }
 

@@ -135,6 +135,21 @@ export class RuntimeWorkerPool {
     });
   }
 
+  /**
+   * Immediately kill all workers.
+   */
+  exit() {
+    Object.values(this.workers).forEach((arr) => {
+      arr.forEach((w) => {
+        if (w.state === RuntimeWorkerState.IDLE) {
+          w.runtime.shutdown();
+        } else {
+          w.runtime.kill();
+        }
+      });
+    });
+  }
+
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
 

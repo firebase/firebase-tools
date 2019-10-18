@@ -1,0 +1,1 @@
+* Functions emulator now re-uses workers to avoid running global code on each execution (#1353).
