@@ -12,7 +12,7 @@ function handleErrorResponse(response: any): any {
   }
 
   logger.debug("[rules] error:", response.status, response.body);
-  return utils.reject("Unexpected error encountered with rules.", {
+  return utils.reject("Unexpected error encountered with database.", {
     code: 2,
   });
 }
