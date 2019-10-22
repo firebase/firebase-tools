@@ -315,7 +315,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
     };
     return developerPkgJSON;
   } catch (err) {
-    return undefined;
+    return;
   }
 }
 
@@ -1033,7 +1033,7 @@ async function initializeRuntime(
       "runtime-status",
       `Your functions could not be parsed due to an issue with your node_modules (see above)`
     ).log();
-    return undefined;
+    return;
   }
 
   initializeEnvironmentalVariables(frb);
@@ -1074,7 +1074,7 @@ async function initializeRuntime(
       triggerModule = require(frb.cwd);
     } catch (err) {
       await moduleResolutionDetective(frb, err);
-      return undefined;
+      return;
     }
   }
 
@@ -1090,63 +1090,80 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
+async function handleMessage(message: string) {
+  let runtimeArgs: FunctionsRuntimeArgs;
+  try {
+    runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
+  } catch (e) {
+    new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
+    await flushAndExit(1);
+    return;
+  }
+
+  if (!triggers) {
+    triggers = await initializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
+  }
+
+  // If we don't have triggers by now, we can't run.
+  if (!triggers) {
+    await flushAndExit(1);
+    return;
+  }
+
+  // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
+  if (!runtimeArgs.frb.triggerId) {
+    await flushAndExit(0);
+    return;
+  }
+
+  if (!triggers[runtimeArgs.frb.triggerId]) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
+    ).log();
+  } else {
+    logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
+  }
+
+  try {
+    await invokeTrigger(runtimeArgs.frb, triggers);
+
+    // If we were passed serialized triggers we have to exit the runtime after,
+    // otherwise we can go IDLE and await another request.
+    if (runtimeArgs.serializedTriggers) {
+      await flushAndExit(0);
+    } else {
+      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
+      await EmulatorLog.waitForFlush();
+    }
+  } catch (err) {
+    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+    await flushAndExit(1);
+  }
+}
+
 async function main(): Promise<void> {
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   });
 
-  process.on("message", async (message: string) => {
-    let runtimeArgs: FunctionsRuntimeArgs;
-    try {
-      runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
-    } catch (e) {
-      new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
-      await flushAndExit(1);
-      return;
-    }
-
-    if (!triggers) {
-      triggers = await initializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
-    }
-
-    // If we don't have triggers by now, we can't run.
-    if (!triggers) {
-      await flushAndExit(1);
-      return;
-    }
-
-    // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
-    if (!runtimeArgs.frb.triggerId) {
-      await flushAndExit(0);
-      return;
-    }
-
-    if (!triggers[runtimeArgs.frb.triggerId]) {
-      new EmulatorLog(
-        "FATAL",
-        "runtime-status",
-        `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
-      ).log();
-    } else {
-      logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
-    }
-
-    try {
-      await invokeTrigger(runtimeArgs.frb, triggers);
-
-      // If we were passed serialized triggers we have to exit the runtime after,
-      // otherwise we can go IDLE and await another request.
-      if (runtimeArgs.serializedTriggers) {
-        await flushAndExit(0);
-      } else {
-        new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
-        await EmulatorLog.waitForFlush();
-      }
-    } catch (err) {
-      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      await flushAndExit(1);
-    }
+  // Event emitters do not work well with async functions, so we
+  // construct our own promise chain to make sure each message is
+  // handled only after the previous message handling is complete.
+  let messageHandlePromise = Promise.resolve();
+  process.on("message", (message: string) => {
+    messageHandlePromise = messageHandlePromise
+      .then(() => {
+        return handleMessage(message);
+      })
+      .catch((err) => {
+        // All errors *should* be handled within handleMessage. But just in case,
+        // we want to exit fatally on any error related to message handling.
+        new EmulatorLog("FATAL", "runtime-error", err).log();
+        return flushAndExit(1);
+      });
   });
 }
 

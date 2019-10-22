@@ -163,7 +163,7 @@ export class RuntimeWorkerPool {
     const key = this.getTriggerKey(triggerId);
     if (!this.workers[key]) {
       this.workers[key] = [];
-      return undefined;
+      return;
     }
 
     for (const worker of this.workers[key]) {
@@ -172,7 +172,7 @@ export class RuntimeWorkerPool {
       }
     }
 
-    return undefined;
+    return;
   }
 
   addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
