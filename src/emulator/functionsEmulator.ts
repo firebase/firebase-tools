@@ -62,12 +62,13 @@ export interface FunctionsRuntimeInstance {
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
+
   // A function to manually kill the child process as normal cleanup
-  shutdown: () => void;
+  shutdown(): void;
   // A function to manually kill the child process in case of errors
-  kill: (signal?: string) => void;
+  kill(signal?: string): void;
   // Send an IPC message to the child process
-  send: (args: FunctionsRuntimeArgs) => boolean;
+  send(args: FunctionsRuntimeArgs): boolean;
 }
 
 interface RequestWithRawBody extends express.Request {

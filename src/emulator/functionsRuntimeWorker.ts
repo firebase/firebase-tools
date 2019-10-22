@@ -126,7 +126,7 @@ export class RuntimeWorkerPool {
    * When code changes (or in some other rare circumstances) we need to get
    * a new pool of workers. For each IDLE worker we kill it immediately. For
    * each BUSY worker we move it to the FINISHING state so that it will
-   * kill itself after the next run.
+   * kill itself after it's done with its current task.
    */
   refresh() {
     Object.values(this.workers).forEach((arr) => {
