@@ -288,7 +288,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       triggerType,
     };
 
-    const worker = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
+    const worker = invokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
     return worker;
   }
 
@@ -490,7 +490,7 @@ You can probably fix this by running "npm install ${
       // in the pool that would cause us to run old code.
       WORKER_POOL.refresh();
 
-      const worker = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
+      const worker = invokeRuntime(this.nodeBinary, this.getBaseBundle());
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
         worker.runtime.events,
@@ -780,7 +780,7 @@ export interface InvokeRuntimeOpts {
   ignore_warnings?: boolean;
 }
 
-export function InvokeRuntime(
+export function invokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
   opts?: InvokeRuntimeOpts

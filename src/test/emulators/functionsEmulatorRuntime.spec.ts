@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import {
   FunctionsRuntimeInstance,
-  InvokeRuntime,
+  invokeRuntime,
   InvokeRuntimeOpts,
 } from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
@@ -36,7 +36,7 @@ function InvokeRuntimeWithFunctions(
   opts = opts || {};
   opts.ignore_warnings = true;
 
-  return InvokeRuntime(process.execPath, frb, {
+  return invokeRuntime(process.execPath, frb, {
     ...opts,
     serializedTriggers,
   }).runtime;
