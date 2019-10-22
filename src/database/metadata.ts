@@ -17,11 +17,40 @@ function handleErrorResponse(response: any): any {
   });
 }
 
+export type RulesetSource = string;
+export type RulesetId = string;
 export interface ListRulesetItem {
-  id: string;
+  id: RulesetId;
 }
+export interface LabelIds {
+  stable: RulesetId;
+  canary?: RulesetId;
+}
+
 export async function listAllRulesets(databaseName: string): Promise<ListRulesetItem[]> {
   const response = await api.request("GET", `/namespaces/${databaseName}/rulesets`, {
+    auth: true,
+    origin: api.rtdbMetadataOrigin,
+  });
+  if (response.status === 200) {
+    return response.body;
+  }
+  return handleErrorResponse(response);
+}
+
+export async function getRuleset(databaseName: string, rulesetId: string): Promise<RulesetSource> {
+  const response = await api.request("GET", `/namespaces/${databaseName}/rulesets/${rulesetId}`, {
+    auth: true,
+    origin: api.rtdbMetadataOrigin,
+  });
+  if (response.status === 200) {
+    return response.body;
+  }
+  return handleErrorResponse(response);
+}
+
+export async function getRulesetLabels(databaseName: string): Promise<LabelIds> {
+  const response = await api.request("GET", `/namespaces/${databaseName}/ruleset_labels`, {
     auth: true,
     origin: api.rtdbMetadataOrigin,
   });

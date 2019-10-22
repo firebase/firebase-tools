@@ -13,11 +13,10 @@ export default new Command("database:rules:list")
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action(async (options: any) => {
-    const databaseName = "ryanpbrewster-test";
-    const rulesets = await metadata.listAllRulesets(databaseName);
+    const rulesets = await metadata.listAllRulesets(options.instance);
     for (const ruleset of rulesets) {
       logger.info(ruleset.id);
     }
-    logger.info(`Database ${databaseName} has ${rulesets.length} rulesets`);
+    logger.info(`Database ${options.instance} has ${rulesets.length} rulesets`);
     return rulesets;
   });
