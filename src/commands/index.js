@@ -32,7 +32,9 @@ module.exports = function(client) {
   client.database.remove = loadCommand("database-remove");
   if (previews.rtdbrules) {
     client.database.rules = {};
+    client.database.rules.get = loadCommand("database-rules-get");
     client.database.rules.list = loadCommand("database-rules-list");
+    client.database.rules.getlabels = loadCommand("database-rules-getlabels");
   }
   client.database.set = loadCommand("database-set");
   client.database.settings = {};
