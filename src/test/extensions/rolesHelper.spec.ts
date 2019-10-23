@@ -39,6 +39,7 @@ describe("createServiceAccountAndSetRoles", () => {
               members: [`serviceAccount:${TEST_SERVICE_ACCOUNT_EMAIL}`],
             },
           ],
+          version: 3,
         },
       })
       .reply(200);
@@ -99,6 +100,7 @@ describe("grantRoles", () => {
             members: [`serviceAccount:${TEST_SERVICE_ACCOUNT_EMAIL}`],
           },
         ],
+        version: 3,
       },
     };
     nock(api.resourceManagerOrigin)
@@ -125,6 +127,7 @@ describe("grantRoles", () => {
     const expectedBody = {
       policy: {
         bindings: [{ role: "roles/test", members: ["serviceAccount:me@me.com"] }],
+        version: 3,
       },
     };
     nock(api.resourceManagerOrigin)
