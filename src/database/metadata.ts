@@ -19,15 +19,12 @@ function handleErrorResponse(response: any): any {
 
 export type RulesetSource = string;
 export type RulesetId = string;
-export interface ListRulesetItem {
-  id: RulesetId;
-}
 export interface LabelIds {
   stable: RulesetId;
   canary?: RulesetId;
 }
 
-export async function listAllRulesets(databaseName: string): Promise<ListRulesetItem[]> {
+export async function listAllRulesets(databaseName: string): Promise<RulesetId[]> {
   const response = await api.request("GET", `/namespaces/${databaseName}/rulesets`, {
     auth: true,
     origin: api.rtdbMetadataOrigin,
@@ -53,6 +50,31 @@ export async function getRulesetLabels(databaseName: string): Promise<LabelIds> 
   const response = await api.request("GET", `/namespaces/${databaseName}/ruleset_labels`, {
     auth: true,
     origin: api.rtdbMetadataOrigin,
+  });
+  if (response.status === 200) {
+    return response.body;
+  }
+  return handleErrorResponse(response);
+}
+
+export async function createRuleset(databaseName: string, source: RulesetSource): Promise<RulesetId> {
+  const response = await api.request("POST", `/.settings/rulesets.json`, {
+    auth: true,
+    origin: utils.addSubdomain(api.realtimeOrigin, databaseName),
+    json: false,
+    data: source,
+  });
+  if (response.status === 200) {
+    return response.body;
+  }
+  return handleErrorResponse(response);
+}
+
+export async function setRulesetLabels(databaseName: string, labels: LabelIds): Promise<void> {
+  const response = await api.request("PUT", `/.settings/ruleset_labels.json`, {
+    auth: true,
+    origin: utils.addSubdomain(api.realtimeOrigin, databaseName),
+    data: labels,
   });
   if (response.status === 200) {
     return response.body;
