@@ -150,7 +150,7 @@ describe("FunctionsRuntimeWorker", () => {
       // Add a worker and make sure it's there
       const worker = pool.addWorker(trigger, new MockRuntimeInstance(true));
       const triggerWorkers = pool.workers.get(trigger);
-      expect(triggerWorkers).length.to.eq(1);
+      expect(triggerWorkers!.length).length.to.eq(1);
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
 
       // Make the worker busy, confirm nothing is idle
