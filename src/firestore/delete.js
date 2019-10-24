@@ -5,9 +5,14 @@ var ProgressBar = require("progress");
 
 var api = require("../api");
 var firestore = require("../gcp/firestore");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 var logger = require("../logger");
 var utils = require("../utils");
+
+// Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
+// exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric
+// value expressed in that format.
+var MIN_ID = "__id-9223372036854775808__";
 
 /**
  * Construct a new Firestore delete operation.
@@ -21,21 +26,32 @@ var utils = require("../utils");
  */
 function FirestoreDelete(project, path, options) {
   this.project = project;
-  this.path = path;
+  this.path = path || "";
   this.recursive = Boolean(options.recursive);
   this.shallow = Boolean(options.shallow);
   this.allCollections = Boolean(options.allCollections);
 
   // Remove any leading or trailing slashes from the path
-  if (this.path) {
-    this.path = this.path.replace(/(^\/+|\/+$)/g, "");
-  }
-
-  this.isDocumentPath = this._isDocumentPath(this.path);
-  this.isCollectionPath = this._isCollectionPath(this.path);
+  this.path = this.path.replace(/(^\/+|\/+$)/g, "");
 
   this.allDescendants = this.recursive;
-  this.parent = "projects/" + project + "/databases/(default)/documents";
+  this.root = "projects/" + project + "/databases/(default)/documents";
+
+  var segments = this.path.split("/");
+  this.isDocumentPath = segments.length % 2 === 0;
+  this.isCollectionPath = !this.isDocumentPath;
+
+  // this.parent is the closest ancestor document to the location we're deleting.
+  // If we are deleting a document, this.parent is the path of that document.
+  // If we are deleting a collection, this.parent is the path of the document
+  // containing that collection (or the database root, if it is a root collection).
+  this.parent = this.root;
+  if (this.isCollectionPath) {
+    segments.pop();
+  }
+  if (segments.length > 0) {
+    this.parent += "/" + segments.join("/");
+  }
 
   // When --all-collections is passed any other flags or arguments are ignored
   if (!options.allCollections) {
@@ -71,37 +87,6 @@ FirestoreDelete.prototype._validateOptions = function() {
 };
 
 /**
- * Determine if a path points to a document.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a document, false
- * if it points to a collection.
- */
-FirestoreDelete.prototype._isDocumentPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  var pieces = path.split("/");
-  return pieces.length % 2 === 0;
-};
-
-/**
- * Determine if a path points to a collection.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a collection, false
- * if it points to a document.
- */
-FirestoreDelete.prototype._isCollectionPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  return !this._isDocumentPath(path);
-};
-
-/**
  * Construct a StructuredQuery to find descendant documents of a collection.
  *
  * See:
@@ -119,8 +104,8 @@ FirestoreDelete.prototype._collectionDescendantsQuery = function(
 ) {
   var nullChar = String.fromCharCode(0);
 
-  var startAt = this.parent + "/" + this.path + "/" + nullChar;
-  var endAt = this.parent + "/" + this.path + nullChar + "/" + nullChar;
+  var startAt = this.root + "/" + this.path + "/" + MIN_ID;
+  var endAt = this.root + "/" + this.path + nullChar + "/" + MIN_ID;
 
   var where = {
     compositeFilter: {
@@ -229,13 +214,11 @@ FirestoreDelete.prototype._docDescendantsQuery = function(allDescendants, batchS
  * @return {Promise<object[]>} a promise for an array of documents.
  */
 FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSize, startAfter) {
-  var url;
+  var url = this.parent + ":runQuery";
   var body;
   if (this.isDocumentPath) {
-    url = this.parent + "/" + this.path + ":runQuery";
     body = this._docDescendantsQuery(allDescendants, batchSize, startAfter);
   } else {
-    url = this.parent + ":runQuery";
     body = this._collectionDescendantsQuery(allDescendants, batchSize, startAfter);
   }
 
@@ -396,7 +379,7 @@ FirestoreDelete.prototype._deletePath = function() {
   var self = this;
   var initialDelete;
   if (this.isDocumentPath) {
-    var doc = { name: this.parent + "/" + this.path };
+    var doc = { name: this.root + "/" + this.path };
     initialDelete = firestore.deleteDocument(doc).catch(function(err) {
       logger.debug("deletePath:initialDelete:error", err);
       if (self.allDescendants) {

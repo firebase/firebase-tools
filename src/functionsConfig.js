@@ -1,14 +1,13 @@
 "use strict";
 
 var _ = require("lodash");
-
 var clc = require("cli-color");
+
 var api = require("./api");
-var FirebaseError = require("./error");
-var runtimeconfig = require("./gcp/runtimeconfig");
-var getProjectId = require("./getProjectId");
-var getProjectNumber = require("./getProjectNumber");
 var ensureApiEnabled = require("./ensureApiEnabled").ensure;
+var { FirebaseError } = require("./error");
+var getProjectId = require("./getProjectId");
+var runtimeconfig = require("./gcp/runtimeconfig");
 
 exports.RESERVED_NAMESPACES = ["firebase"];
 
@@ -45,17 +44,23 @@ exports.idsToVarName = function(projectId, configId, varId) {
   return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
 };
 
+exports.getAppEngineLocation = function(config) {
+  var appEngineLocation = config.locationId;
+  if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
+    // For some regions, such as us-central1, the locationId has the trailing digit cut off
+    appEngineLocation = appEngineLocation + "1";
+  }
+  return appEngineLocation || "us-central1";
+};
+
 exports.getFirebaseConfig = function(options) {
-  return getProjectNumber(options)
-    .then(function(projectNumber) {
-      return api.request("GET", "/v1/projects/" + projectNumber + ":getServerAppConfig", {
-        auth: true,
-        origin: api.firedataOrigin,
-      });
+  const projectId = getProjectId(options, false);
+  return api
+    .request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
+      auth: true,
+      origin: api.firebaseApiOrigin,
     })
-    .then(function(response) {
-      return response.body;
-    });
+    .then((response) => response.body);
 };
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"

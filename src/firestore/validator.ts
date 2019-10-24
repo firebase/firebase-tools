@@ -1,5 +1,5 @@
 import * as clc from "cli-color";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 
 /**
  * Throw an error if 'obj' does not have a value for the property 'prop'.

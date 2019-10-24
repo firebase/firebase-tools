@@ -4,7 +4,7 @@ var _ = require("lodash");
 var querystring = require("querystring");
 var request = require("request");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
@@ -90,11 +90,23 @@ var api = {
     "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com"
   ),
   clientSecret: utils.envOverride("FIREBASE_CLIENT_SECRET", "j9iVZfS8kkCEFUPaAeJV0sAi"),
+  cloudbillingOrigin: utils.envOverride(
+    "FIREBASE_CLOUDBILLING_URL",
+    "https://cloudbilling.googleapis.com"
+  ),
   cloudloggingOrigin: utils.envOverride(
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
   adminOrigin: utils.envOverride("FIREBASE_ADMIN_URL", "https://admin.firebase.com"),
+  appDistributionOrigin: utils.envOverride(
+    "FIREBASE_APP_DISTRIBUTION_URL",
+    "https://firebaseappdistribution.googleapis.com"
+  ),
+  appDistributionUploadOrigin: utils.envOverride(
+    "FIREBASE_APP_DISTRIBUTION_UPLOAD_URL",
+    "https://appdistribution-uploads.crashlytics.com"
+  ),
   appengineOrigin: utils.envOverride("FIREBASE_APPENGINE_URL", "https://appengine.googleapis.com"),
   authOrigin: utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com"),
   consoleOrigin: utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com"),
@@ -103,17 +115,31 @@ var api = {
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
+  firebaseExtensionsRegistryOrigin: utils.envOverride(
+    "FIREBASE_EXT_REGISTRY_ORIGIN",
+    "https://mods-registry.firebaseapp.com"
+  ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
   functionsOrigin: utils.envOverride(
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  cloudschedulerOrigin: utils.envOverride(
+    "FIREBASE_CLOUDSCHEDULER_URL",
+    "https://cloudscheduler.googleapis.com"
+  ),
+  pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
   googleOrigin: utils.envOverride(
     "FIREBASE_TOKEN_URL",
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://firebaseapp.com"),
+  iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
+  extensionsOrigin: utils.envOverride(
+    "FIREBASE_EXT_URL",
+    "https://firebaseextensions.googleapis.com"
+  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
@@ -128,6 +154,11 @@ var api = {
   hostingApiOrigin: utils.envOverride(
     "FIREBASE_HOSTING_API_URL",
     "https://firebasehosting.googleapis.com"
+  ),
+  cloudRunApiOrigin: utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com"),
+  serviceUsageOrigin: utils.envOverride(
+    "FIREBASE_SERVICE_USAGE_URL",
+    "https://serviceusage.googleapis.com"
   ),
 
   setRefreshToken: function(token) {
@@ -232,7 +263,15 @@ var api = {
       return Promise.reject(err);
     });
   },
+
+  /**
+   * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
+   * TODO: remove this function
+   */
   getProjects: function() {
+    logger.debug(
+      `[WARNING] ${new Error("getProjects() is deprecated - update the implementation").stack}`
+    );
     return api
       .request("GET", "/v1/projects", {
         auth: true,

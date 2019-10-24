@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var clc = require("cli-color");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 /**
  * Tries to determine the correct app name for commands that
@@ -14,7 +14,7 @@ var FirebaseError = require("./error");
  * is required
  * @returns {String} The firebase name
  */
-module.exports = function(options, allowNull) {
+module.exports = function(options, allowNull = false) {
   if (!options.project && !allowNull) {
     var aliases = _.get(options, "rc.projects", {});
     var aliasCount = _.size(aliases);

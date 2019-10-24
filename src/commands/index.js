@@ -13,82 +13,79 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-  client.auth = {
-    upload: loadCommand("auth-import"),
-    export: loadCommand("auth-export"),
-  };
-
-  client.database = {
-    get: loadCommand("database-get"),
-    push: loadCommand("database-push"),
-    set: loadCommand("database-set"),
-    remove: loadCommand("database-remove"),
-    update: loadCommand("database-update"),
-    profile: loadCommand("database-profile"),
-    settings: {
-      get: loadCommand("database-settings-get"),
-      set: loadCommand("database-settings-set"),
-    },
-  };
-
-  client.firestore = {
-    delete: loadCommand("firestore-delete"),
-    indexes: loadCommand("firestore-indexes-list"),
-  };
-
+  client.appdistribution = {};
+  client.appdistribution.distribute = loadCommand("appdistribution-distribute");
+  client.apps = {};
+  client.apps.create = loadCommand("apps-create");
+  client.apps.list = loadCommand("apps-list");
+  client.apps.sdkconfig = loadCommand("apps-sdkconfig");
+  client.auth = {};
+  client.auth.export = loadCommand("auth-export");
+  client.auth.upload = loadCommand("auth-import");
+  client.database = {};
+  client.database.get = loadCommand("database-get");
+  client.database.instances = {};
+  client.database.instances.create = loadCommand("database-instances-create");
+  client.database.instances.list = loadCommand("database-instances-list");
+  client.database.profile = loadCommand("database-profile");
+  client.database.push = loadCommand("database-push");
+  client.database.remove = loadCommand("database-remove");
+  client.database.set = loadCommand("database-set");
+  client.database.settings = {};
+  client.database.settings.get = loadCommand("database-settings-get");
+  client.database.settings.set = loadCommand("database-settings-set");
+  client.database.update = loadCommand("database-update");
   client.deploy = loadCommand("deploy");
-
-  client.hosting = {
-    disable: loadCommand("hosting-disable"),
-  };
-
-  client.functions = {
-    log: loadCommand("functions-log"),
-    shell: loadCommand("functions-shell"),
-    config: {
-      clone: loadCommand("functions-config-clone"),
-      get: loadCommand("functions-config-get"),
-      set: loadCommand("functions-config-set"),
-      unset: loadCommand("functions-config-unset"),
-    },
-    delete: loadCommand("functions-delete"),
-  };
-
-  client.experimental = {
-    functions: {
-      shell: loadCommand("experimental-functions-shell"),
-    },
-  };
-
+  client.emulators = {};
+  client.emulators.exec = loadCommand("emulators-exec");
+  client.emulators.start = loadCommand("emulators-start");
+  client.experimental = {};
+  client.experimental.functions = {};
+  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.ext = loadCommand("ext");
+  client.ext.configure = loadCommand("ext-configure");
+  client.ext.info = loadCommand("ext-info");
+  client.ext.install = loadCommand("ext-install");
+  client.ext.list = loadCommand("ext-list");
+  client.ext.uninstall = loadCommand("ext-uninstall");
+  client.ext.update = loadCommand("ext-update");
+  client.firestore = {};
+  client.firestore.delete = loadCommand("firestore-delete");
+  client.firestore.indexes = loadCommand("firestore-indexes-list");
+  client.functions = {};
+  client.functions.config = {};
+  client.functions.config.clone = loadCommand("functions-config-clone");
+  client.functions.config.get = loadCommand("functions-config-get");
+  client.functions.config.set = loadCommand("functions-config-set");
+  client.functions.config.unset = loadCommand("functions-config-unset");
+  client.functions.delete = loadCommand("functions-delete");
+  client.functions.log = loadCommand("functions-log");
+  client.functions.shell = loadCommand("functions-shell");
   client.help = loadCommand("help");
-
+  client.hosting = {};
+  client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
   client.list = loadCommand("list");
-
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
-
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
+  client.projects = {};
+  client.projects.addfirebase = loadCommand("projects-addfirebase");
+  client.projects.create = loadCommand("projects-create");
+  client.projects.list = loadCommand("projects-list");
   client.serve = loadCommand("serve");
-
-  client.setup = {
-    web: loadCommand("setup-web"),
-    emulators: {
-      database: loadCommand("setup-emulators-database"),
-      firestore: loadCommand("setup-emulators-firestore"),
-    },
-  };
-
+  client.setup = {};
+  client.setup.emulators = {};
+  client.setup.emulators.database = loadCommand("setup-emulators-database");
+  client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
+  client.setup.web = loadCommand("setup-web");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
-
-  client.tools = {
-    migrate: loadCommand("tools-migrate"),
-  };
-
+  client.tools = {};
+  client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
   return client;

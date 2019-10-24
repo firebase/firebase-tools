@@ -7,7 +7,7 @@ var Command = require("../command");
 var Config = require("../config");
 var identifierToProjectId = require("../identifierToProjectId");
 var logger = require("../logger");
-var prompt = require("../prompt");
+var { promptOnce } = require("../prompt");
 var requireAuth = require("../requireAuth");
 var utils = require("../utils");
 
@@ -18,11 +18,16 @@ Config.LEGACY_HOSTING_KEYS.forEach(function(key) {
   MOVE_KEYS[key] = "hosting." + key;
 });
 
+/**
+ * This command is deprecated.
+ * TODO: Remove this command
+ */
 module.exports = new Command("tools:migrate")
-  .description("ensure your firebase.json format is up to date")
+  .description("[DEPRECATED] ensure your firebase.json format is up to date")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
   .before(requireAuth)
   .action(function(options) {
+    logger.warn("This command is deprecated and will be removed.");
     if (!options.config) {
       return utils.reject(
         "Must run " + clc.bold("tools:migrate") + " from a directory with a firebase.json"
@@ -83,7 +88,7 @@ module.exports = new Command("tools:migrate")
       if (options.confirm) {
         next = Promise.resolve(true);
       } else {
-        next = prompt.once({
+        next = promptOnce({
           type: "confirm",
           message: "Write new config to " + clc.underline("firebase.json") + "?",
           default: true,

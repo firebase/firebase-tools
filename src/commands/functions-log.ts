@@ -1,9 +1,9 @@
 import * as _ from "lodash";
-import opn = require("opn");
+import * as opn from "open";
 import * as qs from "querystring";
 
 import * as Command from "../command";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
@@ -46,9 +46,9 @@ module.exports = new Command("functions:log")
         const entry = entries[i];
         logger.info(
           entry.timestamp,
-          entry.severity.substring(0, 1),
-          entry.resource.labels.function_name + ":",
-          entry.textPayload
+          _.get(entry, "severity", "?").substring(0, 1),
+          _.get(entry, "resource.labels.function_name") + ":",
+          _.get(entry, "textPayload", "")
         );
       }
       if (_.isEmpty(entries)) {

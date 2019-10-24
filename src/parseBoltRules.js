@@ -2,7 +2,7 @@
 
 var fs = require("fs");
 var spawn = require("cross-spawn");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var clc = require("cli-color");
 
 module.exports = function(filename) {

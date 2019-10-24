@@ -5,16 +5,16 @@ var clc = require("cli-color");
 var fs = require("fs");
 var jwt = require("jsonwebtoken");
 var http = require("http");
-var opn = require("opn");
+var opn = require("open");
 var path = require("path");
 var portfinder = require("portfinder");
 var url = require("url");
 
 var api = require("./api");
 var configstore = require("./configstore");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
-var prompt = require("./prompt");
+var { prompt } = require("./prompt");
 var scopes = require("./scopes");
 
 portfinder.basePort = 9005;
@@ -186,7 +186,7 @@ var _loginWithLocalhost = function(port) {
 
     server.listen(port, function() {
       logger.info();
-      logger.info("Visit this URL on any device to log in:");
+      logger.info("Visit this URL on this device to log in:");
       logger.info(clc.bold.underline(authUrl));
       logger.info();
       logger.info("Waiting for authentication...");

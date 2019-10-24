@@ -2,7 +2,7 @@
 
 var api = require("../api");
 var logger = require("../logger");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 
 function _getDefaultBucket(projectId) {
   return api
@@ -40,6 +40,7 @@ function _uploadSource(source, uploadUrl) {
     },
     json: false,
     origin: api.storageOrigin,
+    logOptions: { skipRequestBody: true },
   });
 }
 

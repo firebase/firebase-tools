@@ -5,7 +5,7 @@ var logger = require("../logger");
 var configstore = require("../configstore");
 var clc = require("cli-color");
 var utils = require("../utils");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 
 var auth = require("../auth");
 
@@ -34,15 +34,23 @@ module.exports = new Command("login")
       return Promise.resolve(user);
     }
 
+    utils.logBullet(
+      "Firebase optionally collects CLI usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.\n"
+    );
     return prompt(options, [
       {
         type: "confirm",
         name: "collectUsage",
-        message: "Allow Firebase to collect anonymous CLI usage and error reporting information?",
+        message: "Allow Firebase to collect CLI usage and error reporting information?",
       },
     ])
       .then(function() {
         configstore.set("usage", options.collectUsage);
+        if (options.collectUsage) {
+          utils.logBullet(
+            "To change your data collection preference at any time, run `firebase logout` and log in again."
+          );
+        }
         return auth.login(options.localhost);
       })
       .then(function(result) {

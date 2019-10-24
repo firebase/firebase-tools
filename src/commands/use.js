@@ -3,11 +3,11 @@
 var Command = require("../command");
 var logger = require("../logger");
 var requireAuth = require("../requireAuth");
-var api = require("../api");
+var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
 var clc = require("cli-color");
 var utils = require("../utils");
 var _ = require("lodash");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 
 var listAliases = function(options) {
   if (options.rc.hasProjects) {
@@ -58,39 +58,48 @@ module.exports = new Command("use [alias_or_project_id]")
     if (newActive) {
       // firebase use [alias_or_project]
       var aliasedProject = options.rc.get(["projects", newActive]);
-      return api.getProjects().then(function(projects) {
-        if (aliasOpt) {
-          // firebase use [project] --alias [alias]
-          if (!projects[newActive]) {
-            return utils.reject(
-              "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive)
-            );
-          }
-          options.rc.addProjectAlias(aliasOpt, newActive);
-          aliasedProject = newActive;
-          logger.info("Created alias", clc.bold(aliasOpt), "for", aliasedProject + ".");
-        }
-
-        if (aliasedProject) {
-          // found alias
-          if (!projects[aliasedProject]) {
-            // found alias, but not in project list
-            return utils.reject(
-              "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(aliasedProject)
-            );
-          }
-
-          utils.makeActiveProject(options.projectRoot, newActive);
-          logger.info("Now using alias", clc.bold(newActive), "(" + aliasedProject + ")");
-        } else if (projects[newActive]) {
-          // exact project id specified
-          utils.makeActiveProject(options.projectRoot, newActive);
-          logger.info("Now using project", clc.bold(newActive));
-        } else {
-          // no alias or project recognized
+      var project = null;
+      const lookupProject = aliasedProject || newActive;
+      return getFirebaseProject(lookupProject)
+        .then((foundProject) => {
+          project = foundProject;
+        })
+        .catch(() => {
           return utils.reject("Invalid project selection, " + verifyMessage(newActive));
-        }
-      });
+        })
+        .then(() => {
+          if (aliasOpt) {
+            // firebase use [project] --alias [alias]
+            if (!project) {
+              return utils.reject(
+                "Cannot create alias " + clc.bold(aliasOpt) + ", " + verifyMessage(newActive)
+              );
+            }
+            options.rc.addProjectAlias(aliasOpt, newActive);
+            aliasedProject = newActive;
+            logger.info("Created alias", clc.bold(aliasOpt), "for", aliasedProject + ".");
+          }
+
+          if (aliasedProject) {
+            // found alias
+            if (!project) {
+              // found alias, but not in project list
+              return utils.reject(
+                "Unable to use alias " + clc.bold(newActive) + ", " + verifyMessage(aliasedProject)
+              );
+            }
+
+            utils.makeActiveProject(options.projectRoot, newActive);
+            logger.info("Now using alias", clc.bold(newActive), "(" + aliasedProject + ")");
+          } else if (project) {
+            // exact project id specified
+            utils.makeActiveProject(options.projectRoot, newActive);
+            logger.info("Now using project", clc.bold(newActive));
+          } else {
+            // no alias or project recognized
+            return utils.reject("Invalid project selection, " + verifyMessage(newActive));
+          }
+        });
     } else if (options.unalias) {
       // firebase use --unalias [alias]
       if (_.has(options.rc.data, ["projects", options.unalias])) {
@@ -110,14 +119,14 @@ module.exports = new Command("use [alias_or_project_id]")
             " instead."
         );
       }
-      return api.getProjects().then(function(projects) {
+      return listFirebaseProjects().then(function(projects) {
         var results = {};
         return prompt(results, [
           {
             type: "list",
             name: "project",
             message: "Which project do you want to add?",
-            choices: Object.keys(projects).sort(),
+            choices: projects.map((p) => p.projectId).sort(),
           },
           {
             type: "input",

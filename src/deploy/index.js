@@ -6,7 +6,7 @@ var clc = require("cli-color");
 var _ = require("lodash");
 var getProjectId = require("../getProjectId");
 var utils = require("../utils");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 var track = require("../track");
 var lifecycleHooks = require("./lifecycleHooks");
 
@@ -100,12 +100,6 @@ var deploy = function(targetNames, options) {
       utils.logSuccess(clc.underline.bold("Deploy complete!"));
       logger.info();
       var deployedHosting = _.includes(targetNames, "hosting");
-      var deployedFunctions = _.includes(targetNames, "functions");
-      if (deployedFunctions) {
-        logger.info(
-          "Please note that it can take up to 30 seconds for your updated functions to propagate."
-        );
-      }
       logger.info(clc.bold("Project Console:"), utils.consoleUrl(options.project, "/overview"));
       if (deployedHosting) {
         _.each(context.hosting.deploys, function(deploy) {

@@ -5,7 +5,7 @@ const _ = require("lodash");
 const utils = require("../utils");
 const clc = require("cli-color");
 const childProcess = require("child_process");
-const FirebaseError = require("../error");
+const { FirebaseError } = require("../error");
 const getProjectId = require("../getProjectId");
 const logger = require("../logger");
 const path = require("path");
@@ -113,18 +113,42 @@ function runTargetCommands(target, hook, overallOptions, config) {
     });
 }
 
+function getReleventConfigs(target, options) {
+  let targetConfigs = options.config.get(target);
+  if (!targetConfigs) {
+    return [];
+  }
+  if (!_.isArray(targetConfigs)) {
+    targetConfigs = [targetConfigs];
+  }
+
+  if (!options.only) {
+    return targetConfigs;
+  }
+
+  var onlyTargets = options.only.split(",");
+  if (_.includes(onlyTargets, target)) {
+    // If the target matches entirely then all instances should be included.
+    return targetConfigs;
+  }
+
+  onlyTargets = onlyTargets
+    .filter(function(individualOnly) {
+      return individualOnly.indexOf(`${target}:`) === 0;
+    })
+    .map(function(individualOnly) {
+      return individualOnly.replace(`${target}:`, "");
+    });
+
+  return targetConfigs.filter(function(config) {
+    return _.includes(onlyTargets, config.target) || config;
+  });
+}
+
 module.exports = function(target, hook) {
   return function(context, options) {
-    let targetConfigs = options.config.get(target);
-    if (!targetConfigs) {
-      return Promise.resolve();
-    }
-    if (!_.isArray(targetConfigs)) {
-      targetConfigs = [targetConfigs];
-    }
-
     return _.reduce(
-      targetConfigs,
+      getReleventConfigs(target, options),
       function(previousCommands, individualConfig) {
         return previousCommands.then(function() {
           return runTargetCommands(target, hook, options, individualConfig);

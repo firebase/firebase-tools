@@ -4,10 +4,8 @@ var _ = require("lodash");
 var track = require("./track");
 var logger = require("./logger");
 var utils = require("./utils");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var clc = require("cli-color");
-var ansiStrip = require("cli-color/strip");
-var getProjectId = require("./getProjectId");
 var RC = require("./rc");
 var Config = require("./config");
 var detectProjectRoot = require("./detectProjectRoot");
@@ -27,8 +25,8 @@ Command.prototype.description = function(description) {
   return this;
 };
 
-Command.prototype.option = function() {
-  this._options.push(arguments);
+Command.prototype.option = function(...args) {
+  this._options.push(args);
   return this;
 };
 
@@ -60,7 +58,7 @@ Command.prototype.register = function(client) {
     cmd.description(this._description);
   }
   this._options.forEach(function(args) {
-    cmd.option.apply(cmd, args);
+    cmd.option(...args);
   });
 
   if (this._help) {
@@ -70,12 +68,12 @@ Command.prototype.register = function(client) {
   }
 
   var self = this;
-  cmd.action(function() {
+  cmd.action(function(...args) {
     var runner = self.runner();
     var start = new Date().getTime();
-    var options = _.last(_.toArray(arguments));
+    var options = _.last(args);
     var argCount = cmd._args.length;
-    if (arguments.length - 1 > argCount) {
+    if (args.length - 1 > argCount) {
       return client.errorOut(
         new FirebaseError(
           "Too many arguments. Run " +
@@ -87,7 +85,7 @@ Command.prototype.register = function(client) {
     }
 
     runner
-      .apply(self, arguments)
+      .apply(self, args)
       .then(function(result) {
         if (utils.getInheritedOption(options, "json")) {
           console.log(
@@ -119,12 +117,10 @@ Command.prototype.register = function(client) {
         }
         var duration = Date.now() - start;
         var errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
-        var projectId = getProjectId(options, true);
-        var preppedMessage = ansiStrip(err.message || "").replace(projectId, "<namespace>");
 
         return Promise.all([
           track(self._name, "error", duration),
-          track(errorEvent, preppedMessage, duration),
+          track(errorEvent, "", duration),
         ]).then(function() {
           client.errorOut(err);
         });
@@ -193,8 +189,7 @@ Command.prototype.applyRC = function(options) {
 
 Command.prototype.runner = function() {
   var self = this;
-  return function() {
-    var args = _.toArray(arguments);
+  return function(...args) {
     // always provide at least an empty object for options
     if (args.length === 0) {
       args.push({});
@@ -210,7 +205,7 @@ Command.prototype.runner = function() {
         });
       });
       return result.then(function() {
-        return self._action.apply(self, args);
+        return self._action(...args);
       });
     } catch (e) {
       return Promise.reject(e);

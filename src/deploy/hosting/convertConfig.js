@@ -19,6 +19,10 @@ module.exports = function(config) {
         vRewrite.path = rewrite.destination;
       } else if (rewrite.function) {
         vRewrite.function = rewrite.function;
+      } else if (rewrite.dynamicLinks) {
+        vRewrite.dynamicLinks = rewrite.dynamicLinks;
+      } else if (rewrite.run) {
+        vRewrite.run = Object.assign({ region: "us-central1" }, rewrite.run);
       }
       return vRewrite;
     });
@@ -57,6 +61,11 @@ module.exports = function(config) {
     out.trailingSlashBehavior = "ADD";
   } else if (config.trailingSlash === false) {
     out.trailingSlashBehavior = "REMOVE";
+  }
+
+  // App association files
+  if (_.has(config, "appAssociation")) {
+    out.appAssociation = config.appAssociation;
   }
 
   return out;

@@ -2,12 +2,11 @@
 
 var clc = require("cli-color");
 var Table = require("cli-table");
-var Set = require("es6-set");
 var fs = require("fs");
 var _ = require("lodash");
 var readline = require("readline");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var utils = require("./utils");
 
@@ -19,7 +18,10 @@ var BANDWIDTH_NOTE =
 
 var SPEED_NOTE =
   "NOTE: Speeds are reported at millisecond resolution and" +
-  " are not the latencies that clients will see.";
+  " are not the latencies that clients will see. Pending times" +
+  " are also reported at millisecond resolution. They approximate" +
+  " the interval of time between the instant a request is received" +
+  " and the instant it executes.";
 
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
@@ -34,6 +36,9 @@ var ProfileReport = function(tmpFile, outStream, options) {
     writeSpeed: {},
     broadcastSpeed: {},
     readSpeed: {},
+    connectSpeed: {},
+    disconnectSpeed: {},
+    unlistenSpeed: {},
     unindexed: {},
     startTime: 0,
     endTime: 0,
@@ -57,10 +62,7 @@ ProfileReport.extractJSON = function(line, input) {
 };
 
 ProfileReport.pathString = function(path) {
-  if (path) {
-    return "/" + path.join("/");
-  }
-  return null;
+  return "/" + (path ? path.join("/") : "");
 };
 
 ProfileReport.formatNumber = function(num) {
@@ -120,17 +122,54 @@ ProfileReport.prototype.collectUnindexed = function(data, path) {
   indexNode.times += 1;
 };
 
+ProfileReport.prototype.collectSpeedUnpathed = function(data, opStats) {
+  if (Object.keys(opStats).length === 0) {
+    opStats.times = 0;
+    opStats.millis = 0;
+    opStats.pendingCount = 0;
+    opStats.pendingTime = 0;
+    opStats.rejected = 0;
+  }
+  opStats.times += 1;
+
+  if (data.hasOwnProperty("millis")) {
+    opStats.millis += data.millis;
+  }
+  if (data.hasOwnProperty("pendingTime")) {
+    opStats.pendingCount++;
+    opStats.pendingTime += data.pendingTime;
+  }
+  // Explictly check for false, in case its not defined.
+  if (data.allowed === false) {
+    opStats.rejected += 1;
+  }
+};
+
 ProfileReport.prototype.collectSpeed = function(data, path, opType) {
   if (!_.has(opType, path)) {
     opType[path] = {
       times: 0,
       millis: 0,
+      pendingCount: 0,
+      pendingTime: 0,
       rejected: 0,
     };
   }
   var node = opType[path];
   node.times += 1;
-  node.millis += data.millis;
+  /*
+   * If `millis` is not present, we assume that the operation is fast
+   * in-memory request that is not timed on the server-side (e.g.
+   * connects, disconnects, listens, unlistens). Such a request may
+   * have non-trivial `pendingTime`.
+   */
+  if (data.hasOwnProperty("millis")) {
+    node.millis += data.millis;
+  }
+  if (data.hasOwnProperty("pendingTime")) {
+    node.pendingCount++;
+    node.pendingTime += data.pendingTime;
+  }
   // Explictly check for false, in case its not defined.
   if (data.allowed === false) {
     node.rejected += 1;
@@ -159,6 +198,18 @@ ProfileReport.prototype.collectBroadcast = function(data, path, bytes) {
   this.collectBandwidth(bytes, path, this.state.outband);
 };
 
+ProfileReport.prototype.collectUnlisten = function(data, path) {
+  this.collectSpeed(data, path, this.state.unlistenSpeed);
+};
+
+ProfileReport.prototype.collectConnect = function(data) {
+  this.collectSpeedUnpathed(data, this.state.connectSpeed);
+};
+
+ProfileReport.prototype.collectDisconnect = function(data) {
+  this.collectSpeedUnpathed(data, this.state.disconnectSpeed);
+};
+
 ProfileReport.prototype.collectWrite = function(data, path, bytes) {
   this.collectSpeed(data, path, this.state.writeSpeed);
   this.collectBandwidth(bytes, path, this.state.inband);
@@ -173,8 +224,10 @@ ProfileReport.prototype.processOperation = function(data) {
   this.state.opCount++;
   switch (data.name) {
     case "concurrent-connect":
+      this.collectConnect(data);
       break;
     case "concurrent-disconnect":
+      this.collectDisconnect(data);
       break;
     case "realtime-read":
       this.collectRead(data, path, data.bytes);
@@ -196,6 +249,7 @@ ProfileReport.prototype.processOperation = function(data) {
       this.collectBroadcast(data, path, data.bytes);
       break;
     case "listener-unlisten":
+      this.collectUnlisten(data, path);
       break;
     case "rest-read":
       this.collectRead(data, path, data.bytes);
@@ -348,8 +402,48 @@ ProfileReport.prototype.renderIncomingBandwidth = function() {
   return this.renderBandwidth(this.state.inband);
 };
 
+/*
+ * Some Realtime Database operations (concurrent-connect, concurrent-disconnect)
+ * are not logically associated with a path in the database. In this source
+ * file, we associate these operations with the sentinel path "null" so that
+ * they can still be aggregated in `collapsePaths`. So as to not confuse
+ * developers, we render aggregate statistics for such operations without a
+ * `path` table column.
+ */
+ProfileReport.prototype.renderUnpathedOperationSpeed = function(speedData, hasSecurity) {
+  var head = ["Count", "Average Execution Speed", "Average Pending Time"];
+  if (hasSecurity) {
+    head.push("Permission Denied");
+  }
+  var table = new Table({
+    head: head,
+    style: {
+      head: this.options.isFile ? [] : ["yellow"],
+      border: this.options.isFile ? [] : ["grey"],
+    },
+  });
+  /*
+   * If no unpathed opeartion was seen, the corresponding stats sub-object will
+   * be empty.
+   */
+  if (Object.keys(speedData).length > 0) {
+    var row = [
+      speedData.times,
+      ProfileReport.formatNumber(speedData.millis / speedData.times) + " ms",
+      ProfileReport.formatNumber(
+        speedData.pendingCount === 0 ? 0 : speedData.pendingTime / speedData.pendingCount
+      ) + " ms",
+    ];
+    if (hasSecurity) {
+      row.push(ProfileReport.formatNumber(speedData.rejected));
+    }
+    table.push(row);
+  }
+  return table;
+};
+
 ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
-  var head = ["Path", "Count", "Average"];
+  var head = ["Path", "Count", "Average Execution Speed", "Average Pending Time"];
   if (hasSecurity) {
     head.push("Permission Denied");
   }
@@ -364,6 +458,8 @@ ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
     return {
       times: s1.times + s2.times,
       millis: s1.millis + s2.millis,
+      pendingCount: s1.pendingCount + s2.pendingCount,
+      pendingTime: s1.pendingTime + s2.pendingTime,
       rejected: s1.rejected + s2.rejected,
     };
   });
@@ -378,7 +474,14 @@ ProfileReport.prototype.renderOperationSpeed = function(pureData, hasSecurity) {
   );
   paths.forEach(function(path) {
     var speed = data[path];
-    var row = [path, speed.times, ProfileReport.formatNumber(speed.millis / speed.times) + " ms"];
+    var row = [
+      path,
+      speed.times,
+      ProfileReport.formatNumber(speed.millis / speed.times) + " ms",
+      ProfileReport.formatNumber(
+        speed.pendingCount === 0 ? 0 : speed.pendingTime / speed.pendingCount
+      ) + " ms",
+    ];
     if (hasSecurity) {
       row.push(ProfileReport.formatNumber(speed.rejected));
     }
@@ -397,6 +500,18 @@ ProfileReport.prototype.renderWriteSpeed = function() {
 
 ProfileReport.prototype.renderBroadcastSpeed = function() {
   return this.renderOperationSpeed(this.state.broadcastSpeed, false);
+};
+
+ProfileReport.prototype.renderConnectSpeed = function() {
+  return this.renderUnpathedOperationSpeed(this.state.connectSpeed, false);
+};
+
+ProfileReport.prototype.renderDisconnectSpeed = function() {
+  return this.renderUnpathedOperationSpeed(this.state.disconnectSpeed, false);
+};
+
+ProfileReport.prototype.renderUnlistenSpeed = function() {
+  return this.renderOperationSpeed(this.state.unlistenSpeed, false);
 };
 
 ProfileReport.prototype.parse = function(onLine, onClose) {
@@ -507,6 +622,9 @@ ProfileReport.prototype.outputText = function() {
   writeTable("Read Speed", this.renderReadSpeed());
   writeTable("Write Speed", this.renderWriteSpeed());
   writeTable("Broadcast Speed", this.renderBroadcastSpeed());
+  writeTable("Connect Speed", this.renderConnectSpeed());
+  writeTable("Disconnect Speed", this.renderDisconnectSpeed());
+  writeTable("Unlisten Speed", this.renderUnlistenSpeed());
   writeTitle("Bandwidth Report\n");
   write(BANDWIDTH_NOTE + "\n\n");
   writeTable("Downloaded Bytes", this.renderOutgoingBandwidth());
@@ -538,6 +656,9 @@ ProfileReport.prototype.outputJson = function() {
     readSpeed: tableToJson(this.renderReadSpeed(), SPEED_NOTE),
     writeSpeed: tableToJson(this.renderWriteSpeed(), SPEED_NOTE),
     broadcastSpeed: tableToJson(this.renderBroadcastSpeed(), SPEED_NOTE),
+    connectSpeed: tableToJson(this.renderConnectSpeed(), SPEED_NOTE),
+    disconnectSpeed: tableToJson(this.renderDisconnectSpeed(), SPEED_NOTE),
+    unlistenSpeed: tableToJson(this.renderUnlistenSpeed(), SPEED_NOTE),
     downloadedBytes: tableToJson(this.renderOutgoingBandwidth(), BANDWIDTH_NOTE),
     uploadedBytes: tableToJson(this.renderIncomingBandwidth(), BANDWIDTH_NOTE),
     unindexedQueries: tableToJson(this.renderUnindexedData()),

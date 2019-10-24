@@ -6,13 +6,13 @@ var requirePermissions = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 
 var utils = require("../utils");
 var clc = require("cli-color");
 var logger = require("../logger");
 var fs = require("fs");
-var prompt = require("../prompt");
+var { prompt } = require("../prompt");
 var _ = require("lodash");
 
 module.exports = new Command("database:update <path> [infile]")

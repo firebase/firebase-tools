@@ -1,7 +1,7 @@
 "use strict";
 
 var clc = require("cli-color");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 
 var superstatic = require("superstatic").server;
 var utils = require("../utils");
@@ -9,6 +9,7 @@ var detectProjectRoot = require("../detectProjectRoot");
 var implicitInit = require("../hosting/implicitInit");
 var initMiddleware = require("../hosting/initMiddleware");
 var functionsProxy = require("../hosting/functionsProxy").default;
+var cloudRunProxy = require("../hosting/cloudRunProxy").default;
 var normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
 var MAX_PORT_ATTEMPTS = 10;
@@ -28,6 +29,7 @@ function _startServer(options, config, port, init) {
     },
     rewriters: {
       function: functionsProxy(options),
+      run: cloudRunProxy(options),
     },
   }).listen(function() {
     var siteName = config.target || config.site;
@@ -84,7 +86,12 @@ function _start(options) {
   });
 }
 
+function _connect() {
+  return Promise.resolve();
+}
+
 module.exports = {
   start: _start,
+  connect: _connect,
   stop: _stop,
 };

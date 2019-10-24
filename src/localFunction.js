@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var request = require("request");
 
-var encodeFirestoreValue = require("./firestore/encodeFirestoreValue");
+var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
 
 var LocalFunction = function(trigger, urls, controller) {
@@ -127,9 +127,22 @@ LocalFunction.prototype._requestCallBack = function(err, response, body) {
     return console.warn("\nERROR SENDING REQUEST: " + err);
   }
   var status = response ? response.statusCode + ", " : "";
-  return console.log(
-    "\nRESPONSE RECEIVED FROM FUNCTION: " + status + JSON.stringify(body, null, 2)
-  );
+
+  // If the body is a string we want to check if we can parse it as JSON
+  // and pretty-print it. We can't blindly stringify because stringifying
+  // a string results in some ugly escaping.
+  var bodyString = body;
+  if (typeof body === "string") {
+    try {
+      bodyString = JSON.stringify(JSON.parse(bodyString), null, 2);
+    } catch (e) {
+      // Ignore
+    }
+  } else {
+    bodyString = JSON.stringify(body, null, 2);
+  }
+
+  return console.log("\nRESPONSE RECEIVED FROM FUNCTION: " + status + bodyString);
 };
 
 LocalFunction.prototype._call = function(data, opts) {
