@@ -129,7 +129,7 @@ export class RuntimeWorkerPool {
    * kill itself after it's done with its current task.
    */
   refresh() {
-    for (let arr of this.workers.values()) {
+    for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.triggerId})`);
@@ -146,7 +146,7 @@ export class RuntimeWorkerPool {
    * Immediately kill all workers.
    */
   exit() {
-    for (let arr of this.workers.values()) {
+    for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
           w.runtime.shutdown();
@@ -192,11 +192,8 @@ export class RuntimeWorkerPool {
   }
 
   private cleanUpWorkers() {
-    for (let entry of this.workers.entries()) {
-      const key = entry[0];
-      const keyWorkers = entry[1];
-
-      // Drop all finished workers from the pool
+    // Drop all finished workers from the pool
+    for (const [key, keyWorkers] of this.workers.entries()) {
       const notDoneWorkers = keyWorkers.filter((worker) => {
         return worker.state !== RuntimeWorkerState.FINISHED;
       });
