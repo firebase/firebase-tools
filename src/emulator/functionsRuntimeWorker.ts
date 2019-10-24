@@ -120,7 +120,7 @@ export class RuntimeWorker {
 }
 
 export class RuntimeWorkerPool {
-  workers: { [triggerId: string]: Array<RuntimeWorker> } = {};
+  workers: Map<string, Array<RuntimeWorker>> = new Map();
 
   /**
    * When code changes (or in some other rare circumstances) we need to get
@@ -129,7 +129,7 @@ export class RuntimeWorkerPool {
    * kill itself after it's done with its current task.
    */
   refresh() {
-    Object.values(this.workers).forEach((arr) => {
+    for (let arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.triggerId})`);
@@ -139,14 +139,14 @@ export class RuntimeWorkerPool {
           w.state = RuntimeWorkerState.FINISHING;
         }
       });
-    });
+    }
   }
 
   /**
    * Immediately kill all workers.
    */
   exit() {
-    Object.values(this.workers).forEach((arr) => {
+    for (let arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
           w.runtime.shutdown();
@@ -154,19 +154,20 @@ export class RuntimeWorkerPool {
           w.runtime.kill();
         }
       });
-    });
+    }
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
 
     const key = this.getTriggerKey(triggerId);
-    if (!this.workers[key]) {
-      this.workers[key] = [];
+    const keyWorkers = this.workers.get(key);
+    if (!keyWorkers) {
+      this.workers.set(key, []);
       return;
     }
 
-    for (const worker of this.workers[key]) {
+    for (const worker of keyWorkers) {
       if (worker.state === RuntimeWorkerState.IDLE) {
         return worker;
       }
@@ -179,11 +180,9 @@ export class RuntimeWorkerPool {
     const key = this.getTriggerKey(triggerId);
     const worker = new RuntimeWorker(key, runtime);
 
-    if (this.workers[key]) {
-      this.workers[key].push(worker);
-    } else {
-      this.workers[key] = [worker];
-    }
+    const keyWorkers = this.workers.get(key) || [];
+    keyWorkers.push(worker);
+    this.workers.set(key, keyWorkers);
 
     return worker;
   }
@@ -193,15 +192,16 @@ export class RuntimeWorkerPool {
   }
 
   private cleanUpWorkers() {
-    Object.keys(this.workers).forEach((key: string) => {
-      const keyWorkers = this.workers[key];
+    for (let entry of this.workers.entries()) {
+      const key = entry[0];
+      const keyWorkers = entry[1];
 
       // Drop all finished workers from the pool
       const notDoneWorkers = keyWorkers.filter((worker) => {
         return worker.state !== RuntimeWorkerState.FINISHED;
       });
-      this.workers[key] = notDoneWorkers;
-    });
+      this.workers.set(key, notDoneWorkers);
+    }
   }
 
   private log(msg: string): void {
