@@ -28,6 +28,7 @@ describe("createServiceAccountAndSetRoles", () => {
       .post(`/${RESOURCEMANAGER_VERSION}/projects/${PROJECT_ID}/:getIamPolicy`)
       .reply(200, {
         bindings: [{ role: "roles/existingRole", members: ["serviceAccount:blah@a.com"] }],
+        version: 3,
       });
     nock(api.resourceManagerOrigin)
       .post(`/${RESOURCEMANAGER_VERSION}/projects/${PROJECT_ID}/:setIamPolicy`, {
@@ -85,7 +86,10 @@ describe("grantRoles", () => {
   it("should add the desired roles to the service account, and not remove existing roles", async () => {
     nock(api.resourceManagerOrigin)
       .post(`/${RESOURCEMANAGER_VERSION}/projects/${PROJECT_ID}/:getIamPolicy`)
-      .reply(200, { bindings: [{ role: "roles/test", members: ["serviceAccount:me@me.com"] }] });
+      .reply(200, {
+        bindings: [{ role: "roles/test", members: ["serviceAccount:me@me.com"] }],
+        version: 3,
+      });
     const rolesToAdd = ["cool.role.create", "cool.role.delete"];
     const expectedBody = {
       policy: {
@@ -122,6 +126,7 @@ describe("grantRoles", () => {
             members: ["serviceAccount:me@me.com", `serviceAccount:${TEST_SERVICE_ACCOUNT_EMAIL}`],
           },
         ],
+        version: 3,
       });
     const rolesToRemove = ["test"];
     const expectedBody = {

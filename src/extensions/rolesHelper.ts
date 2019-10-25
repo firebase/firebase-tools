@@ -50,7 +50,6 @@ export function grantRoles(
           return member === `serviceAccount:${serviceAccountEmail}`;
         });
       });
-      policy.version = 3;
       return api.request(
         "POST",
         utils.endpoint([API_VERSION, "projects", projectId, ":setIamPolicy"]),
