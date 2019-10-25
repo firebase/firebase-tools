@@ -57,7 +57,10 @@ export async function getRulesetLabels(databaseName: string): Promise<LabelIds> 
   return handleErrorResponse(response);
 }
 
-export async function createRuleset(databaseName: string, source: RulesetSource): Promise<RulesetId> {
+export async function createRuleset(
+  databaseName: string,
+  source: RulesetSource
+): Promise<RulesetId> {
   const response = await api.request("POST", `/.settings/rulesets.json`, {
     auth: true,
     origin: utils.addSubdomain(api.realtimeOrigin, databaseName),
