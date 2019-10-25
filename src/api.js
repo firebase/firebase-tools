@@ -143,8 +143,7 @@ var api = {
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
-    "http://275958013-dot-metadata-dot-firebase-prod.appspot.com",
-    // "https://metadata-dot-firebase-prod.appspot.com"
+    "https://metadata-dot-firebase-prod.appspot.com",
   ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
