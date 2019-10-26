@@ -197,7 +197,7 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
         pageToken,
       },
     });
-    instances.push.apply(instances, res.body.instances);
+    instances.push(...res.body.instances);
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }
@@ -238,15 +238,19 @@ export async function updateInstance(
   projectId: string,
   instanceId: string,
   extensionSource: ExtensionSource,
-  params: { [option: string]: string }
+  params?: { [option: string]: string }
 ): Promise<any> {
-  const res = await patchInstance(projectId, instanceId, "config.params,config.source.name", {
+  const body: any = {
     config: {
       source: { name: extensionSource.name },
-      params,
     },
-  });
-  return res;
+  };
+  let updateMask = "config.source.name";
+  if (params) {
+    body.params = params;
+    updateMask += ",config.params";
+  }
+  return await patchInstance(projectId, instanceId, updateMask, body);
 }
 
 async function patchInstance(

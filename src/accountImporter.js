@@ -144,8 +144,8 @@ var validateOptions = function(options) {
   if (!hashOptions.valid) {
     return hashOptions;
   }
-  var hashInputOrder = !!options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
-  if (!!hashInputOrder) {
+  var hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
+  if (hashInputOrder) {
     if (hashInputOrder != "SALT_FIRST" && hashInputOrder != "PASSWORD_FIRST") {
       return utils.reject("Unknown password hash order flag", { exit: 1 });
     } else {
@@ -162,6 +162,7 @@ var _validateRequiredParameters = function(options) {
     return { valid: true };
   }
   var hashAlgo = options.hashAlgo.toUpperCase();
+  let roundsNum;
   switch (hashAlgo) {
     case "HMAC_SHA512":
     case "HMAC_SHA256":
@@ -178,17 +179,19 @@ var _validateRequiredParameters = function(options) {
     case "SHA1":
     case "SHA256":
     case "SHA512":
-      var roundsNum = parseInt(options.rounds, 10);
-      if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 8192) {
+      // MD5 is [0,8192] but SHA1, SHA256, and SHA512 are [1,8192]
+      roundsNum = parseInt(options.rounds, 10);
+      var minRounds = hashAlgo === "MD5" ? 0 : 1;
+      if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
         return utils.reject(
-          "Must provide valid rounds(0..8192) for hash algorithm " + options.hashAlgo,
+          `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
           { exit: 1 }
         );
       }
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "PBKDF_SHA1":
     case "PBKDF2_SHA256":
-      var roundsNum = parseInt(options.rounds, 10);
+      roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
         return utils.reject(
           "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
