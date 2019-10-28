@@ -33,7 +33,11 @@ export interface EmulatedTriggerMap {
   [name: string]: EmulatedTrigger;
 }
 
-// This bundle gets passed from hub -> runtime as a CLI arg
+export interface FunctionsRuntimeArgs {
+  frb: FunctionsRuntimeBundle;
+  serializedTriggers?: string;
+}
+
 export interface FunctionsRuntimeBundle {
   projectId: string;
   proto?: any;
