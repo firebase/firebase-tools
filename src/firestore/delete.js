@@ -266,6 +266,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
   // All temporary variables for the deletion queue.
   var queue = [];
   var numPendingDeletes = 0;
+  var deletedDoc = false;
   var pagesRemaining = true;
   var pageIncoming = false;
   var lastDocName;
@@ -321,6 +322,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
     }
 
     numPendingDeletes++;
+    deletedDoc = true;
     firestore
       .deleteDocuments(self.project, toDelete)
       .then(function(numDeleted) {
@@ -359,6 +361,11 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
         clearInterval(intervalId);
 
         if (failures.length == 0) {
+          // Log an empty string so that the console adds a newline after
+          // the progress bar is done.
+          if (deletedDoc) {
+            console.log("");
+          }
           resolve();
         } else {
           reject("Failed to delete documents " + failures);
