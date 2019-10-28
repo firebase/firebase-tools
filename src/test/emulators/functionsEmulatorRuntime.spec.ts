@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import {
   FunctionsRuntimeInstance,
-  InvokeRuntime,
+  invokeRuntime,
   InvokeRuntimeOpts,
 } from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
@@ -36,10 +36,10 @@ function InvokeRuntimeWithFunctions(
   opts = opts || {};
   opts.ignore_warnings = true;
 
-  return InvokeRuntime(process.execPath, frb, {
+  return invokeRuntime(process.execPath, frb, {
     ...opts,
     serializedTriggers,
-  });
+  }).runtime;
 }
 
 /**
@@ -54,7 +54,11 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
-  await runtime.ready;
+  const log = await EmulatorLog.waitForLog(runtime.events, "SYSTEM", "runtime-status", (el) => {
+    return el.data.state === "ready";
+  });
+  runtime.metadata.socketPath = log.data.socketPath;
+
   const dataPromise = new Promise<string>((resolve, reject) => {
     const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
     const requestOptions: request.CoreOptions = {
@@ -274,7 +278,6 @@ describe("FunctionsEmulator-Runtime", () => {
         });
 
         const data = await CallHTTPSFunction(runtime, FunctionRuntimeBundles.onRequest);
-
         const info = JSON.parse(data);
         expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
         expect(info.appDatabaseRef).to.eq(info.adminDatabaseRef);
