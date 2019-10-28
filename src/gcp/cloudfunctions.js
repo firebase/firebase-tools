@@ -189,6 +189,13 @@ function _listFunctions(projectId, region) {
     })
     .then(
       function(resp) {
+        if (resp.body.unreachable && resp.body.unreachable.length > 0) {
+          return utils.reject(
+            "Some Cloud Functions regions were unreachable, please try again later.",
+            { exit: 2 }
+          );
+        }
+
         var functionsList = resp.body.functions || [];
         _.forEach(functionsList, function(f) {
           f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
