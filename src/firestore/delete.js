@@ -321,7 +321,6 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
     }
 
     numPendingDeletes++;
-    deletedDoc = true;
     firestore
       .deleteDocuments(self.project, toDelete)
       .then(function(numDeleted) {
