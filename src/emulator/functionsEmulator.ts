@@ -24,11 +24,13 @@ import {
   FunctionsRuntimeFeatures,
   getFunctionRegion,
   getFunctionService,
+  FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
+import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -40,6 +42,11 @@ const EVENT_INVOKE = "functions:invoke";
  */
 const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
 
+/**
+ * Global pool of FunctionsRuntimeWorkers.
+ */
+const WORKER_POOL = new RuntimeWorkerPool();
+
 export interface FunctionsEmulatorArgs {
   port?: number;
   host?: string;
@@ -49,16 +56,19 @@ export interface FunctionsEmulatorArgs {
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
 export interface FunctionsRuntimeInstance {
-  // A promise which is fulfilled when the runtime is ready to accept requests
-  ready: Promise<void>;
   // A map of arbitrary data from the runtime (ports, etc)
   metadata: { [key: string]: any };
   // An emitter which sends our EmulatorLog events from the runtime.
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
   exit: Promise<number>;
-  // A function to manually kill the child process
-  kill: (signal?: string) => void;
+
+  // A function to manually kill the child process as normal cleanup
+  shutdown(): void;
+  // A function to manually kill the child process in case of errors
+  kill(signal?: string): void;
+  // Send an IPC message to the child process
+  send(args: FunctionsRuntimeArgs): boolean;
 }
 
 interface RequestWithRawBody extends express.Request {
@@ -123,7 +133,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
 
-      const runtime = FunctionsEmulator.startFunctionRuntime(
+      const worker = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
         triggerId,
         EmulatedTriggerType.BACKGROUND,
@@ -131,28 +141,22 @@ export class FunctionsEmulator implements EmulatorInstance {
         proto
       );
 
-      runtime.events.on("log", (el: EmulatorLog) => {
+      worker.onLogs((el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.send(el.text);
         }
       });
 
-      // This "waiter" must be established before we block on "ready" since we expect
-      // this log entry to happen during the readying.
-      const triggerLogPromise = waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
-
+      // TODO(samstern): Is this a race condition?  Could 'ready' happen before we're listening for it?
       EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
-      await runtime.ready;
-      EmulatorLogger.log("DEBUG", JSON.stringify(runtime.metadata));
+      const log = await worker.waitForSystemLog((evt) => {
+        return evt.data.state === "ready";
+      });
 
-      const triggerLog = await triggerLogPromise;
-      const triggerMap: EmulatedTriggerMap = triggerLog.data.triggers;
+      // For analytics, track the invoked service
+      track(EVENT_INVOKE, log.data.service);
 
-      const trigger = triggerMap[triggerId];
-      const service = getFunctionService(trigger.definition);
-      track(EVENT_INVOKE, service);
-
-      await runtime.exit;
+      await worker.waitForDone();
       return res.json({ status: "acknowledged" });
     };
 
@@ -168,37 +172,41 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
-      const runtime = FunctionsEmulator.startFunctionRuntime(
+      const worker = FunctionsEmulator.startFunctionRuntime(
         bundleTemplate,
         triggerId,
         EmulatedTriggerType.HTTPS,
         nodeBinary
       );
 
-      runtime.events.on("log", (el: EmulatorLog) => {
+      worker.onLogs((el: EmulatorLog) => {
         if (el.level === "FATAL") {
           res.status(500).send(el.text);
         }
       });
 
-      await runtime.ready;
-      logger.debug(JSON.stringify(runtime.metadata));
+      const log = await worker.waitForSystemLog((el) => {
+        return el.data.state === "ready";
+      });
+      worker.runtime.metadata.socketPath = log.data.socketPath;
+
+      logger.debug(JSON.stringify(worker.runtime.metadata));
       track(EVENT_INVOKE, "https");
 
       EmulatorLogger.log(
         "DEBUG",
-        `[functions] Runtime ready! Sending request! ${JSON.stringify(runtime.metadata)}`
+        `[functions] Runtime ready! Sending request! ${JSON.stringify(worker.runtime.metadata)}`
       );
 
-      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may cause unexpected
-      // situations - not to mention CORS troubles and this enables us to use a socketPath (IPC socket) instead of
-      // consuming yet another port which is probably faster as well.
+      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
+      // cause unexpected situations - not to mention CORS troubles and this enables us to use
+      // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
       const runtimeReq = http.request(
         {
           method,
           path: req.url || "/",
           headers: req.headers,
-          socketPath: runtime.metadata.socketPath,
+          socketPath: worker.runtime.metadata.socketPath,
         },
         (runtimeRes: http.IncomingMessage) => {
           function forwardStatusAndHeaders(): void {
@@ -251,7 +259,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           res.end();
         });
 
-      await runtime.exit;
+      await worker.waitForDone();
     };
 
     // The ordering here is important. The longer routes (background)
@@ -269,7 +277,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     nodeBinary: string,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
-  ): FunctionsRuntimeInstance {
+  ): RuntimeWorker {
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
       ports: {
@@ -281,9 +289,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       triggerType,
     };
 
-    const runtime = InvokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
-    runtime.events.on("log", FunctionsEmulator.handleRuntimeLog.bind(this));
-    return runtime;
+    const worker = invokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
+    return worker;
   }
 
   static handleSystemLog(systemLog: EmulatorLog): void {
@@ -479,13 +486,18 @@ You can probably fix this by running "npm install ${
 
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
-      const runtime = InvokeRuntime(this.nodeBinary, this.getBaseBundle());
 
-      runtime.events.on("log", (el: EmulatorLog) => {
-        FunctionsEmulator.handleRuntimeLog(el);
-      });
+      // Before loading any triggers we need to make sure there are no 'stale' workers
+      // in the pool that would cause us to run old code.
+      WORKER_POOL.refresh();
 
-      const triggerParseEvent = await waitForLog(runtime.events, "SYSTEM", "triggers-parsed");
+      const worker = invokeRuntime(this.nodeBinary, this.getBaseBundle());
+
+      const triggerParseEvent = await EmulatorLog.waitForLog(
+        worker.runtime.events,
+        "SYSTEM",
+        "triggers-parsed"
+      );
       const triggerDefinitions = triggerParseEvent.data
         .triggerDefinitions as EmulatedTriggerDefinition[];
 
@@ -665,6 +677,7 @@ You can probably fix this by running "npm install ${
   }
 
   async stop(): Promise<void> {
+    WORKER_POOL.exit();
     Promise.resolve(this.server && this.server.close());
   }
 
@@ -767,27 +780,31 @@ export interface InvokeRuntimeOpts {
   env?: { [key: string]: string };
   ignore_warnings?: boolean;
 }
-export function InvokeRuntime(
+
+export function invokeRuntime(
   nodeBinary: string,
   frb: FunctionsRuntimeBundle,
   opts?: InvokeRuntimeOpts
-): FunctionsRuntimeInstance {
+): RuntimeWorker {
   opts = opts || {};
+
+  // If we can use an existing worker there is almost nothing to do.
+  const idleWorker = WORKER_POOL.getIdleWorker(frb.triggerId);
+  if (idleWorker) {
+    idleWorker.execute(frb, opts.serializedTriggers);
+    return idleWorker;
+  }
 
   const emitter = new EventEmitter();
   const metadata: { [key: string]: any } = {};
 
-  const args = [
-    path.join(__dirname, "functionsEmulatorRuntime"),
-    JSON.stringify(frb),
-    opts.serializedTriggers || "",
-  ];
+  const args = [path.join(__dirname, "functionsEmulatorRuntime")];
 
   if (opts.ignore_warnings) {
     args.unshift("--no-warnings");
   }
 
-  const runtime = spawn(nodeBinary, args, {
+  const childProcess = spawn(nodeBinary, args, {
     env: { node: nodeBinary, ...opts.env, ...process.env },
     cwd: frb.cwd,
     stdio: ["pipe", "pipe", "pipe", "ipc"],
@@ -799,42 +816,48 @@ export function InvokeRuntime(
       value: string;
     };
   } = {
-    stderr: { pipe: runtime.stderr, value: "" },
-    stdout: { pipe: runtime.stdout, value: "" },
+    stderr: { pipe: childProcess.stderr, value: "" },
+    stdout: { pipe: childProcess.stdout, value: "" },
   };
 
   const ipcBuffer = { value: "" };
-  runtime.on("message", (message: any) => {
-    onData(runtime, emitter, ipcBuffer, message);
+  childProcess.on("message", (message: any) => {
+    onData(childProcess, emitter, ipcBuffer, message);
   });
 
   for (const id in buffers) {
     if (buffers.hasOwnProperty(id)) {
       const buffer = buffers[id];
       buffer.pipe.on("data", (buf: Buffer) => {
-        onData(runtime, emitter, buffer, buf);
+        onData(childProcess, emitter, buffer, buf);
       });
     }
   }
 
-  const ready = waitForLog(emitter, "SYSTEM", "runtime-status", (log) => {
-    return log.text === "ready";
-  }).then((el) => {
-    metadata.socketPath = el.data.socketPath;
-  });
-
-  return {
+  const runtime: FunctionsRuntimeInstance = {
     exit: new Promise<number>((resolve) => {
-      runtime.on("exit", resolve);
+      childProcess.on("exit", resolve);
     }),
-    ready,
     metadata,
     events: emitter,
+    shutdown: () => {
+      childProcess.kill();
+    },
     kill: (signal?: string) => {
-      runtime.kill(signal);
+      childProcess.kill(signal);
       emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
     },
+    send: (args: FunctionsRuntimeArgs) => {
+      return childProcess.send(JSON.stringify(args));
+    },
   };
+
+  const worker = WORKER_POOL.addWorker(frb.triggerId, runtime);
+  worker.onLogs((log: EmulatorLog) => {
+    FunctionsEmulator.handleRuntimeLog(log);
+  }, true /* listen forever */);
+  worker.execute(frb, opts.serializedTriggers);
+  return worker;
 }
 
 function onData(
@@ -862,25 +885,4 @@ function onData(
   }
 
   buffer.value = lines[lines.length - 1];
-}
-
-function waitForLog(
-  emitter: EventEmitter,
-  level: string,
-  type: string,
-  filter?: (el: EmulatorLog) => boolean
-): Promise<EmulatorLog> {
-  return new Promise((resolve, reject) => {
-    emitter.on("log", (el: EmulatorLog) => {
-      const levelTypeMatch = el.level === level && el.type === type;
-      let filterMatch = true;
-      if (filter) {
-        filterMatch = filter(el);
-      }
-
-      if (levelTypeMatch && filterMatch) {
-        resolve(el);
-      }
-    });
-  });
 }
