@@ -8,6 +8,7 @@ import {
   FunctionsRuntimeBundle,
 } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
+import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   // tslint:disable-next-line:no-var-requires
@@ -28,7 +29,7 @@ function UseFunctions(triggers: () => {}): void {
     triggerType: EmulatedTriggerType,
     nodeBinary: string,
     proto?: any
-  ): FunctionsRuntimeInstance => {
+  ): RuntimeWorker => {
     return startFunctionRuntime(bundleTemplate, triggerId, triggerType, nodeBinary, proto, {
       serializedTriggers,
     });
