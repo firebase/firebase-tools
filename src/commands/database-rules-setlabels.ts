@@ -10,8 +10,8 @@ export default new Command("database:rules:setlabels")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
-  .option("--stable <ruleset_id>", "mark the given ruleset id as 'stable'")
-  .option("--canary <ruleset_id>", "mark the given ruleset id as 'canary'")
+  .option("--stable <ruleset_id>", "[required] mark the given ruleset id as 'stable'")
+  .option("--canary <ruleset_id>", "mark the given ruleset id as 'canary'. an empty string will remove the canary label.")
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action(async (options: any) => {
