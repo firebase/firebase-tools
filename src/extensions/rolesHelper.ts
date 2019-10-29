@@ -28,6 +28,9 @@ export function grantRoles(
   rolesToRemove = rolesToRemove.map((role) => `roles/${role}`);
   return api
     .request("POST", utils.endpoint([API_VERSION, "projects", projectId, ":getIamPolicy"]), {
+      data: {
+        options: { requestedPolicyVersion: 3 },
+      },
       auth: true,
       origin: api.resourceManagerOrigin,
     })
