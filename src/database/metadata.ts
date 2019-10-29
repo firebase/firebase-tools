@@ -6,7 +6,7 @@ import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
 
-function handleErrorResponse(response: any): any {
+function handleErrorResponse(response: any): Promise<any> {
   if (response.body && response.body.error) {
     return utils.reject(response.body.error, { code: 2 });
   }

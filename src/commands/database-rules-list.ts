@@ -17,6 +17,6 @@ export default new Command("database:rules:list")
     for (const ruleset of rulesets) {
       logger.info(ruleset);
     }
-    logger.info(`Database ${options.instance} has ${rulesets.length} rulesets`);
+    logger.info(`Database ${options.instance} has ${rulesets.length} rulesets.`);
     return rulesets;
   });
