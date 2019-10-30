@@ -133,17 +133,30 @@ export class PubsubEmulator implements EmulatorInstance {
     const dataObj = JSON.parse(data);
     console.log(`onMessage(${topicName}): ${JSON.stringify(dataObj)}`);
 
+    // TODO
+    const projectId = "fir-dumpster";
+
     const body = {
+      context: {
+        // TODO: Is this an acceptable eventId?
+        eventId: message.id,
+        resource: {
+          service: "pubsub.googleapis.com",
+          name: `projects/${projectId}/topics/${topicName}`,
+        },
+        eventType: "google.pubsub.topic.publish",
+        timestamp: message.publishTime.toISOString(),
+      },
       data: {
         data: message.data,
         attributes: message.attributes,
       },
     };
 
-    // TODO: Take functions stuff as input
+    // TODO: Take host and port as input
     // TODO: how do I know the name?
     console.log("POSTING...");
-    const route = "functions/projects/fir-dumpster/triggers/pubsubFn";
+    const route = `functions/projects/${topicName}/triggers/pubsubFn`;
     request.post(`http://localhost:5001/${route}`, {
       body: JSON.stringify(body),
     });
