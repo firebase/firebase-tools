@@ -16,6 +16,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreE
 import { HostingEmulator } from "../emulator/hostingEmulator";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
+import { PubsubEmulator } from "./pubsubEmulator";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
@@ -211,6 +212,10 @@ export async function startAll(options: any): Promise<void> {
 
     await startEmulator(hostingEmulator);
   }
+
+  // TODO: Start conditions
+  const pubsubEmulator = new PubsubEmulator({});
+  await startEmulator(pubsubEmulator);
 
   const running = EmulatorRegistry.listRunning();
   for (const name of running) {

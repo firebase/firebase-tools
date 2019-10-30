@@ -542,6 +542,9 @@ You can probably fix this by running "npm install ${
             case Constants.SERVICE_REALTIME_DATABASE:
               added = await this.addRealtimeDatabaseTrigger(this.projectId, definition);
               break;
+            case Constants.SERVICE_PUBSUB:
+              added = await this.addPubsubTrigger(this.projectId, definition);
+              break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               break;
@@ -674,6 +677,19 @@ You can probably fix this by running "npm install ${
         }
       );
     });
+  }
+
+  addPubsubTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
+    const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
+    if (!pubsubPort) {
+      return Promise.resolve(false);
+    }
+
+    const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
+    logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
+
+    // TOOD
+    return Promise.resolve(true);
   }
 
   async stop(): Promise<void> {

@@ -6,6 +6,7 @@ export enum Emulators {
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
+  PUBSUB = "pubsub",
 }
 
 // TODO: Is there a way we can just allow iteration over the enum?
@@ -14,6 +15,7 @@ export const ALL_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
+  Emulators.PUBSUB,
 ];
 
 export interface EmulatorInstance {
