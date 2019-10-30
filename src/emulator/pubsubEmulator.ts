@@ -13,7 +13,7 @@ export interface PubsubEmulatorArgs {
 
 export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
-  topics: Array<string>;
+  triggers: Map<string, string>;
   subscriptions: Map<string, Subscription>;
   instance?: childProcess.ChildProcess;
 
@@ -24,8 +24,7 @@ export class PubsubEmulator implements EmulatorInstance {
       projectId: "fir-dumpster",
     });
 
-    // TODO: Get this from functions
-    this.topics = ["test-topic"];
+    this.triggers = new Map();
     this.subscriptions = new Map();
   }
 
@@ -48,26 +47,16 @@ export class PubsubEmulator implements EmulatorInstance {
     if (!this.instance) {
       throw new Error("Pubsub instance null");
     }
-
     this.instance.on("error", (err: any) => {
       console.warn("error", err);
     });
-    this.instance.on("exit", (code, signal) => {
-      console.warn("exit", code, signal);
-    });
 
-    // TODO: Start the emulator
-    // TODO: Should we wait to construct the client before then/
+    // TODO: Should we wait to construct the client before then?
     return Promise.resolve();
   }
 
   async connect(): Promise<void> {
-    console.log(`Pubsub client emulated: ${this.pubsub.isEmulator}`);
-
-    for (const topicName of this.topics) {
-      await this.subscribeTo(topicName);
-    }
-
+    // TODO: Should I add message listeners here?
     return Promise.resolve();
   }
 
@@ -93,7 +82,8 @@ export class PubsubEmulator implements EmulatorInstance {
     return Emulators.PUBSUB;
   }
 
-  private async subscribeTo(topicName: string) {
+  async addTrigger(topicName: string, trigger: string) {
+    console.log(`addTrigger(${topicName}, ${trigger})`);
     const topic = this.pubsub.topic(topicName);
     try {
       console.log(`Creating topic: ${topicName}`);
@@ -125,13 +115,17 @@ export class PubsubEmulator implements EmulatorInstance {
       this.onMessage(topicName, message);
     });
 
+    this.triggers.set(topicName, trigger);
     this.subscriptions.set(topicName, sub);
   }
 
   private onMessage(topicName: string, message: Message) {
-    const data = message.data.toString();
-    const dataObj = JSON.parse(data);
-    console.log(`onMessage(${topicName}): ${JSON.stringify(dataObj)}`);
+    const trigger = this.triggers.get(topicName);
+    if (!trigger) {
+      // TODO: Throw
+      console.log(`No trigger for topic: ${topicName}`);
+      return;
+    }
 
     // TODO
     const projectId = "fir-dumpster";
@@ -154,13 +148,12 @@ export class PubsubEmulator implements EmulatorInstance {
     };
 
     // TODO: Take host and port as input
-    // TODO: how do I know the name?
-    console.log("POSTING...");
-    const route = `functions/projects/${topicName}/triggers/pubsubFn`;
+    const route = `functions/projects/${topicName}/triggers/${trigger}`;
     request.post(`http://localhost:5001/${route}`, {
       body: JSON.stringify(body),
     });
 
+    // TODO: Wait for success before ack.
     message.ack();
   }
 }

@@ -31,6 +31,7 @@ import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { PubsubEmulator } from "./pubsubEmulator";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -685,11 +686,25 @@ You can probably fix this by running "npm install ${
       return Promise.resolve(false);
     }
 
-    const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
-    logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
+    if (!definition.eventTrigger) {
+      return Promise.resolve(false);
+    }
 
-    // TOOD
-    return Promise.resolve(true);
+    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
+
+    logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+
+    // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
+    const resource = definition.eventTrigger.resource;
+    const resourceParts = resource.split('/');
+    const topic = resourceParts[resourceParts.length - 1];
+
+    return pubsubEmulator.addTrigger(topic, definition.name).then(() => {
+      return true
+    }
+    ).catch((err) => {
+      return false
+    });
   }
 
   async stop(): Promise<void> {
