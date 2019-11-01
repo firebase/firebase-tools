@@ -696,15 +696,17 @@ You can probably fix this by running "npm install ${
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
     const resource = definition.eventTrigger.resource;
-    const resourceParts = resource.split('/');
+    const resourceParts = resource.split("/");
     const topic = resourceParts[resourceParts.length - 1];
 
-    return pubsubEmulator.addTrigger(topic, definition.name).then(() => {
-      return true
-    }
-    ).catch((err) => {
-      return false
-    });
+    return pubsubEmulator
+      .addTrigger(topic, definition.name)
+      .then(() => {
+        return true;
+      })
+      .catch((err) => {
+        return false;
+      });
   }
 
   async stop(): Promise<void> {

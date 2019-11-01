@@ -3,19 +3,20 @@ import * as request from "request";
 import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
 
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import * as javaEmulators from "../serve/javaEmulators";
 import { Constants } from "./constants";
 
 export interface PubsubEmulatorArgs {
   port?: number;
   host?: string;
   projectId?: string;
+  auto_download?: boolean;
 }
 
 export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
   triggers: Map<string, string>;
   subscriptions: Map<string, Subscription>;
-  instance?: childProcess.ChildProcess;
 
   constructor(private args: PubsubEmulatorArgs) {
     // TODO: Variable port and project
@@ -29,30 +30,7 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    // /Library/Java/JavaVirtualMachines/default/Contents/Home/bin/java
-    //    -jar /Users/samstern/google-cloud-sdk/platform/pubsub-emulator/lib/cloud-pubsub-emulator-0.1-SNAPSHOT-all.jar
-    //    --host=localhost --port=8085
-
-    // TODO: Maybe combine this logic with some of the JavaEmulators stuff?
-    // TODO: Do a simpler check for presence of "gcloud" and "pubsub emulator"
-    this.instance = childProcess.spawn(
-      "gcloud",
-      ["--quiet", "beta", "emulators", "pubsub", "start"],
-      {
-        stdio: ["inherit", "pipe", "pipe"],
-      }
-    );
-
-    // TODO: Use Firebase errors
-    if (!this.instance) {
-      throw new Error("Pubsub instance null");
-    }
-    this.instance.on("error", (err: any) => {
-      console.warn("error", err);
-    });
-
-    // TODO: Should we wait to construct the client before then?
-    return Promise.resolve();
+    return javaEmulators.start(Emulators.PUBSUB, this.args);
   }
 
   async connect(): Promise<void> {
@@ -61,11 +39,7 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    // TODO
-    if (this.instance) {
-      this.instance.kill();
-    }
-    return Promise.resolve();
+    return javaEmulators.stop(Emulators.PUBSUB);
   }
 
   getInfo(): EmulatorInfo {

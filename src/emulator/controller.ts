@@ -213,8 +213,14 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(hostingEmulator);
   }
 
-  // TODO: Start conditions
-  const pubsubEmulator = new PubsubEmulator({});
+  // TODO: Conditional start
+  // TODO: Project ID
+  const pubsubAddr = Constants.getAddress(Emulators.PUBSUB, options);
+  const pubsubEmulator = new PubsubEmulator({
+    host: pubsubAddr.host,
+    port: pubsubAddr.port,
+    auto_download: true,
+  });
   await startEmulator(pubsubEmulator);
 
   const running = EmulatorRegistry.listRunning();
