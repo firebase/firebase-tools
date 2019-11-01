@@ -169,7 +169,14 @@ var serialExportUsers = function(projectId, options) {
         options.nextPageToken = ret.body.nextPageToken;
         return serialExportUsers(projectId, options);
       }
-    });
+    })
+    .catch((err)=>{
+     //Calling again in case of error timedout so that script won't exit
+     if(err.code === 'ETIMEDOUT'){
+      return serialExportUsers(projectId, options);
+     }
+      
+  });
 };
 
 var accountExporter = {
