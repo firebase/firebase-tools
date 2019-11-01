@@ -78,6 +78,10 @@ export async function cleanShutdown(): Promise<boolean> {
 }
 
 export function shouldStart(options: any, name: Emulators): boolean {
+  if (name === Emulators.PUBSUB) {
+    return !!options.withPubsub;
+  }
+
   const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
   return targets.indexOf(name) >= 0;
 }
@@ -213,15 +217,16 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(hostingEmulator);
   }
 
-  // TODO: Conditional start
   // TODO: Project ID
-  const pubsubAddr = Constants.getAddress(Emulators.PUBSUB, options);
-  const pubsubEmulator = new PubsubEmulator({
-    host: pubsubAddr.host,
-    port: pubsubAddr.port,
-    auto_download: true,
-  });
-  await startEmulator(pubsubEmulator);
+  if (shouldStart(options, Emulators.PUBSUB)) {
+    const pubsubAddr = Constants.getAddress(Emulators.PUBSUB, options);
+    const pubsubEmulator = new PubsubEmulator({
+      host: pubsubAddr.host,
+      port: pubsubAddr.port,
+      auto_download: true,
+    });
+    await startEmulator(pubsubEmulator);
+  }
 
   const running = EmulatorRegistry.listRunning();
   for (const name of running) {
