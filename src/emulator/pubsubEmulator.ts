@@ -1,15 +1,16 @@
-import * as childProcess from "child_process";
 import * as request from "request";
 import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
 
+import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import * as javaEmulators from "../serve/javaEmulators";
 import { Constants } from "./constants";
+import { FirebaseError } from "../error";
 
 export interface PubsubEmulatorArgs {
+  projectId: string;
   port?: number;
   host?: string;
-  projectId?: string;
   auto_download?: boolean;
 }
 
@@ -19,10 +20,10 @@ export class PubsubEmulator implements EmulatorInstance {
   subscriptions: Map<string, Subscription>;
 
   constructor(private args: PubsubEmulatorArgs) {
-    // TODO: Variable port and project
+    const { host, port } = this.getInfo();
     this.pubsub = new PubSub({
-      apiEndpoint: "localhost:8085",
-      projectId: "fir-dumpster",
+      apiEndpoint: `${host}:${port}`,
+      projectId: this.args.projectId,
     });
 
     this.triggers = new Map();
@@ -34,7 +35,6 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // TODO: Should I add message listeners here?
     return Promise.resolve();
   }
 
@@ -57,31 +57,30 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async addTrigger(topicName: string, trigger: string) {
-    console.log(`addTrigger(${topicName}, ${trigger})`);
+    EmulatorLogger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
     const topic = this.pubsub.topic(topicName);
     try {
-      console.log(`Creating topic: ${topicName}`);
+      EmulatorLogger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
       await topic.create();
     } catch (e) {
       if (e && e.code === 6) {
-        console.log(`Topic ${topicName} exists`);
+        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
       } else {
-        throw e;
+        throw new FirebaseError(`Could not create topic ${topicName}`, { original: e });
       }
     }
 
     const subName = `emulator-sub-${topicName}`;
     let sub;
     try {
-      console.log(`Creating sub for topic: ${topicName}`);
+      EmulatorLogger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
       [sub] = await topic.createSubscription(subName);
     } catch (e) {
       if (e && e.code === 6) {
-        console.log(`Sub for ${topicName} exists`);
+        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
         sub = topic.subscription(`emulator-sub-${topicName}`);
       } else {
-        console.warn(JSON.stringify(e));
-        throw e;
+        throw new FirebaseError(`Could not create sub ${subName}`, { original: e });
       }
     }
 
@@ -96,21 +95,16 @@ export class PubsubEmulator implements EmulatorInstance {
   private onMessage(topicName: string, message: Message) {
     const trigger = this.triggers.get(topicName);
     if (!trigger) {
-      // TODO: Throw
-      console.log(`No trigger for topic: ${topicName}`);
-      return;
+      throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
-
-    // TODO
-    const projectId = "fir-dumpster";
 
     const body = {
       context: {
-        // TODO: Is this an acceptable eventId?
+        // TODO(samstern): Is this an acceptable eventId?
         eventId: message.id,
         resource: {
           service: "pubsub.googleapis.com",
-          name: `projects/${projectId}/topics/${topicName}`,
+          name: `projects/${this.args.projectId}/topics/${topicName}`,
         },
         eventType: "google.pubsub.topic.publish",
         timestamp: message.publishTime.toISOString(),
@@ -121,13 +115,16 @@ export class PubsubEmulator implements EmulatorInstance {
       },
     };
 
-    // TODO: Take host and port as input
+    // TODO(samstern): Take functions host and port as input
     const route = `functions/projects/${topicName}/triggers/${trigger}`;
-    request.post(`http://localhost:5001/${route}`, {
-      body: JSON.stringify(body),
-    });
-
-    // TODO: Wait for success before ack.
-    message.ack();
+    request.post(
+      `http://localhost:5001/${route}`,
+      {
+        body: JSON.stringify(body),
+      },
+      () => {
+        message.ack();
+      }
+    );
   }
 }

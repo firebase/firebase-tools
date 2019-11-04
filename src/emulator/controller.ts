@@ -104,7 +104,6 @@ export async function startAll(options: any): Promise<void> {
 
   const projectId: string | undefined = getProjectId(options, true);
 
-  utils.logBullet(`Starting emulators: ${JSON.stringify(targets)}`);
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored: string[] = _.difference(requested, targets);
@@ -217,12 +216,18 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(hostingEmulator);
   }
 
-  // TODO: Project ID
   if (shouldStart(options, Emulators.PUBSUB)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        "Can't start pubsub emulator without projectId, run 'firebase init' or pass the --project flag"
+      );
+    }
+
     const pubsubAddr = Constants.getAddress(Emulators.PUBSUB, options);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
+      projectId,
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);

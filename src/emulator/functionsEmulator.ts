@@ -439,6 +439,9 @@ You can probably fix this by running "npm install ${
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
+  // TODO(samstern): options is only used within the constructor, we should
+  // just pass in projectId, projectDir, and functions.source so that we drop
+  // the options dependency.
   constructor(private options: any, private args: FunctionsEmulatorArgs) {
     this.projectId = getProjectId(this.options, false);
 
