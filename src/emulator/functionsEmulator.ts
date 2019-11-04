@@ -745,6 +745,7 @@ You can probably fix this by running "npm install ${
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };

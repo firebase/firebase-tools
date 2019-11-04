@@ -16,7 +16,11 @@ export interface PubsubEmulatorArgs {
 
 export class PubsubEmulator implements EmulatorInstance {
   pubsub: PubSub;
-  triggers: Map<string, string>;
+
+  // Map of topic name to a list of functions to trigger
+  triggers: Map<string, Set<string>>;
+
+  // Map of topic name to a PubSub subscription object
   subscriptions: Map<string, Subscription>;
 
   constructor(private args: PubsubEmulatorArgs) {
@@ -58,7 +62,9 @@ export class PubsubEmulator implements EmulatorInstance {
 
   async addTrigger(topicName: string, trigger: string) {
     EmulatorLogger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
-    if (this.triggers.has(topicName) && this.subscriptions.has(topicName)) {
+
+    const topicTriggers = this.triggers.get(topicName) || new Set();
+    if (topicTriggers.has(topicName) && this.subscriptions.has(topicName)) {
       EmulatorLogger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
@@ -93,42 +99,53 @@ export class PubsubEmulator implements EmulatorInstance {
       this.onMessage(topicName, message);
     });
 
-    this.triggers.set(topicName, trigger);
+    topicTriggers.add(trigger);
+    this.triggers.set(topicName, topicTriggers);
     this.subscriptions.set(topicName, sub);
   }
 
   private onMessage(topicName: string, message: Message) {
-    const trigger = this.triggers.get(topicName);
-    if (!trigger) {
+    EmulatorLogger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
+    const topicTriggers = this.triggers.get(topicName);
+    if (!topicTriggers || topicTriggers.size === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
-    const body = {
-      context: {
-        // TODO(samstern): Is this an acceptable eventId?
-        eventId: message.id,
-        resource: {
-          service: "pubsub.googleapis.com",
-          name: `projects/${this.args.projectId}/topics/${topicName}`,
-        },
-        eventType: "google.pubsub.topic.publish",
-        timestamp: message.publishTime.toISOString(),
-      },
-      data: {
-        data: message.data,
-        attributes: message.attributes,
-      },
-    };
-
-    const functionsUrl = `http://localhost:5001/functions/projects/${topicName}/triggers/${trigger}`;
-    request.post(
-      functionsUrl,
-      {
-        body: JSON.stringify(body),
-      },
-      () => {
+    let remaining = topicTriggers.size;
+    const postCallback = () => {
+      remaining--;
+      if (remaining <= 0) {
+        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
         message.ack();
       }
-    );
+    };
+
+    for (const trigger of topicTriggers) {
+      const body = {
+        context: {
+          // TODO(samstern): Is this an acceptable eventId?
+          eventId: message.id,
+          resource: {
+            service: "pubsub.googleapis.com",
+            name: `projects/${this.args.projectId}/topics/${topicName}`,
+          },
+          eventType: "google.pubsub.topic.publish",
+          timestamp: message.publishTime.toISOString(),
+        },
+        data: {
+          data: message.data,
+          attributes: message.attributes,
+        },
+      };
+
+      const functionsUrl = `http://localhost:5001/functions/projects/${topicName}/triggers/${trigger}`;
+      request.post(
+        functionsUrl,
+        {
+          body: JSON.stringify(body),
+        },
+        postCallback
+      );
+    }
   }
 }
