@@ -216,7 +216,12 @@ module.exports = function(context, options, payload) {
                 })
                 .then((createRes) => {
                   return gcp.cloudfunctions
-                    .setIamPolicy({ functionName, projectId, region, policy: DEFAULT_PUBLIC_POLICY })
+                    .setIamPolicy({
+                      functionName,
+                      projectId,
+                      region,
+                      policy: DEFAULT_PUBLIC_POLICY,
+                    })
                     .then(() => {
                       return createRes;
                     });
