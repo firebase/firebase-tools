@@ -16,7 +16,7 @@ const downloadEmulator = require("../emulator/download");
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
-type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
+type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
@@ -40,11 +40,25 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     stdout: null,
     cacheDir: CACHE_DIR,
     remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.9.0.jar",
-    expectedSize: 60831386,
-    expectedChecksum: "36e64e09ecda06a05d1d3d1bb5450b33",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.9.0.jar"),
+      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.0.jar",
+    expectedSize: 62550064,
+    expectedChecksum: "a19e8b6bbd13de667625866bd46295d5",
+    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.0.jar"),
     namePrefix: "cloud-firestore-emulator",
+  },
+
+  // TODO: This is not a real production bucket! This is just in test project. Need to move it.
+  pubsub: {
+    name: Emulators.PUBSUB,
+    instance: null,
+    stdout: null,
+    cacheDir: CACHE_DIR,
+    remoteUrl:
+      "https://storage.googleapis.com/fir-dumpster.appspot.com/jars/cloud-pubsub-emulator-v0.1.0.jar",
+    expectedSize: 32188703,
+    expectedChecksum: "072506ed963b35e1fb5989caddb36790",
+    localPath: path.join(CACHE_DIR, "cloud-pubsub-emulator-v0.1.0.jar"),
+    namePrefix: "cloud-pubsub-emulator",
   },
 };
 
@@ -58,6 +72,11 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
     optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+  },
+  pubsub: {
+    binary: "java",
+    args: ["-jar", EmulatorDetails.pubsub.localPath],
+    optionalArgs: ["port", "host"],
   },
 };
 
@@ -88,7 +107,12 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
     const argKey = "--" + key;
     const argVal = args[key];
 
-    cmdLineArgs.push(argKey, argVal);
+    if (!argVal || argVal === "") {
+      logger.debug(`Ignoring empty arg for key: ${key}`);
+      return;
+    }
+
+    cmdLineArgs.push(`${argKey}=${argVal}`);
   });
 
   return {
