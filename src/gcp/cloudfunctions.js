@@ -94,6 +94,32 @@ function _createFunction(options) {
     );
 }
 
+async function _setIamPolicy(options) {
+  const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;
+  const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
+
+  try {
+    const res = await api.request("POST", endpoint, {
+      auth: true,
+      data: {
+        policy: {
+          version: 3,
+          bindings: [
+            {
+              role: "roles/cloudfunctions.invoker",
+              members: ["allUsers"],
+            },
+          ],
+        },
+        updateMask: ["version", "bindings"].join(),
+      },
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.functionName}`, { original: err })
+  }
+}
+
 function _updateFunction(options) {
   var location = "projects/" + options.projectId + "/locations/" + options.region;
   var func = location + "/functions/" + options.functionName;
@@ -249,4 +275,5 @@ module.exports = {
   list: _listFunctions,
   listAll: _listAllFunctions,
   check: _checkOperation,
+  setIamPolicy: _setIamPolicy,
 };

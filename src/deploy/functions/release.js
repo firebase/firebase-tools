@@ -189,20 +189,24 @@ module.exports = function(context, options, payload) {
 
           deployments.push({
             name: name,
-            retryFunction: function() {
-              return gcp.cloudfunctions.create({
-                projectId: projectId,
-                region: region,
-                eventType: eventType,
-                functionName: functionName,
-                entryPoint: functionInfo.entryPoint,
-                trigger: functionTrigger,
-                labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
-                sourceUploadUrl: sourceUrl,
-                runtime: runtime,
-                availableMemoryMb: functionInfo.availableMemoryMb,
-                timeout: functionInfo.timeout,
-              });
+            retryFunction: () => {
+              return gcp.cloudfunctions
+                .create({
+                  projectId: projectId,
+                  region: region,
+                  eventType: eventType,
+                  functionName: functionName,
+                  entryPoint: functionInfo.entryPoint,
+                  trigger: functionTrigger,
+                  labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
+                  sourceUploadUrl: sourceUrl,
+                  runtime: runtime,
+                  availableMemoryMb: functionInfo.availableMemoryMb,
+                  timeout: functionInfo.timeout,
+                })
+                .then((createRes) => {
+                  return gcp.cloudfunctions.setIamPolicy({ functionName, projectId, region }).then(() => { return createRes; });
+                });
             },
             trigger: functionTrigger,
           });
