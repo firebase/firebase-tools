@@ -745,6 +745,12 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
       }
     }
   }
+
+  if (frb.ports.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+    const pubsubHost = `localhost:${frb.ports.pubsub}`;
+    process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
+    logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+  }
 }
 
 async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {

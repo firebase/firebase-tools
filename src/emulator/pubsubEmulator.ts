@@ -4,11 +4,12 @@ import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
 
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
+import { FirebaseError } from "../error";
 
 export interface PubsubEmulatorArgs {
+  projectId?: string;
   port?: number;
   host?: string;
-  projectId?: string;
 }
 
 export class PubsubEmulator implements EmulatorInstance {
@@ -18,9 +19,12 @@ export class PubsubEmulator implements EmulatorInstance {
   instance?: childProcess.ChildProcess;
 
   constructor(private args: PubsubEmulatorArgs) {
-    // TODO: Variable port and project
+    // TODO: Audit all console.logs
+
+    // TODO: Variable project
+    const port = this.getInfo().port;
     this.pubsub = new PubSub({
-      apiEndpoint: "localhost:8085",
+      apiEndpoint: `localhost:${port}`,
       projectId: "fir-dumpster",
     });
 
@@ -43,10 +47,10 @@ export class PubsubEmulator implements EmulatorInstance {
       }
     );
 
-    // TODO: Use Firebase errors
     if (!this.instance) {
-      throw new Error("Pubsub instance null");
+      throw new FirebaseError("Failed to start the PubSub emulator.");
     }
+
     this.instance.on("error", (err: any) => {
       console.warn("error", err);
     });
@@ -56,7 +60,6 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // TODO: Should I add message listeners here?
     return Promise.resolve();
   }
 
@@ -84,6 +87,11 @@ export class PubsubEmulator implements EmulatorInstance {
 
   async addTrigger(topicName: string, trigger: string) {
     console.log(`addTrigger(${topicName}, ${trigger})`);
+    if (this.triggers.has(topicName) && this.subscriptions.has(topicName)) {
+      console.log("Trigger already exists");
+      return;
+    }
+
     const topic = this.pubsub.topic(topicName);
     try {
       console.log(`Creating topic: ${topicName}`);
@@ -147,9 +155,9 @@ export class PubsubEmulator implements EmulatorInstance {
       },
     };
 
-    // TODO: Take host and port as input
-    const route = `functions/projects/${topicName}/triggers/${trigger}`;
-    request.post(`http://localhost:5001/${route}`, {
+    // TODO: Take functions emulator host and port as input
+    const functionsUrl = `http://localhost:5001/functions/projects/${topicName}/triggers/${trigger}`;
+    request.post(functionsUrl, {
       body: JSON.stringify(body),
     });
 
