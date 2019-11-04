@@ -9,6 +9,7 @@ module.exports = {
   async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
     args = args || {};
 
+    // TODO(samstern): This would be much cleaner as a whitelist
     if (!args.disabledRuntimeFeatures) {
       // When running the functions emulator through 'firebase serve' we disable some
       // of the more adventurous features that could be breaking/unexpected behavior
@@ -19,6 +20,7 @@ module.exports = {
         timeout: true,
         memory_limiting: true,
         admin_stubs: true,
+        pubsub_emulator: true,
       };
     }
 

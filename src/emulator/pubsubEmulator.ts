@@ -58,6 +58,11 @@ export class PubsubEmulator implements EmulatorInstance {
 
   async addTrigger(topicName: string, trigger: string) {
     EmulatorLogger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
+    if (this.triggers.has(topicName) && this.subscriptions.has(topicName)) {
+      EmulatorLogger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
+      return;
+    }
+
     const topic = this.pubsub.topic(topicName);
     try {
       EmulatorLogger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
@@ -115,10 +120,9 @@ export class PubsubEmulator implements EmulatorInstance {
       },
     };
 
-    // TODO(samstern): Take functions host and port as input
-    const route = `functions/projects/${topicName}/triggers/${trigger}`;
+    const functionsUrl = `http://localhost:5001/functions/projects/${topicName}/triggers/${trigger}`;
     request.post(
-      `http://localhost:5001/${route}`,
+      functionsUrl,
       {
         body: JSON.stringify(body),
       },

@@ -284,6 +284,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       proto,
       triggerId,
