@@ -172,7 +172,7 @@ var serialExportUsers = function(projectId, options) {
     })
     .catch((err)=>{
      //Calling again in case of error timedout so that script won't exit
-     if(err.code === 'ETIMEDOUT'){
+     if(err.original.code === 'ETIMEDOUT'){
       return serialExportUsers(projectId, options);
      }
       
