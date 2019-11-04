@@ -23,6 +23,16 @@ var timings = {};
 var deployments = [];
 var failedDeployments = [];
 
+const DEFAULT_PUBLIC_POLICY = {
+  version: 3,
+  bindings: [
+    {
+      role: "roles/cloudfunctions.invoker",
+      members: ["allUsers"],
+    },
+  ],
+};
+
 function _startTimer(name, type) {
   timings[name] = { type: type, t0: process.hrtime() };
 }
@@ -206,7 +216,7 @@ module.exports = function(context, options, payload) {
                 })
                 .then((createRes) => {
                   return gcp.cloudfunctions
-                    .setIamPolicy({ functionName, projectId, region })
+                    .setIamPolicy({ functionName, projectId, region, policy: DEFAULT_PUBLIC_POLICY })
                     .then(() => {
                       return createRes;
                     });
