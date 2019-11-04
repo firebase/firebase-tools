@@ -205,7 +205,11 @@ module.exports = function(context, options, payload) {
                   timeout: functionInfo.timeout,
                 })
                 .then((createRes) => {
-                  return gcp.cloudfunctions.setIamPolicy({ functionName, projectId, region }).then(() => { return createRes; });
+                  return gcp.cloudfunctions
+                    .setIamPolicy({ functionName, projectId, region })
+                    .then(() => {
+                      return createRes;
+                    });
                 });
             },
             trigger: functionTrigger,

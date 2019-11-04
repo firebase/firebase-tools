@@ -95,11 +95,13 @@ function _createFunction(options) {
 }
 
 async function _setIamPolicy(options) {
-  const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;
+  const name = `projects/${options.projectId}/locations/${options.region}/functions/${
+    options.functionName
+  }`;
   const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
 
   try {
-    const res = await api.request("POST", endpoint, {
+    await api.request("POST", endpoint, {
       auth: true,
       data: {
         policy: {
@@ -116,7 +118,10 @@ async function _setIamPolicy(options) {
       origin: api.functionsOrigin,
     });
   } catch (err) {
-    throw new FirebaseError(`Failed to set the IAM Policy on the function ${options.functionName}`, { original: err })
+    throw new FirebaseError(
+      `Failed to set the IAM Policy on the function ${options.functionName}`,
+      { original: err }
+    );
   }
 }
 
