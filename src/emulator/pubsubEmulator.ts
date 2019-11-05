@@ -6,6 +6,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import * as javaEmulators from "../serve/javaEmulators";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
+import { EmulatorRegistry } from "./registry";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -120,6 +121,18 @@ export class PubsubEmulator implements EmulatorInstance {
       }
     };
 
+    const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
+    if (!functionsPort) {
+      throw new FirebaseError(
+        `Attempted to execute pubsub trigger for topic ${topicName} but could not find Functions emulator`
+      );
+    }
+
+    EmulatorLogger.logLabeled(
+      "DEBUG",
+      "pubsub",
+      `Executing ${topicTriggers.size} matching triggers`
+    );
     for (const trigger of topicTriggers) {
       const body = {
         context: {
@@ -138,7 +151,7 @@ export class PubsubEmulator implements EmulatorInstance {
         },
       };
 
-      const functionsUrl = `http://localhost:5001/functions/projects/${topicName}/triggers/${trigger}`;
+      const functionsUrl = `http://localhost:${functionsPort}/functions/projects/${topicName}/triggers/${trigger}`;
       request.post(
         functionsUrl,
         {

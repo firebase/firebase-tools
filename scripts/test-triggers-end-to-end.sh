@@ -1,4 +1,6 @@
 #!/bin/bash
+# To run this command locally:
+# LOCAL=true FBTOOLS_TARGET_PROJECT={{YOUR_PROJECT}} ./scripts/test-triggers-end-to-end.sh
 set -xe
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -14,6 +16,7 @@ fi;
 
 $FIREBASE_CLI setup:emulators:firestore
 $FIREBASE_CLI setup:emulators:database
+$FIREBASE_CLI setup:emulators:pubsub
 
 cd ./scripts/triggers-end-to-end-tests
 

@@ -9,10 +9,12 @@ if [ "${TRAVIS}" != "true" ]; then
   export TRAVIS_REPO_SLUG="firebase/firebase-tools"
 fi
 
-GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
-if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
-  GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
+if [ "${LOCAL}" != "true"]; then
+  GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
+  if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
+    GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
+  fi
+  export GOOGLE_APPLICATION_CREDENTIALS
 fi
-export GOOGLE_APPLICATION_CREDENTIALS
 
 echo "Application Default Credentials: ${GOOGLE_APPLICATION_CREDENTIALS}"

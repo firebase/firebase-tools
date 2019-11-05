@@ -13,6 +13,9 @@
     },
     "functions": {
       "port": 9002
+    },
+    "pubsub": {
+      "port": 8085
     }
   }
 }
