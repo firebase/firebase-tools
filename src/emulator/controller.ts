@@ -6,7 +6,6 @@ import * as tcpport from "tcp-port-used";
 
 import * as utils from "../utils";
 import * as track from "../track";
-import * as filterTargets from "../filterTargets";
 import { EmulatorRegistry } from "../emulator/registry";
 import { ALL_EMULATORS, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "../emulator/constants";
@@ -77,12 +76,22 @@ export async function cleanShutdown(): Promise<boolean> {
   return true;
 }
 
-export function shouldStart(options: any, name: Emulators): boolean {
-  if (name === Emulators.PUBSUB) {
-    return !!options.withPubsub;
+export function filterEmulatorTargets(options: any): string[] {
+  let targets = VALID_EMULATOR_STRINGS.filter((e) => {
+    return options.config.has(e) || options.config.has(`emulators.${e}`);
+  });
+
+  if (options.only) {
+    targets = _.intersection(targets, options.only.split(","));
+  } else if (options.except) {
+    targets = _.difference(targets, options.except.split(","));
   }
 
-  const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
+  return targets;
+}
+
+export function shouldStart(options: any, name: Emulators): boolean {
+  const targets: string[] = filterEmulatorTargets(options);
   return targets.indexOf(name) >= 0;
 }
 
@@ -97,9 +106,9 @@ export async function startAll(options: any): Promise<void> {
   // }
   //
   // The list of emulators to start is filtered two ways:
-  // 1) The service must have a top-level entry in firebase.json
+  // 1) The service must have a top-level entry in firebase.json or an entry in the emulators{} object
   // 2) If the --only flag is passed, then this list is the intersection
-  const targets: string[] = filterTargets(options, VALID_EMULATOR_STRINGS);
+  const targets: string[] = filterEmulatorTargets(options);
   options.targets = targets;
 
   const projectId: string | undefined = getProjectId(options, true);

@@ -82,7 +82,6 @@ module.exports = new Command("emulators:exec <script>")
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
   .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
-  .option(Flags.FLAG_WITH_PUBSUB, Flags.DESC_WITH_PUBSUB)
   .action(async (script: string, options: any) => {
     let exitCode = 0;
     try {

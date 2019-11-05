@@ -7,7 +7,6 @@ module.exports = new Command("emulators:start")
   .before(beforeEmulatorCommand)
   .description("start the local Firebase emulators")
   .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
-  .option(Flags.FLAG_WITH_PUBSUB, Flags.DESC_WITH_PUBSUB)
   .action(async (options: any) => {
     try {
       await controller.startAll(options);

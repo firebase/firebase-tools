@@ -19,9 +19,6 @@ export class Flags {
     "This is a comma separated list of emulators to start. " +
     "Valid options are: " +
     JSON.stringify(controller.VALID_EMULATOR_STRINGS);
-
-  static FLAG_WITH_PUBSUB = "--with-pubsub";
-  static DESC_WITH_PUBSUB = "also run the Cloud Pub/Sub emulator.";
 }
 
 export async function beforeEmulatorCommand(options: any): Promise<any> {

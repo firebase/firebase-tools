@@ -15,6 +15,7 @@ import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
+import { triggerAsyncId } from "async_hooks";
 
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
@@ -70,16 +71,19 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
     optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    joinArgs: false,
   },
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
     optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+    joinArgs: false,
   },
   pubsub: {
     binary: "java",
     args: ["-jar", EmulatorDetails.pubsub.localPath],
     optionalArgs: ["port", "host"],
+    joinArgs: true,
   },
 };
 
@@ -115,13 +119,19 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
       return;
     }
 
-    cmdLineArgs.push(`${argKey}=${argVal}`);
+    // Sign, Database emulator needs --arg val and PubSub emulator needs --pub=val
+    if (baseCmd.joinArgs) {
+      cmdLineArgs.push(`${argKey}=${argVal}`);
+    } else {
+      cmdLineArgs.push(argKey, argVal);
+    }
   });
 
   return {
     binary: baseCmd.binary,
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
+    joinArgs: baseCmd.joinArgs,
   };
 }
 

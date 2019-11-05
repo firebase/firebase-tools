@@ -75,6 +75,7 @@ export interface JavaEmulatorCommand {
   binary: string;
   args: string[];
   optionalArgs: string[];
+  joinArgs: boolean;
 }
 
 export interface JavaEmulatorDetails {
