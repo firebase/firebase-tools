@@ -9,6 +9,8 @@ export enum Emulators {
   PUBSUB = "pubsub",
 }
 
+export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
+
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [
   Emulators.FUNCTIONS,
@@ -17,6 +19,20 @@ export const ALL_EMULATORS = [
   Emulators.HOSTING,
   Emulators.PUBSUB,
 ];
+
+export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
+
+export function isJavaEmulator(value: string): value is JavaEmulators {
+  if (isEmulator(value)) {
+    return JAVA_EMULATORS.indexOf(value) >= 0;
+  }
+
+  return false;
+}
+
+export function isEmulator(value: string): value is Emulators {
+  return Object.values(Emulators).indexOf(value) >= 0;
+}
 
 export interface EmulatorInstance {
   /**

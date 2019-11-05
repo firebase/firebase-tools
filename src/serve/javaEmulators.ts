@@ -1,4 +1,9 @@
-import { Emulators, JavaEmulatorCommand, JavaEmulatorDetails } from "../emulator/types";
+import {
+  Emulators,
+  JavaEmulators,
+  JavaEmulatorCommand,
+  JavaEmulatorDetails,
+} from "../emulator/types";
 import { Constants } from "../emulator/constants";
 
 import { FirebaseError } from "../error";
@@ -15,8 +20,6 @@ import * as os from "os";
 const downloadEmulator = require("../emulator/download");
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
-
-type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
@@ -216,6 +219,15 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
       resolve();
     }
   });
+}
+
+export function downloadIfNecessary(targetName: JavaEmulators) {
+  const emulator = EmulatorDetails[targetName];
+  const hasEmulator = fs.existsSync(emulator.localPath);
+
+  if (!hasEmulator) {
+    return downloadEmulator(targetName);
+  }
 }
 
 export async function start(targetName: JavaEmulators, args: any): Promise<void> {

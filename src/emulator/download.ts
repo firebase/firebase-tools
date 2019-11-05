@@ -12,7 +12,7 @@ import * as path from "path";
 
 tmp.setGracefulCleanup();
 
-type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE;
+type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = javaEmulators.get(name);
