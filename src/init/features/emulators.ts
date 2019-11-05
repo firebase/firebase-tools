@@ -1,5 +1,6 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
+import * as utils from "../../utils";
 import { prompt } from "../../prompt";
 import { Emulators, ALL_EMULATORS, isJavaEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
@@ -37,15 +38,21 @@ export async function doSetup(setup: any, config: any) {
 
   setup.config.emulators = setup.config.emulators || {};
   for (const selected of selections.emulators) {
-    setup.config.emulators[selected] = {};
-    await prompt(setup.config.emulators[selected], [
-      {
-        type: "input",
-        name: "port",
-        message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
-        default: Constants.getDefaultPort(selected as Emulators),
-      },
-    ]);
+    setup.config.emulators[selected] = setup.config.emulators[selected] || {};
+
+    const currentPort = setup.config.emulators[selected].port;
+    if (currentPort) {
+      utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
+    } else {
+      await prompt(setup.config.emulators[selected], [
+        {
+          type: "input",
+          name: "port",
+          message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
+          default: Constants.getDefaultPort(selected as Emulators),
+        },
+      ]);
+    }
   }
 
   if (selections.emulators.length > 0) {
