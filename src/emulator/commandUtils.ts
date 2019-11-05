@@ -12,15 +12,6 @@ import { Emulators } from "../emulator/types";
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
 
-export class Flags {
-  static FLAG_ONLY = "--only";
-  static DESC_ONLY =
-    "only run specific emulators. " +
-    "This is a comma separated list of emulators to start. " +
-    "Valid options are: " +
-    JSON.stringify(controller.VALID_EMULATOR_STRINGS);
-}
-
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
     ...options,

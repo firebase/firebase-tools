@@ -19,8 +19,6 @@ export async function doSetup(setup: any, config: any) {
     };
   });
 
-  console.log(JSON.stringify(choices));
-
   const selections: EmulatorsInitSelections = {};
   await prompt(selections, [
     {
