@@ -37,9 +37,10 @@ export async function doSetup(setup: any, config: any) {
     return;
   }
 
+  setup.config.emulators = {};
   for (const selected of selections.emulators) {
-    setup.config[selected] = {};
-    await prompt(setup.config[selected], [
+    setup.config.emulators[selected] = {};
+    await prompt(setup.config.emulators[selected], [
       {
         type: "input",
         name: "port",
