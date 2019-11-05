@@ -113,7 +113,7 @@ async function _setIamPolicy(options) {
       auth: true,
       data: {
         policy: options.policy,
-        updateMask: Object.keys(options.policy).join(),
+        updateMask: Object.keys(options.policy).join(","),
       },
       origin: api.functionsOrigin,
     });
