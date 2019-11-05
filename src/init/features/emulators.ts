@@ -35,7 +35,7 @@ export async function doSetup(setup: any, config: any) {
     return;
   }
 
-  setup.config.emulators = {};
+  setup.config.emulators = setup.config.emulators || {};
   for (const selected of selections.emulators) {
     setup.config.emulators[selected] = {};
     await prompt(setup.config.emulators[selected], [
