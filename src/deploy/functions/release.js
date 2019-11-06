@@ -215,16 +215,20 @@ module.exports = function(context, options, payload) {
                   timeout: functionInfo.timeout,
                 })
                 .then((createRes) => {
-                  return gcp.cloudfunctions
-                    .setIamPolicy({
-                      functionName,
-                      projectId,
-                      region,
-                      policy: DEFAULT_PUBLIC_POLICY,
-                    })
-                    .then(() => {
-                      return createRes;
-                    });
+                  if (_.has(functionTrigger, "httpsTrigger")) {
+                    logger.debug(`Setting public policy for function ${functionName}`);
+                    return gcp.cloudfunctions
+                      .setIamPolicy({
+                        functionName,
+                        projectId,
+                        region,
+                        policy: DEFAULT_PUBLIC_POLICY,
+                      })
+                      .then(() => {
+                        return createRes;
+                      });
+                  }
+                  return createRes;
                 });
             },
             trigger: functionTrigger,
