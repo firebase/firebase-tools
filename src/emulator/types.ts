@@ -1,5 +1,6 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import * as path from "path";
 
 export enum Emulators {
   FUNCTIONS = "functions",
@@ -78,16 +79,65 @@ export interface JavaEmulatorCommand {
   joinArgs: boolean;
 }
 
-export interface JavaEmulatorDetails {
-  name: string;
-  instance: ChildProcess | null;
-  stdout: any | null;
+export interface JavaEmulatorOptions {
   cacheDir: string;
   remoteUrl: string;
   expectedSize: number;
   expectedChecksum: string;
-  localPath: string;
   namePrefix: string;
+}
+
+export abstract class JavaEmulatorDetails {
+  instance: ChildProcess | null = null;
+  stdout: any | null = null;
+
+  constructor(public name: string, public opts: JavaEmulatorOptions) {}
+
+  abstract get downloadPath(): string;
+  abstract get binaryPath(): string;
+  abstract get unzipDir(): string | undefined;
+}
+
+export class JarEmulatorDetails extends JavaEmulatorDetails {
+  constructor(name: string, private localPath: string, opts: JavaEmulatorOptions) {
+    super(name, opts);
+  }
+
+  get downloadPath(): string {
+    return this.localPath;
+  }
+
+  get binaryPath(): string {
+    return this.localPath;
+  }
+
+  get unzipDir(): string | undefined {
+    return undefined;
+  }
+}
+
+export class ZipEmulatorDetails extends JavaEmulatorDetails {
+  constructor(
+    name: string,
+    private localPath: string,
+    private _unzipDir: string,
+    private zipRelativePath: string,
+    opts: JavaEmulatorOptions
+  ) {
+    super(name, opts);
+  }
+
+  get downloadPath(): string {
+    return this.localPath;
+  }
+
+  get binaryPath(): string {
+    return path.join(this._unzipDir, this.zipRelativePath);
+  }
+
+  get unzipDir(): string | undefined {
+    return this._unzipDir;
+  }
 }
 
 export interface Address {

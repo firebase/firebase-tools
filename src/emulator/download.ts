@@ -9,6 +9,7 @@ import * as javaEmulators from "../serve/javaEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as unzipper from "unzipper";
 
 tmp.setGracefulCleanup();
 
@@ -16,33 +17,49 @@ type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = javaEmulators.get(name);
-  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.localPath)}...`);
-  fs.ensureDirSync(emulator.cacheDir);
+  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
+  fs.ensureDirSync(emulator.opts.cacheDir);
 
-  const tmpfile = await downloadToTmp(emulator.remoteUrl);
-  await validateSize(tmpfile, emulator.expectedSize);
-  await validateChecksum(tmpfile, emulator.expectedChecksum);
+  const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
+  await validateSize(tmpfile, emulator.opts.expectedSize);
+  await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
 
-  fs.copySync(tmpfile, emulator.localPath);
-  fs.chmodSync(emulator.localPath, 0o755);
+  fs.copySync(tmpfile, emulator.downloadPath);
 
-  await removeOldJars(emulator);
+  if (emulator.unzipDir) {
+    await unzip(emulator.downloadPath, emulator.unzipDir);
+  }
+
+  fs.chmodSync(emulator.binaryPath, 0o755);
+
+  await removeOldFiles(emulator);
 };
 
-function removeOldJars(emulator: JavaEmulatorDetails): void {
-  const current = emulator.localPath;
-  const files = fs.readdirSync(emulator.cacheDir);
+function unzip(zipPath: string, unzipDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: unzipDir }))
+      .on("error", reject)
+      .on("finish", resolve);
+  });
+}
+
+function removeOldFiles(emulator: JavaEmulatorDetails): void {
+  // TODO: Remove old unzipped files
+  const currentLocalPath = emulator.downloadPath;
+  const currentUnzipPath = emulator.unzipDir;
+  const files = fs.readdirSync(emulator.opts.cacheDir);
 
   for (const file of files) {
-    const fullFilePath = path.join(emulator.cacheDir, file);
+    const fullFilePath = path.join(emulator.opts.cacheDir, file);
 
-    if (file.indexOf(emulator.namePrefix) < 0) {
+    if (file.indexOf(emulator.opts.namePrefix) < 0) {
       // This file is not related to this emulator, could be a JAR
       // from a different emulator or just a random file.
       continue;
     }
 
-    if (fullFilePath !== current) {
+    if (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) {
       utils.logLabeledBullet(emulator.name, `Removing outdated emulator: ${file}`);
       fs.removeSync(fullFilePath);
     }
