@@ -74,6 +74,21 @@ export class RulesDeploy {
   }
 
   /**
+   * getCurrentRules returns the latest ruleset's name and content.
+   * @param service The service to fetch the rulesets.
+   */
+  private async getCurrentRules(
+    service: RulesetServiceType
+  ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
+    const latestName = await gcp.rules.getLatestRulesetName(this.options.project, service);
+    let latestContent: RulesetFile[] | null = null;
+    if (latestName) {
+      latestContent = await gcp.rules.getRulesetContent(latestName);
+    }
+    return { latestName, latestContent };
+  }
+
+  /**
    * Create rulesets for each file added to this deploy, and record
    * the name for use in the release process later.
    *
@@ -86,11 +101,10 @@ export class RulesDeploy {
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
     const createdRulesetNames: string[] = [];
 
-    const latestRulesetName = await gcp.rules.getLatestRulesetName(this.options.project, service);
-    let latestRulesetContent: RulesetFile[] | undefined;
-    if (latestRulesetName) {
-      latestRulesetContent = await gcp.rules.getRulesetContent(latestRulesetName);
-    }
+    const {
+      latestName: latestRulesetName,
+      latestContent: latestRulesetContent,
+    } = await this.getCurrentRules(service);
 
     try {
       for (const filename of Object.keys(this.rulesFiles)) {
