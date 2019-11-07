@@ -35,7 +35,7 @@ export class RulesDeploy {
   options: any;
   project: any;
   rulesFiles: { [path: string]: RulesetFile[] };
-  rulesetNames: any;
+  rulesetNames: { [x: string]: string };
   constructor(options: any, type: any) {
     this.type = type;
     this.options = options;
@@ -106,24 +106,30 @@ export class RulesDeploy {
       latestContent: latestRulesetContent,
     } = await this.getCurrentRules(service);
 
-    try {
-      for (const filename of Object.keys(this.rulesFiles)) {
-        const files = this.rulesFiles[filename];
-        if (_.isEqual(files, latestRulesetContent)) {
-          utils.logBullet(
-            `${clc.bold.cyan(this.type + ":")} latest version of ${clc.bold(
-              filename
-            )} already up to date, skipping upload...`
-          );
-          this.rulesetNames[filename] = latestRulesetName;
-          continue;
-        }
+    // TODO: Make this into a more useful helper method.
+    // Gather the files to be uploaded.
+    const newRulesetsByFilename = new Map<string, Promise<string>>();
+    for (const filename of Object.keys(this.rulesFiles)) {
+      const files = this.rulesFiles[filename];
+      if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logBullet(
-          `${clc.bold.cyan(this.type + ":")} uploading rules ${clc.bold(filename)}...`
+          `${clc.bold.cyan(this.type + ":")} latest version of ${clc.bold(
+            filename
+          )} already up to date, skipping upload...`
         );
-        const rulesetName = await gcp.rules.createRuleset(this.options.project, files);
-        this.rulesetNames[filename] = rulesetName;
-        createdRulesetNames.push(rulesetName);
+        this.rulesetNames[filename] = latestRulesetName;
+        continue;
+      }
+      utils.logBullet(`${clc.bold.cyan(this.type + ":")} uploading rules ${clc.bold(filename)}...`);
+      newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
+    }
+
+    try {
+      await Promise.all(newRulesetsByFilename.values());
+      // All the values are now resolves, so `await` here reads the strings.
+      for (const [filename, rulesetName] of newRulesetsByFilename) {
+        this.rulesetNames[filename] = await rulesetName;
+        createdRulesetNames.push(await rulesetName);
       }
     } catch (err) {
       if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
