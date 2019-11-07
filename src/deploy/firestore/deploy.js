@@ -6,7 +6,7 @@ const clc = require("cli-color");
 const fsi = require("../../firestore/indexes");
 const logger = require("../../logger");
 const utils = require("../../utils");
-const { RulesetServiceType } = require("../../rulesDeploy");
+const { RulesetServiceType } = require("../../RulesDeploy");
 
 function _deployRules(context) {
   var rulesDeploy = _.get(context, "firestore.rulesDeploy");

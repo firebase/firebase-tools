@@ -2,7 +2,7 @@
 
 const _ = require("lodash");
 
-const { RulesetServiceType } = require("../../rulesDeploy");
+const { RulesetServiceType } = require("../../RulesDeploy");
 
 module.exports = function(context) {
   const rulesDeploy = _.get(context, "storage.rulesDeploy");

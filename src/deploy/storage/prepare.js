@@ -3,7 +3,7 @@
 var _ = require("lodash");
 
 var gcp = require("../../gcp");
-const { RulesDeploy } = require("../../rulesDeploy");
+const { RulesDeploy } = require("../../RulesDeploy");
 
 module.exports = function(context, options) {
   var rulesConfig = options.config.get("storage");
