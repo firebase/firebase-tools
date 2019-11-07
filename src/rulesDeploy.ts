@@ -72,7 +72,7 @@ export class RulesDeploy {
    * If the ruleset to create is identical to the latest existing ruleset,
    * then we record the existing ruleset name instead of creating a duplicate.
    *
-   * @param {string} service The service to create a ruleset.
+   * @param service The service to create a ruleset.
    *    Valid values are "cloud.firestore" and "firebase.storage".
    * @return All the names of the rulesets that were created.
    */
