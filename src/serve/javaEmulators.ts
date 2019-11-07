@@ -121,7 +121,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
       return;
     }
 
-    // Sign, Database emulator needs --arg val and PubSub emulator needs --pub=val
+    // Sigh ... RTDB emulator needs "--arg val" and PubSub emulator needs "--arg=val"
     if (baseCmd.joinArgs) {
       cmdLineArgs.push(`${argKey}=${argVal}`);
     } else {
