@@ -8,5 +8,5 @@ module.exports = function(context) {
     return Promise.resolve();
   }
 
-  return rulesDeploy.createRulesets();
+  return rulesDeploy.createRulesets("firebase.storage");
 };
