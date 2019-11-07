@@ -20,6 +20,14 @@ const RULESET_COUNT_LIMIT = 1000;
 const RULESETS_TO_GC = 10;
 
 /**
+ * Services that have rulesets.
+ */
+export enum RulesetServiceType {
+  CLOUD_FIRESTORE = "cloud.firestore",
+  FIREBASE_STORAGE = "firebase.storage",
+}
+
+/**
  * RulesDeploy encapsulates logic for deploying rules.
  */
 export class RulesDeploy {
@@ -73,10 +81,9 @@ export class RulesDeploy {
    * then we record the existing ruleset name instead of creating a duplicate.
    *
    * @param service The service to create a ruleset.
-   *    Valid values are "cloud.firestore" and "firebase.storage".
    * @return All the names of the rulesets that were created.
    */
-  async createRulesets(service: string): Promise<string[]> {
+  async createRulesets(service: RulesetServiceType): Promise<string[]> {
     const createdRulesetNames: string[] = [];
 
     const latestRulesetName = await gcp.rules.getLatestRulesetName(this.options.project, service);
