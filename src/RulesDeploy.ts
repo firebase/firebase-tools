@@ -67,10 +67,9 @@ export class RulesDeploy {
    * compilation error.
    */
   async compile(): Promise<void> {
-    for (const filename of Object.keys(this.rulesFiles)) {
-      const files = this.rulesFiles[filename];
-      await this._compileRuleset(filename, files);
-    }
+    await Promise.all(Object.keys(this.rulesFiles).map((filename) => {
+      return this._compileRuleset(filename, this.rulesFiles[filename]);
+    }));
   }
 
   /**
