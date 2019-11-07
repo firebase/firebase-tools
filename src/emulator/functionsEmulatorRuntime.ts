@@ -847,7 +847,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       functionRouter
     );
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", socketPath }).log();
+      logReady({ socketPath });
     });
   });
 }
@@ -860,7 +860,7 @@ async function processBackground(
     ? trigger.definition.eventTrigger.service
     : "unknown";
 
-  new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", service }).log();
+  logReady({ service });
 
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
@@ -879,6 +879,15 @@ async function processBackground(
   }
 
   await runBackground({ data, context }, trigger.getRawFunction());
+}
+
+function logReady(data: any) {
+  new EmulatorLog(
+    "SYSTEM",
+    "runtime-status",
+    "ready",
+    Object.assign({ state: "ready" }, data)
+  ).log();
 }
 
 /**
@@ -1161,6 +1170,7 @@ async function main(): Promise<void> {
       .catch((err) => {
         // All errors *should* be handled within handleMessage. But just in case,
         // we want to exit fatally on any error related to message handling.
+        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
         new EmulatorLog("FATAL", "runtime-error", err).log();
         return flushAndExit(1);
       });

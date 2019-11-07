@@ -6,8 +6,6 @@ import * as clc from "cli-color";
 import * as http from "http";
 
 import * as getProjectId from "../getProjectId";
-import * as functionsConfig from "../functionsConfig";
-import * as utils from "../utils";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
@@ -48,6 +46,8 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/
 const WORKER_POOL = new RuntimeWorkerPool();
 
 export interface FunctionsEmulatorArgs {
+  projectId: string;
+  functionsDir: string;
   port?: number;
   host?: string;
   quiet?: boolean;
@@ -93,10 +93,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
-  static createHubServer(
-    bundleTemplate: FunctionsRuntimeBundle,
-    nodeBinary: string
-  ): express.Application {
+  createHubServer(bundleTemplate: FunctionsRuntimeBundle, nodeBinary: string): express.Application {
     const hub = express();
 
     hub.use((req, res, next) => {
@@ -133,7 +130,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
 
-      const worker = FunctionsEmulator.startFunctionRuntime(
+      const worker = this.startFunctionRuntime(
         bundleTemplate,
         triggerId,
         EmulatedTriggerType.BACKGROUND,
@@ -147,14 +144,15 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
-      // TODO(samstern): Is this a race condition?  Could 'ready' happen before we're listening for it?
-      EmulatorLogger.log("DEBUG", `[functions] Waiting for runtime to be ready!`);
-      const log = await worker.waitForSystemLog((evt) => {
-        return evt.data.state === "ready";
-      });
-
+      // TODO(samstern): Can't we tell the service from the outside????
       // For analytics, track the invoked service
-      track(EVENT_INVOKE, log.data.service);
+      worker
+        .waitForSystemLog((evt) => {
+          return evt.data.state === "ready";
+        })
+        .then((log) => {
+          track(EVENT_INVOKE, log.data.service);
+        });
 
       await worker.waitForDone();
       return res.json({ status: "acknowledged" });
@@ -172,7 +170,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const reqBody = (req as RequestWithRawBody).rawBody;
 
-      const worker = FunctionsEmulator.startFunctionRuntime(
+      const worker = this.startFunctionRuntime(
         bundleTemplate,
         triggerId,
         EmulatedTriggerType.HTTPS,
@@ -270,7 +268,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
-  static startFunctionRuntime(
+  startFunctionRuntime(
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
     triggerType: EmulatedTriggerType,
@@ -293,180 +291,31 @@ export class FunctionsEmulator implements EmulatorInstance {
     return worker;
   }
 
-  static handleSystemLog(systemLog: EmulatorLog): void {
-    switch (systemLog.type) {
-      case "runtime-status":
-        if (systemLog.text === "killed") {
-          EmulatorLogger.log(
-            "WARN",
-            `Your function was killed because it raised an unhandled error.`
-          );
-        }
-        break;
-      case "googleapis-network-access":
-        EmulatorLogger.log(
-          "WARN",
-          `Google API requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n   - Be careful, this may be a production service.`
-        );
-        break;
-      case "unidentified-network-access":
-        EmulatorLogger.log(
-          "WARN",
-          `External network resource requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n - Be careful, this may be a production service.`
-        );
-        break;
-      case "functions-config-missing-value":
-        EmulatorLogger.log(
-          "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${
-            systemLog.data.valuePath
-          }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
-        );
-        break;
-      case "non-default-admin-app-used":
-        EmulatorLogger.log(
-          "WARN",
-          `Non-default "firebase-admin" instance created!\n   ` +
-            `- This instance will *not* be mocked and will access production resources.`
-        );
-        break;
-      case "missing-module":
-        EmulatorLogger.log(
-          "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed as a ${
-            systemLog.data.isDev ? "development dependency" : "dependency"
-          }. To fix this, run "npm install ${systemLog.data.isDev ? "--save-dev" : "--save"} ${
-            systemLog.data.name
-          }" in your functions directory.`
-        );
-        break;
-      case "uninstalled-module":
-        EmulatorLogger.log(
-          "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed. This package is in your package.json, but it's not available. \
-You probably need to run "npm install" in your functions directory.`
-        );
-        break;
-      case "out-of-date-module":
-        EmulatorLogger.log(
-          "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
-You can probably fix this by running "npm install ${
-            systemLog.data.name
-          }@latest" in your functions directory.`
-        );
-        break;
-      case "missing-package-json":
-        EmulatorLogger.log(
-          "WARN",
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
-        );
-        break;
-      case "function-code-resolution-failed":
-        EmulatorLogger.log("WARN", systemLog.data.error);
-        const helper = ["We were unable to load your functions code. (see above)"];
-        if (systemLog.data.isPotentially.wrong_directory) {
-          helper.push(`   - There is no "package.json" file in your functions directory.`);
-        }
-        if (systemLog.data.isPotentially.typescript) {
-          helper.push(
-            "   - It appears your code is written in Typescript, which must be compiled before emulation."
-          );
-        }
-        if (systemLog.data.isPotentially.uncompiled) {
-          helper.push(
-            `   - You may be able to run "npm run build" in your functions directory to resolve this.`
-          );
-        }
-        utils.logWarning(helper.join("\n"));
-      default:
-      // Silence
-    }
-  }
-
-  static handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
-    if (ignore.indexOf(log.level) >= 0) {
-      return;
-    }
-    switch (log.level) {
-      case "SYSTEM":
-        FunctionsEmulator.handleSystemLog(log);
-        break;
-      case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
-        break;
-      case "DEBUG":
-        if (log.data && log.data !== {}) {
-          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
-        } else {
-          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`);
-        }
-        break;
-      case "INFO":
-        EmulatorLogger.logLabeled("BULLET", "functions", log.text);
-        break;
-      case "WARN":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text);
-        break;
-      case "WARN_ONCE":
-        EmulatorLogger.logLabeled("WARN_ONCE", "functions", log.text);
-        break;
-      case "FATAL":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text);
-        break;
-      default:
-        EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
-        break;
-    }
-  }
-
-  readonly projectId: string = "";
   nodeBinary: string = "";
 
   private server?: http.Server;
-  private functionsDir: string = "";
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
-  constructor(private options: any, private args: FunctionsEmulatorArgs) {
-    this.projectId = getProjectId(this.options, false);
-
-    this.functionsDir = path.join(
-      this.options.config.projectDir,
-      this.options.config.get("functions.source")
-    );
-
+  constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
 
   async start(): Promise<void> {
-    this.nodeBinary = await this.askInstallNodeVersion(this.functionsDir);
+    this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
     const { host, port } = this.getInfo();
-    this.server = FunctionsEmulator.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(
-      port,
-      host
-    );
+    this.server = this.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(port, host);
   }
 
   async connect(): Promise<void> {
     EmulatorLogger.logLabeled(
       "BULLET",
       "functions",
-      `Watching "${this.functionsDir}" for Cloud Functions...`
+      `Watching "${this.args.functionsDir}" for Cloud Functions...`
     );
 
-    const watcher = chokidar.watch(this.functionsDir, {
+    const watcher = chokidar.watch(this.args.functionsDir, {
       ignored: [
         /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
         /(^|[\/\\])\../, // Ignore files which begin the a period
@@ -517,7 +366,7 @@ You can probably fix this by running "npm install ${
           const url = FunctionsEmulator.getHttpFunctionUrl(
             this.getInfo().host,
             this.getInfo().port,
-            this.projectId,
+            this.args.projectId,
             definition.name,
             region
           );
@@ -537,10 +386,10 @@ You can probably fix this by running "npm install ${
           let added = false;
           switch (service) {
             case Constants.SERVICE_FIRESTORE:
-              added = await this.addFirestoreTrigger(this.projectId, definition);
+              added = await this.addFirestoreTrigger(this.args.projectId, definition);
               break;
             case Constants.SERVICE_REALTIME_DATABASE:
-              added = await this.addRealtimeDatabaseTrigger(this.projectId, definition);
+              added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
               break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -681,6 +530,10 @@ You can probably fix this by running "npm install ${
     Promise.resolve(this.server && this.server.close());
   }
 
+  getProjectId(): string {
+    return this.args.projectId;
+  }
+
   getInfo(): EmulatorInfo {
     const host = this.args.host || Constants.getDefaultHost(Emulators.FUNCTIONS);
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
@@ -701,8 +554,8 @@ You can probably fix this by running "npm install ${
 
   getBaseBundle(): FunctionsRuntimeBundle {
     return {
-      cwd: this.functionsDir,
-      projectId: this.projectId,
+      cwd: this.args.functionsDir,
+      projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
       ports: {
@@ -789,10 +642,8 @@ export function invokeRuntime(
   opts = opts || {};
 
   // If we can use an existing worker there is almost nothing to do.
-  const idleWorker = WORKER_POOL.getIdleWorker(frb.triggerId);
-  if (idleWorker) {
-    idleWorker.execute(frb, opts.serializedTriggers);
-    return idleWorker;
+  if (WORKER_POOL.readyForWork(frb.triggerId)) {
+    return WORKER_POOL.submitWork(frb.triggerId, frb, opts.serializedTriggers);
   }
 
   const emitter = new EventEmitter();
@@ -852,12 +703,8 @@ export function invokeRuntime(
     },
   };
 
-  const worker = WORKER_POOL.addWorker(frb.triggerId, runtime);
-  worker.onLogs((log: EmulatorLog) => {
-    FunctionsEmulator.handleRuntimeLog(log);
-  }, true /* listen forever */);
-  worker.execute(frb, opts.serializedTriggers);
-  return worker;
+  WORKER_POOL.addWorker(frb.triggerId, runtime);
+  return WORKER_POOL.submitWork(frb.triggerId, frb, opts.serializedTriggers);
 }
 
 function onData(

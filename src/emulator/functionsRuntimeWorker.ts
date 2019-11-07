@@ -4,6 +4,7 @@ import { EmulatorLog } from "./types";
 import { FunctionsRuntimeBundle, FunctionsRuntimeArgs } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger } from "./emulatorLogger";
+import { FirebaseError } from "../error";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -120,7 +121,8 @@ export class RuntimeWorker {
 }
 
 export class RuntimeWorkerPool {
-  workers: Map<string, Array<RuntimeWorker>> = new Map();
+  readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
+  readonly workQueue: Array<FunctionsRuntimeArgs> = [];
 
   /**
    * When code changes (or in some other rare circumstances) we need to get
@@ -157,6 +159,33 @@ export class RuntimeWorkerPool {
     }
   }
 
+  /**
+   * TODO(samstern): Document
+   */
+  readyForWork(triggerdId: string | undefined): boolean {
+    const idleWorker = this.getIdleWorker(triggerdId);
+    return !!idleWorker;
+  }
+
+  /**
+   * TODO(samstern): Document
+   */
+  submitWork(
+    triggerId: string | undefined,
+    frb: FunctionsRuntimeBundle,
+    serializedTriggers?: string
+  ): RuntimeWorker {
+    const worker = this.getIdleWorker(triggerId);
+    if (!worker) {
+      throw new FirebaseError(
+        "Internal Error: can't call submitWork without checking for idle workers"
+      );
+    }
+
+    worker.execute(frb, serializedTriggers);
+    return worker;
+  }
+
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
 
@@ -184,10 +213,14 @@ export class RuntimeWorkerPool {
     keyWorkers.push(worker);
     this.workers.set(key, keyWorkers);
 
+    worker.onLogs((log: EmulatorLog) => {
+      EmulatorLogger.handleRuntimeLog(log);
+    }, true /* listen forever */);
+
     return worker;
   }
 
-  private getTriggerKey(triggerId?: string) {
+  private getTriggerKey(triggerId?: string): string {
     return triggerId || "~diagnostic~";
   }
 
