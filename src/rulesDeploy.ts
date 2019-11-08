@@ -197,7 +197,7 @@ export class RulesDeploy {
    * @param filename The filename to release.
    * @param resourceName The release name to release these as.
    */
-  async release(filename: string, resourceName: string): Promise<void> {
+  async release(filename: string, resourceName: RulesetServiceType): Promise<void> {
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
       this.rulesetNames[filename],
