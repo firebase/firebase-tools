@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 
 import gcp = require("../../gcp");
-import { RulesDeploy } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 
 /**
  * Prepares for a Firebase Storage deployment.
@@ -16,7 +16,7 @@ export default async function(context: any, options: any): Promise<void> {
 
   _.set(context, "storage.rules", rulesConfig);
 
-  const rulesDeploy = new RulesDeploy(options, "storage");
+  const rulesDeploy = new RulesDeploy(options, RulesetServiceType.FIREBASE_STORAGE);
   _.set(context, "storage.rulesDeploy", rulesDeploy);
 
   if (_.isPlainObject(rulesConfig)) {

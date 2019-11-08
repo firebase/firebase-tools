@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import loadCJSON = require("../../loadCJSON");
-import { RulesDeploy } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import utils = require("../../utils");
 
 /**
@@ -14,7 +14,7 @@ async function prepareRules(context: any, options: any): Promise<void> {
   const rulesFile = options.config.get("firestore.rules");
 
   if (context.firestoreRules && rulesFile) {
-    const rulesDeploy = new RulesDeploy(options, "firestore");
+    const rulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
     _.set(context, "firestore.rulesDeploy", rulesDeploy);
     rulesDeploy.addFile(rulesFile);
     await rulesDeploy.compile();
