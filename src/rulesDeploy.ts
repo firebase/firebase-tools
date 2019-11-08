@@ -48,7 +48,7 @@ export class RulesDeploy {
    * @param options The CLI options object.
    * @param type The service type for which this ruleset is associated.
    */
-  constructor(public options: any, public type: RulesetServiceType) {
+  constructor(public options: any, private type: RulesetServiceType) {
     this.project = options.project;
     this.rulesFiles = {};
     this.rulesetNames = {};
