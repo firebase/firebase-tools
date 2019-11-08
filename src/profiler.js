@@ -13,6 +13,7 @@ var utils = require("./utils");
 var ProfileReport = require("./profileReport");
 var { FirebaseError } = require("./error");
 var responseToError = require("./responseToError");
+var { LiveReporter } = require("./profileLiveReporter");
 
 module.exports = function(options) {
   var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/profile.json?";
@@ -39,6 +40,8 @@ module.exports = function(options) {
         text: "0 operations recorded. Press [enter] to stop",
         color: "yellow",
       });
+      // live report should not use options.output, it is intended for console or pipe
+      var liveReport = options.live && new LiveReporter(options, process.stdout);
       var outputFormat = options.raw ? "RAW" : options.parent.json ? "JSON" : "TXT"; // eslint-disable-line no-nested-ternary
       var erroring;
       var errorResponse = "";
@@ -90,13 +93,17 @@ module.exports = function(options) {
         return generateReport();
       }
 
+      if (liveReport) {
+        liveReport.begin();
+      }
+
       request
         .get(reqOptionsWithToken)
         .on("response", function(res) {
           response = res;
           if (response.statusCode >= 400) {
             erroring = true;
-          } else if (!_.has(options, "duration")) {
+          } else if (!_.has(options, "duration") && !options.live) {
             spinner.start();
           }
         })
@@ -109,6 +116,9 @@ module.exports = function(options) {
           if (chunk.toString().indexOf("event: log") >= 0) {
             counter++;
             spinner.text = counter + " operations recorded. Press [enter] to stop";
+            if (liveReport) {
+              liveReport.processChunk(chunk);
+            }
           }
         })
         .on("end", function() {
@@ -123,6 +133,19 @@ module.exports = function(options) {
 
       if (_.has(options, "duration")) {
         setTimeout(generateReport, options.duration * 1000);
+      }
+      if (options.live && process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding("utf8");
+        process.stdin.on("data", function(chunk) {
+          if (chunk === "x" || chunk.includes("x") || chunk.includes("X")) {
+            generateReport();
+          }
+          if (liveReport.processKey(chunk)) {
+            generateReport();
+          }
+        });
       } else {
         // On newline, generate the report.
         rl.question("", generateReport);
