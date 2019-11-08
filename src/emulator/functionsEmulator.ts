@@ -5,7 +5,6 @@ import * as request from "request";
 import * as clc from "cli-color";
 import * as http from "http";
 
-import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
@@ -16,7 +15,6 @@ import * as spawn from "cross-spawn";
 import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
-  EmulatedTriggerMap,
   EmulatedTriggerType,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
@@ -144,15 +142,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
-      // TODO(samstern): Can't we tell the service from the outside????
       // For analytics, track the invoked service
-      worker
-        .waitForSystemLog((evt) => {
-          return evt.data.state === "ready";
-        })
-        .then((log) => {
-          track(EVENT_INVOKE, log.data.service);
-        });
+      if (triggerId) {
+        const trigger = this.getTriggerById(triggerId);
+        track(EVENT_INVOKE, getFunctionService(trigger));
+      }
 
       await worker.waitForDone();
       return res.json({ status: "acknowledged" });
@@ -550,6 +544,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getTriggers(): EmulatedTriggerDefinition[] {
     return this.triggers;
+  }
+
+  getTriggerById(triggerId: string): EmulatedTriggerDefinition {
+    for (const trigger of this.triggers) {
+      if (trigger.name === triggerId) {
+        return trigger;
+      }
+    }
+
+    throw new FirebaseError(`No trigger with name ${triggerId}`);
   }
 
   getBaseBundle(): FunctionsRuntimeBundle {

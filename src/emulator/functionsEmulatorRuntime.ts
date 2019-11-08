@@ -846,8 +846,9 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
       functionRouter
     );
+
     const instance = ephemeralServer.listen(socketPath, () => {
-      logReady({ socketPath });
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" , socketPath }).log();
     });
   });
 }
@@ -856,12 +857,6 @@ async function processBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  const service = trigger.definition.eventTrigger
-    ? trigger.definition.eventTrigger.service
-    : "unknown";
-
-  logReady({ service });
-
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
 
@@ -879,15 +874,6 @@ async function processBackground(
   }
 
   await runBackground({ data, context }, trigger.getRawFunction());
-}
-
-function logReady(data: any) {
-  new EmulatorLog(
-    "SYSTEM",
-    "runtime-status",
-    "ready",
-    Object.assign({ state: "ready" }, data)
-  ).log();
 }
 
 /**
