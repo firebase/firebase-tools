@@ -28,17 +28,27 @@ export enum RulesetServiceType {
 }
 
 /**
+ * Printable names of RulesetServiceTypes.
+ */
+const RulesetType = {
+  [RulesetServiceType.CLOUD_FIRESTORE]: "firestore",
+  [RulesetServiceType.FIREBASE_STORAGE]: "storage",
+};
+
+/**
  * RulesDeploy encapsulates logic for deploying rules.
  */
 export class RulesDeploy {
-  type: any;
-  options: any;
-  project: any;
-  rulesFiles: { [path: string]: RulesetFile[] };
-  rulesetNames: { [x: string]: string };
-  constructor(options: any, type: any) {
-    this.type = type;
-    this.options = options;
+  private project: string;
+  private rulesFiles: { [path: string]: RulesetFile[] };
+  private rulesetNames: { [x: string]: string };
+
+  /**
+   * Creates a RulesDeploy instance.
+   * @param options The CLI options object.
+   * @param type The service type for which this ruleset is associated.
+   */
+  constructor(public options: any, public type: RulesetServiceType) {
     this.project = options.project;
     this.rulesFiles = {};
     this.rulesetNames = {};
@@ -69,14 +79,15 @@ export class RulesDeploy {
   async compile(): Promise<void> {
     await Promise.all(
       Object.keys(this.rulesFiles).map((filename) => {
-        return this._compileRuleset(filename, this.rulesFiles[filename]);
+        return this.compileRuleset(filename, this.rulesFiles[filename]);
       })
     );
   }
 
   /**
-   * getCurrentRules returns the latest ruleset's name and content.
+   * Returns the latest ruleset's name and content.
    * @param service The service to fetch the rulesets.
+   * @return An object containing the latest name and content of the current rules.
    */
   private async getCurrentRules(
     service: RulesetServiceType
@@ -114,14 +125,16 @@ export class RulesDeploy {
       const files = this.rulesFiles[filename];
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logBullet(
-          `${clc.bold.cyan(this.type + ":")} latest version of ${clc.bold(
+          `${clc.bold.cyan(RulesetType[this.type] + ":")} latest version of ${clc.bold(
             filename
           )} already up to date, skipping upload...`
         );
         this.rulesetNames[filename] = latestRulesetName;
         continue;
       }
-      utils.logBullet(`${clc.bold.cyan(this.type + ":")} uploading rules ${clc.bold(filename)}...`);
+      utils.logBullet(
+        `${clc.bold.cyan(RulesetType[this.type] + ":")} uploading rules ${clc.bold(filename)}...`
+      );
       newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
     }
 
@@ -137,7 +150,8 @@ export class RulesDeploy {
         throw err;
       }
       utils.logBullet(
-        clc.bold.yellow(this.type + ":") + " quota exceeded error while uploading rules"
+        clc.bold.yellow(RulesetType[this.type] + ":") +
+          " quota exceeded error while uploading rules"
       );
 
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
@@ -170,7 +184,7 @@ export class RulesDeploy {
             await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
             logger.debug(`[rules] Deleted ${entry.name}`);
           }
-          utils.logBullet(clc.bold.yellow(this.type + ":") + " retrying rules upload");
+          utils.logBullet(clc.bold.yellow(RulesetType[this.type] + ":") + " retrying rules upload");
           return this.createRulesets(service);
         }
       }
@@ -178,70 +192,64 @@ export class RulesDeploy {
     return createdRulesetNames;
   }
 
-  release(filename: any, resourceName: any): Promise<any> {
-    return gcp.rules
-      .updateOrCreateRelease(this.options.project, this.rulesetNames[filename], resourceName)
-      .then(() => {
-        utils.logSuccess(
-          clc.bold.green(this.type + ": ") +
-            "released rules " +
-            clc.bold(filename) +
-            " to " +
-            clc.bold(resourceName)
-        );
-      });
+  /**
+   * Releases the rules from the given file and resource name.
+   * @param filename The filename to release.
+   * @param resourceName The release name to release these as.
+   */
+  async release(filename: string, resourceName: string): Promise<void> {
+    await gcp.rules.updateOrCreateRelease(
+      this.options.project,
+      this.rulesetNames[filename],
+      resourceName
+    );
+    utils.logSuccess(
+      `${clc.bold.green(RulesetType[this.type] + ":")} released rules ${clc.bold(
+        filename
+      )} to ${clc.bold(resourceName)}`
+    );
   }
 
-  private _compileRuleset(filename: string, files: RulesetFile[]): Promise<any> {
+  /**
+   * Attempts to compile a ruleset.
+   * @param filename The filename to compile.
+   * @param files The files to compile.
+   */
+  private async compileRuleset(filename: string, files: RulesetFile[]): Promise<void> {
     utils.logBullet(
-      clc.bold.cyan(this.type + ":") +
-        " checking " +
-        clc.bold(filename) +
-        " for compilation errors..."
+      `${clc.bold.cyan(this.type + ":")} checking ${clc.bold(filename)} for compilation errors...`
     );
-    return gcp.rules.testRuleset(this.options.project, files).then((response: any) => {
-      if (response.body && response.body.issues && response.body.issues.length > 0) {
-        const warnings: any[] = [];
-        const errors: any[] = [];
-        response.body.issues.forEach((issue: any) => {
-          const issueMessage =
-            "[" +
-            issue.severity.substring(0, 1) +
-            "] " +
-            issue.sourcePosition.line +
-            ":" +
-            issue.sourcePosition.column +
-            " - " +
-            issue.description;
+    const response = await gcp.rules.testRuleset(this.options.project, files);
+    if (_.get(response, "body.issues", []).length) {
+      const warnings: any[] = [];
+      const errors: any[] = [];
+      response.body.issues.forEach((issue: any) => {
+        const issueMessage = `[${issue.severity.substring(0, 1)}] ${issue.sourcePosition.line}:${
+          issue.sourcePosition.column
+        } - ${issue.description}`;
 
-          if (issue.severity === "ERROR") {
-            errors.push(issueMessage);
-          } else {
-            warnings.push(issueMessage);
-          }
+        if (issue.severity === "ERROR") {
+          errors.push(issueMessage);
+        } else {
+          warnings.push(issueMessage);
+        }
+      });
+
+      if (warnings.length > 0) {
+        warnings.forEach((warning: any) => {
+          utils.logWarning(warning);
         });
-
-        if (warnings.length > 0) {
-          warnings.forEach((warning: any) => {
-            utils.logWarning(warning);
-          });
-        }
-
-        if (errors.length > 0) {
-          const add = errors.length === 1 ? "" : "s";
-          const message =
-            "Compilation error" + add + " in " + clc.bold(filename) + ":\n" + errors.join("\n");
-          return utils.reject(message, { exit: 1 });
-        }
       }
 
-      utils.logSuccess(
-        clc.bold.green(this.type + ":") +
-          " rules file " +
-          clc.bold(filename) +
-          " compiled successfully"
-      );
-      return Promise.resolve();
-    });
+      if (errors.length > 0) {
+        const add = errors.length === 1 ? "" : "s";
+        const message = `Compilation error${add} in ${clc.bold(filename)}:\n${errors.join("\n")}`;
+        throw new FirebaseError(message, { exit: 1 });
+      }
+    }
+
+    utils.logSuccess(
+      `${clc.bold.green(this.type + ":")} rules file ${clc.bold(filename)} compiled successfully`
+    );
   }
 }
