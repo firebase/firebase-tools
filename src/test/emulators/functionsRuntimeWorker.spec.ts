@@ -17,6 +17,7 @@ import {
  * It automatically fails or succeeds 10ms after being given work to do.
  */
 class MockRuntimeInstance implements FunctionsRuntimeInstance {
+  pid: number = 12345;
   metadata: { [key: string]: any } = {};
   events: EventEmitter = new EventEmitter();
   exit: Promise<number>;
@@ -92,6 +93,7 @@ class MockRuntimeBundle implements FunctionsRuntimeBundle {
   triggerType = EmulatedTriggerType.HTTPS;
   cwd = "/home/users/dir";
   ports = {};
+  socketPath = "";
 
   constructor(public triggerId: string) {}
 }

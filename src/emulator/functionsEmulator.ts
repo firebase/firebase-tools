@@ -27,6 +27,7 @@ import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { FirebaseError } from "../error";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -54,8 +55,8 @@ export interface FunctionsEmulatorArgs {
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
 export interface FunctionsRuntimeInstance {
-  // A map of arbitrary data from the runtime (ports, etc)
-  metadata: { [key: string]: any };
+  // Process ID
+  pid: number;
   // An emitter which sends our EmulatorLog events from the runtime.
   events: EventEmitter;
   // A promise which is fulfilled when the runtime has exited
@@ -177,18 +178,24 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
-      const log = await worker.waitForSystemLog((el) => {
+      // TODO: do I need to wait?
+      await worker.waitForSystemLog((el) => {
         return el.data.state === "ready";
       });
-      worker.runtime.metadata.socketPath = log.data.socketPath;
 
-      logger.debug(JSON.stringify(worker.runtime.metadata));
       track(EVENT_INVOKE, "https");
 
-      EmulatorLogger.log(
-        "DEBUG",
-        `[functions] Runtime ready! Sending request! ${JSON.stringify(worker.runtime.metadata)}`
-      );
+      EmulatorLogger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
+
+      if (!worker.lastArgs) {
+        throw new FirebaseError("Cannot execute on a worker with no arguments");
+      }
+
+      if (!worker.lastArgs.frb.socketPath) {
+        throw new FirebaseError(
+          `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
+        );
+      }
 
       // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
       // cause unexpected situations - not to mention CORS troubles and this enables us to use
@@ -198,7 +205,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           method,
           path: req.url || "/",
           headers: req.headers,
-          socketPath: worker.runtime.metadata.socketPath,
+          socketPath: worker.lastArgs.frb.socketPath,
         },
         (runtimeRes: http.IncomingMessage) => {
           function forwardStatusAndHeaders(): void {
@@ -567,6 +574,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
+      socketPath: "",
     };
   }
 
@@ -690,10 +698,10 @@ export function invokeRuntime(
   }
 
   const runtime: FunctionsRuntimeInstance = {
+    pid: childProcess.pid,
     exit: new Promise<number>((resolve) => {
       childProcess.on("exit", resolve);
     }),
-    metadata,
     events: emitter,
     shutdown: () => {
       childProcess.kill();

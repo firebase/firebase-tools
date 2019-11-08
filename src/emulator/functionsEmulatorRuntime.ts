@@ -794,7 +794,12 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router();
-  const socketPath = getTemporarySocketPath(process.pid);
+  const socketPath = frb.socketPath;
+
+  if (!socketPath || socketPath === "") {
+    new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
+    return;
+  }
 
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -848,7 +853,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     );
 
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" , socketPath }).log();
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", socketPath }).log();
     });
   });
 }
@@ -1096,7 +1101,8 @@ async function handleMessage(message: string) {
   }
 
   if (!triggers) {
-    triggers = await initializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
+    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers);
   }
 
   // If we don't have triggers by now, we can't run.
@@ -1126,7 +1132,7 @@ async function handleMessage(message: string) {
 
     // If we were passed serialized triggers we have to exit the runtime after,
     // otherwise we can go IDLE and await another request.
-    if (runtimeArgs.serializedTriggers) {
+    if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
       await flushAndExit(0);
     } else {
       new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
