@@ -178,10 +178,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       });
 
-      // TODO: do I need to wait?
-      await worker.waitForSystemLog((el) => {
-        return el.data.state === "ready";
-      });
+      // Wait for the worker to set up its internal HTTP server
+      await worker.waitForSocketReady();
 
       track(EVENT_INVOKE, "https");
 

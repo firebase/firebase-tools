@@ -48,14 +48,7 @@ async function CallHTTPSFunction(
   options: any = {},
   requestData?: string
 ): Promise<string> {
-  const log = await EmulatorLog.waitForLog(
-    worker.runtime.events,
-    "SYSTEM",
-    "runtime-status",
-    (el) => {
-      return el.data.state === "ready";
-    }
-  );
+  await worker.waitForSocketReady();
 
   const dataPromise = new Promise<string>((resolve, reject) => {
     const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;

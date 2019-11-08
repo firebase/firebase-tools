@@ -127,8 +127,10 @@ export class RuntimeWorker {
     });
   }
 
-  waitForSystemLog(filter: (el: EmulatorLog) => boolean): Promise<EmulatorLog> {
-    return EmulatorLog.waitForLog(this.runtime.events, "SYSTEM", "runtime-status", filter);
+  waitForSocketReady(): Promise<any> {
+    return EmulatorLog.waitForLog(this.runtime.events, "SYSTEM", "runtime-status", (el) => {
+      return el.data.state === "ready";
+    });
   }
 
   private log(msg: string): void {

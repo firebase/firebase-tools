@@ -853,7 +853,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     );
 
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", socketPath }).log();
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
   });
 }
