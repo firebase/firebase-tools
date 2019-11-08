@@ -1,6 +1,6 @@
 import { get } from "lodash";
 
-import { RulesetServiceType } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 
 /**
  * Releases Firebase Storage rules.
@@ -9,7 +9,7 @@ import { RulesetServiceType } from "../../rulesDeploy";
  */
 export default async function(context: any, options: any): Promise<void> {
   const rules = get(context, "storage.rules", []);
-  const rulesDeploy = get(context, "storage.rulesDeploy");
+  const rulesDeploy: RulesDeploy = get(context, "storage.rulesDeploy");
   if (!rules.length || !rulesDeploy) {
     return;
   }
@@ -31,7 +31,8 @@ export default async function(context: any, options: any): Promise<void> {
     toRelease.map((release) => {
       return rulesDeploy.release(
         release.rules,
-        [RulesetServiceType.FIREBASE_STORAGE, release.bucket].join("/")
+        RulesetServiceType.FIREBASE_STORAGE,
+        release.bucket
       );
     })
   );

@@ -5,14 +5,14 @@ import { FirebaseError } from "../../error";
 import { FirestoreIndexes } from "../../firestore/indexes";
 import logger = require("../../logger");
 import utils = require("../../utils");
-import { RulesetServiceType } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 
 /**
  * Deploys Firestore Rules.
  * @param context The deploy context.
  */
 async function deployRules(context: any): Promise<void> {
-  const rulesDeploy = _.get(context, "firestore.rulesDeploy");
+  const rulesDeploy: RulesDeploy = _.get(context, "firestore.rulesDeploy");
   if (!context.firestoreRules || !rulesDeploy) {
     return;
   }

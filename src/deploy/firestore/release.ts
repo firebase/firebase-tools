@@ -1,6 +1,6 @@
 import { get } from "lodash";
 
-import { RulesetServiceType } from "../../rulesDeploy";
+import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 
 /**
  * Releases Firestore rules.
@@ -8,7 +8,7 @@ import { RulesetServiceType } from "../../rulesDeploy";
  * @param options The CLI options object.
  */
 export default async function(context: any, options: any): Promise<void> {
-  const rulesDeploy = get(context, "firestore.rulesDeploy");
+  const rulesDeploy: RulesDeploy = get(context, "firestore.rulesDeploy");
   if (!context.firestoreRules || !rulesDeploy) {
     return;
   }

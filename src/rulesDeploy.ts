@@ -196,12 +196,24 @@ export class RulesDeploy {
    * Releases the rules from the given file and resource name.
    * @param filename The filename to release.
    * @param resourceName The release name to release these as.
+   * @param subResourceName An optional sub-resource name to append to the
+   *   release name. This is required if resourceName == FIREBASE_STORAGE.
    */
-  async release(filename: string, resourceName: RulesetServiceType): Promise<void> {
+  async release(
+    filename: string,
+    resourceName: RulesetServiceType,
+    subResourceName?: string
+  ): Promise<void> {
+    // Cast as a RulesetServiceType to test the value against known types.
+    if (resourceName === RulesetServiceType.FIREBASE_STORAGE && !subResourceName) {
+      throw new FirebaseError(`Cannot release resource type "${resourceName}"`);
+    }
     await gcp.rules.updateOrCreateRelease(
       this.options.project,
       this.rulesetNames[filename],
-      resourceName
+      resourceName === RulesetServiceType.FIREBASE_STORAGE
+        ? `${resourceName}/${subResourceName}`
+        : resourceName
     );
     utils.logSuccess(
       `${clc.bold.green(RulesetType[this.type] + ":")} released rules ${clc.bold(
