@@ -572,7 +572,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
-      socketPath: "",
     };
   }
 

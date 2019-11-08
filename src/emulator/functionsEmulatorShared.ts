@@ -48,9 +48,9 @@ export interface FunctionsRuntimeBundle {
     firestore?: number;
     database?: number;
   };
+  socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
-  socketPath: string;
 }
 
 export interface FunctionsRuntimeFeatures {

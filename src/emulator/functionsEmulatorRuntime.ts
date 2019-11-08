@@ -796,7 +796,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
   const functionRouter = express.Router();
   const socketPath = frb.socketPath;
 
-  if (!socketPath || socketPath === "") {
+  if (!socketPath) {
     new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
     return;
   }

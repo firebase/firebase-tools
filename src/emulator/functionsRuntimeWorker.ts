@@ -1,5 +1,5 @@
 import * as uuid from "uuid";
-import { FunctionsRuntimeInstance } from "./functionsEmulator";
+import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
 import { EmulatorLog } from "./types";
 import {
   FunctionsRuntimeBundle,
@@ -35,6 +35,7 @@ export class RuntimeWorker {
   lastArgs?: FunctionsRuntimeArgs;
   stateEvents: EventEmitter = new EventEmitter();
 
+  private socketReady?: Promise<any>;
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
@@ -62,18 +63,17 @@ export class RuntimeWorker {
     });
   }
 
-  // TODO: this function should probably take opts
-  async execute(frb: FunctionsRuntimeBundle, serializedTriggers?: string) {
+  async execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts) {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
 
     // TODO(samstern): I would like to do this elsewhere...
-    if (!execFrb.socketPath || execFrb.socketPath === "") {
+    if (!execFrb.socketPath) {
       execFrb.socketPath = getTemporarySocketPath(this.id, execFrb.cwd);
       this.log(`Assigning socketPath: ${execFrb.socketPath}`);
     }
 
-    const args: FunctionsRuntimeArgs = { frb: execFrb, opts: { serializedTriggers } };
+    const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
     this.state = RuntimeWorkerState.BUSY;
     this.lastArgs = args;
     this.runtime.send(args);
@@ -84,12 +84,24 @@ export class RuntimeWorker {
   }
 
   set state(state: RuntimeWorkerState) {
+    if (state === RuntimeWorkerState.BUSY) {
+      this.socketReady = EmulatorLog.waitForLog(
+        this.runtime.events,
+        "SYSTEM",
+        "runtime-status",
+        (el) => {
+          return el.data.state === "ready";
+        }
+      );
+    }
+
     if (state === RuntimeWorkerState.IDLE) {
       // Remove all temporary log listeners every time we move to IDLE
       for (const l of this.logListeners) {
         this.runtime.events.removeListener("log", l);
       }
       this.logListeners = [];
+      this.socketReady = undefined;
     }
 
     if (state === RuntimeWorkerState.FINISHED) {
@@ -128,9 +140,10 @@ export class RuntimeWorker {
   }
 
   waitForSocketReady(): Promise<any> {
-    return EmulatorLog.waitForLog(this.runtime.events, "SYSTEM", "runtime-status", (el) => {
-      return el.data.state === "ready";
-    });
+    return (
+      this.socketReady ||
+      Promise.reject(new Error("Cannot call waitForSocketReady() if runtime is not BUSY"))
+    );
   }
 
   private log(msg: string): void {
@@ -200,7 +213,7 @@ export class RuntimeWorkerPool {
       );
     }
 
-    worker.execute(frb, serializedTriggers);
+    worker.execute(frb, { serializedTriggers });
     return worker;
   }
 
