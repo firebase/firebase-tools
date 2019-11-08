@@ -12,25 +12,31 @@ import { RulesDeploy, RulesetServiceType } from "../rulesDeploy";
 
 describe("RulesDeploy", () => {
   const FIXTURE_DIR = path.resolve(__dirname, "fixtures/rulesDeploy");
-  const BASE_OPTIONS: { cwd: string, project: string, config: any } = {
+  const BASE_OPTIONS: { cwd: string; project: string; config: any } = {
     cwd: FIXTURE_DIR,
     project: "test-project",
     config: null,
   };
   BASE_OPTIONS.config = Config.load(BASE_OPTIONS, false);
-  const FIRESTORE_RULES_CONTENT = readFileSync(path.resolve(FIXTURE_DIR, "firestore.rules")).toString();
+  const FIRESTORE_RULES_CONTENT = readFileSync(
+    path.resolve(FIXTURE_DIR, "firestore.rules")
+  ).toString();
 
   describe("addFile", () => {
     it("should successfully add a file that exists", () => {
       const rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
-      
-      expect(() => { rd.addFile("firestore.rules"); }).to.not.throw;
+
+      expect(() => {
+        rd.addFile("firestore.rules");
+      }).to.not.throw;
     });
 
     it("should throw an error if the file does not exist", () => {
       const rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
-      
-      expect(() => { rd.addFile("no.way"); }).to.throw(FirebaseError, /Error reading rules/);
+
+      expect(() => {
+        rd.addFile("no.way");
+      }).to.throw(FirebaseError, /Error reading rules/);
     });
   });
 
@@ -49,7 +55,7 @@ describe("RulesDeploy", () => {
     it("should succeed if there are no files to compile", async () => {
       const result = rd.compile();
       await expect(result).to.eventually.be.fulfilled;
-      
+
       expect(gcp.rules.testRuleset).not.called;
     });
 
@@ -59,30 +65,40 @@ describe("RulesDeploy", () => {
 
       const result = rd.compile();
       await expect(result).to.eventually.be.fulfilled;
-      
+
       expect(gcp.rules.testRuleset).calledOnce;
-      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "firestore.rules", content: sinon.match.string }]);
+      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [
+        { name: "firestore.rules", content: sinon.match.string },
+      ]);
     });
 
     it("should succeed if there are multiple files to compile", async () => {
       (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall().resolves()
-        .onSecondCall().resolves();
+        .onFirstCall()
+        .resolves()
+        .onSecondCall()
+        .resolves();
       rd.addFile("firestore.rules");
       rd.addFile("storage.rules");
 
       const result = rd.compile();
       await expect(result).to.eventually.be.fulfilled;
-      
+
       expect(gcp.rules.testRuleset).calledTwice;
-      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "firestore.rules", content: sinon.match.string }]);
-      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "storage.rules", content: sinon.match.string }]);
+      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [
+        { name: "firestore.rules", content: sinon.match.string },
+      ]);
+      expect(gcp.rules.testRuleset).calledWithExactly(BASE_OPTIONS.project, [
+        { name: "storage.rules", content: sinon.match.string },
+      ]);
     });
 
     it("should fail if one file fails to compile (method error)", async () => {
       (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall().resolves()
-        .onSecondCall().rejects(new Error("failed to compile"));
+        .onFirstCall()
+        .resolves()
+        .onSecondCall()
+        .rejects(new Error("failed to compile"));
       rd.addFile("firestore.rules");
       rd.addFile("storage.rules");
 
@@ -92,56 +108,75 @@ describe("RulesDeploy", () => {
 
     it("should fail if one file fails to compile (returned an error in the response)", async () => {
       (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall().resolves()
-        .onSecondCall().resolves({
+        .onFirstCall()
+        .resolves()
+        .onSecondCall()
+        .resolves({
           body: {
-            issues: [{
-              severity: "ERROR",
-              sourcePosition: { line: 0, column: 0 },
-              description: "oopsie"
-            }],
+            issues: [
+              {
+                severity: "ERROR",
+                sourcePosition: { line: 0, column: 0 },
+                description: "oopsie",
+              },
+            ],
           },
         });
       rd.addFile("firestore.rules");
       rd.addFile("storage.rules");
 
       const result = rd.compile();
-      await expect(result).to.eventually.be.rejectedWith(Error, /Compilation error in .+storage.rules.+:\n\[E\] 0:0 - oopsie/);
+      await expect(result).to.eventually.be.rejectedWith(
+        Error,
+        /Compilation error in .+storage.rules.+:\n\[E\] 0:0 - oopsie/
+      );
     });
 
     it("should fail if one file fails to compile (returned multiple errors in the response)", async () => {
       (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall().resolves()
-        .onSecondCall().resolves({
+        .onFirstCall()
+        .resolves()
+        .onSecondCall()
+        .resolves({
           body: {
-            issues: [{
-              severity: "ERROR",
-              sourcePosition: { line: 0, column: 0 },
-              description: "oopsie"
-            }, {
-              severity: "ERROR",
-              sourcePosition: { line: 1, column: 1 },
-              description: "daisey"
-            }],
+            issues: [
+              {
+                severity: "ERROR",
+                sourcePosition: { line: 0, column: 0 },
+                description: "oopsie",
+              },
+              {
+                severity: "ERROR",
+                sourcePosition: { line: 1, column: 1 },
+                description: "daisey",
+              },
+            ],
           },
         });
       rd.addFile("firestore.rules");
       rd.addFile("storage.rules");
 
       const result = rd.compile();
-      await expect(result).to.eventually.be.rejectedWith(Error, /Compilation errors in .+storage.rules.+:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/);
+      await expect(result).to.eventually.be.rejectedWith(
+        Error,
+        /Compilation errors in .+storage.rules.+:\n\[E\] 0:0 - oopsie\n\[E\] 1:1 - daisey/
+      );
     });
 
     it("should succeed if the compile returns a warning (returned a warning in the response)", async () => {
       (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall().resolves()
-        .onSecondCall().resolves({
+        .onFirstCall()
+        .resolves()
+        .onSecondCall()
+        .resolves({
           body: {
-            issues: [{
-              severity: "WARNING",
-              sourcePosition: { line: 0, column: 0 },
-              description: "oopsie"
-            }],
+            issues: [
+              {
+                severity: "WARNING",
+                sourcePosition: { line: 0, column: 0 },
+                description: "oopsie",
+              },
+            ],
           },
         });
       rd.addFile("firestore.rules");
@@ -157,9 +192,15 @@ describe("RulesDeploy", () => {
 
     beforeEach(() => {
       rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
-      sinon.stub(gcp.rules, "getLatestRulesetName").rejects(new Error("getLatestRulesetName behavior unspecified"));
-      sinon.stub(gcp.rules, "getRulesetContent").rejects(new Error("getRulesetContent behavior unspecified"));
-      sinon.stub(gcp.rules, "createRuleset").rejects(new Error("createRuleset behavior unspecified"));
+      sinon
+        .stub(gcp.rules, "getLatestRulesetName")
+        .rejects(new Error("getLatestRulesetName behavior unspecified"));
+      sinon
+        .stub(gcp.rules, "getRulesetContent")
+        .rejects(new Error("getRulesetContent behavior unspecified"));
+      sinon
+        .stub(gcp.rules, "createRuleset")
+        .rejects(new Error("createRuleset behavior unspecified"));
     });
 
     afterEach(() => {
@@ -185,7 +226,9 @@ describe("RulesDeploy", () => {
         const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [{ name: "firestore.rules", content: sinon.match.string }]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "firestore.rules", content: sinon.match.string },
+        ]);
       });
 
       it("should throw an error if createRuleset fails", async () => {
@@ -198,8 +241,10 @@ describe("RulesDeploy", () => {
 
       it("should create multiple rulesets if multiple are provided", async () => {
         (gcp.rules.createRuleset as sinon.SinonStub)
-          .onFirstCall().resolves("one")
-          .onSecondCall().resolves("two");
+          .onFirstCall()
+          .resolves("one")
+          .onSecondCall()
+          .resolves("two");
         rd.addFile("firestore.rules");
         rd.addFile("storage.rules");
 
@@ -207,16 +252,22 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "firestore.rules", content: sinon.match.string }]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "storage.rules", content: sinon.match.string }]);
+        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
+          { name: "firestore.rules", content: sinon.match.string },
+        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
       });
     });
 
     describe("with initial rules", () => {
-      const content: RulesetFile[] = [{
-        name: "firestore.rules",
-        content: FIRESTORE_RULES_CONTENT,
-      }];
+      const content: RulesetFile[] = [
+        {
+          name: "firestore.rules",
+          content: FIRESTORE_RULES_CONTENT,
+        },
+      ];
 
       beforeEach(() => {
         (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves("deadbeef");
@@ -257,14 +308,18 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["created"]);
 
         expect(gcp.rules.createRuleset).calledOnce;
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [{ name: "storage.rules", content: sinon.match.string }]);
+        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
       });
 
       it("should create all rules if none match", async () => {
         (gcp.rules.getRulesetContent as sinon.SinonStub).resolves([]);
         (gcp.rules.createRuleset as sinon.SinonStub)
-          .onFirstCall().resolves("one")
-          .onSecondCall().resolves("two");
+          .onFirstCall()
+          .resolves("one")
+          .onSecondCall()
+          .resolves("two");
         rd.addFile("firestore.rules");
         rd.addFile("storage.rules");
 
@@ -272,8 +327,12 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "firestore.rules", content: sinon.match.string }]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [{ name: "storage.rules", content: sinon.match.string }]);
+        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
+          { name: "firestore.rules", content: sinon.match.string },
+        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
+          { name: "storage.rules", content: sinon.match.string },
+        ]);
       });
     });
   });
