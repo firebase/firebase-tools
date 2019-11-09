@@ -11,7 +11,7 @@ export class EmulatorServer {
   constructor(public instance: EmulatorInstance) {}
 
   async start(): Promise<void> {
-    const { port, host }  = this.instance.getInfo();
+    const { port, host } = this.instance.getInfo();
     const portOpen = await controller.checkPortOpen(port, host);
 
     if (!portOpen) {
