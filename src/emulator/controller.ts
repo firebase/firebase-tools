@@ -114,7 +114,16 @@ export async function startAll(options: any): Promise<void> {
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-    const functionsEmulator = new FunctionsEmulator(options, {
+
+    const projectId = getProjectId(options, false);
+    const functionsDir = path.join(
+      options.config.projectDir,
+      options.config.get("functions.source")
+    );
+
+    const functionsEmulator = new FunctionsEmulator({
+      projectId,
+      functionsDir,
       host: functionsAddr.host,
       port: functionsAddr.port,
     });
