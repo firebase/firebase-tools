@@ -1,4 +1,5 @@
 import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
 
 export enum Emulators {
   FUNCTIONS = "functions",
@@ -91,6 +92,29 @@ export class EmulatorLog {
           clearInterval(interval);
         }
       }, 10);
+    });
+  }
+
+  static waitForLog(
+    emitter: EventEmitter,
+    level: string,
+    type: string,
+    filter?: (el: EmulatorLog) => boolean
+  ): Promise<EmulatorLog> {
+    return new Promise((resolve, reject) => {
+      const listener = (el: EmulatorLog) => {
+        const levelTypeMatch = el.level === level && el.type === type;
+        let filterMatch = true;
+        if (filter) {
+          filterMatch = filter(el);
+        }
+
+        if (levelTypeMatch && filterMatch) {
+          emitter.removeListener("log", listener);
+          resolve(el);
+        }
+      };
+      emitter.on("log", listener);
     });
   }
 

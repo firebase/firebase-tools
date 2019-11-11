@@ -1,12 +1,14 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
+
+const { RulesetServiceType } = require("../../RulesDeploy");
 
 module.exports = function(context) {
-  var rulesDeploy = _.get(context, "storage.rulesDeploy");
+  const rulesDeploy = _.get(context, "storage.rulesDeploy");
   if (!rulesDeploy) {
     return Promise.resolve();
   }
 
-  return rulesDeploy.createRulesets();
+  return rulesDeploy.createRulesets(RulesetServiceType.FIREBASE_STORAGE);
 };

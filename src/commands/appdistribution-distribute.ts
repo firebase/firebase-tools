@@ -22,7 +22,8 @@ function getAppId(appId: string): string {
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
   if (releaseNotes) {
-    return releaseNotes;
+    // Un-escape new lines from argument string
+    return releaseNotes.replace(/\\n/g, "\n");
   } else if (releaseNotesFile) {
     ensureFileExists(releaseNotesFile);
     return fs.readFileSync(releaseNotesFile, "utf8");
