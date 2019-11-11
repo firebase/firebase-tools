@@ -2,8 +2,9 @@ import { expect } from "chai";
 import * as path from "path";
 import * as sinon from "sinon";
 
-import { readFileSync } from "fs-extra";
 import { FirebaseError } from "../error";
+import * as prompt from "../prompt";
+import { readFileSync } from "fs-extra";
 import { RulesetFile } from "../gcp/rules";
 import Config = require("../config");
 import gcp = require("../gcp");
@@ -274,6 +275,10 @@ describe("RulesDeploy", () => {
         (gcp.rules.getRulesetContent as sinon.SinonStub).resolves(content);
       });
 
+      afterEach(() => {
+        sinon.restore();
+      });
+
       it("should throw an error if createRuleset fails", async () => {
         rd.addFile("storage.rules");
         (gcp.rules.createRuleset as sinon.SinonStub).rejects(new Error("oh no!"));
@@ -334,6 +339,134 @@ describe("RulesDeploy", () => {
           { name: "storage.rules", content: sinon.match.string },
         ]);
       });
+    });
+
+    describe("when there are quota issues", () => {
+      const QUOTA_ERROR = new Error("quota error");
+      (QUOTA_ERROR as any).status = 429;
+
+      beforeEach(() => {
+        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves("deadbeef");
+        (gcp.rules.getRulesetContent as sinon.SinonStub).resolves([]);
+        (gcp.rules.createRuleset as sinon.SinonStub).rejects(new Error("failing"));
+
+        sinon.stub(gcp.rules, "listAllRulesets").rejects(new Error("listAllRulesets failing"));
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it("should throw if it return not a quota issue", async () => {
+        rd.addFile("firestore.rules");
+
+        const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
+        await expect(result).to.be.rejectedWith(Error, "failing");
+      });
+
+      it("should do nothing if there are not a lot of previous rulesets", async () => {
+        (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+        (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1));
+        rd.addFile("firestore.rules");
+
+        const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
+        await expect(result).to.eventually.be.fulfilled;
+      });
+
+      describe("and a prompt is made", () => {
+        beforeEach(() => {
+          sinon.stub(prompt, "prompt").rejects(new Error("behavior unspecified"));
+          sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
+          sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
+          sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
+        });
+
+        afterEach(() => {
+          sinon.restore();
+        });
+
+        it("should prompt for a choice (no)", async () => {
+          (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+          (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1001));
+          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: false });
+          rd.addFile("firestore.rules");
+
+          const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
+          await expect(result).to.eventually.deep.equal([]);
+          expect(gcp.rules.createRuleset).to.be.calledOnce;
+          expect(prompt.prompt).to.be.calledOnce;
+        });
+
+        it("should prompt for a choice (yes) and delete and retry creation", async () => {
+          (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+          (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(
+            new Array(1001).fill(0).map(() => ({ name: "foo" }))
+          );
+          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: true });
+          (gcp.rules.listAllReleases as sinon.SinonStub).resolves([
+            { rulesetName: "name", name: "bar" },
+          ]);
+          (gcp.rules.getRulesetId as sinon.SinonStub).returns("");
+          (gcp.rules.deleteRuleset as sinon.SinonStub).resolves();
+          (gcp.rules.createRuleset as sinon.SinonStub).onSecondCall().resolves("created");
+          rd.addFile("firestore.rules");
+
+          const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
+          await expect(result).to.eventually.deep.equal(["created"]);
+          expect(gcp.rules.createRuleset).to.be.calledTwice;
+        });
+      });
+    });
+  });
+
+  describe("release", () => {
+    let rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
+
+    beforeEach(() => {
+      rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
+      sinon
+        .stub(gcp.rules, "updateOrCreateRelease")
+        .rejects(new Error("updateOrCreateRelease behavior unspecified"));
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should release the rules", async () => {
+      (gcp.rules.updateOrCreateRelease as sinon.SinonStub).resolves();
+
+      const result = rd.release("firestore.rules", RulesetServiceType.CLOUD_FIRESTORE);
+      await expect(result).to.eventually.be.fulfilled;
+
+      expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(
+        BASE_OPTIONS.project,
+        undefined, // Because we didn't compile anything.
+        RulesetServiceType.CLOUD_FIRESTORE
+      );
+    });
+
+    it("should enforce a subresource for storage", async () => {
+      const result = rd.release("firestore.rules", RulesetServiceType.FIREBASE_STORAGE);
+      await expect(result).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Cannot release resource type "firebase.storage"/
+      );
+
+      expect(gcp.rules.updateOrCreateRelease).not.called;
+    });
+
+    it("should append a subresource for storage", async () => {
+      (gcp.rules.updateOrCreateRelease as sinon.SinonStub).resolves();
+
+      const result = rd.release("firestore.rules", RulesetServiceType.FIREBASE_STORAGE, "bar");
+      await expect(result).to.eventually.be.fulfilled;
+
+      expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(
+        BASE_OPTIONS.project,
+        undefined, // Because we didn't compile anything.
+        `${RulesetServiceType.FIREBASE_STORAGE}/bar`
+      );
     });
   });
 });

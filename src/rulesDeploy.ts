@@ -175,15 +175,19 @@ export class RulesDeploy {
         if (answers.confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
-          const isReleasedFn = (ruleset: ListRulesetsEntry): boolean => {
-            return !!releases.find((release) => release.rulesetName === ruleset.name);
-          };
-          const unreleased: ListRulesetsEntry[] = _.reject(history, isReleasedFn);
+          const unreleased: ListRulesetsEntry[] = _.reject(
+            history,
+            (ruleset: ListRulesetsEntry): boolean => {
+              return !!releases.find((release) => release.rulesetName === ruleset.name);
+            }
+          );
           const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
-          for (const entry of entriesToDelete) {
-            await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
-            logger.debug(`[rules] Deleted ${entry.name}`);
-          }
+          await Promise.all(
+            entriesToDelete.map(async (entry) => {
+              await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
+              logger.debug(`[rules] Deleted ${entry.name}`);
+            })
+          );
           utils.logBullet(clc.bold.yellow(RulesetType[this.type] + ":") + " retrying rules upload");
           return this.createRulesets(service);
         }
