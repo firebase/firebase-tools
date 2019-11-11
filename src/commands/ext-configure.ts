@@ -4,6 +4,7 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
+import { consoleOrigin } from "../api"
 import * as Command from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
@@ -69,6 +70,8 @@ export default new Command("ext:configure <instanceId>")
       const res = await extensionsApi.configureInstance(projectId, instanceId, params);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
+      const consoleLink = `${consoleOrigin}/project/${projectId}/extensions/${instanceId}`
+      utils.logLabeledBullet(logPrefix, marked(`You can also view your new configuration on Firebase console: [${consoleLink}](${consoleLink}`));
       return res;
     } catch (err) {
       spinner.fail();
