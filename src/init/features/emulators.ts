@@ -1,5 +1,6 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
+import * as util from "util";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
 import { Emulators, ALL_EMULATORS, isJavaEmulator } from "../../emulator/types";
@@ -16,7 +17,7 @@ export async function doSetup(setup: any, config: any) {
     return {
       value: e,
       name: _.capitalize(e),
-      checked: false,
+      checked: config && config.has(e),
     };
   });
 
