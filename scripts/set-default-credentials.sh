@@ -15,6 +15,8 @@ if [ "${LOCAL}" != "true"]; then
     GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
   fi
   export GOOGLE_APPLICATION_CREDENTIALS
+else
+  echo "Not setting GOOGLE_APPLICATION_CREDENTIALS because LOCAL=${LOCAL}"
 fi
 
 echo "Application Default Credentials: ${GOOGLE_APPLICATION_CREDENTIALS}"
