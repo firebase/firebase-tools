@@ -182,12 +182,11 @@ export class RulesDeploy {
             }
           );
           const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
-          await Promise.all(
-            entriesToDelete.map(async (entry) => {
-              await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
-              logger.debug(`[rules] Deleted ${entry.name}`);
-            })
-          );
+          // To avoid running into quota issues, delete entries in _serial_ rather than parallel.
+          for (const entry of entriesToDelete) {
+            await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
+            logger.debug(`[rules] Deleted ${entry.name}`);
+          }
           utils.logBullet(clc.bold.yellow(RulesetType[this.type] + ":") + " retrying rules upload");
           return this.createRulesets(service);
         }
