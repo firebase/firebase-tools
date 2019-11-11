@@ -236,8 +236,8 @@ export class RulesDeploy {
     );
     const response = await gcp.rules.testRuleset(this.options.project, files);
     if (_.get(response, "body.issues", []).length) {
-      const warnings: any[] = [];
-      const errors: any[] = [];
+      const warnings: string[] = [];
+      const errors: string[] = [];
       response.body.issues.forEach((issue: any) => {
         const issueMessage = `[${issue.severity.substring(0, 1)}] ${issue.sourcePosition.line}:${
           issue.sourcePosition.column
@@ -251,7 +251,7 @@ export class RulesDeploy {
       });
 
       if (warnings.length > 0) {
-        warnings.forEach((warning: any) => {
+        warnings.forEach((warning) => {
           utils.logWarning(warning);
         });
       }
