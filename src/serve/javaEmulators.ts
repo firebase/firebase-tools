@@ -55,14 +55,13 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     Emulators.PUBSUB,
     path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
     path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
-    "pubsub-emulator/bin/cloud-pubsub-emulator",
+    `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`,
     {
       cacheDir: CACHE_DIR,
       remoteUrl:
         "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
       expectedSize: 36623622,
       expectedChecksum: "81704b24737d4968734d3e175f4cde71",
-      // TODO(samstern): windows localPath with .bat extension
       namePrefix: "pubsub-emulator",
     }
   ),

@@ -45,7 +45,6 @@ function unzip(zipPath: string, unzipDir: string): Promise<void> {
 }
 
 function removeOldFiles(emulator: JavaEmulatorDetails): void {
-  // TODO(samstern): Remove old unzipped files
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
   const files = fs.readdirSync(emulator.opts.cacheDir);
@@ -60,7 +59,7 @@ function removeOldFiles(emulator: JavaEmulatorDetails): void {
     }
 
     if (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) {
-      utils.logLabeledBullet(emulator.name, `Removing outdated emulator: ${file}`);
+      utils.logLabeledBullet(emulator.name, `Removing outdated emulator files: ${file}`);
       fs.removeSync(fullFilePath);
     }
   }
