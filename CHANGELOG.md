@@ -1,0 +1,1 @@
+* Remove `firebase list` command.

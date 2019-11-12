@@ -65,7 +65,6 @@ module.exports = function(client) {
   client.hosting = {};
   client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
-  client.list = loadCommand("list");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
   client.logout = loadCommand("logout");
