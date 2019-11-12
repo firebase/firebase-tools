@@ -82,7 +82,15 @@ export default new Command("ext:update <instanceId>")
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
-      utils.logLabeledBullet(logPrefix, marked(`You can also view your updated instance on Firebase console: ${utils.consoleUrl(projectId, `/extensions/instances/${instanceId}?tab=usage`)}`));
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can also view your updated instance on Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=usage`
+          )}`
+        )
+      );
     } catch (err) {
       spinner.fail();
       if (!(err instanceof FirebaseError)) {

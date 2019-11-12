@@ -91,7 +91,15 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       logger.debug("No usage instructions provided.");
     }
-    utils.logLabeledBullet(logPrefix, marked(`You can also view your new instance on Firebase console: ${utils.consoleUrl(projectId, `/extensions/instances/${instanceId}?tab=usage`)}`));
+    utils.logLabeledBullet(
+      logPrefix,
+      marked(
+        `You can also view your new instance on Firebase console: ${utils.consoleUrl(
+          projectId,
+          `/extensions/instances/${instanceId}?tab=usage`
+        )}`
+      )
+    );
   } catch (err) {
     spinner.fail();
     if (err instanceof FirebaseError) {
