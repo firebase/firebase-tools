@@ -16,7 +16,7 @@ To get started with the Firebase CLI, read the full list of commands below or ch
 You can install the Firebase CLI using npm (the Node Package Manager).  Note that you will need to install 
 [Node.js](http://nodejs.org/) and [npm](https://npmjs.org/). Installing Node.js should install npm as well.
 
-To download and install the Firebase CLI by run the following command:
+To download and install the Firebase CLI run the following command:
 
 ```bash
 npm install -g firebase-tools
@@ -66,7 +66,7 @@ Command | Description
 **apps:list** | List the registered apps of a Firebase project.
 **apps:sdkconfig** | Print the configuration of a Firebase app.
 **projects:addfirebase** | Add Firebase resources to a Google Cloud Platform project.
-**projects:create** | Create a new firebase project.
+**projects:create** | Create a new Firebase project.
 **projects:list** | Print a list of all of your Firebase projects.
 
 ### Deployment and Local Emulation
@@ -86,7 +86,7 @@ Command | Description
 
 Command | Description
 ------- | -----------
-**appdistribution:distribute** | Upload a distribution
+**appdistribution:distribute** | Upload a distribution.
 
 ### Auth Commands
 
@@ -117,12 +117,12 @@ Command | Description
 Command | Description
 ------- | -----------
 **ext** | Display information on how to use ext commands and extensions installed to your project.
-**ext:configure** | Configure an existing extension instance,
+**ext:configure** | Configure an existing extension instance.
 **ext:info** | Display information about an extension by name (extensionName@x.y.z for a specific version)
 **ext:install** | Install an extension.
-**ext:list** | List all the extensions that are installed in your Firebase project
-**ext:uninstall** | Uninstall an extension that is installed in your Firebase project by instance ID
-**ext:update** | Update an existing extension instance to the latest version
+**ext:list** | List all the extensions that are installed in your Firebase project.
+**ext:uninstall** | Uninstall an extension that is installed in your Firebase project by Instance ID.
+**ext:update** | Update an existing extension instance to the latest version.
 
 
 ### Cloud Firestore Commands
