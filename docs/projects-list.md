@@ -1,6 +1,6 @@
 # projects:list
 
-List all firebase projects you have access to
+List all Firebase projects you have access to
 
 ## Usage
 ```

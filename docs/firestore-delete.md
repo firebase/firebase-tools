@@ -1,6 +1,6 @@
 # firestore:delete
 
-Delete data from cloud firestore.
+Delete data from Cloud Firestore.
 
 ## Usage
 ```

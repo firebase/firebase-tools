@@ -1,6 +1,6 @@
 # logout
 
-Log the cli out of firebase
+Log the CLI out of Firebase
 
 ## Usage
 ```

@@ -1,6 +1,6 @@
 # database:get
 
-Fetch and print json data at the specified path
+Fetch and print JSON data at the specified path
 
 ## Usage
 ```

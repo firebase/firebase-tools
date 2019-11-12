@@ -1,6 +1,6 @@
 # ext:uninstall
 
-Uninstall an extension that is installed in your firebase project by instance id
+Uninstall an extension that is installed in your Firebase project by instance ID
 
 ## Usage
 ```

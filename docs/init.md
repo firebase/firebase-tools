@@ -1,6 +1,6 @@
 # init
 
-Setup a firebase project in the current directory
+Setup a Firebase project in the current directory
 
 ## Usage
 ```

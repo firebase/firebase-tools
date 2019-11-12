@@ -1,6 +1,6 @@
 # auth:import
 
-Import users into your firebase project from a data file(.csv or .json)
+Import users into your Firebase project from a data file(.csv or .json)
 
 ## Usage
 ```

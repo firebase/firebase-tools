@@ -1,6 +1,6 @@
 # ext:install
 
-Install an extension, given <extensionname> or <extensionname@versionnumber>
+Install an extension, given <extensionName> or <extensionName@versionNumber>
 
 ## Usage
 ```

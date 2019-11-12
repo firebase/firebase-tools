@@ -1,6 +1,6 @@
 # firestore:indexes
 
-List indexes in your project's cloud firestore database.
+List indexes in your project's Cloud Firestore database.
 
 ## Usage
 ```

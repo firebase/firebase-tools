@@ -1,6 +1,6 @@
 # functions:shell
 
-Launch full node shell with emulated functions
+Launch full Node shell with emulated functions
 
 ## Usage
 ```

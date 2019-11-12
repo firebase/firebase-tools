@@ -1,6 +1,6 @@
 # emulators:start
 
-Start the local firebase emulators
+Start the local Firebase emulators
 
 ## Usage
 ```

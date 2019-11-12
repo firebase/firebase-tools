@@ -1,6 +1,6 @@
 # database:remove
 
-Remove data from your firebase at the specified path
+Remove data from your Firebase at the specified path
 
 ## Usage
 ```

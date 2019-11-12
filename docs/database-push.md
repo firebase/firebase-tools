@@ -1,6 +1,6 @@
 # database:push
 
-Add a new json object to a list of data in your firebase
+Add a new JSON object to a list of data in your Firebase
 
 ## Usage
 ```

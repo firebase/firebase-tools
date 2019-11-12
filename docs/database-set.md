@@ -1,6 +1,6 @@
 # database:set
 
-Store json data at the specified path via stdin, arg, or file
+Store JSON data at the specified path via STDIN, arg, or file
 
 ## Usage
 ```

@@ -1,6 +1,6 @@
 # hosting:disable
 
-Stop serving web traffic to your firebase hosting site
+Stop serving web traffic to your Firebase Hosting site
 
 ## Usage
 ```

@@ -1,6 +1,6 @@
 # tools:migrate
 
-[deprecated] ensure your firebase.json format is up to date
+[DEPRECATED] ensure your firebase.json format is up to date
 
 ## Usage
 ```

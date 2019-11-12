@@ -1,6 +1,6 @@
 # database:profile
 
-Profile the realtime database and generate a usage report
+Profile the Realtime Database and generate a usage report
 
 ## Usage
 ```

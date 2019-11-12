@@ -1,6 +1,6 @@
 # apps:create
 
-Create a new firebase app. [platform] can be ios, android or web (case insensitive).
+Create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive).
 
 ## Usage
 ```

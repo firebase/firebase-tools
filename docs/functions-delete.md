@@ -1,6 +1,6 @@
 # functions:delete
 
-Delete one or more cloud functions by name or group name.
+Delete one or more Cloud Functions by name or group name.
 
 ## Usage
 ```

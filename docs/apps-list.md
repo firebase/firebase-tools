@@ -1,6 +1,6 @@
 # apps:list
 
-List the registered apps of a firebase project. optionally filter apps by [platform]: ios, android or web (case insensitive)
+List the registered apps of a Firebase project. Optionally filter apps by [platform]: IOS, ANDROID or WEB (case insensitive)
 
 ## Usage
 ```

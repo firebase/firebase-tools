@@ -42,7 +42,7 @@ function generateCommandPage(name: string, command: any) {
     return `
 # ${name}
 
-${_.capitalize(command._description)}
+${_.upperFirst(command._description)}
 
 ## Usage
 \`\`\`

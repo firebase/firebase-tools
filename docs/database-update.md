@@ -1,6 +1,6 @@
 # database:update
 
-Update some of the keys for the defined path in your firebase
+Update some of the keys for the defined path in your Firebase
 
 ## Usage
 ```

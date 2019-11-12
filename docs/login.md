@@ -1,6 +1,6 @@
 # login
 
-Log the cli into firebase
+Log the CLI into Firebase
 
 ## Usage
 ```

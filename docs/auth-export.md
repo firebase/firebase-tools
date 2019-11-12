@@ -1,6 +1,6 @@
 # auth:export
 
-Export accounts from your firebase project into a data file
+Export accounts from your Firebase project into a data file
 
 ## Usage
 ```

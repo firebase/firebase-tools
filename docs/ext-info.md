@@ -1,6 +1,6 @@
 # ext:info
 
-Display information about an extension by name (extensionname@x.y.z for a specific version)
+Display information about an extension by name (extensionName@x.y.z for a specific version)
 
 ## Usage
 ```

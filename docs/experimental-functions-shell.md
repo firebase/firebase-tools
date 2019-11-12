@@ -1,6 +1,6 @@
 # experimental:functions:shell
 
-Launch full node shell with emulated functions. (alias for `firebase functions:shell.)
+Launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)
 
 ## Usage
 ```

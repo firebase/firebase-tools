@@ -1,6 +1,6 @@
 # projects:addfirebase
 
-Add firebase resources to a google cloud platform project
+Add Firebase resources to a Google Cloud Platform project
 
 ## Usage
 ```

@@ -1,6 +1,6 @@
 # list
 
-[deprecated: use `projects:list`] list the firebase projects you have access to
+[DEPRECATED: use `projects:list`] list the Firebase projects you have access to
 
 ## Usage
 ```

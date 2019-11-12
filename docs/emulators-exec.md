@@ -1,6 +1,6 @@
 # emulators:exec
 
-Start the local firebase emulators, run a test script, then shut down the emulators
+Start the local Firebase emulators, run a test script, then shut down the emulators
 
 ## Usage
 ```

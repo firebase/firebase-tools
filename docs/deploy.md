@@ -1,6 +1,6 @@
 # deploy
 
-Deploy code and assets to your firebase project
+Deploy code and assets to your Firebase project
 
 ## Usage
 ```

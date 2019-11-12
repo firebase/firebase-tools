@@ -1,6 +1,6 @@
 # apps:sdkconfig
 
-Print the google services config of a firebase app. [platform] can be ios, android or web (case insensitive)
+Print the Google Services config of a Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)
 
 ## Usage
 ```

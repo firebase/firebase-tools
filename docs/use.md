@@ -1,6 +1,6 @@
 # use
 
-Set an active firebase project for your working directory
+Set an active Firebase project for your working directory
 
 ## Usage
 ```
