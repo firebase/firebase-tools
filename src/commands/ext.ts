@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import * as Command from "../command";
+import Command from "../command";
 import * as getProjectId from "../getProjectId";
 import { listExtensions } from "../extensions/listExtensions";
 import * as requirePermissions from "../requirePermissions";

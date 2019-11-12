@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var Command = require("../command");
+var Command = require("../command").default;
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");
 var requirePermissions = require("../requirePermissions");

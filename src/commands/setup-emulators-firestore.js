@@ -1,6 +1,6 @@
 "use strict";
 
-const Command = require("../command");
+const Command = require("../command").default;
 const downloadEmulator = require("../emulator/download");
 
 const name = "firestore";

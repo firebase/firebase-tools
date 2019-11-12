@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as opn from "open";
 import * as qs from "querystring";
 
-import * as Command from "../command";
+import Command from "../command";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";

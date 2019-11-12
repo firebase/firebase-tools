@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var Command = require("../command");
+var Command = require("../command").default;
 var clc = require("cli-color");
 var cloudfunctions = require("../gcp/cloudfunctions");
 var functionsConfig = require("../functionsConfig");

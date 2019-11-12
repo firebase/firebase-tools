@@ -1,4 +1,4 @@
-import * as Command from "../command";
+import Command from "../command";
 import * as getProjectId from "../getProjectId";
 import { listExtensions } from "../extensions/listExtensions";
 import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";

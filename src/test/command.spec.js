@@ -3,7 +3,7 @@
 var chai = require("chai");
 var expect = chai.expect;
 
-var Command = require("../command");
+var Command = require("../command").default;
 
 describe("Command", function() {
   var command;

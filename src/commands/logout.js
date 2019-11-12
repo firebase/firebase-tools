@@ -1,6 +1,6 @@
 "use strict";
 
-var Command = require("../command");
+var Command = require("../command").default;
 var configstore = require("../configstore");
 var logger = require("../logger");
 var clc = require("cli-color");

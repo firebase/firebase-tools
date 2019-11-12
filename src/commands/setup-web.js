@@ -2,7 +2,7 @@
 
 var fs = require("fs");
 
-var Command = require("../command");
+var Command = require("../command").default;
 var { fetchWebSetup } = require("../fetchWebSetup");
 var logger = require("../logger");
 var requirePermissions = require("../requirePermissions");

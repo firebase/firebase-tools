@@ -6,7 +6,7 @@ var fs = require("fs");
 var jsonStream = require("JSONStream");
 var _ = require("lodash");
 
-var Command = require("../command");
+var Command = require("../command").default;
 var accountImporter = require("../accountImporter");
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");

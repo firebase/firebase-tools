@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import * as Command from "../command";
+import Command from "../command";
 import { resolveSource } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";

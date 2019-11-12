@@ -3,7 +3,7 @@ import * as _ from "lodash";
 import * as request from "request";
 
 import * as responseToError from "../responseToError";
-import * as Command from "../command";
+import Command from "../command";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import * as requirePermissions from "../requirePermissions";
