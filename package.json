@@ -14,7 +14,8 @@
     "lint": "eslint '**/*.{js,ts}'",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
-    "test": "npm run lint -- --quiet && npm run mocha"
+    "test": "npm run lint -- --quiet && npm run mocha",
+    "document": "rm ./docs/*.md && ts-node scripts/generate-docs.ts"
   },
   "files": [
     "lib",
