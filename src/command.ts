@@ -1,5 +1,6 @@
-import { first, last, get, size, head, keys, values } from "lodash";
 import { bold } from "cli-color";
+import { CommanderStatic } from "commander";
+import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption } from "./utils";
@@ -9,7 +10,6 @@ import * as configstore from "./configstore";
 import detectProjectRoot = require("./detectProjectRoot");
 import logger = require("./logger");
 import track = require("./track");
-import { CommanderStatic } from "commander";
 
 type ActionFunction = (...args: any[]) => any;
 
@@ -34,7 +34,7 @@ export default class Command {
   private actionFn: ActionFunction = (): void => {};
   private befores: BeforeFunction[] = [];
   private helpText = "";
-  private client: CLIClient | null = null;
+  private client?: CLIClient;
 
   /**
    * @param cmd the command to create.
