@@ -21,7 +21,7 @@ var updateNotifier = require("update-notifier")({ pkg: pkg });
 updateNotifier.notify({ defer: true, isGlobal: true });
 
 var client = require("..");
-var errorOut = require("../errorOut").default;
+var errorOut = require("../errorOut").errorOut;
 var winston = require("winston");
 var logger = require("../logger");
 var fs = require("fs");
