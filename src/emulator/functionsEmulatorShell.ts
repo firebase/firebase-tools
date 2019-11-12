@@ -35,7 +35,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().host,
           this.emu.getInfo().port,
-          this.emu.projectId,
+          this.emu.getProjectId(),
           name,
           getFunctionRegion(trigger)
         );
@@ -72,7 +72,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    FunctionsEmulator.startFunctionRuntime(
+    this.emu.startFunctionRuntime(
       this.emu.getBaseBundle(),
       name,
       EmulatedTriggerType.BACKGROUND,

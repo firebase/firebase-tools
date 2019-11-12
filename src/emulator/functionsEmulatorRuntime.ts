@@ -10,6 +10,7 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   getTemporarySocketPath,
+  FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
@@ -20,6 +21,8 @@ import { URL } from "url";
 import * as _ from "lodash";
 
 const DATABASE_APP = "__database__";
+
+let triggers: EmulatedTriggerMap | undefined;
 
 let hasInitializedFirestore = false;
 let hasAccessedFirestore = false;
@@ -40,7 +43,7 @@ function isFeatureEnabled(
   return frb.disabled_features ? !frb.disabled_features[feature] : true;
 }
 
-function NoOp(): false {
+function noOp(): false {
   return false;
 }
 
@@ -230,7 +233,7 @@ async function resolveDeveloperNodeModule(
   }
 
   // Once we know it's in the package.json, make sure it's actually `npm install`ed
-  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(NoOp);
+  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(noOp);
   if (!resolveResult) {
     return { declared: true, installed: false };
   }
@@ -312,7 +315,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
     };
     return developerPkgJSON;
   } catch (err) {
-    return undefined;
+    return;
   }
 }
 
@@ -331,7 +334,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
 
       So yeah, we'll try our best and hopefully we can catch 90% of requests.
      */
-function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
+function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   const networkingModules = [
     { name: "http", module: require("http"), path: ["request"] },
     { name: "http", module: require("http"), path: ["get"] },
@@ -432,7 +435,7 @@ function InitializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     The relevant firebase-functions code is:
 https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10fb627a6a3ab97/src/providers/https.ts#L66
    */
-async function InitializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
+async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule(
     frb,
     "firebase-functions"
@@ -488,11 +491,11 @@ async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<a
   ));
 
   if (firestorePackageJSON.version.startsWith("1")) {
-    const grpc = await requireAsync("grpc", { paths: [frb.cwd] }).catch(NoOp);
+    const grpc = await requireAsync("grpc", { paths: [frb.cwd] }).catch(noOp);
     new EmulatorLog("SYSTEM", "runtime-status", "using grpc-native for admin credential").log();
     return grpc.credentials.createInsecure();
   } else {
-    const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(NoOp);
+    const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(noOp);
     new EmulatorLog("SYSTEM", "runtime-status", "using grpc-js for admin credential").log();
     return grpc.ChannelCredentials.createInsecure();
   }
@@ -511,7 +514,7 @@ function getDefaultConfig(): any {
  *
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
  */
-async function InitializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
+async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
   const localAdminModule = require(adminResolution.resolution);
 
@@ -640,7 +643,7 @@ async function makeProxiedFirestore(
   // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
   // then there's probably something really wrong (like a failed node-gyp build). If that's the case
   // we should swallow the error here and allow the error to raise in user-code so they can debug appropriately.
-  const sslCreds = await getGRPCInsecureCredential(frb).catch(NoOp);
+  const sslCreds = await getGRPCInsecureCredential(frb).catch(noOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
     if (!hasInitializedFirestore && frb.ports.firestore) {
@@ -709,7 +712,7 @@ function warnAboutDatabaseProd(): void {
   hasAccessedDatabase = true;
 }
 
-function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
@@ -744,7 +747,7 @@ function InitializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   }
 }
 
-async function InitializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
   const functionsResolution = await requireResolveAsync("firebase-functions", {
     paths: [functionsDir],
   });
@@ -788,10 +791,15 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
   (req as any).rawBody = buf;
 }
 
-async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
+async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router();
-  const socketPath = getTemporarySocketPath(process.pid);
+  const socketPath = frb.socketPath;
+
+  if (!socketPath) {
+    new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
+    return;
+  }
 
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -803,7 +811,7 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
           instance.close(resolveEphemeralServer);
         });
 
-        await RunHTTPS([req, res], func);
+        await runHTTPS([req, res], func);
       } catch (err) {
         rejectEphemeralServer(err);
       }
@@ -843,18 +851,17 @@ async function ProcessHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
       functionRouter
     );
+
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { socketPath }).log();
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
   });
 }
 
-async function ProcessBackground(
+async function processBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  new EmulatorLog("SYSTEM", "runtime-status", "ready").log();
-
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
 
@@ -871,13 +878,13 @@ async function ProcessBackground(
     context.resource = context.resource.name;
   }
 
-  await RunBackground({ data, context }, trigger.getRawFunction());
+  await runBackground({ data, context }, trigger.getRawFunction());
 }
 
 /**
  * Run the given function while redirecting logs and looking out for errors.
  */
-async function Run(func: () => Promise<any>): Promise<any> {
+async function runFunction(func: () => Promise<any>): Promise<any> {
   /* tslint:disable:no-console */
   const log = console.log;
   console.log = (...messages: any[]) => {
@@ -899,15 +906,15 @@ async function Run(func: () => Promise<any>): Promise<any> {
   }
 }
 
-async function RunBackground(proto: any, func: CloudFunction<any>): Promise<any> {
+async function runBackground(proto: any, func: CloudFunction<any>): Promise<any> {
   logDebug("RunBackground", proto);
 
-  await Run(() => {
+  await runFunction(() => {
     return func(proto.data, proto.context);
   });
 }
 
-async function RunHTTPS(
+async function runHTTPS(
   args: any[],
   func: (a: express.Request, b: express.Response) => Promise<any>
 ): Promise<any> {
@@ -915,7 +922,7 @@ async function RunHTTPS(
     throw new Error("Function must be passed 2 args.");
   }
 
-  await Run(() => {
+  await runFunction(() => {
     return func(args[0], args[1]);
   });
 }
@@ -930,8 +937,8 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
   falsey, so we just catch to keep from throwing.
    */
   const clues = {
-    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(NoOp),
-    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(NoOp),
+    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(noOp),
+    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(noOp),
   };
 
   const isPotentially = {
@@ -954,100 +961,17 @@ function logDebug(msg: string, data?: any): void {
   new EmulatorLog("DEBUG", "runtime-status", msg, data).log();
 }
 
-async function main(): Promise<void> {
-  const serializedFunctionsRuntimeBundle = process.argv[2] || "{}";
-  const serializedFunctionTrigger = process.argv[3];
-
-  logDebug("Functions runtime initialized.", {
-    cwd: process.cwd(),
-    node_version: process.versions.node,
-  });
-
-  const frb = JSON.parse(serializedFunctionsRuntimeBundle) as FunctionsRuntimeBundle;
-
-  if (frb.triggerId) {
-    new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
-      frb,
-    }).log();
-  }
-
-  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
-
-  const verified = await verifyDeveloperNodeModules(frb);
-  if (!verified) {
-    // If we can't verify the node modules, then just leave, something bad will happen during runtime.
-    new EmulatorLog(
-      "INFO",
-      "runtime-status",
-      `Your functions could not be parsed due to an issue with your node_modules (see above)`
-    ).log();
-    return;
-  }
-
-  InitializeEnvironmentalVariables(frb);
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    new EmulatorLog(
-      "WARN",
-      "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
-    ).log();
-  }
-
-  if (isFeatureEnabled(frb, "network_filtering")) {
-    InitializeNetworkFiltering(frb);
-  }
-
-  if (isFeatureEnabled(frb, "functions_config_helper")) {
-    await InitializeFunctionsConfigHelper(frb.cwd);
-  }
-
-  // TODO: Should this feature have a flag as well or is it required?
-  await InitializeFirebaseFunctionsStubs(frb);
-
-  if (isFeatureEnabled(frb, "admin_stubs")) {
-    await InitializeFirebaseAdminStubs(frb);
-  }
-
-  let triggers: EmulatedTriggerMap;
-  const triggerDefinitions: EmulatedTriggerDefinition[] = [];
-  let triggerModule;
-
-  if (serializedFunctionTrigger) {
-    /* tslint:disable:no-eval */
-    triggerModule = eval(serializedFunctionTrigger)();
-  } else {
-    try {
-      triggerModule = require(frb.cwd);
-    } catch (err) {
-      await moduleResolutionDetective(frb, err);
-      return;
-    }
-  }
-
-  require("../extractTriggers")(triggerModule, triggerDefinitions);
-  triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
-
-  const triggerLogData = { triggers, triggerDefinitions };
-  new EmulatorLog("SYSTEM", "triggers-parsed", "", triggerLogData).log();
-
+async function invokeTrigger(
+  frb: FunctionsRuntimeBundle,
+  triggers: EmulatedTriggerMap
+): Promise<void> {
   if (!frb.triggerId) {
-    // This is a purely diagnostic call, it's used as a check to make sure developer code compiles and runs as
-    // expected, so we don't have any function to invoke.
-    return;
+    throw new Error("frb.triggerId unexpectedly null");
   }
 
-  if (!triggers[frb.triggerId]) {
-    new EmulatorLog(
-      "FATAL",
-      "runtime-status",
-      `Could not find trigger "${frb.triggerId}" in your functions directory.`
-    ).log();
-    return;
-  } else {
-    logDebug(`Trigger "${frb.triggerId}" has been found, beginning invocation!`);
-  }
+  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
+    frb,
+  }).log();
 
   const trigger = triggers[frb.triggerId];
   logDebug("", trigger.definition);
@@ -1070,16 +994,16 @@ async function main(): Promise<void> {
           "60s"}. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
-      process.exit();
+      throw new Error("Function timed out.");
     }, trigger.timeoutMs);
   }
 
   switch (mode) {
     case "BACKGROUND":
-      await ProcessBackground(frb, triggers[frb.triggerId]);
+      await processBackground(frb, triggers[frb.triggerId]);
       break;
     case "HTTPS":
-      await ProcessHTTPS(frb, triggers[frb.triggerId]);
+      await processHTTPS(frb, triggers[frb.triggerId]);
       break;
   }
 
@@ -1087,6 +1011,7 @@ async function main(): Promise<void> {
     clearTimeout(timeoutId);
   }
   clearInterval(timerId);
+
   new EmulatorLog(
     "INFO",
     "runtime-status",
@@ -1094,16 +1019,156 @@ async function main(): Promise<void> {
   ).log();
 }
 
+async function initializeRuntime(
+  frb: FunctionsRuntimeBundle,
+  serializedFunctionTrigger?: string
+): Promise<EmulatedTriggerMap | undefined> {
+  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
+
+  const verified = await verifyDeveloperNodeModules(frb);
+  if (!verified) {
+    // If we can't verify the node modules, then just leave, something bad will happen during runtime.
+    new EmulatorLog(
+      "INFO",
+      "runtime-status",
+      `Your functions could not be parsed due to an issue with your node_modules (see above)`
+    ).log();
+    return;
+  }
+
+  initializeEnvironmentalVariables(frb);
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    new EmulatorLog(
+      "WARN",
+      "runtime-status",
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
+        process.env.GOOGLE_APPLICATION_CREDENTIALS
+      }. Non-emulated services will access production using these credentials. Be careful!`
+    ).log();
+  }
+
+  if (isFeatureEnabled(frb, "network_filtering")) {
+    initializeNetworkFiltering(frb);
+  }
+
+  if (isFeatureEnabled(frb, "functions_config_helper")) {
+    await initializeFunctionsConfigHelper(frb.cwd);
+  }
+
+  // TODO: Should this feature have a flag as well or is it required?
+  await initializeFirebaseFunctionsStubs(frb);
+
+  if (isFeatureEnabled(frb, "admin_stubs")) {
+    await initializeFirebaseAdminStubs(frb);
+  }
+
+  let triggers: EmulatedTriggerMap;
+  const triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let triggerModule;
+
+  if (serializedFunctionTrigger) {
+    /* tslint:disable:no-eval */
+    triggerModule = eval(serializedFunctionTrigger)();
+  } else {
+    try {
+      triggerModule = require(frb.cwd);
+    } catch (err) {
+      await moduleResolutionDetective(frb, err);
+      return;
+    }
+  }
+
+  require("../extractTriggers")(triggerModule, triggerDefinitions);
+  triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
+
+  new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
+  return triggers;
+}
+
+async function flushAndExit(code: number) {
+  await EmulatorLog.waitForFlush();
+  process.exit(code);
+}
+
+async function handleMessage(message: string) {
+  let runtimeArgs: FunctionsRuntimeArgs;
+  try {
+    runtimeArgs = JSON.parse(message) as FunctionsRuntimeArgs;
+  } catch (e) {
+    new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
+    await flushAndExit(1);
+    return;
+  }
+
+  if (!triggers) {
+    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers);
+  }
+
+  // If we don't have triggers by now, we can't run.
+  if (!triggers) {
+    await flushAndExit(1);
+    return;
+  }
+
+  // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
+  if (!runtimeArgs.frb.triggerId) {
+    await flushAndExit(0);
+    return;
+  }
+
+  if (!triggers[runtimeArgs.frb.triggerId]) {
+    new EmulatorLog(
+      "FATAL",
+      "runtime-status",
+      `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
+    ).log();
+  } else {
+    logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
+  }
+
+  try {
+    await invokeTrigger(runtimeArgs.frb, triggers);
+
+    // If we were passed serialized triggers we have to exit the runtime after,
+    // otherwise we can go IDLE and await another request.
+    if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
+      await flushAndExit(0);
+    } else {
+      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
+      await EmulatorLog.waitForFlush();
+    }
+  } catch (err) {
+    new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
+    await flushAndExit(1);
+  }
+}
+
+async function main(): Promise<void> {
+  logDebug("Functions runtime initialized.", {
+    cwd: process.cwd(),
+    node_version: process.versions.node,
+  });
+
+  // Event emitters do not work well with async functions, so we
+  // construct our own promise chain to make sure each message is
+  // handled only after the previous message handling is complete.
+  let messageHandlePromise = Promise.resolve();
+  process.on("message", (message: string) => {
+    messageHandlePromise = messageHandlePromise
+      .then(() => {
+        return handleMessage(message);
+      })
+      .catch((err) => {
+        // All errors *should* be handled within handleMessage. But just in case,
+        // we want to exit fatally on any error related to message handling.
+        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
+        new EmulatorLog("FATAL", "runtime-error", err).log();
+        return flushAndExit(1);
+      });
+  });
+}
+
 if (require.main === module) {
-  main()
-    .then(() => {
-      return EmulatorLog.waitForFlush();
-    })
-    .then(() => {
-      process.exit(0);
-    })
-    .catch((err) => {
-      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      process.exit(1);
-    });
+  main();
 }
