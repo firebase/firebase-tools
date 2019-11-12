@@ -7,7 +7,6 @@ import TerminalRenderer = require("marked-terminal");
 import { populatePostinstall } from "../extensions/populatePostinstall";
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
-import { consoleOrigin } from "../api"
 import * as Command from "../command";
 import { FirebaseError } from "../error";
 import { getRandomString } from "../extensions/generateInstanceId";
@@ -92,8 +91,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       logger.debug("No usage instructions provided.");
     }
-    const consoleLink = `${consoleOrigin}/project/${projectId}/extensions/${instanceId}`
-    utils.logLabeledBullet(logPrefix, marked(`You can also view your new instance on Firebase console: [${consoleLink}](${consoleLink}`));
+    utils.logLabeledBullet(logPrefix, marked(`You can also view your new instance on Firebase console: ${utils.consoleUrl(projectId, `/extensions/instances/${instanceId}?tab=usage`)}`));
   } catch (err) {
     spinner.fail();
     if (err instanceof FirebaseError) {
