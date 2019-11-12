@@ -7,6 +7,7 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+import { InvokeRuntimeOpts } from "./functionsEmulator";
 
 export enum EmulatedTriggerType {
   BACKGROUND = "BACKGROUND",
@@ -35,7 +36,7 @@ export interface EmulatedTriggerMap {
 
 export interface FunctionsRuntimeArgs {
   frb: FunctionsRuntimeBundle;
-  serializedTriggers?: string;
+  opts?: InvokeRuntimeOpts;
 }
 
 export interface FunctionsRuntimeBundle {
@@ -47,6 +48,7 @@ export interface FunctionsRuntimeBundle {
     firestore?: number;
     database?: number;
   };
+  socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
 }
@@ -130,13 +132,13 @@ export function getEmulatedTriggersFromDefinitions(
   }, {});
 }
 
-export function getTemporarySocketPath(pid: number): string {
+export function getTemporarySocketPath(id: string, cwd: string): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
   if (process.platform === "win32") {
-    return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
+    return path.join("\\\\?\\pipe", cwd, id.toString());
   } else {
-    return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+    return path.join(os.tmpdir(), `firebase_emulator_invocation_${id}.sock`);
   }
 }
 

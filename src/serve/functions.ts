@@ -1,5 +1,7 @@
+import * as path from "path";
 import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
+import * as getProjectId from "../getProjectId";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
@@ -7,7 +9,16 @@ module.exports = {
   emulatorServer: undefined,
 
   async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
-    args = args || {};
+    const projectId = getProjectId(options, false);
+    const functionsDir = path.join(
+      options.config.projectDir,
+      options.config.get("functions.source")
+    );
+
+    args = args || {
+      projectId,
+      functionsDir,
+    };
 
     if (!args.disabledRuntimeFeatures) {
       // When running the functions emulator through 'firebase serve' we disable some
@@ -38,7 +49,7 @@ module.exports = {
       }
     }
 
-    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, args));
+    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(args));
     await this.emulatorServer.start();
   },
 
