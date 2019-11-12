@@ -19,11 +19,15 @@ if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   });
 }
 
-const startFunctionRuntime = FunctionsEmulator.startFunctionRuntime;
+const functionsEmulator = new FunctionsEmulator({
+  projectId: "",
+  functionsDir: "",
+});
+const startFunctionRuntime = functionsEmulator.startFunctionRuntime;
 function UseFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
-  FunctionsEmulator.startFunctionRuntime = (
+  functionsEmulator.startFunctionRuntime = (
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
     triggerType: EmulatedTriggerType,
@@ -50,7 +54,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id")
       .expect(200)
@@ -72,7 +76,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/")
       .expect(200)
@@ -94,7 +98,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/a/b")
       .expect(200)
@@ -116,7 +120,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -138,7 +142,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -160,7 +164,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .post("/fake-project-id/us-central1/function_id/sub/route/a")
       .send({ hello: "world" })
@@ -183,7 +187,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a?hello=world")
       .expect(200)
