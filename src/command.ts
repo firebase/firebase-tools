@@ -11,25 +11,27 @@ import logger = require("./logger");
 import track = require("./track");
 import { CommanderStatic } from "commander";
 
+type ActionFunction = (...args: any[]) => Promise<any> | any;
+
 interface BeforeFunction {
-  fn: (...opts: any[]) => void;
+  fn: ActionFunction;
   args: any[];
 }
 
 /**
- *
+ * Command is a wrapper around commander to simplify our use of promise-based
+ * actions and pre-action hooks.
  */
 export default class Command {
   private name = "";
   private descriptionText = "";
   private options: any[][];
-  private actionFn = (...args: any[]): void => {};
+  private actionFn: ActionFunction = (): void => {};
   private befores: BeforeFunction[];
   private helpText = "";
   private client: any;
 
   /**
-   *
    * @param cmd the command to create.
    */
   constructor(private cmd: string) {
@@ -39,8 +41,9 @@ export default class Command {
   }
 
   /**
-   *
-   * @param args
+   * Sets the description of the command.
+   * @param t a human readable description.
+   * @return the command, for chaining.
    */
   description(t: string): Command {
     this.descriptionText = t;
@@ -48,8 +51,13 @@ export default class Command {
   }
 
   /**
+   * Sets any options for the command.
    *
-   * @param args
+   * @example
+   *   command.option("-d, --debug", "turn on debugging", false)
+   *
+   * @param args the commander-style option definition.
+   * @return the command, for chaining.
    */
   option(...args: any[]): Command {
     this.options.push(args);
@@ -57,21 +65,25 @@ export default class Command {
   }
 
   /**
-   *
-   * @param fn
-   * @param args
+   * Attaches a function to run before the command's action function.
+   * @param fn the function to run.
+   * @param args arguments, as an array, for the function.
+   * @return the command, for chaining.
    */
-  before(fn: (...args: any[]) => void, ...args: any[]): Command {
-    this.befores.push({
-      fn: fn,
-      args: args,
-    });
+  before(fn: ActionFunction, ...args: any[]): Command {
+    this.befores.push({ fn: fn, args: args });
     return this;
   }
 
   /**
+   * Sets the help text for the command.
    *
-   * @param helpText
+   * This text is displayed when:
+   *   - the `--help` flag is passed to the command, or
+   *   - the `help <command>` command is used.
+   *
+   * @param t the human-readable help text.
+   * @return the command, for chaining.
    */
   help(t: string): Command {
     this.helpText = t;
@@ -79,19 +91,22 @@ export default class Command {
   }
 
   /**
-   *
-   * @param fn
+   * Sets the function to be run for the command.
+   * @param fn the function to be run.
+   * @return the command, for chaining.
    */
-  action(fn: (...args: any[]) => void): Command {
+  action(fn: ActionFunction): Command {
     this.actionFn = fn;
     return this;
   }
 
   /**
-   *
-   * @param client
+   * Registers the command with the client. This is used to inisially set up
+   * all the commands and wraps their functionality with analytics and error
+   * handling.
+   * @param client the client object (from src/index.js).
    */
-  register(client: any) {
+  register(client: any): void {
     this.client = client;
     const program: CommanderStatic = client.cli;
     const cmd = program.command(this.cmd);
@@ -164,8 +179,8 @@ export default class Command {
   }
 
   /**
-   *
-   * @param options
+   * Extends the options with various properties for use in commands.
+   * @param options the command options object.
    */
   private prepare(options: any): void {
     options = options || {};
@@ -200,8 +215,7 @@ export default class Command {
 
   /**
    * Apply configuration from .firebaserc files in the working directory tree.
-   *
-   * @param options
+   * @param options the command options object.
    */
   applyRC(options: any): void {
     const rc = load(options.cwd);
@@ -226,7 +240,9 @@ export default class Command {
   }
 
   /**
-   *
+   * Returns an async function that calls the pre-action hooks and then the
+   * command's action function.
+   * @return an async function that executes the command.
    */
   runner(): (...a: any[]) => Promise<void> {
     return async (...args: any[]) => {
