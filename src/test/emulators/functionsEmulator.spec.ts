@@ -107,7 +107,7 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
-  it("should reject requests to /foo/bar/baz", async () => {
+  it("should reject requests to a non-emulator path", async () => {
     UseFunctions(() => {
       return {
         function_id: require("firebase-functions").https.onRequest(
