@@ -14,10 +14,6 @@ then
   chmod ug+x $FIREBASE_CLI
 fi;
 
-$FIREBASE_CLI setup:emulators:firestore
-$FIREBASE_CLI setup:emulators:database
-$FIREBASE_CLI setup:emulators:pubsub
-
 cd ./scripts/triggers-end-to-end-tests
 
 npm install && npm test

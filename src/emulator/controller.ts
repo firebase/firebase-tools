@@ -113,6 +113,7 @@ export async function startAll(options: any): Promise<void> {
 
   const projectId: string | undefined = getProjectId(options, true);
 
+  utils.logLabeledBullet("emulators", `Starting emulators: ${targets.join(", ")}`);
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
