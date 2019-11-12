@@ -1,4 +1,4 @@
-import Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   createFirebaseProjectAndLog,

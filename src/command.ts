@@ -27,7 +27,7 @@ interface CLIClient {
  * Command is a wrapper around commander to simplify our use of promise-based
  * actions and pre-action hooks.
  */
-export default class Command {
+export class Command {
   private name = "";
   private descriptionText = "";
   private options: any[][] = [];

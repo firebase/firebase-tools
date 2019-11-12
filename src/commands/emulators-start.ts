@@ -1,4 +1,4 @@
-import Command from "../command";
+import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import { beforeEmulatorCommand } from "../emulator/commandUtils";
 import * as utils from "../utils";

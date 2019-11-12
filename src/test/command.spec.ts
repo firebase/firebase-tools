@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import Command from "../command";
+import { Command } from "../command";
 
 describe("Command", () => {
   let command: Command;

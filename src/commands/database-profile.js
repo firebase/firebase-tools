@@ -2,7 +2,7 @@
 
 var _ = require("lodash");
 
-var Command = require("../command").default;
+var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
 var utils = require("../utils");

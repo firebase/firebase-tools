@@ -1,4 +1,4 @@
-import Command from "../command";
+import { Command } from "../command";
 import logger = require("../logger");
 import requirePermissions = require("../requirePermissions");
 import getProjectNumber = require("../getProjectNumber");

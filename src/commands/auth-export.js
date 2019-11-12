@@ -4,7 +4,7 @@ var clc = require("cli-color");
 var fs = require("fs");
 var os = require("os");
 
-var Command = require("../command").default;
+var { Command } = require("../command");
 var accountExporter = require("../accountExporter");
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");

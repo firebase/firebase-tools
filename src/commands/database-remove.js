@@ -1,6 +1,6 @@
 "use strict";
 
-var Command = require("../command").default;
+var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
 var requirePermissions = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove").default;
