@@ -11,11 +11,16 @@ import logger = require("./logger");
 import track = require("./track");
 import { CommanderStatic } from "commander";
 
-type ActionFunction = (...args: any[]) => Promise<any> | any;
+type ActionFunction = (...args: any[]) => any;
 
 interface BeforeFunction {
   fn: ActionFunction;
   args: any[];
+}
+
+interface CLIClient {
+  cli: CommanderStatic;
+  errorOut: (e: Error) => void;
 }
 
 /**
@@ -25,19 +30,17 @@ interface BeforeFunction {
 export default class Command {
   private name = "";
   private descriptionText = "";
-  private options: any[][];
+  private options: any[][] = [];
   private actionFn: ActionFunction = (): void => {};
-  private befores: BeforeFunction[];
+  private befores: BeforeFunction[] = [];
   private helpText = "";
-  private client: any;
+  private client: CLIClient | null = null;
 
   /**
    * @param cmd the command to create.
    */
   constructor(private cmd: string) {
     this.name = first(cmd.split(" ")) || "";
-    this.options = [];
-    this.befores = [];
   }
 
   /**
@@ -106,9 +109,9 @@ export default class Command {
    * handling.
    * @param client the client object (from src/index.js).
    */
-  register(client: any): void {
+  register(client: CLIClient): void {
     this.client = client;
-    const program: CommanderStatic = client.cli;
+    const program = client.cli;
     const cmd = program.command(this.cmd);
     if (this.descriptionText) {
       cmd.description(this.descriptionText);
@@ -217,7 +220,7 @@ export default class Command {
    * Apply configuration from .firebaserc files in the working directory tree.
    * @param options the command options object.
    */
-  applyRC(options: any): void {
+  private applyRC(options: any): void {
     const rc = load(options.cwd);
     options.rc = rc;
 

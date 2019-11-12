@@ -7,13 +7,13 @@ import { FirebaseError } from "./error";
  */
 export default function(error: Error): void {
   let fbError: FirebaseError;
-  if (!(error instanceof FirebaseError)) {
+  if (error instanceof FirebaseError) {
+    fbError = error;
+  } else {
     fbError = new FirebaseError("An unexpected error has occurred.", {
       original: error,
       exit: 2,
     });
-  } else {
-    fbError = error;
   }
 
   logError(fbError);

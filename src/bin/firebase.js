@@ -104,7 +104,7 @@ process.on("exit", function(code) {
 require("exit-code");
 
 process.on("uncaughtException", function(err) {
-  errorOut(client, err);
+  errorOut(err);
 });
 
 if (!handlePreviewToggles(args)) {
