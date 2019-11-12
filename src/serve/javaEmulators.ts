@@ -232,15 +232,15 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
   });
 }
 
-export function downloadIfNecessary(targetName: JavaEmulators): Promise<any> {
+export async function downloadIfNecessary(targetName: JavaEmulators): Promise<any> {
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(emulator.binaryPath);
 
-  if (!hasEmulator) {
-    return downloadEmulator(targetName);
-  } else {
-    return Promise.resolve();
+  if (hasEmulator) {
+    return;
   }
+
+  await downloadEmulator(targetName);
 }
 
 export async function start(targetName: JavaEmulators, args: any): Promise<void> {
