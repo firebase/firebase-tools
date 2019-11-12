@@ -22,7 +22,7 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <instanceId>")
+export default new Command("ext:update <extensionInstanceId>")
   .description("update an existing extension instance to the latest version")
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .before(ensureExtensionsApiEnabled)

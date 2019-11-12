@@ -21,7 +21,7 @@ marked.setOptions({
 /**
  * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <instanceId>")
+export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
