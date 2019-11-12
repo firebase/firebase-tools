@@ -21,8 +21,8 @@ program.option("--debug", "print verbose debug output and keep a debug log file"
 var client = {};
 client.cli = program;
 client.logger = require("./logger");
-client.errorOut = function(error, status) {
-  require("./errorOut")(client, error, status);
+client.errorOut = function(error) {
+  require("./errorOut").default(error);
 };
 client.getCommand = function(name) {
   for (var i = 0; i < client.cli.commands.length; i++) {
