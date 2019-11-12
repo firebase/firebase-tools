@@ -85,7 +85,7 @@ export default new Command("ext:update <instanceId>")
       utils.logLabeledBullet(
         logPrefix,
         marked(
-          `You can also view your updated instance on Firebase console: ${utils.consoleUrl(
+          `You can view your updated instance on Firebase console: ${utils.consoleUrl(
             projectId,
             `/extensions/instances/${instanceId}?tab=usage`
           )}`

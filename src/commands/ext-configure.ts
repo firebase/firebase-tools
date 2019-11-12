@@ -72,7 +72,7 @@ export default new Command("ext:configure <instanceId>")
       utils.logLabeledBullet(
         logPrefix,
         marked(
-          `You can also view your newly configured instance on Firebase console: ${utils.consoleUrl(
+          `You can view your newly configured instance on Firebase console: ${utils.consoleUrl(
             projectId,
             `/extensions/instances/${instanceId}?tab=config`
           )}`

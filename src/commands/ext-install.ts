@@ -94,7 +94,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `You can also view your new instance on Firebase console: ${utils.consoleUrl(
+        `You can view your new instance on Firebase console: ${utils.consoleUrl(
           projectId,
           `/extensions/instances/${instanceId}?tab=usage`
         )}`
