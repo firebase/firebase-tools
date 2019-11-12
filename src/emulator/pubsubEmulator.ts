@@ -1,9 +1,10 @@
 import * as request from "request";
+import * as uuid from "uuid";
 import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
 
+import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
-import * as javaEmulators from "../serve/javaEmulators";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
@@ -136,8 +137,7 @@ export class PubsubEmulator implements EmulatorInstance {
     for (const trigger of topicTriggers) {
       const body = {
         context: {
-          // TODO(samstern): Is this an acceptable eventId?
-          eventId: message.id,
+          eventId: uuid.v4(),
           resource: {
             service: "pubsub.googleapis.com",
             name: `projects/${this.args.projectId}/topics/${topicName}`,

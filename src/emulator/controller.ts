@@ -91,7 +91,7 @@ export function filterEmulatorTargets(options: any): string[] {
 }
 
 export function shouldStart(options: any, name: Emulators): boolean {
-  const targets: string[] = filterEmulatorTargets(options);
+  const targets = filterEmulatorTargets(options);
   return targets.indexOf(name) >= 0;
 }
 
@@ -108,14 +108,14 @@ export async function startAll(options: any): Promise<void> {
   // The list of emulators to start is filtered two ways:
   // 1) The service must have a top-level entry in firebase.json or an entry in the emulators{} object
   // 2) If the --only flag is passed, then this list is the intersection
-  const targets: string[] = filterEmulatorTargets(options);
+  const targets = filterEmulatorTargets(options);
   options.targets = targets;
 
   const projectId: string | undefined = getProjectId(options, true);
 
   if (options.only) {
     const requested: string[] = options.only.split(",");
-    const ignored: string[] = _.difference(requested, targets);
+    const ignored = _.difference(requested, targets);
     for (const name of ignored) {
       utils.logWarning(
         `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
@@ -237,7 +237,7 @@ export async function startAll(options: any): Promise<void> {
   if (shouldStart(options, Emulators.PUBSUB)) {
     if (!projectId) {
       throw new FirebaseError(
-        "Can't start pubsub emulator without projectId, run 'firebase init' or pass the --project flag"
+        "Cannot start the Pub/Sub emulator without a project: run 'firebase init' or provide the --project flag"
       );
     }
 

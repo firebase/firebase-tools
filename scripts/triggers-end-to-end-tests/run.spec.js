@@ -291,6 +291,15 @@ describe("database and firestore emulator function triggers", function() {
     );
   });
 
+  after(function(done) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    if (test) {
+      test.stopEmulators(done);
+      return;
+    }
+    done();
+  });
+
   it("should write to the database emulator", function(done) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
@@ -329,15 +338,6 @@ describe("database and firestore emulator function triggers", function() {
     expect(test.success()).to.equal(true);
     done();
   });
-
-  after(function(done) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (test) {
-      test.stopEmulators(done);
-      return;
-    }
-    done();
-  });
 });
 
 describe("pubsub emulator function triggers", function() {
@@ -373,6 +373,15 @@ describe("pubsub emulator function triggers", function() {
     );
   });
 
+  after(function(done) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    if (test) {
+      test.stopEmulators(done);
+      return;
+    }
+    done();
+  });
+
   it("should write to the pubsub emulator", function(done) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
@@ -385,15 +394,6 @@ describe("pubsub emulator function triggers", function() {
 
   it("should have have triggered cloud functions", function(done) {
     expect(test.pubsub_trigger_count).to.equal(1);
-    done();
-  });
-
-  after(function(done) {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (test) {
-      test.stopEmulators(done);
-      return;
-    }
     done();
   });
 });

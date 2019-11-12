@@ -115,7 +115,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
     const argKey = "--" + key;
     const argVal = args[key];
 
-    if (!argVal || argVal === "") {
+    if (!argVal) {
       logger.debug(`Ignoring empty arg for key: ${key}`);
       return;
     }
@@ -232,12 +232,14 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
   });
 }
 
-export function downloadIfNecessary(targetName: JavaEmulators) {
+export function downloadIfNecessary(targetName: JavaEmulators): Promise<any> {
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(emulator.binaryPath);
 
   if (!hasEmulator) {
     return downloadEmulator(targetName);
+  } else {
+    return Promise.resolve();
   }
 }
 

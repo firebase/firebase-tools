@@ -29,6 +29,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
+import { pubsub } from "firebase-functions";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -440,7 +441,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!databasePort) {
       return Promise.resolve(false);
     }
-    if (definition.eventTrigger === undefined) {
+    if (!definition.eventTrigger) {
       EmulatorLogger.log(
         "WARN",
         `Event trigger "${definition.name}" has undefined "eventTrigger" member`
@@ -529,14 +530,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
-  addPubsubTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
+  async addPubsubTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<boolean> {
     const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
     if (!pubsubPort) {
-      return Promise.resolve(false);
+      return false;
     }
 
     if (!definition.eventTrigger) {
-      return Promise.resolve(false);
+      return false;
     }
 
     const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
@@ -548,14 +552,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     const resourceParts = resource.split("/");
     const topic = resourceParts[resourceParts.length - 1];
 
-    return pubsubEmulator
-      .addTrigger(topic, definition.name)
-      .then(() => {
-        return true;
-      })
-      .catch((err) => {
-        return false;
-      });
+    try {
+      await pubsubEmulator.addTrigger(topic, definition.name);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   async stop(): Promise<void> {

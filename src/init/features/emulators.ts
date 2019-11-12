@@ -56,7 +56,7 @@ export async function doSetup(setup: any, config: any) {
     }
   }
 
-  if (selections.emulators.length > 0) {
+  if (selections.emulators.length) {
     await prompt(selections, [
       {
         name: "download",

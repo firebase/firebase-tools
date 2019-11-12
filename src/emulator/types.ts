@@ -99,8 +99,11 @@ export abstract class JavaEmulatorDetails {
 }
 
 export class JarEmulatorDetails extends JavaEmulatorDetails {
-  constructor(name: string, private localPath: string, opts: JavaEmulatorOptions) {
+  private localPath: string;
+
+  constructor(name: string, localPath: string, opts: JavaEmulatorOptions) {
     super(name, opts);
+    this.localPath = localPath;
   }
 
   get downloadPath(): string {
@@ -117,14 +120,21 @@ export class JarEmulatorDetails extends JavaEmulatorDetails {
 }
 
 export class ZipEmulatorDetails extends JavaEmulatorDetails {
+  private localPath: string;
+  private internalUnzipDir: string;
+  private zipRelativePath: string;
+
   constructor(
     name: string,
-    private localPath: string,
-    private _unzipDir: string,
-    private zipRelativePath: string,
+    localPath: string,
+    unzipDir: string,
+    zipRelativePath: string,
     opts: JavaEmulatorOptions
   ) {
     super(name, opts);
+    this.localPath = localPath;
+    this.internalUnzipDir = unzipDir;
+    this.zipRelativePath = zipRelativePath;
   }
 
   get downloadPath(): string {
@@ -132,11 +142,11 @@ export class ZipEmulatorDetails extends JavaEmulatorDetails {
   }
 
   get binaryPath(): string {
-    return path.join(this._unzipDir, this.zipRelativePath);
+    return path.join(this.internalUnzipDir, this.zipRelativePath);
   }
 
   get unzipDir(): string | undefined {
-    return this._unzipDir;
+    return this.internalUnzipDir;
   }
 }
 
