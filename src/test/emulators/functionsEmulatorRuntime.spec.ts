@@ -5,10 +5,16 @@ import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED } from "./fixtures";
+import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
 import * as request from "request";
 import * as express from "express";
 import * as _ from "lodash";
+
+const functionsEmulator = new FunctionsEmulator({
+  projectId: "fake-project-id",
+  functionsDir: MODULE_ROOT,
+});
+functionsEmulator.nodeBinary = process.execPath;
 
 async function _countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;
@@ -33,7 +39,7 @@ function InvokeRuntimeWithFunctions(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
-  return FunctionsEmulator.invokeRuntime(frb, opts);
+  return functionsEmulator.invokeRuntime(frb, opts);
 }
 
 /**
