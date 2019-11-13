@@ -135,7 +135,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
-    // TODO(samstern): I don't like needing to pass the bundle template and stuff in here
     const backgroundHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
@@ -143,7 +142,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.handleBackgroundTrigger(req, res);
     };
 
-    // Define a common handler function to use for GET and POST requests.
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
