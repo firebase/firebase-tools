@@ -1,7 +1,7 @@
 "use strict";
 
 var clc = require("cli-color");
-var Command = require("../command");
+var { Command } = require("../command");
 var functionsConfig = require("../functionsConfig");
 var functionsConfigClone = require("../functionsConfigClone");
 var getProjectId = require("../getProjectId");

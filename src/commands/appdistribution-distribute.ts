@@ -1,6 +1,6 @@
 import * as fs from "fs-extra";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
 import { AppDistributionApp, AppDistributionClient } from "../appdistribution/client";
