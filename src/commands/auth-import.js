@@ -10,7 +10,7 @@ var Command = require("../command");
 var accountImporter = require("../accountImporter");
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 
 var MAX_BATCH_SIZE = 1000;
