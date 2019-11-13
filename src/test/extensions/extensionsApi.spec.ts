@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
+import * as sinon from "sinon";
+
+import * as helpers from "../helpers";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
@@ -43,6 +46,14 @@ const PROJECT_ID = "test-project";
 const INSTANCE_ID = "test-extensions-instance";
 
 describe("extensions", () => {
+  beforeEach(() => {
+    helpers.mockAuth(sinon);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
   describe("listInstances", () => {
     afterEach(() => {
       nock.cleanAll();
@@ -260,8 +271,6 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: false })
-        .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
@@ -269,7 +278,7 @@ describe("extensions", () => {
       });
 
       expect(nock.isDone()).to.be.true;
-    }).timeout(2000);
+    });
 
     it("should not include config.param in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
@@ -278,14 +287,12 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: false })
-        .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
 
       expect(nock.isDone()).to.be.true;
-    }).timeout(2000);
+    });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
