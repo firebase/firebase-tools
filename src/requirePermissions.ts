@@ -15,7 +15,9 @@ export async function requirePermissions(options: any, permissions: string[] = [
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
 
   await requireAuth(options);
-  debug(`[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`);
+  debug(
+    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
+  );
   const response = await request("POST", `/v1/projects/${projectId}:testIamPermissions`, {
     auth: true,
     data: { permissions: requiredPermissions },
@@ -24,6 +26,10 @@ export async function requirePermissions(options: any, permissions: string[] = [
   const allowedPermissions = (response.body.permissions || []).sort();
   const missingPermissions = difference(requiredPermissions, allowedPermissions);
   if (missingPermissions.length) {
-    throw new FirebaseError(`Authorization failed. This account is missing the following required permissions on project ${bold(projectId)}:\n\n  ${missingPermissions.join("\n  ")}`);
+    throw new FirebaseError(
+      `Authorization failed. This account is missing the following required permissions on project ${bold(
+        projectId
+      )}:\n\n  ${missingPermissions.join("\n  ")}`
+    );
   }
 }

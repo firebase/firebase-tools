@@ -8,7 +8,6 @@ var logger = require("../../../logger");
 var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
 var { requirePermissions } = require("../../../requirePermissions");
-var scopes = require("../../../scopes");
 
 module.exports = function(setup, config) {
   logger.info();
