@@ -6,7 +6,7 @@ import { FirebaseError } from "../../../error";
 import * as firestore from "../../../init/features/firestore";
 import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";
-import * as rP from "../../../requirePermissions";
+import * as requirePermissions from "../../../requirePermissions";
 
 describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -17,7 +17,7 @@ describe("firestore", () => {
 
   describe("doSetup", () => {
     it("should require access, set up rules and indices, ensure cloud resource location set", async () => {
-      const requirePermissionsStub = sandbox.stub(rP, "requirePermissions").resolves();
+      const requirePermissionsStub = sandbox.stub(requirePermissions, "requirePermissions").resolves();
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
       const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
