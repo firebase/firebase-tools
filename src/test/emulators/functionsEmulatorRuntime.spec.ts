@@ -29,11 +29,11 @@ function InvokeRuntimeWithFunctions(
 ): RuntimeWorker {
   const serializedTriggers = triggers.toString();
 
-  opts = opts || {};
+  opts = opts || { nodeBinary: process.execPath };
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
-  return invokeRuntime(process.execPath, frb, opts);
+  return invokeRuntime(frb, opts);
 }
 
 /**
@@ -460,6 +460,7 @@ describe("FunctionsEmulator-Runtime", () => {
             };
           },
           {
+            nodeBinary: process.execPath,
             env: {
               CLOUD_RUNTIME_CONFIG: JSON.stringify({
                 does: { exist: "already exists" },
