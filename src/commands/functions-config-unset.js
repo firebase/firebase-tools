@@ -7,7 +7,7 @@ var Command = require("../command");
 var functionsConfig = require("../functionsConfig");
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 var runtimeconfig = require("../gcp/runtimeconfig");
 

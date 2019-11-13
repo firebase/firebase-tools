@@ -4,7 +4,7 @@ import * as clc from "cli-color";
 import * as Command from "../command";
 import * as getProjectId from "../getProjectId";
 import { listExtensions } from "../extensions/listExtensions";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
 
 module.exports = new Command("ext")
