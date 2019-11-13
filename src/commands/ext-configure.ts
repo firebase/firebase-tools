@@ -31,7 +31,7 @@ export default new Command("ext:configure <extensionInstanceId>")
     );
     try {
       const projectId = getProjectId(options, false);
-      let existingInstance;
+      let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
@@ -48,21 +48,27 @@ export default new Command("ext:configure <extensionInstanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
-      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
-        return param.param === "LOCATION";
+      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.immutable || param.param === "LOCATION";
+        // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
-      const currentLocation = _.get(existingInstance, "config.params.LOCATION");
+
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
-      if (removedLocations.length) {
+      if (immutableParams.length) {
+        let immutableParamsText = "";
+        immutableParams.forEach((immutableParam) => {
+          const currentValue = _.get(existingInstance, "config.params." + immutableParam.param);
+          immutableParamsText += `param: ${immutableParam.param}, value: ${currentValue}\n`;
+          params[immutableParam.param] = currentValue;
+        });
         logger.info(
-          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
-            `Please uninstall and reinstall this extension to change location.`
+          `The following params are immutable:\n${immutableParamsText}These cannot be modified. ` +
+            `Please uninstall and reinstall this extension to change these values.`
         );
-        params.LOCATION = currentLocation;
       }
 
       spinner.start();
