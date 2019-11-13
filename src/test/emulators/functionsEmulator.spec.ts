@@ -20,7 +20,7 @@ if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
 }
 
 const functionsEmulator = new FunctionsEmulator({
-  projectId: "",
+  projectId: "fake-project-id",
   functionsDir: "",
 });
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime;
@@ -105,6 +105,24 @@ describe("FunctionsEmulator-Hub", () => {
       .then((res) => {
         expect(res.body.path).to.deep.equal("/a/b");
       });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should reject requests to a non-emulator path", async () => {
+    UseFunctions(() => {
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/foo/bar/baz")
+      .expect(404);
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
