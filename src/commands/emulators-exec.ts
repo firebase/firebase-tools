@@ -2,7 +2,7 @@ import * as childProcess from "child_process";
 import { StdioOptions } from "child_process";
 import * as clc from "cli-color";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
