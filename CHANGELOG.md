@@ -1,3 +1,3 @@
-* Remove `firebase list` command.
-* Remove `firebase tools:migrate` command.
-* Remove `firebase setup:web` command.
+* **BREAKING:** Remove `firebase list` command.
+* **BREAKING:** Remove `firebase tools:migrate` command.
+* **BREAKING:** Remove `firebase setup:web` command.
