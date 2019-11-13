@@ -70,6 +70,13 @@ export interface FunctionsRuntimeInstance {
   send(args: FunctionsRuntimeArgs): boolean;
 }
 
+export interface InvokeRuntimeOpts {
+  nodeBinary: string;
+  serializedTriggers?: string;
+  env?: { [key: string]: string };
+  ignore_warnings?: boolean;
+}
+
 interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
 }
@@ -90,6 +97,100 @@ export class FunctionsEmulator implements EmulatorInstance {
     region: string
   ): string {
     return `http://${host}:${port}/${projectId}/${region}/${name}`;
+  }
+
+  // TODO(samstern): Could this be not static? Then WORKER_POOL could be instance state.
+  //                 The only reason it's static is for testing.
+  static invokeRuntime(frb: FunctionsRuntimeBundle, opts: InvokeRuntimeOpts): RuntimeWorker {
+    // If we can use an existing worker there is almost nothing to do.
+    if (WORKER_POOL.readyForWork(frb.triggerId)) {
+      return WORKER_POOL.submitWork(frb.triggerId, frb, opts);
+    }
+
+    const emitter = new EventEmitter();
+    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+
+    if (opts.ignore_warnings) {
+      args.unshift("--no-warnings");
+    }
+
+    const childProcess = spawn(opts.nodeBinary, args, {
+      env: { node: opts.nodeBinary, ...opts.env, ...process.env },
+      cwd: frb.cwd,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+
+    const buffers: {
+      [pipe: string]: {
+        pipe: stream.Readable;
+        value: string;
+      };
+    } = {
+      stderr: { pipe: childProcess.stderr, value: "" },
+      stdout: { pipe: childProcess.stdout, value: "" },
+    };
+
+    const ipcBuffer = { value: "" };
+    childProcess.on("message", (message: any) => {
+      FunctionsEmulator.onData(childProcess, emitter, ipcBuffer, message);
+    });
+
+    for (const id in buffers) {
+      if (buffers.hasOwnProperty(id)) {
+        const buffer = buffers[id];
+        buffer.pipe.on("data", (buf: Buffer) => {
+          FunctionsEmulator.onData(childProcess, emitter, buffer, buf);
+        });
+      }
+    }
+
+    const runtime: FunctionsRuntimeInstance = {
+      pid: childProcess.pid,
+      exit: new Promise<number>((resolve) => {
+        childProcess.on("exit", resolve);
+      }),
+      events: emitter,
+      shutdown: () => {
+        childProcess.kill();
+      },
+      kill: (signal?: string) => {
+        childProcess.kill(signal);
+        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+      },
+      send: (args: FunctionsRuntimeArgs) => {
+        return childProcess.send(JSON.stringify(args));
+      },
+    };
+
+    WORKER_POOL.addWorker(frb.triggerId, runtime);
+    return WORKER_POOL.submitWork(frb.triggerId, frb, opts);
+  }
+
+  private static onData(
+    runtime: ChildProcess,
+    emitter: EventEmitter,
+    buffer: { value: string },
+    buf: Buffer
+  ): void {
+    buffer.value += buf.toString();
+
+    const lines = buffer.value.split("\n");
+
+    if (lines.length > 1) {
+      // slice(0, -1) returns all elements but the last
+      lines.slice(0, -1).forEach((line: string) => {
+        const log = EmulatorLog.fromJSON(line);
+        emitter.emit("log", log);
+
+        if (log.level === "FATAL") {
+          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+          emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+          runtime.kill();
+        }
+      });
+    }
+
+    buffer.value = lines[lines.length - 1];
   }
 
   createHubServer(): express.Application {
@@ -289,7 +390,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
 
     const opts = runtimeOpts || { nodeBinary: this.nodeBinary };
-    const worker = invokeRuntime(runtimeBundle, opts);
+    const worker = FunctionsEmulator.invokeRuntime(runtimeBundle, opts);
     return worker;
   }
 
@@ -342,7 +443,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       // in the pool that would cause us to run old code.
       WORKER_POOL.refresh();
 
-      const worker = invokeRuntime(this.getBaseBundle(), { nodeBinary: this.nodeBinary });
+      const worker = FunctionsEmulator.invokeRuntime(this.getBaseBundle(), {
+        nodeBinary: this.nodeBinary,
+      });
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
         worker.runtime.events,
@@ -365,9 +468,10 @@ export class FunctionsEmulator implements EmulatorInstance {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
           //                 that a developer is running the same function in multiple regions.
           const region = getFunctionRegion(definition);
+          const { host, port } = this.getInfo();
           const url = FunctionsEmulator.getHttpFunctionUrl(
-            this.getInfo().host,
-            this.getInfo().port,
+            host,
+            port,
             this.args.projectId,
             definition.name,
             region
@@ -638,103 +742,4 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     return process.execPath;
   }
-}
-
-export interface InvokeRuntimeOpts {
-  nodeBinary: string;
-  serializedTriggers?: string;
-  env?: { [key: string]: string };
-  ignore_warnings?: boolean;
-}
-
-export function invokeRuntime(frb: FunctionsRuntimeBundle, opts: InvokeRuntimeOpts): RuntimeWorker {
-  // If we can use an existing worker there is almost nothing to do.
-  if (WORKER_POOL.readyForWork(frb.triggerId)) {
-    return WORKER_POOL.submitWork(frb.triggerId, frb, opts);
-  }
-
-  const emitter = new EventEmitter();
-  const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-
-  if (opts.ignore_warnings) {
-    args.unshift("--no-warnings");
-  }
-
-  const childProcess = spawn(opts.nodeBinary, args, {
-    env: { node: opts.nodeBinary, ...opts.env, ...process.env },
-    cwd: frb.cwd,
-    stdio: ["pipe", "pipe", "pipe", "ipc"],
-  });
-
-  const buffers: {
-    [pipe: string]: {
-      pipe: stream.Readable;
-      value: string;
-    };
-  } = {
-    stderr: { pipe: childProcess.stderr, value: "" },
-    stdout: { pipe: childProcess.stdout, value: "" },
-  };
-
-  const ipcBuffer = { value: "" };
-  childProcess.on("message", (message: any) => {
-    onData(childProcess, emitter, ipcBuffer, message);
-  });
-
-  for (const id in buffers) {
-    if (buffers.hasOwnProperty(id)) {
-      const buffer = buffers[id];
-      buffer.pipe.on("data", (buf: Buffer) => {
-        onData(childProcess, emitter, buffer, buf);
-      });
-    }
-  }
-
-  const runtime: FunctionsRuntimeInstance = {
-    pid: childProcess.pid,
-    exit: new Promise<number>((resolve) => {
-      childProcess.on("exit", resolve);
-    }),
-    events: emitter,
-    shutdown: () => {
-      childProcess.kill();
-    },
-    kill: (signal?: string) => {
-      childProcess.kill(signal);
-      emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-    },
-    send: (args: FunctionsRuntimeArgs) => {
-      return childProcess.send(JSON.stringify(args));
-    },
-  };
-
-  WORKER_POOL.addWorker(frb.triggerId, runtime);
-  return WORKER_POOL.submitWork(frb.triggerId, frb, opts);
-}
-
-function onData(
-  runtime: ChildProcess,
-  emitter: EventEmitter,
-  buffer: { value: string },
-  buf: Buffer
-): void {
-  buffer.value += buf.toString();
-
-  const lines = buffer.value.split("\n");
-
-  if (lines.length > 1) {
-    // slice(0, -1) returns all elements but the last
-    lines.slice(0, -1).forEach((line: string) => {
-      const log = EmulatorLog.fromJSON(line);
-      emitter.emit("log", log);
-
-      if (log.level === "FATAL") {
-        // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-        runtime.kill();
-      }
-    });
-  }
-
-  buffer.value = lines[lines.length - 1];
 }

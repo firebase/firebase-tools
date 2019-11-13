@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { invokeRuntime, InvokeRuntimeOpts } from "../../emulator/functionsEmulator";
+import { InvokeRuntimeOpts, FunctionsEmulator } from "../../emulator/functionsEmulator";
 import { EmulatorLog } from "../../emulator/types";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
@@ -33,7 +33,7 @@ function InvokeRuntimeWithFunctions(
   opts.ignore_warnings = true;
   opts.serializedTriggers = serializedTriggers;
 
-  return invokeRuntime(frb, opts);
+  return FunctionsEmulator.invokeRuntime(frb, opts);
 }
 
 /**

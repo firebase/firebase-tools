@@ -1,16 +1,9 @@
 import { expect } from "chai";
-import {
-  FunctionsEmulator,
-  FunctionsRuntimeInstance,
-  InvokeRuntimeOpts,
-} from "../../emulator/functionsEmulator";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../emulator/functionsEmulator";
 import * as supertest from "supertest";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
+import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import * as logger from "../../logger";
-import {
-  EmulatedTriggerType,
-  FunctionsRuntimeBundle,
-} from "../../emulator/functionsEmulatorShared";
+import { EmulatedTriggerType } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
 import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
 
