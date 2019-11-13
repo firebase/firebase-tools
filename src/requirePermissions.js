@@ -44,5 +44,8 @@ module.exports = function(options, permissions) {
       }
 
       return true;
+    }, err => {
+      logger.debug(`[iam] error while checking permissions, command may fail: ${err.message}`);
+      return true;
     });
 };
