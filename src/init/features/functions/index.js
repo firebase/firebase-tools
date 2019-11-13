@@ -7,7 +7,7 @@ var _ = require("lodash");
 var logger = require("../../../logger");
 var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
-var requirePermissions = require("../../../requirePermissions");
+var { requirePermissions } = require("../../../requirePermissions");
 var scopes = require("../../../scopes");
 
 module.exports = function(setup, config) {

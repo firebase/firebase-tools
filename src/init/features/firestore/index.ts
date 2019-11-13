@@ -1,5 +1,5 @@
 import { ensureLocationSet } from "../../../ensureCloudResourceLocation";
-import * as requirePermissions  from "../../../requirePermissions";
+import { requirePermissions } from "../../../requirePermissions";
 import * as rules from "./rules";
 import * as indexes from "./indexes";
 
