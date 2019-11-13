@@ -69,6 +69,15 @@ export default new Command("ext:configure <extensionInstanceId>")
       const res = await extensionsApi.configureInstance(projectId, instanceId, params);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=config`
+          )}`
+        )
+      );
       return res;
     } catch (err) {
       spinner.fail();
