@@ -30,22 +30,25 @@ module.exports = function(options, permissions) {
         origin: api.resourceManagerOrigin,
       });
     })
-    .then((response) => {
-      const allowedPermissions = (response.body.permissions || []).sort();
-      const missingPermissions = _.difference(requiredPermissions, allowedPermissions);
+    .then(
+      (response) => {
+        const allowedPermissions = (response.body.permissions || []).sort();
+        const missingPermissions = _.difference(requiredPermissions, allowedPermissions);
 
-      if (missingPermissions.length > 0) {
-        return utils.reject(
-          "Authorization failed. This account is missing the following required permissions on project " +
-            clc.bold(projectId) +
-            ":\n\n  " +
-            missingPermissions.join("\n  ")
-        );
+        if (missingPermissions.length > 0) {
+          return utils.reject(
+            "Authorization failed. This account is missing the following required permissions on project " +
+              clc.bold(projectId) +
+              ":\n\n  " +
+              missingPermissions.join("\n  ")
+          );
+        }
+
+        return true;
+      },
+      (err) => {
+        logger.debug(`[iam] error while checking permissions, command may fail: ${err.message}`);
+        return true;
       }
-
-      return true;
-    }, err => {
-      logger.debug(`[iam] error while checking permissions, command may fail: ${err.message}`);
-      return true;
-    });
+    );
 };
