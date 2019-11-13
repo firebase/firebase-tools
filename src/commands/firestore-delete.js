@@ -4,7 +4,7 @@ var clc = require("cli-color");
 var Command = require("../command");
 var FirestoreDelete = require("../firestore/delete");
 var { prompt } = require("../prompt");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 
 var _getConfirmationMessage = function(deleteOp, options) {
