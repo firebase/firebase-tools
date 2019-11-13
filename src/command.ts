@@ -256,7 +256,7 @@ export class Command {
       const options = last(args);
       this.prepare(options);
       for (const before of this.befores) {
-        await before.fn(options, before.args);
+        await before.fn(options, ...before.args);
       }
       return this.actionFn(...args);
     };
