@@ -17,7 +17,9 @@ describe("firestore", () => {
 
   describe("doSetup", () => {
     it("should require access, set up rules and indices, ensure cloud resource location set", async () => {
-      const requirePermissionsStub = sandbox.stub(requirePermissions, "requirePermissions").resolves();
+      const requirePermissionsStub = sandbox
+        .stub(requirePermissions, "requirePermissions")
+        .resolves();
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
       const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
