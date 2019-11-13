@@ -1,7 +1,7 @@
 "use strict";
 
 var Command = require("../command");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var action = require("../functionsShellCommandAction");
 
