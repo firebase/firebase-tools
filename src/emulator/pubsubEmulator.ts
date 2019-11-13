@@ -8,6 +8,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
+import { response } from "express";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -114,7 +115,23 @@ export class PubsubEmulator implements EmulatorInstance {
     }
 
     let remaining = topicTriggers.size;
-    const postCallback = () => {
+    const postCallback = (err: any, res: request.Response) => {
+      if (err) {
+        EmulatorLogger.logLabeled(
+          "DEBUG",
+          "pubsub",
+          `Error running functions: ${JSON.stringify(err)}`
+        );
+      }
+
+      if (res) {
+        EmulatorLogger.logLabeled(
+          "DEBUG",
+          "pubsub",
+          `Functions emulator response: HTTP ${res.statusCode} ${JSON.stringify(res.body)}`
+        );
+      }
+
       remaining--;
       if (remaining <= 0) {
         EmulatorLogger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
@@ -132,7 +149,9 @@ export class PubsubEmulator implements EmulatorInstance {
     EmulatorLogger.logLabeled(
       "DEBUG",
       "pubsub",
-      `Executing ${topicTriggers.size} matching triggers`
+      `Executing ${topicTriggers.size} matching triggers (${JSON.stringify(
+        Array.from(topicTriggers)
+      )})`
     );
     for (const trigger of topicTriggers) {
       const body = {
@@ -151,7 +170,9 @@ export class PubsubEmulator implements EmulatorInstance {
         },
       };
 
-      const functionsUrl = `http://localhost:${functionsPort}/functions/projects/${topicName}/triggers/${trigger}`;
+      const functionsUrl = `http://localhost:${functionsPort}/functions/projects/${
+        this.args.projectId
+      }/triggers/${trigger}`;
       request.post(
         functionsUrl,
         {
