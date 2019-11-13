@@ -1,7 +1,6 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types";
 import * as express from "express";
 import * as http from "http";
-import { FunctionsEmulator } from "../../emulator/functionsEmulator";
 
 /**
  * A thing that acts like an emulator by just occupying a port.
@@ -36,11 +35,5 @@ export class FakeEmulator implements EmulatorInstance {
   }
   getName(): Emulators {
     return this.name;
-  }
-}
-
-export class FakeFunctionsEmulator extends FakeEmulator {
-  constructor(public host: string, public port: number, projectId: string) {
-    super(Emulators.FUNCTIONS, host, port);
   }
 }
