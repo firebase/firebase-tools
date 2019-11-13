@@ -55,7 +55,6 @@ describe("extensions", () => {
   });
 
   describe("listInstances", () => {
-
     afterEach(() => {
       nock.cleanAll();
     });
