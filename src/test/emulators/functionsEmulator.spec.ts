@@ -19,11 +19,15 @@ if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   });
 }
 
-const startFunctionRuntime = FunctionsEmulator.startFunctionRuntime;
+const functionsEmulator = new FunctionsEmulator({
+  projectId: "fake-project-id",
+  functionsDir: "",
+});
+const startFunctionRuntime = functionsEmulator.startFunctionRuntime;
 function UseFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
-  FunctionsEmulator.startFunctionRuntime = (
+  functionsEmulator.startFunctionRuntime = (
     bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
     triggerType: EmulatedTriggerType,
@@ -50,7 +54,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id")
       .expect(200)
@@ -72,7 +76,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/")
       .expect(200)
@@ -94,13 +98,31 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/a/b")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/a/b");
       });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should reject requests to a non-emulator path", async () => {
+    UseFunctions(() => {
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+    )
+      .get("/foo/bar/baz")
+      .expect(404);
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
@@ -116,7 +138,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -138,7 +160,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
@@ -160,7 +182,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .post("/fake-project-id/us-central1/function_id/sub/route/a")
       .send({ hello: "world" })
@@ -183,7 +205,7 @@ describe("FunctionsEmulator-Hub", () => {
     });
 
     await supertest(
-      FunctionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
+      functionsEmulator.createHubServer(FunctionRuntimeBundles.template, process.execPath)
     )
       .get("/fake-project-id/us-central1/function_id/sub/route/a?hello=world")
       .expect(200)

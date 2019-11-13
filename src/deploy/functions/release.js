@@ -23,6 +23,16 @@ var timings = {};
 var deployments = [];
 var failedDeployments = [];
 
+const DEFAULT_PUBLIC_POLICY = {
+  version: 3,
+  bindings: [
+    {
+      role: "roles/cloudfunctions.invoker",
+      members: ["allUsers"],
+    },
+  ],
+};
+
 function _startTimer(name, type) {
   timings[name] = { type: type, t0: process.hrtime() };
 }
@@ -189,20 +199,37 @@ module.exports = function(context, options, payload) {
 
           deployments.push({
             name: name,
-            retryFunction: function() {
-              return gcp.cloudfunctions.create({
-                projectId: projectId,
-                region: region,
-                eventType: eventType,
-                functionName: functionName,
-                entryPoint: functionInfo.entryPoint,
-                trigger: functionTrigger,
-                labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
-                sourceUploadUrl: sourceUrl,
-                runtime: runtime,
-                availableMemoryMb: functionInfo.availableMemoryMb,
-                timeout: functionInfo.timeout,
-              });
+            retryFunction: () => {
+              return gcp.cloudfunctions
+                .create({
+                  projectId: projectId,
+                  region: region,
+                  eventType: eventType,
+                  functionName: functionName,
+                  entryPoint: functionInfo.entryPoint,
+                  trigger: functionTrigger,
+                  labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
+                  sourceUploadUrl: sourceUrl,
+                  runtime: runtime,
+                  availableMemoryMb: functionInfo.availableMemoryMb,
+                  timeout: functionInfo.timeout,
+                })
+                .then((createRes) => {
+                  if (_.has(functionTrigger, "httpsTrigger")) {
+                    logger.debug(`Setting public policy for function ${functionName}`);
+                    return gcp.cloudfunctions
+                      .setIamPolicy({
+                        functionName,
+                        projectId,
+                        region,
+                        policy: DEFAULT_PUBLIC_POLICY,
+                      })
+                      .then(() => {
+                        return createRes;
+                      });
+                  }
+                  return createRes;
+                });
             },
             trigger: functionTrigger,
           });
