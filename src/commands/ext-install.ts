@@ -21,7 +21,7 @@ import {
   logPrefix,
   promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 

@@ -10,7 +10,7 @@ var functionsDelete = require("../functionsDelete");
 var getProjectId = require("../getProjectId");
 var helper = require("../functionsDeployHelper");
 var { prompt } = require("../prompt");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 
 module.exports = new Command("functions:delete [filters...]")

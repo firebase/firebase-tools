@@ -8,7 +8,7 @@ import { iam } from "../gcp";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
 export default new Command("ext:uninstall <extensionInstanceId>")

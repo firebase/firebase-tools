@@ -4,7 +4,7 @@ var _ = require("lodash");
 
 var { Command } = require("../command");
 var getProjectId = require("../getProjectId");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var runtimeconfig = require("../gcp/runtimeconfig");
 var functionsConfig = require("../functionsConfig");
 var logger = require("../logger");

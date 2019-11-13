@@ -3,7 +3,7 @@
 var _ = require("lodash");
 
 var requireInstance = require("../requireInstance");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var checkDupHostingKeys = require("../checkDupHostingKeys");
 var checkValidTargetFilters = require("../checkValidTargetFilters");
 var checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");

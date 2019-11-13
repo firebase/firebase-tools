@@ -5,7 +5,7 @@ var fs = require("fs");
 var { Command } = require("../command");
 var { fetchWebSetup } = require("../fetchWebSetup");
 var logger = require("../logger");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 
 var JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
 

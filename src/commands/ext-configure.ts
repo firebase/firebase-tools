@@ -10,7 +10,7 @@ import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 

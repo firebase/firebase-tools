@@ -7,7 +7,7 @@ import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("functions:log")
   .description("read logs from deployed functions")
