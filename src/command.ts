@@ -127,15 +127,23 @@ export class Command {
       });
     }
 
+    // args is an array of all the arguments provided for the command PLUS the
+    // options object as provided by Commander (on the end).
     cmd.action((...args: any[]) => {
       const runner = this.runner();
       const start = new Date().getTime();
       const options = last(args);
-      const argCount = cmd._args.length;
-      if (args.length - 1 > argCount) {
+      // We do not want to provide more arguments to the action functions than
+      // we are able to - we're not sure what the ripple effects are. Our
+      // action functions are supposed to be of the form (options, ...args)
+      // where `...args` are the <required> and [optional] arguments of the
+      // command. Therefore, if we check the number of arguments we have
+      // against the number of arguments the action function has, we can error
+      // out if we would provide too many.
+      if (args.length > this.actionFn.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + cmd._name)} for usage instructions`,
+            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
             { exit: 1 }
           )
         );
