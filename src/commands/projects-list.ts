@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as ora from "ora";
 import Table = require("cli-table");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
 import * as requireAuth from "../requireAuth";
 import * as logger from "../logger";

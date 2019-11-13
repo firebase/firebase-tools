@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { populatePostinstall } from "../extensions/populatePostinstall";
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
