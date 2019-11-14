@@ -58,13 +58,13 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramSpecWithNewDefaults,
         options.params
       );
-      if (immutableParams.length) {
-        let immutableParamsText = "";
-        immutableParams.forEach((immutableParam) => {
-          const currentValue = _.get(existingInstance, "config.params." + immutableParam.param);
-          immutableParamsText += `param: ${immutableParam.param}, value: ${currentValue}\n`;
-          params[immutableParam.param] = currentValue;
-        });
+      let immutableParamsText = "";
+      for (const immutableParam of immutableParams) {
+        const currentValue = _.get(existingInstance, "config.params." + immutableParam.param);
+        immutableParamsText += `param: ${immutableParam.param}, value: ${currentValue}\n`;
+        params[immutableParam.param] = currentValue;
+      };
+      if (immutableParamsText) {
         logger.info(
           `The following params are immutable:\n${immutableParamsText}These cannot be modified. ` +
             `Please uninstall and reinstall this extension to change these values.`
