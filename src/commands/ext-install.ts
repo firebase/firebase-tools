@@ -135,7 +135,7 @@ export default new Command("ext:install [extensionName]")
         type: "list",
         message:
           "Which official extension would you like to install?\n" +
-          "  Select an extension, and press Enter to learn more.",
+          "  Select an extension, then press Enter to learn more.",
         choices: convertOfficialExtensionsToList(officialExts),
         pageSize: _.size(officialExts),
       });
