@@ -40,17 +40,6 @@ export function checkResponse(response: string, spec: Param): boolean {
       return false;
     }
   }
-
-  // // Return false if at least one of the responses is not a valid option
-  // if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
-  //   return !_.some(responses, (r) => {
-  //     if (!extensionOptionToValue(r, spec.options as ParamOption[])) {
-  //       utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
-  //       return true;
-  //     }
-  //   });
-  // }
-
   return true;
 }
 
@@ -114,16 +103,6 @@ export async function askForParam(paramSpec: Param): Promise<string> {
 
     valid = checkResponse(response, paramSpec);
   }
-
-  // if (paramSpec.type === ParamType.SELECT) {
-  //   response = extensionOptionToValue(response, paramSpec.options as ParamOption[]);
-  // }
-
-  // if (paramSpec.type === ParamType.MULTISELECT) {
-  //   response = _.map(response.split(","), (r) =>
-  //     extensionOptionToValue(r, paramSpec.options as ParamOption[])
-  //   ).join(",");
-  // }
   return response;
 }
 

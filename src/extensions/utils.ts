@@ -31,18 +31,6 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
   );
 }
 
-// Match a label to a ExtensionValue.
-// When a SELECT or MULTISELECT extension is in the prompt and a user is asked to pick
-// options, these options are displayed as ParamOption.label if present, otherwise as ParamOption.value.
-// export function extensionOptionToValue(label: string, options: ParamOption[]): string {
-//   for (const option of options) {
-//     if (label === option.label || label === option.value) {
-//       return option.value;
-//     }
-//   }
-//   return "";
-// }
-
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
