@@ -31,6 +31,7 @@ export function convertExtensionOptionToLabeledList(options: ParamOption[]): Lis
   );
 }
 
+// Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
 export function convertOfficialExtensionsToList(officialExts: {
   [key: string]: RegistryEntry;
 }): ListItem[] {
