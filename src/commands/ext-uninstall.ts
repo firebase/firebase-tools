@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { iam } from "../gcp";

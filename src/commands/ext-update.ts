@@ -4,7 +4,7 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { resolveSource } from "../extensions/resolveSource";
