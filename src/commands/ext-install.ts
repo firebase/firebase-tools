@@ -13,7 +13,7 @@ import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveSource } from "../extensions/resolveSource";
+import { resolveSource, getExtensionRegistry } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -21,9 +21,11 @@ import {
   logPrefix,
   promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
+import { convertOfficialExtensionsToList } from "../extensions/utils";
 import * as requirePermissions from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import { promptOnce } from "../prompt";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -105,17 +107,49 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 /**
  * Command for installing a extension
  */
-export default new Command("ext:install <extensionName>")
-  .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
+export default new Command("ext:install [extensionName]")
+  .description(
+    "install an extension, provide [extensionName] or [extensionName@versionNumber] or omit to see all available extensions."
+  )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionName: string, options: any) => {
+    const projectId = getProjectId(options, false);
+    const paramFilePath = options.params;
+    let learnMore = false;
+    if (!extensionName) {
+      learnMore = true;
+      const officialExts = await getExtensionRegistry();
+      extensionName = await promptOnce({
+        name: "input",
+        type: "list",
+        message:
+          "Which official extension would you like to install?\n" +
+          "  Select an extension, and press Enter to learn more.",
+        choices: convertOfficialExtensionsToList(officialExts),
+        pageSize: _.size(officialExts),
+      });
+    }
     try {
-      const projectId = getProjectId(options, false);
-      const paramFilePath = options.params;
       const sourceUrl = await resolveSource(extensionName);
       const source = await extensionsApi.getSource(sourceUrl);
+      if (learnMore) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `You are about to install ${clc.bold(source.spec.displayName)}.\n` +
+            `${source.spec.description}\n` +
+            `View details: https://firebase.google.com/products/extensions/${extensionName}\n`
+        );
+        const confirm = await promptOnce({
+          type: "confirm",
+          default: true,
+          message: "Would you like to proceed?",
+        });
+        if (!confirm) {
+          return;
+        }
+      }
       return installExtension({
         paramFilePath,
         projectId,

@@ -3,9 +3,8 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 
 import { Param, ParamOption, ParamType } from "./extensionsApi";
-import { FirebaseError } from "../error";
 import { logPrefix, substituteParams } from "./extensionsHelper";
-import { convertExtensionOptionToLabeledList, extensionOptionToValue, onceWithJoin } from "./utils";
+import { convertExtensionOptionToLabeledList, onceWithJoin } from "./utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
@@ -42,15 +41,15 @@ export function checkResponse(response: string, spec: Param): boolean {
     }
   }
 
-  // Return false if at least one of the responses is not a valid option
-  if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
-    return !_.some(responses, (r) => {
-      if (!extensionOptionToValue(r, spec.options as ParamOption[])) {
-        utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
-        return true;
-      }
-    });
-  }
+  // // Return false if at least one of the responses is not a valid option
+  // if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
+  //   return !_.some(responses, (r) => {
+  //     if (!extensionOptionToValue(r, spec.options as ParamOption[])) {
+  //       utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
+  //       return true;
+  //     }
+  //   });
+  // }
 
   return true;
 }
@@ -116,15 +115,15 @@ export async function askForParam(paramSpec: Param): Promise<string> {
     valid = checkResponse(response, paramSpec);
   }
 
-  if (paramSpec.type === ParamType.SELECT) {
-    response = extensionOptionToValue(response, paramSpec.options as ParamOption[]);
-  }
+  // if (paramSpec.type === ParamType.SELECT) {
+  //   response = extensionOptionToValue(response, paramSpec.options as ParamOption[]);
+  // }
 
-  if (paramSpec.type === ParamType.MULTISELECT) {
-    response = _.map(response.split(","), (r) =>
-      extensionOptionToValue(r, paramSpec.options as ParamOption[])
-    ).join(",");
-  }
+  // if (paramSpec.type === ParamType.MULTISELECT) {
+  //   response = _.map(response.split(","), (r) =>
+  //     extensionOptionToValue(r, paramSpec.options as ParamOption[])
+  //   ).join(",");
+  // }
   return response;
 }
 

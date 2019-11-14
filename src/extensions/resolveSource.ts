@@ -6,7 +6,6 @@ import { FirebaseError } from "../error";
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
 export interface RegistryEntry {
-  name: string;
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
@@ -23,7 +22,12 @@ export async function resolveSource(extensionName: string): Promise<string> {
   const extensionsRegistry = await getExtensionRegistry();
   const extension = _.get(extensionsRegistry, name);
   if (!extension) {
-    throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
+    throw new FirebaseError(
+      `Unable to find extension source named ${clc.bold(name)}. ` +
+        `Run ${clc.bold(
+          "firebase ext:install"
+        )} to select from the list of all available extensions.`
+    );
   }
   // The version to search for when a user passes a version x.y.z or no version
   const seekVersion = version || "latest";
@@ -44,7 +48,7 @@ export async function resolveSource(extensionName: string): Promise<string> {
 /**
  * Fetches the official extensions registry.
  */
-async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
+export async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
   const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
     origin: api.firebaseExtensionsRegistryOrigin,
   });
