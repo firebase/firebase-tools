@@ -4,7 +4,7 @@ import * as ProgressBar from "progress";
 
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
-import { Emulators, JavaEmulatorDetails } from "./types";
+import { Emulators, EmulatorDownloadDetails } from "./types";
 import * as javaEmulators from "../serve/javaEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
@@ -16,7 +16,7 @@ tmp.setGracefulCleanup();
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 module.exports = async (name: DownloadableEmulator) => {
-  const emulator = javaEmulators.get(name);
+  const emulator = javaEmulators.getDownloadDetails(name);
   utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
   fs.ensureDirSync(emulator.opts.cacheDir);
 
@@ -30,9 +30,10 @@ module.exports = async (name: DownloadableEmulator) => {
     await unzip(emulator.downloadPath, emulator.unzipDir);
   }
 
-  fs.chmodSync(emulator.binaryPath, 0o755);
+  const executablePath = emulator.binaryPath || emulator.downloadPath;
+  fs.chmodSync(executablePath, 0o755);
 
-  await removeOldFiles(emulator);
+  await removeOldFiles(name, emulator);
 };
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
@@ -44,7 +45,7 @@ function unzip(zipPath: string, unzipDir: string): Promise<void> {
   });
 }
 
-function removeOldFiles(emulator: JavaEmulatorDetails): void {
+function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDetails): void {
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
   const files = fs.readdirSync(emulator.opts.cacheDir);
@@ -59,7 +60,7 @@ function removeOldFiles(emulator: JavaEmulatorDetails): void {
     }
 
     if (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) {
-      utils.logLabeledBullet(emulator.name, `Removing outdated emulator files: ${file}`);
+      utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`);
       fs.removeSync(fullFilePath);
     }
   }

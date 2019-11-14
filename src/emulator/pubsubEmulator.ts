@@ -176,7 +176,8 @@ export class PubsubEmulator implements EmulatorInstance {
       request.post(
         functionsUrl,
         {
-          body: JSON.stringify(body),
+          body: body,
+          json: true,
         },
         postCallback
       );

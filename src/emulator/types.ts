@@ -24,11 +24,7 @@ export const ALL_EMULATORS = [
 export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
 
 export function isJavaEmulator(value: string): value is JavaEmulators {
-  if (isEmulator(value)) {
-    return JAVA_EMULATORS.indexOf(value) >= 0;
-  }
-
-  return false;
+  return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;
 }
 
 export function isEmulator(value: string): value is Emulators {
@@ -79,7 +75,7 @@ export interface JavaEmulatorCommand {
   joinArgs: boolean;
 }
 
-export interface JavaEmulatorOptions {
+export interface EmulatorDownloadOptions {
   cacheDir: string;
   remoteUrl: string;
   expectedSize: number;
@@ -87,67 +83,25 @@ export interface JavaEmulatorOptions {
   namePrefix: string;
 }
 
-export abstract class JavaEmulatorDetails {
-  instance: ChildProcess | null = null;
-  stdout: any | null = null;
+export interface EmulatorDownloadDetails {
+  opts: EmulatorDownloadOptions;
 
-  constructor(public name: string, public opts: JavaEmulatorOptions) {}
+  // The path to download the binary or archive from the remote source
+  downloadPath: string;
 
-  abstract get downloadPath(): string;
-  abstract get binaryPath(): string;
-  abstract get unzipDir(): string | undefined;
+  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+  // will be unzipped into 'unzipDir'
+  unzipDir?: string;
+
+  // If specified, a path where the runnable binary can be found after downloading and
+  // unzipping. Otherwise downloadPath will be used.
+  binaryPath?: string;
 }
 
-export class JarEmulatorDetails extends JavaEmulatorDetails {
-  private localPath: string;
-
-  constructor(name: string, localPath: string, opts: JavaEmulatorOptions) {
-    super(name, opts);
-    this.localPath = localPath;
-  }
-
-  get downloadPath(): string {
-    return this.localPath;
-  }
-
-  get binaryPath(): string {
-    return this.localPath;
-  }
-
-  get unzipDir(): string | undefined {
-    return undefined;
-  }
-}
-
-export class ZipEmulatorDetails extends JavaEmulatorDetails {
-  private localPath: string;
-  private internalUnzipDir: string;
-  private zipRelativePath: string;
-
-  constructor(
-    name: string,
-    localPath: string,
-    unzipDir: string,
-    zipRelativePath: string,
-    opts: JavaEmulatorOptions
-  ) {
-    super(name, opts);
-    this.localPath = localPath;
-    this.internalUnzipDir = unzipDir;
-    this.zipRelativePath = zipRelativePath;
-  }
-
-  get downloadPath(): string {
-    return this.localPath;
-  }
-
-  get binaryPath(): string {
-    return path.join(this.internalUnzipDir, this.zipRelativePath);
-  }
-
-  get unzipDir(): string | undefined {
-    return this.internalUnzipDir;
-  }
+export interface JavaEmulatorDetails {
+  name: Emulators;
+  instance: ChildProcess | null;
+  stdout: any | null;
 }
 
 export interface Address {

@@ -9,7 +9,7 @@ if [ "${TRAVIS}" != "true" ]; then
   export TRAVIS_REPO_SLUG="firebase/firebase-tools"
 fi
 
-if [ -z "${LOCAL}" ]; then
+if [[ -z $LOCAL ]]; then
   GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
   if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
     GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
