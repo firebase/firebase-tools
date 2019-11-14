@@ -29,7 +29,7 @@ export enum RuntimeWorkerState {
 
 export class RuntimeWorker {
   readonly id: string;
-  readonly triggerId: string;
+  readonly key: RuntimeWorkerKey;
   readonly runtime: FunctionsRuntimeInstance;
 
   lastArgs?: FunctionsRuntimeArgs;
@@ -39,9 +39,9 @@ export class RuntimeWorker {
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
-  constructor(triggerId: string, runtime: FunctionsRuntimeInstance) {
+  constructor(key: RuntimeWorkerKey, runtime: FunctionsRuntimeInstance) {
     this.id = uuid.v4();
-    this.triggerId = triggerId;
+    this.key = key;
     this.runtime = runtime;
 
     this.runtime.events.on("log", (log: EmulatorLog) => {
@@ -147,13 +147,42 @@ export class RuntimeWorker {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-${this.triggerId}-${this.id}]: ${msg}`);
+    EmulatorLogger.log("DEBUG", `[worker-${this.key.id}-${this.id}]: ${msg}`);
+  }
+}
+
+enum RuntimeWorkerPoolMode {
+  // Automatically start multiple workers when necessary.
+  AUTO = "auto",
+
+  // Share a single worker across all invocations.
+  SINGLE = "single",
+}
+
+/**
+ * This basically acts as a more type-safe version of
+ * type RuntimeWorkerKey = string
+ */
+class RuntimeWorkerKey {
+  readonly id: string;
+
+  constructor(triggerId: string | undefined) {
+    this.id = triggerId || "~diagnostic~";
   }
 }
 
 export class RuntimeWorkerPool {
-  readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
-  readonly workQueue: Array<FunctionsRuntimeArgs> = [];
+  private readonly workers: Map<RuntimeWorkerKey, Array<RuntimeWorker>> = new Map();
+
+  constructor(private mode: RuntimeWorkerPoolMode = RuntimeWorkerPoolMode.AUTO) {}
+
+  getKey(triggerId: string | undefined) {
+    if (this.mode === RuntimeWorkerPoolMode.SINGLE) {
+      return new RuntimeWorkerKey("~shared~");
+    } else {
+      return new RuntimeWorkerKey(triggerId);
+    }
+  }
 
   /**
    * When code changes (or in some other rare circumstances) we need to get
@@ -165,10 +194,10 @@ export class RuntimeWorkerPool {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          this.log(`Shutting down IDLE worker (${w.triggerId})`);
+          this.log(`Shutting down IDLE worker (${w.key.id})`);
           w.runtime.shutdown();
         } else if (w.state === RuntimeWorkerState.BUSY) {
-          this.log(`Marking BUSY worker to finish (${w.triggerId})`);
+          this.log(`Marking BUSY worker to finish (${w.key.id})`);
           w.state = RuntimeWorkerState.FINISHING;
         }
       });
@@ -193,8 +222,8 @@ export class RuntimeWorkerPool {
   /**
    * TODO(samstern): Document
    */
-  readyForWork(triggerdId: string | undefined): boolean {
-    const idleWorker = this.getIdleWorker(triggerdId);
+  readyForWork(triggerId: string | undefined): boolean {
+    const idleWorker = this.getIdleWorker(triggerId);
     return !!idleWorker;
   }
 
@@ -219,15 +248,13 @@ export class RuntimeWorkerPool {
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
-
-    const key = this.getTriggerKey(triggerId);
-    const keyWorkers = this.workers.get(key);
-    if (!keyWorkers) {
-      this.workers.set(key, []);
+    const triggerWorkers = this.getTriggerWorkers(triggerId);
+    if (!triggerWorkers) {
+      this.setTriggerWorkers(triggerId, []);
       return;
     }
 
-    for (const worker of keyWorkers) {
+    for (const worker of triggerWorkers) {
       if (worker.state === RuntimeWorkerState.IDLE) {
         return worker;
       }
@@ -237,22 +264,26 @@ export class RuntimeWorkerPool {
   }
 
   addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
-    const key = this.getTriggerKey(triggerId);
-    const worker = new RuntimeWorker(key, runtime);
+    const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
 
-    const keyWorkers = this.workers.get(key) || [];
+    const keyWorkers = this.getTriggerWorkers(triggerId);
     keyWorkers.push(worker);
-    this.workers.set(key, keyWorkers);
+    this.setTriggerWorkers(triggerId, keyWorkers);
 
     worker.onLogs((log: EmulatorLog) => {
       EmulatorLogger.handleRuntimeLog(log);
     }, true /* listen forever */);
 
+    this.log(`Adding worker with key ${worker.key.id}`);
     return worker;
   }
 
-  private getTriggerKey(triggerId?: string): string {
-    return triggerId || "~diagnostic~";
+  getTriggerWorkers(triggerId: string | undefined): Array<RuntimeWorker> {
+    return this.workers.get(this.getKey(triggerId)) || [];
+  }
+
+  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
+    this.workers.set(this.getKey(triggerId), workers);
   }
 
   private cleanUpWorkers() {
