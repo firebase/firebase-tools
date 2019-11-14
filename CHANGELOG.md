@@ -3,3 +3,4 @@
 * Modifies `firebase ext:update` to not perform update if the extension is already up to date.
 * Print Firebase Console links for Extensions after operations.
 * Updated Firebase Extensions registry address.
+* Print list of official extensions when `firebase ext:install` is run without an extension name.
