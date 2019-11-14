@@ -40,6 +40,21 @@ export function checkResponse(response: string, spec: Param): boolean {
       return false;
     }
   }
+
+  if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
+    // Return true if every response is valid.
+    return _.every(responses, (r) => {
+      // A choice is valid if it matches one of the option value.
+      let validChoice = _.some(spec.options, (option: ParamOption) => {
+        return r === option.value;
+      });
+      if (validChoice) {
+        return true;
+      }
+      utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
+      return false;
+    });
+  }
   return true;
 }
 
