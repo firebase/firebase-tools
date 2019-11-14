@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var clc = require("cli-color");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var Config = require("../config");
 var identifierToProjectId = require("../identifierToProjectId");
 var logger = require("../logger");

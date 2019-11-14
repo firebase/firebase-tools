@@ -62,7 +62,9 @@ describe("extensions", () => {
     it("should return a list of installed extensions instances", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true) // Internal bug ref: 135750628
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE);
 
       const instances = await extensionsApi.listInstances(PROJECT_ID);
@@ -74,7 +76,9 @@ describe("extensions", () => {
     it("should query for more installed extensions if the response has a next_page_token", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true) // Internal bug ref: 135750628
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
@@ -95,7 +99,9 @@ describe("extensions", () => {
     it("should throw FirebaseError if any call returns an error", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true)
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
