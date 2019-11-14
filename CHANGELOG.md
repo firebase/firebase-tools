@@ -2,3 +2,4 @@
 * Fixes a bug where the Cloud Functions emulator accepted requests to too many paths (#1773).
 * Modifies `firebase ext:update` to not perform update if the extension is already up to date.
 * Print Firebase Console links for Extensions after operations.
+* Updated Firebase Extensions registry address.
