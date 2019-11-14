@@ -1,4 +1,4 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as clc from "cli-color";
 import * as fsi from "../firestore/indexes";
 import * as logger from "../logger";

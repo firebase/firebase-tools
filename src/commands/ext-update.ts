@@ -4,7 +4,7 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { resolveSource } from "../extensions/resolveSource";
@@ -91,6 +91,15 @@ export default new Command("ext:update <extensionInstanceId>")
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can view your updated instance in the Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=usage`
+          )}`
+        )
+      );
     } catch (err) {
       spinner.fail();
       if (!(err instanceof FirebaseError)) {
