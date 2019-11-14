@@ -26,8 +26,9 @@ import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { RuntimeWorkerPool, RuntimeWorker, RuntimeWorkerPoolMode } from "./functionsRuntimeWorker";
 import { FirebaseError } from "../error";
+import { WorkQueue, WorkMode } from "./workQueue";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -98,7 +99,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   private server?: http.Server;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-  private workerPool: RuntimeWorkerPool = new RuntimeWorkerPool();
+
+  // TODO(samstern): Control this with a flag
+  private workerPool: RuntimeWorkerPool = new RuntimeWorkerPool(RuntimeWorkerPoolMode.SINGLE);
+  private workQueue: WorkQueue = new WorkQueue(WorkMode.SEQUENTIAL);
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
@@ -139,14 +143,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleBackgroundTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleBackgroundTrigger(req, res);
+      });
     };
 
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleHttpsTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleHttpsTrigger(req, res);
+      });
     };
 
     // The ordering here is important. The longer routes (background)
@@ -183,6 +191,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
     const { host, port } = this.getInfo();
+    this.workQueue.start();
     this.server = this.createHubServer().listen(port, host);
   }
 
@@ -310,6 +319,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
+    this.workQueue.stop();
     this.workerPool.exit();
     Promise.resolve(this.server && this.server.close());
   }
@@ -529,6 +539,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (opts.ignore_warnings) {
       args.unshift("--no-warnings");
     }
+
+    // TODO: Flag this
+    args.unshift("--inspect=12345");
 
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },

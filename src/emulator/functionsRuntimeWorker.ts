@@ -29,7 +29,7 @@ export enum RuntimeWorkerState {
 
 export class RuntimeWorker {
   readonly id: string;
-  readonly key: RuntimeWorkerKey;
+  readonly key: string;
   readonly runtime: FunctionsRuntimeInstance;
 
   lastArgs?: FunctionsRuntimeArgs;
@@ -39,7 +39,7 @@ export class RuntimeWorker {
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
-  constructor(key: RuntimeWorkerKey, runtime: FunctionsRuntimeInstance) {
+  constructor(key: string, runtime: FunctionsRuntimeInstance) {
     this.id = uuid.v4();
     this.key = key;
     this.runtime = runtime;
@@ -147,11 +147,11 @@ export class RuntimeWorker {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-${this.key.id}-${this.id}]: ${msg}`);
+    EmulatorLogger.log("DEBUG", `[worker-${this.key}-${this.id}]: ${msg}`);
   }
 }
 
-enum RuntimeWorkerPoolMode {
+export enum RuntimeWorkerPoolMode {
   // Automatically start multiple workers when necessary.
   AUTO = "auto",
 
@@ -159,28 +159,16 @@ enum RuntimeWorkerPoolMode {
   SINGLE = "single",
 }
 
-/**
- * This basically acts as a more type-safe version of
- * type RuntimeWorkerKey = string
- */
-class RuntimeWorkerKey {
-  readonly id: string;
-
-  constructor(triggerId: string | undefined) {
-    this.id = triggerId || "~diagnostic~";
-  }
-}
-
 export class RuntimeWorkerPool {
-  private readonly workers: Map<RuntimeWorkerKey, Array<RuntimeWorker>> = new Map();
+  private readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
 
   constructor(private mode: RuntimeWorkerPoolMode = RuntimeWorkerPoolMode.AUTO) {}
 
   getKey(triggerId: string | undefined) {
     if (this.mode === RuntimeWorkerPoolMode.SINGLE) {
-      return new RuntimeWorkerKey("~shared~");
+      return "~shared~";
     } else {
-      return new RuntimeWorkerKey(triggerId);
+      return triggerId || "~diagnostic~";
     }
   }
 
@@ -194,10 +182,10 @@ export class RuntimeWorkerPool {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          this.log(`Shutting down IDLE worker (${w.key.id})`);
+          this.log(`Shutting down IDLE worker (${w.key})`);
           w.runtime.shutdown();
         } else if (w.state === RuntimeWorkerState.BUSY) {
-          this.log(`Marking BUSY worker to finish (${w.key.id})`);
+          this.log(`Marking BUSY worker to finish (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
         }
       });
@@ -235,6 +223,7 @@ export class RuntimeWorkerPool {
     frb: FunctionsRuntimeBundle,
     opts?: InvokeRuntimeOpts
   ): RuntimeWorker {
+    this.log(`submitWork(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId);
     if (!worker) {
       throw new FirebaseError(
@@ -249,7 +238,7 @@ export class RuntimeWorkerPool {
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
     const triggerWorkers = this.getTriggerWorkers(triggerId);
-    if (!triggerWorkers) {
+    if (!triggerWorkers.length) {
       this.setTriggerWorkers(triggerId, []);
       return;
     }
@@ -274,7 +263,7 @@ export class RuntimeWorkerPool {
       EmulatorLogger.handleRuntimeLog(log);
     }, true /* listen forever */);
 
-    this.log(`Adding worker with key ${worker.key.id}`);
+    this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);
     return worker;
   }
 
@@ -292,11 +281,17 @@ export class RuntimeWorkerPool {
       const notDoneWorkers = keyWorkers.filter((worker) => {
         return worker.state !== RuntimeWorkerState.FINISHED;
       });
-      this.workers.set(key, notDoneWorkers);
+
+      if (notDoneWorkers.length !== keyWorkers.length) {
+        this.log(
+          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`
+        );
+      }
+      this.setTriggerWorkers(key, notDoneWorkers);
     }
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-pool]: ${msg}`);
+    EmulatorLogger.log("DEBUG", `[worker-pool] ${msg}`);
   }
 }
