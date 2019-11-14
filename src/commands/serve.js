@@ -3,10 +3,10 @@
 var clc = require("cli-color");
 var _ = require("lodash");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var logger = require("../logger");
 var utils = require("../utils");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var checkDupHostingKeys = require("../checkDupHostingKeys");
 var serve = require("../serve/index");

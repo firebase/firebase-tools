@@ -2,12 +2,12 @@ import * as _ from "lodash";
 import * as opn from "open";
 import * as qs from "querystring";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as gcp from "../gcp";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("functions:log")
   .description("read logs from deployed functions")

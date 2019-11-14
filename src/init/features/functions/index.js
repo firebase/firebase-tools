@@ -7,8 +7,7 @@ var _ = require("lodash");
 var logger = require("../../../logger");
 var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
-var requireAccess = require("../../../requireAccess").requireAccess;
-var scopes = require("../../../scopes");
+var { requirePermissions } = require("../../../requirePermissions");
 
 module.exports = function(setup, config) {
   logger.info();
@@ -22,14 +21,14 @@ module.exports = function(setup, config) {
 
   setup.functions = {};
   var projectId = _.get(setup, "rcfile.projects.default");
-  var enableApis;
+  var enableApis = Promise.resolve();
   if (projectId) {
-    enableApis = requireAccess({ project: projectId }, [scopes.CLOUD_PLATFORM]).then(function() {
-      enableApi(projectId, "cloudfunctions.googleapis.com");
-      enableApi(projectId, "runtimeconfig.googleapis.com");
+    enableApis = requirePermissions({ project: projectId }).then(() => {
+      return Promise.all([
+        enableApi(projectId, "cloudfunctions.googleapis.com"),
+        enableApi(projectId, "runtimeconfig.googleapis.com"),
+      ]);
     });
-  } else {
-    enableApis = Promise.resolve();
   }
   return enableApis.then(function() {
     return prompt(setup.functions, [

@@ -204,7 +204,7 @@ export class RuntimeWorkerPool {
   submitWork(
     triggerId: string | undefined,
     frb: FunctionsRuntimeBundle,
-    serializedTriggers?: string
+    opts?: InvokeRuntimeOpts
   ): RuntimeWorker {
     const worker = this.getIdleWorker(triggerId);
     if (!worker) {
@@ -213,7 +213,7 @@ export class RuntimeWorkerPool {
       );
     }
 
-    worker.execute(frb, { serializedTriggers });
+    worker.execute(frb, opts);
     return worker;
   }
 
