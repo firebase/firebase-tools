@@ -1,8 +1,8 @@
 "use strict";
 
-var Command = require("../command");
+var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");

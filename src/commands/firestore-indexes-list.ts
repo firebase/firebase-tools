@@ -1,8 +1,8 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as clc from "cli-color";
 import * as fsi from "../firestore/indexes";
 import * as logger from "../logger";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")

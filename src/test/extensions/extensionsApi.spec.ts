@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
+import * as sinon from "sinon";
+
+import * as helpers from "../helpers";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
@@ -43,6 +46,14 @@ const PROJECT_ID = "test-project";
 const INSTANCE_ID = "test-extensions-instance";
 
 describe("extensions", () => {
+  beforeEach(() => {
+    helpers.mockAuth(sinon);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
   describe("listInstances", () => {
     afterEach(() => {
       nock.cleanAll();
@@ -51,7 +62,9 @@ describe("extensions", () => {
     it("should return a list of installed extensions instances", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true) // Internal bug ref: 135750628
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE);
 
       const instances = await extensionsApi.listInstances(PROJECT_ID);
@@ -63,7 +76,9 @@ describe("extensions", () => {
     it("should query for more installed extensions if the response has a next_page_token", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true) // Internal bug ref: 135750628
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
@@ -84,7 +99,9 @@ describe("extensions", () => {
     it("should throw FirebaseError if any call returns an error", async () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
-        .query(true)
+        .query((queryParams: any) => {
+          return queryParams.pageSize === "100";
+        })
         .reply(200, TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN);
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances`)
@@ -254,8 +271,6 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: false })
-        .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
@@ -263,7 +278,7 @@ describe("extensions", () => {
       });
 
       expect(nock.isDone()).to.be.true;
-    }).timeout(2000);
+    });
 
     it("should not include config.param in updateMask is params aren't changed", async () => {
       nock(api.extensionsOrigin)
@@ -272,14 +287,12 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: false })
-        .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
 
       expect(nock.isDone()).to.be.true;
-    }).timeout(2000);
+    });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)

@@ -1,4 +1,4 @@
-import * as Command from "../command";
+import { Command } from "../command";
 const downloadEmulator = require("../emulator/download");
 
 const EMULATOR_NAME = "pubsub";
