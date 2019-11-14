@@ -76,6 +76,11 @@ export interface Address {
   port: number;
 }
 
+export enum FunctionsExecutionMode {
+  AUTO = "auto",
+  SEQUENTIAL = "sequential",
+}
+
 export class EmulatorLog {
   get date(): Date {
     if (!this.timestamp) {

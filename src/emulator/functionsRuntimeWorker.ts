@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
-import { EmulatorLog } from "./types";
+import { EmulatorLog, FunctionsExecutionMode } from "./types";
 import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeArgs,
@@ -151,21 +151,13 @@ export class RuntimeWorker {
   }
 }
 
-export enum RuntimeWorkerPoolMode {
-  // Automatically start multiple workers when necessary.
-  AUTO = "auto",
-
-  // Share a single worker across all invocations.
-  SINGLE = "single",
-}
-
 export class RuntimeWorkerPool {
   private readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
 
-  constructor(private mode: RuntimeWorkerPoolMode = RuntimeWorkerPoolMode.AUTO) {}
+  constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
   getKey(triggerId: string | undefined) {
-    if (this.mode === RuntimeWorkerPoolMode.SINGLE) {
+    if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
       return "~shared~";
     } else {
       return triggerId || "~diagnostic~";

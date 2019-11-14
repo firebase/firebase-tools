@@ -120,11 +120,22 @@ export async function startAll(options: any): Promise<void> {
       options.config.get("functions.source")
     );
 
+    let debugPort = undefined;
+    if (options.debugPort) {
+      // TODO(samstern): Implement actually threading this through
+      debugPort = parseInt(options.debugPort, 10);
+      utils.logLabeledWarning(
+        "functions",
+        `You are running the functions emulator in debug mode (port=${debugPort}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
       host: functionsAddr.host,
       port: functionsAddr.port,
+      debugPort,
     });
     await startEmulator(functionsEmulator);
   }

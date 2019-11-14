@@ -8,7 +8,13 @@ import * as http from "http";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  EmulatorLog,
+  Emulators,
+  FunctionsExecutionMode,
+} from "./types";
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
@@ -26,9 +32,9 @@ import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { RuntimeWorkerPool, RuntimeWorker, RuntimeWorkerPoolMode } from "./functionsRuntimeWorker";
+import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { FirebaseError } from "../error";
-import { WorkQueue, WorkMode } from "./workQueue";
+import { WorkQueue } from "./workQueue";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -47,6 +53,7 @@ export interface FunctionsEmulatorArgs {
   host?: string;
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
+  debugPort?: number;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -101,12 +108,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
   // TODO(samstern): Control this with a flag
-  private workerPool: RuntimeWorkerPool = new RuntimeWorkerPool(RuntimeWorkerPoolMode.SINGLE);
-  private workQueue: WorkQueue = new WorkQueue(WorkMode.SEQUENTIAL);
+  private workerPool: RuntimeWorkerPool;
+  private workQueue: WorkQueue;
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
+
+    const mode = this.args.debugPort ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
+    this.workerPool = new RuntimeWorkerPool(mode);
+    this.workQueue = new WorkQueue(mode);
   }
 
   createHubServer(): express.Application {
@@ -223,6 +234,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
 
+      // TODO(samstern): This is probably not the right behavior when debugging.
       // Before loading any triggers we need to make sure there are no 'stale' workers
       // in the pool that would cause us to run old code.
       this.workerPool.refresh();
@@ -540,8 +552,9 @@ export class FunctionsEmulator implements EmulatorInstance {
       args.unshift("--no-warnings");
     }
 
-    // TODO: Flag this
-    args.unshift("--inspect=12345");
+    if (this.args.debugPort) {
+      args.unshift(`--inspect=${this.args.debugPort}`);
+    }
 
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },

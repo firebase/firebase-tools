@@ -1,19 +1,7 @@
 import { EmulatorLogger } from "./emulatorLogger";
+import { FunctionsExecutionMode } from "./types";
 
 type Work = () => Promise<any>;
-
-// TODO(samstern): Can probably share this with the WorkerPool enum?
-export enum WorkMode {
-  /**
-   * Run all work as soon as it is submitted to the queue.
-   */
-  CONCURRENT,
-
-  /**
-   * Run one piece of work at a time, FIFO.
-   */
-  SEQUENTIAL,
-}
 
 /**
  * Queue for doing async work that can either run all work concurrently
@@ -24,7 +12,7 @@ export class WorkQueue {
   private interval?: NodeJS.Timeout;
   private workRunningInternal: boolean = false;
 
-  constructor(private mode: WorkMode = WorkMode.CONCURRENT) {}
+  constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
   /**
    * Submit an entry to the queue and run it according to the WorkMode.
@@ -32,7 +20,7 @@ export class WorkQueue {
    * Note: make sure start() has been called at some point.
    */
   submit(entry: Work) {
-    if (this.mode == WorkMode.SEQUENTIAL) {
+    if (this.mode == FunctionsExecutionMode.SEQUENTIAL) {
       this.append(entry);
     } else {
       entry();
@@ -45,8 +33,8 @@ export class WorkQueue {
   start() {
     this.interval = setInterval(() => {
       if (
-        this.mode === WorkMode.CONCURRENT ||
-        (this.mode === WorkMode.SEQUENTIAL && !this.workRunning)
+        this.mode === FunctionsExecutionMode.AUTO ||
+        (this.mode === FunctionsExecutionMode.SEQUENTIAL && !this.workRunning)
       ) {
         this.runNext();
       }

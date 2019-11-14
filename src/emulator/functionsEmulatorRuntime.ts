@@ -9,7 +9,6 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
-  getTemporarySocketPath,
   FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
@@ -19,7 +18,6 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
-import * as inspector from "inspector";
 
 const DATABASE_APP = "__database__";
 
@@ -1150,8 +1148,6 @@ async function handleMessage(message: string) {
 }
 
 async function main(): Promise<void> {
-  inspector.open(12345);
-
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,

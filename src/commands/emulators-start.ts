@@ -13,6 +13,11 @@ module.exports = new Command("emulators:start")
       "Valid options are: " +
       JSON.stringify(controller.VALID_EMULATOR_STRINGS)
   )
+  // TODO(samstern): Put this on exec as well
+  .option(
+    "--debug-port <port>",
+    "run functions in debug mode with the node inspector on the given port."
+  )
   .action(async (options: any) => {
     try {
       await controller.startAll(options);
