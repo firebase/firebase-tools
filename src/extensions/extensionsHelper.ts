@@ -1,6 +1,8 @@
 import * as _ from "lodash";
 
+import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
+import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
@@ -177,4 +179,20 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
     "extensions",
     options.markdown
   );
+}
+
+/**
+ * Displays list of all official extensions and prompt user to select one.
+ * @param message The prompt message to display
+ * @returns Promise that resolves to the extension name (e.g. storage-resize-images)
+ */
+export async function promptForOfficialExtension(message: string): Promise<string> {
+  const officialExts = await getExtensionRegistry();
+  return await promptOnce({
+    name: "input",
+    type: "list",
+    message,
+    choices: convertOfficialExtensionsToList(officialExts),
+    pageSize: _.size(officialExts),
+  });
 }

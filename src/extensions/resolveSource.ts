@@ -15,18 +15,16 @@ export interface RegistryEntry {
  * Gets the source for a given extension name and version from the official extensions registry
  *
  * @param extensionName the name, or name@version of the extension to get the ExtensionSource for
+ * @param errMessage custom error message for when the extensionName is not found
  * @returns the source corresponding to extensionName in the registry
  */
-export async function resolveSource(extensionName: string): Promise<string> {
+export async function resolveSource(extensionName: string, errMessage?: string): Promise<string> {
   const [name, version] = extensionName.split("@");
   const extensionsRegistry = await getExtensionRegistry();
   const extension = _.get(extensionsRegistry, name);
   if (!extension) {
     throw new FirebaseError(
-      `Unable to find extension source named ${clc.bold(name)}. ` +
-        `Run ${clc.bold(
-          "firebase ext:install"
-        )} to select from the list of all available extensions.`
+      errMessage || `Unable to find extension source named ${clc.bold(name)}.`
     );
   }
   // The version to search for when a user passes a version x.y.z or no version

@@ -10,12 +10,13 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
 export function checkResponse(response: string, spec: Param): boolean {
+  let valid = true;
+  let responses: string[];
+
   if (spec.required && !response) {
     utils.logWarning("You are required to enter a value for this question");
     return false;
   }
-
-  let responses: string[];
   if (spec.type === ParamType.MULTISELECT) {
     responses = response.split(",");
   } else {
@@ -25,7 +26,6 @@ export function checkResponse(response: string, spec: Param): boolean {
 
   if (spec.validationRegex) {
     const re = new RegExp(spec.validationRegex);
-    let valid = true;
     _.forEach(responses, (resp) => {
       if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
@@ -35,27 +35,21 @@ export function checkResponse(response: string, spec: Param): boolean {
         valid = false;
       }
     });
-
-    if (!valid) {
-      return false;
-    }
   }
 
   if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
-    // Return true if every response is valid.
-    return _.every(responses, (r) => {
+    _.forEach(responses, (r) => {
       // A choice is valid if it matches one of the option value.
       let validChoice = _.some(spec.options, (option: ParamOption) => {
         return r === option.value;
       });
-      if (validChoice) {
-        return true;
+      if (!validChoice) {
+        utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
+        valid = false;
       }
-      utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
-      return false;
     });
   }
-  return true;
+  return valid;
 }
 
 export async function askForParam(paramSpec: Param): Promise<string> {

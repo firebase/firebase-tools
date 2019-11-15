@@ -13,15 +13,15 @@ import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveSource, getExtensionRegistry } from "../extensions/resolveSource";
+import { resolveSource } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   ensureExtensionsApiEnabled,
   getValidInstanceId,
   logPrefix,
   promptForValidInstanceId,
+  promptForOfficialExtension,
 } from "../extensions/extensionsHelper";
-import { convertOfficialExtensionsToList } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -129,19 +129,20 @@ export default new Command("ext:install [extensionName]")
     let learnMore = false;
     if (!extensionName) {
       learnMore = true;
-      const officialExts = await getExtensionRegistry();
-      extensionName = await promptOnce({
-        name: "input",
-        type: "list",
-        message:
-          "Which official extension would you like to install?\n" +
-          "  Select an extension, then press Enter to learn more.",
-        choices: convertOfficialExtensionsToList(officialExts),
-        pageSize: _.size(officialExts),
-      });
+      extensionName = await promptForOfficialExtension(
+        "Which official extension would you like to install?\n" +
+          "  Select an extension, then press Enter to learn more."
+      );
     }
+
     try {
-      const sourceUrl = await resolveSource(extensionName);
+      const sourceUrl = await resolveSource(
+        extensionName,
+        `Unable to find extension source named ${clc.bold(extensionName)}. ` +
+          `Run ${clc.bold(
+            "firebase ext:install"
+          )} to select from the list of all available extensions.`
+      );
       const source = await extensionsApi.getSource(sourceUrl);
       if (learnMore) {
         utils.logLabeledBullet(
