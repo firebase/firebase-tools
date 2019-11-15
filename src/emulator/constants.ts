@@ -7,6 +7,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   functions: 5001,
   firestore: 8080,
   database: 9000,
+  pubsub: 8085,
 };
 
 const DEFAULT_HOST = "localhost";
@@ -16,6 +17,7 @@ export class Constants {
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
+  static SERVICE_PUBSUB = "pubsub.googleapis.com";
 
   static getServiceName(service: string): string {
     switch (service) {
@@ -23,6 +25,8 @@ export class Constants {
         return "firestore";
       case this.SERVICE_REALTIME_DATABASE:
         return "database";
+      case this.SERVICE_PUBSUB:
+        return "pubsub";
       default:
         return service;
     }
