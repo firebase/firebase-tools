@@ -19,22 +19,22 @@ import * as getProjectId from "../getProjectId";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
-export async function checkPortOpen(port: number): Promise<boolean> {
+export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
-    const inUse = await tcpport.check(port);
+    const inUse = await tcpport.check(port, host);
     return !inUse;
   } catch (e) {
     return false;
   }
 }
 
-export async function waitForPortClosed(port: number): Promise<void> {
+export async function waitForPortClosed(port: number, host: string): Promise<void> {
   const interval = 250;
   const timeout = 30000;
   try {
     await tcpport.waitUntilUsed(port, interval, timeout);
   } catch (e) {
-    throw new FirebaseError(`TIMEOUT: Port ${port} was not active within ${timeout}ms`);
+    throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
   }
 }
 
@@ -45,8 +45,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   // Log the command for analytics
   track("emulators:start", name);
 
-  // TODO(samstern): This check should only occur when the host is localhost
-  const portOpen = await checkPortOpen(info.port);
+  const portOpen = await checkPortOpen(info.port, info.host);
   if (!portOpen) {
     await cleanShutdown();
     utils.logWarning(`Port ${info.port} is not open, could not start ${name} emulator.`);
@@ -114,7 +113,16 @@ export async function startAll(options: any): Promise<void> {
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-    const functionsEmulator = new FunctionsEmulator(options, {
+
+    const projectId = getProjectId(options, false);
+    const functionsDir = path.join(
+      options.config.projectDir,
+      options.config.get("functions.source")
+    );
+
+    const functionsEmulator = new FunctionsEmulator({
+      projectId,
+      functionsDir,
       host: functionsAddr.host,
       port: functionsAddr.port,
     });

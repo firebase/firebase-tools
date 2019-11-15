@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { populatePostinstall } from "../extensions/populatePostinstall";
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
@@ -21,7 +21,7 @@ import {
   logPrefix,
   promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
@@ -91,6 +91,15 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     } else {
       logger.debug("No usage instructions provided.");
     }
+    utils.logLabeledBullet(
+      logPrefix,
+      marked(
+        `You can view your new instance in the Firebase console: ${utils.consoleUrl(
+          projectId,
+          `/extensions/instances/${instanceId}?tab=usage`
+        )}`
+      )
+    );
   } catch (err) {
     spinner.fail();
     if (err instanceof FirebaseError) {

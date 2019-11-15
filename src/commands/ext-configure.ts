@@ -4,13 +4,13 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
@@ -21,7 +21,7 @@ marked.setOptions({
 /**
  * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <instanceId>")
+export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
@@ -69,6 +69,15 @@ export default new Command("ext:configure <instanceId>")
       const res = await extensionsApi.configureInstance(projectId, instanceId, params);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=config`
+          )}`
+        )
+      );
       return res;
     } catch (err) {
       spinner.fail();

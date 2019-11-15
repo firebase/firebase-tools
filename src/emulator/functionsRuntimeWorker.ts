@@ -1,9 +1,14 @@
 import * as uuid from "uuid";
-import { FunctionsRuntimeInstance } from "./functionsEmulator";
+import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
 import { EmulatorLog } from "./types";
-import { FunctionsRuntimeBundle, FunctionsRuntimeArgs } from "./functionsEmulatorShared";
+import {
+  FunctionsRuntimeBundle,
+  FunctionsRuntimeArgs,
+  getTemporarySocketPath,
+} from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
 import { EmulatorLogger } from "./emulatorLogger";
+import { FirebaseError } from "../error";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -27,8 +32,10 @@ export class RuntimeWorker {
   readonly triggerId: string;
   readonly runtime: FunctionsRuntimeInstance;
 
+  lastArgs?: FunctionsRuntimeArgs;
   stateEvents: EventEmitter = new EventEmitter();
 
+  private socketReady?: Promise<any>;
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
@@ -56,9 +63,19 @@ export class RuntimeWorker {
     });
   }
 
-  async execute(frb: FunctionsRuntimeBundle, serializedTriggers?: string) {
+  async execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts) {
+    // Make a copy so we don't edit it
+    const execFrb: FunctionsRuntimeBundle = { ...frb };
+
+    // TODO(samstern): I would like to do this elsewhere...
+    if (!execFrb.socketPath) {
+      execFrb.socketPath = getTemporarySocketPath(this.id, execFrb.cwd);
+      this.log(`Assigning socketPath: ${execFrb.socketPath}`);
+    }
+
+    const args: FunctionsRuntimeArgs = { frb: execFrb, opts };
     this.state = RuntimeWorkerState.BUSY;
-    const args: FunctionsRuntimeArgs = { frb, serializedTriggers };
+    this.lastArgs = args;
     this.runtime.send(args);
   }
 
@@ -67,12 +84,24 @@ export class RuntimeWorker {
   }
 
   set state(state: RuntimeWorkerState) {
+    if (state === RuntimeWorkerState.BUSY) {
+      this.socketReady = EmulatorLog.waitForLog(
+        this.runtime.events,
+        "SYSTEM",
+        "runtime-status",
+        (el) => {
+          return el.data.state === "ready";
+        }
+      );
+    }
+
     if (state === RuntimeWorkerState.IDLE) {
       // Remove all temporary log listeners every time we move to IDLE
       for (const l of this.logListeners) {
         this.runtime.events.removeListener("log", l);
       }
       this.logListeners = [];
+      this.socketReady = undefined;
     }
 
     if (state === RuntimeWorkerState.FINISHED) {
@@ -110,8 +139,11 @@ export class RuntimeWorker {
     });
   }
 
-  waitForSystemLog(filter: (el: EmulatorLog) => boolean): Promise<EmulatorLog> {
-    return EmulatorLog.waitForLog(this.runtime.events, "SYSTEM", "runtime-status", filter);
+  waitForSocketReady(): Promise<any> {
+    return (
+      this.socketReady ||
+      Promise.reject(new Error("Cannot call waitForSocketReady() if runtime is not BUSY"))
+    );
   }
 
   private log(msg: string): void {
@@ -120,7 +152,8 @@ export class RuntimeWorker {
 }
 
 export class RuntimeWorkerPool {
-  workers: Map<string, Array<RuntimeWorker>> = new Map();
+  readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
+  readonly workQueue: Array<FunctionsRuntimeArgs> = [];
 
   /**
    * When code changes (or in some other rare circumstances) we need to get
@@ -157,6 +190,33 @@ export class RuntimeWorkerPool {
     }
   }
 
+  /**
+   * TODO(samstern): Document
+   */
+  readyForWork(triggerdId: string | undefined): boolean {
+    const idleWorker = this.getIdleWorker(triggerdId);
+    return !!idleWorker;
+  }
+
+  /**
+   * TODO(samstern): Document
+   */
+  submitWork(
+    triggerId: string | undefined,
+    frb: FunctionsRuntimeBundle,
+    opts?: InvokeRuntimeOpts
+  ): RuntimeWorker {
+    const worker = this.getIdleWorker(triggerId);
+    if (!worker) {
+      throw new FirebaseError(
+        "Internal Error: can't call submitWork without checking for idle workers"
+      );
+    }
+
+    worker.execute(frb, opts);
+    return worker;
+  }
+
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
 
@@ -184,10 +244,14 @@ export class RuntimeWorkerPool {
     keyWorkers.push(worker);
     this.workers.set(key, keyWorkers);
 
+    worker.onLogs((log: EmulatorLog) => {
+      EmulatorLogger.handleRuntimeLog(log);
+    }, true /* listen forever */);
+
     return worker;
   }
 
-  private getTriggerKey(triggerId?: string) {
+  private getTriggerKey(triggerId?: string): string {
     return triggerId || "~diagnostic~";
   }
 

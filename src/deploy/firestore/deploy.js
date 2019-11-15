@@ -1,19 +1,19 @@
 "use strict";
 
-var _ = require("lodash");
-var clc = require("cli-color");
+const _ = require("lodash");
+const clc = require("cli-color");
 
-var fsi = require("../../firestore/indexes");
-var logger = require("../../logger");
-
-var utils = require("../../utils");
+const fsi = require("../../firestore/indexes");
+const logger = require("../../logger");
+const utils = require("../../utils");
+const { RulesetServiceType } = require("../../RulesDeploy");
 
 function _deployRules(context) {
   var rulesDeploy = _.get(context, "firestore.rulesDeploy");
   if (!context.firestoreRules || !rulesDeploy) {
     return Promise.resolve();
   }
-  return rulesDeploy.createRulesets();
+  return rulesDeploy.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
 }
 
 function _deployIndexes(context, options) {

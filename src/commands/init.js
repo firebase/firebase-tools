@@ -5,7 +5,7 @@ var fs = require("fs");
 var homeDir = require("os").homedir();
 var path = require("path");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
 var init = require("../init");
