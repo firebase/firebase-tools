@@ -4,10 +4,10 @@ import * as open from "open";
 
 import { FirebaseError } from "../error";
 import * as api from "../api";
-import * as Command from "../command";
+import { Command } from "../command";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as requireInstance from "../requireInstance";
 import * as utils from "../utils";
 

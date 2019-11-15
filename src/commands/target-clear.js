@@ -2,7 +2,7 @@
 
 var clc = require("cli-color");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var requireConfig = require("../requireConfig");
 var utils = require("../utils");
 
