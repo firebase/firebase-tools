@@ -82,8 +82,6 @@ export function filterEmulatorTargets(options: any): string[] {
 
   if (options.only) {
     targets = _.intersection(targets, options.only.split(","));
-  } else if (options.except) {
-    targets = _.difference(targets, options.except.split(","));
   }
 
   return targets;

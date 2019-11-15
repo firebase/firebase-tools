@@ -42,11 +42,11 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    return Promise.resolve();
+    return;
   }
 
   async stop(): Promise<void> {
-    return javaEmulators.stop(Emulators.PUBSUB);
+    await javaEmulators.stop(Emulators.PUBSUB);
   }
 
   getInfo(): EmulatorInfo {
@@ -114,31 +114,6 @@ export class PubsubEmulator implements EmulatorInstance {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
-    let remaining = topicTriggers.size;
-    const postCallback = (err: any, res: request.Response) => {
-      if (err) {
-        EmulatorLogger.logLabeled(
-          "DEBUG",
-          "pubsub",
-          `Error running functions: ${JSON.stringify(err)}`
-        );
-      }
-
-      if (res) {
-        EmulatorLogger.logLabeled(
-          "DEBUG",
-          "pubsub",
-          `Functions emulator response: HTTP ${res.statusCode} ${JSON.stringify(res.body)}`
-        );
-      }
-
-      remaining--;
-      if (remaining <= 0) {
-        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
-        message.ack();
-      }
-    };
-
     const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
     if (!functionsPort) {
       throw new FirebaseError(
@@ -153,6 +128,10 @@ export class PubsubEmulator implements EmulatorInstance {
         Array.from(topicTriggers)
       )})`
     );
+
+    // We need to do one POST request for each matching trigger and only
+    // 'ack' the message when they are all complete.
+    let remaining = topicTriggers.size;
     for (const trigger of topicTriggers) {
       const body = {
         context: {
@@ -173,13 +152,37 @@ export class PubsubEmulator implements EmulatorInstance {
       const functionsUrl = `http://localhost:${functionsPort}/functions/projects/${
         this.args.projectId
       }/triggers/${trigger}`;
+
       request.post(
         functionsUrl,
         {
           body: body,
           json: true,
         },
-        postCallback
+        (err: any, res: request.Response) => {
+          if (err) {
+            EmulatorLogger.logLabeled(
+              "DEBUG",
+              "pubsub",
+              `Error running functions: ${JSON.stringify(err)}`
+            );
+          }
+
+          if (res) {
+            EmulatorLogger.logLabeled(
+              "DEBUG",
+              "pubsub",
+              `Functions emulator response: HTTP ${res.statusCode} ${JSON.stringify(res.body)}`
+            );
+          }
+
+          // If this is the last trigger we need to run, ack the message.
+          remaining--;
+          if (remaining <= 0) {
+            EmulatorLogger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
+            message.ack();
+          }
+        }
       );
     }
   }

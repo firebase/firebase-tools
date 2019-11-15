@@ -138,7 +138,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
     const argKey = "--" + key;
     const argVal = args[key];
 
-    if (argVal === undefined || argVal === "") {
+    if (argVal === undefined) {
       logger.debug(`Ignoring empty arg for key: ${key}`);
       return;
     }
