@@ -193,7 +193,7 @@ export class EmulatorLog {
     public data?: any,
     public timestamp?: string
   ) {
-    this.timestamp = this.timestamp || new Date().toString();
+    this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
   }
 
