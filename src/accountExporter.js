@@ -149,6 +149,9 @@ var serialExportUsers = function(projectId, options) {
   if (options.nextPageToken) {
     postBody.nextPageToken = options.nextPageToken;
   }
+  if (!options.timeoutRetryCount) {
+    options.timeoutRetryCount = 0;
+  }
   return api
     .request("POST", "/identitytoolkit/v3/relyingparty/downloadAccount", {
       auth: true,
@@ -157,6 +160,7 @@ var serialExportUsers = function(projectId, options) {
       origin: api.googleOrigin,
     })
     .then(function(ret) {
+      options.timeoutRetryCount = 0;
       var userList = ret.body.users;
       if (userList && userList.length > 0) {
         options.writeUsersToFile(userList, options.format, options.writeStream);
@@ -170,13 +174,16 @@ var serialExportUsers = function(projectId, options) {
         return serialExportUsers(projectId, options);
       }
     })
-    .catch((err)=>{
-     //Calling again in case of error timedout so that script won't exit
-     if(err.original.code === 'ETIMEDOUT'){
-      return serialExportUsers(projectId, options);
-     }
-      
-  });
+    .catch((err) => {
+      // Calling again in case of error timedout so that script won't exit
+      if (err.original.code === "ETIMEDOUT") {
+        options.timeoutRetryCount++;
+        if (options.timeoutRetryCount > 5) {
+          return err;
+        }
+        return serialExportUsers(projectId, options);
+      }
+    });
 };
 
 var accountExporter = {
