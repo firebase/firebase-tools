@@ -5,3 +5,4 @@
 * Updated Firebase Extensions registry address.
 * Adds the `firebase init emulators` command.
 * Adds a Cloud Pub/Sub Emulator (#1748).
+* Fixes a bug where the Firestore emulator was unable to serve rule coverage HTML reports.
