@@ -95,6 +95,11 @@ module.exports = new Command("init [feature]")
         name: "Storage: Deploy Cloud Storage security rules",
         checked: false,
       },
+      {
+        value: "emulators",
+        name: "Emulators: Set up local emulators for Firebase features",
+        checked: false,
+      },
     ];
 
     var next;

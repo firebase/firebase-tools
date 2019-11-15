@@ -19,8 +19,7 @@ export class HostingEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // The hosting emulator has no "connect" phase.
-    return Promise.resolve();
+    return;
   }
 
   async stop(): Promise<void> {
