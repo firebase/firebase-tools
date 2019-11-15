@@ -21,7 +21,7 @@ var updateNotifier = require("update-notifier")({ pkg: pkg });
 updateNotifier.notify({ defer: true, isGlobal: true });
 
 var client = require("..");
-var errorOut = require("../errorOut");
+var errorOut = require("../errorOut").errorOut;
 var winston = require("winston");
 var logger = require("../logger");
 var fs = require("fs");
@@ -104,7 +104,7 @@ process.on("exit", function(code) {
 require("exit-code");
 
 process.on("uncaughtException", function(err) {
-  errorOut(client, err);
+  errorOut(err);
 });
 
 if (!handlePreviewToggles(args)) {

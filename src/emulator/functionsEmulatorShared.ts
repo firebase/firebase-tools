@@ -47,6 +47,7 @@ export interface FunctionsRuntimeBundle {
   ports: {
     firestore?: number;
     database?: number;
+    pubsub?: number;
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
@@ -59,6 +60,7 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
   memory_limiting?: boolean;
   admin_stubs?: boolean;
+  pubsub_emulator?: boolean;
 }
 
 const memoryLookup = {

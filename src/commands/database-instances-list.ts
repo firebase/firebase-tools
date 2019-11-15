@@ -1,6 +1,6 @@
-import Command = require("../command");
+import { Command } from "../command";
 import logger = require("../logger");
-import requirePermissions = require("../requirePermissions");
+import { requirePermissions } from "../requirePermissions";
 import getProjectNumber = require("../getProjectNumber");
 import firedata = require("../gcp/firedata");
 

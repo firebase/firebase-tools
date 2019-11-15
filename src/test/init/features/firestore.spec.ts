@@ -6,7 +6,7 @@ import { FirebaseError } from "../../../error";
 import * as firestore from "../../../init/features/firestore";
 import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";
-import * as requireAccess from "../../../requireAccess";
+import * as requirePermissions from "../../../requirePermissions";
 
 describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
@@ -17,14 +17,16 @@ describe("firestore", () => {
 
   describe("doSetup", () => {
     it("should require access, set up rules and indices, ensure cloud resource location set", async () => {
-      const requireAccessStub = sandbox.stub(requireAccess, "requireAccess").resolves();
+      const requirePermissionsStub = sandbox
+        .stub(requirePermissions, "requirePermissions")
+        .resolves();
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
       const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
 
       await firestore.doSetup(setup, {});
 
-      expect(requireAccessStub).to.have.been.calledOnce;
+      expect(requirePermissionsStub).to.have.been.calledOnce;
       expect(initRulesStub).to.have.been.calledOnce;
       expect(initIndexesStub).to.have.been.calledOnce;
       expect(_.get(setup, "config.firestore")).to.deep.equal({});
