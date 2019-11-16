@@ -19,7 +19,7 @@ jobs:
       before_script:
         - echo "==== ${TEST_NAME} ====" 
         - ./scripts/decrypt-app-credentials.sh
-      script: 
+      script:
         - ./scripts/test-hosting.sh
       after_script: skip
     - stage: Integration Tests
@@ -30,8 +30,19 @@ jobs:
       before_script:
         - echo "==== ${TEST_NAME} ===="
         - ./scripts/decrypt-app-credentials.sh
-      script: 
+      script:
         - ./scripts/test-triggers-end-to-end.sh
+      after_script: skip
+    - stage: Integration Tests
+      if: repo == head_repo OR type == push
+      node_js: "8"
+      env:
+        - TEST_NAME="CLI as a library"
+      before_script:
+        - echo "==== ${TEST_NAME} ===="
+        - ./scripts/decrypt-app-credentials.sh
+      script:
+        - ./node_modules/.bin/ts-node ./scripts/example.ts
       after_script: skip
 cache:
   directories:
