@@ -42,7 +42,7 @@ jobs:
         - echo "==== ${TEST_NAME} ===="
         - ./scripts/decrypt-app-credentials.sh
       script:
-        - ./node_modules/.bin/ts-node ./scripts/example.ts
+        - source ./scripts/set-default-credentials.sh; ./node_modules/.bin/ts-node ./scripts/example.ts
       after_script: skip
 cache:
   directories:
