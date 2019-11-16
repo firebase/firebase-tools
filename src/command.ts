@@ -144,7 +144,7 @@ export class Command {
       //   property of Commander, but that's the limitation we have today. What
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
-      if (args.length > cmd._args.length) {
+      if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
