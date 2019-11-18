@@ -65,7 +65,6 @@ module.exports = function(client) {
   client.hosting = {};
   client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
-  client.list = loadCommand("list");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
   client.logout = loadCommand("logout");
@@ -80,13 +79,10 @@ module.exports = function(client) {
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
-  client.setup.web = loadCommand("setup-web");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
-  client.tools = {};
-  client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
   return client;
