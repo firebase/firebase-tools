@@ -67,7 +67,7 @@ export default new Command("ext:configure <extensionInstanceId>")
       if (immutableParams.length === 1) {
         logger.info(
           `The following param is immutable:\n${immutableParamsText}It cannot be modified. ` +
-            "To set a different value for this params, uninstall this extension, then install a new instance of this extension."
+            "To set a different value for this param, uninstall this extension, then install a new instance of this extension."
         );
       }
       if (immutableParams.length > 1) {
