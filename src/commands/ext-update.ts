@@ -54,6 +54,15 @@ export default new Command("ext:update <extensionInstanceId>")
       const sourceUrl = await resolveSource(currentSpec.name);
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
+      if (currentSpec.version === newSpec.version) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            currentSpec.version
+          )}.`
+        );
+        return;
+      }
       await displayChanges(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(
         currentSpec,

@@ -27,7 +27,9 @@ import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
+import { pubsub } from "firebase-functions";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -169,6 +171,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       proto,
       triggerId,
@@ -272,6 +275,9 @@ export class FunctionsEmulator implements EmulatorInstance {
             case Constants.SERVICE_REALTIME_DATABASE:
               added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
               break;
+            case Constants.SERVICE_PUBSUB:
+              added = await this.addPubsubTrigger(this.args.projectId, definition);
+              break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               break;
@@ -322,7 +328,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!databasePort) {
       return Promise.resolve(false);
     }
-    if (definition.eventTrigger === undefined) {
+    if (!definition.eventTrigger) {
       EmulatorLogger.log(
         "WARN",
         `Event trigger "${definition.name}" has undefined "eventTrigger" member`
@@ -411,6 +417,36 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
+  async addPubsubTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<boolean> {
+    const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
+    if (!pubsubPort) {
+      return false;
+    }
+
+    if (!definition.eventTrigger) {
+      return false;
+    }
+
+    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
+
+    logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+
+    // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
+    const resource = definition.eventTrigger.resource;
+    const resourceParts = resource.split("/");
+    const topic = resourceParts[resourceParts.length - 1];
+
+    try {
+      await pubsubEmulator.addTrigger(topic, definition.name);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   getProjectId(): string {
     return this.args.projectId;
   }
@@ -452,6 +488,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
