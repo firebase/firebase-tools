@@ -87,8 +87,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // The Firestore emulator has no "connect" phase.
-    return Promise.resolve();
+    return;
   }
 
   async stop(): Promise<void> {

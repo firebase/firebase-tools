@@ -72,13 +72,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    this.emu.startFunctionRuntime(
-      this.emu.getBaseBundle(),
-      name,
-      EmulatedTriggerType.BACKGROUND,
-      this.emu.nodeBinary,
-      proto
-    );
+    this.emu.startFunctionRuntime(name, EmulatedTriggerType.BACKGROUND, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

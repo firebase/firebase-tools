@@ -220,6 +220,9 @@ You can probably fix this by running "npm install ${
     }
 
     switch (type) {
+      case "DEBUG":
+        logger.debug(`[${label}] ${text}`);
+        break;
       case "BULLET":
         utils.logLabeledBullet(label, text);
         break;
