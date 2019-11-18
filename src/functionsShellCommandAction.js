@@ -13,9 +13,10 @@ var shell = require("./emulator/functionsEmulatorShell");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
-
   return serveFunctions
-    .start(options, { quiet: true })
+    .start(options, {
+      quiet: true,
+    })
     .then(function() {
       return serveFunctions.connect();
     })
