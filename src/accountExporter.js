@@ -18,6 +18,7 @@ var EXPORTED_JSON_KEYS = [
   "lastLoginAt",
   "createdAt",
   "phoneNumber",
+  "disabled",
 ];
 var EXPORTED_JSON_KEYS_RENAMING = {
   lastLoginAt: "lastSignedInAt",
@@ -50,7 +51,7 @@ var _addProviderUserInfo = function(providerInfo, arr, startPos) {
 };
 
 var _transUserToArray = function(user) {
-  var arr = Array(26).fill("");
+  var arr = Array(27).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;
@@ -67,6 +68,7 @@ var _transUserToArray = function(user) {
   arr[23] = user.createdAt;
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
+  arr[26] = user.disabled;
   return arr;
 };
 
