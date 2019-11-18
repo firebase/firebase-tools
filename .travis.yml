@@ -42,5 +42,5 @@ jobs:
         - echo "==== ${TEST_NAME} ===="
         - ./scripts/decrypt-app-credentials.sh
       script:
-        - source ./scripts/set-default-credentials.sh; ./node_modules/.bin/ts-node ./scripts/example.ts
+        - source ./scripts/set-default-credentials.sh; npm run test:functional
       after_script: skip
