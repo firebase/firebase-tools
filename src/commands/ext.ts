@@ -11,7 +11,7 @@ module.exports = new Command("ext")
   .description(
     "display information on how to use ext commands and extensions installed to your project"
   )
-  .before(requirePermissions, ["deploymentmanager.deployments.get"])
+  .before(requirePermissions, ["firebasemods.instances.list"])
   .action((options: any) => {
     const projectId = getProjectId(options);
     const commands = [
@@ -28,16 +28,16 @@ module.exports = new Command("ext")
       if (cmd.default) {
         cmd = cmd.default;
       }
-      logger.info();
-      logger.info(`${clc.bold(cmd._cmd)} - ${cmd._description}`);
-      if (cmd._options.length > 0) {
+      logger.info(`${clc.bold(cmd.cmd)} - ${cmd.descriptionText}`);
+      if (cmd.options.length > 0) {
         logger.info("Option(s):");
-        _.forEach(cmd._options, (option) => {
+        console.log(cmd.options);
+        _.forEach(cmd.options, (option) => {
           logger.info("  ", option[0], " ", option[1]);
         });
       }
       logger.info();
     });
 
-    return listExtensions(projectId);
+    return // listExtensions(projectId);
   });
