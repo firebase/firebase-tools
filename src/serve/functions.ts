@@ -18,7 +18,7 @@ module.exports = {
     args = {
       projectId,
       functionsDir,
-      ...args
+      ...args,
     };
 
     // TODO(samstern): This would be much cleaner as a whitelist
