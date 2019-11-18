@@ -79,6 +79,7 @@ module.exports = function(client) {
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
+  client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.web = loadCommand("setup-web");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
