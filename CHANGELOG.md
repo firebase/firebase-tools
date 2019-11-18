@@ -6,3 +6,4 @@
 * Adds the `firebase init emulators` command.
 * Adds a Cloud Pub/Sub Emulator (#1748).
 * Adds support for immutable params in `ext:configure`.
+* Fixes a bug where the Firestore emulator was unable to serve rule coverage HTML reports.
