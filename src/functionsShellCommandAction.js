@@ -13,9 +13,13 @@ var shell = require("./emulator/functionsEmulatorShell");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
-
   return serveFunctions
-    .start(options, { quiet: true })
+    .start(options, {
+      // TODO(samstern): Note that these are not acctually valid FunctionsEmulatorArgs
+      // and when we eventually move to all TypeScript we'll have to start adding
+      // projectId and functionsDir here.
+      quiet: true,
+    })
     .then(function() {
       return serveFunctions.connect();
     })
