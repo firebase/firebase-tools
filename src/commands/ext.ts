@@ -29,15 +29,8 @@ module.exports = new Command("ext")
         cmd = cmd.default;
       }
       logger.info(`${clc.bold(cmd.cmd)} - ${cmd.descriptionText}`);
-      if (cmd.options.length > 0) {
-        logger.info("Option(s):");
-        console.log(cmd.options);
-        _.forEach(cmd.options, (option) => {
-          logger.info("  ", option[0], " ", option[1]);
-        });
-      }
       logger.info();
     });
 
-    return // listExtensions(projectId);
+    return listExtensions(projectId);
   });
