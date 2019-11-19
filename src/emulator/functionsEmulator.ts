@@ -29,7 +29,6 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
-import { pubsub } from "firebase-functions";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -141,14 +140,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleBackgroundTrigger(req, res);
+      await this.handleBackgroundTrigger(req, res);
     };
 
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleHttpsTrigger(req, res);
+      await this.handleHttpsTrigger(req, res);
     };
 
     // The ordering here is important. The longer routes (background)

@@ -237,6 +237,7 @@ export class RuntimeWorkerPool {
   }
 
   addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
+    this.log(`addWorker(${triggerId})`);
     const key = this.getTriggerKey(triggerId);
     const worker = new RuntimeWorker(key, runtime);
 

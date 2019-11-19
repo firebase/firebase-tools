@@ -9,7 +9,6 @@ import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
-  getTemporarySocketPath,
   FunctionsRuntimeArgs,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
@@ -19,6 +18,8 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
+import * as fs from "fs";
+import { Socket } from "net";
 
 const DATABASE_APP = "__database__";
 
@@ -810,16 +811,27 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
       try {
-        logDebug(`Ephemeral server used!`);
+        logDebug(`Ephemeral server handling ${req.method} request`);
         const func = trigger.getRawFunction();
-
         res.on("finish", () => {
-          instance.close(resolveEphemeralServer);
+          instance.close((err) => {
+            instance.getConnections((err, num) => {
+              logDebug(`Server has ${num} connections after close.`);
+            });
+
+            if (err) {
+              rejectEphemeralServer(err);
+            } else {
+              resolveEphemeralServer();
+            }
+
+            logDebug(`Closed ephemeral server at socketPath: ${socketPath}`);
+          });
         });
 
         await runHTTPS([req, res], func);
       } catch (err) {
-        rejectEphemeralServer(err);
+        rejectEphemeralServer(err);  
       }
     };
 
@@ -858,9 +870,12 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       functionRouter
     );
 
+    logDebug(`Attempting to listen to socketPath: ${socketPath}`);
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
+    
+    instance.on("error", rejectEphemeralServer);
   });
 }
 
@@ -964,7 +979,7 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
 }
 
 function logDebug(msg: string, data?: any): void {
-  new EmulatorLog("DEBUG", "runtime-status", msg, data).log();
+  new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
 }
 
 async function invokeTrigger(
@@ -980,7 +995,7 @@ async function invokeTrigger(
   }).log();
 
   const trigger = triggers[frb.triggerId];
-  logDebug("", trigger.definition);
+  logDebug("triggerDefinition", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
