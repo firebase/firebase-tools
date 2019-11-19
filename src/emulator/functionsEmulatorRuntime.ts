@@ -831,7 +831,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
         await runHTTPS([req, res], func);
       } catch (err) {
-        rejectEphemeralServer(err);  
+        rejectEphemeralServer(err);
       }
     };
 
@@ -874,7 +874,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
-    
+
     instance.on("error", rejectEphemeralServer);
   });
 }

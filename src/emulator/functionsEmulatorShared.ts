@@ -134,13 +134,13 @@ export function getEmulatedTriggersFromDefinitions(
   }, {});
 }
 
-export function getTemporarySocketPath(id: string, cwd: string): string {
+export function getTemporarySocketPath(pid: number, cwd: string): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
   if (process.platform === "win32") {
-    return path.join("\\\\?\\pipe", cwd, id.toString());
+    return path.join("\\\\?\\pipe", cwd, pid.toString());
   } else {
-    return path.join(os.tmpdir(), `firebase_emulator_invocation_${id}.sock`);
+    return path.join(os.tmpdir(), `fire_emu_${pid.toString()}.sock`);
   }
 }
 
