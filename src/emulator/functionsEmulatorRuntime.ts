@@ -18,8 +18,6 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
-import * as fs from "fs";
-import { Socket } from "net";
 
 const DATABASE_APP = "__database__";
 
@@ -815,17 +813,11 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
         const func = trigger.getRawFunction();
         res.on("finish", () => {
           instance.close((err) => {
-            instance.getConnections((err, num) => {
-              logDebug(`Server has ${num} connections after close.`);
-            });
-
             if (err) {
               rejectEphemeralServer(err);
             } else {
               resolveEphemeralServer();
             }
-
-            logDebug(`Closed ephemeral server at socketPath: ${socketPath}`);
           });
         });
 
