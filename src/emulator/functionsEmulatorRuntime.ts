@@ -745,6 +745,12 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
       }
     }
   }
+
+  if (frb.ports.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+    const pubsubHost = `localhost:${frb.ports.pubsub}`;
+    process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
+    logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+  }
 }
 
 async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
@@ -794,7 +800,12 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
   const functionRouter = express.Router();
-  const socketPath = getTemporarySocketPath(process.pid);
+  const socketPath = frb.socketPath;
+
+  if (!socketPath) {
+    new EmulatorLog("FATAL", "runtime-error", "Called processHTTPS with no socketPath").log();
+    return;
+  }
 
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
@@ -846,8 +857,9 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
       functionRouter
     );
+
     const instance = ephemeralServer.listen(socketPath, () => {
-      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", socketPath }).log();
+      new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
   });
 }
@@ -856,12 +868,6 @@ async function processBackground(
   frb: FunctionsRuntimeBundle,
   trigger: EmulatedTrigger
 ): Promise<void> {
-  const service = trigger.definition.eventTrigger
-    ? trigger.definition.eventTrigger.service
-    : "unknown";
-
-  new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready", service }).log();
-
   const proto = frb.proto;
   logDebug("ProcessBackground", proto);
 
@@ -1101,7 +1107,8 @@ async function handleMessage(message: string) {
   }
 
   if (!triggers) {
-    triggers = await initializeRuntime(runtimeArgs.frb, runtimeArgs.serializedTriggers);
+    const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
+    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers);
   }
 
   // If we don't have triggers by now, we can't run.
@@ -1131,7 +1138,7 @@ async function handleMessage(message: string) {
 
     // If we were passed serialized triggers we have to exit the runtime after,
     // otherwise we can go IDLE and await another request.
-    if (runtimeArgs.serializedTriggers) {
+    if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
       await flushAndExit(0);
     } else {
       new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
@@ -1161,6 +1168,7 @@ async function main(): Promise<void> {
       .catch((err) => {
         // All errors *should* be handled within handleMessage. But just in case,
         // we want to exit fatally on any error related to message handling.
+        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
         new EmulatorLog("FATAL", "runtime-error", err).log();
         return flushAndExit(1);
       });
