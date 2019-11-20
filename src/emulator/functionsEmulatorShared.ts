@@ -146,7 +146,7 @@ export function getTemporarySocketPath(pid: number, cwd: string): string {
   //
   // On Mac our socket paths will begin with something like this:
   //   /var/folders/xl/6lkrzp7j07581mw8_4dlt3b000643s/T/{...}.sock
-  // Since the system prefix is about ~50 chargs we only have about ~50 more to work with
+  // Since the system prefix is about ~50 chars we only have about ~50 more to work with
   // before we will get truncated socket names and then undefined behavior.
   if (process.platform === "win32") {
     return path.join("\\\\?\\pipe", cwd, pid.toString());
