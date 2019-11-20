@@ -9,7 +9,6 @@ import functionsProxy, {
   FunctionProxyRewrite,
   FunctionsProxyOptions,
 } from "../../hosting/functionsProxy";
-import { FunctionsEmulator } from "../../emulator/functionsEmulator";
 import { EmulatorRegistry } from "../../emulator/registry";
 import { Emulators } from "../../emulator/types";
 import { FakeEmulator } from "../emulators/fakeEmulator";

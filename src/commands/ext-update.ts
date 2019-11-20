@@ -4,7 +4,7 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { resolveSource } from "../extensions/resolveSource";
@@ -12,7 +12,7 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 
 marked.setOptions({
@@ -22,7 +22,7 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <instanceId>")
+export default new Command("ext:update <extensionInstanceId>")
   .description("update an existing extension instance to the latest version")
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .before(ensureExtensionsApiEnabled)
@@ -54,6 +54,15 @@ export default new Command("ext:update <instanceId>")
       const sourceUrl = await resolveSource(currentSpec.name);
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
+      if (currentSpec.version === newSpec.version) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            currentSpec.version
+          )}.`
+        );
+        return;
+      }
       await displayChanges(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(
         currentSpec,
@@ -82,6 +91,15 @@ export default new Command("ext:update <instanceId>")
       await update(updateOptions);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can view your updated instance in the Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=usage`
+          )}`
+        )
+      );
     } catch (err) {
       spinner.fail();
       if (!(err instanceof FirebaseError)) {

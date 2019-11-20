@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   addFirebaseToCloudProjectAndLog,

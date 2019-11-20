@@ -8,19 +8,21 @@ module.exports = {
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:jsdoc/recommended",
         "google",
         "prettier",
         "prettier/@typescript-eslint",
     ],
     "rules": {
+        "jsdoc/newline-after-description": "off",
         "prettier/prettier": "error",
+        "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
         "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
         "no-restricted-globals": ["error", "name", "length"],
         "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
         "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
-        "valid-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
     },
     "overrides": [
         {
@@ -42,6 +44,8 @@ module.exports = {
                 "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
                 "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
                 "camelcase": "warn", // TODO(bkendall): remove, allow to error.
+                "jsdoc/require-param-type": "off",
+                "jsdoc/require-returns-type": "off",
                 "new-cap": "warn", // TODO(bkendall): remove, allow to error.
                 "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
                 "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
@@ -86,6 +90,14 @@ module.exports = {
     "plugins": [
         "prettier",
         "@typescript-eslint",
+        "jsdoc",
     ],
+    "settings": {
+        "jsdoc": {
+            "tagNamePreference": {
+                "returns": "return"
+            }
+        }
+    },
     "parser": "@typescript-eslint/parser",
 };
