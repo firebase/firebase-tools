@@ -15,7 +15,7 @@ module.exports = new Command("ext")
   )
   .action(async (options: any) => {
     // Print out help info for all extensions commands.
-    utils.logLabeledBullet(logPrefix, "list of extensions commands:")
+    utils.logLabeledBullet(logPrefix, "list of extensions commands:");
     const firebaseTools = require("../"); // eslint-disable-line @typescript-eslint/no-var-requires
     const commandNames = [
       "ext:install",
@@ -38,5 +38,7 @@ module.exports = new Command("ext")
       await requirePermissions(options, ["firebasemods.instances.list"]);
       const projectId = getProjectId(options);
       return listExtensions(projectId);
-    } catch (err) {}
+    } catch (err) {
+      return;
+    }
   });
