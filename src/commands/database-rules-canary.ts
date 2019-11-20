@@ -4,17 +4,17 @@ import * as requireInstance from "../requireInstance";
 import * as requirePermissions from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:getlabels")
-  .description("fetch current realtime database ruleset labels")
+export default new Command("database:rules:canary <ruleset_id>")
+  .description("mark a staged ruleset as the canary ruleset")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .action(async (options: any) => {
-    const labels = await metadata.getRulesetLabels(options.instance);
-    logger.info(`stable = ${labels.stable}`);
-    logger.info(`canary = ${labels.canary}`);
-    return labels;
+  .action(async (rulesetId: string, options: any) => {
+    await metadata.setRulesetLabels(options.instance, {
+      canary: rulesetId,
+    });
+    return null;
   });

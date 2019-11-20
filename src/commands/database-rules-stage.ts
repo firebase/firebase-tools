@@ -6,7 +6,7 @@ import * as metadata from "../database/metadata";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-export default new Command("database:rules:create <filepath>")
+export default new Command("database:rules:stage")
   .description("create a new realtime database ruleset")
   .option(
     "--instance <instance>",
@@ -14,10 +14,11 @@ export default new Command("database:rules:create <filepath>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .action(async (filepath: string, options: any) => {
+  .action(async (options: any) => {
+    const filepath = options.config.data.database.rules;
     logger.info(`creating ruleset from ${filepath}`);
     const source = fs.readFileSync(path.resolve(filepath), "utf8");
-    const ruleset = await metadata.createRuleset(options.instance, source);
-    logger.info(`created ruleset ${ruleset}`);
-    return ruleset;
+    const rulesetId = await metadata.createRuleset(options.instance, source);
+    logger.info(`staged ruleset ${rulesetId}`);
+    return rulesetId;
   });

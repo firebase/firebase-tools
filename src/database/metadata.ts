@@ -20,8 +20,14 @@ function handleErrorResponse(response: any): Promise<any> {
 export type RulesetSource = string;
 export type RulesetId = string;
 export interface LabelIds {
-  stable: RulesetId;
+  stable?: RulesetId;
   canary?: RulesetId;
+}
+
+export interface Ruleset {
+  id: RulesetId;
+  createdAt: string;
+  source: RulesetSource;
 }
 
 export async function listAllRulesets(databaseName: string): Promise<RulesetId[]> {
@@ -30,15 +36,16 @@ export async function listAllRulesets(databaseName: string): Promise<RulesetId[]
     origin: api.rtdbMetadataOrigin,
   });
   if (response.status === 200) {
-    return response.body;
+    return response.body.rulesetIds;
   }
   return handleErrorResponse(response);
 }
 
-export async function getRuleset(databaseName: string, rulesetId: string): Promise<RulesetSource> {
+export async function getRuleset(databaseName: string, rulesetId: string): Promise<Ruleset> {
   const response = await api.request("GET", `/namespaces/${databaseName}/rulesets/${rulesetId}`, {
     auth: true,
     origin: api.rtdbMetadataOrigin,
+    json: true,
   });
   if (response.status === 200) {
     return response.body;
@@ -68,7 +75,7 @@ export async function createRuleset(
     data: source,
   });
   if (response.status === 200) {
-    return response.body;
+    return response.body.id;
   }
   return handleErrorResponse(response);
 }

@@ -6,6 +6,7 @@ module.exports = function(options) {
   }
 
   return getInstanceId(options).then((instance) => {
+    console.log("[RPB] fetched instance: " + instance);
     options.instance = instance;
   });
 };

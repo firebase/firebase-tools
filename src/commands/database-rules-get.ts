@@ -14,6 +14,7 @@ export default new Command("database:rules:get <id>")
   .before(requireInstance)
   .action(async (id: metadata.RulesetId, options: any) => {
     const ruleset = await metadata.getRuleset(options.instance, id);
-    logger.info(ruleset);
+    logger.info(`Ruleset ${ruleset.id} was created at ${ruleset.createdAt}`);
+    logger.info(ruleset.source);
     return ruleset;
   });
