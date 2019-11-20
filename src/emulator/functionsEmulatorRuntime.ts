@@ -898,20 +898,12 @@ async function processBackground(
  * Run the given function while redirecting logs and looking out for errors.
  */
 async function runFunction(func: () => Promise<any>): Promise<any> {
-  /* tslint:disable:no-console */
-  const log = console.log;
-  console.log = (...messages: any[]) => {
-    new EmulatorLog("USER", "function-log", messages.join(" ")).log();
-  };
-
   let caughtErr;
   try {
     await func();
   } catch (err) {
     caughtErr = err;
   }
-
-  console.log = log;
 
   logDebug(`Ephemeral server survived.`);
   if (caughtErr) {
