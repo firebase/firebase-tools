@@ -69,7 +69,7 @@ export class RuntimeWorker {
 
     // TODO(samstern): I would like to do this elsewhere...
     if (!execFrb.socketPath) {
-      execFrb.socketPath = getTemporarySocketPath(this.id, execFrb.cwd);
+      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, execFrb.cwd);
       this.log(`Assigning socketPath: ${execFrb.socketPath}`);
     }
 
