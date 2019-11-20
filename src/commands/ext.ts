@@ -8,6 +8,7 @@ import { listExtensions } from "../extensions/listExtensions";
 import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
 import * as utils from "../utils";
+import { CommanderStatic } from "commander";
 
 module.exports = new Command("ext")
   .description(
@@ -27,7 +28,7 @@ module.exports = new Command("ext")
     ];
 
     _.forEach(commandNames, (commandName) => {
-      const command: any = firebaseTools.getCommand(commandName);
+      const command: CommanderStatic = firebaseTools.getCommand(commandName);
       logger.info(clc.bold("\n" + command.name()));
       command.outputHelp();
     });
