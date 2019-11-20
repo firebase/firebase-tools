@@ -140,14 +140,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      await this.handleBackgroundTrigger(req, res);
+      this.handleBackgroundTrigger(req, res);
     };
 
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      await this.handleHttpsTrigger(req, res);
+      this.handleHttpsTrigger(req, res);
     };
 
     // The ordering here is important. The longer routes (background)
