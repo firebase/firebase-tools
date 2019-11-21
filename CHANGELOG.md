@@ -1,0 +1,1 @@
+* Fixes an issue where console.log() sometimes printed incorrectly (#1817)
