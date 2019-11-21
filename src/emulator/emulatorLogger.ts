@@ -84,7 +84,7 @@ export class EmulatorLogger {
         EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        if (log.data && log.data !== {}) {
+        if (log.data && Object.keys(log.data).length > 0) {
           EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
         } else {
           EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`);
