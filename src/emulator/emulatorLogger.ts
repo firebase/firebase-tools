@@ -175,7 +175,7 @@ You probably need to run "npm install" in your functions directory.`
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
-          }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
+          }" to be version >${systemLog.data.minVersion} so your version is too old. \
 You can probably fix this by running "npm install ${
             systemLog.data.name
           }@latest" in your functions directory.`
