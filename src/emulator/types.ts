@@ -170,6 +170,7 @@ export class EmulatorLog {
     ) {
       parsedLog = {
         level: "USER",
+        type: "function-log",
         text: json,
       };
     }
