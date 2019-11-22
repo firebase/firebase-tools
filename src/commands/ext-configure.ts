@@ -66,7 +66,6 @@ export default new Command("ext:configure <extensionInstanceId>")
             `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
           );
         }
-        // Easier to do one `plural` check here to change the first half of the statement.
         logger.info(
           (plural
             ? "To set different values for these params"
