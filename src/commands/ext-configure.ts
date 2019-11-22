@@ -58,22 +58,20 @@ export default new Command("ext:configure <extensionInstanceId>")
         paramSpecWithNewDefaults,
         options.params
       );
-      let immutableParamsText = "";
-      for (const immutableParam of immutableParams) {
-        const currentValue = _.get(existingInstance, "config.params." + immutableParam.param);
-        immutableParamsText += `param: ${immutableParam.param}, value: ${currentValue}\n`;
-        params[immutableParam.param] = currentValue;
-      }
-      if (immutableParams.length === 1) {
+      if (immutableParams.length) {
+        const plural = immutableParams.length > 1;
+        logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+        for (const { param } of immutableParams) {
+          logger.info(
+            `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
+          );
+        }
+        // Easier to do one `plural` check here to change the first half of the statement.
         logger.info(
-          `The following param is immutable:\n${immutableParamsText}It cannot be modified. ` +
-            "To set a different value for this param, uninstall this extension, then install a new instance of this extension."
-        );
-      }
-      if (immutableParams.length > 1) {
-        logger.info(
-          `The following params are immutable:\n${immutableParamsText}These cannot be modified. ` +
-            "To set different values for these params, uninstall this extension, then install a new instance of this extension."
+          (plural
+            ? "To set different values for these params"
+            : "To set a different value for this param") +
+            ", uninstall the extension, then install a new instance of this extension."
         );
       }
 
