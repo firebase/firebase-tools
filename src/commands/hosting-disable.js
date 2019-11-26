@@ -11,6 +11,7 @@ var clc = require("cli-color");
 module.exports = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-y, --confirm", "skip confirmation")
+  .option("-s, --site <site_name>", "the site to disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireInstance)
   .action(function(options) {
@@ -28,13 +29,17 @@ module.exports = new Command("hosting:disable")
           return Promise.resolve();
         }
 
-        return api.request("POST", "/v1beta1/sites/" + options.instance + "/releases", {
-          auth: true,
-          data: {
-            type: "SITE_DISABLE",
-          },
-          origin: api.hostingApiOrigin,
-        });
+        return api.request(
+          "POST",
+          "/v1beta1/sites/" + options.site || options.instance + "/releases",
+          {
+            auth: true,
+            data: {
+              type: "SITE_DISABLE",
+            },
+            origin: api.hostingApiOrigin,
+          }
+        );
       })
       .then(function() {
         if (options.confirm) {
