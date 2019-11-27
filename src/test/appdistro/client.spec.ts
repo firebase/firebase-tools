@@ -83,7 +83,7 @@ describe("distribution", () => {
           distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
         ).to.be.rejectedWith(
           FirebaseError,
-          "failed to fetch release information: polling timeout exceeded, please try again"
+          "it took longer than expected to process your binary, please try again"
         );
       });
     });
