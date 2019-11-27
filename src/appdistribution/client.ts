@@ -99,7 +99,9 @@ export class AppDistributionClient {
     } else if (uploadStatus.status === UploadStatus.SUCCESS) {
       return uploadStatus.release.id;
     } else {
-      throw new FirebaseError(`error processing your binary: ${uploadStatus.message} (Code: ${uploadStatus.errorCode})`);
+      throw new FirebaseError(
+        `error processing your binary: ${uploadStatus.message} (Code: ${uploadStatus.errorCode})`
+      );
     }
   }
 
