@@ -23,6 +23,7 @@ export enum UploadStatus {
   IN_PROGRESS = "IN_PROGRESS",
   ERROR = "ERROR",
 }
+
 export interface UploadStatusResponse {
   status: UploadStatus;
   message: string;
@@ -48,7 +49,7 @@ export class AppDistributionClient {
       origin: api.appDistributionOrigin,
       auth: true,
     });
-    
+
     return _.get(apiResponse, "body");
   }
 
@@ -87,7 +88,7 @@ export class AppDistributionClient {
     if (uploadStatus.status === UploadStatus.IN_PROGRESS) {
       if (retryCount >= AppDistributionClient.MAX_POLLING_RETRIES) {
         throw new FirebaseError(
-          "failed to fetch release information: polling timeout exceeded, please try again",
+          "it took longer than expected to process your binary, please try again",
           { exit: 1 }
         );
       }
@@ -98,7 +99,7 @@ export class AppDistributionClient {
     } else if (uploadStatus.status === UploadStatus.SUCCESS) {
       return uploadStatus.release.id;
     } else {
-      throw new FirebaseError(`error processing the binary: ${uploadStatus.message}`);
+      throw new FirebaseError(`error processing your binary: ${uploadStatus.message} (Code: ${uploadStatus.errorCode})`);
     }
   }
 
