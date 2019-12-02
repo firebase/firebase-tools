@@ -202,6 +202,7 @@ export class Command {
     }
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
+      options.interactive = true;
       options.nonInteractive = false;
     }
 
