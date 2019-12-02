@@ -132,10 +132,14 @@ export default new Command("ext:install [extensionName]")
         learnMore = true;
         extensionName = await promptForOfficialExtension(
           "Which official extension would you like to install?\n" +
-          "  Select an extension, then press Enter to learn more."
+            "  Select an extension, then press Enter to learn more."
         );
       } else {
-        throw new FirebaseError(`Please provide an extension name, or run ${clc.bold("firebase ext:install -i")} to see all available extensions`);
+        throw new FirebaseError(
+          `Please provide an extension name, or run ${clc.bold(
+            "firebase ext:install -i"
+          )} to see all available extensions`
+        );
       }
     }
 
