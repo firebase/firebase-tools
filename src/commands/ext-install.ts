@@ -118,7 +118,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
  */
 export default new Command("ext:install [extensionName]")
   .description(
-    "install an extension, provide [extensionName] or [extensionName@versionNumber] or omit to see all available extensions."
+    "install an extension, provide [extensionName] or [extensionName@versionNumber]; or omit and run with `-i` to see all available extensions."
   )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
@@ -128,11 +128,15 @@ export default new Command("ext:install [extensionName]")
     const paramFilePath = options.params;
     let learnMore = false;
     if (!extensionName) {
-      learnMore = true;
-      extensionName = await promptForOfficialExtension(
-        "Which official extension would you like to install?\n" +
+      if (options.interactive) {
+        learnMore = true;
+        extensionName = await promptForOfficialExtension(
+          "Which official extension would you like to install?\n" +
           "  Select an extension, then press Enter to learn more."
-      );
+        );
+      } else {
+        throw new FirebaseError(`Please provide an extension name, or run ${clc.bold("firebase ext:install -i")} to see all available extensions`);
+      }
     }
 
     try {
@@ -140,21 +144,21 @@ export default new Command("ext:install [extensionName]")
         extensionName,
         `Unable to find extension source named ${clc.bold(extensionName)}. ` +
           `Run ${clc.bold(
-            "firebase ext:install"
+            "firebase ext:install -i"
           )} to select from the list of all available extensions.`
       );
       const source = await extensionsApi.getSource(sourceUrl);
       if (learnMore) {
         utils.logLabeledBullet(
           logPrefix,
-          `You are about to install ${clc.bold(source.spec.displayName)}.\n` +
+          `You selected: ${clc.bold(source.spec.displayName)}.\n` +
             `${source.spec.description}\n` +
             `View details: https://firebase.google.com/products/extensions/${extensionName}\n`
         );
         const confirm = await promptOnce({
           type: "confirm",
           default: true,
-          message: "Would you like to proceed?",
+          message: "Would you like to install this extension?",
         });
         if (!confirm) {
           return;

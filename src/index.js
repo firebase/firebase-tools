@@ -14,7 +14,7 @@ program.option(
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
-program.option("--interactive", "force interactive shell treatment even when not detected");
+program.option("-i, --interactive", "force interactive shell treatment; when this flag is used with `firebase ext:install`, it will display available extensions");
 program.option("--debug", "print verbose debug output and keep a debug log file");
 // program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
