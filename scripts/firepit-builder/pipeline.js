@@ -14,17 +14,17 @@ const styles = (argv.styles || "headless,headful")
     m[v] = true;
     return m;
   }, {});
-const firebase_tools_package = argv.package || "firebase-tools@latest";
+const firebaseToolsPackage = argv.package || "firebase-tools@latest";
 
 shelljs.config.fatal = true;
 
-const use_commands = (...executables) =>
+const useCommands = (...executables) =>
   executables.reduce((obj, name) => {
     obj[name] = (...args) => exec([name, ...args].join(" "));
     return obj;
   }, {});
 
-const { hub, npm, wget, tar, git } = use_commands("hub", "npm", "wget", "tar", "git");
+const { hub, npm } = useCommands("hub", "npm" );
 
 cd(tempdir());
 rm("-rf", "firepit_pipeline");
@@ -33,11 +33,11 @@ cd("firepit_pipeline");
 const workdir = pwd();
 
 npm("init", "-y");
-npm("install", firebase_tools_package);
+npm("install", firebaseToolsPackage);
 
-const package_json = JSON.parse(cat("node_modules/firebase-tools/package.json"));
-const release_tag = `v${package_json.version}`;
-echo(`Installed firebase-tools@${package_json.version}, using tag ${release_tag}`);
+const packageJson = JSON.parse(cat("node_modules/firebase-tools/package.json"));
+const releaseTag = `v${packageJson.version}`;
+echo(`Installed firebase-tools@${packageJson.version}, using tag ${releaseTag}`);
 
 if (isLocalFirepit) {
   echo("Using local firepit for testing...");
@@ -74,16 +74,16 @@ find(".")
 cd("..");
 echo(pwd());
 
-const config_template = cat("config.template.js").replace(
+const configTemplate = cat("config.template.js").replace(
   "firebase_tools_package_value",
-  firebase_tools_package
+  firebaseToolsPackage
 );
 
 if (styles.headless) {
   echo("-- Building headless binaries...");
 
-  const headless_config = config_template.replace("headless_value", "true");
-  echo(headless_config).to("config.js");
+  const headlessConfig = configTemplate.replace("headless_value", "true");
+  echo(headlessConfig).to("config.js");
   npm("run", "pkg");
   ls("dist/firepit-*").forEach((file) => {
     mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
@@ -93,8 +93,8 @@ if (styles.headless) {
 if (styles.headful) {
   echo("-- Building headed binaries...");
 
-  const headful_config = config_template.replace("headless_value", "false");
-  echo(headful_config).to("config.js");
+  const headfulConfig = configTemplate.replace("headless_value", "false");
+  echo(headfulConfig).to("config.js");
   npm("run", "pkg");
 
   ls("dist/firepit-*").forEach((file) => {
@@ -104,7 +104,7 @@ if (styles.headful) {
 
 if (isPublishing) {
   echo("Publishing...");
-  const published_files = [
+  const publishedFiles = [
     "firebase-tools-instant-win.exe",
     "firebase-tools-linux",
     "firebase-tools-macos",
@@ -115,9 +115,9 @@ if (isPublishing) {
   cd("firebase-tools");
 
   ls("../dist").forEach((filename) => {
-    if (published_files.indexOf(filename) === -1) return;
+    if (publishedFiles.indexOf(filename) === -1) return;
     echo(`Publishing ${filename}...`);
-    hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), release_tag);
+    hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), releaseTag);
   });
   cd("..");
 } else {
