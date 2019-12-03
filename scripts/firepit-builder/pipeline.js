@@ -124,10 +124,9 @@ if (isPublishing) {
     "firebase-tools-macos",
     "firebase-tools-win.exe"
   ]
-  // Temporary hack to release to hub-release-playground instead of prod
+
   hub("clone", "firebase/firebase-tools");
   cd("firebase-tools");
-  // EOHack
 
   ls("../dist").forEach((filename) => {
     if (published_files.indexOf(filename) === -1) return;
