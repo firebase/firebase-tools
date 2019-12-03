@@ -24,7 +24,7 @@ const useCommands = (...executables) =>
     return obj;
   }, {});
 
-const { hub, npm } = useCommands("hub", "npm" );
+const { hub, npm } = useCommands("hub", "npm");
 
 cd(tempdir());
 rm("-rf", "firepit_pipeline");
