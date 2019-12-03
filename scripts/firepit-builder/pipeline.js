@@ -19,9 +19,12 @@ const firebase_tools_package = argv.package || "firebase-tools@latest";
 shelljs.config.fatal = true;
 
 const use_commands = (...executables) =>
-  executables.forEach((name) => (global[name] = (...args) => exec([name, ...args].join(" "))));
+  executables.reduce((obj, name) => {
+    obj[name] = (...args) => exec([name, ...args].join(" "));
+    return obj;
+  }, {});
 
-use_commands("hub", "npm", "wget", "tar", "git");
+const { hub, npm, wget, tar, git } = use_commands("hub", "npm", "wget", "tar", "git");
 
 cd(tempdir());
 rm("-rf", "firepit_pipeline");
