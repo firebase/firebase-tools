@@ -1,24 +1,25 @@
 #!/usr/bin/env node
 const shelljs = require("shelljs");
 const path = require("path");
-const argv = require('yargs').argv
+const argv = require("yargs").argv;
 const { mkdir, cat, cd, rm, find, echo, exec, mv, ls, pwd, tempdir, cp } = shelljs;
 
 const isPublishing = argv.publish;
 const isLocalFirepit = argv.local;
 
-const styles = (argv.styles || "headless,headful").split(",").map((s) => s.trim()).reduce((m, v) => {
-  m[v] = true;
-  return m;
-}, {});
+const styles = (argv.styles || "headless,headful")
+  .split(",")
+  .map((s) => s.trim())
+  .reduce((m, v) => {
+    m[v] = true;
+    return m;
+  }, {});
 const firebase_tools_package = argv.package || "firebase-tools@latest";
 
 shelljs.config.fatal = true;
 
 const use_commands = (...executables) =>
-    executables.forEach(
-        name => (global[name] = (...args) => exec([name, ...args].join(" ")))
-    );
+  executables.forEach((name) => (global[name] = (...args) => exec([name, ...args].join(" "))));
 
 use_commands("hub", "npm", "wget", "tar", "git");
 
@@ -60,59 +61,41 @@ mv("../../node_modules", ".");
 
 echo("-- Removing native platform addons (.node)");
 find(".")
-    .filter(function(file) {
-      return file.match(/\.node$/);
-    })
-    .forEach(file => {
-      echo(file);
-      rm(file);
-    });
+  .filter(function(file) {
+    return file.match(/\.node$/);
+  })
+  .forEach((file) => {
+    echo(file);
+    rm(file);
+  });
 cd("..");
 echo(pwd());
 
 const config_template = cat("config.template.js").replace(
-    "firebase_tools_package_value",
-    firebase_tools_package
+  "firebase_tools_package_value",
+  firebase_tools_package
 );
 
 if (styles.headless) {
   echo("-- Building headless binaries...");
 
-  const headless_config = config_template.replace(
-      "headless_value",
-      "true"
-  );
+  const headless_config = config_template.replace("headless_value", "true");
   echo(headless_config).to("config.js");
   npm("run", "pkg");
-  ls("dist/firepit-*").forEach(file => {
-    mv(
-        file,
-        path.join(
-            "dist",
-            path.basename(file).replace("firepit", "firebase-tools")
-        )
-    );
+  ls("dist/firepit-*").forEach((file) => {
+    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
   });
 }
 
 if (styles.headful) {
   echo("-- Building headed binaries...");
 
-  const headful_config = config_template.replace(
-      "headless_value",
-      "false"
-  );
+  const headful_config = config_template.replace("headless_value", "false");
   echo(headful_config).to("config.js");
   npm("run", "pkg");
 
-  ls("dist/firepit-*").forEach(file => {
-    mv(
-        file,
-        path.join(
-            "dist",
-            path.basename(file).replace("firepit", "firebase-tools-instant")
-        )
-    );
+  ls("dist/firepit-*").forEach((file) => {
+    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools-instant")));
   });
 }
 
@@ -122,15 +105,15 @@ if (isPublishing) {
     "firebase-tools-instant-win.exe",
     "firebase-tools-linux",
     "firebase-tools-macos",
-    "firebase-tools-win.exe"
-  ]
+    "firebase-tools-win.exe",
+  ];
 
   hub("clone", "firebase/firebase-tools");
   cd("firebase-tools");
 
   ls("../dist").forEach((filename) => {
     if (published_files.indexOf(filename) === -1) return;
-    echo(`Publishing ${filename}...`)
+    echo(`Publishing ${filename}...`);
     hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), release_tag);
   });
   cd("..");
