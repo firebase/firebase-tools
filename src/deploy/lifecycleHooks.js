@@ -141,7 +141,7 @@ function getReleventConfigs(target, options) {
     });
 
   return targetConfigs.filter(function(config) {
-    return _.includes(onlyTargets, config.target);
+    return !config.target || _.includes(onlyTargets, config.target);
   });
 }
 
