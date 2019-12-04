@@ -1,7 +1,9 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
+import { displayUpdateWarning } from "./updateHelper";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
@@ -10,15 +12,24 @@ export interface RegistryEntry {
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
+  updateWarnings?: { [key: string]: UpdateWarning[] };
+}
+
+export interface UpdateWarning {
+  from: string;
+  description: string;
+  action?: string;
 }
 
 /**
  * Gets the source for a given extension name and version from the official extensions registry
  *
  * @param extensionName the name, or name@version of the extension to get the ExtensionSource for
+ * @param startVersion The version to display updateWarnings for.
+ *                      If not present, updateWarnings won't be shown.
  * @returns the source corresponding to extensionName in the registry
  */
-export async function resolveSource(extensionName: string): Promise<string> {
+export async function resolveSource(extensionName: string, startVersion?: string): Promise<string> {
   const [name, version] = extensionName.split("@");
   const extensionsRegistry = await getExtensionRegistry();
   const extension = _.get(extensionsRegistry, name);
@@ -31,6 +42,9 @@ export async function resolveSource(extensionName: string): Promise<string> {
   // The version to search for when a user passes a label like 'latest'
   const versionFromLabel = _.get(extension, ["labels", seekVersion]);
 
+  if (startVersion) {
+    checkForUpdateWarnings(extension, startVersion, versionFromLabel || seekVersion);
+  }
   const source =
     _.get(extension, ["versions", seekVersion]) || _.get(extension, ["versions", versionFromLabel]);
   if (!source) {
@@ -39,6 +53,33 @@ export async function resolveSource(extensionName: string): Promise<string> {
     );
   }
   return source;
+}
+
+/**
+ * Checks for and displays updateWarnings that apply to the given start and end versions.
+ * @param registryEntry the registry entry to check for updateWarnings in
+ * @param startVersion the version that you are updating from.
+ * @param endVersion the version you are updating to
+ */
+export async function checkForUpdateWarnings(
+  registryEntry: RegistryEntry,
+  startVersion: string,
+  endVersion: string
+): Promise<void> {
+  if (registryEntry.updateWarnings) {
+    for (const targetRange in registryEntry.updateWarnings) {
+      if (semver.satisfies(endVersion, targetRange)) {
+        const updateWarnings = registryEntry.updateWarnings[targetRange];
+        for (const updateWarning of updateWarnings) {
+          if (semver.satisfies(startVersion, updateWarning.from)) {
+            await displayUpdateWarning(updateWarning);
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
 }
 
 /**
