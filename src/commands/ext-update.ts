@@ -50,7 +50,6 @@ export default new Command("ext:update <extensionInstanceId>")
         existingInstance,
         "config.source.spec"
       );
-
       const currentParams = _.get(existingInstance, "config.params");
       const sourceUrl = await resolveSource(currentSpec.name);
       const newSource = await extensionsApi.getSource(sourceUrl);
