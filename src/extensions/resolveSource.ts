@@ -3,7 +3,9 @@ import * as clc from "cli-color";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
+import { logPrefix } from "./extensionsHelper";
 import { displayUpdateWarning } from "./updateHelper";
+import * as utils from "../utils";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
@@ -43,6 +45,10 @@ export async function resolveSource(extensionName: string, startVersion?: string
   const versionFromLabel = _.get(extension, ["labels", seekVersion]);
 
   if (startVersion) {
+    utils.logLabeledBullet(
+      logPrefix,
+      `Updating from version ${startVersion} to version ${versionFromLabel || seekVersion}.`
+    );
     await checkForUpdateWarnings(extension, startVersion, versionFromLabel || seekVersion);
   }
   const source =
