@@ -43,7 +43,7 @@ export async function resolveSource(extensionName: string, startVersion?: string
   const versionFromLabel = _.get(extension, ["labels", seekVersion]);
 
   if (startVersion) {
-    checkForUpdateWarnings(extension, startVersion, versionFromLabel || seekVersion);
+    await checkForUpdateWarnings(extension, startVersion, versionFromLabel || seekVersion);
   }
   const source =
     _.get(extension, ["versions", seekVersion]) || _.get(extension, ["versions", versionFromLabel]);
