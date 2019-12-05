@@ -19,9 +19,11 @@ export interface RegistryEntry {
  * @returns the source corresponding to extensionName in the registry
  */
 export async function resolveSource(extensionName: string): Promise<string> {
+  console.log(extensionName);
   const [name, version] = extensionName.split("@");
   const extensionsRegistry = await getExtensionRegistry();
   const extension = _.get(extensionsRegistry, name);
+  console.log(extension);
   if (!extension) {
     throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
   }
