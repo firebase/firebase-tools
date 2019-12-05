@@ -1,6 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { AppDistributionClient } from "../../appdistribution/client";
+import {
+  AppDistributionClient,
+  UploadStatus,
+  UploadStatusResponse,
+} from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
@@ -70,55 +74,64 @@ describe("distribution", () => {
   });
 
   describe("pollReleaseIdByHash", () => {
-    describe("when request fails", () => {
+    describe("when getUploadStatus returns IN_PROGRESS", () => {
       it("should throw error when retry count >= AppDistributionClient.MAX_POLLING_RETRIES", () => {
-        sandbox.stub(distribution, "getReleaseIdByHash").rejects(new Error("Can't find release"));
+        sandbox.stub(distribution, "getUploadStatus").resolves({
+          status: UploadStatus.IN_PROGRESS,
+        });
         return expect(
           distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
-        ).to.be.rejectedWith(FirebaseError, "Can't find release");
+        ).to.be.rejectedWith(
+          FirebaseError,
+          "it took longer than expected to process your binary, please try again"
+        );
       });
     });
 
     it("should return release id when request succeeds", () => {
       const releaseId = "fake-release-id";
-      sandbox.stub(distribution, "getReleaseIdByHash").resolves(releaseId);
+      sandbox.stub(distribution, "getUploadStatus").resolves({
+        status: UploadStatus.SUCCESS,
+        release: {
+          id: releaseId,
+        },
+      });
       return expect(
         distribution.pollReleaseIdByHash("mock-hash", AppDistributionClient.MAX_POLLING_RETRIES)
       ).to.eventually.eq(releaseId);
     });
   });
 
-  describe("getReleaseIdByHash", () => {
+  describe("getUploadStatus", () => {
     it("should throw an error when request fails", () => {
       const fakeHash = "fake-hash";
       nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}/release_by_hash/${fakeHash}`)
+        .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
         .reply(400, {});
 
-      return expect(distribution.getReleaseIdByHash(fakeHash)).to.be.rejectedWith(
+      return expect(distribution.getUploadStatus(fakeHash)).to.be.rejectedWith(
         FirebaseError,
         "HTTP Error: 400"
       );
     });
 
     describe("when request succeeds", () => {
-      it("should return undefined when it cannot parse the response", () => {
-        const fakeHash = "fake-hash";
-        nock(api.appDistributionOrigin)
-          .get(`/v1alpha/apps/${appId}/release_by_hash/${fakeHash}`)
-          .reply(200, {});
-
-        return expect(distribution.getReleaseIdByHash(fakeHash)).to.eventually.eq(undefined);
-      });
-
-      it("should return the release id", () => {
+      it("should return the upload status", () => {
         const releaseId = "fake-release-id";
         const fakeHash = "fake-hash";
+        const response: UploadStatusResponse = {
+          status: UploadStatus.SUCCESS,
+          errorCode: "0",
+          message: "",
+          release: {
+            id: releaseId,
+          },
+        };
         nock(api.appDistributionOrigin)
-          .get(`/v1alpha/apps/${appId}/release_by_hash/${fakeHash}`)
-          .reply(200, { release: { id: releaseId } });
+          .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
+          .reply(200, response);
 
-        return expect(distribution.getReleaseIdByHash(fakeHash)).to.eventually.eq(releaseId);
+        return expect(distribution.getUploadStatus(fakeHash)).to.eventually.deep.eq(response);
       });
     });
   });

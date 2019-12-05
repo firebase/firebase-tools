@@ -1,3 +1,1 @@
-* Fixes a bug where the Functions emulator ignored the "host" configuration (#1722)
-* Fixes a bug where the Functions emulator accepted requests to too many paths (#1773)
-* Print Firebase Console links for Extensions after operations.
+* Fixes an issue where all multi-site pre- and post-deploy hooks trigger for targeted deploys (#1160).

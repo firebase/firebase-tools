@@ -48,8 +48,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    // The Database emulator has no "connect" phase.
-    return Promise.resolve();
+    return;
   }
 
   async stop(): Promise<void> {

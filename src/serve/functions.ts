@@ -8,18 +8,20 @@ import * as getProjectId from "../getProjectId";
 module.exports = {
   emulatorServer: undefined,
 
-  async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
+  async start(options: any, args: FunctionsEmulatorArgs): Promise<void> {
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.config.projectDir,
       options.config.get("functions.source")
     );
 
-    args = args || {
+    args = {
       projectId,
       functionsDir,
+      ...args,
     };
 
+    // TODO(samstern): This would be much cleaner as a whitelist
     if (!args.disabledRuntimeFeatures) {
       // When running the functions emulator through 'firebase serve' we disable some
       // of the more adventurous features that could be breaking/unexpected behavior
@@ -30,6 +32,7 @@ module.exports = {
         timeout: true,
         memory_limiting: true,
         admin_stubs: true,
+        pubsub_emulator: true,
       };
     }
 
