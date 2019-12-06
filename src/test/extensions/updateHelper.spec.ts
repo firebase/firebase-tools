@@ -15,7 +15,7 @@ const SPEC = {
   apis: [{ apiName: "api1", reason: "" }, { apiName: "api2", reason: "" }],
   roles: [{ role: "role1", reason: "" }, { role: "role2", reason: "" }],
   resources: [
-    { name: "resource1", type: "function", description: "desc" },
+    { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
     { name: "resource2", type: "other", description: "" },
   ],
   author: { authorName: "Tester" },
@@ -137,7 +137,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.resources = [
-        { name: "resource3", type: "function", description: "new desc" },
+        { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
         { name: "resource2", type: "other", description: "" },
       ];
 
