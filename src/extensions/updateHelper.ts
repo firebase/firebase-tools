@@ -159,7 +159,7 @@ async function getConsent(field: string, message: string): Promise<void> {
  * Displays an update warning as markdown, and prompts the user for confirmation.
  * @param updateWarning The update warning to display and prompt for.
  */
-export async function displayUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
   logger.info(marked(updateWarning.description));
   if (updateWarning.action) {
     logger.info(marked(updateWarning.action));

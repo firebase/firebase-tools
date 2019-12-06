@@ -4,7 +4,7 @@ import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
 import { logPrefix } from "./extensionsHelper";
-import { displayUpdateWarning } from "./updateHelper";
+import { confirmUpdateWarning } from "./updateHelper";
 import * as utils from "../utils";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
@@ -41,6 +41,10 @@ export function resolveSourceUrl(registryEntry: RegistryEntry, version: string):
   return sourceUrl;
 }
 
+/**
+ * Looks up and returns a entry from the official extensions registry.
+ * @param name the name of the extension to get the RegistryEntry for
+ */
 export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
   const extensionsRegistry = await getExtensionRegistry();
   const registryEntry = _.get(extensionsRegistry, name);
@@ -50,9 +54,14 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
   return registryEntry; 
 }
 
-export function getTargetVersion(registryEntry: RegistryEntry, version?: string): string {
+/**
+ * Resolves a version or label to a version.
+ * @param registryEntry A registry entry to get the version from.
+ * @param versionOrLabel A version or label to resolve. Defaults to 'latest'.
+ */
+export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
   // The version to search for when a user passes a version x.y.z or no version
-  const seekVersion = version || "latest";
+  const seekVersion = versionOrLabel || "latest";
 
   // The version to search for when a user passes a label like 'latest'
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
@@ -77,7 +86,7 @@ export async function checkForUpdateWarnings(
         const updateWarnings = registryEntry.updateWarnings[targetRange];
         for (const updateWarning of updateWarnings) {
           if (semver.satisfies(startVersion, updateWarning.from)) {
-            await displayUpdateWarning(updateWarning);
+            await confirmUpdateWarning(updateWarning);
             break;
           }
         }
