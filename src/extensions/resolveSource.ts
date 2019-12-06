@@ -31,8 +31,7 @@ export interface UpdateWarning {
  */
 export function resolveSourceUrl(registryEntry: RegistryEntry, version: string): string {
   const targetVersion = getTargetVersion(registryEntry, version);
-  const sourceUrl =
-    _.get(registryEntry, ["versions", targetVersion])
+  const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);
   if (!sourceUrl) {
     throw new FirebaseError(
       `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(registryEntry.name)}.`
@@ -51,7 +50,7 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
   if (!registryEntry) {
     throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
   }
-  return registryEntry; 
+  return registryEntry;
 }
 
 /**
