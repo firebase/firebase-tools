@@ -34,7 +34,7 @@ export interface ExtensionSource {
 export interface ExtensionSpec {
   specVersion?: string;
   name: string;
-  version?: string;
+  version: string;
   description?: string;
   apis?: Api[];
   roles?: Role[];

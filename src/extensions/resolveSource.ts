@@ -24,41 +24,40 @@ export interface UpdateWarning {
 }
 
 /**
- * Gets the source for a given extension name and version from the official extensions registry
+ * Gets the sourceUrl for a given extension name and version from the official extensions registry
  *
- * @param extensionName the name, or name@version of the extension to get the ExtensionSource for
- * @param startVersion The version to display updateWarnings for.
- *                      If not present, updateWarnings won't be shown.
+ * @param name the name of the extension to get the ExtensionSource for
  * @returns the source corresponding to extensionName in the registry
  */
-export async function resolveSource(extensionName: string, startVersion?: string): Promise<string> {
-  const [name, version] = extensionName.split("@");
+export function resolveSourceUrl(registryEntry: RegistryEntry, version: string): string {
+  const targetVersion = getTargetVersion(registryEntry, version);
+  const sourceUrl =
+    _.get(registryEntry, ["versions", targetVersion])
+  if (!sourceUrl) {
+    throw new FirebaseError(
+      `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(registryEntry.name)}.`
+    );
+  }
+  return sourceUrl;
+}
+
+export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
   const extensionsRegistry = await getExtensionRegistry();
-  const extension = _.get(extensionsRegistry, name);
-  if (!extension) {
+  const registryEntry = _.get(extensionsRegistry, name);
+  if (!registryEntry) {
     throw new FirebaseError(`Unable to find extension source named ${clc.bold(name)}.`);
   }
+  return registryEntry; 
+}
+
+export function getTargetVersion(registryEntry: RegistryEntry, version?: string): string {
   // The version to search for when a user passes a version x.y.z or no version
   const seekVersion = version || "latest";
 
   // The version to search for when a user passes a label like 'latest'
-  const versionFromLabel = _.get(extension, ["labels", seekVersion]);
+  const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
 
-  if (startVersion) {
-    utils.logLabeledBullet(
-      logPrefix,
-      `Updating from version ${startVersion} to version ${versionFromLabel || seekVersion}.`
-    );
-    await checkForUpdateWarnings(extension, startVersion, versionFromLabel || seekVersion);
-  }
-  const source =
-    _.get(extension, ["versions", seekVersion]) || _.get(extension, ["versions", versionFromLabel]);
-  if (!source) {
-    throw new FirebaseError(
-      `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(name)}.`
-    );
-  }
-  return source;
+  return versionFromLabel || seekVersion;
 }
 
 /**

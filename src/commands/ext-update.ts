@@ -7,7 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { resolveSource } from "../extensions/resolveSource";
+import * as resolveSource from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
@@ -51,7 +51,12 @@ export default new Command("ext:update <extensionInstanceId>")
         "config.source.spec"
       );
       const currentParams = _.get(existingInstance, "config.params");
-      const sourceUrl = await resolveSource(currentSpec.name, currentSpec.version);
+
+      const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+      const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
+      utils.logLabeledBullet(logPrefix, `Updating ${instanceId} from version ${currentSpec.version} to version ${targetVersion}`)
+      await resolveSource.checkForUpdateWarnings(registryEntry, currentSpec.version, targetVersion);
+      const sourceUrl = resolveSource.resolveSourceUrl(registryEntry, targetVersion);
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
       if (currentSpec.version === newSpec.version) {
