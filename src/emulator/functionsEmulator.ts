@@ -116,7 +116,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
 
-    const mode = this.args.debugPort ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
+    const mode = this.args.debugPort
+      ? FunctionsExecutionMode.SEQUENTIAL
+      : FunctionsExecutionMode.AUTO;
     this.workerPool = new RuntimeWorkerPool(mode);
     this.workQueue = new WorkQueue(mode);
   }

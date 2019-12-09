@@ -15,8 +15,8 @@ module.exports = new Command("emulators:start")
   )
   // TODO(samstern): Put this on exec as well
   .option(
-    "--debug-port <port>",
-    "run functions in debug mode with the node inspector on the given port."
+    "--inspect-functions [port]",
+    "emulate Cloud Functions in debug mode with the node inspector on the given port (9299 if not specified)."
   )
   .action(async (options: any) => {
     try {
