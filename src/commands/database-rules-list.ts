@@ -1,7 +1,7 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
-import * as requirePermissions from "../requirePermissions";
+import {requirePermissions} from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
 export default new Command("database:rules:list")
@@ -13,9 +13,18 @@ export default new Command("database:rules:list")
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action(async (options: any) => {
+    const labeled = await metadata.getRulesetLabels(options.instance);
     const rulesets = await metadata.listAllRulesets(options.instance);
     for (const ruleset of rulesets) {
+      let prefix = "   ";
+      if (ruleset === labeled.stable) {
+        prefix = "[S]";
+      }
       logger.info(ruleset);
+    }
+    logger.info(`stable: ${labeled.stable}`);
+    if (labeled.canary) {
+      logger.info(`canary: ${labeled.canary}`);
     }
     logger.info(`Database ${options.instance} has ${rulesets.length} rulesets.`);
     return rulesets;

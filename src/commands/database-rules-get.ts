@@ -1,10 +1,10 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
-import * as requirePermissions from "../requirePermissions";
+import {requirePermissions} from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:get <id>")
+export default new Command("database:rules:get [id]")
   .description("get a realtime database ruleset by id")
   .option(
     "--instance <instance>",

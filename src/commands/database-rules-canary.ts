@@ -1,7 +1,7 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
-import * as requirePermissions from "../requirePermissions";
+import {requirePermissions} from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
 export default new Command("database:rules:canary <ruleset_id>")

@@ -75,7 +75,7 @@ export async function createRuleset(
     data: source,
   });
   if (response.status === 200) {
-    return response.body.id;
+    return JSON.parse(response.body).id;
   }
   return handleErrorResponse(response);
 }
