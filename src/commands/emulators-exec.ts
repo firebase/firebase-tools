@@ -11,7 +11,7 @@ import * as controller from "../emulator/controller";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
-import { beforeEmulatorCommand } from "../emulator/commandUtils";
+import { beforeEmulatorCommand, Flags } from "../emulator/commandUtils";
 
 async function runScript(script: string): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
@@ -81,13 +81,8 @@ module.exports = new Command("emulators:exec <script>")
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
-  .option(
-    "--only <list>",
-    "only run specific emulators. " +
-      "This is a comma separated list of emulators to start. " +
-      "Valid options are: " +
-      JSON.stringify(controller.VALID_EMULATOR_STRINGS)
-  )
+  .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
+  .option(Flags.FLAG_INSPECT_FUNCTIONS, Flags.DESC_INSPECT_FUNCTIONS)
   .action(async (script: string, options: any) => {
     let exitCode = 0;
     try {

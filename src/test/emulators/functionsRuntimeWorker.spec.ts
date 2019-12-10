@@ -11,6 +11,7 @@ import {
   RuntimeWorkerState,
   RuntimeWorkerPool,
 } from "../../emulator/functionsRuntimeWorker";
+import { FunctionsExecutionMode } from "../../emulator/types";
 
 /**
  * Fake runtime instance we can use to simulate different subprocess conditions.
@@ -236,6 +237,24 @@ describe("FunctionsRuntimeWorker", () => {
       expect(idleWorkerCounter.counts.IDLE).to.eql(1);
       expect(idleWorkerCounter.counts.FINISHING).to.eql(0);
       expect(idleWorkerCounter.counts.FINISHED).to.eql(1);
+    });
+
+    it("gives assigns all triggers to the same worker in sequential mode", async () => {
+      const trigger1 = "abc";
+      const trigger2 = "def";
+
+      const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
+      const worker = pool.addWorker(trigger1, new MockRuntimeInstance(true));
+
+      pool.submitWork(trigger2, new MockRuntimeBundle(trigger2));
+
+      expect(pool.readyForWork(trigger1)).to.be.false;
+      expect(pool.readyForWork(trigger2)).to.be.false;
+
+      await worker.waitForDone();
+
+      expect(pool.readyForWork(trigger1)).to.be.true;
+      expect(pool.readyForWork(trigger2)).to.be.true;
     });
   });
 });

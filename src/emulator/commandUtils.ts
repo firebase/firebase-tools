@@ -5,6 +5,19 @@ import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
 
+export class Flags {
+  static FLAG_ONLY: string = "--only <list>";
+  static DESC_ONLY: string =
+    "only run specific emulators. " +
+    "This is a comma separated list of emulators to start. " +
+    "Valid options are: " +
+    JSON.stringify(controller.VALID_EMULATOR_STRINGS);
+
+  static FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
+  static DESC_INSPECT_FUNCTIONS =
+    "emulate Cloud Functions in debug mode with the node inspector on the given port (9299 if not specified).";
+}
+
 /**
  * We want to be able to run the Firestore and Database emulators even in the absence
  * of firebase.json. For Functions and Hosting we require the JSON file since the

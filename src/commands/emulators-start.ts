@@ -1,23 +1,13 @@
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
-import { beforeEmulatorCommand } from "../emulator/commandUtils";
+import { beforeEmulatorCommand, Flags } from "../emulator/commandUtils";
 import * as utils from "../utils";
 
 module.exports = new Command("emulators:start")
   .before(beforeEmulatorCommand)
   .description("start the local Firebase emulators")
-  .option(
-    "--only <list>",
-    "only run specific emulators. " +
-      "This is a comma separated list of emulators to start. " +
-      "Valid options are: " +
-      JSON.stringify(controller.VALID_EMULATOR_STRINGS)
-  )
-  // TODO(samstern): Put this on exec as well
-  .option(
-    "--inspect-functions [port]",
-    "emulate Cloud Functions in debug mode with the node inspector on the given port (9299 if not specified)."
-  )
+  .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
+  .option(Flags.FLAG_INSPECT_FUNCTIONS, Flags.DESC_INSPECT_FUNCTIONS)
   .action(async (options: any) => {
     try {
       await controller.startAll(options);
