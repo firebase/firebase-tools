@@ -123,8 +123,10 @@ function getFunctionTrigger(functionInfo) {
     return _.pick(functionInfo, "httpsTrigger");
   } else if (functionInfo.eventTrigger) {
     var trigger = functionInfo.eventTrigger;
+    trigger.failurePolicy = functionInfo.failurePolicy;
     return { eventTrigger: trigger };
   }
+
   logger.debug("Unknown trigger type found in:", functionInfo);
   return new FirebaseError("Could not parse function trigger, unknown trigger type.");
 }

@@ -151,6 +151,35 @@ module.exports = function(context, options, payload) {
   var deleteReleaseNames;
   var existingScheduledFunctions;
 
+  // Collect all the functions that have a retry policy
+  // TODO: Should we be looking at remote functions that have a retry polcy as well?
+  var failurePolicyFunctions = functionsInfo
+    .filter((fn) => {
+      return !!fn.failurePolicy;
+    });
+
+  var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
+    return helper.getFunctionLabel(_.get(fn, "name"));
+  });
+  var retryMessage = "The following functions will be retried in case of failure: " 
+    + clc.bold(failurePolicyFunctionLabels.join(", ")) 
+    + ". "
+    + "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be multiple days. " 
+    + "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+
+  utils.logLabeledWarning("functions", retryMessage);
+  if (options.nonInteractive && !options.force) {
+    throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", { exit: 1});
+  } else if (!options.nonInteractive) {
+    // TODO: await this!
+    promptOnce({
+      type: "confirm",
+      name: "confirm",
+      default: false,
+      message: "Would you like to proceed with deployment?",
+    });
+  }
+
   delete payload.functions;
   return gcp.cloudfunctions
     .listAll(projectId)
