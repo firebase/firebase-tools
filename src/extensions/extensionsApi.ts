@@ -82,6 +82,7 @@ export interface Param {
   required?: boolean;
   validationRegex?: string;
   validationErrorMessage?: string;
+  immutable?: boolean;
 }
 
 export const enum ParamType {

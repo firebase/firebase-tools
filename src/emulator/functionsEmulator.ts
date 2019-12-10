@@ -29,7 +29,6 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
-import { pubsub } from "firebase-functions";
 
 const EVENT_INVOKE = "functions:invoke";
 
