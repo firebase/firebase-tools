@@ -1121,7 +1121,7 @@ async function handleMessage(message: string) {
     return;
   }
 
-  // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
+  // If there's no trigger id it's just a diagnostic call. We can go idle right away.
   if (!runtimeArgs.frb.triggerId) {
     await goIdle();
     return;

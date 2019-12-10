@@ -10,7 +10,7 @@ type Work = () => Promise<any>;
 export class WorkQueue {
   private queue: Array<Work> = [];
   private interval?: NodeJS.Timeout;
-  private workRunningInternal: boolean = false;
+  private workRunningCountInternal: number = 0;
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
@@ -20,10 +20,9 @@ export class WorkQueue {
    * Note: make sure start() has been called at some point.
    */
   submit(entry: Work) {
-    if (this.mode == FunctionsExecutionMode.SEQUENTIAL) {
-      this.append(entry);
-    } else {
-      entry();
+    this.append(entry);
+    if (this.mode === FunctionsExecutionMode.AUTO) {
+      this.runNext();
     }
   }
 
@@ -31,11 +30,12 @@ export class WorkQueue {
    * Begin processing work from the queue.
    */
   start() {
+    if (this.mode === FunctionsExecutionMode.AUTO) {
+      return;
+    }
+
     this.interval = setInterval(() => {
-      if (
-        this.mode === FunctionsExecutionMode.AUTO ||
-        (this.mode === FunctionsExecutionMode.SEQUENTIAL && !this.workRunning)
-      ) {
+      if (!this.workRunning) {
         this.runNext();
       }
     }, 100);
@@ -50,23 +50,36 @@ export class WorkQueue {
     }
   }
 
-  get workRunning(): boolean {
-    return this.workRunningInternal;
+  getState() {
+    return {
+      queueLength: this.queue.length,
+      isRunning: this.workRunning,
+      numRunning: this.workRunningCountInternal,
+    };
   }
 
-  set workRunning(workRunning: boolean) {
-    this.workRunningInternal = workRunning;
+  get workRunning(): boolean {
+    return this.workRunningCountInternal > 0;
+  }
+
+  set workRunningCount(count: number) {
+    this.workRunningCountInternal = count;
     this.logState();
   }
 
   private runNext() {
     const next = this.queue.shift();
     if (next) {
-      this.workRunning = true;
+      this.workRunningCount++;
 
-      next().finally(() => {
-        this.workRunning = false;
-      });
+      next().then(
+        () => {
+          this.workRunningCount--;
+        },
+        () => {
+          this.workRunningCount--;
+        }
+      );
     }
   }
 
@@ -76,12 +89,6 @@ export class WorkQueue {
   }
 
   private logState() {
-    EmulatorLogger.log(
-      "DEBUG",
-      `[work-queue] ${JSON.stringify({
-        length: this.queue.length,
-        isRunning: this.workRunningInternal,
-      })}`
-    );
+    EmulatorLogger.logLabeled("DEBUG", "work-queue", JSON.stringify(this.getState()));
   }
 }

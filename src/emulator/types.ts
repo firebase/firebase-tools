@@ -110,7 +110,11 @@ export interface Address {
 }
 
 export enum FunctionsExecutionMode {
+  // Function workers will be spawned as needed with no particular
+  // guarantees.
   AUTO = "auto",
+
+  // All function executions will be run sequentially in a single worker.
   SEQUENTIAL = "sequential",
 }
 

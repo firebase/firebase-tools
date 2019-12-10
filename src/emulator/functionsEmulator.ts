@@ -108,7 +108,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
-  // TODO(samstern): Control this with a flag
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
 

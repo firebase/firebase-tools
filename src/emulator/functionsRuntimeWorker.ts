@@ -200,7 +200,7 @@ export class RuntimeWorkerPool {
   }
 
   /**
-   * TODO(samstern): Document
+   * Determine if the pool has idle workers ready to accept work for the given triggerId;
    */
   readyForWork(triggerId: string | undefined): boolean {
     const idleWorker = this.getIdleWorker(triggerId);
@@ -208,7 +208,9 @@ export class RuntimeWorkerPool {
   }
 
   /**
-   * TODO(samstern): Document
+   * Submit work to be run by an idle worker for the givenn triggerId.
+   * Calls to this function should be guarded by readyForWork() to avoid throwing
+   * an exception.
    */
   submitWork(
     triggerId: string | undefined,
