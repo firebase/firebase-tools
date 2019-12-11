@@ -30,13 +30,14 @@ export interface Ruleset {
   source: RulesetSource;
 }
 
-export async function listAllRulesets(databaseName: string): Promise<RulesetId[]> {
+export async function listAllRulesets(databaseName: string): Promise<Ruleset[]> {
   const response = await api.request("GET", `/namespaces/${databaseName}/rulesets`, {
     auth: true,
     origin: api.rtdbMetadataOrigin,
+    json: true,
   });
   if (response.status === 200) {
-    return response.body.rulesetIds;
+    return response.body.rulesets;
   }
   return handleErrorResponse(response);
 }

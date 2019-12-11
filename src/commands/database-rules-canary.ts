@@ -13,7 +13,9 @@ export default new Command("database:rules:canary <ruleset_id>")
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
   .action(async (rulesetId: string, options: any) => {
+    const labeled = await metadata.getRulesetLabels(options.instance);
     await metadata.setRulesetLabels(options.instance, {
+      stable: labeled.stable,
       canary: rulesetId,
     });
     return null;
