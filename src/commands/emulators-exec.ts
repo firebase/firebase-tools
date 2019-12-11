@@ -11,7 +11,7 @@ import * as controller from "../emulator/controller";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
-import { beforeEmulatorCommand, Flags } from "../emulator/commandUtils";
+import * as commandUtils from "../emulator/commandUtils";
 
 async function runScript(script: string): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
@@ -77,12 +77,12 @@ async function runScript(script: string): Promise<number> {
 }
 
 module.exports = new Command("emulators:exec <script>")
-  .before(beforeEmulatorCommand)
+  .before(commandUtils.beforeEmulatorCommand)
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
-  .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
-  .option(Flags.FLAG_INSPECT_FUNCTIONS, Flags.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
+  .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .action(async (script: string, options: any) => {
     let exitCode = 0;
     try {

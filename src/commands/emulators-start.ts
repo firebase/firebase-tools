@@ -1,13 +1,13 @@
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
-import { beforeEmulatorCommand, Flags } from "../emulator/commandUtils";
+import * as commandUtils from "../emulator/commandUtils";
 import * as utils from "../utils";
 
 module.exports = new Command("emulators:start")
-  .before(beforeEmulatorCommand)
+  .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")
-  .option(Flags.FLAG_ONLY, Flags.DESC_ONLY)
-  .option(Flags.FLAG_INSPECT_FUNCTIONS, Flags.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
+  .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .action(async (options: any) => {
     try {
       await controller.startAll(options);

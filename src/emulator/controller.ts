@@ -132,7 +132,7 @@ export async function startAll(options: any): Promise<void> {
       options.config.get("functions.source")
     );
 
-    let inspectFunctions = undefined;
+    let inspectFunctions: number | undefined;
 
     // If the flag is provided without a value, use the Node.js default
     if (options.inspectFunctions === true) {
@@ -140,7 +140,7 @@ export async function startAll(options: any): Promise<void> {
     }
 
     if (options.inspectFunctions) {
-      inspectFunctions = parseInt(options.inspectFunctions, 10);
+      inspectFunctions = Number(options.inspectFunctions);
       if (isNaN(inspectFunctions) || inspectFunctions < 1024 || inspectFunctions > 65535) {
         throw new FirebaseError(
           `"${
