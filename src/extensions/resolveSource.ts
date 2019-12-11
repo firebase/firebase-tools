@@ -3,9 +3,7 @@ import * as clc from "cli-color";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import { logPrefix } from "./extensionsHelper";
 import { confirmUpdateWarning } from "./updateHelper";
-import * as utils from "../utils";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
@@ -25,9 +23,8 @@ export interface UpdateWarning {
 
 /**
  * Gets the sourceUrl for a given extension name and version from the official extensions registry
- *
- * @param name the name of the extension to get the ExtensionSource for
- * @returns the source corresponding to extensionName in the registry
+ * @param name the name of the extension.
+ * @returns the source corresponding to extensionName in the registry.
  */
 export function resolveSourceUrl(registryEntry: RegistryEntry, version: string): string {
   const targetVersion = getTargetVersion(registryEntry, version);
@@ -42,7 +39,7 @@ export function resolveSourceUrl(registryEntry: RegistryEntry, version: string):
 
 /**
  * Looks up and returns a entry from the official extensions registry.
- * @param name the name of the extension to get the RegistryEntry for
+ * @param name the name of the extension.
  */
 export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
   const extensionsRegistry = await getExtensionRegistry();
@@ -59,22 +56,23 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
  * @param versionOrLabel A version or label to resolve. Defaults to 'latest'.
  */
 export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
-  // The version to search for when a user passes a version x.y.z or no version
+  // The version to search for when a user passes a version x.y.z or no version.
   const seekVersion = versionOrLabel || "latest";
 
-  // The version to search for when a user passes a label like 'latest'
+  // The version to search for when a user passes a label like 'latest'.
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
 
   return versionFromLabel || seekVersion;
 }
 
 /**
- * Checks for and displays updateWarnings that apply to the given start and end versions.
- * @param registryEntry the registry entry to check for updateWarnings in
+ * Checks for and prompts the user to accept updateWarnings that apply to the given start and end versions.
+ * @param registryEntry the registry entry to check for updateWarnings.
  * @param startVersion the version that you are updating from.
- * @param endVersion the version you are updating to
+ * @param endVersion the version you are updating to.
+ * @throws FirebaseError if the user doesn't accept the update warning prompt.
  */
-export async function checkForUpdateWarnings(
+export async function promptForUpdateWarnings(
   registryEntry: RegistryEntry,
   startVersion: string,
   endVersion: string

@@ -58,7 +58,11 @@ export default new Command("ext:update <extensionInstanceId>")
         logPrefix,
         `Updating ${instanceId} from version ${currentSpec.version} to version ${targetVersion}`
       );
-      await resolveSource.checkForUpdateWarnings(registryEntry, currentSpec.version, targetVersion);
+      await resolveSource.promptForUpdateWarnings(
+        registryEntry,
+        currentSpec.version,
+        targetVersion
+      );
       const sourceUrl = resolveSource.resolveSourceUrl(registryEntry, targetVersion);
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
