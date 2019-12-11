@@ -23,7 +23,7 @@ export default new Command("database:rules:list")
       if (ruleset.id == labeled.canary) {
         labels.push("canary");
       }
-      logger.info(`${ruleset.id}  ${ruleset.createdAt} ${labels.join(",")}`);
+      logger.info(`${ruleset.id}  ${ruleset.createdAt}  ${labels.join(",")}`);
     }
     logger.info("Labels:");
     logger.info(`  stable: ${labeled.stable}`);
