@@ -29,9 +29,6 @@ export function displayChangesNoInput(
   newSpec: extensionsApi.ExtensionSpec
 ): string[] {
   const lines: string[] = [];
-  if (spec.version !== newSpec.version) {
-    lines.push("", "**Version:**", `- ${spec.version}`, `+ ${newSpec.version}`);
-  }
   if (spec.displayName !== newSpec.displayName) {
     lines.push(
       "",

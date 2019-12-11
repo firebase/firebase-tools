@@ -1,19 +1,19 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as _ from "lodash";
 import * as marked from "marked";
 import * as ora from "ora";
-import TerminalRenderer = require("marked-terminal");
-
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as getProjectId from "../getProjectId";
-import * as resolveSource from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
+import * as resolveSource from "../extensions/resolveSource";
 import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
+import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
+import TerminalRenderer = require("marked-terminal");
+
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -56,7 +56,7 @@ export default new Command("ext:update <extensionInstanceId>")
       const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
       utils.logLabeledBullet(
         logPrefix,
-        `Updating ${instanceId} from version ${currentSpec.version} to version ${targetVersion}`
+        `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(targetVersion)}`
       );
       await resolveSource.promptForUpdateWarnings(
         registryEntry,
