@@ -114,7 +114,9 @@ export default new Command("ext:update <extensionInstanceId>")
         )
       );
     } catch (err) {
-      spinner.fail();
+      if (spinner.isSpinning) {
+        spinner.fail();
+      }
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred while updating the instance: ${err.message}`, {
           original: err,
