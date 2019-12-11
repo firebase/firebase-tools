@@ -101,7 +101,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       )
     );
   } catch (err) {
-    spinner.fail();
+    if (spinner.isSpinning) {
+      spinner.fail();
+    }
     if (err instanceof FirebaseError) {
       throw err;
     }
