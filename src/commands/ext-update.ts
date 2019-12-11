@@ -14,7 +14,6 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
 
-
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
@@ -56,7 +55,9 @@ export default new Command("ext:update <extensionInstanceId>")
       const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
       utils.logLabeledBullet(
         logPrefix,
-        `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(targetVersion)}`
+        `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(
+          targetVersion
+        )}`
       );
       await resolveSource.promptForUpdateWarnings(
         registryEntry,
