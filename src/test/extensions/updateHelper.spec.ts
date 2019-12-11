@@ -27,16 +27,6 @@ const SPEC = {
 
 describe("updateHelper", () => {
   describe("displayChangesNoInput", () => {
-    it("should display changes to version", () => {
-      const newSpec = _.cloneDeep(SPEC);
-      newSpec.version = "1.1.0";
-
-      const loggedLines = updateHelper.displayChangesNoInput(SPEC, newSpec);
-
-      const expected = ["", "**Version:**", "- 1.0.0", "+ 1.1.0"];
-      expect(loggedLines).to.eql(expected);
-    });
-
     it("should display changes to display name", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.displayName = "new";
