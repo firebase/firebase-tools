@@ -94,12 +94,12 @@ export async function displayChangesRequiringConfirmation(
   const resourcesDiffDeletions = _.differenceWith(
     spec.resources,
     _.get(newSpec, "resources", []),
-    _.isEqual
+    compareResources
   );
   const resourcesDiffAdditions = _.differenceWith(
     newSpec.resources,
     _.get(spec, "resources", []),
-    _.isEqual
+    compareResources
   );
   if (resourcesDiffDeletions.length || resourcesDiffAdditions.length) {
     let message = "\n**Resources:**\n";
@@ -135,9 +135,13 @@ export async function displayChangesRequiringConfirmation(
   }
 }
 
+function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
+  return resource1.name == resource2.name && resource1.type == resource2.type;
+}
+
 function getResourceReadableName(resource: extensionsApi.Resource): string {
-  return resource.type === "function"
-    ? `${resource.name} (${resource.description})\n`
+  return resource.type === "firebaseextensions.v1beta.function"
+    ? `${resource.name} (Cloud Function): ${resource.description}\n`
     : `${resource.name} (${resource.type})\n`;
 }
 
@@ -145,7 +149,7 @@ async function getConsent(field: string, message: string): Promise<void> {
   const consent = await promptOnce({
     type: "confirm",
     message,
-    default: false,
+    default: true,
   });
   if (!consent) {
     throw new FirebaseError(
