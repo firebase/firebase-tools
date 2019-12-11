@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
-import {requirePermissions} from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import * as fs from "fs-extra";
 import * as path from "path";
