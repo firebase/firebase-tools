@@ -235,7 +235,7 @@ describe("FunctionsRuntimeWorker", () => {
       expect(busyWorkerCounter.counts.FINISHED).to.eql(1);
 
       expect(idleWorkerCounter.counts.IDLE).to.eql(1);
-      expect(idleWorkerCounter.counts.FINISHING).to.eql(0);
+      expect(idleWorkerCounter.counts.FINISHING).to.eql(1);
       expect(idleWorkerCounter.counts.FINISHED).to.eql(1);
     });
 
