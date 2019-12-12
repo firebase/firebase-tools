@@ -14,7 +14,7 @@ type Work = () => Promise<any>;
 export class WorkQueue {
   private queue: Array<Work> = [];
   private workRunningCount: number = 0;
-  private interval?: NodeJS.Timeout = undefined;
+  private notifyQueue: () => void = () => {};
   private stopped: boolean = true;
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
@@ -40,11 +40,18 @@ export class WorkQueue {
     }
 
     this.stopped = false;
-    this.interval = setInterval(() => {
-      if (this.shouldRunNext()) {
-        this.runNext();
+    while (!this.stopped) {
+      if (!this.queue.length) {
+        await new Promise((res) => {
+          this.notifyQueue = res;
+        });
+
+        const workPromise = this.runNext();
+        if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
+          await workPromise;
+        }
       }
-    }, 10);
+    }
   }
 
   /**
@@ -52,10 +59,6 @@ export class WorkQueue {
    */
   stop() {
     this.stopped = true;
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = undefined;
-    }
   }
 
   private shouldRunNext() {
@@ -75,27 +78,26 @@ export class WorkQueue {
     }
   }
 
-  private runNext() {
+  private async runNext() {
     const next = this.queue.shift();
     if (next) {
       this.workRunningCount++;
       this.logState();
 
-      next()
-        .then(() => {
-          this.workRunningCount--;
-          this.logState();
-        })
-        .catch((e) => {
-          this.workRunningCount--;
-          this.logState();
-          EmulatorLogger.log("DEBUG", e);
-        });
+      try {
+        await next();
+      } catch (e) {
+        EmulatorLogger.log("DEBUG", e);
+      } finally {
+        this.workRunningCount--;
+        this.logState();
+      }
     }
   }
 
   private append(entry: Work) {
     this.queue.push(entry);
+    this.notifyQueue();
     this.logState();
   }
 
