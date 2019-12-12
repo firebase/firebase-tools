@@ -97,7 +97,9 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         }
       }
     } catch (err) {
-      spinner.fail();
+      if (spinner.isSpinning) {
+        spinner.fail();
+      }
       if (err instanceof FirebaseError) {
         throw err;
       }
