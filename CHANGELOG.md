@@ -1,0 +1,1 @@
+* Clean up extraneous error messages in extensions commands.
