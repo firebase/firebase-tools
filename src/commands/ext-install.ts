@@ -13,7 +13,7 @@ import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveSource } from "../extensions/resolveSource";
+import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -125,7 +125,9 @@ export default new Command("ext:install <extensionName>")
     try {
       const projectId = getProjectId(options, false);
       const paramFilePath = options.params;
-      const sourceUrl = await resolveSource(extensionName);
+      const [name, version] = extensionName.split("@");
+      const registryEntry = await resolveRegistryEntry(name);
+      const sourceUrl = await resolveSourceUrl(registryEntry, version);
       const source = await extensionsApi.getSource(sourceUrl);
       return installExtension({
         paramFilePath,

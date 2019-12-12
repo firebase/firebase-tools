@@ -135,7 +135,7 @@ describe("extensions", () => {
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
-          spec: { name: "", sourceUrl: "", roles: [], resources: [], params: [] },
+          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
         {},
         "my-service-account@proj.gserviceaccount.com"
@@ -156,7 +156,14 @@ describe("extensions", () => {
             name: "sources/blah",
             packageUri: "https://test.fake/pacakge.zip",
             hash: "abc123",
-            spec: { name: "", sourceUrl: "", roles: [], resources: [], params: [] },
+            spec: {
+              name: "",
+              version: "0.1.0",
+              sourceUrl: "",
+              roles: [],
+              resources: [],
+              params: [],
+            },
           },
           {},
           "my-service-account@proj.gserviceaccount.com"
@@ -181,7 +188,14 @@ describe("extensions", () => {
             name: "sources/blah",
             packageUri: "https://test.fake/pacakge.zip",
             hash: "abc123",
-            spec: { name: "", sourceUrl: "", roles: [], resources: [], params: [] },
+            spec: {
+              name: "",
+              version: "0.1.0",
+              sourceUrl: "",
+              roles: [],
+              resources: [],
+              params: [],
+            },
           },
           {},
           "my-service-account@proj.gserviceaccount.com"
@@ -258,7 +272,12 @@ describe("extensions", () => {
       name: "abc123",
       packageUri: "www.google.com/pack.zip",
       hash: "abc123",
-      spec: { name: "abc123", resources: [], sourceUrl: "www.google.com/pack.zip" },
+      spec: {
+        name: "abc123",
+        version: "0.1.0",
+        resources: [],
+        sourceUrl: "www.google.com/pack.zip",
+      },
     };
     afterEach(() => {
       nock.cleanAll();
