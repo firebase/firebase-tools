@@ -63,6 +63,7 @@ const TEST_PARAMS_3 = [
 
 const SPEC = {
   name: "test",
+  version: "0.1.0",
   roles: [],
   resources: [],
   sourceUrl: "test.com",
@@ -192,6 +193,7 @@ describe("paramHelper", () => {
             hash: "",
             spec: {
               name: "",
+              version: "0.1.0",
               roles: [],
               resources: [],
               params: TEST_PARAMS,

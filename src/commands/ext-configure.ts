@@ -89,7 +89,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       );
       return res;
     } catch (err) {
-      spinner.fail();
+      if (spinner.isSpinning) {
+        spinner.fail();
+      }
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred while configuring the instance: ${err.message}`, {
           original: err,
