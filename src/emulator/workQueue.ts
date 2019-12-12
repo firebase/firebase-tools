@@ -26,7 +26,11 @@ export class WorkQueue {
    */
   submit(entry: Work) {
     this.append(entry);
-    if (this.shouldRunNext()) {
+
+    const shouldRunImmediately =
+      this.mode === FunctionsExecutionMode.AUTO ||
+      (this.mode === FunctionsExecutionMode.SEQUENTIAL && this.workRunningCount === 0);
+    if (!this.stopped && shouldRunImmediately) {
       this.runNext();
     }
   }
