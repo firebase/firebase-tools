@@ -14,7 +14,7 @@ export const DESC_ONLY: string =
 
 export const FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
 export const DESC_INSPECT_FUNCTIONS =
-  "emulate Cloud Functions in debug mode with the node inspector on the given port (9299 if not specified)";
+  "emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)";
 
 /**
  * We want to be able to run the Firestore and Database emulators even in the absence

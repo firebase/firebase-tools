@@ -241,7 +241,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
        */
 
-      // TODO(samstern): This is probably not the right behavior when debugging.
       // Before loading any triggers we need to make sure there are no 'stale' workers
       // in the pool that would cause us to run old code.
       this.workerPool.refresh();

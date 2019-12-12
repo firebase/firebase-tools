@@ -175,6 +175,7 @@ export class RuntimeWorkerPool {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
           this.log(`Shutting down IDLE worker (${w.key})`);
+          w.state = RuntimeWorkerState.FINISHING;
           w.runtime.shutdown();
         } else if (w.state === RuntimeWorkerState.BUSY) {
           this.log(`Marking BUSY worker to finish (${w.key})`);
@@ -248,6 +249,7 @@ export class RuntimeWorkerPool {
 
   addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
+    this.log(`addWorker(${worker.key})`);
 
     const keyWorkers = this.getTriggerWorkers(triggerId);
     keyWorkers.push(worker);

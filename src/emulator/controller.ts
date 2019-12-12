@@ -136,7 +136,7 @@ export async function startAll(options: any): Promise<void> {
 
     // If the flag is provided without a value, use the Node.js default
     if (options.inspectFunctions === true) {
-      options.inspectFunctions = "9299";
+      options.inspectFunctions = "9229";
     }
 
     if (options.inspectFunctions) {
