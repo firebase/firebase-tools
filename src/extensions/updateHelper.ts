@@ -6,6 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
+import { UpdateWarning } from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
@@ -28,9 +29,6 @@ export function displayChangesNoInput(
   newSpec: extensionsApi.ExtensionSpec
 ): string[] {
   const lines: string[] = [];
-  if (spec.version !== newSpec.version) {
-    lines.push("", "**Version:**", `- ${spec.version}`, `+ ${newSpec.version}`);
-  }
   if (spec.displayName !== newSpec.displayName) {
     lines.push(
       "",
@@ -155,6 +153,25 @@ async function getConsent(field: string, message: string): Promise<void> {
       `Without explicit consent for the change to ${field}, we cannot update this extension instance.`,
       { exit: 2 }
     );
+  }
+}
+
+/**
+ * Displays an update warning as markdown, and prompts the user for confirmation.
+ * @param updateWarning The update warning to display and prompt for.
+ */
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+  logger.info(marked(updateWarning.description));
+  if (updateWarning.action) {
+    logger.info(marked(updateWarning.action));
+  }
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
   }
 }
 
