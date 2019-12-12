@@ -4,7 +4,7 @@ import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:get [id]")
+export default new Command("database:rules:get <id>")
   .description("get a realtime database ruleset by id")
   .option(
     "--instance <instance>",
