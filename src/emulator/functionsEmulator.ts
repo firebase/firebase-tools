@@ -123,6 +123,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   createHubServer(): express.Application {
+    // TODO(samstern): Should not need this here but some tests are directly calling this method
+    // because FunctionsEmulator.start() is not test-safe due to askInstallNodeVersion.
+    this.workQueue.start();
+
     const hub = express();
 
     hub.use((req, res, next) => {

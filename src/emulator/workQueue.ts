@@ -14,7 +14,7 @@ type Work = () => Promise<any>;
 export class WorkQueue {
   private queue: Array<Work> = [];
   private workRunningCount: number = 0;
-  private notifyQueue: () => void = () => {};
+  private interval?: NodeJS.Timeout = undefined;
   private stopped: boolean = true;
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
@@ -35,18 +35,16 @@ export class WorkQueue {
    * Begin processing work from the queue.
    */
   async start() {
-    this.stopped = false;
-    while (!this.stopped) {
-      if (!this.queue.length) {
-        await new Promise((resolve) => {
-          this.notifyQueue = resolve;
-        });
-      }
+    if (!this.stopped) {
+      return;
+    }
 
+    this.stopped = false;
+    this.interval = setInterval(() => {
       if (this.shouldRunNext()) {
         this.runNext();
       }
-    }
+    }, 10);
   }
 
   /**
@@ -54,9 +52,21 @@ export class WorkQueue {
    */
   stop() {
     this.stopped = true;
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = undefined;
+    }
   }
 
   private shouldRunNext() {
+    if (this.stopped) {
+      return false;
+    }
+
+    if (!this.queue.length) {
+      return false;
+    }
+
     switch (this.mode) {
       case FunctionsExecutionMode.AUTO:
         return true;
@@ -86,7 +96,6 @@ export class WorkQueue {
 
   private append(entry: Work) {
     this.queue.push(entry);
-    this.notifyQueue();
     this.logState();
   }
 
