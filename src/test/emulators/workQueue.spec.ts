@@ -78,29 +78,30 @@ describe("WorkQueue", () => {
     });
 
     it("finishes one job before running another", async () => {
-      const timeout = 500;
+      const timeout = 50;
 
       let hasRun1 = false;
-      const work1 = () => {
+      const work1 = async () => {
+        await resolveIn(timeout);
         hasRun1 = true;
-        return resolveIn(timeout);
       };
 
       let hasRun2 = false;
-      const work2 = () => {
+      const work2 = async () => {
+        await resolveIn(timeout);
         hasRun2 = true;
-        return Promise.resolve();
       };
 
       queue.submit(work1);
       queue.submit(work2);
 
-      expect(hasRun1, "hasRun1 immediately");
-      expect(!hasRun2, "hasRun2 waits to startt");
+      await resolveIn(timeout + 10);
 
-      // Wait for job 1 to finish (with some wiggle room)
-      await resolveIn(timeout * 1.5);
-      expect(hasRun2, "hasRun2 runs after hasRun1 is done");
+      expect(hasRun1, "job 1 finished");
+      expect(!hasRun2, "job 2 not finished");
+
+      await resolveIn(timeout + 10);
+      expect(hasRun2, "both jobs finished");
     });
 
     it("proceeds even if a job errors out", () => {
