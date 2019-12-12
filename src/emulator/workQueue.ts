@@ -6,11 +6,16 @@ type Work = () => Promise<any>;
 /**
  * Queue for doing async work that can either run all work concurrently
  * or sequentially (FIFO).
+ *
+ * Errors within work items are not exposed to the caller, they are just
+ * logged as debug info. If better error handling is needed attach a catch()
+ * callback inside the Work function.
  */
 export class WorkQueue {
   private queue: Array<Work> = [];
-  private interval?: NodeJS.Timeout;
-  private workRunningCountInternal: number = 0;
+  private workRunningCount: number = 0;
+  private notifyQueue: () => void = () => {};
+  private stopped: boolean = true;
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
@@ -21,7 +26,7 @@ export class WorkQueue {
    */
   submit(entry: Work) {
     this.append(entry);
-    if (this.mode === FunctionsExecutionMode.AUTO) {
+    if (this.shouldRunNext()) {
       this.runNext();
     }
   }
@@ -29,66 +34,70 @@ export class WorkQueue {
   /**
    * Begin processing work from the queue.
    */
-  start() {
-    if (this.mode === FunctionsExecutionMode.AUTO) {
-      return;
-    }
+  async start() {
+    this.stopped = false;
+    while (!this.stopped) {
+      if (!this.queue.length) {
+        await new Promise((resolve) => {
+          this.notifyQueue = resolve;
+        });
+      }
 
-    this.interval = setInterval(() => {
-      if (!this.workRunning) {
+      if (this.shouldRunNext()) {
         this.runNext();
       }
-    }, 100);
+    }
   }
 
   /**
    * Stop processing work from the queue.
    */
   stop() {
-    if (this.interval) {
-      clearInterval(this.interval);
+    this.stopped = true;
+  }
+
+  private shouldRunNext() {
+    switch (this.mode) {
+      case FunctionsExecutionMode.AUTO:
+        return true;
+      case FunctionsExecutionMode.SEQUENTIAL:
+        return this.workRunningCount === 0;
     }
-  }
-
-  getState() {
-    return {
-      queueLength: this.queue.length,
-      isRunning: this.workRunning,
-      numRunning: this.workRunningCountInternal,
-    };
-  }
-
-  get workRunning(): boolean {
-    return this.workRunningCountInternal > 0;
-  }
-
-  set workRunningCount(count: number) {
-    this.workRunningCountInternal = count;
-    this.logState();
   }
 
   private runNext() {
     const next = this.queue.shift();
     if (next) {
       this.workRunningCount++;
+      this.logState();
 
-      next().then(
-        () => {
+      next()
+        .then(() => {
           this.workRunningCount--;
-        },
-        () => {
+          this.logState();
+        })
+        .catch((e) => {
           this.workRunningCount--;
-        }
-      );
+          this.logState();
+          EmulatorLogger.log("DEBUG", e);
+        });
     }
   }
 
   private append(entry: Work) {
     this.queue.push(entry);
+    this.notifyQueue();
     this.logState();
   }
 
   private logState() {
-    EmulatorLogger.logLabeled("DEBUG", "work-queue", JSON.stringify(this.getState()));
+    EmulatorLogger.logLabeled(
+      "DEBUG",
+      "work-queue",
+      JSON.stringify({
+        queueLength: this.queue.length,
+        workRunningCount: this.workRunningCount,
+      })
+    );
   }
 }

@@ -17,11 +17,14 @@ describe("WorkQueue", () => {
   describe("mode=AUTO", () => {
     let queue: WorkQueue;
     beforeEach(() => {
+      queue = new WorkQueue(FunctionsExecutionMode.AUTO);
+      queue.start();
+    });
+
+    afterEach(() => {
       if (queue) {
         queue.stop();
       }
-      queue = new WorkQueue(FunctionsExecutionMode.AUTO);
-      queue.start();
     });
 
     it("runs a job immediately", () => {
@@ -58,11 +61,14 @@ describe("WorkQueue", () => {
   describe("mode=SEQUENTIAL", () => {
     let queue: WorkQueue;
     beforeEach(() => {
+      queue = new WorkQueue(FunctionsExecutionMode.SEQUENTIAL);
+      queue.start();
+    });
+
+    afterEach(() => {
       if (queue) {
         queue.stop();
       }
-      queue = new WorkQueue(FunctionsExecutionMode.SEQUENTIAL);
-      queue.start();
     });
 
     it("finishes one job before running another", async () => {

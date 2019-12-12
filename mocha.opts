@@ -3,5 +3,4 @@
 --require src/test/helpers/mocha-bootstrap.js
 --recursive
 --timeout=1000
---exit
 src/test/**/*.{ts,js}
