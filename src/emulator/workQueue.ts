@@ -65,23 +65,6 @@ export class WorkQueue {
     this.stopped = true;
   }
 
-  private shouldRunNext() {
-    if (this.stopped) {
-      return false;
-    }
-
-    if (!this.queue.length) {
-      return false;
-    }
-
-    switch (this.mode) {
-      case FunctionsExecutionMode.AUTO:
-        return true;
-      case FunctionsExecutionMode.SEQUENTIAL:
-        return this.workRunningCount === 0;
-    }
-  }
-
   private async runNext() {
     const next = this.queue.shift();
     if (next) {
