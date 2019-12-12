@@ -25,14 +25,9 @@ export class WorkQueue {
    * Note: make sure start() has been called at some point.
    */
   submit(entry: Work) {
-    this.append(entry);
-
-    const shouldRunImmediately =
-      this.mode === FunctionsExecutionMode.AUTO ||
-      (this.mode === FunctionsExecutionMode.SEQUENTIAL && this.workRunningCount === 0);
-    if (!this.stopped && shouldRunImmediately) {
-      this.runNext();
-    }
+    this.queue.push(entry);
+    this.notifyQueue();
+    this.logState();
   }
 
   /**
@@ -49,11 +44,11 @@ export class WorkQueue {
         await new Promise((res) => {
           this.notifyQueue = res;
         });
+      }
 
-        const workPromise = this.runNext();
-        if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
-          await workPromise;
-        }
+      const workPromise = this.runNext();
+      if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
+        await workPromise;
       }
     }
   }
@@ -80,12 +75,6 @@ export class WorkQueue {
         this.logState();
       }
     }
-  }
-
-  private append(entry: Work) {
-    this.queue.push(entry);
-    this.notifyQueue();
-    this.logState();
   }
 
   private logState() {

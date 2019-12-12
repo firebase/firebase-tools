@@ -27,7 +27,7 @@ describe("WorkQueue", () => {
       }
     });
 
-    it("runs a job immediately", () => {
+    it("never runs a job immediately", async () => {
       let hasRun = false;
       const work = () => {
         hasRun = true;
@@ -35,10 +35,12 @@ describe("WorkQueue", () => {
       };
 
       queue.submit(work);
-      expect(hasRun, "hasRun");
+      expect(!hasRun, "hasRun=false");
+      await resolveIn(10);
+      expect(hasRun, "hasRun=true");
     });
 
-    it("runs two jobs immediately", () => {
+    it("runs two jobs", async () => {
       let hasRun1 = false;
       const work1 = () => {
         hasRun1 = true;
@@ -53,6 +55,10 @@ describe("WorkQueue", () => {
 
       queue.submit(work1);
       queue.submit(work2);
+
+      expect(!hasRun1, "hasRun1=false");
+      expect(!hasRun2, "hasRun2=false");
+      await resolveIn(10);
 
       expect(hasRun1 && hasRun2, "hasRun1 && hasRun2");
     });
