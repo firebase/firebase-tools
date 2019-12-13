@@ -13,16 +13,21 @@ export interface WebConfig {
   messagingSenderId?: string;
 }
 
-function configKey(projectId: string): string {
-  return "webconfig." + projectId;
+const CONFIGSTORE_KEY = "webconfig";
+
+function setCachedWebSetup(projectId: string, config: WebConfig) {
+  const allConfigs = configstore.get(CONFIGSTORE_KEY) || {};
+  allConfigs[projectId] = config;
+  configstore.set(CONFIGSTORE_KEY, allConfigs);
 }
 
 /**
- * Get the last known result of fetchWebSetup from the cache.
+ * Get the last known WebConfig from the cache.
  */
-export function getCachedWebSetup(options: any) {
+export function getCachedWebSetup(options: any): WebConfig | undefined {
   const projectId = getProjectId(options, false);
-  return configstore.get(configKey(projectId));
+  const allConfigs = configstore.get(CONFIGSTORE_KEY) || {};
+  return allConfigs[projectId];
 }
 
 /**
@@ -35,6 +40,6 @@ export async function fetchWebSetup(options: any): Promise<WebConfig> {
     origin: api.firebaseApiOrigin,
   });
   const config = response.body;
-  configstore.set(configKey(config.projectId), config);
+  setCachedWebSetup(config.projectId, config);
   return config;
 }
