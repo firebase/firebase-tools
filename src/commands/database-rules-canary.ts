@@ -4,7 +4,7 @@ import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:canary <ruleset_id>")
+export default new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")
   .option(
     "--instance <instance>",

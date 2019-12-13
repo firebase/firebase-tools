@@ -4,7 +4,7 @@ import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:get <id>")
+export default new Command("database:rules:get <rulesetId>")
   .description("get a realtime database ruleset by id")
   .option(
     "--instance <instance>",
@@ -12,8 +12,8 @@ export default new Command("database:rules:get <id>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .action(async (id: metadata.RulesetId, options: any) => {
-    const ruleset = await metadata.getRuleset(options.instance, id);
+  .action(async (rulesetId: metadata.RulesetId, options: any) => {
+    const ruleset = await metadata.getRuleset(options.instance, rulesetId);
     logger.info(`Ruleset ${ruleset.id} was created at ${ruleset.createdAt}`);
     logger.info(ruleset.source);
     return ruleset;

@@ -4,7 +4,7 @@ import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 
-export default new Command("database:rules:release <ruleset_id>")
+export default new Command("database:rules:release <rulesetId>")
   .description("mark a staged ruleset as the stable ruleset")
   .option(
     "--instance <instance>",
