@@ -37,7 +37,7 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
   try {
-    requireAuth(options);
+    await requireAuth(options);
   } catch (e) {
     logger.debug(e);
     utils.logLabeledWarning(
