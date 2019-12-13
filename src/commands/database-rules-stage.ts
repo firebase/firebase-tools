@@ -12,7 +12,7 @@ export default new Command("database:rules:stage")
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
-  .before(requirePermissions, ["firebasedatabase.instances.get"])
+  .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
   .action(async (options: any) => {
     const filepath = options.config.data.database.rules;
