@@ -1,5 +1,7 @@
 "use strict";
 
+var _ = require("lodash");
+var clc = require("cli-color");
 var fs = require("fs");
 var { fetchWebSetup, getCachedWebSetup } = require("../fetchWebSetup");
 var utils = require("../utils");
@@ -13,15 +15,21 @@ module.exports = async function(options) {
     config = await fetchWebSetup(options);
   } catch (e) {
     logger.debug("fetchWebSetup error: " + e);
+    const statusCode = _.get(e, "context.response.statusCode");
+    if (statusCode === 403) {
+      utils.logLabeledWarning(
+        "hosting",
+        `Authentication error when trying to fetch web configuration, have you run ${clc.bold(
+          "firebase login"
+        )}?`
+      );
+    }
   }
 
   if (!config) {
     config = getCachedWebSetup(options);
     if (config) {
-      utils.logLabeledWarning(
-        "hosting",
-        "You are offline, using web app configuration from cache."
-      );
+      utils.logLabeledWarning("hosting", "Using web app configuration from cache.");
     }
   }
 
@@ -29,7 +37,9 @@ module.exports = async function(options) {
     config = undefined;
     utils.logLabeledWarning(
       "hosting",
-      "You are offline and there is no cached configuration on this machine. You must call firebase.initializeApp({...}) in your code before using Firebase."
+      "Could not fetch web app configuration and there is no cached configuration on this machine. " +
+        "Check your internet connection and make sure you are authenticated. " +
+        "To continue, you must call firebase.initializeApp({...}) in your code before using Firebase."
     );
   }
 
