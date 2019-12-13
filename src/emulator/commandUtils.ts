@@ -30,6 +30,7 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
 
+  // TODO(samstern): Do we still want to do this?
   const requiresAuth = controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
   const canStartWithoutConfig =
