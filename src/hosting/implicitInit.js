@@ -19,7 +19,7 @@ module.exports = async function(options) {
     if (statusCode === 403) {
       utils.logLabeledWarning(
         "hosting",
-        `Authentication error when trying to fetch web configuration, have you run ${clc.bold(
+        `Authentication error when trying to fetch your current web app configuration, have you run ${clc.bold(
           "firebase login"
         )}?`
       );
