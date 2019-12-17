@@ -89,12 +89,16 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         `View your new instance in the Firebase console: ${utils.consoleUrl(
           projectId,
           `/extensions/instances/${instanceId}?tab=usage`
-        )} \n\n` +
-          "Learn how to manage your installed extension, including how to monitor, reconfigure, and update to new versions: " +
-          "https://firebase.google.com/docs/extensions/manage-installed-extensions?platform=cli \n\n" +
-          "View available Firebase Extensions commands by running `firebase ext`."
+        )}`
       )
     );
+    logger.info(
+      marked(
+        "Learn how to manage your installed extension, including how to monitor, reconfigure, and update to new versions: " +
+          "https://firebase.google.com/docs/extensions/manage-installed-extensions?platform=cli \n"
+      )
+    );
+    logger.info(marked("View available Firebase Extensions commands by running `firebase ext`."));
   } catch (err) {
     if (spinner.isSpinning) {
       spinner.fail();
