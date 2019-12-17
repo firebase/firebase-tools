@@ -1,6 +1,8 @@
+import * as clc from "cli-color";
 import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
+import * as logger from "../logger";
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
@@ -29,21 +31,27 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     config: DEFAULT_CONFIG,
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
-
-  const requiresAuth = controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
-
   const canStartWithoutConfig =
     options.only &&
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
+
+  try {
+    await requireAuth(options);
+  } catch (e) {
+    logger.debug(e);
+    utils.logLabeledWarning(
+      "emulators",
+      `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
+        "firebase login"
+      )} to authenticate the CLI.`
+    );
+  }
 
   if (canStartWithoutConfig && !options.config) {
     utils.logWarning("Could not find config (firebase.json) so using defaults.");
     options.config = DEFAULT_CONFIG;
   } else {
     await requireConfig(options);
-    if (requiresAuth) {
-      await requireAuth(options);
-    }
   }
 }
