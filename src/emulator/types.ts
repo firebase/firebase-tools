@@ -1,12 +1,16 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
+import * as path from "path";
 
 export enum Emulators {
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
+  PUBSUB = "pubsub",
 }
+
+export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [
@@ -14,7 +18,18 @@ export const ALL_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
+  Emulators.PUBSUB,
 ];
+
+export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
+
+export function isJavaEmulator(value: string): value is JavaEmulators {
+  return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;
+}
+
+export function isEmulator(value: string): value is Emulators {
+  return Object.values(Emulators).indexOf(value) >= 0;
+}
 
 export interface EmulatorInstance {
   /**
@@ -57,23 +72,50 @@ export interface JavaEmulatorCommand {
   binary: string;
   args: string[];
   optionalArgs: string[];
+  joinArgs: boolean;
 }
 
-export interface JavaEmulatorDetails {
-  name: string;
-  instance: ChildProcess | null;
-  stdout: any | null;
+export interface EmulatorDownloadOptions {
   cacheDir: string;
   remoteUrl: string;
   expectedSize: number;
   expectedChecksum: string;
-  localPath: string;
   namePrefix: string;
+}
+
+export interface EmulatorDownloadDetails {
+  opts: EmulatorDownloadOptions;
+
+  // The path to download the binary or archive from the remote source
+  downloadPath: string;
+
+  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+  // will be unzipped into 'unzipDir'
+  unzipDir?: string;
+
+  // If specified, a path where the runnable binary can be found after downloading and
+  // unzipping. Otherwise downloadPath will be used.
+  binaryPath?: string;
+}
+
+export interface JavaEmulatorDetails {
+  name: Emulators;
+  instance: ChildProcess | null;
+  stdout: any | null;
 }
 
 export interface Address {
   host: string;
   port: number;
+}
+
+export enum FunctionsExecutionMode {
+  // Function workers will be spawned as needed with no particular
+  // guarantees.
+  AUTO = "auto",
+
+  // All function executions will be run sequentially in a single worker.
+  SEQUENTIAL = "sequential",
 }
 
 export class EmulatorLog {
@@ -137,6 +179,7 @@ export class EmulatorLog {
     ) {
       parsedLog = {
         level: "USER",
+        type: "function-log",
         text: json,
       };
     }
@@ -160,7 +203,7 @@ export class EmulatorLog {
     public data?: any,
     public timestamp?: string
   ) {
-    this.timestamp = this.timestamp || new Date().toString();
+    this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
   }
 

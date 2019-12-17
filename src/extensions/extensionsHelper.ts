@@ -182,7 +182,7 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
 }
 
 /**
- * Displays list of all official extensions and prompt user to select one.
+ * Display list of all official extensions and prompt user to select one.
  * @param message The prompt message to display
  * @returns Promise that resolves to the extension name (e.g. storage-resize-images)
  */

@@ -6,6 +6,7 @@ module.exports = {
   functions: require("./functions"),
   hosting: require("./hosting"),
   storage: require("./storage").doSetup,
+  emulators: require("./emulators").doSetup,
   // always runs, sets up .firebaserc
   project: require("./project").doSetup,
 };

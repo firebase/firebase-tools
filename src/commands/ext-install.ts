@@ -13,7 +13,7 @@ import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveSource } from "../extensions/resolveSource";
+import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   ensureExtensionsApiEnabled,
@@ -103,7 +103,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       )
     );
   } catch (err) {
-    spinner.fail();
+    if (spinner.isSpinning) {
+      spinner.fail();
+    }
     if (err instanceof FirebaseError) {
       throw err;
     }
@@ -114,11 +116,11 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 }
 
 /**
- * Command for installing a extension
+ * Command for installing an extension
  */
 export default new Command("ext:install [extensionName]")
   .description(
-    "install an extension, provide [extensionName] or [extensionName@versionNumber]; or omit and run with `-i` to see all available extensions."
+    "install an extension if [extensionName] or [extensionName@version] is provided; or run with `-i` to see all available extensions."
   )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
@@ -138,31 +140,39 @@ export default new Command("ext:install [extensionName]")
         throw new FirebaseError(
           `Please provide an extension name, or run ${clc.bold(
             "firebase ext:install -i"
-          )} to see all available extensions`
+          )} to see all available official extensions`
         );
       }
     }
 
+    const [name, version] = extensionName.split("@");
+    let registryEntry;
     try {
-      const sourceUrl = await resolveSource(
-        extensionName,
+      registryEntry = await resolveRegistryEntry(name);
+    } catch (err) {
+      throw new FirebaseError(
         `Unable to find extension source named ${clc.bold(extensionName)}. ` +
           `Run ${clc.bold(
             "firebase ext:install -i"
-          )} to select from the list of all available extensions.`
+          )} to select from the list of all available official extensions.`,
+        { original: err }
       );
+    }
+
+    try {
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       const source = await extensionsApi.getSource(sourceUrl);
       if (learnMore) {
         utils.logLabeledBullet(
           logPrefix,
           `You selected: ${clc.bold(source.spec.displayName)}.\n` +
             `${source.spec.description}\n` +
-            `View details: https://firebase.google.com/products/extensions/${extensionName}\n`
+            `View details: https://firebase.google.com/products/extensions/${name}\n`
         );
         const confirm = await promptOnce({
           type: "confirm",
           default: true,
-          message: "Would you like to install this extension?",
+          message: "Do you want to install this extension?",
         });
         if (!confirm) {
           return;
