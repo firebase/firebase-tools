@@ -14,14 +14,10 @@ import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as commandUtils from "../emulator/commandUtils";
 import * as getProjectId from "../getProjectId";
 
-async function runScript(script: string, projectId: string | undefined): Promise<number> {
+async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = { ...process.env };
-
-  if (projectId) {
-    env.GCLOUD_PROJECT = projectId;
-  }
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
 
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
@@ -90,10 +86,14 @@ module.exports = new Command("emulators:exec <script>")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .action(async (script: string, options: any) => {
     const projectId = getProjectId(options, true);
+    const extraEnv: Record<string, string> = {};
+    if (projectId) {
+      extraEnv.GCLOUD_PROJECT = projectId;
+    }
     let exitCode = 0;
     try {
       await controller.startAll(options);
-      exitCode = await runScript(script, projectId);
+      exitCode = await runScript(script, extraEnv);
     } catch (e) {
       logger.debug("Error in emulators:exec", e);
       throw e;
