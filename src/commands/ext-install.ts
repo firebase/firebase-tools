@@ -94,11 +94,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     );
     logger.info(
       marked(
-        "Learn how to manage your installed extension, including how to monitor, reconfigure, and update to new versions: " +
-          "https://firebase.google.com/docs/extensions/manage-installed-extensions?platform=cli \n"
+        "You can run `firebase ext` to view available Firebase Extensions commands, " +
+          "including those to update, reconfigure, or delete your installed extension."
       )
     );
-    logger.info(marked("View available Firebase Extensions commands by running `firebase ext`."));
   } catch (err) {
     if (spinner.isSpinning) {
       spinner.fail();
