@@ -12,11 +12,16 @@ import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as commandUtils from "../emulator/commandUtils";
+import * as getProjectId from "../getProjectId";
 
-async function runScript(script: string): Promise<number> {
+async function runScript(script: string, projectId: string | undefined): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   const env: NodeJS.ProcessEnv = { ...process.env };
+
+  if (projectId) {
+    env.GCLOUD_PROJECT = projectId;
+  }
 
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
@@ -84,10 +89,11 @@ module.exports = new Command("emulators:exec <script>")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .action(async (script: string, options: any) => {
+    const projectId = getProjectId(options, true);
     let exitCode = 0;
     try {
       await controller.startAll(options);
-      exitCode = await runScript(script);
+      exitCode = await runScript(script, projectId);
     } catch (e) {
       logger.debug("Error in emulators:exec", e);
       throw e;
