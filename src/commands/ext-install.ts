@@ -85,21 +85,19 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       `successfully installed ${clc.bold(spec.displayName || spec.name)}, ` +
         `its Instance ID is ${clc.bold(instanceId)}.`
     );
-    const usageInstruction =
-      _.get(response, "config.populatedPostinstallContent") ||
-      populatePostinstall(source.spec.postinstallContent || "", params);
-    if (usageInstruction) {
-      utils.logLabeledBullet(logPrefix, `usage instructions:\n${marked(usageInstruction)}`);
-    } else {
-      logger.debug("No usage instructions provided.");
-    }
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `You can view your new instance in the Firebase console: ${utils.consoleUrl(
+        `View your new instance in the Firebase console: ${utils.consoleUrl(
           projectId,
           `/extensions/instances/${instanceId}?tab=usage`
         )}`
+      )
+    );
+    logger.info(
+      marked(
+        "You can run `firebase ext` to view available Firebase Extensions commands, " +
+          "including those to update, reconfigure, or delete your installed extension."
       )
     );
   } catch (err) {
