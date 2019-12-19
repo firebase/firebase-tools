@@ -8,7 +8,6 @@ import { confirmUpdateWarning } from "./updateHelper";
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 
 export interface RegistryEntry {
-  name: string;
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
@@ -23,15 +22,20 @@ export interface UpdateWarning {
 
 /**
  * Gets the sourceUrl for a given extension name and version from the official extensions registry
+ * @param version the version of the extension
  * @param name the name of the extension.
  * @returns the source corresponding to extensionName in the registry.
  */
-export function resolveSourceUrl(registryEntry: RegistryEntry, version: string): string {
+export function resolveSourceUrl(
+  registryEntry: RegistryEntry,
+  name: string,
+  version: string
+): string {
   const targetVersion = getTargetVersion(registryEntry, version);
   const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);
   if (!sourceUrl) {
     throw new FirebaseError(
-      `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(registryEntry.name)}.`
+      `Could not find version ${clc.bold(version)} of extension ${clc.bold(name)}.`
     );
   }
   return sourceUrl;
@@ -96,7 +100,7 @@ export async function promptForUpdateWarnings(
 /**
  * Fetches the official extensions registry.
  */
-async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
+export async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
   const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
     origin: api.firebaseExtensionsRegistryOrigin,
   });

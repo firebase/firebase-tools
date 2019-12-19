@@ -20,10 +20,12 @@ import {
   getValidInstanceId,
   logPrefix,
   promptForValidInstanceId,
+  promptForOfficialExtension,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import { promptOnce } from "../prompt";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -112,21 +114,68 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 }
 
 /**
- * Command for installing a extension
+ * Command for installing an extension
  */
-export default new Command("ext:install <extensionName>")
-  .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
+export default new Command("ext:install [extensionName]")
+  .description(
+    "install an extension if [extensionName] or [extensionName@version] is provided; or run with `-i` to see all available extensions."
+  )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionName: string, options: any) => {
+    const projectId = getProjectId(options, false);
+    const paramFilePath = options.params;
+    let learnMore = false;
+    if (!extensionName) {
+      if (options.interactive) {
+        learnMore = true;
+        extensionName = await promptForOfficialExtension(
+          "Which official extension do you want to install?\n" +
+            "  Select an extension, then press Enter to learn more."
+        );
+      } else {
+        throw new FirebaseError(
+          `Please provide an extension name, or run ${clc.bold(
+            "firebase ext:install -i"
+          )} to select from the list of all available official extensions.`
+        );
+      }
+    }
+
+    const [name, version] = extensionName.split("@");
+    let registryEntry;
     try {
-      const projectId = getProjectId(options, false);
-      const paramFilePath = options.params;
-      const [name, version] = extensionName.split("@");
-      const registryEntry = await resolveRegistryEntry(name);
-      const sourceUrl = await resolveSourceUrl(registryEntry, version);
+      registryEntry = await resolveRegistryEntry(name);
+    } catch (err) {
+      throw new FirebaseError(
+        `Unable to find extension source named ${clc.bold(extensionName)}. ` +
+          `Run ${clc.bold(
+            "firebase ext:install -i"
+          )} to select from the list of all available official extensions.`,
+        { original: err }
+      );
+    }
+
+    try {
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       const source = await extensionsApi.getSource(sourceUrl);
+      if (learnMore) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `You selected: ${clc.bold(source.spec.displayName)}.\n` +
+            `${source.spec.description}\n` +
+            `View details: https://firebase.google.com/products/extensions/${name}\n`
+        );
+        const confirm = await promptOnce({
+          type: "confirm",
+          default: true,
+          message: "Do you want to install this extension?",
+        });
+        if (!confirm) {
+          return;
+        }
+      }
       return installExtension({
         paramFilePath,
         projectId,
