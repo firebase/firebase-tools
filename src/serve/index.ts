@@ -22,14 +22,12 @@ export async function serve(options: any): Promise<void> {
   options.port = parseInt(options.port, 10);
   await Promise.all(
     _.map(targetNames, (targetName: string) => {
-      const target = TARGETS[targetName];
-      return target.start(options);
+      return TARGETS[targetName].start(options);
     })
   );
   await Promise.all(
     _.map(targetNames, (targetName: string) => {
-      const target = TARGETS[targetName];
-      return target.connect();
+      return TARGETS[targetName].connect();
     })
   );
   await new Promise((resolve) => {
@@ -37,8 +35,7 @@ export async function serve(options: any): Promise<void> {
       logger.info("Shutting down...");
       return Promise.all(
         _.map(targetNames, (targetName: string) => {
-          const target = TARGETS[targetName];
-          return target.stop(options);
+          return TARGETS[targetName].stop(options);
         })
       )
         .then(resolve)
