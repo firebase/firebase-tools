@@ -9,7 +9,7 @@ var utils = require("../utils");
 var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
 var checkDupHostingKeys = require("../checkDupHostingKeys");
-var serve = require("../serve/index");
+var { serve } = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
 

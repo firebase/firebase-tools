@@ -13,7 +13,7 @@ const TARGETS: {
   firestore: require("./firestore"),
 };
 
-const _serve = async function(options: any) {
+export async function serve(options: any) {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
   await Promise.all(
@@ -41,6 +41,4 @@ const _serve = async function(options: any) {
         .catch(resolve);
     });
   });
-};
-
-export = _serve;
+}
