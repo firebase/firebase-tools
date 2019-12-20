@@ -1,8 +1,6 @@
 import { EmulatorServer } from "../emulator/emulatorServer";
-
-const _ = require("lodash");
-
-const logger = require("../logger");
+import * as _ from "lodash";
+import * as logger from "../logger";
 
 const TARGETS: {
   [key: string]:
