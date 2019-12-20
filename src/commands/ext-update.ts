@@ -64,7 +64,11 @@ export default new Command("ext:update <extensionInstanceId>")
         currentSpec.version,
         targetVersion
       );
-      const sourceUrl = resolveSource.resolveSourceUrl(registryEntry, targetVersion);
+      const sourceUrl = resolveSource.resolveSourceUrl(
+        registryEntry,
+        currentSpec.name,
+        targetVersion
+      );
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
       if (currentSpec.version === newSpec.version) {

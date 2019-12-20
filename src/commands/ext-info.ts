@@ -24,7 +24,7 @@ export default new Command("ext:info <extensionName>")
   .action(async (extensionName: string, options: any) => {
     const [name, version] = extensionName.split("@");
     const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = await resolveSourceUrl(registryEntry, version);
+    const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
     const source = await extensionsApi.getSource(sourceUrl);
     const spec = source.spec;
     if (!options.markdown) {
