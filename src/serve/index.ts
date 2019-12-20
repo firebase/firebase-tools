@@ -13,6 +13,10 @@ const TARGETS: {
   firestore: require("./firestore"),
 };
 
+/**
+ * Serve runs the emulators for a set of targets provided in options.
+ * @param options Firebase CLI options.
+ */
 export async function serve(options: any): Promise<void> {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
