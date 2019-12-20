@@ -17,22 +17,22 @@ export async function serve(options: any) {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
   await Promise.all(
-    _.map(targetNames, function(targetName: string) {
+    _.map(targetNames, (targetName: string) => {
       const target = TARGETS[targetName];
       return target.start(options);
     })
   );
   await Promise.all(
-    _.map(targetNames, function(targetName: string) {
+    _.map(targetNames, (targetName: string) => {
       const target = TARGETS[targetName];
       return target.connect();
     })
   );
-  await new Promise(function(resolve) {
-    process.on("SIGINT", function() {
+  await new Promise((resolve) => {
+    process.on("SIGINT", () => {
       logger.info("Shutting down...");
       return Promise.all(
-        _.map(targetNames, function(targetName: string) {
+        _.map(targetNames, (targetName: string) => {
           const target = TARGETS[targetName];
           return target.stop(options);
         })
