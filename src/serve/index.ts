@@ -13,7 +13,7 @@ const TARGETS: {
   firestore: require("./firestore"),
 };
 
-export async function serve(options: any) {
+export async function serve(options: any): Promise<void> {
   const targetNames = options.targets;
   options.port = parseInt(options.port, 10);
   await Promise.all(
