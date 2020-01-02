@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 
 import { Command } from "../command";
-import { resolveSource } from "../extensions/resolveSource";
+import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
 import * as logger from "../logger";
@@ -22,7 +22,9 @@ export default new Command("ext:info <extensionName>")
   .before(requirePermissions, ["firebasemods.sources.get"])
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionName: string, options: any) => {
-    const sourceUrl = await resolveSource(extensionName);
+    const [name, version] = extensionName.split("@");
+    const registryEntry = await resolveRegistryEntry(name);
+    const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
     const source = await extensionsApi.getSource(sourceUrl);
     const spec = source.spec;
     if (!options.markdown) {
