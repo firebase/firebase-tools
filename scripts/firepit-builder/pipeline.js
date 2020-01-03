@@ -49,7 +49,7 @@ if (isLocalFirepit) {
   cp("-R", path.join(__dirname, "../vendor"), "firepit/vendor");
 } else {
   echo("Attempting to use firebase-tools/standalone...");
-  mv("node_modules/firebase-tools/standalone", "firepit");
+  cp("-r", "node_modules/firebase-tools/standalone", "firepit");
   echo("Success!");
 }
 
