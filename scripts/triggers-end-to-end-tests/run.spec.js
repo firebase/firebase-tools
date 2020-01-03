@@ -31,8 +31,8 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to conn
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 20000;
-const EMULATORS_STARTUP_DELAY_TIMEOUT = 20000;
+const TEST_SETUP_TIMEOUT = 60000;
+const EMULATORS_STARTUP_DELAY_TIMEOUT = 60000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
