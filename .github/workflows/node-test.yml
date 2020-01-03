@@ -28,7 +28,7 @@ jobs:
 
   integration:
     needs: unit
-    if: contains($GITHUB_HEAD_REF, 'firebase/firebase-tools')
+    if: contains('$GITHUB_HEAD_REF', 'firebase/firebase-tools')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
