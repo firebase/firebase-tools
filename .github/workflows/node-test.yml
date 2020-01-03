@@ -13,6 +13,14 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+    - uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
     - run: npm ci
     - run: npm test
       env:
@@ -20,6 +28,8 @@ jobs:
 
   # TODO;
   #  * Cache the npm install step (per node version)
+  #  * Cache the emulators
+  #  * Make actions a required check
   integration:
     needs: unit
     if: github.event_name == 'push'
@@ -27,6 +37,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        node-version: [8.x]
         script: [
           ./scripts/test-hosting.sh, 
           ./scripts/test-triggers-end-to-end.sh
@@ -36,6 +47,22 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: 8.x
+    - uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/firebase/emulators
+        key: ${{ runner-os }}-firebase-emulators
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-public.json
@@ -43,5 +70,9 @@ jobs:
       env:
         FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
         CI: true
+    
+    - name: Print failure logs
+      if: failure()
+      run: cat *debug.log
   
 
