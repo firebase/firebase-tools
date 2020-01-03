@@ -28,7 +28,7 @@ jobs:
 
   integration:
     needs: unit
-    if: secrets.creds_private_json_base64 !== null
+    if: ${{ secrets.creds_private_json_base64 }} !== null
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
