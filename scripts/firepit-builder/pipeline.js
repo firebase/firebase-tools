@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 const shelljs = require("shelljs");
 const path = require("path");
+const fs = require("fs");
 const argv = require("yargs").argv;
 const { mkdir, cat, cd, rm, find, echo, exec, mv, ls, pwd, tempdir, cp } = shelljs;
 
 const isPublishing = argv.publish;
-const isLocalFirepit = argv.local;
 
 const styles = (argv.styles || "headless,headful")
   .split(",")
@@ -33,25 +33,25 @@ cd("firepit_pipeline");
 const workdir = pwd();
 
 npm("init", "-y");
-npm("install", firebaseToolsPackage);
+
+if (fs.existsSync(firebaseToolsPackage)) {
+  cd(firebaseToolsPackage);
+  npm("pack");
+  cd(workdir);
+  const packedModule = path.join(firebaseToolsPackage, "*.tgz");
+  npm("install", packedModule);
+  rm(packedModule);
+} else {
+  npm("install", firebaseToolsPackage);
+}
 
 const packageJson = JSON.parse(cat("node_modules/firebase-tools/package.json"));
 const releaseTag = `v${packageJson.version}`;
 echo(`Installed firebase-tools@${packageJson.version}, using tag ${releaseTag}`);
 
-if (isLocalFirepit) {
-  echo("Using local firepit for testing...");
-  mkdir("firepit");
-  rm("-rf", path.join(__dirname, "../vendor/node_modules"));
-  rm("-rf", path.join(__dirname, "../node_modules"));
-
-  cp(path.join(__dirname, "../*.j*"), "firepit/");
-  cp("-R", path.join(__dirname, "../vendor"), "firepit/vendor");
-} else {
-  echo("Attempting to use firebase-tools/standalone...");
-  cp("-r", "node_modules/firebase-tools/standalone", "firepit");
-  echo("Success!");
-}
+echo("Attempting to use firebase-tools/standalone...");
+cp("-r", "node_modules/firebase-tools/standalone", "firepit");
+echo("Success!");
 
 echo("Setting up firepit dev deps...");
 cd("firepit");
