@@ -1,4 +1,4 @@
-name: Node.js Test
+name: Node.js Unit Tests
 
 on: [push]
 
