@@ -27,7 +27,7 @@ jobs:
 
   integration:
     needs: unit
-    if: contains(${{ env.GITHUB_HEAD_REF }}, 'firebase/firebase-tools')
+    if: github.repository == 'firebase/firebase-tools'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
