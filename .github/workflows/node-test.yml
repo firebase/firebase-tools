@@ -13,14 +13,13 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: npm install
+    - run: npm ci
     - run: npm test
       env:
         CI: true
 
   # TODO;
   #  * Only run on 'push' not pull requests
-  #  * Decrypt app credentials
   #  * Share dependency cache
   integration:
     needs: unit
@@ -32,11 +31,13 @@ jobs:
           ./scripts/test-triggers-end-to-end.sh
         ]
     steps:
+    - env:
+        FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v1
       with:
         node-version: 8.x
-    - run: npm install
+    - run: npm ci
     - run: echo "${{ secrets.creds_private_json }}" > ./scripts/creds-private.json
     - run: export GOOGLE_APPLICATION_CREDENTIALS=./scripts/creds-private.json
     - run: ${{ matrix.script }}
