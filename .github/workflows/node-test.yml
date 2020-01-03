@@ -1,6 +1,6 @@
 name: Node.js Tests
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   unit:
@@ -28,7 +28,7 @@ jobs:
 
   integration:
     needs: unit
-    if: github.event_name == 'push'
+    if: secrets.creds_private_json_base64 !== null
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -49,14 +49,12 @@ jobs:
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-${{ matrix.node-version }}-
     
     - name: 'Cache Emulators'
       uses: actions/cache@v1
       with:
         path: ~/.cache/firebase/emulators
-        key: ${{ runner.os }}-firebase-emulators
+        key: ${{ runner.os }}-firebase-emulators-${{ hashFiles(.cache/firebase/emulators/*) }}
   
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
@@ -66,6 +64,7 @@ jobs:
         COMMIT_SHA: ${{ github.sha }}
         CI_JOB_ID: ${{ job.container.id }}
         FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
+        FIREBASE_EMULATORS_PATH: $GITHUB_WORKSPACE/.cache/firebase/emulators
     
     - name: Print debug logs
       if: failure()
