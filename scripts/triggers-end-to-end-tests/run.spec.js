@@ -131,7 +131,6 @@ TriggerEndToEndTest.prototype.invokeHttpFunction = function invokeHttpFunction(n
     "http://localhost:" +
     [this.functions_emulator_port, FIREBASE_PROJECT, FIREBASE_PROJECT_ZONE, name].join("/");
 
-  console.log("GET", url);
   const req = request.get(url);
 
   req.once("response", function(response) {

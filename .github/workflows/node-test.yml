@@ -27,8 +27,6 @@ jobs:
         CI: true
 
   # TODO;
-  #  * Cache the npm install step (per node version)
-  #  * Cache the emulators
   #  * Make actions a required check
   #  * Remove travis-specific testing logic
   integration:
@@ -65,14 +63,13 @@ jobs:
   
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
-    - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-public.json
     - run: ${{ matrix.script }}
       env:
         FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
         CI: true
     
-    - name: Print failure logs
+    - name: Print debug logs
       if: failure()
-      run: cat *debug.log
+      run: find . -type f -name "*debug.log" | xargs cati
   
 
