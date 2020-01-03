@@ -26,9 +26,6 @@ jobs:
       env:
         CI: true
 
-  # TODO;
-  #  * Make actions a required check
-  #  * Remove travis-specific testing logic
   integration:
     needs: unit
     if: github.event_name == 'push'
@@ -65,8 +62,10 @@ jobs:
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
     - run: ${{ matrix.script }}
       env:
-        FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
         CI: true
+        COMMIT_SHA: ${{ github.sha }}
+        CI_JOB_ID: ${{ job.container.id }}
+        FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
     
     - name: Print debug logs
       if: failure()

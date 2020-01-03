@@ -3,10 +3,9 @@ set -e
 
 CWD="$(pwd)"
 
-if [ "${TRAVIS}" != "true" ]; then
-  export TRAVIS_COMMIT="localtesting"
-  export TRAVIS_JOB_ID="$(echo $RANDOM)"
-  export TRAVIS_REPO_SLUG="firebase/firebase-tools"
+if [ "${CI}" != "true" ]; then
+  export COMMIT_SHA="localtesting"
+  export CI_JOB_ID="$(echo $RANDOM)"
 fi
 
 if [[ -z $LOCAL ]]; then
