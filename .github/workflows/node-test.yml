@@ -1,6 +1,6 @@
 name: Node.js Tests
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   unit:
@@ -19,12 +19,13 @@ jobs:
         CI: true
 
   # TODO;
-  #  * Only run on 'push' not pull requests
-  #  * Share dependency cache
+  #  * Cache the npm install step (per node version)
   integration:
     needs: unit
+    if: github.event_name == "push"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         script: [
           ./scripts/test-hosting.sh, 

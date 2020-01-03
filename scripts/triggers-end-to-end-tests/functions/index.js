@@ -52,7 +52,7 @@ exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
   const ref = admin.database().ref(START_DOCUMENT_NAME);
   await ref.set({ start: new Date().toISOString() });
   ref.once("value", (snap) => {
-    res.json({ data: snap });
+    res.json({ data: snap.val() });
   });
 });
 
