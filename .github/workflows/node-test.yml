@@ -10,7 +10,6 @@ jobs:
         node-version: [8.x, 10.x]
     steps:
     - uses: actions/checkout@v1
-    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
@@ -20,7 +19,7 @@ jobs:
         CI: true
 
   # TODO;
-  #  * Only run on 'push'
+  #  * Only run on 'push' not pull requests
   #  * Decrypt app credentials
   #  * Share dependency cache
   integration:
@@ -34,12 +33,12 @@ jobs:
         ]
     steps:
     - uses: actions/checkout@v1
-    - name: Run ${{ matrix.script }}
       uses: actions/setup-node@v1
       with:
         node-version: 8.x
     - run: npm install
-    - run: echo "TODO"
+    - run: echo "${{ secrets.creds_private_json }}" > ./scripts/creds-private.json
+    - run: export GOOGLE_APPLICATION_CREDENTIALS=./scripts/creds-private.json
     - run: ${{ matrix.script }}
       env:
         CI: true
