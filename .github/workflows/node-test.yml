@@ -27,7 +27,7 @@ jobs:
 
   integration:
     needs: unit
-    if: contains(${{ $GITHUB_HEAD_REF }}, 'firebase/firebase-tools')
+    if: contains(env.GITHUB_HEAD_REF, 'firebase/firebase-tools')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -63,7 +63,7 @@ jobs:
         COMMIT_SHA: ${{ github.sha }}
         CI_JOB_ID: ${{ job.container.id }}
         FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
-        FIREBASE_EMULATORS_PATH: ${{ $GITHUB_WORKSPACE }}/.cache/firebase/emulators
+        FIREBASE_EMULATORS_PATH: ${{ env.GITHUB_WORKSPACE }}/.cache/firebase/emulators
     
     - name: Print debug logs
       if: failure()
