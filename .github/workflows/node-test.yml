@@ -50,7 +50,7 @@ jobs:
         node-version: 8.x
     
     - name: 'Cache Node'
-     uses: actions/cache@v1
+      uses: actions/cache@v1
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
