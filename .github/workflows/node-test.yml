@@ -40,7 +40,6 @@ jobs:
     - run: echo "${{ secrets.creds_private_json }}" > ./scripts/creds-public.json
     - run: ${{ matrix.script }}
       env:
-        GOOGLE_APPLICATION_CREDENTIALS: ./scripts/creds-private.json
         FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
         CI: true
   
