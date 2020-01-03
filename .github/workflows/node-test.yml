@@ -4,7 +4,7 @@ on: [pull_request]
 
 env:
   CI: true
-  FIREBASE_EMULATORS_PATH: ${{ env.GITHUB_WORKSPACE }}/.cache/firebase/emulators
+  FIREBASE_EMULATORS_PATH: $GITHUB_WORKSPACE/emulator-cache
 
 jobs:
   unit:
@@ -55,7 +55,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ${{ env.FIREBASE_EMULATORS_PATH }}
-        key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('**/emulators/*') }}
+        key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/*') }}
       continue-on-error: true
   
     - run: npm ci
