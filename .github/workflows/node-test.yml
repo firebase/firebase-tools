@@ -13,14 +13,14 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - uses: actions/cache@v1
+
+    - name: 'Cache Node'
+      uses: actions/cache@v1
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+          ${{ runner.os }}-node-${{ matrix.node-version }}-
     - run: npm ci
     - run: npm test
       env:
@@ -30,6 +30,7 @@ jobs:
   #  * Cache the npm install step (per node version)
   #  * Cache the emulators
   #  * Make actions a required check
+  #  * Remove travis-specific testing logic
   integration:
     needs: unit
     if: github.event_name == 'push'
@@ -47,22 +48,21 @@ jobs:
     - uses: actions/setup-node@v1
       with:
         node-version: 8.x
-    - uses: actions/cache@v1
+    
+    - name: 'Cache Node'
+     uses: actions/cache@v1
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
-    - uses: actions/cache@v1
+          ${{ runner.os }}-node-${{ matrix.node-version }}-
+    
+    - name: 'Cache Emulators'
+      uses: actions/cache@v1
       with:
         path: ~/.cache/firebase/emulators
         key: ${{ runner.os }}-firebase-emulators
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-
-          ${{ runner.os }}-build-
-          ${{ runner.os }}-
+  
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-public.json
