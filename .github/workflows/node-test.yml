@@ -41,7 +41,7 @@ jobs:
         ]
     steps:
     - name: Check environment
-    - run: env
+      run: env
     
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v1
