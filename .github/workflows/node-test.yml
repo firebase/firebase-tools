@@ -40,6 +40,9 @@ jobs:
           ./scripts/test-triggers-end-to-end.sh
         ]
     steps:
+    - name: Check environment
+    - run: env
+    
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v1
       with:
@@ -57,7 +60,7 @@ jobs:
         path: ${{ env.FIREBASE_EMULATORS_PATH }}
         key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/*') }}
       continue-on-error: true
-  
+
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
     - run: ${{ matrix.script }}
