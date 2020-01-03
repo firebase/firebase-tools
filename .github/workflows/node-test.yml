@@ -1,0 +1,47 @@
+name: Node.js Tests
+
+on: [push]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [8.x, 10.x]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - run: npm install
+    - run: npm test
+      env:
+        CI: true
+
+  # TODO;
+  #  * Only run on 'push'
+  #  * Decrypt app credentials
+  #  * Share dependency cache
+  integration:
+    needs: unit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        script: [
+          ./scripts/test-hosting.sh, 
+          ./scripts/test-triggers-end-to-end.sh
+        ]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run ${{ matrix.script }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: 8.x
+    - run: npm install
+    - run: echo "TODO"
+    - run: ${{ matrix.script }}
+      env:
+        CI: true
+  
+
