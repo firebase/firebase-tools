@@ -25,13 +25,14 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
+const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to connect.";
 
 /*
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 20000;
-const EMULATORS_STARTUP_DELAY_MS = 10000;
+const EMULATORS_STARTUP_DELAY_TIMEOUT = 20000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
@@ -55,6 +56,8 @@ function TriggerEndToEndTest(config) {
 
   this.pubsub_emulator_host = "localhost";
   this.pubsub_emulator_port = config.emulators.pubsub.port;
+
+  this.all_emulators_started = false;
 
   this.rtdb_trigger_count = 0;
   this.firestore_trigger_count = 0;
@@ -108,6 +111,9 @@ TriggerEndToEndTest.prototype.startEmulators = function startEmulators(additiona
     if (data.indexOf(PUBSUB_FUNCTION_LOG) > -1) {
       self.pubsub_trigger_count++;
     }
+    if (data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1) {
+      self.all_emulators_started = true;
+    }
   });
 
   self.emulators_process.stderr.on("data", function(data) {
@@ -154,6 +160,23 @@ TriggerEndToEndTest.prototype.writeToPubsub = function writeToPubsub(done) {
   return this.invokeHttpFunction("writeToPubsub", done);
 };
 
+TriggerEndToEndTest.prototype.waitForCondition = function(conditionFn, timeout, callback) {
+  let elapsed = 0;
+  let interval = 10;
+  const id = setInterval(() => {
+    if (conditionFn()) {
+      clearInterval(id);
+      callback();
+    }
+
+    elapsed += interval;
+    if (elapsed > timeout) {
+      clearInterval(id);
+      throw new Error(`Timed out waiting for condition: ${JSON.stringify(conditionFn)}`);
+    }
+  }, interval);
+};
+
 function readConfig(done) {
   fs.readFile("firebase.json", function(err, data) {
     if (err) {
@@ -194,10 +217,11 @@ describe("database and firestore emulator function triggers", function() {
         },
         function(done) {
           test.startEmulators(["--only", "functions,database,firestore"]);
-          /*
-           * Give some time for the emulator subprocesses to start up.
-           */
-          setTimeout(done, EMULATORS_STARTUP_DELAY_MS);
+          test.waitForCondition(
+            () => test.all_emulators_started,
+            EMULATORS_STARTUP_DELAY_TIMEOUT,
+            done
+          );
         },
         function(done) {
           test.firestore_client = new Firestore({
@@ -363,10 +387,11 @@ describe("pubsub emulator function triggers", function() {
         },
         function(done) {
           test.startEmulators(["--only", "functions,pubsub"]);
-          /*
-           * Give some time for the emulator subprocesses to start up.
-           */
-          setTimeout(done, EMULATORS_STARTUP_DELAY_MS);
+          test.waitForCondition(
+            () => test.all_emulators_started,
+            EMULATORS_STARTUP_DELAY_TIMEOUT,
+            done
+          );
         },
       ],
       done
