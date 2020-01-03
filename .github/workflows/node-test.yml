@@ -54,6 +54,7 @@ jobs:
       with:
         path: ~/.cache/firebase/emulators
         key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('.cache/firebase/emulators/*') }}
+      continue-on-error: true
   
     - run: npm ci
     - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
