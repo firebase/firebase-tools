@@ -164,15 +164,16 @@ TriggerEndToEndTest.prototype.waitForCondition = function(conditionFn, timeout, 
   let elapsed = 0;
   let interval = 10;
   const id = setInterval(() => {
-    if (conditionFn()) {
-      clearInterval(id);
-      callback();
-    }
-
     elapsed += interval;
     if (elapsed > timeout) {
       clearInterval(id);
-      throw new Error(`Timed out waiting for condition: ${JSON.stringify(conditionFn)}`);
+      callback(new Error(`Timed out waiting for condition: ${conditionFn.toString()}}`));
+      return;
+    }
+
+    if (conditionFn()) {
+      clearInterval(id);
+      callback();
     }
   }, interval);
 };
@@ -220,7 +221,10 @@ describe("database and firestore emulator function triggers", function() {
           test.waitForCondition(
             () => test.all_emulators_started,
             EMULATORS_STARTUP_DELAY_TIMEOUT,
-            done
+            (err) => {
+              expect(err).to.be.undefined;
+              done();
+            }
           );
         },
         function(done) {
@@ -390,7 +394,10 @@ describe("pubsub emulator function triggers", function() {
           test.waitForCondition(
             () => test.all_emulators_started,
             EMULATORS_STARTUP_DELAY_TIMEOUT,
-            done
+            (err) => {
+              expect(err).to.be.undefined;
+              done();
+            }
           );
         },
       ],
