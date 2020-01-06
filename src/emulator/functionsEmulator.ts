@@ -593,7 +593,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     if (this.args.debugPort) {
-      args.unshift(`--inspect=${this.args.debugPort}`);
+      const { host } = this.getInfo();
+      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
