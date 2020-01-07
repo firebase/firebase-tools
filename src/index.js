@@ -65,7 +65,9 @@ var RENAMED_COMMANDS = {
   "prefs:token": "login:ci",
 };
 
-program.action(function(cmd, cmd2) {
+// Default handler, this is called when no other command action matches.
+program.action(function(_, args) {
+  var cmd = args[0];
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -80,7 +82,7 @@ program.action(function(cmd, cmd2) {
     if (!suggestCommands(cmd, commandNames)) {
       // Check to see if combining the two arguments comes close to a command.
       // e.g. `firebase hosting disable` may suggest `hosting:disable`.
-      suggestCommands([cmd, cmd2].join(":"), commandNames);
+      suggestCommands(args.join(":"), commandNames);
     }
   }
 
