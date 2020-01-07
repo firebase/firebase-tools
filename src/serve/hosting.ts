@@ -1,22 +1,22 @@
 "use strict";
 
-var clc = require("cli-color");
-var { FirebaseError } = require("../error");
+const clc = require("cli-color");
+let { FirebaseError } = require("../error");
 
-var superstatic = require("superstatic").server;
-var utils = require("../utils");
-var detectProjectRoot = require("../detectProjectRoot");
-var implicitInit = require("../hosting/implicitInit");
-var initMiddleware = require("../hosting/initMiddleware");
-var functionsProxy = require("../hosting/functionsProxy").default;
-var cloudRunProxy = require("../hosting/cloudRunProxy").default;
-var normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
+const superstatic = require("superstatic").server;
+const utils = require("../utils");
+const detectProjectRoot = require("../detectProjectRoot");
+const implicitInit = require("../hosting/implicitInit");
+const initMiddleware = require("../hosting/initMiddleware");
+const functionsProxy = require("../hosting/functionsProxy").default;
+const cloudRunProxy = require("../hosting/cloudRunProxy").default;
+const normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
-var MAX_PORT_ATTEMPTS = 10;
-var _attempts = 0;
-var server;
+const MAX_PORT_ATTEMPTS = 10;
+let _attempts = 0;
+let server: any;
 
-function _startServer(options, config, port, init) {
+function _startServer(options: any, config: any, port: any, init: any) {
   server = superstatic({
     debug: true,
     port: port,
@@ -32,8 +32,8 @@ function _startServer(options, config, port, init) {
       run: cloudRunProxy(options),
     },
   }).listen(function() {
-    var siteName = config.target || config.site;
-    var label = siteName ? "hosting[" + siteName + "]" : "hosting";
+    const siteName = config.target || config.site;
+    const label = siteName ? "hosting[" + siteName + "]" : "hosting";
 
     if (config.public && config.public !== ".") {
       utils.logLabeledBullet(label, "Serving hosting files from: " + clc.bold(config.public));
@@ -44,9 +44,9 @@ function _startServer(options, config, port, init) {
     );
   });
 
-  server.on("error", function(err) {
+  server.on("error", function(err: any) {
     if (err.code === "EADDRINUSE") {
-      var message = "Port " + options.port + " is not available.";
+      const message = "Port " + options.port + " is not available.";
       if (_attempts < MAX_PORT_ATTEMPTS) {
         utils.logWarning(clc.yellow("hosting: ") + message + " Trying another port...");
         // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
@@ -74,13 +74,13 @@ function _stop() {
   return Promise.resolve();
 }
 
-function _start(options) {
-  return implicitInit(options).then(function(init) {
-    var configs = normalizedHostingConfigs(options);
+function _start(options: any) {
+  return implicitInit(options).then(function(init: any) {
+    const configs = normalizedHostingConfigs(options);
 
-    for (var i = 0; i < configs.length; i++) {
+    for (let i = 0; i < configs.length; i++) {
       // skip over the functions emulator ports to avoid breaking changes
-      var port = i === 0 ? options.port : options.port + 4 + i;
+      const port = i === 0 ? options.port : options.port + 4 + i;
       _startServer(options, configs[i], port, init);
     }
   });
