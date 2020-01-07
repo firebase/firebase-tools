@@ -22,7 +22,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: 'Cache npm'
+    - name: Cache npm
       uses: actions/cache@v1
       with:
         path: ~/.npm
@@ -56,13 +56,13 @@ jobs:
       with:
         node-version: 8.x
     
-    - name: 'Cache npm'
+    - name: Cache npm
       uses: actions/cache@v1
       with:
         path: ~/.npm
         key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
-    - name: 'Cache Emulators'
+    - name: Cache firebase emulators
       uses: actions/cache@v1
       with:
         path: ${{ env.FIREBASE_EMULATORS_PATH }}
