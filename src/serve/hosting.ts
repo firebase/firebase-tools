@@ -64,14 +64,14 @@ function _startServer(options: any, config: any, port: any, init: any) {
   });
 }
 
-function _stop() {
+export function stop() {
   if (server) {
     server.close();
   }
   return Promise.resolve();
 }
 
-function _start(options: any) {
+export function start(options: any) {
   return implicitInit(options).then(function(init: any) {
     const configs = normalizedHostingConfigs(options);
 
@@ -83,12 +83,6 @@ function _start(options: any) {
   });
 }
 
-function _connect() {
+export function connect() {
   return Promise.resolve();
 }
-
-module.exports = {
-  start: _start,
-  connect: _connect,
-  stop: _stop,
-};
