@@ -1,6 +1,8 @@
-name: Node.js Tests
+name: CI Tests
 
-on: [pull_request]
+on: 
+  - pull_request
+  - push
 
 env:
   CI: true
@@ -11,14 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [8.x, 10.x]
+        node-version: 
+          - 8.x
+          - 10.x
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: 'Cache Node'
+    - name: 'Cache npm'
       uses: actions/cache@v1
       with:
         path: ~/.npm
@@ -29,16 +33,16 @@ jobs:
 
   integration:
     needs: unit
-    if: github.repository == 'firebase/firebase-tools'
+    if: github.repository == 'firebase/firebase-tools' && github.event_name == 'push'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [8.x]
-        script: [
-          ./scripts/test-hosting.sh, 
-          ./scripts/test-triggers-end-to-end.sh
-        ]
+        node-version:
+          - 8.x
+        script:
+          - ./scripts/test-hosting.sh
+          - ./scripts/test-triggers-end-to-end.sh 
     steps:
     - name: Check environment
       run: env
@@ -48,7 +52,7 @@ jobs:
       with:
         node-version: 8.x
     
-    - name: 'Cache Node'
+    - name: 'Cache npm'
       uses: actions/cache@v1
       with:
         path: ~/.npm
@@ -62,7 +66,7 @@ jobs:
       continue-on-error: true
 
     - run: npm ci
-    - run: echo ${{ secrets.creds_private_json_base64 }} | base64 -d > ./scripts/creds-private.json
+    - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
     - run: ${{ matrix.script }}
       env:
         COMMIT_SHA: ${{ github.sha }}

@@ -9,7 +9,7 @@ if [ "${CI}" != "true" ]; then
 fi
 
 if [[ -z $LOCAL ]]; then
-  export GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
+  export GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/service-account.json"
 else
   echo "Not setting GOOGLE_APPLICATION_CREDENTIALS because LOCAL=${LOCAL}"
 fi
