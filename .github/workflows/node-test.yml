@@ -78,6 +78,6 @@ jobs:
       run: find . -type f -name "*debug.log" | xargs cat
 
     - name: 'Show emulators cache'
-      run: ls -R $FIREBASE_EMULATORS_PATH
+      run: ls -R "${{ env.FIREBASE_EMULATORS_PATH }}"
   
 
