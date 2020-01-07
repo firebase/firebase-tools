@@ -1,21 +1,12 @@
-"use strict";
-
 import clc = require("cli-color");
 import { FirebaseError } from "../error";
-
 import * as utils from "../utils";
-
 import * as detectProjectRoot from "../detectProjectRoot";
-
 import * as implicitInit from "../hosting/implicitInit";
-
 import functionsProxy from "../hosting/functionsProxy";
-
 import cloudRunProxy from "../hosting/cloudRunProxy";
-
 const superstatic = require("superstatic").server;
 import initMiddleware = require("../hosting/initMiddleware");
-
 import normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 
 const MAX_PORT_ATTEMPTS = 10;
