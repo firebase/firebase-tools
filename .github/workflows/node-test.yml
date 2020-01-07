@@ -38,7 +38,7 @@ jobs:
     env:
       FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
       COMMIT_SHA: ${{ github.sha }}
-      CI_JOB_ID: ${{ job.container.id }}
+      CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
 
     strategy:
