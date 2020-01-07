@@ -6,7 +6,6 @@ on:
 
 env:
   CI: true
-  FIREBASE_EMULATORS_PATH: ${{ env.GITHUB_WORKSPACE }}/emulator-cache
 
 jobs:
   unit:
@@ -35,6 +34,13 @@ jobs:
     needs: unit
     if: github.repository == 'firebase/firebase-tools' && github.event_name == 'push'
     runs-on: ubuntu-latest
+
+    env:
+      FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+      COMMIT_SHA: ${{ github.sha }}
+      CI_JOB_ID: ${{ job.container.id }}
+      FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -68,10 +74,6 @@ jobs:
     - run: npm ci
     - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
     - run: ${{ matrix.script }}
-      env:
-        COMMIT_SHA: ${{ github.sha }}
-        CI_JOB_ID: ${{ job.container.id }}
-        FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
     
     - name: Print debug logs
       if: failure()
