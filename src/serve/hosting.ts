@@ -13,7 +13,7 @@ const MAX_PORT_ATTEMPTS = 10;
 let _attempts = 0;
 let server: any;
 
-function _startServer(options: any, config: any, port: any, init: any) {
+function _startServer(options: any, config: any, port: number, init: any): void {
   server = superstatic({
     debug: true,
     port: port,
@@ -64,14 +64,14 @@ function _startServer(options: any, config: any, port: any, init: any) {
   });
 }
 
-export function stop() {
+export function stop(): Promise<void> {
   if (server) {
     server.close();
   }
   return Promise.resolve();
 }
 
-export function start(options: any) {
+export function start(options: any): Promise<void> {
   return implicitInit(options).then(function(init: any) {
     const configs = normalizedHostingConfigs(options);
 
@@ -83,6 +83,6 @@ export function start(options: any) {
   });
 }
 
-export function connect() {
+export function connect(): Promise<void> {
   return Promise.resolve();
 }
