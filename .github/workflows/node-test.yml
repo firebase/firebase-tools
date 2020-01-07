@@ -6,7 +6,7 @@ on:
 
 env:
   CI: true
-  FIREBASE_EMULATORS_PATH: $GITHUB_WORKSPACE/emulator-cache
+  FIREBASE_EMULATORS_PATH: ${{ env.GITHUB_WORKSPACE }}/emulator-cache
 
 jobs:
   unit:
@@ -78,6 +78,8 @@ jobs:
       run: find . -type f -name "*debug.log" | xargs cat
 
     - name: 'Show emulators cache'
-      run: ls -R "${{ env.FIREBASE_EMULATORS_PATH }}"
+      run:
+        - echo $FIREBASE_EMULATORS_PATH 
+        - ls -R "${{ env.FIREBASE_EMULATORS_PATH }}"
   
 
