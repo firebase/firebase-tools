@@ -17,7 +17,7 @@ type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = javaEmulators.getDownloadDetails(name);
-  utils.logLabeledBullet(name, `downloading ${emulator.downloadPath}...`);
+  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
