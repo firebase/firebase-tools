@@ -5,9 +5,9 @@ import * as detectProjectRoot from "../detectProjectRoot";
 import functionsProxy from "../hosting/functionsProxy";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 const superstatic = require("superstatic").server;
-import normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
 import { implicitInit, TemplateServerResponce } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
+import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 
 const MAX_PORT_ATTEMPTS = 10;
 let _attempts = 0;

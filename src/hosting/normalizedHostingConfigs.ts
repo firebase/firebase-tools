@@ -1,11 +1,15 @@
-const _ = require("lodash");
+import * as _ from "lodash";
 
-function _filterOnly(configs, onlyString) {
+/**
+ * @param configs
+ * @param onlyString
+ */
+function _filterOnly(configs: any, onlyString: any) {
   if (!onlyString) {
     return configs;
   }
 
-  var onlyTargets = onlyString.split(",");
+  let onlyTargets = onlyString.split(",");
   // If an unqualified "hosting" is in the --only,
   // all hosting sites should be deployed.
   if (_.includes(onlyTargets, "hosting")) {
@@ -13,19 +17,22 @@ function _filterOnly(configs, onlyString) {
   }
 
   onlyTargets = onlyTargets
-    .filter(function(anOnly) {
+    .filter(function(anOnly: any) {
       return anOnly.indexOf("hosting:") === 0;
     })
-    .map(function(anOnly) {
+    .map(function(anOnly: any) {
       return anOnly.replace("hosting:", "");
     });
 
-  return configs.filter(function(config) {
+  return configs.filter(function(config: any) {
     return _.includes(onlyTargets, config.target || config.site);
   });
 }
 
-module.exports = function(options) {
+/**
+ * @param options
+ */
+export function normalizedHostingConfigs(options: any) {
   let configs = options.config.get("hosting");
   if (!configs) {
     return [];
@@ -41,4 +48,4 @@ module.exports = function(options) {
   }
 
   return _filterOnly(configs, options.only);
-};
+}
