@@ -17,16 +17,10 @@ function _filterOnly(configs: any, onlyString: any) {
   }
 
   onlyTargets = onlyTargets
-    .filter(function(anOnly: any) {
-      return anOnly.indexOf("hosting:") === 0;
-    })
-    .map(function(anOnly: any) {
-      return anOnly.replace("hosting:", "");
-    });
+    .filter((anOnly: any) => anOnly.indexOf("hosting:") === 0)
+    .map((anOnly: any) => anOnly.replace("hosting:", ""));
 
-  return configs.filter(function(config: any) {
-    return _.includes(onlyTargets, config.target || config.site);
-  });
+  return configs.filter((config: any) => _.includes(onlyTargets, config.target || config.site));
 }
 
 /**

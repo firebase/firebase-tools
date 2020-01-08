@@ -28,7 +28,7 @@ function _startServer(options: any, config: any, port: number, init: TemplateSer
       function: functionsProxy(options),
       run: cloudRunProxy(options),
     },
-  }).listen(function() {
+  }).listen(() => {
     const siteName = config.target || config.site;
     const label = siteName ? "hosting[" + siteName + "]" : "hosting";
 
@@ -41,7 +41,7 @@ function _startServer(options: any, config: any, port: number, init: TemplateSer
     );
   });
 
-  server.on("error", function(err: any) {
+  server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
       const message = "Port " + options.port + " is not available.";
       if (_attempts < MAX_PORT_ATTEMPTS) {
@@ -72,7 +72,7 @@ export function stop(): Promise<void> {
 }
 
 export function start(options: any): Promise<void> {
-  return implicitInit(options).then(function(init: TemplateServerResponce) {
+  return implicitInit(options).then((init: TemplateServerResponce) => {
     const configs = normalizedHostingConfigs(options);
 
     for (let i = 0; i < configs.length; i++) {
