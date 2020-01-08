@@ -1,26 +1,24 @@
-"use strict";
+import * as request from "request";
+import * as logger from "../logger";
+import * as utils from "../utils";
 
-var request = require("request");
-var logger = require("../logger");
-var utils = require("../utils");
+const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 
-var SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
-
-module.exports = function(init) {
-  return function(req, res, next) {
-    var match = req.url.match(SDK_PATH_REGEXP);
+export function initMiddleware(init: any) {
+  return (req: any, res: any, next: any) => {
+    const match = req.url.match(SDK_PATH_REGEXP);
     if (match) {
-      var version = match[1];
-      var sdkName = match[2];
-      var url = "https://www.gstatic.com/firebasejs/" + version + "/" + sdkName;
-      var preq = request(url)
-        .on("response", function(pres) {
+      const version = match[1];
+      const sdkName = match[2];
+      const url = "https://www.gstatic.com/firebasejs/" + version + "/" + sdkName;
+      const preq: any = request(url)
+        .on("response", (pres: any) => {
           if (pres.statusCode === 404) {
             return next();
           }
           return preq.pipe(res);
         })
-        .on("error", function(e) {
+        .on("error", (e: any) => {
           utils.logLabeledWarning(
             "hosting",
             `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`
@@ -37,4 +35,4 @@ module.exports = function(init) {
       next();
     }
   };
-};
+}
