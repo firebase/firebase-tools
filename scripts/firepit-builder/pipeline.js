@@ -38,7 +38,7 @@ if (fs.existsSync(firebaseToolsPackage)) {
   cd(firebaseToolsPackage);
   npm("pack");
   cd(workdir);
-  const packedModule = path.join(firebaseToolsPackage, "*.tgz");
+  const packedModule = ls(path.join(firebaseToolsPackage, "*.tgz"))[0];
   npm("install", packedModule);
   rm(packedModule);
 } else {
@@ -74,16 +74,14 @@ find(".")
 cd("..");
 echo(pwd());
 
-const configTemplate = cat("config.template.js").replace(
-  "firebase_tools_package_value",
-  firebaseToolsPackage
-);
+const configTemplate = require(path.join(pwd().toString(), "config.template.js"));
+configTemplate.firebase_tools_package = firebaseToolsPackage;
 
 if (styles.headless) {
   echo("-- Building headless binaries...");
 
-  const headlessConfig = configTemplate.replace("headless_value", "true");
-  echo(headlessConfig).to("config.js");
+  configTemplate.headless = true;
+  echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
   npm("run", "pkg");
   ls("dist/firepit-*").forEach((file) => {
     mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
@@ -93,8 +91,8 @@ if (styles.headless) {
 if (styles.headful) {
   echo("-- Building headed binaries...");
 
-  const headfulConfig = configTemplate.replace("headless_value", "false");
-  echo(headfulConfig).to("config.js");
+  configTemplate.headless = false;
+  echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
   npm("run", "pkg");
 
   ls("dist/firepit-*").forEach((file) => {
@@ -125,9 +123,18 @@ if (isPublishing) {
 }
 
 echo("-- Artifacts");
-console.log(ls("-R", "dist").join("\n"));
 rm("-rf", "/tmp/firepit_artifacts");
-mv("dist", "/tmp/firepit_artifacts");
+
+const outputDir = path.join(tempdir().toString(), "firepit_artifacts");
+echo(outputDir);
+mkdir(outputDir);
+mv("dist/*", outputDir);
+cd(outputDir);
+console.log(
+  ls(".")
+    .map((fn) => path.join(pwd().toString(), fn.toString()))
+    .join("\n")
+);
 
 // Cleanup
 cd("~");
