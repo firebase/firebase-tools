@@ -2,18 +2,18 @@ import clc = require("cli-color");
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as detectProjectRoot from "../detectProjectRoot";
-import * as implicitInit from "../hosting/implicitInit";
 import functionsProxy from "../hosting/functionsProxy";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 const superstatic = require("superstatic").server;
 import initMiddleware = require("../hosting/initMiddleware");
 import normalizedHostingConfigs = require("../hosting/normalizedHostingConfigs");
+import { implicitInit, TemplateServerResponce } from "../hosting/implicitInit";
 
 const MAX_PORT_ATTEMPTS = 10;
 let _attempts = 0;
 let server: any;
 
-function _startServer(options: any, config: any, port: number, init: any): void {
+function _startServer(options: any, config: any, port: number, init: TemplateServerResponce): void {
   server = superstatic({
     debug: true,
     port: port,
@@ -72,7 +72,7 @@ export function stop(): Promise<void> {
 }
 
 export function start(options: any): Promise<void> {
-  return implicitInit(options).then(function(init: any) {
+  return implicitInit(options).then(function(init: TemplateServerResponce) {
     const configs = normalizedHostingConfigs(options);
 
     for (let i = 0; i < configs.length; i++) {

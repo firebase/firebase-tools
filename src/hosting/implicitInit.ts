@@ -1,15 +1,23 @@
-"use strict";
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs";
+import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
+import * as utils from "../utils";
+import * as logger from "../logger";
 
-var _ = require("lodash");
-var clc = require("cli-color");
-var fs = require("fs");
-var { fetchWebSetup, getCachedWebSetup } = require("../fetchWebSetup");
-var utils = require("../utils");
-var logger = require("../logger");
+const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
-var INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
+export interface TemplateServerResponce {
+  js: string | undefined;
+  json: string | undefined;
+}
 
-module.exports = async function(options) {
+/**
+ * generate template server responce
+ * @param options
+ * @return {Promise<{js: string, json: string}>}
+ */
+export async function implicitInit(options: any): Promise<TemplateServerResponce> {
   let config;
   try {
     config = await fetchWebSetup(options);
@@ -48,4 +56,4 @@ module.exports = async function(options) {
     js: INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`),
     json: configJson,
   };
-};
+}
