@@ -1,10 +1,13 @@
 import * as _ from "lodash";
 
+type HostingConfig = { site: string; target: string };
+
 /**
  * @param configs
  * @param onlyString
+ * @return {HostingConfig[]}
  */
-function _filterOnly(configs: any, onlyString: any) {
+function _filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
     return configs;
   }
@@ -17,16 +20,19 @@ function _filterOnly(configs: any, onlyString: any) {
   }
 
   onlyTargets = onlyTargets
-    .filter((anOnly: any) => anOnly.indexOf("hosting:") === 0)
-    .map((anOnly: any) => anOnly.replace("hosting:", ""));
+    .filter((anOnly) => anOnly.startsWith("hosting:"))
+    .map((anOnly) => anOnly.replace("hosting:", ""));
 
-  return configs.filter((config: any) => _.includes(onlyTargets, config.target || config.site));
+  return configs.filter((config: HostingConfig) =>
+    _.includes(onlyTargets, config.target || config.site)
+  );
 }
 
 /**
  * @param options
+ * @return {any[] | HostingConfig[]}
  */
-export function normalizedHostingConfigs(options: any) {
+export function normalizedHostingConfigs(options: any): HostingConfig[] {
   let configs = options.config.get("hosting");
   if (!configs) {
     return [];
