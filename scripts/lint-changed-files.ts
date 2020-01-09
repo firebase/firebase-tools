@@ -11,10 +11,28 @@ const root = resolve(__dirname, "..");
 const deletedFileRegex = /^D\s.+$/;
 const extensionsToCheck = [".js", ".ts"];
 
-function main() {
+/**
+ * Returns the last element of an array.
+ * @param arr any array.
+ * @return the last element of the array.
+ */
+function last<T>(arr: Array<T>): T {
+  return arr[arr.length - 1];
+}
+
+/**
+ * Main function of the script.
+ */
+function main(): void {
   const files: string[] = [];
   const ignoredFiles: string[] = [];
-  const gitOutput = execSync("git diff --name-status master", { cwd: root })
+
+  let cmpBranch = "master";
+  if (process.env.CI) {
+    cmpBranch = "origin/master";
+  }
+
+  const gitOutput = execSync(`git diff --name-status ${cmpBranch}`, { cwd: root })
     .toString()
     .trim();
 
@@ -58,7 +76,3 @@ function main() {
 }
 
 main();
-
-function last<T>(arr: Array<T>): T {
-  return arr[arr.length - 1];
-}
