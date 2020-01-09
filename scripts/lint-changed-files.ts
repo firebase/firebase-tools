@@ -27,6 +27,8 @@ function main(): void {
   const files: string[] = [];
   const ignoredFiles: string[] = [];
 
+  const otherArgs = process.argv.slice(2);
+
   let cmpBranch = "master";
   if (process.env.CI) {
     cmpBranch = "origin/master";
@@ -64,7 +66,7 @@ function main(): void {
   }
 
   try {
-    execSync(`eslint ${files.join(" ")}`, {
+    execSync(`eslint ${otherArgs.join(" ")} ${files.join(" ")}`, {
       cwd: root,
       stdio: ["pipe", process.stdout, process.stderr],
     });
