@@ -1,0 +1,80 @@
+name: CI Tests
+
+on: 
+  - pull_request
+  - push
+
+env:
+  CI: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: 
+          - 8.x
+          - 10.x
+          - 12.x
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Cache npm
+      uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+
+    - run: npm ci
+    - run: npm test
+
+  integration:
+    needs: unit
+    if: github.repository == 'firebase/firebase-tools' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    env:
+      FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
+      COMMIT_SHA: ${{ github.sha }}
+      CI_JOB_ID: ${{ github.action }}
+      FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 8.x
+        script:
+          - ./scripts/test-hosting.sh
+          - ./scripts/test-triggers-end-to-end.sh 
+    steps:    
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 8.x
+    
+    - name: Cache npm
+      uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Cache firebase emulators
+      uses: actions/cache@v1
+      with:
+        path: ${{ env.FIREBASE_EMULATORS_PATH }}
+        key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
+      continue-on-error: true
+
+    - run: npm ci
+    - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
+    - run: ${{ matrix.script }}
+    
+    - name: Print debug logs
+      if: failure()
+      run: find . -type f -name "*debug.log" | xargs cat
+  
+

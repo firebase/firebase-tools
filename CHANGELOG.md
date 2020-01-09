@@ -2,3 +2,4 @@
 * Fixes a small bug that caused `false` values in the `options` object to be ignored. 
 * Release Database Emulator v4.3.1.
 * Fixes a bug where unidentified commands gave an unhelpful error message (#1889).
+* Prevents potential false-negative permissions check errors from erroring command.
