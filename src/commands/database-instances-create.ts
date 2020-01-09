@@ -6,7 +6,7 @@ import firedata = require("../gcp/firedata");
 
 export default new Command("database:instances:create <instanceName>")
   .description("create a realtime database instance")
-  .before(requirePermissions, ["firebase.projects.create"])
+  .before(requirePermissions, ["firebasedatabase.instances.create"])
   .action(async (instanceName: string, options: any) => {
     const projectNumber = await getProjectNumber(options);
     const instance = await firedata.createDatabaseInstance(projectNumber, instanceName);

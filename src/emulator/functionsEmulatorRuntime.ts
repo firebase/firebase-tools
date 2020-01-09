@@ -898,20 +898,12 @@ async function processBackground(
  * Run the given function while redirecting logs and looking out for errors.
  */
 async function runFunction(func: () => Promise<any>): Promise<any> {
-  /* tslint:disable:no-console */
-  const log = console.log;
-  console.log = (...messages: any[]) => {
-    new EmulatorLog("USER", "function-log", messages.join(" ")).log();
-  };
-
   let caughtErr;
   try {
     await func();
   } catch (err) {
     caughtErr = err;
   }
-
-  console.log = log;
 
   logDebug(`Ephemeral server survived.`);
   if (caughtErr) {
@@ -1103,6 +1095,11 @@ async function flushAndExit(code: number) {
   process.exit(code);
 }
 
+async function goIdle() {
+  new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
+  await EmulatorLog.waitForFlush();
+}
+
 async function handleMessage(message: string) {
   let runtimeArgs: FunctionsRuntimeArgs;
   try {
@@ -1124,9 +1121,9 @@ async function handleMessage(message: string) {
     return;
   }
 
-  // If there's no trigger id it's just a diagnostic call. We throw away the runtime.
+  // If there's no trigger id it's just a diagnostic call. We can go idle right away.
   if (!runtimeArgs.frb.triggerId) {
-    await flushAndExit(0);
+    await goIdle();
     return;
   }
 
@@ -1148,8 +1145,7 @@ async function handleMessage(message: string) {
     if (runtimeArgs.opts && runtimeArgs.opts.serializedTriggers) {
       await flushAndExit(0);
     } else {
-      new EmulatorLog("SYSTEM", "runtime-status", "Runtime is now idle", { state: "idle" }).log();
-      await EmulatorLog.waitForFlush();
+      await goIdle();
     }
   } catch (err) {
     new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();

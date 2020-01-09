@@ -8,7 +8,13 @@ import * as http from "http";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  EmulatorLog,
+  Emulators,
+  FunctionsExecutionMode,
+} from "./types";
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
@@ -29,6 +35,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
+import { WorkQueue } from "./workQueue";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -47,6 +54,7 @@ export interface FunctionsEmulatorArgs {
   host?: string;
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
+  debugPort?: number;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -99,14 +107,26 @@ export class FunctionsEmulator implements EmulatorInstance {
   private server?: http.Server;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-  private workerPool: RuntimeWorkerPool = new RuntimeWorkerPool();
+
+  private workerPool: RuntimeWorkerPool;
+  private workQueue: WorkQueue;
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
+
+    const mode = this.args.debugPort
+      ? FunctionsExecutionMode.SEQUENTIAL
+      : FunctionsExecutionMode.AUTO;
+    this.workerPool = new RuntimeWorkerPool(mode);
+    this.workQueue = new WorkQueue(mode);
   }
 
   createHubServer(): express.Application {
+    // TODO(samstern): Should not need this here but some tests are directly calling this method
+    // because FunctionsEmulator.start() is not test-safe due to askInstallNodeVersion.
+    this.workQueue.start();
+
     const hub = express();
 
     hub.use((req, res, next) => {
@@ -140,14 +160,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleBackgroundTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleBackgroundTrigger(req, res);
+      });
     };
 
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleHttpsTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleHttpsTrigger(req, res);
+      });
     };
 
     // The ordering here is important. The longer routes (background)
@@ -185,6 +209,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
     const { host, port } = this.getInfo();
+    this.workQueue.start();
     this.server = this.createHubServer().listen(port, host);
   }
 
@@ -315,6 +340,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
+    this.workQueue.stop();
     this.workerPool.exit();
     Promise.resolve(this.server && this.server.close());
   }
@@ -564,6 +590,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     if (opts.ignore_warnings) {
       args.unshift("--no-warnings");
+    }
+
+    if (this.args.debugPort) {
+      const { host } = this.getInfo();
+      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {

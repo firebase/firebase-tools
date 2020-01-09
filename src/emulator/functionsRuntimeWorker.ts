@@ -1,6 +1,6 @@
 import * as uuid from "uuid";
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
-import { EmulatorLog } from "./types";
+import { EmulatorLog, FunctionsExecutionMode } from "./types";
 import {
   FunctionsRuntimeBundle,
   FunctionsRuntimeArgs,
@@ -29,7 +29,7 @@ export enum RuntimeWorkerState {
 
 export class RuntimeWorker {
   readonly id: string;
-  readonly triggerId: string;
+  readonly key: string;
   readonly runtime: FunctionsRuntimeInstance;
 
   lastArgs?: FunctionsRuntimeArgs;
@@ -39,9 +39,9 @@ export class RuntimeWorker {
   private logListeners: Array<LogListener> = [];
   private _state: RuntimeWorkerState = RuntimeWorkerState.IDLE;
 
-  constructor(triggerId: string, runtime: FunctionsRuntimeInstance) {
+  constructor(key: string, runtime: FunctionsRuntimeInstance) {
     this.id = uuid.v4();
-    this.triggerId = triggerId;
+    this.key = key;
     this.runtime = runtime;
 
     this.runtime.events.on("log", (log: EmulatorLog) => {
@@ -147,13 +147,22 @@ export class RuntimeWorker {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-${this.triggerId}-${this.id}]: ${msg}`);
+    EmulatorLogger.log("DEBUG", `[worker-${this.key}-${this.id}]: ${msg}`);
   }
 }
 
 export class RuntimeWorkerPool {
-  readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
-  readonly workQueue: Array<FunctionsRuntimeArgs> = [];
+  private readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
+
+  constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
+
+  getKey(triggerId: string | undefined) {
+    if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
+      return "~shared~";
+    } else {
+      return triggerId || "~diagnostic~";
+    }
+  }
 
   /**
    * When code changes (or in some other rare circumstances) we need to get
@@ -165,10 +174,11 @@ export class RuntimeWorkerPool {
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
-          this.log(`Shutting down IDLE worker (${w.triggerId})`);
+          this.log(`Shutting down IDLE worker (${w.key})`);
+          w.state = RuntimeWorkerState.FINISHING;
           w.runtime.shutdown();
         } else if (w.state === RuntimeWorkerState.BUSY) {
-          this.log(`Marking BUSY worker to finish (${w.triggerId})`);
+          this.log(`Marking BUSY worker to finish (${w.key})`);
           w.state = RuntimeWorkerState.FINISHING;
         }
       });
@@ -191,21 +201,24 @@ export class RuntimeWorkerPool {
   }
 
   /**
-   * TODO(samstern): Document
+   * Determine if the pool has idle workers ready to accept work for the given triggerId;
    */
-  readyForWork(triggerdId: string | undefined): boolean {
-    const idleWorker = this.getIdleWorker(triggerdId);
+  readyForWork(triggerId: string | undefined): boolean {
+    const idleWorker = this.getIdleWorker(triggerId);
     return !!idleWorker;
   }
 
   /**
-   * TODO(samstern): Document
+   * Submit work to be run by an idle worker for the givenn triggerId.
+   * Calls to this function should be guarded by readyForWork() to avoid throwing
+   * an exception.
    */
   submitWork(
     triggerId: string | undefined,
     frb: FunctionsRuntimeBundle,
     opts?: InvokeRuntimeOpts
   ): RuntimeWorker {
+    this.log(`submitWork(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId);
     if (!worker) {
       throw new FirebaseError(
@@ -219,15 +232,13 @@ export class RuntimeWorkerPool {
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
     this.cleanUpWorkers();
-
-    const key = this.getTriggerKey(triggerId);
-    const keyWorkers = this.workers.get(key);
-    if (!keyWorkers) {
-      this.workers.set(key, []);
+    const triggerWorkers = this.getTriggerWorkers(triggerId);
+    if (!triggerWorkers.length) {
+      this.setTriggerWorkers(triggerId, []);
       return;
     }
 
-    for (const worker of keyWorkers) {
+    for (const worker of triggerWorkers) {
       if (worker.state === RuntimeWorkerState.IDLE) {
         return worker;
       }
@@ -237,22 +248,27 @@ export class RuntimeWorkerPool {
   }
 
   addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
-    const key = this.getTriggerKey(triggerId);
-    const worker = new RuntimeWorker(key, runtime);
+    const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
+    this.log(`addWorker(${worker.key})`);
 
-    const keyWorkers = this.workers.get(key) || [];
+    const keyWorkers = this.getTriggerWorkers(triggerId);
     keyWorkers.push(worker);
-    this.workers.set(key, keyWorkers);
+    this.setTriggerWorkers(triggerId, keyWorkers);
 
     worker.onLogs((log: EmulatorLog) => {
       EmulatorLogger.handleRuntimeLog(log);
     }, true /* listen forever */);
 
+    this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);
     return worker;
   }
 
-  private getTriggerKey(triggerId?: string): string {
-    return triggerId || "~diagnostic~";
+  getTriggerWorkers(triggerId: string | undefined): Array<RuntimeWorker> {
+    return this.workers.get(this.getKey(triggerId)) || [];
+  }
+
+  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
+    this.workers.set(this.getKey(triggerId), workers);
   }
 
   private cleanUpWorkers() {
@@ -261,11 +277,17 @@ export class RuntimeWorkerPool {
       const notDoneWorkers = keyWorkers.filter((worker) => {
         return worker.state !== RuntimeWorkerState.FINISHED;
       });
-      this.workers.set(key, notDoneWorkers);
+
+      if (notDoneWorkers.length !== keyWorkers.length) {
+        this.log(
+          `Cleaned up workers for ${key}: ${keyWorkers.length} --> ${notDoneWorkers.length}`
+        );
+      }
+      this.setTriggerWorkers(key, notDoneWorkers);
     }
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-pool]: ${msg}`);
+    EmulatorLogger.log("DEBUG", `[worker-pool] ${msg}`);
   }
 }
