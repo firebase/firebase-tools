@@ -14,9 +14,8 @@ program.option(
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
-program.option("--interactive", "force interactive shell treatment even when not detected");
+program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
-// program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
 var client = {};
 client.cli = program;
@@ -66,7 +65,9 @@ var RENAMED_COMMANDS = {
   "prefs:token": "login:ci",
 };
 
-program.action(function(cmd, cmd2) {
+// Default handler, this is called when no other command action matches.
+program.action(function(_, args) {
+  var cmd = args[0];
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -81,7 +82,7 @@ program.action(function(cmd, cmd2) {
     if (!suggestCommands(cmd, commandNames)) {
       // Check to see if combining the two arguments comes close to a command.
       // e.g. `firebase hosting disable` may suggest `hosting:disable`.
-      suggestCommands([cmd, cmd2].join(":"), commandNames);
+      suggestCommands(args.join(":"), commandNames);
     }
   }
 

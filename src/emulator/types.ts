@@ -109,6 +109,15 @@ export interface Address {
   port: number;
 }
 
+export enum FunctionsExecutionMode {
+  // Function workers will be spawned as needed with no particular
+  // guarantees.
+  AUTO = "auto",
+
+  // All function executions will be run sequentially in a single worker.
+  SEQUENTIAL = "sequential",
+}
+
 export class EmulatorLog {
   get date(): Date {
     if (!this.timestamp) {
@@ -170,6 +179,7 @@ export class EmulatorLog {
     ) {
       parsedLog = {
         level: "USER",
+        type: "function-log",
         text: json,
       };
     }

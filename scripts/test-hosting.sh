@@ -5,7 +5,7 @@ CWD="$(pwd)"
 
 source $DIR/set-default-credentials.sh
 
-TARGET_FILE="${TRAVIS_COMMIT}-${TRAVIS_JOB_ID}.txt"
+TARGET_FILE="${COMMIT_SHA}-${CI_JOB_ID}.txt"
 
 echo "Running in ${CWD}"
 echo "Running with node: $(which node)"
