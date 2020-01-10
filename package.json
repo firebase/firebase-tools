@@ -15,7 +15,7 @@
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
-    "test": "npm run lint -- --quiet && npm run lint:changed-files && npm run mocha"
+    "test": "npm run lint -- --quiet && npm run mocha"
   },
   "files": [
     "lib",
