@@ -3,3 +3,4 @@
 * Release Database Emulator v4.3.1.
 * Fixes a bug where unidentified commands gave an unhelpful error message (#1889).
 * Prevents potential false-negative permissions check errors from erroring command.
+* Adds `-s, --site` flag to `hosting:disable` command, allowing it to be run against the non-default site of a project.
