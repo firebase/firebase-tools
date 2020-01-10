@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.7.0",
+  "version": "7.11.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -12,6 +12,7 @@
     "clean": "rm -rf lib",
     "format": "npm run lint -- --fix --quiet",
     "lint": "eslint '**/*.{js,ts}'",
+    "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
@@ -97,7 +98,7 @@
     "portfinder": "^1.0.23",
     "progress": "^2.0.3",
     "request": "^2.87.0",
-    "semver": "^5.0.3",
+    "semver": "^5.7.1",
     "superstatic": "^6.0.1",
     "tar": "^4.3.0",
     "tcp-port-used": "^1.0.1",

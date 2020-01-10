@@ -11,6 +11,7 @@ import {
   RuntimeWorkerState,
   RuntimeWorkerPool,
 } from "../../emulator/functionsRuntimeWorker";
+import { FunctionsExecutionMode } from "../../emulator/types";
 
 /**
  * Fake runtime instance we can use to simulate different subprocess conditions.
@@ -98,9 +99,11 @@ class MockRuntimeBundle implements FunctionsRuntimeBundle {
 }
 
 describe("FunctionsRuntimeWorker", () => {
+  const workerPool = new RuntimeWorkerPool();
+
   describe("RuntimeWorker", () => {
     it("goes from idle --> busy --> idle in normal operation", async () => {
-      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(true));
+      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance(true));
       const counter = new WorkerStateCounter(worker);
 
       worker.execute(new MockRuntimeBundle("trigger"));
@@ -112,7 +115,10 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("goes from idle --> busy --> finished when there's an error", async () => {
-      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(false));
+      const worker = new RuntimeWorker(
+        workerPool.getKey("trigger"),
+        new MockRuntimeInstance(false)
+      );
       const counter = new WorkerStateCounter(worker);
 
       worker.execute(new MockRuntimeBundle("trigger"));
@@ -125,7 +131,7 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("goes from busy --> finishing --> finished when marked", async () => {
-      const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(true));
+      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance(true));
       const counter = new WorkerStateCounter(worker);
 
       worker.execute(new MockRuntimeBundle("trigger"));
@@ -150,8 +156,8 @@ describe("FunctionsRuntimeWorker", () => {
 
       // Add a worker and make sure it's there
       const worker = pool.addWorker(trigger, new MockRuntimeInstance(true));
-      const triggerWorkers = pool.workers.get(trigger);
-      expect(triggerWorkers!.length).length.to.eq(1);
+      const triggerWorkers = pool.getTriggerWorkers(trigger);
+      expect(triggerWorkers.length).length.to.eq(1);
       expect(pool.getIdleWorker(trigger)).to.eql(worker);
 
       // Make the worker busy, confirm nothing is idle
@@ -229,8 +235,26 @@ describe("FunctionsRuntimeWorker", () => {
       expect(busyWorkerCounter.counts.FINISHED).to.eql(1);
 
       expect(idleWorkerCounter.counts.IDLE).to.eql(1);
-      expect(idleWorkerCounter.counts.FINISHING).to.eql(0);
+      expect(idleWorkerCounter.counts.FINISHING).to.eql(1);
       expect(idleWorkerCounter.counts.FINISHED).to.eql(1);
+    });
+
+    it("gives assigns all triggers to the same worker in sequential mode", async () => {
+      const trigger1 = "abc";
+      const trigger2 = "def";
+
+      const pool = new RuntimeWorkerPool(FunctionsExecutionMode.SEQUENTIAL);
+      const worker = pool.addWorker(trigger1, new MockRuntimeInstance(true));
+
+      pool.submitWork(trigger2, new MockRuntimeBundle(trigger2));
+
+      expect(pool.readyForWork(trigger1)).to.be.false;
+      expect(pool.readyForWork(trigger2)).to.be.false;
+
+      await worker.waitForDone();
+
+      expect(pool.readyForWork(trigger1)).to.be.true;
+      expect(pool.readyForWork(trigger2)).to.be.true;
     });
   });
 });

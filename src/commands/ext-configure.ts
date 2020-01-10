@@ -31,7 +31,7 @@ export default new Command("ext:configure <extensionInstanceId>")
     );
     try {
       const projectId = getProjectId(options, false);
-      let existingInstance;
+      let existingInstance: extensionsApi.ExtensionInstance;
       try {
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
@@ -48,21 +48,30 @@ export default new Command("ext:configure <extensionInstanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
-      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
-        return param.param === "LOCATION";
+      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.immutable || param.param === "LOCATION";
+        // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
-      const currentLocation = _.get(existingInstance, "config.params.LOCATION");
+
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
-      if (removedLocations.length) {
+      if (immutableParams.length) {
+        const plural = immutableParams.length > 1;
+        logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+        for (const { param } of immutableParams) {
+          logger.info(
+            `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
+          );
+        }
         logger.info(
-          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
-            `Please uninstall and reinstall this extension to change location.`
+          (plural
+            ? "To set different values for these params"
+            : "To set a different value for this param") +
+            ", uninstall the extension, then install a new instance of this extension."
         );
-        params.LOCATION = currentLocation;
       }
 
       spinner.start();
@@ -80,7 +89,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       );
       return res;
     } catch (err) {
-      spinner.fail();
+      if (spinner.isSpinning) {
+        spinner.fail();
+      }
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred while configuring the instance: ${err.message}`, {
           original: err,

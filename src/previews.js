@@ -6,6 +6,7 @@ var configstore = require("./configstore");
 var previews = _.assign(
   {
     // insert previews here...
+    rtdbrules: false,
   },
   configstore.get("previews")
 );
