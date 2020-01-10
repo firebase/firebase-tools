@@ -22,6 +22,7 @@ var _isOutside = function(from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
+
 module.exports = new Command("init [feature]")
   .description("setup a Firebase project in the current directory")
   .before(requireAuth)
