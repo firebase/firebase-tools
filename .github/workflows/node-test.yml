@@ -10,7 +10,7 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'pull_request'
     strategy:
       matrix:
         node-version: 
