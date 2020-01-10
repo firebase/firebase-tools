@@ -63,6 +63,7 @@ describe("project", () => {
       it("should set up the correct properties in the project", async () => {
         const options = { project: "my-project" };
         const setup = { config: {}, rcfile: {} };
+        getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
         promptOnceStub.onFirstCall().resolves("Use an existing project");
         getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
 
@@ -72,8 +73,8 @@ describe("project", () => {
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
         expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
-        expect(promptOnceStub).to.be.calledOnce;
-        expect(getOrPromptProjectStub).to.be.calledOnceWith(options);
+        expect(promptOnceStub).to.not.be.called;
+        expect(getOrPromptProjectStub).to.not.be.called;
       });
     });
 
