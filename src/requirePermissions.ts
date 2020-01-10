@@ -18,11 +18,19 @@ export async function requirePermissions(options: any, permissions: string[] = [
   debug(
     `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
   );
-  const response = await request("POST", `/v1/projects/${projectId}:testIamPermissions`, {
-    auth: true,
-    data: { permissions: requiredPermissions },
-    origin: resourceManagerOrigin,
-  });
+
+  let response: any;
+  try {
+    response = await request("POST", `/v1/projects/${projectId}:testIamPermissions`, {
+      auth: true,
+      data: { permissions: requiredPermissions },
+      origin: resourceManagerOrigin,
+    });
+  } catch (err) {
+    debug(`[iam] error while checking permissions, command may fail: ${err}`);
+    return;
+  }
+
   const allowedPermissions = (response.body.permissions || []).sort();
   const missingPermissions = difference(requiredPermissions, allowedPermissions);
   if (missingPermissions.length) {
