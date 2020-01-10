@@ -72,7 +72,7 @@ jobs:
         script:
           - ./scripts/test-hosting.sh
           - ./scripts/test-triggers-end-to-end.sh
-          - npm run test:functional
+          - source ./scripts/set-default-credentials.sh && npm run test:functional
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
