@@ -32,11 +32,6 @@ export interface ProjectInfo {
   location?: string; // maps to FirebaseProjectMetadata.resources.locationId
 }
 
-/**
- * Transforms project metadata to a ProjectInfo object.
- * @param projectMetaData project metadata.
- * @return a ProjectInfo object.
- */
 function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
   const { projectId, displayName, resources } = projectMetaData;
   return {
@@ -47,10 +42,6 @@ function toProjectInfo(projectMetaData: FirebaseProjectMetadata): ProjectInfo {
   };
 }
 
-/**
- * Prompts to create a project.
- * @return the project metadata.
- */
 async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
   utils.logBullet(
     "If you want to create a project in a Google Cloud organization or folder, please use " +
@@ -67,10 +58,6 @@ async function promptAndCreateNewProject(): Promise<FirebaseProjectMetadata> {
   });
 }
 
-/**
- * Prompts for a project and adds Firebase resources to it.
- * @return the project metadata.
- */
 async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMetadata> {
   const projectId = await promptAvailableProjectId();
   if (!projectId) {
