@@ -5,3 +5,4 @@
 * Prevents potential false-negative permissions check errors from erroring command.
 * Adds `-s, --site` flag to `hosting:disable` command, allowing it to be run against the non-default site of a project.
 * During `init`, a provided `--project` will be respected and cause the selection prompt to be skipped.
+* Adds support for the `disabled` flag when importing and exporting users (#1777).
