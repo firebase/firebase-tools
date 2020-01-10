@@ -140,7 +140,6 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
   }
 
   let projectMetaData;
-
   // If the user presented a project with `--project`, try to fetch that project.
   if (options.project) {
     projectMetaData = await getFirebaseProject(options.project);
