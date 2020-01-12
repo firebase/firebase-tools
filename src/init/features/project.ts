@@ -67,6 +67,38 @@ async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMeta
 }
 
 /**
+ * Prompt the user about how they would like to select a project.
+ * @param options the Firebase CLI options object.
+ * @return the project metadata, or undefined if no project was selected.
+ */
+async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadata | undefined> {
+  const choices = [
+    { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
+    { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
+    { name: OPTION_ADD_FIREBASE, value: OPTION_ADD_FIREBASE },
+    { name: OPTION_NO_PROJECT, value: OPTION_NO_PROJECT },
+  ];
+  const projectSetupOption: string = await promptOnce({
+    type: "list",
+    name: "id",
+    message: "Please select an option:",
+    choices,
+  });
+
+  switch (projectSetupOption) {
+    case OPTION_USE_PROJECT:
+      return getOrPromptProject(options);
+    case OPTION_NEW_PROJECT:
+      return promptAndCreateNewProject();
+    case OPTION_ADD_FIREBASE:
+      return promptAndAddFirebaseToCloudProject();
+    default:
+      // Do nothing if user chooses NO_PROJECT
+      return;
+  }
+}
+
+/**
  * Sets up the default project if provided and writes .firebaserc file.
  * @param setup A helper object to use for the rest of the init features.
  * @param config Configuration for the project.
@@ -94,33 +126,15 @@ export async function doSetup(setup: any, config: Config, options: any): Promise
     return;
   }
 
-  const choices = [
-    { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
-    { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
-    { name: OPTION_ADD_FIREBASE, value: OPTION_ADD_FIREBASE },
-    { name: OPTION_NO_PROJECT, value: OPTION_NO_PROJECT },
-  ];
-  const projectSetupOption: string = await promptOnce({
-    type: "list",
-    name: "id",
-    message: "Please select an option:",
-    choices,
-  });
-
   let projectMetaData;
-  switch (projectSetupOption) {
-    case OPTION_USE_PROJECT:
-      projectMetaData = await getOrPromptProject(options);
-      break;
-    case OPTION_NEW_PROJECT:
-      projectMetaData = await promptAndCreateNewProject();
-      break;
-    case OPTION_ADD_FIREBASE:
-      projectMetaData = await promptAndAddFirebaseToCloudProject();
-      break;
-    default:
-      // Do nothing if user chooses NO_PROJECT
+  // If the user presented a project with `--project`, try to fetch that project.
+  if (options.project) {
+    projectMetaData = await getFirebaseProject(options.project);
+  } else {
+    projectMetaData = await projectChoicePrompt(options);
+    if (!projectMetaData) {
       return;
+    }
   }
 
   const projectInfo = toProjectInfo(projectMetaData);

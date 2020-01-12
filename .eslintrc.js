@@ -15,6 +15,7 @@ module.exports = {
     ],
     "rules": {
         "jsdoc/newline-after-description": "off",
+        "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
         "prettier/prettier": "error",
         "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
         "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
