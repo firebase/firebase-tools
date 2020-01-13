@@ -7,7 +7,7 @@ const client: any = firebase;
 
 describe("listProjects", () => {
   it("should list projects", async () => {
-    const projects = await client.list();
+    const projects = await client.projects.list();
 
     expect(projects).to.have.length.greaterThan(0);
   }).timeout(5 * 1e3); // This can take a while for reasons.
