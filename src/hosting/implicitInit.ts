@@ -8,8 +8,8 @@ import * as logger from "../logger";
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
 export interface TemplateServerResponce {
-  js: string | undefined;
-  json: string | undefined;
+  js?: string;
+  json?: string;
 }
 
 /**
