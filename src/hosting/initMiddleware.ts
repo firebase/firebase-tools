@@ -1,7 +1,7 @@
 import * as request from "request";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { TemplateServerResponce } from "./implicitInit";
+import { TemplateServerResponse } from "./implicitInit";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 
@@ -12,7 +12,7 @@ type ApplicationHandler = (req: any, res: any, next: any) => void;
  * @param init
  * @return {(req: any, res: any, next: any) => void}
  */
-export function initMiddleware(init: TemplateServerResponce): ApplicationHandler {
+export function initMiddleware(init: TemplateServerResponse): ApplicationHandler {
   return (req, res, next) => {
     const match = req.url.match(SDK_PATH_REGEXP);
     if (match) {

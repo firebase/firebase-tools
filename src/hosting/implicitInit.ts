@@ -7,17 +7,17 @@ import * as logger from "../logger";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
-export interface TemplateServerResponce {
+export interface TemplateServerResponse {
   js?: string;
   json?: string;
 }
 
 /**
- * generate template server responce
+ * Generate template server response.
  * @param options
  * @return {Promise<{js: string, json: string}>}
  */
-export async function implicitInit(options: any): Promise<TemplateServerResponce> {
+export async function implicitInit(options: any): Promise<TemplateServerResponse> {
   let config;
   try {
     config = await fetchWebSetup(options);

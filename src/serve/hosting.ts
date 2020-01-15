@@ -5,7 +5,7 @@ import * as detectProjectRoot from "../detectProjectRoot";
 import functionsProxy from "../hosting/functionsProxy";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 const superstatic = require("superstatic").server;
-import { implicitInit, TemplateServerResponce } from "../hosting/implicitInit";
+import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 
@@ -13,7 +13,7 @@ const MAX_PORT_ATTEMPTS = 10;
 let _attempts = 0;
 let server: any;
 
-function _startServer(options: any, config: any, port: number, init: TemplateServerResponce): void {
+function _startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
   server = superstatic({
     debug: true,
     port: port,
@@ -72,7 +72,7 @@ export function stop(): Promise<void> {
 }
 
 export function start(options: any): Promise<void> {
-  return implicitInit(options).then((init: TemplateServerResponce) => {
+  return implicitInit(options).then((init: TemplateServerResponse) => {
     const configs = normalizedHostingConfigs(options);
 
     for (let i = 0; i < configs.length; i++) {
