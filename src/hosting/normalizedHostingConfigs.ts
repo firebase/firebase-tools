@@ -2,11 +2,6 @@ import * as _ from "lodash";
 
 type HostingConfig = { site: string; target: string };
 
-/**
- * @param configs
- * @param onlyString
- * @return {HostingConfig[]}
- */
 function _filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
     return configs;
@@ -29,8 +24,9 @@ function _filterOnly(configs: HostingConfig[], onlyString: string): HostingConfi
 }
 
 /**
- * @param options
- * @return {any[] | HostingConfig[]}
+ * Normalize options to HostingConfig array.
+ * @param options initialization configs
+ * @return normalized hosting config array.
  */
 export function normalizedHostingConfigs(options: any): HostingConfig[] {
   let configs = options.config.get("hosting");

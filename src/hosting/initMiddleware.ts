@@ -8,9 +8,10 @@ const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 type ApplicationHandler = (req: any, res: any, next: any) => void;
 
 /**
- * initialize server middleware.
- * @param init
- * @return {(req: any, res: any, next: any) => void}
+ * Initialize server middleware.
+ * append firebase SDK js, and Content-Type header.
+ * @param init Template server response.
+ * @return Initialized middleware.
  */
 export function initMiddleware(init: TemplateServerResponse): ApplicationHandler {
   return (req, res, next) => {

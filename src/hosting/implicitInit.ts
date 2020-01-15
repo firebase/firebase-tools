@@ -14,8 +14,8 @@ export interface TemplateServerResponse {
 
 /**
  * Generate template server response.
- * @param options
- * @return {Promise<{js: string, json: string}>}
+ * @param options the initialization configuration.
+ * @return Initialized server responce by template.
  */
 export async function implicitInit(options: any): Promise<TemplateServerResponse> {
   let config;
