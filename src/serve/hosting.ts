@@ -10,7 +10,7 @@ import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 
 const MAX_PORT_ATTEMPTS = 10;
-let _attempts = 0;
+let attempts = 0;
 let server: any;
 
 function _startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
@@ -44,10 +44,10 @@ function _startServer(options: any, config: any, port: number, init: TemplateSer
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
       const message = "Port " + options.port + " is not available.";
-      if (_attempts < MAX_PORT_ATTEMPTS) {
+      if (attempts < MAX_PORT_ATTEMPTS) {
         utils.logWarning(clc.yellow("hosting: ") + message + " Trying another port...");
         // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
-        _attempts++;
+        attempts++;
         _startServer(options, config, port + 5, init);
       } else {
         utils.logWarning(message);
