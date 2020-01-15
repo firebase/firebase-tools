@@ -2,7 +2,7 @@ import * as _ from "lodash";
 
 type HostingConfig = { site: string; target: string };
 
-function _filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
+function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
     return configs;
   }
@@ -43,5 +43,5 @@ export function normalizedHostingConfigs(options: any): HostingConfig[] {
     configs = [configs];
   }
 
-  return _filterOnly(configs, options.only);
+  return filterOnly(configs, options.only);
 }
