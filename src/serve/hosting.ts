@@ -64,14 +64,14 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   });
 }
 
-export function stop(): Promise<void> {
+export async function stop(): Promise<void> {
   if (server) {
     server.close();
   }
   return Promise.resolve();
 }
 
-export function start(options: any): Promise<void> {
+export async function start(options: any): Promise<void> {
   return implicitInit(options).then((init: TemplateServerResponse) => {
     const configs = normalizedHostingConfigs(options);
 
@@ -83,6 +83,6 @@ export function start(options: any): Promise<void> {
   });
 }
 
-export function connect(): Promise<void> {
+export async function connect(): Promise<void> {
   return Promise.resolve();
 }
