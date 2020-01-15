@@ -13,7 +13,7 @@ const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
 let server: any;
 
-function _startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
+function startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
   server = superstatic({
     debug: true,
     port: port,
@@ -48,7 +48,7 @@ function _startServer(options: any, config: any, port: number, init: TemplateSer
         utils.logWarning(clc.yellow("hosting: ") + message + " Trying another port...");
         // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
         attempts++;
-        _startServer(options, config, port + 5, init);
+        startServer(options, config, port + 5, init);
       } else {
         utils.logWarning(message);
         throw new FirebaseError("Could not find an open port for hosting development server.", {
@@ -78,7 +78,7 @@ export function start(options: any): Promise<void> {
     for (let i = 0; i < configs.length; i++) {
       // skip over the functions emulator ports to avoid breaking changes
       const port = i === 0 ? options.port : options.port + 4 + i;
-      _startServer(options, configs[i], port, init);
+      startServer(options, configs[i], port, init);
     }
   });
 }
