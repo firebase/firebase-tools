@@ -15,14 +15,15 @@ module.exports = {
     ],
     "rules": {
         "jsdoc/newline-after-description": "off",
+        "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
         "prettier/prettier": "error",
         "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
+        "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
         "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
         "no-restricted-globals": ["error", "name", "length"],
         "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
         "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
-        "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
     },
     "overrides": [
         {
@@ -76,9 +77,7 @@ module.exports = {
             "env": {
                 "mocha": true,
             },
-            "rules": {
-                "require-jsdoc": "warn", // TODO(bkendall): remove, allow to error.
-            },
+            "rules": {},
         },
     ],
     "globals": {},

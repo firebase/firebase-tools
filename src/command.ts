@@ -140,7 +140,11 @@ export class Command {
       // command. Therefore, if we check the number of arguments we have
       // against the number of arguments the action function has, we can error
       // out if we would provide too many.
-      if (args.length > this.actionFn.length) {
+      // TODO(bkendall): it would be nice to not depend on this internal
+      //   property of Commander, but that's the limitation we have today. What
+      //   we would like is the following:
+      //   > if (args.length > this.actionFn.length)
+      if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
@@ -202,6 +206,7 @@ export class Command {
     }
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
+      options.interactive = true;
       options.nonInteractive = false;
     }
 

@@ -132,11 +132,36 @@ export async function startAll(options: any): Promise<void> {
       options.config.get("functions.source")
     );
 
+    let inspectFunctions: number | undefined;
+
+    // If the flag is provided without a value, use the Node.js default
+    if (options.inspectFunctions === true) {
+      options.inspectFunctions = "9229";
+    }
+
+    if (options.inspectFunctions) {
+      inspectFunctions = Number(options.inspectFunctions);
+      if (isNaN(inspectFunctions) || inspectFunctions < 1024 || inspectFunctions > 65535) {
+        throw new FirebaseError(
+          `"${
+            options.inspectFunctions
+          }" is not a valid value for the --inspect-functions flag, please pass an integer between 1024 and 65535.`
+        );
+      }
+
+      // TODO(samstern): Add a link to documentation
+      utils.logLabeledWarning(
+        "functions",
+        `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
       host: functionsAddr.host,
       port: functionsAddr.port,
+      debugPort: inspectFunctions,
     });
     await startEmulator(functionsEmulator);
   }

@@ -6,6 +6,7 @@ import TerminalRenderer = require("marked-terminal");
 import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
+import { UpdateWarning } from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
@@ -28,9 +29,6 @@ export function displayChangesNoInput(
   newSpec: extensionsApi.ExtensionSpec
 ): string[] {
   const lines: string[] = [];
-  if (spec.version !== newSpec.version) {
-    lines.push("", "**Version:**", `- ${spec.version}`, `+ ${newSpec.version}`);
-  }
   if (spec.displayName !== newSpec.displayName) {
     lines.push(
       "",
@@ -93,12 +91,12 @@ export async function displayChangesRequiringConfirmation(
   const resourcesDiffDeletions = _.differenceWith(
     spec.resources,
     _.get(newSpec, "resources", []),
-    _.isEqual
+    compareResources
   );
   const resourcesDiffAdditions = _.differenceWith(
     newSpec.resources,
     _.get(spec, "resources", []),
-    _.isEqual
+    compareResources
   );
   if (resourcesDiffDeletions.length || resourcesDiffAdditions.length) {
     let message = "\n**Resources:**\n";
@@ -134,9 +132,13 @@ export async function displayChangesRequiringConfirmation(
   }
 }
 
+function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
+  return resource1.name == resource2.name && resource1.type == resource2.type;
+}
+
 function getResourceReadableName(resource: extensionsApi.Resource): string {
-  return resource.type === "function"
-    ? `${resource.name} (${resource.description})\n`
+  return resource.type === "firebaseextensions.v1beta.function"
+    ? `${resource.name} (Cloud Function): ${resource.description}\n`
     : `${resource.name} (${resource.type})\n`;
 }
 
@@ -144,13 +146,32 @@ async function getConsent(field: string, message: string): Promise<void> {
   const consent = await promptOnce({
     type: "confirm",
     message,
-    default: false,
+    default: true,
   });
   if (!consent) {
     throw new FirebaseError(
       `Without explicit consent for the change to ${field}, we cannot update this extension instance.`,
       { exit: 2 }
     );
+  }
+}
+
+/**
+ * Displays an update warning as markdown, and prompts the user for confirmation.
+ * @param updateWarning The update warning to display and prompt for.
+ */
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+  logger.info(marked(updateWarning.description));
+  if (updateWarning.action) {
+    logger.info(marked(updateWarning.action));
+  }
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
   }
 }
 

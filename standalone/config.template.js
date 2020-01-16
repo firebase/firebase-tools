@@ -7,17 +7,13 @@ module.exports = {
     When headless mode is disabled, the "double click" experience is enabled
     which allows the binary to spawn a terminal on Windows and Mac. The is the
     behavior for desktop users.
-
-    This placeholder is not in quotes because it is a boolean.
   */
-  headless: headless_value,
+  headless: false,
 
   /*
     This is generally set to "firebase-tools@latest" however a custom value
     can be supplied for EAPs which would like to have builds pointed at
     specific tgz bundles.
-
-    This placeholder is in quotes because it is a string.
    */
-  firebase_tools_package: "firebase_tools_package_value"
+  firebase_tools_package: ""
 };
