@@ -19,20 +19,8 @@ module.exports = function(args) {
       console.log("Enabling preview feature", clc.bold(args[1]) + "...");
       previews[args[1]] = true;
       configstore.set("previews", previews);
-      var tokens = configstore.get("tokens");
-
-      var next;
-      if (tokens && tokens.refresh_token) {
-        next = auth.logout(tokens.refresh_token);
-      } else {
-        next = Promise.resolve();
-      }
-      return next.then(function() {
-        console.log("Preview feature enabled!");
-        console.log();
-        console.log("Please run", clc.bold("firebase login"), "to re-authorize the CLI.");
-        return process.exit(0);
-      });
+      console.log("Preview feature enabled!");
+      return process.exit(0);
     }
 
     _errorOut();
