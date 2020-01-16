@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.11.0",
+  "version": "7.12.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -12,6 +12,7 @@
     "clean": "shx rm -rf lib",
     "format": "npm run lint -- --fix --quiet",
     "lint": "eslint '**/*.{js,ts}'",
+    "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha"
@@ -83,6 +84,7 @@
     "fs-extra": "^0.23.1",
     "glob": "^7.1.2",
     "google-auto-auth": "^0.7.2",
+    "google-gax": "~1.12.0",
     "inquirer": "~6.3.1",
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^8.2.1",
