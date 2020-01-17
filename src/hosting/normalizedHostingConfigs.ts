@@ -22,7 +22,7 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
     .map((anOnly) => anOnly.replace("hosting:", ""));
 
   return configs.filter((config: HostingConfig) =>
-    _.includes(onlyTargets, config.target || config.site),
+    _.includes(onlyTargets, config.target || config.site)
   );
 }
 

@@ -2,10 +2,10 @@ import * as request from "request";
 import * as logger from "../logger";
 import * as utils from "../utils";
 import { TemplateServerResponse } from "./implicitInit";
+import { RequestHandler } from "express";
+import { Request } from "request";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
-
-type ApplicationHandler = (req: any, res: any, next: any) => void;
 
 /**
  * Initialize server middleware.
@@ -13,21 +13,21 @@ type ApplicationHandler = (req: any, res: any, next: any) => void;
  * @param init Template server response.
  * @return Initialized middleware.
  */
-export function initMiddleware(init: TemplateServerResponse): ApplicationHandler {
+export function initMiddleware(init: TemplateServerResponse): RequestHandler {
   return (req, res, next) => {
-    const match = req.url.match(SDK_PATH_REGEXP);
+    const match = RegExp(SDK_PATH_REGEXP).exec(req.url);
     if (match) {
       const version = match[1];
       const sdkName = match[2];
       const url = "https://www.gstatic.com/firebasejs/" + version + "/" + sdkName;
-      const preq: any = request(url)
-        .on("response", (pres: any) => {
+      const preq: Request = request(url)
+        .on("response", (pres) => {
           if (pres.statusCode === 404) {
             return next();
           }
           return preq.pipe(res);
         })
-        .on("error", (e: any) => {
+        .on("error", (e) => {
           utils.logLabeledWarning(
             "hosting",
             `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`
