@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 
-type HostingConfig = { site: string; target: string };
+interface HostingConfig {
+  site: string;
+  target: string;
+}
 
 function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
@@ -19,7 +22,7 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
     .map((anOnly) => anOnly.replace("hosting:", ""));
 
   return configs.filter((config: HostingConfig) =>
-    _.includes(onlyTargets, config.target || config.site)
+    _.includes(onlyTargets, config.target || config.site),
   );
 }
 
