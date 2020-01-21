@@ -28,7 +28,7 @@ export function isJavaEmulator(value: string): value is JavaEmulators {
 }
 
 export function isEmulator(value: string): value is Emulators {
-  return Object.values(Emulators).indexOf(value) >= 0;
+  return Object.values(Emulators).indexOf(value as Emulators) >= 0;
 }
 
 export interface EmulatorInstance {

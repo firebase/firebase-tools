@@ -5,6 +5,7 @@ import * as sinon from "sinon";
 import { doSetup, ProjectInfo } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
+import * as Config from "../../../config";
 
 const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "my-project-123",
@@ -43,6 +44,7 @@ describe("project", () => {
   let promptAvailableProjectIdStub: sinon.SinonStub;
   let promptOnceStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
+  let emptyConfig: Config;
 
   beforeEach(() => {
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
@@ -52,6 +54,7 @@ describe("project", () => {
     promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    emptyConfig = new Config("{}", {});
   });
 
   afterEach(() => {
@@ -67,7 +70,7 @@ describe("project", () => {
         promptOnceStub.onFirstCall().resolves("Use an existing project");
         getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
 
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
@@ -93,7 +96,7 @@ describe("project", () => {
           .callsFake(fakePromptFn);
         createFirebaseProjectStub.resolves(TEST_FIREBASE_PROJECT);
 
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
@@ -120,7 +123,7 @@ describe("project", () => {
 
         let err;
         try {
-          await doSetup(setup, {}, options);
+          await doSetup(setup, emptyConfig, options);
         } catch (e) {
           err = e;
         }
@@ -142,7 +145,7 @@ describe("project", () => {
         promptAvailableProjectIdStub.onFirstCall().resolves("my-project-123");
         addFirebaseProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
 
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
@@ -163,7 +166,7 @@ describe("project", () => {
 
         let err;
         try {
-          await doSetup(setup, {}, options);
+          await doSetup(setup, emptyConfig, options);
         } catch (e) {
           err = e;
         }
@@ -181,7 +184,7 @@ describe("project", () => {
         const setup = { config: {}, rcfile: {} };
         promptOnceStub.resolves("Don't set up a default project");
 
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(setup).to.deep.equal({ config: {}, rcfile: {}, project: {} });
         expect(promptOnceStub).to.be.calledOnce;
@@ -199,14 +202,14 @@ describe("project", () => {
       });
 
       it("should not prompt", async () => {
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(promptOnceStub).to.be.not.called;
         expect(promptStub).to.be.not.called;
       });
 
       it("should set project location even if .firebaserc is already set up", async () => {
-        await doSetup(setup, {}, options);
+        await doSetup(setup, emptyConfig, options);
 
         expect(_.get(setup, "projectId")).to.equal("my-project-123");
         expect(_.get(setup, "projectLocation")).to.equal("us-central");
