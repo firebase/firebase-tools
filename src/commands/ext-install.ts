@@ -4,25 +4,24 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import { populatePostinstall } from "../extensions/populatePostinstall";
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { checkIfInstanceIdAlreadyExists, getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
+  checkIfInstanceIdAlreadyExists,
   ensureExtensionsApiEnabled,
-  getValidInstanceId,
   logPrefix,
   promptForOfficialExtension,
   promptForRepeatInstance,
   promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
+import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -49,7 +48,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
-    const anotherInstanceExists = await checkIfInstanceIdAlreadyExists(projectId, spec.name);
+    let instanceId = spec.name;
+    const anotherInstanceExists = await checkIfInstanceIdAlreadyExists(projectId, instanceId);
     if (anotherInstanceExists) {
       const consent = await promptForRepeatInstance(projectId, spec.name);
       if (!consent) {
@@ -61,8 +61,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         return;
       }
+      instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
     }
-    let instanceId = await getValidInstanceId(projectId, spec.name);
     spinner.start();
     let serviceAccountEmail;
     while (!serviceAccountEmail) {

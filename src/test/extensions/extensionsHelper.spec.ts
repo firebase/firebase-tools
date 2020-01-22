@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
-import * as generateInstanceId from "../../extensions/generateInstanceId";
+import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as prompt from "../../prompt";
 
@@ -164,37 +164,23 @@ describe("extensionsHelper", () => {
       }).to.throw(FirebaseError, /param is missing/);
     });
   });
-  describe("getValidInstanceId", () => {
+  describe("promptForValidInstanceId", () => {
     let promptStub: sinon.SinonStub;
-    let generateInstanceIdStub: sinon.SinonStub;
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      generateInstanceIdStub = sinon.stub(generateInstanceId, "generateInstanceId");
     });
 
     afterEach(() => {
       sinon.restore();
     });
 
-    it("return extensionName if it is not used by another instance ", async () => {
-      const extensionName = "extension-name";
-      generateInstanceIdStub.resolves(extensionName);
-      promptStub.returns("a-valid-name");
-
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
-
-      expect(instanceId).to.equal(extensionName);
-      expect(promptStub).not.to.have.been.called;
-    });
-
-    it("prompt the user if extensionName is already used, and return if the user provides a valid id", async () => {
+    it("prompt the user and return if the user provides a valid id", async () => {
       const extensionName = "extension-name";
       const userInput = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.returns(userInput);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput);
       expect(promptStub).to.have.been.calledOnce;
@@ -204,11 +190,10 @@ describe("extensionsHelper", () => {
       const extensionName = "extension-name";
       const userInput1 = "short";
       const userInput2 = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -218,11 +203,10 @@ describe("extensionsHelper", () => {
       const extensionName = "extension-name";
       const userInput1 = "a-really-long-name-that-is-really-longer-than-were-ok-with";
       const userInput2 = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -233,12 +217,11 @@ describe("extensionsHelper", () => {
       const userInput1 = "invalid-";
       const userInput2 = "-invalid";
       const userInput3 = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
       promptStub.onCall(2).returns(userInput3);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput3);
       expect(promptStub).to.have.been.calledThrice;
@@ -248,11 +231,10 @@ describe("extensionsHelper", () => {
       const extensionName = "extension-name";
       const userInput1 = "1invalid";
       const userInput2 = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -262,14 +244,51 @@ describe("extensionsHelper", () => {
       const extensionName = "extension-name";
       const userInput1 = "na.name@name";
       const userInput2 = "a-valid-name";
-      generateInstanceIdStub.resolves(`${extensionName}-abcd`);
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.getValidInstanceId("proj", extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
+    });
+  });
+
+  describe("checkIfInstanceIdAlreadyExists", () => {
+    const TEST_NAME = "image-resizer";
+    let getInstanceStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getInstanceStub = sinon.stub(extensionsApi, "getInstance");
+    });
+
+    afterEach(() => {
+      getInstanceStub.restore();
+    });
+
+    it("should return false if no instance with that name exists", async () => {
+      getInstanceStub.resolves({ error: { code: 404 } });
+
+      const exists = await extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME);
+      expect(exists).to.be.false;
+    });
+
+    it("should return true if an instance with that name exists", async () => {
+      getInstanceStub.resolves({ name: TEST_NAME });
+
+      const exists = await extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME);
+      expect(exists).to.be.true;
+    });
+
+    it("should throw if it gets an unexpected error response from getInstance", async () => {
+      getInstanceStub.resolves({ error: { code: 500, message: "a message" } });
+
+      await expect(
+        extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME)
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Unexpected error when checking if instance ID exists: a message"
+      );
     });
   });
 });
