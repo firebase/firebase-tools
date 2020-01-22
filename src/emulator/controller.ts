@@ -16,6 +16,7 @@ import { HostingEmulator } from "../emulator/hostingEmulator";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
+import * as commandUtils from "./commandUtils";
 
 export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
 
@@ -133,21 +134,8 @@ export async function startAll(options: any): Promise<void> {
     );
 
     let inspectFunctions: number | undefined;
-
-    // If the flag is provided without a value, use the Node.js default
-    if (options.inspectFunctions === true) {
-      options.inspectFunctions = "9229";
-    }
-
     if (options.inspectFunctions) {
-      inspectFunctions = Number(options.inspectFunctions);
-      if (isNaN(inspectFunctions) || inspectFunctions < 1024 || inspectFunctions > 65535) {
-        throw new FirebaseError(
-          `"${
-            options.inspectFunctions
-          }" is not a valid value for the --inspect-functions flag, please pass an integer between 1024 and 65535.`
-        );
-      }
+      inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
       utils.logLabeledWarning(
