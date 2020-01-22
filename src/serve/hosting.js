@@ -5,7 +5,7 @@ var { FirebaseError } = require("../error");
 
 var superstatic = require("superstatic").server;
 var utils = require("../utils");
-var detectProjectRoot = require("../detectProjectRoot");
+var { detectProjectRoot } = require("../detectProjectRoot");
 var implicitInit = require("../hosting/implicitInit");
 var initMiddleware = require("../hosting/initMiddleware");
 var functionsProxy = require("../hosting/functionsProxy").default;
