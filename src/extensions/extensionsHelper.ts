@@ -141,7 +141,6 @@ export async function getValidInstanceId(
 ): Promise<string> {
   let instanceId = await generateInstanceId(projectId, extensionName);
   if (instanceId !== extensionName) {
-    logger.info(`An extension named ${extensionName} already exists in project ${projectId}.`);
     instanceId = await promptForValidInstanceId(instanceId);
   }
   return instanceId;
@@ -194,5 +193,23 @@ export async function promptForOfficialExtension(message: string): Promise<strin
     message,
     choices: convertOfficialExtensionsToList(officialExts),
     pageSize: _.size(officialExts),
+  });
+}
+
+/**
+ * Confirm if the user wants to install another instance of an extension when they already have one.
+ * @param extensionName The name of the extension being installed.
+ * @param projectName The name of the project in use.
+ */
+export async function promptForRepeatInstance(
+  projectName: string,
+  extensionName: string
+): Promise<string> {
+  const message =
+    `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
+    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+  return await promptOnce({
+    type: "confirm",
+    message,
   });
 }

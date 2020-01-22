@@ -9,7 +9,7 @@ import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getRandomString } from "../extensions/generateInstanceId";
+import { checkIfInstanceIdAlreadyExists, getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
@@ -19,14 +19,14 @@ import {
   ensureExtensionsApiEnabled,
   getValidInstanceId,
   logPrefix,
-  promptForValidInstanceId,
   promptForOfficialExtension,
+  promptForRepeatInstance,
+  promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
-
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
@@ -49,7 +49,19 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
-
+    const anotherInstanceExists = await checkIfInstanceIdAlreadyExists(projectId, spec.name);
+    if (anotherInstanceExists) {
+      const consent = await promptForRepeatInstance(projectId, spec.name);
+      if (!consent) {
+        // TODO (b/145233161): Add documentation link about extension instances here.
+        logger.info(
+          marked(
+            "Installation cancelled. For a list of all available Firebase Extensions commands, run `firebase ext`."
+          )
+        );
+        return;
+      }
+    }
     let instanceId = await getValidInstanceId(projectId, spec.name);
     spinner.start();
     let serviceAccountEmail;
