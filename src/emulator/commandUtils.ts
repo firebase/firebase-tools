@@ -6,6 +6,7 @@ import * as logger from "../logger";
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
 import { Emulators } from "../emulator/types";
+import { FirebaseError } from "../error";
 
 export const FLAG_ONLY: string = "--only <emulators>";
 export const DESC_ONLY: string =
@@ -54,4 +55,20 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   } else {
     await requireConfig(options);
   }
+}
+
+export function parseInspectionPort(options: any): number {
+  let port = options.inspectFunctions;
+  if (port === true) {
+    port = "9229";
+  }
+
+  const parsed = Number(port);
+  if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
+    throw new FirebaseError(
+      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`
+    );
+  }
+
+  return parsed;
 }

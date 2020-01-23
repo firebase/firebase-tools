@@ -6,7 +6,7 @@ var cjson = require("cjson");
 var fs = require("fs-extra");
 var path = require("path");
 
-var detectProjectRoot = require("./detectProjectRoot");
+var detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
 var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");

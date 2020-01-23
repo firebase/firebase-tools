@@ -115,6 +115,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
 
+    // When debugging is enabled, the "timeout" feature needs to be disabled so that
+    // functions don't timeout while a breakpoint is active.
+    if (this.args.debugPort) {
+      this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
+      this.args.disabledRuntimeFeatures.timeout = true;
+    }
+
     const mode = this.args.debugPort
       ? FunctionsExecutionMode.SEQUENTIAL
       : FunctionsExecutionMode.AUTO;
