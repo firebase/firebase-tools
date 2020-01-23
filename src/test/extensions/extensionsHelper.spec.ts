@@ -175,7 +175,7 @@ describe("extensionsHelper", () => {
       sinon.restore();
     });
 
-    it("prompt the user and return if the user provides a valid id", async () => {
+    it("should prompt the user and return if the user provides a valid id", async () => {
       const extensionName = "extension-name";
       const userInput = "a-valid-name";
       promptStub.returns(userInput);
@@ -186,7 +186,7 @@ describe("extensionsHelper", () => {
       expect(promptStub).to.have.been.calledOnce;
     });
 
-    it("prompt the user again if the provided id is shorter than 6 characters", async () => {
+    it("should prompt the user again if the provided id is shorter than 6 characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "short";
       const userInput2 = "a-valid-name";
@@ -199,7 +199,7 @@ describe("extensionsHelper", () => {
       expect(promptStub).to.have.been.calledTwice;
     });
 
-    it("prompt the user again if the provided id is longer than 45 characters", async () => {
+    it("should prompt the user again if the provided id is longer than 45 characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "a-really-long-name-that-is-really-longer-than-were-ok-with";
       const userInput2 = "a-valid-name";
@@ -212,7 +212,7 @@ describe("extensionsHelper", () => {
       expect(promptStub).to.have.been.calledTwice;
     });
 
-    it("prompt the user again if the provided id ends in a -", async () => {
+    it("should prompt the user again if the provided id ends in a -", async () => {
       const extensionName = "extension-name";
       const userInput1 = "invalid-";
       const userInput2 = "-invalid";
@@ -227,7 +227,7 @@ describe("extensionsHelper", () => {
       expect(promptStub).to.have.been.calledThrice;
     });
 
-    it("prompt the user again if the provided id starts with a number", async () => {
+    it("should prompt the user again if the provided id starts with a number", async () => {
       const extensionName = "extension-name";
       const userInput1 = "1invalid";
       const userInput2 = "a-valid-name";
@@ -240,7 +240,7 @@ describe("extensionsHelper", () => {
       expect(promptStub).to.have.been.calledTwice;
     });
 
-    it("prompt the user again if the provided id contains illegal characters", async () => {
+    it("should prompt the user again if the provided id contains illegal characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "na.name@name";
       const userInput2 = "a-valid-name";
