@@ -199,12 +199,8 @@ Note: when used in a limited environment like Cloud Functions, not all `firebase
 because they require access to a local filesystem.
 
 [gh-actions]: https://github.com/firebase/firebase-tools/actions
-[travis-ci]: https://travis-ci.org/firebase/firebase-tools
-[coveralls]: https://coveralls.io/r/firebase/firebase-tools
 [npm]: https://www.npmjs.com/package/firebase-tools
 
 [gh-actions-badge]: https://github.com/firebase/firebase-tools/workflows/CI%20Tests/badge.svg
-[travis-badge]: https://img.shields.io/travis/firebase/firebase-tools/master.svg
-[coveralls-badge]: https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat
 [node-badge]: https://img.shields.io/node/v/firebase-tools.svg
 [npm-badge]: https://img.shields.io/npm/v/firebase-tools.svg
