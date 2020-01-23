@@ -1,4 +1,4 @@
-# Firebase CLI [![Build Status][travis-badge]][travis-ci] [![Coverage Status][coveralls-badge]][coveralls] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
+# Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
 
 The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line.
 
@@ -198,10 +198,12 @@ client.deploy({
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically
 because they require access to a local filesystem.
 
+[gh-actions]: https://github.com/firebase/firebase-tools/actions
 [travis-ci]: https://travis-ci.org/firebase/firebase-tools
 [coveralls]: https://coveralls.io/r/firebase/firebase-tools
 [npm]: https://www.npmjs.com/package/firebase-tools
 
+[gh-actions-badge]: https://github.com/firebase/firebase-tools/workflows/CI%20Tests/badge.svg
 [travis-badge]: https://img.shields.io/travis/firebase/firebase-tools/master.svg
 [coveralls-badge]: https://img.shields.io/coveralls/firebase/firebase-tools.svg?branch=master&style=flat
 [node-badge]: https://img.shields.io/node/v/firebase-tools.svg
