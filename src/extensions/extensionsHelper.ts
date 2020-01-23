@@ -197,10 +197,7 @@ export async function promptForRepeatInstance(
   });
 }
 
-export async function checkIfInstanceIdAlreadyExists(
-  projectId: string,
-  instanceId: string
-): Promise<boolean> {
+export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
   const instanceRes = await extensionsApi.getInstance(projectId, instanceId, {
     resolveOnHTTPError: true,
   });

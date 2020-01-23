@@ -14,7 +14,7 @@ import * as extensionsApi from "../extensions/extensionsApi";
 import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  checkIfInstanceIdAlreadyExists,
+  instanceIdExists,
   ensureExtensionsApiEnabled,
   logPrefix,
   promptForOfficialExtension,
@@ -49,7 +49,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
     let instanceId = spec.name;
-    const anotherInstanceExists = await checkIfInstanceIdAlreadyExists(projectId, instanceId);
+    const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
     if (anotherInstanceExists) {
       const consent = await promptForRepeatInstance(projectId, spec.name);
       if (!consent) {

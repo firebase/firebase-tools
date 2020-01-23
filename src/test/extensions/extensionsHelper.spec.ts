@@ -269,23 +269,21 @@ describe("extensionsHelper", () => {
     it("should return false if no instance with that name exists", async () => {
       getInstanceStub.resolves({ error: { code: 404 } });
 
-      const exists = await extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME);
+      const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
       expect(exists).to.be.false;
     });
 
     it("should return true if an instance with that name exists", async () => {
       getInstanceStub.resolves({ name: TEST_NAME });
 
-      const exists = await extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME);
+      const exists = await extensionsHelper.instanceIdExists("proj", TEST_NAME);
       expect(exists).to.be.true;
     });
 
     it("should throw if it gets an unexpected error response from getInstance", async () => {
       getInstanceStub.resolves({ error: { code: 500, message: "a message" } });
 
-      await expect(
-        extensionsHelper.checkIfInstanceIdAlreadyExists("proj", TEST_NAME)
-      ).to.be.rejectedWith(
+      await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
         FirebaseError,
         "Unexpected error when checking if instance ID exists: a message"
       );
