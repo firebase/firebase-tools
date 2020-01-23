@@ -53,7 +53,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     if (anotherInstanceExists) {
       const consent = await promptForRepeatInstance(projectId, spec.name);
       if (!consent) {
-        // TODO (b/145233161): Add documentation link about extension instances here.
+        // TODO(b/145233161): Add documentation link about extension instances here.
         logger.info(
           marked(
             "Installation cancelled. For a list of all available Firebase Extensions commands, run `firebase ext`."
