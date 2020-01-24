@@ -2,6 +2,7 @@
 
 var _ = require("lodash");
 var clc = require("cli-color");
+var marked = require("marked");
 
 var { FirebaseError } = require("./error");
 
@@ -21,10 +22,19 @@ module.exports = function(options, allowNull = false) {
 
     if (aliasCount === 0) {
       throw new FirebaseError(
-        "No project active. Run with " +
+        "No currently active project.\n" +
+          "To run this command, you have two options:\n" +
+          "- Run with " +
           clc.bold("--project <projectId>") +
-          " or define an alias by\nrunning " +
-          clc.bold("firebase use --add"),
+          ".\n" +
+          "- Set an active project by running " +
+          clc.bold("firebase use --add ") +
+          "and then rerun this command.\n" +
+          "To list all the Firebase projects to which you have access, run " +
+          clc.bold("firebase projects:list") +
+          marked(
+            ".\nTo learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases."
+          ),
         {
           exit: 1,
         }
