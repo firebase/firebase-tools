@@ -1133,6 +1133,7 @@ async function handleMessage(message: string) {
       "runtime-status",
       `Could not find trigger "${runtimeArgs.frb.triggerId}" in your functions directory.`
     ).log();
+    return;
   } else {
     logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
   }
