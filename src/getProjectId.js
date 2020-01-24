@@ -25,7 +25,7 @@ module.exports = function(options, allowNull = false) {
         "No currently active project.\n" +
           "To run this command, you have two options:\n" +
           "- Run this command with " +
-          clc.bold("--project <projectId | projectAlias>") +
+          clc.bold("--project <project-id | project-alias>") +
           ".\n" +
           "- Set an active project by running " +
           clc.bold("firebase use --add") +
