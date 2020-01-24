@@ -6,9 +6,9 @@ import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
+import * as extensionsApi from "./extensionsApi";
 import * as getProjectId from "../getProjectId";
 import { Param } from "./extensionsApi";
-import { generateInstanceId } from "./generateInstanceId";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 
@@ -129,24 +129,6 @@ export function validateCommandLineParams(envVars: any, paramSpec: any): void {
   });
 }
 
-/**
- * Prompts the user for an instanceId if the extensionName is already being used by a different instance.
- * If the user provides an invalid instanceId, prompts the user again until they provide a valid one.
- * @param projectId the id of the project where this instance will exist
- * @param extensionName the name of the extension that this instance will be running
- */
-export async function getValidInstanceId(
-  projectId: string,
-  extensionName: string
-): Promise<string> {
-  let instanceId = await generateInstanceId(projectId, extensionName);
-  if (instanceId !== extensionName) {
-    logger.info(`An extension named ${extensionName} already exists in project ${projectId}.`);
-    instanceId = await promptForValidInstanceId(instanceId);
-  }
-  return instanceId;
-}
-
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId;
@@ -195,4 +177,40 @@ export async function promptForOfficialExtension(message: string): Promise<strin
     choices: convertOfficialExtensionsToList(officialExts),
     pageSize: _.size(officialExts),
   });
+}
+
+/**
+ * Confirm if the user wants to install another instance of an extension when they already have one.
+ * @param extensionName The name of the extension being installed.
+ * @param projectName The name of the project in use.
+ */
+export async function promptForRepeatInstance(
+  projectName: string,
+  extensionName: string
+): Promise<string> {
+  const message =
+    `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
+    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+  return await promptOnce({
+    type: "confirm",
+    message,
+  });
+}
+
+export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
+  const instanceRes = await extensionsApi.getInstance(projectId, instanceId, {
+    resolveOnHTTPError: true,
+  });
+  if (instanceRes.error) {
+    if (_.get(instanceRes, "error.code") === 404) {
+      return false;
+    }
+    const msg =
+      "Unexpected error when checking if instance ID exists: " +
+      _.get(instanceRes, "error.message");
+    throw new FirebaseError(msg, {
+      original: instanceRes.error,
+    });
+  }
+  return true;
 }

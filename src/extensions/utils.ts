@@ -42,3 +42,16 @@ export function convertOfficialExtensionsToList(officialExts: {
     };
   });
 }
+
+/**
+ * Generates a random string of lowercase letters and numbers
+ * @param length The length of the string
+ */
+export function getRandomString(length: number): string {
+  const SUFFIX_CHAR_SET = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += SUFFIX_CHAR_SET.charAt(Math.floor(Math.random() * SUFFIX_CHAR_SET.length));
+  }
+  return result;
+}
