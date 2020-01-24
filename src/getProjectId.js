@@ -24,12 +24,12 @@ module.exports = function(options, allowNull = false) {
       throw new FirebaseError(
         "No currently active project.\n" +
           "To run this command, you have two options:\n" +
-          "- Run with " +
-          clc.bold("--project <projectId>") +
+          "- Run this command with " +
+          clc.bold("--project <projectId | projectAlias>") +
           ".\n" +
           "- Set an active project by running " +
-          clc.bold("firebase use --add ") +
-          "and then rerun this command.\n" +
+          clc.bold("firebase use --add") +
+          ", then rerun this command.\n" +
           "To list all the Firebase projects to which you have access, run " +
           clc.bold("firebase projects:list") +
           marked(
