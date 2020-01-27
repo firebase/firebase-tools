@@ -35,7 +35,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         instance.serviceAccountEmail
       )}\n\n`;
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
-        ? "Uninstalling deletes all resources created for this extension:\n" +
+        ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
             .map((resource: extensionsApi.Resource) =>
               clc.bold(`- ${resource.type}: ${resource.name} \n`)
@@ -46,12 +46,16 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const artifactsMessage =
         `The following ${clc.bold("will not")} be deleted:\n` +
         "Any artifacts (for example, stored images) created by this extension instance.\n" +
-        "Any other project resources that the extension instance interacted with.\n";
+        "Any other project resources with which this extension instance interacted.\n";
 
       const extensionDeletionMessage =
         `Here's what will happen when you uninstall ${clc.bold(instanceId)} from project ${clc.bold(
           projectId
+<<<<<<< HEAD
         )}. Please note that this cannot be undone.\n\n` +
+=======
+        )}. Be aware that this cannot be undone.\n` +
+>>>>>>> 884fd1ad1b60dce62ebbbf5d0942d584dca97c20
         `${serviceAccountMessage}` +
         `${resourcesMessage}` +
         `${artifactsMessage}`;
