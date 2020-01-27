@@ -23,7 +23,7 @@ module.exports = function(options, allowNull = false) {
     if (aliasCount === 0) {
       throw new FirebaseError(
         "No currently active project.\n" +
-          "To run this command, you need to specify a project.You have two options:\n" +
+          "To run this command, you need to specify a project. You have two options:\n" +
           "- Run this command with " +
           clc.bold("--project <alias_or_project_id>") +
           ".\n" +
