@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
+import * as configstore from "../../../configstore";
 
 import { doSetup, ProjectInfo } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
@@ -44,6 +45,7 @@ describe("project", () => {
   let promptAvailableProjectIdStub: sinon.SinonStub;
   let promptOnceStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
+  let configstoreSetStub: sinon.SinonStub;
   let emptyConfig: Config;
 
   beforeEach(() => {
@@ -54,6 +56,7 @@ describe("project", () => {
     promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
     promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
     promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    configstoreSetStub = sandbox.stub(configstore, "set").throws("Unexpected configstore set");
     emptyConfig = new Config("{}", {});
   });
 
@@ -69,6 +72,7 @@ describe("project", () => {
         getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
         promptOnceStub.onFirstCall().resolves("Use an existing project");
         getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
         await doSetup(setup, emptyConfig, options);
 
@@ -95,6 +99,7 @@ describe("project", () => {
           .onFirstCall()
           .callsFake(fakePromptFn);
         createFirebaseProjectStub.resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
         await doSetup(setup, emptyConfig, options);
 
@@ -120,6 +125,7 @@ describe("project", () => {
           .withArgs({}, projectManager.PROJECTS_CREATE_QUESTIONS)
           .onFirstCall()
           .callsFake(fakePromptFn);
+        configstoreSetStub.onFirstCall().resolves();
 
         let err;
         try {
@@ -144,6 +150,7 @@ describe("project", () => {
           .resolves("Add Firebase to an existing Google Cloud Platform project");
         promptAvailableProjectIdStub.onFirstCall().resolves("my-project-123");
         addFirebaseProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
         await doSetup(setup, emptyConfig, options);
 
