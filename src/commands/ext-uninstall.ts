@@ -51,11 +51,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const extensionDeletionMessage =
         `Here's what will happen when you uninstall ${clc.bold(instanceId)} from project ${clc.bold(
           projectId
-<<<<<<< HEAD
-        )}. Please note that this cannot be undone.\n\n` +
-=======
-        )}. Be aware that this cannot be undone.\n` +
->>>>>>> 884fd1ad1b60dce62ebbbf5d0942d584dca97c20
+        )}. Be aware that this cannot be undone.\n\n` +
         `${serviceAccountMessage}` +
         `${resourcesMessage}` +
         `${artifactsMessage}`;
