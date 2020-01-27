@@ -35,7 +35,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         instance.serviceAccountEmail
       )}\n\n`;
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
-        ? "Uninstalling deletes all resources created for this extension:\n" +
+        ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
             .map((resource: extensionsApi.Resource) =>
               clc.bold(`- ${resource.type}: ${resource.name} \n`)
