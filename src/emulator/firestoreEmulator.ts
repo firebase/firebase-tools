@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as request from "request";
@@ -8,7 +7,7 @@ import * as pf from "portfinder";
 
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
@@ -45,10 +44,12 @@ export class FirestoreEmulator implements EmulatorInstance {
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const issues = await this.updateRules(newContent);
-        if (issues && issues.length > 0) {
+        if (issues) {
           for (const issue of issues) {
             utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
           }
+        }
+        if (issues.some((issue) => issue.severity === Severity.ERROR)) {
           utils.logWarning("Failed to update rules");
         } else {
           utils.logLabeledSuccess("firestore", "Rules updated.");
