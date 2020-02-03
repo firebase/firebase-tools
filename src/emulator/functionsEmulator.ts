@@ -5,7 +5,6 @@ import * as request from "request";
 import * as clc from "cli-color";
 import * as http from "http";
 
-import * as api from "../api";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
@@ -606,12 +605,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
-      env: {
-        node: opts.nodeBinary,
-        ...opts.env,
-        ...process.env,
-        FIREBASE_CLI_CREDENTIAL: JSON.stringify(api.getCredential()),
-      },
+      env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });

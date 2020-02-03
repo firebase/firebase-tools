@@ -27,9 +27,6 @@ module.exports = function(options) {
       // projectId and functionsDir here.
       quiet: true,
       debugPort,
-      disabledRuntimeFeatures: {
-        admin_stubs: false,
-      },
     })
     .then(function() {
       return serveFunctions.connect();

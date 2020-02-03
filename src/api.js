@@ -192,14 +192,6 @@ var api = {
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  getCredential: function() {
-    return {
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
-      refresh_token: refreshToken,
-      type: "authorized_user",
-    };
-  },
   addRequestHeaders: function(reqOptions) {
     // Runtime fetch of Auth singleton to prevent circular module dependencies
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
