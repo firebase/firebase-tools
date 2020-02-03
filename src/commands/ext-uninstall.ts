@@ -6,7 +6,11 @@ import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { iam } from "../gcp";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import {
+  ensureExtensionsApiEnabled,
+  logPrefix,
+  resourceTypeToNiceName,
+} from "../extensions/extensionsHelper";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -38,7 +42,9 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
             .map((resource: extensionsApi.Resource) =>
-              clc.bold(`- ${resource.type}: ${resource.name} \n`)
+              clc.bold(
+                `- ${resourceTypeToNiceName[resource.type] || resource.type}: ${resource.name} \n`
+              )
             )
             .join("") +
           "\n"
@@ -60,7 +66,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const confirmedExtensionDeletion = await promptOnce({
         type: "confirm",
         default: true,
-        message: "Are you sure?",
+        message: "Are you sure that you want to uninstall this extension?",
       });
       if (!confirmedExtensionDeletion) {
         return utils.reject("Command aborted.", { exit: 1 });
