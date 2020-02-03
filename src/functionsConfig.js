@@ -28,6 +28,12 @@ var _setVariable = function(projectId, configId, varPath, val) {
   return runtimeconfig.variables.set(projectId, configId, varPath, val);
 };
 
+var _isReservedNamespace = function(id) {
+  return _.some(exports.RESERVED_NAMESPACES, function(reserved) {
+    return id.config.toLowerCase().startsWith(reserved);
+  });
+};
+
 exports.ensureApi = function(options) {
   var projectId = getProjectId(options);
   return ensureApiEnabled(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true);
@@ -146,7 +152,7 @@ exports.parseSetArgs = function(args) {
     }
 
     var id = _keyToIds(key);
-    if (_.includes(exports.RESERVED_NAMESPACES, id.config.toLowerCase())) {
+    if (_isReservedNamespace(id)) {
       throw new FirebaseError("Cannot set to reserved namespace " + clc.bold(id.config));
     }
 
@@ -169,7 +175,7 @@ exports.parseUnsetArgs = function(args) {
 
   _.forEach(splitArgs, function(key) {
     var id = _keyToIds(key);
-    if (_.includes(exports.RESERVED_NAMESPACES, id.config.toLowerCase())) {
+    if (_isReservedNamespace(id)) {
       throw new FirebaseError("Cannot unset reserved namespace " + clc.bold(id.config));
     }
 
