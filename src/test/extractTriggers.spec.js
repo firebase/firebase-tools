@@ -5,17 +5,17 @@ var expect = chai.expect;
 
 var extractTriggers = require("../extractTriggers");
 
-describe("extractTriggers", function() {
-  var fnWithTrigger = function() {};
+describe("extractTriggers", function () {
+  var fnWithTrigger = function () { };
   fnWithTrigger.__trigger = { service: "function.with.trigger" };
-  var fnWithoutTrigger = function() {};
+  var fnWithoutTrigger = function () { };
   var triggers;
 
-  beforeEach(function() {
+  beforeEach(function () {
     triggers = [];
   });
 
-  it("should find exported functions with __trigger", function() {
+  it("should find exported functions with __trigger", function () {
     extractTriggers(
       {
         foo: fnWithTrigger,
@@ -28,7 +28,7 @@ describe("extractTriggers", function() {
     expect(triggers.length).to.eq(2);
   });
 
-  it("should attach name and entryPoint to exported triggers", function() {
+  it("should attach name and entryPoint to exported triggers", function () {
     extractTriggers(
       {
         foo: fnWithTrigger,
@@ -39,7 +39,7 @@ describe("extractTriggers", function() {
     expect(triggers[0].entryPoint).to.eq("foo");
   });
 
-  it("should find nested functions and set name and entryPoint", function() {
+  it("should find nested functions and set name and entryPoint", function () {
     extractTriggers(
       {
         foo: {
@@ -58,4 +58,19 @@ describe("extractTriggers", function() {
     expect(triggers[0].entryPoint).to.eq("foo.bar");
     expect(triggers.length).to.eq(3);
   });
+
+  it("should ignore null exports", function () {
+    expect(() => extractTriggers(
+      {
+        foo: {
+          bar: fnWithTrigger,
+          baz: null
+        }
+      },
+      triggers
+    )).not.to.throw();
+
+    expect(triggers[0].name).to.eq("foo-bar");
+    expect(triggers.length).to.eq(1);
+  })
 });
