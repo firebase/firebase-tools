@@ -43,7 +43,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
       cacheDir: CACHE_DIR,
       remoteUrl:
         "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.3.jar",
-      expectedSize: 63708915,
+      expectedSize: 88888524,
       expectedChecksum: "d101a23eea4c6cdc5bcf5a7ef32dc6e5",
       namePrefix: "cloud-firestore-emulator",
     },
