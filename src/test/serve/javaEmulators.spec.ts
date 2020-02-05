@@ -8,11 +8,11 @@ type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators
 
 function checkDownloadPath(name: DownloadableEmulator): void {
   const emulator = javaEmulators.getDownloadDetails(name);
-  expect(path.basename(emulator.opts.remoteUrl)).to.include(path.basename(emulator.downloadPath));
+  expect(path.basename(emulator.opts.remoteUrl)).to.eq(path.basename(emulator.downloadPath));
 }
 
 describe("downloadDetails", () => {
-  it("should match part of remoteUrl", () => {
+  it("should match the basename of remoteUrl", () => {
     checkDownloadPath(Emulators.FIRESTORE);
     checkDownloadPath(Emulators.DATABASE);
     checkDownloadPath(Emulators.PUBSUB);

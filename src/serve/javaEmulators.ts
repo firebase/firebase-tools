@@ -61,7 +61,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
       remoteUrl:
         "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
       expectedSize: 36623622,
-      expectedChecksum: "81704b24737d4968734d3e175f4cde71",
+      expectedChecksum: "f551a9c1716cd412d04fc971ef3e945b",
       namePrefix: "pubsub-emulator",
     },
   },
