@@ -44,7 +44,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
       remoteUrl:
         "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.4.jar",
       expectedSize: 88950303,
-      expectedChecksum: "24df64503865ac84ff5f2761319afd9d",
+      expectedChecksum: "81704b24737d4968734d3e175f4cde71",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -61,7 +61,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
       remoteUrl:
         "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
       expectedSize: 36623622,
-      expectedChecksum: "f551a9c1716cd412d04fc971ef3e945b",
+      expectedChecksum: "81704b24737d4968734d3e175f4cde71",
       namePrefix: "pubsub-emulator",
     },
   },
