@@ -11,16 +11,16 @@ var runtimeconfig = require("./gcp/runtimeconfig");
 
 exports.RESERVED_NAMESPACES = ["firebase"];
 
-var _keyToIds = function(key) {
+function _keyToIds(key) {
   var keyParts = key.split(".");
   var variable = keyParts.slice(1).join("/");
   return {
     config: keyParts[0],
     variable: variable,
   };
-};
+}
 
-var _setVariable = function(projectId, configId, varPath, val) {
+function _setVariable(projectId, configId, varPath, val) {
   if (configId === "" || varPath === "") {
     var msg = "Invalid argument, each config value must have a 2-part key (e.g. foo.bar).";
     throw new FirebaseError(msg);
@@ -28,11 +28,11 @@ var _setVariable = function(projectId, configId, varPath, val) {
   return runtimeconfig.variables.set(projectId, configId, varPath, val);
 };
 
-var _isReservedNamespace = function(id) {
-  return _.some(exports.RESERVED_NAMESPACES, function(reserved) {
+function _isReservedNamespace(id) {
+  return _.some(exports.RESERVED_NAMESPACES, (reserved) => {
     return id.config.toLowerCase().startsWith(reserved);
   });
-};
+}
 
 exports.ensureApi = function(options) {
   var projectId = getProjectId(options);
