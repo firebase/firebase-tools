@@ -14,6 +14,11 @@ import * as logger from "../logger";
 
 export const logPrefix = "extensions";
 
+export const resourceTypeToNiceName: { [key: string]: string } = {
+  "firebaseextensions.v1beta.scheduledFunction": "Scheduled Function",
+  "firebaseextensions.v1beta.function": "Cloud Function",
+};
+
 /**
  * Turns database URLs (e.g. https://my-db.firebaseio.com) into database instance names
  * (e.g. my-db), which can be used in a function trigger.

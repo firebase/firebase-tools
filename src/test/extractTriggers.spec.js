@@ -1,15 +1,15 @@
 "use strict";
 
-var chai = require("chai");
-var expect = chai.expect;
+const chai = require("chai");
+const expect = chai.expect;
 
-var extractTriggers = require("../extractTriggers");
+const extractTriggers = require("../extractTriggers");
 
 describe("extractTriggers", function() {
-  var fnWithTrigger = function() {};
+  const fnWithTrigger = function() {};
   fnWithTrigger.__trigger = { service: "function.with.trigger" };
-  var fnWithoutTrigger = function() {};
-  var triggers;
+  const fnWithoutTrigger = function() {};
+  let triggers;
 
   beforeEach(function() {
     triggers = [];
@@ -57,5 +57,22 @@ describe("extractTriggers", function() {
     expect(triggers[0].name).to.eq("foo-bar");
     expect(triggers[0].entryPoint).to.eq("foo.bar");
     expect(triggers.length).to.eq(3);
+  });
+
+  it("should ignore null exports", function() {
+    expect(() =>
+      extractTriggers(
+        {
+          foo: {
+            bar: fnWithTrigger,
+            baz: null,
+          },
+        },
+        triggers
+      )
+    ).not.to.throw();
+
+    expect(triggers[0].name).to.eq("foo-bar");
+    expect(triggers.length).to.eq(1);
   });
 });

@@ -21,7 +21,7 @@ var extractTriggers = function(mod, triggers, prefix) {
       trigger.name = prefix + funcName;
       trigger.entryPoint = trigger.name.replace(/-/g, ".");
       triggers.push(trigger);
-    } else if (typeof child === "object") {
+    } else if (typeof child === "object" && child !== null) {
       extractTriggers(child, triggers, prefix + funcName + "-");
     }
   }
