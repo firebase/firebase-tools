@@ -33,7 +33,7 @@ export async function waitForPortClosed(port: number, host: string): Promise<voi
   const interval = 250;
   const timeout = 30000;
   try {
-    await tcpport.waitUntilUsed(port, interval, timeout);
+    await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e) {
     throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
   }
