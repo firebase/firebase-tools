@@ -3,3 +3,4 @@
 *  Fixes unhandled error when invoking a non-existent function (#1937)
 *  [Firestore emulator] Add support for `update_transforms` in Firestore commit and batchWrite API.
 *  [Firestore emulator] Send resume tokens on the Listen stream
+*  Fixes a bug where emulators could not bind to external IP (#1949)
