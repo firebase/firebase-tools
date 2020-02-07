@@ -26,7 +26,7 @@ function _setVariable(projectId, configId, varPath, val) {
     throw new FirebaseError(msg);
   }
   return runtimeconfig.variables.set(projectId, configId, varPath, val);
-};
+}
 
 function _isReservedNamespace(id) {
   return _.some(exports.RESERVED_NAMESPACES, (reserved) => {
