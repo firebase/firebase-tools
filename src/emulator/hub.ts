@@ -3,10 +3,13 @@ import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
+import * as bodyParser from "body-parser";
 
+import * as utils from "../utils";
 import * as logger from "../logger";
 import { Constants } from "./constants";
-import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
+import { Emulators, EmulatorInstance, EmulatorInfo, IMPORT_EXPORT_EMULATORS } from "./types";
+import { HubExport } from "./hubExport";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -52,9 +55,28 @@ export class EmulatorHub implements EmulatorInstance {
 
   constructor(private args: EmulatorHubArgs) {
     this.hub = express();
+    this.hub.use(bodyParser.json());
 
     this.hub.get("/", async (req, res) => {
       res.json(this.getLocator());
+    });
+
+    // TODO: Route paths should be constants
+    // TODO: use api.js here and elsewhere
+    this.hub.post("/_admin/export", async (req, res) => {
+      const exportPath = req.body.path;
+      utils.logLabeledBullet(
+        "emulators",
+        `Received export request. Exporting data to ${exportPath}.`
+      );
+      try {
+        await new HubExport(this.args.projectId, exportPath).exportAll();
+        utils.logLabeledSuccess("emulators", "Export complete.");
+        res.status(200).send("OK");
+      } catch (e) {
+        utils.logLabeledWarning("emulators", "Export failed.");
+        res.status(500).send(e);
+      }
     });
   }
 

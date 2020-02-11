@@ -1,6 +1,5 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import * as path from "path";
 
 export enum Emulators {
   HUB = "hub",
@@ -13,6 +12,8 @@ export enum Emulators {
 
 export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
+
+export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.FUNCTIONS,

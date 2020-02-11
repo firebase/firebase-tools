@@ -10,8 +10,8 @@ import { FirebaseError } from "../error";
 
 export const FLAG_ONLY: string = "--only <emulators>";
 export const DESC_ONLY: string =
-  "only run specific emulators. " +
-  "This is a comma separated list of emulators to start. " +
+  "only specific emulators. " +
+  "This is a comma separated list of emulator names. " +
   "Valid options are: " +
   JSON.stringify(ALL_SERVICE_EMULATORS);
 
