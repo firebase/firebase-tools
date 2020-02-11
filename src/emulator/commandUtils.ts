@@ -5,7 +5,7 @@ import * as utils from "../utils";
 import * as logger from "../logger";
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
-import { Emulators } from "../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";
 
 export const FLAG_ONLY: string = "--only <emulators>";
@@ -13,7 +13,7 @@ export const DESC_ONLY: string =
   "only run specific emulators. " +
   "This is a comma separated list of emulators to start. " +
   "Valid options are: " +
-  JSON.stringify(controller.VALID_EMULATOR_STRINGS);
+  JSON.stringify(ALL_SERVICE_EMULATORS);
 
 export const FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
 export const DESC_INSPECT_FUNCTIONS =

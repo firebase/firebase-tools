@@ -3,6 +3,7 @@ import { EventEmitter } from "events";
 import * as path from "path";
 
 export enum Emulators {
+  HUB = "hub",
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
@@ -11,9 +12,9 @@ export enum Emulators {
 }
 
 export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
+export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
 
-// TODO: Is there a way we can just allow iteration over the enum?
-export const ALL_EMULATORS = [
+export const ALL_SERVICE_EMULATORS = [
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -21,7 +22,8 @@ export const ALL_EMULATORS = [
   Emulators.PUBSUB,
 ];
 
-export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
+// TODO: Is there a way we can just allow iteration over the enum?
+export const ALL_EMULATORS = [Emulators.HUB, ...ALL_SERVICE_EMULATORS];
 
 export function isJavaEmulator(value: string): value is JavaEmulators {
   return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;

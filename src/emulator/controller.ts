@@ -7,7 +7,7 @@ import * as tcpport from "tcp-port-used";
 import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
-import { ALL_EMULATORS, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInstance, Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
@@ -17,8 +17,7 @@ import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
-
-export const VALID_EMULATOR_STRINGS: string[] = ALL_EMULATORS;
+import { EmulatorHub } from "./hub";
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -69,7 +68,11 @@ export async function cleanShutdown(): Promise<boolean> {
   utils.logBullet("Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    utils.logBullet(`Stopping ${name} emulator`);
+    if (name === Emulators.HUB) {
+      utils.logBullet(`Stopping hub`);
+    } else {
+      utils.logBullet(`Stopping ${name} emulator`);
+    }
     await EmulatorRegistry.stop(name);
   }
 
@@ -77,7 +80,7 @@ export async function cleanShutdown(): Promise<boolean> {
 }
 
 export function filterEmulatorTargets(options: any): string[] {
-  let targets = VALID_EMULATOR_STRINGS.filter((e) => {
+  let targets = ALL_SERVICE_EMULATORS.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
 
@@ -89,6 +92,10 @@ export function filterEmulatorTargets(options: any): string[] {
 }
 
 export function shouldStart(options: any, name: Emulators): boolean {
+  if (name === Emulators.HUB) {
+    return true;
+  }
+
   const targets = filterEmulatorTargets(options);
   return targets.indexOf(name) >= 0;
 }
@@ -123,6 +130,15 @@ export async function startAll(options: any): Promise<void> {
       );
     }
   }
+
+  // Always start the hub
+  const hubAddr = Constants.getAddress(Emulators.HUB, options);
+  const hub = new EmulatorHub({
+    projectId,
+    host: hubAddr.host,
+    port: hubAddr.port,
+  });
+  await startEmulator(hub);
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
