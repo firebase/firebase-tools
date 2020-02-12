@@ -12,9 +12,6 @@ pubsub-debug.log*
 # NPM
 package-lock.json
 
-# Test data
-data/
-
 # Firebase cache
 .firebase/
 

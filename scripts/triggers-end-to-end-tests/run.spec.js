@@ -469,7 +469,7 @@ describe("import/export end to end", () => {
 
     // Ask for export
     const exportCLI = new CLIProcess("2");
-    const exportPath = fs.mkdtempSync();
+    const exportPath = fs.mkdtempSync("emulator-data");
     await exportCLI.start("emulators:export", [exportPath]);
 
     // Stop the suite
