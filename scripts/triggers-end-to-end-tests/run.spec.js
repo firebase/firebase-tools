@@ -145,21 +145,20 @@ TriggerEndToEndTest.prototype.success = function success() {
 };
 
 TriggerEndToEndTest.prototype.startEmulators = function startEmulators(additionalArgs) {
-  const self = this;
   const cli = new CLIProcess("default");
   const started = cli.start("emulators:start", additionalArgs, (data) => {
     return data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1;
   });
 
-  cli.process.stdout.on("data", function(data) {
+  cli.process.stdout.on("data", (data) => {
     if (data.indexOf(RTDB_FUNCTION_LOG) > -1) {
-      self.rtdb_trigger_count++;
+      this.rtdb_trigger_count++;
     }
     if (data.indexOf(FIRESTORE_FUNCTION_LOG) > -1) {
-      self.firestore_trigger_count++;
+      this.firestore_trigger_count++;
     }
     if (data.indexOf(PUBSUB_FUNCTION_LOG) > -1) {
-      self.pubsub_trigger_count++;
+      this.pubsub_trigger_count++;
     }
   });
 
@@ -470,13 +469,15 @@ describe("import/export end to end", () => {
 
     // Ask for export
     const exportCLI = new CLIProcess("2");
-    await exportCLI.start("emulators:export", ["./data"]);
+    const exportPath = fs.mkdtempSync();
+    await exportCLI.start("emulators:export", [exportPath]);
 
     // Stop the suite
     await emulatorsCLI.stop();
 
     // Attempt to import
-    await emulatorsCLI.start(
+    const importCLI = new CLIProcess("3");
+    await importCLI.start(
       "emulators:start",
       ["--only", "firestore", "--import", "data"],
       (data) => {
@@ -484,6 +485,6 @@ describe("import/export end to end", () => {
       }
     );
 
-    return emulatorsCLI.stop();
+    return importCLI.stop();
   }).timeout(TEST_SETUP_TIMEOUT);
 });

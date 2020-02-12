@@ -1,13 +1,14 @@
 import * as path from "path";
 import * as fs from "fs";
 
-import * as utils from "../utils";
 import * as api from "../api";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
+import { EmulatorHub } from "./hub";
 
 export interface ExportMetadata {
+  version: string;
   firestore?: string;
 }
 
@@ -25,7 +26,9 @@ export class HubExport {
     // TODO(samstern): Once we add other emulators, we have to deal with the fact that
     // there may be an existing metadata file and it may only partially overlap with
     // the new one.
-    const metadata: ExportMetadata = {};
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+    };
 
     if (this.shouldExport(Emulators.FIRESTORE)) {
       metadata.firestore = this.getExportName(Emulators.FIRESTORE);

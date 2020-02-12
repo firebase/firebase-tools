@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
 import * as tcpport from "tcp-port-used";
+import * as pf from "portfinder";
 
 import * as utils from "../utils";
 import * as track from "../track";
@@ -130,17 +131,33 @@ export async function startAll(options: any): Promise<void> {
     }
   }
 
-  // Always start the hub
+  // Always start the hub, but we actually will find any available port
+  // since we don't want to explode if the hub can't start on 4000
   const hubAddr = Constants.getAddress(Emulators.HUB, options);
+  const hubPort = await pf.getPortPromise({
+    host: hubAddr.host,
+    port: hubAddr.port,
+    stopPort: hubAddr.port + 100,
+  });
+
+  if (hubPort != hubAddr.port) {
+    utils.logLabeledWarning(
+      "emulators",
+      `Emulator hub unable to start on port ${hubAddr.port}, starting on ${hubPort}`
+    );
+  }
+
   const hub = new EmulatorHub({
     projectId,
     host: hubAddr.host,
-    port: hubAddr.port,
+    port: hubPort,
   });
   await startEmulator(hub);
 
   // Parse export metadata
-  let exportMetadata: ExportMetadata = {};
+  let exportMetadata: ExportMetadata = {
+    version: "unknown",
+  };
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
@@ -190,13 +207,14 @@ export async function startAll(options: any): Promise<void> {
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const firestoreExportDir = path.join(importDirAbsPath, exportMetadata.firestore);
-      const exportFiles = fs.readdirSync(firestoreExportDir);
-      const metadataFileName = exportFiles.find((f) => f.endsWith("overall_export_metadata"));
-      const metadataFileAbsPath = path.join(firestoreExportDir, metadataFileName!!);
+      const firestoreExportName = path.join(importDirAbsPath, exportMetadata.firestore);
+      const exportMetadataFilePath = path.join(
+        importDirAbsPath,
+        `${firestoreExportName}/${firestoreExportName}.overall_export_metadata`
+      );
 
-      utils.logLabeledBullet("firestore", `Importing data from ${metadataFileAbsPath}`);
-      args.seed_from_export = metadataFileAbsPath;
+      utils.logLabeledBullet("firestore", `Importing data from ${exportMetadataFilePath}`);
+      args.seed_from_export = exportMetadataFilePath;
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");

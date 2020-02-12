@@ -14,6 +14,13 @@ module.exports = new Command("emulators:export <path>")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .action(async (exportPath: string, options: any) => {
     const projectId = options.project;
+    if (!projectId) {
+      throw new FirebaseError(
+        "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
+        { exit: 1 }
+      );
+    }
+
     const locator = EmulatorHub.readLocatorFile(projectId);
     if (!locator) {
       throw new FirebaseError(
@@ -28,10 +35,9 @@ module.exports = new Command("emulators:export <path>")
         origin: hubOrigin,
       });
     } catch (e) {
+      const filePath = EmulatorHub.getLocatorFilePath(projectId);
       throw new FirebaseError(
-        `The emulator hub at ${hubOrigin} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${EmulatorHub.getLocatorFilePath(
-          projectId
-        )}`,
+        `The emulator hub at ${hubOrigin} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
         { exit: 1 }
       );
     }
@@ -47,16 +53,14 @@ module.exports = new Command("emulators:export <path>")
       fs.mkdirSync(absPath);
     }
 
-    const exportBody = {
-      path: absPath,
-    };
-
     utils.logBullet(`Exporting data to: ${absPath}`);
     await api
       .request("POST", EmulatorHub.PATH_EXPORT, {
         origin: hubOrigin,
         json: true,
-        data: exportBody,
+        data: {
+          path: absPath,
+        },
       })
       .catch((e) => {
         throw new FirebaseError("Export request failed, see emulator logs for more information.", {

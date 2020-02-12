@@ -13,7 +13,6 @@ import { HubExport } from "./hubExport";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
-const version = pkg.version;
 
 export interface Locator {
   version: string;
@@ -28,6 +27,7 @@ export interface EmulatorHubArgs {
 }
 
 export class EmulatorHub implements EmulatorInstance {
+  static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
 
   /**
@@ -44,7 +44,7 @@ export class EmulatorHub implements EmulatorInstance {
     const data = fs.readFileSync(locatorPath).toString();
     const locator = JSON.parse(data) as Locator;
 
-    if (locator.version !== version) {
+    if (locator.version !== this.CLI_VERSION) {
       logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
       return undefined;
     }
@@ -69,7 +69,6 @@ export class EmulatorHub implements EmulatorInstance {
       res.json(this.getLocator());
     });
 
-    // TODO: Route paths should be constants
     this.hub.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
       const exportPath = req.body.path;
       utils.logLabeledBullet(
@@ -79,11 +78,15 @@ export class EmulatorHub implements EmulatorInstance {
       try {
         await new HubExport(this.args.projectId, exportPath).exportAll();
         utils.logLabeledSuccess("emulators", "Export complete.");
-        res.status(200).send("OK");
+        res.status(200).send({
+          message: "OK",
+        });
       } catch (e) {
         const errorString = e.message || JSON.stringify(e);
         utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
-        res.status(500).send(errorString);
+        res.status(500).json({
+          message: errorString,
+        });
       }
     });
   }
@@ -128,16 +131,24 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   private async writeLocatorFile(): Promise<void> {
-    const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
+    const projectId = this.args.projectId;
+    const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
     const locator = this.getLocator();
 
+    if (fs.existsSync(locatorPath)) {
+      utils.logLabeledWarning(
+        "emulators",
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`
+      );
+    }
+
     logger.debug(`[hub] wriing locator at ${locatorPath}`);
-    return new Promise((res, rej) => {
+    return new Promise((resolve, reject) => {
       fs.writeFile(locatorPath, JSON.stringify(locator), (e) => {
         if (e) {
-          rej(e);
+          reject(e);
         } else {
-          res();
+          resolve();
         }
       });
     });
@@ -145,12 +156,12 @@ export class EmulatorHub implements EmulatorInstance {
 
   private async deleteLocatorFile(): Promise<void> {
     const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
-    return new Promise((res, rej) => {
+    return new Promise((resolve, reject) => {
       fs.unlink(locatorPath, (e) => {
         if (e) {
-          rej(e);
+          reject(e);
         } else {
-          res();
+          resolve();
         }
       });
     });
