@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as request from "request";
@@ -8,7 +7,7 @@ import * as pf from "portfinder";
 
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
@@ -45,10 +44,12 @@ export class FirestoreEmulator implements EmulatorInstance {
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const issues = await this.updateRules(newContent);
-        if (issues && issues.length > 0) {
+        if (issues) {
           for (const issue of issues) {
             utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
           }
+        }
+        if (issues.some((issue) => issue.severity === Severity.ERROR)) {
           utils.logWarning("Failed to update rules");
         } else {
           utils.logLabeledSuccess("firestore", "Rules updated.");
@@ -56,35 +57,38 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    // Find a port for WebChannel traffic
+    // Firestore Emulator now serves WebChannel on the same port as gRPC, but
+    // for backward compatibility reasons, let's tell it to ALSO serve
+    // WebChannel on port+1, if it is available.
     const host = this.getInfo().host;
     const basePort = this.getInfo().port;
     const port = basePort + 1;
-    const stopPort = port + 10;
     try {
       const webChannelPort = await pf.getPortPromise({
         port,
-        stopPort,
+        stopPort: port,
       });
       this.args.webchannel_port = webChannelPort;
 
       utils.logLabeledBullet(
         "firestore",
-        `Serving WebChannel traffic on at ${clc.bold(`http://${host}:${webChannelPort}`)}`
+        `Serving ALL traffic (including WebChannel) on ${clc.bold(`http://${host}:${basePort}`)}`
       );
-    } catch (e) {
       utils.logLabeledWarning(
         "firestore",
-        `Not serving WebChannel traffic, unable to find an open port in range ${port}:${stopPort}]`
+        `Support for WebChannel on a separate port (${webChannelPort}) is DEPRECATED and will go away soon. ` +
+          "Please use port above instead."
       );
+    } catch (e) {
+      // We don't need to take any action here since the emulator will still
+      // serve WebChannel on the main port anyway.
     }
 
     return javaEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
   async connect(): Promise<void> {
-    // The Firestore emulator has no "connect" phase.
-    return Promise.resolve();
+    return;
   }
 
   async stop(): Promise<void> {

@@ -19,10 +19,11 @@ export class EmulatorRegistry {
 
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
-    await controller.waitForPortClosed(instance.getInfo().port);
+
+    const info = instance.getInfo();
+    await controller.waitForPortClosed(info.port, info.host);
 
     this.set(instance.getName(), instance);
-    const info = instance.getInfo();
     utils.logLabeledSuccess(
       instance.getName(),
       `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`

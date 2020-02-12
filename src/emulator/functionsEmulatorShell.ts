@@ -1,7 +1,11 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  EmulatedTriggerType,
+  getFunctionRegion,
+} from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
@@ -31,7 +35,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().host,
           this.emu.getInfo().port,
-          this.emu.projectId,
+          this.emu.getProjectId(),
           name,
           getFunctionRegion(trigger)
         );
@@ -68,12 +72,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    FunctionsEmulator.startFunctionRuntime(
-      this.emu.getBaseBundle(),
-      name,
-      this.emu.nodeBinary,
-      proto
-    );
+    this.emu.startFunctionRuntime(name, EmulatedTriggerType.BACKGROUND, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

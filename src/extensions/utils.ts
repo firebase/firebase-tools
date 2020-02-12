@@ -1,5 +1,7 @@
+import * as _ from "lodash";
 import { promptOnce } from "../prompt";
-import { ParamOption } from "./modsApi";
+import { ParamOption } from "./extensionsApi";
+import { RegistryEntry } from "./resolveSource";
 
 // Modified version of the once function from prompt, to return as a joined string.
 export async function onceWithJoin(question: any): Promise<string> {
@@ -11,29 +13,45 @@ export async function onceWithJoin(question: any): Promise<string> {
 }
 
 interface ListItem {
-  name: string;
-  checked: boolean;
+  name?: string; // User friendly display name for the option
+  value: string; // Value of the option
+  checked: boolean; // Whether the option should be checked by default
 }
 
-// Convert mod option to Inquirer-friendly list for the prompt, with all items unchecked.
-export function convertModOptionToLabeledList(options: ParamOption[]): ListItem[] {
+// Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
+export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
   return options.map(
     (option: ParamOption): ListItem => {
       return {
         checked: false,
-        name: option.label || option.value,
+        name: option.label,
+        value: option.value,
       };
     }
   );
 }
 
-// Match a label to a ModOption.Value. When a SELECT or MULTISELECT mod is in the prompt and a user is asked to pick
-// options, these options are displayed as ParamOption.label if present, otherwise as ParamOption.value.
-export function modOptionToValue(label: string, options: ParamOption[]): string {
-  for (const option of options) {
-    if (label === option.label || label === option.value) {
-      return option.value;
-    }
+// Convert map of RegistryEntry into Inquirer-friendly list for prompt, with all items unchecked.
+export function convertOfficialExtensionsToList(officialExts: {
+  [key: string]: RegistryEntry;
+}): ListItem[] {
+  return _.map(officialExts, (entry: RegistryEntry, key: string) => {
+    return {
+      checked: false,
+      value: key,
+    };
+  });
+}
+
+/**
+ * Generates a random string of lowercase letters and numbers
+ * @param length The length of the string
+ */
+export function getRandomString(length: number): string {
+  const SUFFIX_CHAR_SET = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += SUFFIX_CHAR_SET.charAt(Math.floor(Math.random() * SUFFIX_CHAR_SET.length));
   }
-  return "";
+  return result;
 }

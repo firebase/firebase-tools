@@ -1,9 +1,9 @@
 import * as fs from "fs-extra";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
-import { AppDistributionApp, AppDistributionClient } from "../appdistribution/client";
+import { AppDistributionApp, AppDistributionClient, UploadStatus } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution } from "../appdistribution/distribution";
 
@@ -22,7 +22,8 @@ function getAppId(appId: string): string {
 
 function getReleaseNotes(releaseNotes: string, releaseNotesFile: string): string {
   if (releaseNotes) {
-    return releaseNotes;
+    // Un-escape new lines from argument string
+    return releaseNotes.replace(/\\n/g, "\n");
   } else if (releaseNotesFile) {
     ensureFileExists(releaseNotesFile);
     return fs.readFileSync(releaseNotesFile, "utf8");
@@ -77,10 +78,16 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     try {
       app = await requests.getApp();
     } catch (err) {
-      throw new FirebaseError(
-        `App Distribution is not enabled for app ${appId}. Please visit the Firebase Console to get started.`,
-        { exit: 1 }
-      );
+      if (err.status === 404) {
+        throw new FirebaseError(
+          `App Distribution could not find your app ${appId}. ` +
+            `Make sure to onboard your app by pressing the "Get started" ` +
+            "button on the App Distribution page in the Firebase console: " +
+            "https://console.firebase.google.com/project/_/appdistribution",
+          { exit: 1 }
+        );
+      }
+      throw new FirebaseError(`failed to fetch app information. ${err.message}`, { exit: 1 });
     }
 
     if (!app.contactEmail) {
@@ -95,10 +102,11 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
 
     // Upload the distribution if it hasn't been uploaded before
     let releaseId: string;
-    try {
-      releaseId = await requests.getReleaseIdByHash(releaseHash);
+    const uploadStatus = await requests.getUploadStatus(releaseHash);
+    if (uploadStatus.status === UploadStatus.SUCCESS) {
       utils.logWarning("this distribution has been uploaded before, skipping upload");
-    } catch (err) {
+      releaseId = uploadStatus.release.id;
+    } else {
       // If there's an error, we know that the distribution hasn't been uploaded before
       utils.logBullet("uploading distribution...");
 
@@ -108,7 +116,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
 
         // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
         releaseId = await requests.pollReleaseIdByHash(releaseEtag);
-        utils.logSuccess("uploaded distribution successfully");
+        utils.logSuccess("uploaded distribution successfully!");
       } catch (err) {
         throw new FirebaseError(`failed to upload distribution. ${err.message}`, { exit: 1 });
       }

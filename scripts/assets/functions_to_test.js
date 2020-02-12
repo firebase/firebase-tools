@@ -2,15 +2,15 @@ var functions = require("firebase-functions");
 var admin = require("firebase-admin");
 admin.initializeApp(functions.config().firebase);
 
-exports.dbAction = functions.database.ref("/input/{uuid}").onWrite(function(event) {
-  console.log("Received event:", event);
-  return event.data.ref.root.child("output/" + event.params.uuid).set(event.data.val());
+exports.dbAction = functions.database.ref("/input/{uuid}").onCreate(function(snap, context) {
+  console.log("Received snapshot:", snap);
+  return snap.ref.root.child("output/" + context.params.uuid).set(snap.val());
 });
 
 exports.nested = {
-  dbAction: functions.database.ref("/inputNested/{uuid}").onWrite(function(event) {
-    console.log("Received event:", event);
-    return event.data.ref.root.child("output/" + event.params.uuid).set(event.data.val());
+  dbAction: functions.database.ref("/inputNested/{uuid}").onCreate(function(snap, context) {
+    console.log("Received snap:", snap);
+    return snap.ref.root.child("output/" + context.params.uuid).set(snap.val());
   }),
 };
 
@@ -18,18 +18,18 @@ exports.httpsAction = functions.https.onRequest(function(req, res) {
   res.send(req.body);
 });
 
-exports.pubsubAction = functions.pubsub.topic("topic1").onPublish(function(event) {
-  console.log("Received event:", event);
-  var uuid = event.data.json;
+exports.pubsubAction = functions.pubsub.topic("topic1").onPublish(function(message) {
+  console.log("Received message:", message);
+  var uuid = message.json;
   return admin
     .database()
     .ref("output/" + uuid)
     .set(uuid);
 });
 
-exports.gcsAction = functions.storage.object().onChange(function(event) {
-  console.log("Received event:", event);
-  var uuid = event.data.name;
+exports.gcsAction = functions.storage.object().onFinalize(function(object) {
+  console.log("Received object:", object);
+  var uuid = object.name;
   return admin
     .database()
     .ref("output/" + uuid)
@@ -38,7 +38,7 @@ exports.gcsAction = functions.storage.object().onChange(function(event) {
 
 exports.pubsubScheduleAction = functions.pubsub
   .schedule("every 10 minutes")
-  .onPublish(function(event) {
-    console.log("Received scheduled event:", event);
+  .onRun(function(context) {
+    console.log("Scheduled function triggered:", context);
     return true;
   });

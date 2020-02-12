@@ -9,7 +9,7 @@ const zlib = require("zlib");
 const crypto = require("crypto");
 
 const hashcache = require("./hashcache");
-const detectProjectRoot = require("../../detectProjectRoot");
+const detectProjectRoot = require("../../detectProjectRoot").detectProjectRoot;
 const api = require("../../api");
 const logger = require("../../logger");
 const { Queue } = require("../../throttler/queue");
@@ -55,7 +55,7 @@ class Uploader {
     this.fileCount = this.files.length;
 
     this.cache = hashcache.load(this.projectRoot, this.hashcacheName());
-    this.cacheNew = {};
+    this.cacheNew = new Map();
 
     this.sizeMap = {};
     this.hashMap = {};
@@ -141,7 +141,7 @@ class Uploader {
     this.sizeMap[filePath] = stats.size;
     const cached = this.cache[filePath];
     if (cached && cached.mtime === mtime) {
-      this.cacheNew[filePath] = cached;
+      this.cacheNew.set(filePath, cached);
       this.addHash(filePath, cached.hash);
       return Promise.resolve();
     }
@@ -155,7 +155,7 @@ class Uploader {
     return new Promise(function(resolve, reject) {
       fstream.on("end", function() {
         const hashVal = hash.read().toString("hex");
-        self.cacheNew[filePath] = { mtime: mtime, hash: hashVal };
+        self.cacheNew.set(filePath, { mtime: mtime, hash: hashVal });
         self.addHash(filePath, hashVal);
         resolve();
       });

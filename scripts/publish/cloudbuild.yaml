@@ -50,7 +50,7 @@ steps:
   entrypoint: 'bash'
   args: ['-c', 'cp -v npmrc ~/.npmrc']
 
-# Set up the hub credentials.
+# Set up the hub credentials for package-builder.
 - name: 'gcr.io/$PROJECT_ID/package-builder'
   entrypoint: 'bash'
   args: ['-c', 'mkdir -vp ~/.config && cp -v hub ~/.config/hub']
@@ -62,6 +62,16 @@ steps:
   env:
     - 'REPOSITORY_ORG=${_REPOSITORY_ORG}'
     - 'REPOSITORY_NAME=${_REPOSITORY_NAME}'
+    
+# Set up the hub credentials for firepit-builder.
+- name: 'gcr.io/$PROJECT_ID/firepit-builder'
+  entrypoint: 'bash'
+  args: ['-c', 'mkdir -vp ~/.config && cp -v hub ~/.config/hub']
+
+# Publish the firepit builds.
+- name: 'gcr.io/$PROJECT_ID/firepit-builder'
+  entrypoint: 'node'
+  args: ['/usr/src/app/pipeline.js', '--package=firebase-tools@latest', '--publish']
 
 options:
   volumes:

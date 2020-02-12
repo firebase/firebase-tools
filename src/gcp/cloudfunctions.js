@@ -94,6 +94,37 @@ function _createFunction(options) {
     );
 }
 
+/**
+ * Sets the IAM policy of a Google Cloud Function.
+ * @param {*} options Options object.
+ * @param {string} options.projectId Project that owns the Function.
+ * @param {string} options.region Region in which the Function exists.
+ * @param {string} options.functionName Name of the Function.
+ * @param {*} options.policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
+ */
+async function _setIamPolicy(options) {
+  const name = `projects/${options.projectId}/locations/${options.region}/functions/${
+    options.functionName
+  }`;
+  const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
+
+  try {
+    await api.request("POST", endpoint, {
+      auth: true,
+      data: {
+        policy: options.policy,
+        updateMask: Object.keys(options.policy).join(","),
+      },
+      origin: api.functionsOrigin,
+    });
+  } catch (err) {
+    throw new FirebaseError(
+      `Failed to set the IAM Policy on the function ${options.functionName}`,
+      { original: err }
+    );
+  }
+}
+
 function _updateFunction(options) {
   var location = "projects/" + options.projectId + "/locations/" + options.region;
   var func = location + "/functions/" + options.functionName;
@@ -189,6 +220,13 @@ function _listFunctions(projectId, region) {
     })
     .then(
       function(resp) {
+        if (resp.body.unreachable && resp.body.unreachable.length > 0) {
+          return utils.reject(
+            "Some Cloud Functions regions were unreachable, please try again later.",
+            { exit: 2 }
+          );
+        }
+
         var functionsList = resp.body.functions || [];
         _.forEach(functionsList, function(f) {
           f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
@@ -242,4 +280,5 @@ module.exports = {
   list: _listFunctions,
   listAll: _listAllFunctions,
   check: _checkOperation,
+  setIamPolicy: _setIamPolicy,
 };

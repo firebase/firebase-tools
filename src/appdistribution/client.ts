@@ -18,12 +18,27 @@ export interface AppDistributionApp {
   contactEmail: string;
 }
 
+export enum UploadStatus {
+  SUCCESS = "SUCCESS",
+  IN_PROGRESS = "IN_PROGRESS",
+  ERROR = "ERROR",
+}
+
+export interface UploadStatusResponse {
+  status: UploadStatus;
+  message: string;
+  errorCode: string;
+  release: {
+    id: string;
+  };
+}
+
 /**
  * Proxies HTTPS requests to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  static MAX_POLLING_RETRIES = 30;
-  static POLLING_INTERVAL_MS = 1000;
+  static MAX_POLLING_RETRIES = 15;
+  static POLLING_INTERVAL_MS = 2000;
 
   constructor(private readonly appId: string) {}
 
@@ -69,32 +84,38 @@ export class AppDistributionClient {
   }
 
   async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<string> {
-    try {
-      return await this.getReleaseIdByHash(hash);
-    } catch (err) {
+    const uploadStatus = await this.getUploadStatus(hash);
+    if (uploadStatus.status === UploadStatus.IN_PROGRESS) {
       if (retryCount >= AppDistributionClient.MAX_POLLING_RETRIES) {
-        throw new FirebaseError(`failed to find the uploaded release: ${err.message}`, { exit: 1 });
+        throw new FirebaseError(
+          "it took longer than expected to process your binary, please try again",
+          { exit: 1 }
+        );
       }
-
       await new Promise((resolve) =>
         setTimeout(resolve, AppDistributionClient.POLLING_INTERVAL_MS)
       );
-
       return this.pollReleaseIdByHash(hash, retryCount + 1);
+    } else if (uploadStatus.status === UploadStatus.SUCCESS) {
+      return uploadStatus.release.id;
+    } else {
+      throw new FirebaseError(
+        `error processing your binary: ${uploadStatus.message} (Code: ${uploadStatus.errorCode})`
+      );
     }
   }
 
-  async getReleaseIdByHash(hash: string): Promise<string> {
+  async getUploadStatus(hash: string): Promise<UploadStatusResponse> {
     const apiResponse = await api.request(
       "GET",
-      `/v1alpha/apps/${this.appId}/release_by_hash/${hash}`,
+      `/v1alpha/apps/${this.appId}/upload_status/${hash}`,
       {
         origin: api.appDistributionOrigin,
         auth: true,
       }
     );
 
-    return _.get(apiResponse, "body.release.id");
+    return _.get(apiResponse, "body");
   }
 
   async addReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {

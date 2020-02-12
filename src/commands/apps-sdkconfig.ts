@@ -1,7 +1,7 @@
 import * as ora from "ora";
 import * as fs from "fs-extra";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import {
   AppConfigurationData,
   AppMetadata,
@@ -90,9 +90,6 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       }
 
       spinner.succeed();
-      logger.info("");
-      logger.info(`=== Your app configuration is ready ===`);
-      logger.info("");
 
       if (options.out === undefined) {
         logger.info(configData.fileContents);

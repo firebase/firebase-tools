@@ -831,6 +831,8 @@ function uninstallLegacyFirepit() {
     __dirname,
     "vendor/node_modules/firebase-tools/package.json"
   );
+  debug(`Doing JSON parses for version checks at ${firepitFirebaseToolsPackagePath}`);
+  debug(shell.ls(path.join(__dirname, "vendor/node_modules/")));
   const firepitFirebaseToolsPackage = JSON.parse(
     shell.cat(firepitFirebaseToolsPackagePath)
   );
@@ -978,7 +980,7 @@ function SetWindowTitle(title) {
   if (isWindows) {
     process.title = title;
   } else {
-    process.stdout.write("\x1b]2;" + title + "\x1b\x5c");
+    process.stdout.write(String.fromCharCode(27) + "]0;" + title + String.fromCharCode(7));
   }
 }
 

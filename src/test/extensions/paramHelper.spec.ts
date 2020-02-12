@@ -6,8 +6,8 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import * as logger from "../../logger";
-import { ModInstance, ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ExtensionInstance, ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
@@ -46,9 +46,24 @@ const TEST_PARAMS_2 = [
     default: "default",
   },
 ];
+const TEST_PARAMS_3 = [
+  {
+    param: "A_PARAMETER",
+    label: "Param",
+    type: ParamType.STRING,
+  },
+  {
+    param: "ANOTHER_PARAMETER",
+    label: "Another Param",
+    default: "default",
+    type: ParamType.STRING,
+    description: "Something new",
+  },
+];
 
 const SPEC = {
   name: "test",
+  version: "0.1.0",
   roles: [],
   resources: [],
   sourceUrl: "test.com",
@@ -67,7 +82,7 @@ describe("paramHelper", () => {
       fsStub = sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
       getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
+        .stub(extensionsHelper, "getFirebaseProjectParams")
         .resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
@@ -167,17 +182,18 @@ describe("paramHelper", () => {
 
   describe("getParamsWithCurrentValuesAsDefaults", () => {
     let params: { [key: string]: string };
-    let testInstance: ModInstance;
+    let testInstance: ExtensionInstance;
     beforeEach(() => {
       params = { A_PARAMETER: "new default" };
       testInstance = {
-        configuration: {
+        config: {
           source: {
             name: "",
             packageUri: "",
             hash: "",
             spec: {
               name: "",
+              version: "0.1.0",
               roles: [],
               resources: [],
               params: TEST_PARAMS,
@@ -216,13 +232,13 @@ describe("paramHelper", () => {
     });
 
     it("should change existing defaults to the current state and leave other values unchanged", () => {
-      _.get(testInstance, "configuration.source.spec.params", []).push({
+      _.get(testInstance, "config.source.spec.params", []).push({
         param: "THIRD",
         label: "3rd",
         default: "default",
         type: ParamType.STRING,
       });
-      testInstance.configuration.params.THIRD = "New Default";
+      testInstance.config.params.THIRD = "New Default";
       const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
 
       expect(newParams).to.eql([
@@ -254,7 +270,7 @@ describe("paramHelper", () => {
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
+        .stub(extensionsHelper, "getFirebaseProjectParams")
         .resolves({ PROJECT_ID });
     });
 
@@ -300,6 +316,29 @@ describe("paramHelper", () => {
           type: "input",
         },
       ]);
+    });
+
+    it("should not prompt the user for params that did not change type or param", async () => {
+      promptStub.resolves("Fail");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_3;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        A_PARAMETER: "value",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub).not.to.have.been.called;
     });
 
     it("should populate the spec with the default value if it is returned by prompt", async () => {

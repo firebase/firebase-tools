@@ -7,6 +7,12 @@ import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as fs from "fs";
+import { InvokeRuntimeOpts } from "./functionsEmulator";
+
+export enum EmulatedTriggerType {
+  BACKGROUND = "BACKGROUND",
+  HTTPS = "HTTPS",
+}
 
 export interface EmulatedTriggerDefinition {
   entryPoint: string;
@@ -28,15 +34,22 @@ export interface EmulatedTriggerMap {
   [name: string]: EmulatedTrigger;
 }
 
-// This bundle gets passed from hub -> runtime as a CLI arg
+export interface FunctionsRuntimeArgs {
+  frb: FunctionsRuntimeBundle;
+  opts?: InvokeRuntimeOpts;
+}
+
 export interface FunctionsRuntimeBundle {
   projectId: string;
   proto?: any;
   triggerId?: string;
+  triggerType?: EmulatedTriggerType;
   ports: {
     firestore?: number;
     database?: number;
+    pubsub?: number;
   };
+  socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   cwd: string;
 }
@@ -47,6 +60,7 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
   memory_limiting?: boolean;
   admin_stubs?: boolean;
+  pubsub_emulator?: boolean;
 }
 
 const memoryLookup = {
@@ -120,13 +134,24 @@ export function getEmulatedTriggersFromDefinitions(
   }, {});
 }
 
-export function getTemporarySocketPath(pid: number): string {
+export function getTemporarySocketPath(pid: number, cwd: string): string {
   // See "net" package docs for information about IPC pipes on Windows
   // https://nodejs.org/api/net.html#net_identifying_paths_for_ipc_connections
+  //
+  // As noted in the linked documentation the socket path is truncated at a certain
+  // length:
+  // > On Unix, the local domain is also known as the Unix domain. The path is a filesystem pathname.
+  // > It gets truncated to a length of sizeof(sockaddr_un.sun_path) - 1, which varies 91 and 107 bytes
+  // > depending on the operating system. The typical values are 107 on Linux and 103 on macOS.
+  //
+  // On Mac our socket paths will begin with something like this:
+  //   /var/folders/xl/6lkrzp7j07581mw8_4dlt3b000643s/T/{...}.sock
+  // Since the system prefix is about ~50 chars we only have about ~50 more to work with
+  // before we will get truncated socket names and then undefined behavior.
   if (process.platform === "win32") {
-    return path.join("\\\\?\\pipe", process.cwd(), pid.toString());
+    return path.join("\\\\?\\pipe", cwd, pid.toString());
   } else {
-    return path.join(os.tmpdir(), `firebase_emulator_invocation_${pid}.sock`);
+    return path.join(os.tmpdir(), `fire_emu_${pid.toString()}.sock`);
   }
 }
 

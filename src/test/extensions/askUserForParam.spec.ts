@@ -9,8 +9,8 @@ import {
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 
 describe("askUserForParam", () => {
   const testSpec = {
@@ -57,6 +57,32 @@ describe("askUserForParam", () => {
       ).to.equal(false);
       const expectedWarning = `123 is not a valid answer since it does not fit the regular expression "foo"`;
       expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
+    });
+
+    it("should return false if regex validation fails on an optional param that is not empty", () => {
+      expect(
+        checkResponse("123", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.STRING,
+          validationRegex: "foo",
+          required: false,
+        })
+      ).to.equal(false);
+      const expectedWarning = `123 is not a valid answer since it does not fit the regular expression "foo"`;
+      expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
+    });
+
+    it("should return true if no value is passed for an optional param", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.STRING,
+          validationRegex: "foo",
+          required: false,
+        })
+      ).to.equal(true);
     });
 
     it("should use custom validation error message if provided", () => {
@@ -222,7 +248,7 @@ describe("askUserForParam", () => {
     let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
-      subVarSpy = sinon.spy(modsHelper, "substituteParams");
+      subVarSpy = sinon.spy(extensionsHelper, "substituteParams");
       promptStub = sinon.stub(prompt, "promptOnce");
       promptStub.returns("ValidName");
     });

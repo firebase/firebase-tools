@@ -13,13 +13,11 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
-  if (previews.appdistribution) {
-    client.appdistribution = {};
-    client.appdistribution.distribute = loadCommand("appdistribution-distribute");
-  }
+  client.appdistribution = {};
+  client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.apps = {};
-  client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
+  client.apps.list = loadCommand("apps-list");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
@@ -32,6 +30,14 @@ module.exports = function(client) {
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
+  if (previews.rtdbrules) {
+    client.database.rules = {};
+    client.database.rules.get = loadCommand("database-rules-get");
+    client.database.rules.list = loadCommand("database-rules-list");
+    client.database.rules.stage = loadCommand("database-rules-stage");
+    client.database.rules.canary = loadCommand("database-rules-canary");
+    client.database.rules.release = loadCommand("database-rules-release");
+  }
   client.database.set = loadCommand("database-set");
   client.database.settings = {};
   client.database.settings.get = loadCommand("database-settings-get");
@@ -44,6 +50,13 @@ module.exports = function(client) {
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.ext = loadCommand("ext");
+  client.ext.configure = loadCommand("ext-configure");
+  client.ext.info = loadCommand("ext-info");
+  client.ext.install = loadCommand("ext-install");
+  client.ext.list = loadCommand("ext-list");
+  client.ext.uninstall = loadCommand("ext-uninstall");
+  client.ext.update = loadCommand("ext-update");
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
@@ -67,13 +80,14 @@ module.exports = function(client) {
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
-  client.projects.list = loadCommand("projects-list");
   client.projects.create = loadCommand("projects-create");
+  client.projects.list = loadCommand("projects-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
+  client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.web = loadCommand("setup-web");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
@@ -83,14 +97,5 @@ module.exports = function(client) {
   client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
-  if (previews.mods || previews.ext) {
-    client.ext = loadCommand("ext");
-    client.ext.configure = loadCommand("ext-configure");
-    client.ext.info = loadCommand("ext-info");
-    client.ext.install = loadCommand("ext-install");
-    client.ext.list = loadCommand("ext-list");
-    client.ext.uninstall = loadCommand("ext-uninstall");
-    client.ext.update = loadCommand("ext-update");
-  }
   return client;
 };

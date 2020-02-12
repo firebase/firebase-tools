@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+const { PubSub } = require("@google-cloud/pubsub");
 
 /*
  * Log snippets that the driver program above checks for. Be sure to update
@@ -7,6 +8,7 @@ const functions = require("firebase-functions");
  */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
+const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -17,6 +19,9 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const START_DOCUMENT_NAME = "test/start";
 const END_DOCUMENT_NAME = "test/done";
 
+const PUBSUB_TOPIC = "test-topic";
+
+const pubsub = new PubSub();
 admin.initializeApp();
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
@@ -49,6 +54,13 @@ exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
   ref.once("value", (snap) => {
     res.json({ data: snap });
   });
+});
+
+exports.writeToPubsub = functions.https.onRequest(async (req, res) => {
+  const msg = await pubsub.topic(PUBSUB_TOPIC).publishJSON({ foo: "bar" }, { attr: "val" });
+  console.log("PubSub Emulator Host", process.env.PUBSUB_EMULATOR_HOST);
+  console.log("Wrote PubSub Message", msg);
+  res.json({ published: "ok" });
 });
 
 exports.firestoreReaction = functions.firestore
@@ -86,3 +98,10 @@ exports.rtdbReaction = functions.database
 
     return true;
   });
+
+exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* , ctx */) => {
+  console.log(PUBSUB_FUNCTION_LOG);
+  console.log("Message", JSON.stringify(msg.json));
+  console.log("Attributes", JSON.stringify(msg.attributes));
+  return true;
+});

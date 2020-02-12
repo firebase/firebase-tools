@@ -244,7 +244,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
 /**
  * Progress bar shared by the class.
  */
-FirestoreDelete.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)", {
+FirestoreDelete.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
   total: Number.MAX_SAFE_INTEGER,
 });
 

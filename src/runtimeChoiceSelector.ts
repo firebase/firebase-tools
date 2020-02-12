@@ -8,7 +8,7 @@ import * as utils from "./utils";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
-var cjson = require("cjson");
+const cjson = require("cjson");
 
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
