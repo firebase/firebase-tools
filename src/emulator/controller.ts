@@ -18,6 +18,7 @@ import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
+import { ExportMetadata } from "./hubExport";
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -140,6 +141,15 @@ export async function startAll(options: any): Promise<void> {
   });
   await startEmulator(hub);
 
+  // Parse import metadata
+  let exportMetadata: ExportMetadata = {};
+  if (options.import) {
+    const importDir = path.resolve(options.import);
+    exportMetadata = JSON.parse(
+      fs.readFileSync(path.join(importDir, "metadata.json")).toString()
+    ) as ExportMetadata;
+  }
+
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
 
@@ -179,6 +189,17 @@ export async function startAll(options: any): Promise<void> {
       projectId,
       auto_download: true,
     };
+
+    if (exportMetadata.firestore) {
+      const importDirAbsPath = path.resolve(options.import);
+      const firestoreExportDir = path.join(importDirAbsPath, exportMetadata.firestore);
+      const exportFiles = fs.readdirSync(firestoreExportDir);
+      const metadataFileName = exportFiles.find((f) => f.endsWith("overall_export_metadata"));
+      const metadataFileAbsPath = path.join(firestoreExportDir, metadataFileName!!);
+
+      utils.logLabeledBullet("firestore", `Importing data from ${metadataFileAbsPath}`);
+      args.seed_from_export = metadataFileAbsPath;
+    }
 
     const rulesLocalPath = options.config.get("firestore.rules");
     if (rulesLocalPath) {

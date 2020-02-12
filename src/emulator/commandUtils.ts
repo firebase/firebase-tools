@@ -19,6 +19,9 @@ export const FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
 export const DESC_INSPECT_FUNCTIONS =
   "emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)";
 
+export const FLAG_IMPORT = "--import [dir]";
+export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
+
 /**
  * We want to be able to run the Firestore and Database emulators even in the absence
  * of firebase.json. For Functions and Hosting we require the JSON file since the
