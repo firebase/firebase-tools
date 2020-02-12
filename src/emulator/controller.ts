@@ -49,7 +49,8 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const portOpen = await checkPortOpen(info.port, info.host);
   if (!portOpen) {
     await cleanShutdown();
-    utils.logWarning(`Port ${info.port} is not open, could not start ${name} emulator.`);
+    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
+    utils.logWarning(`Port ${info.port} is not open, could not start ${description}.`);
     utils.logBullet(`To select a different port for the emulator, update your "firebase.json":
     {
       // ...
@@ -69,11 +70,8 @@ export async function cleanShutdown(): Promise<boolean> {
   utils.logBullet("Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    if (name === Emulators.HUB) {
-      utils.logBullet(`Stopping hub`);
-    } else {
-      utils.logBullet(`Stopping ${name} emulator`);
-    }
+    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
+    utils.logBullet(`Stoppping ${description}`);
     await EmulatorRegistry.stop(name);
   }
 

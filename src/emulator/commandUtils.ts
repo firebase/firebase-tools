@@ -8,8 +8,8 @@ import requireConfig = require("../requireConfig");
 import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";
 
-export const FLAG_ONLY: string = "--only <emulators>";
-export const DESC_ONLY: string =
+export const FLAG_ONLY = "--only <emulators>";
+export const DESC_ONLY =
   "only specific emulators. " +
   "This is a comma separated list of emulator names. " +
   "Valid options are: " +

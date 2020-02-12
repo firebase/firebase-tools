@@ -5,6 +5,7 @@ import * as utils from "../utils";
 import * as api from "../api";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
+import { FirebaseError } from "../error";
 
 export interface ExportMetadata {
   firestore?: string;
@@ -16,10 +17,9 @@ export class HubExport {
   constructor(private projectId: string, private exportPath: string) {}
 
   public async exportAll(): Promise<void> {
-    const someExport = ALL_EMULATORS.filter(this.shouldExport).length >= 0;
-    if (!someExport) {
-      utils.logLabeledWarning("emulators", "No running emulators support import/export.");
-      return;
+    const toExport = ALL_EMULATORS.filter(this.shouldExport);
+    if (toExport.length === 0) {
+      throw new FirebaseError("No running emulators support import/export.");
     }
 
     // TODO(samstern): Once we add other emulators, we have to deal with the fact that

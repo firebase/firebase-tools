@@ -81,8 +81,9 @@ export class EmulatorHub implements EmulatorInstance {
         utils.logLabeledSuccess("emulators", "Export complete.");
         res.status(200).send("OK");
       } catch (e) {
-        utils.logLabeledWarning("emulators", "Export failed.");
-        res.status(500).send(e);
+        const errorString = e.message || JSON.stringify(e);
+        utils.logLabeledWarning("emulators", `Export failed: ${errorString}`);
+        res.status(500).send(errorString);
       }
     });
   }

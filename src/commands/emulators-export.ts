@@ -52,16 +52,18 @@ module.exports = new Command("emulators:export <path>")
     };
 
     utils.logBullet(`Exporting data to: ${absPath}`);
-    return api
+    await api
       .request("POST", EmulatorHub.PATH_EXPORT, {
         origin: hubOrigin,
         json: true,
         data: exportBody,
       })
       .catch((e) => {
-        throw new FirebaseError("Export request failed, see debug logs for more information.", {
+        throw new FirebaseError("Export request failed, see emulator logs for more information.", {
           exit: 1,
           original: e,
         });
       });
+
+    utils.logSuccess("Export complete");
   });
