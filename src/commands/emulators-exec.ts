@@ -84,6 +84,7 @@ module.exports = new Command("emulators:exec <script>")
   )
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (script: string, options: any) => {
     const projectId = getProjectId(options, true);
     const extraEnv: Record<string, string> = {};

@@ -53,7 +53,7 @@ module.exports = new Command("emulators:export <path>")
 
     utils.logBullet(`Exporting data to: ${absPath}`);
     return api
-      .request("POST", "/_admin/export", {
+      .request("POST", EmulatorHub.PATH_EXPORT, {
         origin: hubOrigin,
         json: true,
         data: exportBody,

@@ -28,6 +28,8 @@ export interface EmulatorHubArgs {
 }
 
 export class EmulatorHub implements EmulatorInstance {
+  static PATH_EXPORT = "/_admin/export";
+
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
    * This is useful so that multiple copies of the Firebase CLI can discover
@@ -68,8 +70,7 @@ export class EmulatorHub implements EmulatorInstance {
     });
 
     // TODO: Route paths should be constants
-    // TODO: use api.js here and elsewhere
-    this.hub.post("/_admin/export", async (req, res) => {
+    this.hub.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
       const exportPath = req.body.path;
       utils.logLabeledBullet(
         "emulators",

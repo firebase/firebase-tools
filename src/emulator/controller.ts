@@ -18,7 +18,7 @@ import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
-import { ExportMetadata } from "./hubExport";
+import { ExportMetadata, HubExport } from "./hubExport";
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -141,12 +141,12 @@ export async function startAll(options: any): Promise<void> {
   });
   await startEmulator(hub);
 
-  // Parse import metadata
+  // Parse export metadata
   let exportMetadata: ExportMetadata = {};
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, "metadata.json")).toString()
+      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME)).toString()
     ) as ExportMetadata;
   }
 

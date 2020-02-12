@@ -11,6 +11,8 @@ export interface ExportMetadata {
 }
 
 export class HubExport {
+  static METADATA_FILE_NAME = "metadata.json";
+
   constructor(private projectId: string, private exportPath: string) {}
 
   public async exportAll(): Promise<void> {
@@ -30,7 +32,7 @@ export class HubExport {
       await this.exportFirestore();
     }
 
-    const metadataPath = path.join(this.exportPath, "metadata.json");
+    const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
   }
 
