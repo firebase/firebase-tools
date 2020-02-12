@@ -13,6 +13,7 @@ export enum Emulators {
 export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
 
+export type ImportExportEmulators = Emulators.FIRESTORE;
 export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE];
 
 export const ALL_SERVICE_EMULATORS = [

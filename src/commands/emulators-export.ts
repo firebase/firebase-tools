@@ -1,5 +1,5 @@
 import * as clc from "cli-color";
-import * as request from "request";
+import * as fs from "fs";
 import * as path from "path";
 
 import * as api from "../api";
@@ -21,25 +21,47 @@ module.exports = new Command("emulators:export <path>")
         { exit: 1 }
       );
     }
+    const hubOrigin = `http://${locator.host}:${locator.port}`;
 
-    // TODO: Should we ping the / endpoint to make sure
-    const absPath = path.resolve(exportPath);
+    try {
+      await api.request("GET", "/", {
+        origin: hubOrigin,
+      });
+    } catch (e) {
+      throw new FirebaseError(
+        `The emulator hub at ${hubOrigin} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${EmulatorHub.getLocatorFilePath(
+          projectId
+        )}`,
+        { exit: 1 }
+      );
+    }
+
     utils.logBullet(
-      `Found running emulator hub for project ${clc.bold(projectId)} at http://${locator.host}:${
-        locator.port
-      }`
+      `Found running emulator hub for project ${clc.bold(projectId)} at ${hubOrigin}`
     );
-    utils.logBullet(`Exporting data to: ${absPath}`);
 
-    const exportOrigin = `http://${locator.host}:${locator.port}`;
+    // If the export target directory does not exist, we should attempt to create it
+    const absPath = path.resolve(exportPath);
+    if (!fs.existsSync(absPath)) {
+      utils.logBullet(`Creating export directory ${absPath}`);
+      fs.mkdirSync(absPath);
+    }
+
     const exportBody = {
       path: absPath,
     };
 
-    // TODO: Handle errors nicely here
-    return api.request("POST", "/_admin/export", {
-      origin: exportOrigin,
-      json: true,
-      data: exportBody,
-    });
+    utils.logBullet(`Exporting data to: ${absPath}`);
+    return api
+      .request("POST", "/_admin/export", {
+        origin: hubOrigin,
+        json: true,
+        data: exportBody,
+      })
+      .catch((e) => {
+        throw new FirebaseError("Export request failed, see debug logs for more information.", {
+          exit: 1,
+          original: e,
+        });
+      });
   });

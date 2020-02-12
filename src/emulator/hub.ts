@@ -50,6 +50,12 @@ export class EmulatorHub implements EmulatorInstance {
     return locator;
   }
 
+  static getLocatorFilePath(projectId: string): string {
+    const dir = os.tmpdir();
+    const filename = `hub-${projectId}.json`;
+    return path.join(dir, filename);
+  }
+
   private hub: express.Express;
   private server?: http.Server;
 
@@ -107,12 +113,6 @@ export class EmulatorHub implements EmulatorInstance {
 
   getName(): Emulators {
     return Emulators.HUB;
-  }
-
-  private static getLocatorFilePath(projectId: string): string {
-    const dir = os.tmpdir();
-    const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
   }
 
   private getLocator(): Locator {
