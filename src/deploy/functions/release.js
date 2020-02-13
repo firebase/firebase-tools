@@ -531,10 +531,25 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
               !!options.retry &&
               attempt <= maxRetries
             ) {
-              const fullNames = failedDeployments.map((name) =>
+              // Reconstruct names of functions for the current project
+              const fullFunctionsNames = failedDeployments.map((name) =>
                 ["projects", projectId, "locations", "us-central1", "functions", name].join("/")
               );
-              return releaseFunctions(context, options, fullNames, functionsInfo, attempt + 1);
+              // Update the options to "--only" deploy the functions to redeploy
+              // because this is used to compute the filter groups and prevent deletions
+              // They must be mapped as functions:<namespace>.<function-name>,...
+              const updatedOpts = Object.assign({}, options, {
+                only: failedDeployments
+                  .map((name) => `functions:${name.split("-").join(".")}`)
+                  .join(","),
+              });
+              return releaseFunctions(
+                context,
+                updatedOpts,
+                fullFunctionsNames,
+                functionsInfo,
+                attempt + 1
+              );
             }
 
             logger.info("\n\nTo try redeploying those functions, run:");
