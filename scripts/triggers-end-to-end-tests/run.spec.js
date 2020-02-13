@@ -486,5 +486,5 @@ describe("import/export end to end", () => {
     );
 
     return importCLI.stop();
-  }).timeout(TEST_SETUP_TIMEOUT);
+  }).timeout(2 * TEST_SETUP_TIMEOUT);
 });

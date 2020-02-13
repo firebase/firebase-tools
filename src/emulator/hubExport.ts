@@ -9,13 +9,25 @@ import { EmulatorHub } from "./hub";
 
 export interface ExportMetadata {
   version: string;
-  firestore?: string;
+  firestore?: {
+    path: string;
+    metadata_file: string;
+  };
 }
 
 export class HubExport {
   static METADATA_FILE_NAME = "metadata.json";
 
   constructor(private projectId: string, private exportPath: string) {}
+
+  public static readMetadata(exportPath: string): ExportMetadata | undefined {
+    const metadataPath = path.join(exportPath, this.METADATA_FILE_NAME);
+    if (!fs.existsSync(metadataPath)) {
+      return undefined;
+    }
+
+    return JSON.parse(fs.readFileSync(metadataPath).toString()) as ExportMetadata;
+  }
 
   public async exportAll(): Promise<void> {
     const toExport = ALL_EMULATORS.filter(this.shouldExport);
@@ -31,22 +43,25 @@ export class HubExport {
     };
 
     if (this.shouldExport(Emulators.FIRESTORE)) {
-      metadata.firestore = this.getExportName(Emulators.FIRESTORE);
-      await this.exportFirestore();
+      metadata.firestore = {
+        path: "firestore_export",
+        metadata_file: "firestore_export/firestore_export.overall_export_metadata",
+      };
+      await this.exportFirestore(metadata);
     }
 
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
   }
 
-  private async exportFirestore(): Promise<void> {
+  private async exportFirestore(metadata: ExportMetadata): Promise<void> {
     const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!!.getInfo();
     const firestoreHost = `http://${firestoreInfo.host}:${firestoreInfo.port}`;
 
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
       export_directory: this.exportPath,
-      export_name: this.getExportName(Emulators.FIRESTORE),
+      export_name: metadata.firestore!!.path,
     };
 
     return api.request("POST", `/emulator/v1/projects/${this.projectId}:export`, {
@@ -58,14 +73,5 @@ export class HubExport {
 
   private shouldExport(e: Emulators): boolean {
     return IMPORT_EXPORT_EMULATORS.indexOf(e) >= 0 && EmulatorRegistry.isRunning(e);
-  }
-
-  private getExportName(e: Emulators): string {
-    switch (e) {
-      case Emulators.FIRESTORE:
-        return "firestore_export";
-      default:
-        throw new Error(`Export name not defined for ${e}`);
-    }
   }
 }

@@ -207,10 +207,9 @@ export async function startAll(options: any): Promise<void> {
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const firestoreExportName = path.join(importDirAbsPath, exportMetadata.firestore);
       const exportMetadataFilePath = path.join(
         importDirAbsPath,
-        `${firestoreExportName}/${firestoreExportName}.overall_export_metadata`
+        exportMetadata.firestore.metadata_file
       );
 
       utils.logLabeledBullet("firestore", `Importing data from ${exportMetadataFilePath}`);
