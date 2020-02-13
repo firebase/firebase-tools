@@ -6,6 +6,7 @@ const chai = require("chai");
 const expect = chai.expect;
 const assert = chai.assert;
 const fs = require("fs");
+const os = require("os");
 
 const Firestore = require("@google-cloud/firestore");
 
@@ -469,7 +470,7 @@ describe("import/export end to end", () => {
 
     // Ask for export
     const exportCLI = new CLIProcess("2");
-    const exportPath = fs.mkdtempSync("emulator-data");
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
     await exportCLI.start("emulators:export", [exportPath]);
 
     // Stop the suite
@@ -479,12 +480,12 @@ describe("import/export end to end", () => {
     const importCLI = new CLIProcess("3");
     await importCLI.start(
       "emulators:start",
-      ["--only", "firestore", "--import", "data"],
+      ["--only", "firestore", "--import", exportPath],
       (data) => {
         return data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1;
       }
     );
 
-    return importCLI.stop();
+    await importCLI.stop();
   }).timeout(2 * TEST_SETUP_TIMEOUT);
 });
