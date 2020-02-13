@@ -1,20 +1,20 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
 
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var checkDupHostingKeys = require("../checkDupHostingKeys");
-var checkValidTargetFilters = require("../checkValidTargetFilters");
-var checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
-var { Command } = require("../command");
-var deploy = require("../deploy");
-var requireConfig = require("../requireConfig");
-var filterTargets = require("../filterTargets");
+const requireInstance = require("../requireInstance");
+const { requirePermissions } = require("../requirePermissions");
+const checkDupHostingKeys = require("../checkDupHostingKeys");
+const checkValidTargetFilters = require("../checkValidTargetFilters");
+const checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
+const { Command } = require("../command");
+const deploy = require("../deploy");
+const requireConfig = require("../requireConfig");
+const filterTargets = require("../filterTargets");
 
 // in order of least time-consuming to most time-consuming
-var VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
-var TARGET_PERMISSIONS = {
+const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
+const TARGET_PERMISSIONS = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
   functions: [
@@ -54,6 +54,7 @@ module.exports = new Command("deploy")
       '(e.g. "--only functions:group1.subgroup1,functions:group2)"'
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
+  .option("--retry <times>", "retry deploying failed functions <times> before failing")
   .before(requireConfig)
   .before(function(options) {
     options.filteredTargets = filterTargets(options, VALID_TARGETS);

@@ -1,22 +1,22 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
 
-var ensureApiEnabled = require("../../ensureApiEnabled");
-var functionsConfig = require("../../functionsConfig");
-var getProjectId = require("../../getProjectId");
-var validator = require("./validate");
+const ensureApiEnabled = require("../../ensureApiEnabled");
+const functionsConfig = require("../../functionsConfig");
+const getProjectId = require("../../getProjectId");
+const validator = require("./validate");
 
 module.exports = function(context, options, payload) {
   if (!options.config.has("functions")) {
     return Promise.resolve();
   }
 
-  var sourceDirName = options.config.get("functions.source");
-  var sourceDir = options.config.path(sourceDirName);
-  var projectDir = options.config.projectDir;
-  var functionNames = payload.functions;
-  var projectId = getProjectId(options);
+  const sourceDirName = options.config.get("functions.source");
+  const sourceDir = options.config.path(sourceDirName);
+  const projectDir = options.config.projectDir;
+  const functionNames = payload.functions;
+  const projectId = getProjectId(options);
 
   try {
     validator.functionsDirectoryExists(options.cwd, sourceDirName);
