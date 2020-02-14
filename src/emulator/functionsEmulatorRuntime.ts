@@ -1173,7 +1173,7 @@ async function main(): Promise<void> {
         // All errors *should* be handled within handleMessage. But just in case,
         // we want to exit fatally on any error related to message handling.
         logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
-        new EmulatorLog("FATAL", "runtime-error", err).log();
+        new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
         return flushAndExit(1);
       });
   });

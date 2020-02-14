@@ -1,0 +1,1 @@
+* Fixes an issue with how `functions:shell` lists nested functions (#1735)
