@@ -51,7 +51,7 @@ module.exports = async function(options) {
   const emulatorConfig = {};
   if (EmulatorRegistry.isRunning("firestore")) {
     const { host, port } = EmulatorRegistry.get("firestore").getInfo();
-    emulatorConfig["firestore"] = `http://${host}:${port}`;
+    emulatorConfig["firestore"] = `${host}:${port}`;
   }
   if (EmulatorRegistry.isRunning("functions")) {
     const { host, port } = EmulatorRegistry.get("functions").getInfo();
