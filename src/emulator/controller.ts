@@ -93,7 +93,8 @@ export function filterEmulatorTargets(options: any): string[] {
 
 export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    return true;
+    // The hub only starts if we know the project ID
+    return !!options.project;
   }
 
   const targets = filterEmulatorTargets(options);
@@ -131,28 +132,30 @@ export async function startAll(options: any): Promise<void> {
     }
   }
 
-  // Always start the hub, but we actually will find any available port
-  // since we don't want to explode if the hub can't start on 4000
-  const hubAddr = Constants.getAddress(Emulators.HUB, options);
-  const hubPort = await pf.getPortPromise({
-    host: hubAddr.host,
-    port: hubAddr.port,
-    stopPort: hubAddr.port + 100,
-  });
+  if (shouldStart(options, Emulators.HUB)) {
+    // For the hub we actually will find any available port
+    // since we don't want to explode if the hub can't start on 4000
+    const hubAddr = Constants.getAddress(Emulators.HUB, options);
+    const hubPort = await pf.getPortPromise({
+      host: hubAddr.host,
+      port: hubAddr.port,
+      stopPort: hubAddr.port + 100,
+    });
 
-  if (hubPort != hubAddr.port) {
-    utils.logLabeledWarning(
-      "emulators",
-      `Emulator hub unable to start on port ${hubAddr.port}, starting on ${hubPort}`
-    );
+    if (hubPort != hubAddr.port) {
+      utils.logLabeledWarning(
+        "emulators",
+        `Emulator hub unable to start on port ${hubAddr.port}, starting on ${hubPort}`
+      );
+    }
+
+    const hub = new EmulatorHub({
+      projectId,
+      host: hubAddr.host,
+      port: hubPort,
+    });
+    await startEmulator(hub);
   }
-
-  const hub = new EmulatorHub({
-    projectId,
-    host: hubAddr.host,
-    port: hubPort,
-  });
-  await startEmulator(hub);
 
   // Parse export metadata
   let exportMetadata: ExportMetadata = {
