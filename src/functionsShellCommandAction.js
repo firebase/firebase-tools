@@ -10,12 +10,24 @@ var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var logger = require("./logger");
 var shell = require("./emulator/functionsEmulatorShell");
+var commandUtitls = require("./emulator/commandUtils");
 
 module.exports = function(options) {
   options.port = parseInt(options.port, 10);
 
+  let debugPort = undefined;
+  if (options.inspectFunctions) {
+    debugPort = commandUtitls.parseInspectionPort(options);
+  }
+
   return serveFunctions
-    .start(options, { quiet: true })
+    .start(options, {
+      // TODO(samstern): Note that these are not acctually valid FunctionsEmulatorArgs
+      // and when we eventually move to all TypeScript we'll have to start adding
+      // projectId and functionsDir here.
+      quiet: true,
+      debugPort,
+    })
     .then(function() {
       return serveFunctions.connect();
     })

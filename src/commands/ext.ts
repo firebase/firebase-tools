@@ -1,43 +1,45 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
+import { logPrefix } from "../extensions/extensionsHelper";
 import { listExtensions } from "../extensions/listExtensions";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
+import * as utils from "../utils";
+import { CommanderStatic } from "commander";
 
 module.exports = new Command("ext")
   .description(
     "display information on how to use ext commands and extensions installed to your project"
   )
-  .before(requirePermissions, ["deploymentmanager.deployments.get"])
-  .action((options: any) => {
-    const projectId = getProjectId(options);
-    const commands = [
-      "ext-configure",
-      "ext-info",
-      "ext-install",
-      "ext-list",
-      "ext-uninstall",
-      "ext-update",
+  .action(async (options: any) => {
+    // Print out help info for all extensions commands.
+    utils.logLabeledBullet(logPrefix, "list of extensions commands:");
+    const firebaseTools = require("../"); // eslint-disable-line @typescript-eslint/no-var-requires
+    const commandNames = [
+      "ext:install",
+      "ext:info",
+      "ext:list",
+      "ext:configure",
+      "ext:update",
+      "ext:uninstall",
     ];
 
-    _.forEach(commands, (command) => {
-      let cmd = require("./" + command);
-      if (cmd.default) {
-        cmd = cmd.default;
-      }
-      logger.info();
-      logger.info(`${clc.bold(cmd._cmd)} - ${cmd._description}`);
-      if (cmd._options.length > 0) {
-        logger.info("Option(s):");
-        _.forEach(cmd._options, (option) => {
-          logger.info("  ", option[0], " ", option[1]);
-        });
-      }
-      logger.info();
+    _.forEach(commandNames, (commandName) => {
+      const command: CommanderStatic = firebaseTools.getCommand(commandName);
+      logger.info(clc.bold("\n" + command.name()));
+      command.outputHelp();
     });
+    logger.info();
 
-    return listExtensions(projectId);
+    // Print out a list of all extension instances on project, if called with a project.
+    try {
+      await requirePermissions(options, ["firebasemods.instances.list"]);
+      const projectId = getProjectId(options);
+      return listExtensions(projectId);
+    } catch (err) {
+      return;
+    }
   });

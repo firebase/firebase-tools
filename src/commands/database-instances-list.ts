@@ -1,12 +1,12 @@
-import Command = require("../command");
+import { Command } from "../command";
 import logger = require("../logger");
-import requirePermissions = require("../requirePermissions");
+import { requirePermissions } from "../requirePermissions";
 import getProjectNumber = require("../getProjectNumber");
 import firedata = require("../gcp/firedata");
 
 export default new Command("database:instances:list")
   .description("list realtime database instances")
-  .before(requirePermissions, ["firebase.projects.list"])
+  .before(requirePermissions, ["firebasedatabase.instances.list"])
   .action(async (options: any) => {
     const projectNumber = await getProjectNumber(options);
     const instances = await firedata.listDatabaseInstances(projectNumber);

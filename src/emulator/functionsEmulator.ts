@@ -8,7 +8,13 @@ import * as http from "http";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  EmulatorLog,
+  Emulators,
+  FunctionsExecutionMode,
+} from "./types";
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
@@ -27,7 +33,9 @@ import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
+import { WorkQueue } from "./workQueue";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -39,11 +47,6 @@ const EVENT_INVOKE = "functions:invoke";
  */
 const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
 
-/**
- * Global pool of FunctionsRuntimeWorkers.
- */
-const WORKER_POOL = new RuntimeWorkerPool();
-
 export interface FunctionsEmulatorArgs {
   projectId: string;
   functionsDir: string;
@@ -51,6 +54,7 @@ export interface FunctionsEmulatorArgs {
   host?: string;
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
+  debugPort?: number;
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -68,6 +72,13 @@ export interface FunctionsRuntimeInstance {
   kill(signal?: string): void;
   // Send an IPC message to the child process
   send(args: FunctionsRuntimeArgs): boolean;
+}
+
+export interface InvokeRuntimeOpts {
+  nodeBinary: string;
+  serializedTriggers?: string;
+  env?: { [key: string]: string };
+  ignore_warnings?: boolean;
 }
 
 interface RequestWithRawBody extends express.Request {
@@ -92,7 +103,37 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
-  createHubServer(bundleTemplate: FunctionsRuntimeBundle, nodeBinary: string): express.Application {
+  nodeBinary: string = "";
+  private server?: http.Server;
+  private triggers: EmulatedTriggerDefinition[] = [];
+  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
+
+  private workerPool: RuntimeWorkerPool;
+  private workQueue: WorkQueue;
+
+  constructor(private args: FunctionsEmulatorArgs) {
+    // TODO: Would prefer not to have static state but here we are!
+    EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
+
+    // When debugging is enabled, the "timeout" feature needs to be disabled so that
+    // functions don't timeout while a breakpoint is active.
+    if (this.args.debugPort) {
+      this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
+      this.args.disabledRuntimeFeatures.timeout = true;
+    }
+
+    const mode = this.args.debugPort
+      ? FunctionsExecutionMode.SEQUENTIAL
+      : FunctionsExecutionMode.AUTO;
+    this.workerPool = new RuntimeWorkerPool(mode);
+    this.workQueue = new WorkQueue(mode);
+  }
+
+  createHubServer(): express.Application {
+    // TODO(samstern): Should not need this here but some tests are directly calling this method
+    // because FunctionsEmulator.start() is not test-safe due to askInstallNodeVersion.
+    this.workQueue.start();
+
     const hub = express();
 
     hub.use((req, res, next) => {
@@ -122,143 +163,22 @@ export class FunctionsEmulator implements EmulatorInstance {
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
-    const backgroundHandler = async (req: express.Request, res: express.Response) => {
-      const method = req.method;
-      const triggerId = req.params.trigger_name;
-
-      EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
-
-      const reqBody = (req as RequestWithRawBody).rawBody;
-      const proto = JSON.parse(reqBody.toString());
-
-      const worker = this.startFunctionRuntime(
-        bundleTemplate,
-        triggerId,
-        EmulatedTriggerType.BACKGROUND,
-        nodeBinary,
-        proto
-      );
-
-      worker.onLogs((el: EmulatorLog) => {
-        if (el.level === "FATAL") {
-          res.send(el.text);
-        }
+    const backgroundHandler: express.RequestHandler = async (
+      req: express.Request,
+      res: express.Response
+    ) => {
+      this.workQueue.submit(() => {
+        return this.handleBackgroundTrigger(req, res);
       });
-
-      // For analytics, track the invoked service
-      if (triggerId) {
-        const trigger = this.getTriggerById(triggerId);
-        track(EVENT_INVOKE, getFunctionService(trigger));
-      }
-
-      await worker.waitForDone();
-      return res.json({ status: "acknowledged" });
     };
 
-    // Define a common handler function to use for GET and POST requests.
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      const method = req.method;
-      const triggerId = req.params.trigger_name;
-
-      logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
-
-      const reqBody = (req as RequestWithRawBody).rawBody;
-
-      const worker = this.startFunctionRuntime(
-        bundleTemplate,
-        triggerId,
-        EmulatedTriggerType.HTTPS,
-        nodeBinary
-      );
-
-      worker.onLogs((el: EmulatorLog) => {
-        if (el.level === "FATAL") {
-          res.status(500).send(el.text);
-        }
+      this.workQueue.submit(() => {
+        return this.handleHttpsTrigger(req, res);
       });
-
-      // Wait for the worker to set up its internal HTTP server
-      await worker.waitForSocketReady();
-
-      track(EVENT_INVOKE, "https");
-
-      EmulatorLogger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
-
-      if (!worker.lastArgs) {
-        throw new FirebaseError("Cannot execute on a worker with no arguments");
-      }
-
-      if (!worker.lastArgs.frb.socketPath) {
-        throw new FirebaseError(
-          `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
-        );
-      }
-
-      // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
-      // cause unexpected situations - not to mention CORS troubles and this enables us to use
-      // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
-      const runtimeReq = http.request(
-        {
-          method,
-          path: req.url || "/",
-          headers: req.headers,
-          socketPath: worker.lastArgs.frb.socketPath,
-        },
-        (runtimeRes: http.IncomingMessage) => {
-          function forwardStatusAndHeaders(): void {
-            res.status(runtimeRes.statusCode || 200);
-            if (!res.headersSent) {
-              Object.keys(runtimeRes.headers).forEach((key) => {
-                const val = runtimeRes.headers[key];
-                if (val) {
-                  res.setHeader(key, val);
-                }
-              });
-            }
-          }
-
-          runtimeRes.on("data", (buf) => {
-            forwardStatusAndHeaders();
-            res.write(buf);
-          });
-
-          runtimeRes.on("close", () => {
-            forwardStatusAndHeaders();
-            res.end();
-          });
-
-          runtimeRes.on("end", () => {
-            forwardStatusAndHeaders();
-            res.end();
-          });
-        }
-      );
-
-      runtimeReq.on("error", () => {
-        res.end();
-      });
-
-      // If the original request had a body, forward that over the connection.
-      // TODO: Why is this not handled by the pipe?
-      if (reqBody) {
-        runtimeReq.write(reqBody);
-        runtimeReq.end();
-      }
-
-      // Pipe the incoming request over the socket.
-      req
-        .pipe(
-          runtimeReq,
-          { end: true }
-        )
-        .on("error", () => {
-          res.end();
-        });
-
-      await worker.waitForDone();
     };
 
     // The ordering here is important. The longer routes (background)
@@ -270,43 +190,34 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   startFunctionRuntime(
-    bundleTemplate: FunctionsRuntimeBundle,
     triggerId: string,
     triggerType: EmulatedTriggerType,
-    nodeBinary: string,
     proto?: any,
     runtimeOpts?: InvokeRuntimeOpts
   ): RuntimeWorker {
+    const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       proto,
       triggerId,
       triggerType,
     };
 
-    const worker = invokeRuntime(nodeBinary, runtimeBundle, runtimeOpts || {});
+    const opts = runtimeOpts || { nodeBinary: this.nodeBinary };
+    const worker = this.invokeRuntime(runtimeBundle, opts);
     return worker;
-  }
-
-  nodeBinary: string = "";
-
-  private server?: http.Server;
-  private triggers: EmulatedTriggerDefinition[] = [];
-  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-
-  constructor(private args: FunctionsEmulatorArgs) {
-    // TODO: Would prefer not to have static state but here we are!
-    EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
   }
 
   async start(): Promise<void> {
     this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
     const { host, port } = this.getInfo();
-    this.server = this.createHubServer(this.getBaseBundle(), this.nodeBinary).listen(port, host);
+    this.workQueue.start();
+    this.server = this.createHubServer().listen(port, host);
   }
 
   async connect(): Promise<void> {
@@ -339,9 +250,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // Before loading any triggers we need to make sure there are no 'stale' workers
       // in the pool that would cause us to run old code.
-      WORKER_POOL.refresh();
+      this.workerPool.refresh();
 
-      const worker = invokeRuntime(this.nodeBinary, this.getBaseBundle());
+      const worker = this.invokeRuntime(this.getBaseBundle(), {
+        nodeBinary: this.nodeBinary,
+      });
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
         worker.runtime.events,
@@ -364,9 +277,10 @@ export class FunctionsEmulator implements EmulatorInstance {
           // TODO(samstern): Right now we only emulate each function in one region, but it's possible
           //                 that a developer is running the same function in multiple regions.
           const region = getFunctionRegion(definition);
+          const { host, port } = this.getInfo();
           const url = FunctionsEmulator.getHttpFunctionUrl(
-            this.getInfo().host,
-            this.getInfo().port,
+            host,
+            port,
             this.args.projectId,
             definition.name,
             region
@@ -391,6 +305,9 @@ export class FunctionsEmulator implements EmulatorInstance {
               break;
             case Constants.SERVICE_REALTIME_DATABASE:
               added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
+              break;
+            case Constants.SERVICE_PUBSUB:
+              added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             default:
               EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -429,6 +346,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
+  async stop(): Promise<void> {
+    this.workQueue.stop();
+    this.workerPool.exit();
+    Promise.resolve(this.server && this.server.close());
+  }
+
   addRealtimeDatabaseTrigger(
     projectId: string,
     definition: EmulatedTriggerDefinition
@@ -437,7 +360,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!databasePort) {
       return Promise.resolve(false);
     }
-    if (definition.eventTrigger === undefined) {
+    if (!definition.eventTrigger) {
       EmulatorLogger.log(
         "WARN",
         `Event trigger "${definition.name}" has undefined "eventTrigger" member`
@@ -526,9 +449,34 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
-  async stop(): Promise<void> {
-    WORKER_POOL.exit();
-    Promise.resolve(this.server && this.server.close());
+  async addPubsubTrigger(
+    projectId: string,
+    definition: EmulatedTriggerDefinition
+  ): Promise<boolean> {
+    const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
+    if (!pubsubPort) {
+      return false;
+    }
+
+    if (!definition.eventTrigger) {
+      return false;
+    }
+
+    const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
+
+    logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+
+    // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
+    const resource = definition.eventTrigger.resource;
+    const resourceParts = resource.split("/");
+    const topic = resourceParts[resourceParts.length - 1];
+
+    try {
+      await pubsubEmulator.addTrigger(topic, definition.name);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   getProjectId(): string {
@@ -572,11 +520,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       ports: {
         firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
         database: EmulatorRegistry.getPort(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
   }
-
   /**
    * Returns the path to a "node" executable to use.
    */
@@ -637,110 +585,225 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     return process.execPath;
   }
-}
 
-export interface InvokeRuntimeOpts {
-  serializedTriggers?: string;
-  env?: { [key: string]: string };
-  ignore_warnings?: boolean;
-}
-
-export function invokeRuntime(
-  nodeBinary: string,
-  frb: FunctionsRuntimeBundle,
-  opts?: InvokeRuntimeOpts
-): RuntimeWorker {
-  opts = opts || {};
-
-  // If we can use an existing worker there is almost nothing to do.
-  if (WORKER_POOL.readyForWork(frb.triggerId)) {
-    return WORKER_POOL.submitWork(frb.triggerId, frb, opts.serializedTriggers);
-  }
-
-  const emitter = new EventEmitter();
-  const metadata: { [key: string]: any } = {};
-
-  const args = [path.join(__dirname, "functionsEmulatorRuntime")];
-
-  if (opts.ignore_warnings) {
-    args.unshift("--no-warnings");
-  }
-
-  const childProcess = spawn(nodeBinary, args, {
-    env: { node: nodeBinary, ...opts.env, ...process.env },
-    cwd: frb.cwd,
-    stdio: ["pipe", "pipe", "pipe", "ipc"],
-  });
-
-  const buffers: {
-    [pipe: string]: {
-      pipe: stream.Readable;
-      value: string;
-    };
-  } = {
-    stderr: { pipe: childProcess.stderr, value: "" },
-    stdout: { pipe: childProcess.stdout, value: "" },
-  };
-
-  const ipcBuffer = { value: "" };
-  childProcess.on("message", (message: any) => {
-    onData(childProcess, emitter, ipcBuffer, message);
-  });
-
-  for (const id in buffers) {
-    if (buffers.hasOwnProperty(id)) {
-      const buffer = buffers[id];
-      buffer.pipe.on("data", (buf: Buffer) => {
-        onData(childProcess, emitter, buffer, buf);
-      });
+  invokeRuntime(frb: FunctionsRuntimeBundle, opts: InvokeRuntimeOpts): RuntimeWorker {
+    // If we can use an existing worker there is almost nothing to do.
+    if (this.workerPool.readyForWork(frb.triggerId)) {
+      return this.workerPool.submitWork(frb.triggerId, frb, opts);
     }
+
+    const emitter = new EventEmitter();
+    const args = [path.join(__dirname, "functionsEmulatorRuntime")];
+
+    if (opts.ignore_warnings) {
+      args.unshift("--no-warnings");
+    }
+
+    if (this.args.debugPort) {
+      const { host } = this.getInfo();
+      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+    }
+
+    const childProcess = spawn(opts.nodeBinary, args, {
+      env: { node: opts.nodeBinary, ...opts.env, ...process.env },
+      cwd: frb.cwd,
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+
+    const buffers: {
+      [pipe: string]: {
+        pipe: stream.Readable;
+        value: string;
+      };
+    } = {
+      stderr: { pipe: childProcess.stderr, value: "" },
+      stdout: { pipe: childProcess.stdout, value: "" },
+    };
+
+    const ipcBuffer = { value: "" };
+    childProcess.on("message", (message: any) => {
+      this.onData(childProcess, emitter, ipcBuffer, message);
+    });
+
+    for (const id in buffers) {
+      if (buffers.hasOwnProperty(id)) {
+        const buffer = buffers[id];
+        buffer.pipe.on("data", (buf: Buffer) => {
+          this.onData(childProcess, emitter, buffer, buf);
+        });
+      }
+    }
+
+    const runtime: FunctionsRuntimeInstance = {
+      pid: childProcess.pid,
+      exit: new Promise<number>((resolve) => {
+        childProcess.on("exit", resolve);
+      }),
+      events: emitter,
+      shutdown: () => {
+        childProcess.kill();
+      },
+      kill: (signal?: string) => {
+        childProcess.kill(signal);
+        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+      },
+      send: (args: FunctionsRuntimeArgs) => {
+        return childProcess.send(JSON.stringify(args));
+      },
+    };
+
+    this.workerPool.addWorker(frb.triggerId, runtime);
+    return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
-  const runtime: FunctionsRuntimeInstance = {
-    pid: childProcess.pid,
-    exit: new Promise<number>((resolve) => {
-      childProcess.on("exit", resolve);
-    }),
-    events: emitter,
-    shutdown: () => {
-      childProcess.kill();
-    },
-    kill: (signal?: string) => {
-      childProcess.kill(signal);
-      emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-    },
-    send: (args: FunctionsRuntimeArgs) => {
-      return childProcess.send(JSON.stringify(args));
-    },
-  };
+  private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
+    const method = req.method;
+    const triggerId = req.params.trigger_name;
 
-  WORKER_POOL.addWorker(frb.triggerId, runtime);
-  return WORKER_POOL.submitWork(frb.triggerId, frb, opts.serializedTriggers);
-}
+    EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
-function onData(
-  runtime: ChildProcess,
-  emitter: EventEmitter,
-  buffer: { value: string },
-  buf: Buffer
-): void {
-  buffer.value += buf.toString();
+    const reqBody = (req as RequestWithRawBody).rawBody;
+    const proto = JSON.parse(reqBody.toString());
 
-  const lines = buffer.value.split("\n");
+    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.BACKGROUND, proto);
 
-  if (lines.length > 1) {
-    // slice(0, -1) returns all elements but the last
-    lines.slice(0, -1).forEach((line: string) => {
-      const log = EmulatorLog.fromJSON(line);
-      emitter.emit("log", log);
-
-      if (log.level === "FATAL") {
-        // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
-        emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
-        runtime.kill();
+    worker.onLogs((el: EmulatorLog) => {
+      if (el.level === "FATAL") {
+        res.status(500).send(el.text);
       }
     });
+
+    // For analytics, track the invoked service
+    if (triggerId) {
+      const trigger = this.getTriggerById(triggerId);
+      track(EVENT_INVOKE, getFunctionService(trigger));
+    }
+
+    await worker.waitForDone();
+    return res.json({ status: "acknowledged" });
   }
 
-  buffer.value = lines[lines.length - 1];
+  private async handleHttpsTrigger(req: express.Request, res: express.Response) {
+    const method = req.method;
+    const triggerId = req.params.trigger_name;
+
+    logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
+
+    const reqBody = (req as RequestWithRawBody).rawBody;
+
+    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS);
+
+    worker.onLogs((el: EmulatorLog) => {
+      if (el.level === "FATAL") {
+        res.status(500).send(el.text);
+      }
+    });
+
+    // Wait for the worker to set up its internal HTTP server
+    await worker.waitForSocketReady();
+
+    track(EVENT_INVOKE, "https");
+
+    EmulatorLogger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
+
+    if (!worker.lastArgs) {
+      throw new FirebaseError("Cannot execute on a worker with no arguments");
+    }
+
+    if (!worker.lastArgs.frb.socketPath) {
+      throw new FirebaseError(
+        `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
+      );
+    }
+
+    // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
+    // cause unexpected situations - not to mention CORS troubles and this enables us to use
+    // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
+    const runtimeReq = http.request(
+      {
+        method,
+        path: req.url || "/",
+        headers: req.headers,
+        socketPath: worker.lastArgs.frb.socketPath,
+      },
+      (runtimeRes: http.IncomingMessage) => {
+        function forwardStatusAndHeaders(): void {
+          res.status(runtimeRes.statusCode || 200);
+          if (!res.headersSent) {
+            Object.keys(runtimeRes.headers).forEach((key) => {
+              const val = runtimeRes.headers[key];
+              if (val) {
+                res.setHeader(key, val);
+              }
+            });
+          }
+        }
+
+        runtimeRes.on("data", (buf) => {
+          forwardStatusAndHeaders();
+          res.write(buf);
+        });
+
+        runtimeRes.on("close", () => {
+          forwardStatusAndHeaders();
+          res.end();
+        });
+
+        runtimeRes.on("end", () => {
+          forwardStatusAndHeaders();
+          res.end();
+        });
+      }
+    );
+
+    runtimeReq.on("error", () => {
+      res.end();
+    });
+
+    // If the original request had a body, forward that over the connection.
+    // TODO: Why is this not handled by the pipe?
+    if (reqBody) {
+      runtimeReq.write(reqBody);
+      runtimeReq.end();
+    }
+
+    // Pipe the incoming request over the socket.
+    req
+      .pipe(
+        runtimeReq,
+        { end: true }
+      )
+      .on("error", () => {
+        res.end();
+      });
+
+    await worker.waitForDone();
+  }
+
+  private onData(
+    runtime: ChildProcess,
+    emitter: EventEmitter,
+    buffer: { value: string },
+    buf: Buffer
+  ): void {
+    buffer.value += buf.toString();
+
+    const lines = buffer.value.split("\n");
+
+    if (lines.length > 1) {
+      // slice(0, -1) returns all elements but the last
+      lines.slice(0, -1).forEach((line: string) => {
+        const log = EmulatorLog.fromJSON(line);
+        emitter.emit("log", log);
+
+        if (log.level === "FATAL") {
+          // Something went wrong, if we don't kill the process it'll wait for timeoutMs.
+          emitter.emit("log", new EmulatorLog("SYSTEM", "runtime-status", "killed"));
+          runtime.kill();
+        }
+      });
+    }
+
+    buffer.value = lines[lines.length - 1];
+  }
 }

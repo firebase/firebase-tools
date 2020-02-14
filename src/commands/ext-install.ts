@@ -4,27 +4,28 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import { populatePostinstall } from "../extensions/populatePostinstall";
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getRandomString } from "../extensions/generateInstanceId";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveSource } from "../extensions/resolveSource";
+import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
+  instanceIdExists,
   ensureExtensionsApiEnabled,
-  getValidInstanceId,
   logPrefix,
+  promptForOfficialExtension,
+  promptForRepeatInstance,
   promptForValidInstanceId,
 } from "../extensions/extensionsHelper";
-import * as requirePermissions from "../requirePermissions";
+import { getRandomString } from "../extensions/utils";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
-
+import { promptOnce } from "../prompt";
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
@@ -47,8 +48,21 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
-
-    let instanceId = await getValidInstanceId(projectId, spec.name);
+    let instanceId = spec.name;
+    const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
+    if (anotherInstanceExists) {
+      const consent = await promptForRepeatInstance(projectId, spec.name);
+      if (!consent) {
+        // TODO(b/145233161): Add documentation link about extension instances here.
+        logger.info(
+          marked(
+            "Installation cancelled. For a list of all available Firebase Extensions commands, run `firebase ext`."
+          )
+        );
+        return;
+      }
+      instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
+    }
     spinner.start();
     let serviceAccountEmail;
     while (!serviceAccountEmail) {
@@ -83,16 +97,25 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       `successfully installed ${clc.bold(spec.displayName || spec.name)}, ` +
         `its Instance ID is ${clc.bold(instanceId)}.`
     );
-    const usageInstruction =
-      _.get(response, "config.populatedPostinstallContent") ||
-      populatePostinstall(source.spec.postinstallContent || "", params);
-    if (usageInstruction) {
-      utils.logLabeledBullet(logPrefix, `usage instructions:\n${marked(usageInstruction)}`);
-    } else {
-      logger.debug("No usage instructions provided.");
-    }
+    utils.logLabeledBullet(
+      logPrefix,
+      marked(
+        `View your new instance in the Firebase console: ${utils.consoleUrl(
+          projectId,
+          `/extensions/instances/${instanceId}?tab=usage`
+        )}`
+      )
+    );
+    logger.info(
+      marked(
+        "You can run `firebase ext` to view available Firebase Extensions commands, " +
+          "including those to update, reconfigure, or delete your installed extension."
+      )
+    );
   } catch (err) {
-    spinner.fail();
+    if (spinner.isSpinning) {
+      spinner.fail();
+    }
     if (err instanceof FirebaseError) {
       throw err;
     }
@@ -103,19 +126,68 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 }
 
 /**
- * Command for installing a extension
+ * Command for installing an extension
  */
-export default new Command("ext:install <extensionName>")
-  .description("install an extension, given <extensionName> or <extensionName@versionNumber>")
+export default new Command("ext:install [extensionName]")
+  .description(
+    "install an extension if [extensionName] or [extensionName@version] is provided; or run with `-i` to see all available extensions."
+  )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionName: string, options: any) => {
+    const projectId = getProjectId(options, false);
+    const paramFilePath = options.params;
+    let learnMore = false;
+    if (!extensionName) {
+      if (options.interactive) {
+        learnMore = true;
+        extensionName = await promptForOfficialExtension(
+          "Which official extension do you want to install?\n" +
+            "  Select an extension, then press Enter to learn more."
+        );
+      } else {
+        throw new FirebaseError(
+          `Please provide an extension name, or run ${clc.bold(
+            "firebase ext:install -i"
+          )} to select from the list of all available official extensions.`
+        );
+      }
+    }
+
+    const [name, version] = extensionName.split("@");
+    let registryEntry;
     try {
-      const projectId = getProjectId(options, false);
-      const paramFilePath = options.params;
-      const sourceUrl = await resolveSource(extensionName);
+      registryEntry = await resolveRegistryEntry(name);
+    } catch (err) {
+      throw new FirebaseError(
+        `Unable to find extension source named ${clc.bold(extensionName)}. ` +
+          `Run ${clc.bold(
+            "firebase ext:install -i"
+          )} to select from the list of all available official extensions.`,
+        { original: err }
+      );
+    }
+
+    try {
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       const source = await extensionsApi.getSource(sourceUrl);
+      if (learnMore) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `You selected: ${clc.bold(source.spec.displayName)}.\n` +
+            `${source.spec.description}\n` +
+            `View details: https://firebase.google.com/products/extensions/${name}\n`
+        );
+        const confirm = await promptOnce({
+          type: "confirm",
+          default: true,
+          message: "Do you want to install this extension?",
+        });
+        if (!confirm) {
+          return;
+        }
+      }
       return installExtension({
         paramFilePath,
         projectId,

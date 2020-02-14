@@ -34,7 +34,7 @@ export interface ExtensionSource {
 export interface ExtensionSpec {
   specVersion?: string;
   name: string;
-  version?: string;
+  version: string;
   description?: string;
   apis?: Api[];
   roles?: Role[];
@@ -82,6 +82,7 @@ export interface Param {
   required?: boolean;
   validationRegex?: string;
   validationErrorMessage?: string;
+  immutable?: boolean;
 }
 
 export const enum ParamType {

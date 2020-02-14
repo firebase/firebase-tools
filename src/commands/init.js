@@ -5,7 +5,7 @@ var fs = require("fs");
 var homeDir = require("os").homedir();
 var path = require("path");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
 var init = require("../init");
@@ -93,6 +93,11 @@ module.exports = new Command("init [feature]")
       {
         value: "storage",
         name: "Storage: Deploy Cloud Storage security rules",
+        checked: false,
+      },
+      {
+        value: "emulators",
+        name: "Emulators: Set up local emulators for Firebase features",
         checked: false,
       },
     ];

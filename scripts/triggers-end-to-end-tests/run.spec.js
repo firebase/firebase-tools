@@ -24,13 +24,15 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
  */
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
+const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
+const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to connect.";
 
 /*
  * Various delays that are needed because this test spawns
  * parallel emulator subprocesses.
  */
-const TEST_SETUP_TIMEOUT = 20000;
-const EMULATORS_STARTUP_DELAY_MS = 10000;
+const TEST_SETUP_TIMEOUT = 60000;
+const EMULATORS_STARTUP_DELAY_TIMEOUT = 60000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
@@ -52,8 +54,14 @@ function TriggerEndToEndTest(config) {
   this.functions_emulator_host = "localhost";
   this.functions_emulator_port = config.emulators.functions.port;
 
+  this.pubsub_emulator_host = "localhost";
+  this.pubsub_emulator_port = config.emulators.pubsub.port;
+
+  this.all_emulators_started = false;
+
   this.rtdb_trigger_count = 0;
   this.firestore_trigger_count = 0;
+  this.pubsub_trigger_count = 0;
 
   this.rtdb_from_firestore = false;
   this.firestore_from_rtdb = false;
@@ -77,14 +85,20 @@ TriggerEndToEndTest.prototype.success = function success() {
   );
 };
 
-TriggerEndToEndTest.prototype.startEmulators = function startEmulators() {
+TriggerEndToEndTest.prototype.startEmulators = function startEmulators(additionalArgs) {
   var self = this;
-  self.emulators_process = subprocess.spawn("node", [
+  const args = [
     PROJECT_ROOT + "/lib/bin/firebase.js",
     "emulators:start",
     "--project",
     FIREBASE_PROJECT,
-  ]);
+  ];
+
+  if (additionalArgs) {
+    args.push(...additionalArgs);
+  }
+
+  self.emulators_process = subprocess.spawn("node", args);
 
   self.emulators_process.stdout.on("data", function(data) {
     process.stdout.write("[emulators stdout] " + data);
@@ -93,6 +107,12 @@ TriggerEndToEndTest.prototype.startEmulators = function startEmulators() {
     }
     if (data.indexOf(FIRESTORE_FUNCTION_LOG) > -1) {
       self.firestore_trigger_count++;
+    }
+    if (data.indexOf(PUBSUB_FUNCTION_LOG) > -1) {
+      self.pubsub_trigger_count++;
+    }
+    if (data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1) {
+      self.all_emulators_started = true;
     }
   });
 
@@ -112,12 +132,10 @@ TriggerEndToEndTest.prototype.stopEmulators = function stopEmulators(done) {
   this.emulators_process.kill("SIGINT");
 };
 
-TriggerEndToEndTest.prototype.writeToRtdb = function writeToRtdb(done) {
+TriggerEndToEndTest.prototype.invokeHttpFunction = function invokeHttpFunction(name, done) {
   var url =
     "http://localhost:" +
-    [this.functions_emulator_port, FIREBASE_PROJECT, FIREBASE_PROJECT_ZONE, "writeToRtdb"].join(
-      "/"
-    );
+    [this.functions_emulator_port, FIREBASE_PROJECT, FIREBASE_PROJECT_ZONE, name].join("/");
 
   const req = request.get(url);
 
@@ -130,24 +148,34 @@ TriggerEndToEndTest.prototype.writeToRtdb = function writeToRtdb(done) {
   });
 };
 
+TriggerEndToEndTest.prototype.writeToRtdb = function writeToRtdb(done) {
+  return this.invokeHttpFunction("writeToRtdb", done);
+};
+
 TriggerEndToEndTest.prototype.writeToFirestore = function writeToFirestore(done) {
-  var url =
-    "http://localhost:" +
-    [
-      this.functions_emulator_port,
-      FIREBASE_PROJECT,
-      FIREBASE_PROJECT_ZONE,
-      "writeToFirestore",
-    ].join("/");
+  return this.invokeHttpFunction("writeToFirestore", done);
+};
 
-  const req = request.get(url);
+TriggerEndToEndTest.prototype.writeToPubsub = function writeToPubsub(done) {
+  return this.invokeHttpFunction("writeToPubsub", done);
+};
 
-  req.once("response", function(response) {
-    done(null, response);
-  });
-  req.once("error", function(err) {
-    done(err);
-  });
+TriggerEndToEndTest.prototype.waitForCondition = function(conditionFn, timeout, callback) {
+  let elapsed = 0;
+  let interval = 10;
+  const id = setInterval(() => {
+    elapsed += interval;
+    if (elapsed > timeout) {
+      clearInterval(id);
+      callback(new Error(`Timed out waiting for condition: ${conditionFn.toString()}}`));
+      return;
+    }
+
+    if (conditionFn()) {
+      clearInterval(id);
+      callback();
+    }
+  }, interval);
 };
 
 function readConfig(done) {
@@ -189,11 +217,15 @@ describe("database and firestore emulator function triggers", function() {
           });
         },
         function(done) {
-          test.startEmulators();
-          /*
-           * Give some time for the emulator subprocesses to start up.
-           */
-          setTimeout(done, EMULATORS_STARTUP_DELAY_MS);
+          test.startEmulators(["--only", "functions,database,firestore"]);
+          test.waitForCondition(
+            () => test.all_emulators_started,
+            EMULATORS_STARTUP_DELAY_TIMEOUT,
+            (err) => {
+              expect(err).to.be.undefined;
+              done();
+            }
+          );
         },
         function(done) {
           test.firestore_client = new Firestore({
@@ -287,6 +319,15 @@ describe("database and firestore emulator function triggers", function() {
     );
   });
 
+  after(function(done) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    if (test) {
+      test.stopEmulators(done);
+      return;
+    }
+    done();
+  });
+
   it("should write to the database emulator", function(done) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
@@ -325,6 +366,44 @@ describe("database and firestore emulator function triggers", function() {
     expect(test.success()).to.equal(true);
     done();
   });
+});
+
+describe("pubsub emulator function triggers", function() {
+  var test;
+
+  before(function(done) {
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.not.be.an("undefined");
+    expect(FIREBASE_PROJECT).to.not.be.null;
+
+    async.series(
+      [
+        function(done) {
+          readConfig(function(err, config) {
+            if (err) {
+              done(new Error("error reading firebase.json: " + err));
+              return;
+            }
+            test = new TriggerEndToEndTest(config);
+            done();
+          });
+        },
+        function(done) {
+          test.startEmulators(["--only", "functions,pubsub"]);
+          test.waitForCondition(
+            () => test.all_emulators_started,
+            EMULATORS_STARTUP_DELAY_TIMEOUT,
+            (err) => {
+              expect(err).to.be.undefined;
+              done();
+            }
+          );
+        },
+      ],
+      done
+    );
+  });
 
   after(function(done) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
@@ -332,6 +411,21 @@ describe("database and firestore emulator function triggers", function() {
       test.stopEmulators(done);
       return;
     }
+    done();
+  });
+
+  it("should write to the pubsub emulator", function(done) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    test.writeToPubsub(function(err, response) {
+      expect(err).to.be.null;
+      expect(response.statusCode).to.equal(200);
+      setTimeout(done, EMULATORS_WRITE_DELAY_MS);
+    });
+  });
+
+  it("should have have triggered cloud functions", function(done) {
+    expect(test.pubsub_trigger_count).to.equal(1);
     done();
   });
 });

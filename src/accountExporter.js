@@ -18,6 +18,7 @@ var EXPORTED_JSON_KEYS = [
   "lastLoginAt",
   "createdAt",
   "phoneNumber",
+  "disabled",
 ];
 var EXPORTED_JSON_KEYS_RENAMING = {
   lastLoginAt: "lastSignedInAt",
@@ -50,7 +51,7 @@ var _addProviderUserInfo = function(providerInfo, arr, startPos) {
 };
 
 var _transUserToArray = function(user) {
-  var arr = Array(26).fill("");
+  var arr = Array(27).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;
@@ -67,6 +68,7 @@ var _transUserToArray = function(user) {
   arr[23] = user.createdAt;
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
+  arr[26] = user.disabled;
   return arr;
 };
 
@@ -149,6 +151,9 @@ var serialExportUsers = function(projectId, options) {
   if (options.nextPageToken) {
     postBody.nextPageToken = options.nextPageToken;
   }
+  if (!options.timeoutRetryCount) {
+    options.timeoutRetryCount = 0;
+  }
   return api
     .request("POST", "/identitytoolkit/v3/relyingparty/downloadAccount", {
       auth: true,
@@ -157,6 +162,7 @@ var serialExportUsers = function(projectId, options) {
       origin: api.googleOrigin,
     })
     .then(function(ret) {
+      options.timeoutRetryCount = 0;
       var userList = ret.body.users;
       if (userList && userList.length > 0) {
         options.writeUsersToFile(userList, options.format, options.writeStream);
@@ -167,6 +173,16 @@ var serialExportUsers = function(projectId, options) {
           return;
         }
         options.nextPageToken = ret.body.nextPageToken;
+        return serialExportUsers(projectId, options);
+      }
+    })
+    .catch((err) => {
+      // Calling again in case of error timedout so that script won't exit
+      if (err.original.code === "ETIMEDOUT") {
+        options.timeoutRetryCount++;
+        if (options.timeoutRetryCount > 5) {
+          return err;
+        }
         return serialExportUsers(projectId, options);
       }
     });

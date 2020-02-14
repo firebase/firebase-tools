@@ -15,7 +15,7 @@ const SPEC = {
   apis: [{ apiName: "api1", reason: "" }, { apiName: "api2", reason: "" }],
   roles: [{ role: "role1", reason: "" }, { role: "role2", reason: "" }],
   resources: [
-    { name: "resource1", type: "function", description: "desc" },
+    { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
     { name: "resource2", type: "other", description: "" },
   ],
   author: { authorName: "Tester" },
@@ -27,16 +27,6 @@ const SPEC = {
 
 describe("updateHelper", () => {
   describe("displayChangesNoInput", () => {
-    it("should display changes to version", () => {
-      const newSpec = _.cloneDeep(SPEC);
-      newSpec.version = "1.1.0";
-
-      const loggedLines = updateHelper.displayChangesNoInput(SPEC, newSpec);
-
-      const expected = ["", "**Version:**", "- 1.0.0", "+ 1.1.0"];
-      expect(loggedLines).to.eql(expected);
-    });
-
     it("should display changes to display name", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.displayName = "new";
@@ -137,7 +127,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.resources = [
-        { name: "resource3", type: "function", description: "new desc" },
+        { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
         { name: "resource2", type: "other", description: "" },
       ];
 

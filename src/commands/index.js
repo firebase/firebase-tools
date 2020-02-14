@@ -30,6 +30,14 @@ module.exports = function(client) {
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
+  if (previews.rtdbrules) {
+    client.database.rules = {};
+    client.database.rules.get = loadCommand("database-rules-get");
+    client.database.rules.list = loadCommand("database-rules-list");
+    client.database.rules.stage = loadCommand("database-rules-stage");
+    client.database.rules.canary = loadCommand("database-rules-canary");
+    client.database.rules.release = loadCommand("database-rules-release");
+  }
   client.database.set = loadCommand("database-set");
   client.database.settings = {};
   client.database.settings.get = loadCommand("database-settings-get");
@@ -79,6 +87,7 @@ module.exports = function(client) {
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
+  client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.setup.web = loadCommand("setup-web");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");

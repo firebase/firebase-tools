@@ -3,16 +3,13 @@ set -e
 
 CWD="$(pwd)"
 
-if [ "${TRAVIS}" != "true" ]; then
-  export TRAVIS_COMMIT="localtesting"
-  export TRAVIS_JOB_ID="$(echo $RANDOM)"
-  export TRAVIS_REPO_SLUG="firebase/firebase-tools"
+if [[ -z $CI ]]; then
+  echo "CI is unset, assuming local testing."
+  export COMMIT_SHA="localtesting"
+  export CI_JOB_ID="$(echo $RANDOM)"
+else
+  echo "CI=${CI}, setting GOOGLE_APPLICATION_CREDENTIALS"
+  export GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/service-account.json"
 fi
-
-GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-private.json"
-if [ "${TRAVIS_REPO_SLUG}" == "firebase/firebase-tools" ]; then
-  GOOGLE_APPLICATION_CREDENTIALS="${CWD}/scripts/creds-public.json"
-fi
-export GOOGLE_APPLICATION_CREDENTIALS
 
 echo "Application Default Credentials: ${GOOGLE_APPLICATION_CREDENTIALS}"

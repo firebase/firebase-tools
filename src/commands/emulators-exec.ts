@@ -2,7 +2,7 @@ import * as childProcess from "child_process";
 import { StdioOptions } from "child_process";
 import * as clc from "cli-color";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -11,12 +11,13 @@ import * as controller from "../emulator/controller";
 import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
-import { beforeEmulatorCommand } from "../emulator/commandUtils";
+import * as commandUtils from "../emulator/commandUtils";
+import * as getProjectId from "../getProjectId";
 
-async function runScript(script: string): Promise<number> {
+async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
-  const env: NodeJS.ProcessEnv = { ...process.env };
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
 
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
@@ -77,22 +78,22 @@ async function runScript(script: string): Promise<number> {
 }
 
 module.exports = new Command("emulators:exec <script>")
-  .before(beforeEmulatorCommand)
+  .before(commandUtils.beforeEmulatorCommand)
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
   )
-  .option(
-    "--only <list>",
-    "only run specific emulators. " +
-      "This is a comma separated list of emulators to start. " +
-      "Valid options are: " +
-      JSON.stringify(controller.VALID_EMULATOR_STRINGS)
-  )
+  .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
+  .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .action(async (script: string, options: any) => {
+    const projectId = getProjectId(options, true);
+    const extraEnv: Record<string, string> = {};
+    if (projectId) {
+      extraEnv.GCLOUD_PROJECT = projectId;
+    }
     let exitCode = 0;
     try {
       await controller.startAll(options);
-      exitCode = await runScript(script);
+      exitCode = await runScript(script, extraEnv);
     } catch (e) {
       logger.debug("Error in emulators:exec", e);
       throw e;

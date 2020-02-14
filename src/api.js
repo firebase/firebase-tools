@@ -117,7 +117,7 @@ var api = {
   firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
-    "https://mods-registry.firebaseapp.com"
+    "https://extensions-registry.firebaseapp.com"
   ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
@@ -141,6 +141,10 @@ var api = {
     "https://firebaseextensions.googleapis.com"
   ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  rtdbMetadataOrigin: utils.envOverride(
+    "FIREBASE_RTDB_METADATA_URL",
+    "https://metadata-dot-firebase-prod.appspot.com"
+  ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
     "https://cloudresourcemanager.googleapis.com"

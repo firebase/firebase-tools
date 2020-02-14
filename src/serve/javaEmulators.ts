@@ -1,4 +1,10 @@
-import { Emulators, JavaEmulatorCommand, JavaEmulatorDetails } from "../emulator/types";
+import {
+  Emulators,
+  JavaEmulators,
+  JavaEmulatorCommand,
+  JavaEmulatorDetails,
+  EmulatorDownloadDetails,
+} from "../emulator/types";
 import { Constants } from "../emulator/constants";
 
 import { FirebaseError } from "../error";
@@ -16,50 +22,94 @@ const downloadEmulator = require("../emulator/download");
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 
-type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
-
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
+
+const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
+  database: {
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.3.1.jar"),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.3.1.jar",
+      expectedSize: 27893859,
+      expectedChecksum: "7d84e76144093406331571969f30444e",
+      namePrefix: "firebase-database-emulator",
+    },
+  },
+  firestore: {
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.4.jar"),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.4.jar",
+      expectedSize: 88950303,
+      expectedChecksum: "f551a9c1716cd412d04fc971ef3e945b",
+      namePrefix: "cloud-firestore-emulator",
+    },
+  },
+  pubsub: {
+    downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
+    unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
+    binaryPath: path.join(
+      CACHE_DIR,
+      "pubsub-emulator-0.1.0",
+      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
+    ),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl:
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.1.0.zip",
+      expectedSize: 36623622,
+      expectedChecksum: "81704b24737d4968734d3e175f4cde71",
+      namePrefix: "pubsub-emulator",
+    },
+  },
+};
 
 const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
   database: {
     name: Emulators.DATABASE,
     instance: null,
     stdout: null,
-    cacheDir: CACHE_DIR,
-    remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.2.0.jar",
-    expectedSize: 17131418,
-    expectedChecksum: "d9d825b2f321e05ca8dc9b758eec6ba6",
-    localPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.2.0.jar"),
-    namePrefix: "firebase-database-emulator",
   },
   firestore: {
     name: Emulators.FIRESTORE,
     instance: null,
     stdout: null,
-    cacheDir: CACHE_DIR,
-    remoteUrl:
-      "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.0.jar",
-    expectedSize: 62550064,
-    expectedChecksum: "a19e8b6bbd13de667625866bd46295d5",
-    localPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.0.jar"),
-    namePrefix: "cloud-firestore-emulator",
+  },
+  pubsub: {
+    name: Emulators.PUBSUB,
+    instance: null,
+    stdout: null,
   },
 };
 
 const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", EmulatorDetails.database.localPath],
+    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
     optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    joinArgs: false,
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", EmulatorDetails.firestore.localPath],
+    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
     optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+    joinArgs: false,
+  },
+  pubsub: {
+    binary: getExecPath(Emulators.PUBSUB)!,
+    args: [],
+    optionalArgs: ["port", "host"],
+    joinArgs: true,
   },
 };
+
+function getExecPath(name: JavaEmulators): string {
+  const details = getDownloadDetails(name);
+  return details.binaryPath || details.downloadPath;
+}
 
 function _getLogFileName(name: string): string {
   return `${name}-debug.log`;
@@ -88,13 +138,24 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
     const argKey = "--" + key;
     const argVal = args[key];
 
-    cmdLineArgs.push(argKey, argVal);
+    if (argVal === undefined) {
+      logger.debug(`Ignoring empty arg for key: ${key}`);
+      return;
+    }
+
+    // Sigh ... RTDB emulator needs "--arg val" and PubSub emulator needs "--arg=val"
+    if (baseCmd.joinArgs) {
+      cmdLineArgs.push(`${argKey}=${argVal}`);
+    } else {
+      cmdLineArgs.push(argKey, argVal);
+    }
   });
 
   return {
     binary: baseCmd.binary,
     args: cmdLineArgs,
     optionalArgs: baseCmd.optionalArgs,
+    joinArgs: baseCmd.joinArgs,
   };
 }
 
@@ -168,6 +229,10 @@ async function _runBinary(
   });
 }
 
+export function getDownloadDetails(emulator: JavaEmulators): EmulatorDownloadDetails {
+  return DownloadDetails[emulator];
+}
+
 export function get(emulator: JavaEmulators): JavaEmulatorDetails {
   return EmulatorDetails[emulator];
 }
@@ -194,23 +259,33 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
   });
 }
 
-export async function start(targetName: JavaEmulators, args: any): Promise<void> {
-  const emulator = EmulatorDetails[targetName];
+export async function downloadIfNecessary(targetName: JavaEmulators): Promise<void> {
+  const hasEmulator = fs.existsSync(getExecPath(targetName));
 
-  const hasEmulator = fs.existsSync(emulator.localPath);
+  if (hasEmulator) {
+    return;
+  }
+
+  await downloadEmulator(targetName);
+}
+
+export async function start(targetName: JavaEmulators, args: any): Promise<void> {
+  const downloadDetails = DownloadDetails[targetName];
+  const emulator = EmulatorDetails[targetName];
+  const hasEmulator = fs.existsSync(getExecPath(targetName));
   if (!hasEmulator) {
     if (args.auto_download) {
       if (process.env.CI) {
         utils.logWarning(
-          `It appears you are running in a CI environment. You can avoid downloading the ${
-            emulator.name
-          } emulator repeatedly by caching the ${emulator.cacheDir} directory.`
+          `It appears you are running in a CI environment. You can avoid downloading the ${targetName} emulator repeatedly by caching the ${
+            downloadDetails.opts.cacheDir
+          } directory.`
         );
       }
 
       await downloadEmulator(targetName);
     } else {
-      utils.logWarning("Setup required, please run: firebase setup:emulators:" + emulator.name);
+      utils.logWarning("Setup required, please run: firebase setup:emulators:" + targetName);
       throw new FirebaseError("emulator not found");
     }
   }

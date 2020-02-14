@@ -84,7 +84,7 @@ export class EmulatorLogger {
         EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
         break;
       case "DEBUG":
-        if (log.data && log.data !== {}) {
+        if (log.data && Object.keys(log.data).length > 0) {
           EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
         } else {
           EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`);
@@ -175,7 +175,7 @@ You probably need to run "npm install" in your functions directory.`
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
-          }" to be version >${systemLog.data.minVersion}.0.0 so your version is too old. \
+          }" to be version >${systemLog.data.minVersion} so your version is too old. \
 You can probably fix this by running "npm install ${
             systemLog.data.name
           }@latest" in your functions directory.`
@@ -220,6 +220,9 @@ You can probably fix this by running "npm install ${
     }
 
     switch (type) {
+      case "DEBUG":
+        logger.debug(`[${label}] ${text}`);
+        break;
       case "BULLET":
         utils.logLabeledBullet(label, text);
         break;
