@@ -142,7 +142,7 @@ export class EmulatorHub implements EmulatorInstance {
       );
     }
 
-    logger.debug(`[hub] wriing locator at ${locatorPath}`);
+    logger.debug(`[hub] writing locator at ${locatorPath}`);
     return new Promise((resolve, reject) => {
       fs.writeFile(locatorPath, JSON.stringify(locator), (e) => {
         if (e) {
