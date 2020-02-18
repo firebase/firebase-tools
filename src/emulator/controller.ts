@@ -72,7 +72,7 @@ export async function cleanShutdown(): Promise<boolean> {
 
   for (const name of EmulatorRegistry.listRunning()) {
     const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
-    utils.logBullet(`Stoppping ${description}`);
+    utils.logBullet(`Stopping ${description}`);
     await EmulatorRegistry.stop(name);
   }
 

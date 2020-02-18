@@ -16,7 +16,7 @@ export interface ExportMetadata {
 }
 
 export class HubExport {
-  static METADATA_FILE_NAME = "metadata.json";
+  static METADATA_FILE_NAME = "firebase-export-metadata.json";
 
   constructor(private projectId: string, private exportPath: string) {}
 
