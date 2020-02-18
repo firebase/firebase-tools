@@ -1,1 +1,0 @@
-* Updates `google-auto-auth` dependency to fix GCP Metadata API issues (#1970).
