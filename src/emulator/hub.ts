@@ -10,6 +10,7 @@ import * as logger from "../logger";
 import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo, IMPORT_EXPORT_EMULATORS } from "./types";
 import { HubExport } from "./hubExport";
+import { EmulatorRegistry } from "./registry";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -29,6 +30,7 @@ export interface EmulatorHubArgs {
 export class EmulatorHub implements EmulatorInstance {
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
+  static PATH_EMULATORS = "/emulators";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
@@ -67,6 +69,14 @@ export class EmulatorHub implements EmulatorInstance {
 
     this.hub.get("/", async (req, res) => {
       res.json(this.getLocator());
+    });
+
+    this.hub.get(EmulatorHub.PATH_EMULATORS, async (req, res) => {
+      const body: Record<string, EmulatorInfo> = {};
+      EmulatorRegistry.listRunning().forEach(name => {
+        body[name] = EmulatorRegistry.get(name)!.getInfo();
+      });
+      res.json(body);
     });
 
     this.hub.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
