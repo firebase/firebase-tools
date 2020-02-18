@@ -46,6 +46,7 @@ module.exports = function(client) {
   client.deploy = loadCommand("deploy");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
+  client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
   client.experimental = {};
   client.experimental.functions = {};

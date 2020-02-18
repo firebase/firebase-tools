@@ -3,6 +3,7 @@ import * as url from "url";
 import { Address, Emulators } from "./types";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
+  hub: 4000,
   hosting: 5000,
   functions: 5001,
   firestore: 8080,

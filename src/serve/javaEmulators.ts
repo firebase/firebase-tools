@@ -28,6 +28,7 @@ const CACHE_DIR =
 const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.3.1.jar"),
+    version: "4.3.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
@@ -39,6 +40,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   },
   firestore: {
     downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.4.jar"),
+    version: "1.10.4",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
@@ -50,6 +52,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
+    version: "0.1.0",
     unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
     binaryPath: path.join(
       CACHE_DIR,
@@ -95,7 +98,14 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
-    optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+    optionalArgs: [
+      "port",
+      "webchannel_port",
+      "host",
+      "rules",
+      "functions_emulator",
+      "seed_from_export",
+    ],
     joinArgs: false,
   },
   pubsub: {

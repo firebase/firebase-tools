@@ -20,6 +20,7 @@ export interface FirestoreEmulatorArgs {
   functions_emulator?: string;
   auto_download?: boolean;
   webchannel_port?: number;
+  seed_from_export?: string;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {

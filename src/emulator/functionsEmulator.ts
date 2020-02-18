@@ -136,7 +136,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const hub = express();
 
-    hub.use((req, res, next) => {
+    const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
       req.on("data", (chunk: Buffer) => {
         chunks.push(chunk);
@@ -145,11 +145,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
         next();
       });
-    });
-
-    hub.get("/", async (req, res) => {
-      res.json({ status: "alive" });
-    });
+    };
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
@@ -184,8 +180,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.post(backgroundFunctionRoute, backgroundHandler);
-    hub.all(httpsFunctionRoutes, httpsHandler);
+    hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
+    hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
     return hub;
   }
 
