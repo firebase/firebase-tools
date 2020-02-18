@@ -28,6 +28,7 @@ export interface EmulatorHubArgs {
 }
 
 export class EmulatorHub implements EmulatorInstance {
+  static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_EMULATORS = "/emulators";
