@@ -6,10 +6,12 @@ import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
+import { getDownloadDetails } from "../serve/javaEmulators";
 
 export interface ExportMetadata {
   version: string;
   firestore?: {
+    version: string;
     path: string;
     metadata_file: string;
   };
@@ -44,6 +46,7 @@ export class HubExport {
 
     if (this.shouldExport(Emulators.FIRESTORE)) {
       metadata.firestore = {
+        version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
         metadata_file: "firestore_export/firestore_export.overall_export_metadata",
       };

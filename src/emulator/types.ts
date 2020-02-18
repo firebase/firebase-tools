@@ -90,6 +90,9 @@ export interface EmulatorDownloadOptions {
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
 
+  // Semver version string
+  version: string;
+
   // The path to download the binary or archive from the remote source
   downloadPath: string;
 
