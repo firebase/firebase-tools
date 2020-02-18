@@ -5,6 +5,7 @@ import * as path from "path";
 import * as tcpport from "tcp-port-used";
 import * as pf from "portfinder";
 
+import * as logger from "../logger";
 import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
@@ -26,6 +27,7 @@ export async function checkPortOpen(port: number, host: string): Promise<boolean
     const inUse = await tcpport.check(port, host);
     return !inUse;
   } catch (e) {
+    logger.debug(`port check error: ${e}`);
     return false;
   }
 }
@@ -42,21 +44,22 @@ export async function waitForPortClosed(port: number, host: string): Promise<voi
 
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
-  const info = instance.getInfo();
+  const { host, port } = instance.getInfo();
 
   // Log the command for analytics
   track("emulators:start", name);
 
-  const portOpen = await checkPortOpen(info.port, info.host);
+  const portOpen = await checkPortOpen(port, host);
   if (!portOpen) {
     await cleanShutdown();
     const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
-    utils.logWarning(`Port ${info.port} is not open, could not start ${description}.`);
-    utils.logBullet(`To select a different port for the emulator, update your "firebase.json":
+    utils.logWarning(`Port ${port} is not open on ${host}, could not start ${description}.`);
+    utils.logBullet(`To select a different host/port for the emulator, update your "firebase.json":
     {
       // ...
       "emulators": {
         "${name}": {
+          "host": "${clc.yellow("HOST")}",
           "port": "${clc.yellow("PORT")}"
         }
       }
