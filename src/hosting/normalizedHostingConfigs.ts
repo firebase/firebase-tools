@@ -18,8 +18,8 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
   }
 
   onlyTargets = onlyTargets
-    .filter((anOnly) => anOnly.startsWith("hosting:"))
-    .map((anOnly) => anOnly.replace("hosting:", ""));
+    .filter((target) => target.startsWith("hosting:"))
+    .map((target) => target.replace("hosting:", ""));
 
   return configs.filter((config: HostingConfig) =>
     _.includes(onlyTargets, config.target || config.site)
@@ -28,7 +28,7 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
 
 /**
  * Normalize options to HostingConfig array.
- * @param options initialization configs
+ * @param options the Firebase CLI options object.
  * @return normalized hosting config array.
  */
 export function normalizedHostingConfigs(options: any): HostingConfig[] {

@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
+
 import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
 import * as utils from "../utils";
 import * as logger from "../logger";
@@ -8,14 +9,14 @@ import * as logger from "../logger";
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
 export interface TemplateServerResponse {
-  js?: string;
-  json?: string;
+  js: string;
+  json: string;
 }
 
 /**
  * Generate template server response.
- * @param options the initialization configuration.
- * @return Initialized server responce by template.
+ * @param options the Firebase CLI options object.
+ * @return Initialized server response by template.
  */
 export async function implicitInit(options: any): Promise<TemplateServerResponse> {
   let config;

@@ -1,17 +1,18 @@
 import * as request from "request";
+import { Request } from "request";
+import { RequestHandler } from "express";
+
 import * as logger from "../logger";
 import * as utils from "../utils";
 import { TemplateServerResponse } from "./implicitInit";
-import { RequestHandler } from "express";
-import { Request } from "request";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 
 /**
- * Initialize server middleware.
- * append firebase SDK js, and Content-Type header.
- * @param init Template server response.
- * @return Initialized middleware.
+ * Initialize server middleware. Returns a middleware set up to provide the
+ * javascript and json objects at the well-known paths.
+ * @param init template server response.
+ * @return the middleware function.
  */
 export function initMiddleware(init: TemplateServerResponse): RequestHandler {
   return (req, res, next) => {
@@ -19,7 +20,7 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
     if (match) {
       const version = match[1];
       const sdkName = match[2];
-      const url = "https://www.gstatic.com/firebasejs/" + version + "/" + sdkName;
+      const url = `https://www.gstatic.com/firebasejs/${version}/${sdkName}`;
       const preq: Request = request(url)
         .on("response", (pres) => {
           if (pres.statusCode === 404) {

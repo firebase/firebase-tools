@@ -1,13 +1,14 @@
 import clc = require("cli-color");
+const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
+
+import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as detectProjectRoot from "../detectProjectRoot";
-import functionsProxy from "../hosting/functionsProxy";
-import cloudRunProxy from "../hosting/cloudRunProxy";
-const superstatic = require("superstatic").server;
 import { implicitInit, TemplateServerResponse } from "../hosting/implicitInit";
 import { initMiddleware } from "../hosting/initMiddleware";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
+import * as utils from "../utils";
+import cloudRunProxy from "../hosting/cloudRunProxy";
+import functionsProxy from "../hosting/functionsProxy";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -64,25 +65,33 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   });
 }
 
+/**
+ * Stop the Hosting server.
+ */
 export async function stop(): Promise<void> {
   if (server) {
-    server.close();
+    await server.close();
   }
-  return Promise.resolve();
 }
 
+/**
+ * Start the Hosting server.
+ * @param options the Firebase CLI options.
+ */
 export async function start(options: any): Promise<void> {
-  return implicitInit(options).then((init: TemplateServerResponse) => {
-    const configs = normalizedHostingConfigs(options);
+  const init = await implicitInit(options);
+  const configs = normalizedHostingConfigs(options);
 
-    for (let i = 0; i < configs.length; i++) {
-      // skip over the functions emulator ports to avoid breaking changes
-      const port = i === 0 ? options.port : options.port + 4 + i;
-      startServer(options, configs[i], port, init);
-    }
-  });
+  for (let i = 0; i < configs.length; i++) {
+    // skip over the functions emulator ports to avoid breaking changes
+    const port = i === 0 ? options.port : options.port + 4 + i;
+    startServer(options, configs[i], port, init);
+  }
 }
 
+/**
+ * Connect the Hosting server.
+ */
 export async function connect(): Promise<void> {
-  return Promise.resolve();
+  await Promise.resolve();
 }
