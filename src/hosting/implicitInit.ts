@@ -18,6 +18,7 @@ export interface TemplateServerResponse {
  * @param options the Firebase CLI options object.
  * @return Initialized server response by template.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function implicitInit(options: any): Promise<TemplateServerResponse> {
   let config;
   try {

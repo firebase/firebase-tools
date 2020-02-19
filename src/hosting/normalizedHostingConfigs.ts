@@ -31,6 +31,7 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
  * @param options the Firebase CLI options object.
  * @return normalized hosting config array.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizedHostingConfigs(options: any): HostingConfig[] {
   let configs = options.config.get("hosting");
   if (!configs) {

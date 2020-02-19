@@ -12,8 +12,9 @@ import functionsProxy from "../hosting/functionsProxy";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
-let server: any;
+let server: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
   server = superstatic({
     debug: true,
@@ -42,6 +43,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     );
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
       const message = "Port " + options.port + " is not available.";
@@ -78,6 +80,7 @@ export async function stop(): Promise<void> {
  * Start the Hosting server.
  * @param options the Firebase CLI options.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function start(options: any): Promise<void> {
   const init = await implicitInit(options);
   const configs = normalizedHostingConfigs(options);
