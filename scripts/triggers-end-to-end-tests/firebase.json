@@ -5,6 +5,9 @@
   },
   "functions": {},
   "emulators": {
+    "hub": {
+      "port": 4000
+    },
     "database": {
       "port": 9000
     },

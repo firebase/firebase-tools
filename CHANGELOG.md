@@ -1,0 +1,1 @@
+* Adds import/export support to `emulators` commands for Firestore (#1167).

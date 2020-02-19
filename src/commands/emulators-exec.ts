@@ -13,6 +13,7 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as commandUtils from "../emulator/commandUtils";
 import * as getProjectId from "../getProjectId";
+import { EmulatorHub } from "../emulator/hub";
 
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
@@ -33,6 +34,13 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
+  }
+
+  const hubInstance = EmulatorRegistry.get(Emulators.HUB);
+  if (hubInstance) {
+    const info = hubInstance.getInfo();
+    const address = `${info.host}:${info.port}`;
+    env[EmulatorHub.EMULATOR_HUB_ENV] = address;
   }
 
   const proc = childProcess.spawn(script, {
@@ -84,6 +92,7 @@ module.exports = new Command("emulators:exec <script>")
   )
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (script: string, options: any) => {
     const projectId = getProjectId(options, true);
     const extraEnv: Record<string, string> = {};

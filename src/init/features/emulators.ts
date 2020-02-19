@@ -1,9 +1,8 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
-import * as util from "util";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
-import { Emulators, ALL_EMULATORS, isJavaEmulator } from "../../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS, isJavaEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../serve/javaEmulators";
 
@@ -13,7 +12,7 @@ interface EmulatorsInitSelections {
 }
 
 export async function doSetup(setup: any, config: any) {
-  const choices = ALL_EMULATORS.map((e) => {
+  const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
       name: _.capitalize(e),
