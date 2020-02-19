@@ -58,7 +58,7 @@ module.exports = new Command("serve")
   })
   .action((options) => {
     options.targets = filterOnly(VALID_EMULATORS, options.only);
-    if (options.targets.indexOf("database") >= 0 || options.targets.indexOf("firestore") >= 0) {
+    if (options.targets.includes("database") || options.targets.includes("firestore")) {
       utils.logWarning(
         `${clc.bold(
           "firebase emulators:start"
