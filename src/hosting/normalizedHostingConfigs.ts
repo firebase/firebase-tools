@@ -1,11 +1,16 @@
-const _ = require("lodash");
+import * as _ from "lodash";
 
-function _filterOnly(configs, onlyString) {
+interface HostingConfig {
+  site: string;
+  target: string;
+}
+
+function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
     return configs;
   }
 
-  var onlyTargets = onlyString.split(",");
+  let onlyTargets = onlyString.split(",");
   // If an unqualified "hosting" is in the --only,
   // all hosting sites should be deployed.
   if (_.includes(onlyTargets, "hosting")) {
@@ -13,19 +18,20 @@ function _filterOnly(configs, onlyString) {
   }
 
   onlyTargets = onlyTargets
-    .filter(function(anOnly) {
-      return anOnly.indexOf("hosting:") === 0;
-    })
-    .map(function(anOnly) {
-      return anOnly.replace("hosting:", "");
-    });
+    .filter((anOnly) => anOnly.startsWith("hosting:"))
+    .map((anOnly) => anOnly.replace("hosting:", ""));
 
-  return configs.filter(function(config) {
-    return _.includes(onlyTargets, config.target || config.site);
-  });
+  return configs.filter((config: HostingConfig) =>
+    _.includes(onlyTargets, config.target || config.site)
+  );
 }
 
-module.exports = function(options) {
+/**
+ * Normalize options to HostingConfig array.
+ * @param options initialization configs
+ * @return normalized hosting config array.
+ */
+export function normalizedHostingConfigs(options: any): HostingConfig[] {
   let configs = options.config.get("hosting");
   if (!configs) {
     return [];
@@ -40,5 +46,5 @@ module.exports = function(options) {
     configs = [configs];
   }
 
-  return _filterOnly(configs, options.only);
-};
+  return filterOnly(configs, options.only);
+}
