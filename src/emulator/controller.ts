@@ -9,7 +9,12 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
-import { EmulatorInstance, Emulators, ALL_SERVICE_EMULATORS, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
+import {
+  EmulatorInstance,
+  Emulators,
+  ALL_SERVICE_EMULATORS,
+  EMULATORS_SUPPORTED_BY_GUI,
+} from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
@@ -104,8 +109,11 @@ export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.GUI) {
     // The GUI only starts if we know the project ID AND at least one emulator
     // supported by GUI is launching.
-    return previews.emulatorgui && !!options.project &&
-      targets.some(target => EMULATORS_SUPPORTED_BY_GUI.has(target));
+    return (
+      previews.emulatorgui &&
+      !!options.project &&
+      targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.has(target))
+    );
   }
   return targets.indexOf(name) >= 0;
 }
