@@ -9,7 +9,7 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
-import { EmulatorInstance, Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
+import { EmulatorInstance, Emulators, ALL_SERVICE_EMULATORS, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
@@ -21,6 +21,8 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
+import { EmulatorGUI } from "./gui";
+import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -52,7 +54,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const portOpen = await checkPortOpen(port, host);
   if (!portOpen) {
     await cleanShutdown();
-    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
+    const description = Constants.description(name);
     utils.logWarning(`Port ${port} is not open on ${host}, could not start ${description}.`);
     utils.logBullet(`To select a different host/port for the emulator, update your "firebase.json":
     {
@@ -74,15 +76,14 @@ export async function cleanShutdown(): Promise<boolean> {
   utils.logBullet("Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
-    utils.logBullet(`Stopping ${description}`);
+    utils.logBullet(`Stoppping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
 
   return true;
 }
 
-export function filterEmulatorTargets(options: any): string[] {
+export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = ALL_SERVICE_EMULATORS.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
@@ -96,11 +97,16 @@ export function filterEmulatorTargets(options: any): string[] {
 
 export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    // The hub only starts if we know the project ID
+    // The hub only starts if we know the project ID.
     return !!options.project;
   }
-
   const targets = filterEmulatorTargets(options);
+  if (name === Emulators.GUI) {
+    // The GUI only starts if we know the project ID AND at least one emulator
+    // supported by GUI is launching.
+    return previews.emulatorgui && !!options.project &&
+      targets.some(target => EMULATORS_SUPPORTED_BY_GUI.has(target));
+  }
   return targets.indexOf(name) >= 0;
 }
 
@@ -148,7 +154,9 @@ export async function startAll(options: any): Promise<void> {
     if (hubPort != hubAddr.port) {
       utils.logLabeledWarning(
         "emulators",
-        `Emulator hub unable to start on port ${hubAddr.port}, starting on ${hubPort}`
+        `${Constants.description(Emulators.HUB)} unable to start on port ${
+          hubAddr.port
+        }, starting on ${hubPort}`
       );
     }
 
@@ -318,6 +326,36 @@ export async function startAll(options: any): Promise<void> {
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (shouldStart(options, Emulators.GUI) && EmulatorRegistry.isRunning(Emulators.HUB)) {
+    // For the GUI we actually will find any available port
+    // since we don't want to explode if the GUI can't start on 3000.
+    const guiAddr = Constants.getAddress(Emulators.GUI, options);
+    const guiPort = await pf.getPortPromise({
+      host: guiAddr.host,
+      port: guiAddr.port,
+      stopPort: guiAddr.port + 100,
+    });
+
+    if (guiPort != guiAddr.port) {
+      utils.logLabeledWarning(
+        Emulators.GUI,
+        `${Constants.description(Emulators.GUI)} unable to start on port ${
+          guiAddr.port
+        }, starting on ${guiPort}`
+      );
+    }
+
+    const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
+    const gui = new EmulatorGUI({
+      projectId,
+      host: guiAddr.host,
+      port: guiPort,
+      hubInfo,
+      auto_download: true,
+    });
+    await startEmulator(gui);
   }
 
   const running = EmulatorRegistry.listRunning();
