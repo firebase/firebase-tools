@@ -71,9 +71,6 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
-  // status: response.statusCode,
-  // response: response,
-  // body: body,
   private async updateRules(content: string): Promise<any> {
     const { host, port } = this.getInfo();
     try {
