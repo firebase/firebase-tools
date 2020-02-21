@@ -11,7 +11,11 @@ import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
+import {
+  promptForAudienceWarning,
+  resolveRegistryEntry,
+  resolveSourceUrl,
+} from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
   instanceIdExists,
@@ -167,6 +171,11 @@ export default new Command("ext:install [extensionName]")
           )} to select from the list of all available official extensions.`,
         { original: err }
       );
+    }
+
+    const audienceConsent = await promptForAudienceWarning(registryEntry);
+    if (!audienceConsent) {
+      return;
     }
 
     try {
