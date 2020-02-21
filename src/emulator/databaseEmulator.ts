@@ -39,7 +39,6 @@ export class DatabaseEmulator implements EmulatorInstance {
           await this.updateRules(newContent);
           utils.logLabeledSuccess("database", "Rules updated.");
         } catch (e) {
-          console.log("ERROR", e);
           utils.logWarning(this.prettyPrintRulesError(rulesPath, e));
           utils.logWarning("Failed to update rules");
         }
