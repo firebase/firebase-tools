@@ -8,7 +8,7 @@ const convertConfig = require("./convertConfig");
 const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
 const fsutils = require("../../fsutils");
-const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
+const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
 const { resolveProjectPath } = require("../../projectPath");
 
 module.exports = function(context, options) {
