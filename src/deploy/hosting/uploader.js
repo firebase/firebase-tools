@@ -9,7 +9,7 @@ const zlib = require("zlib");
 const crypto = require("crypto");
 
 const hashcache = require("./hashcache");
-const detectProjectRoot = require("../../detectProjectRoot");
+const detectProjectRoot = require("../../detectProjectRoot").detectProjectRoot;
 const api = require("../../api");
 const logger = require("../../logger");
 const { Queue } = require("../../throttler/queue");

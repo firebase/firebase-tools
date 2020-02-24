@@ -104,7 +104,7 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function doSetup(setup: any, config: Config, options: any): Promise<void> {
+export async function doSetup(setup: any, config: any, options: any): Promise<void> {
   setup.project = {};
 
   logger.info();

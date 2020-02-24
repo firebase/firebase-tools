@@ -1,15 +1,25 @@
-"use strict";
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as fs from "fs";
 
-var _ = require("lodash");
-var clc = require("cli-color");
-var fs = require("fs");
-var { fetchWebSetup, getCachedWebSetup } = require("../fetchWebSetup");
-var utils = require("../utils");
-var logger = require("../logger");
+import { fetchWebSetup, getCachedWebSetup } from "../fetchWebSetup";
+import * as utils from "../utils";
+import * as logger from "../logger";
 
-var INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
+const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
 
-module.exports = async function(options) {
+export interface TemplateServerResponse {
+  js: string;
+  json: string;
+}
+
+/**
+ * Generate template server response.
+ * @param options the Firebase CLI options object.
+ * @return Initialized server response by template.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function implicitInit(options: any): Promise<TemplateServerResponse> {
   let config;
   try {
     config = await fetchWebSetup(options);
@@ -48,4 +58,4 @@ module.exports = async function(options) {
     js: INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`),
     json: configJson,
   };
-};
+}

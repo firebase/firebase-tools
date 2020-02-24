@@ -24,10 +24,18 @@ export class EmulatorRegistry {
     await controller.waitForPortClosed(info.port, info.host);
 
     this.set(instance.getName(), instance);
-    utils.logLabeledSuccess(
-      instance.getName(),
-      `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-    );
+
+    if (instance.getName() === Emulators.HUB) {
+      utils.logLabeledSuccess(
+        "emulators",
+        `Emulator hub started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
+      );
+    } else {
+      utils.logLabeledSuccess(
+        instance.getName(),
+        `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
+      );
+    }
   }
 
   static async stop(name: Emulators): Promise<void> {

@@ -5,18 +5,22 @@ import * as utils from "../utils";
 import * as logger from "../logger";
 import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
-import { Emulators } from "../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
+import { FirebaseError } from "../error";
 
-export const FLAG_ONLY: string = "--only <emulators>";
-export const DESC_ONLY: string =
-  "only run specific emulators. " +
-  "This is a comma separated list of emulators to start. " +
+export const FLAG_ONLY = "--only <emulators>";
+export const DESC_ONLY =
+  "only specific emulators. " +
+  "This is a comma separated list of emulator names. " +
   "Valid options are: " +
-  JSON.stringify(controller.VALID_EMULATOR_STRINGS);
+  JSON.stringify(ALL_SERVICE_EMULATORS);
 
 export const FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
 export const DESC_INSPECT_FUNCTIONS =
   "emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)";
+
+export const FLAG_IMPORT = "--import [dir]";
+export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
 
 /**
  * We want to be able to run the Firestore and Database emulators even in the absence
@@ -54,4 +58,20 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   } else {
     await requireConfig(options);
   }
+}
+
+export function parseInspectionPort(options: any): number {
+  let port = options.inspectFunctions;
+  if (port === true) {
+    port = "9229";
+  }
+
+  const parsed = Number(port);
+  if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
+    throw new FirebaseError(
+      `"${port}" is not a valid port for debugging, please pass an integer between 1024 and 65535.`
+    );
+  }
+
+  return parsed;
 }

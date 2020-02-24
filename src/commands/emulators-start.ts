@@ -8,6 +8,7 @@ module.exports = new Command("emulators:start")
   .description("start the local Firebase emulators")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (options: any) => {
     try {
       await controller.startAll(options);

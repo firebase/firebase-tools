@@ -7,7 +7,7 @@ import { getInheritedOption } from "./utils";
 import { load } from "./rc";
 import { load as _load } from "./config";
 import * as configstore from "./configstore";
-import detectProjectRoot = require("./detectProjectRoot");
+import { detectProjectRoot } from "./detectProjectRoot";
 import logger = require("./logger");
 import track = require("./track");
 
