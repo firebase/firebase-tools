@@ -27,18 +27,20 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.3.1.jar"),
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.0.jar"),
+    version: "4.4.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.3.1.jar",
-      expectedSize: 27893859,
-      expectedChecksum: "7d84e76144093406331571969f30444e",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.0.jar",
+      expectedSize: 27902850,
+      expectedChecksum: "c7f4dbe10951938074b20c20a6c9abd5",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
     downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.4.jar"),
+    version: "1.10.4",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
@@ -50,6 +52,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
+    version: "0.1.0",
     unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
     binaryPath: path.join(
       CACHE_DIR,
@@ -95,7 +98,14 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
-    optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+    optionalArgs: [
+      "port",
+      "webchannel_port",
+      "host",
+      "rules",
+      "functions_emulator",
+      "seed_from_export",
+    ],
     joinArgs: false,
   },
   pubsub: {
