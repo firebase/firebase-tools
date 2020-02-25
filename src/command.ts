@@ -1,6 +1,8 @@
 import { bold } from "cli-color";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
+import { SPLAT } from "triple-beam";
+import * as winston from "winston";
 
 import { FirebaseError } from "./error";
 import { getInheritedOption } from "./utils";
@@ -211,12 +213,18 @@ export class Command {
     }
 
     if (getInheritedOption(options, "debug")) {
-      logger.transports.console.level = "debug";
       options.debug = true;
     }
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
-      logger.transports.console.level = "none";
+    } else {
+      logger.add(
+        new winston.transports.Console({
+          level: process.env.DEBUG ? "debug" : "info",
+          format: winston.format.printf((info) =>
+            [info.message, ...(info[SPLAT] || [])].join(" ")),
+        })
+      )
     }
 
     try {
