@@ -2,7 +2,7 @@
 
 source scripts/set-default-credentials.sh
 
-mocha \
+./node_modules/.bin/mocha \
   --require ts-node/register \
   --require source-map-support/register \
   --require src/test/helpers/mocha-bootstrap.js \
