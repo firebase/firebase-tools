@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { join } from "path";
-import { writeFileSync } from "fs";
+import { writeFileSync, unlinkSync } from "fs";
 
 import firebase = require("../../src");
 
@@ -18,9 +18,9 @@ describe("listProjects", () => {
 
 describe("deployHosting", () => {
   const projectDirectory = join(__dirname, ".", "test-project");
+  const firebasercFile = join(projectDirectory, ".firebaserc");
 
   before(() => {
-    const firebasercFile = join(projectDirectory, ".firebaserc");
     const config = {
       projects: {
         default: process.env.FBTOOLS_TARGET_PROJECT,
@@ -34,6 +34,10 @@ describe("deployHosting", () => {
       },
     };
     writeFileSync(firebasercFile, JSON.stringify(config));
+  });
+
+  after(() => {
+    unlinkSync(firebasercFile);
   });
 
   it("should deploy hosting", async () => {
