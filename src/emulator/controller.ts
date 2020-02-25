@@ -118,7 +118,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
   return targets.indexOf(name) >= 0;
 }
 
-export async function startAll(options: any): Promise<void> {
+export async function startAll(options: any, noGui: boolean = false): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -336,7 +336,7 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(pubsubEmulator);
   }
 
-  if (shouldStart(options, Emulators.GUI)) {
+  if (!noGui && shouldStart(options, Emulators.GUI)) {
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);
