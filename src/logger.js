@@ -14,7 +14,7 @@ function expandErrors(logger) {
   return logger;
 }
 
-const logger = expandErrors(new winston.Logger());
+const logger = expandErrors(winston.createLogger());
 
 const debug = logger.debug;
 logger.debug = function(...args) {

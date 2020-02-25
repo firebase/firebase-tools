@@ -23,6 +23,7 @@ updateNotifier.notify({ defer: true, isGlobal: true });
 var client = require("..");
 var errorOut = require("../errorOut").errorOut;
 var winston = require("winston");
+var {SPLAT} = require('triple-beam');
 var logger = require("../logger");
 var fs = require("fs");
 var fsutils = require("../fsutils");
@@ -38,20 +39,28 @@ var cmd;
 
 var logFilename = path.join(process.cwd(), "/firebase-debug.log");
 logger
-  .add(winston.transports.Console, {
-    level: process.env.DEBUG ? "debug" : "info",
-    showLevel: false,
-    colorize: true,
-  })
-  .add(winston.transports.File, {
-    level: "debug",
-    filename: logFilename,
-    json: false,
-    formatter: function(input) {
-      input.message = ansiStrip(input.message);
-      return ["[" + input.level + "]", input.message].join(" ");
-    },
-  });
+  .add(
+    new winston.transports.Console({
+      level: process.env.DEBUG ? "debug" : "info",
+      showLevel: false,
+      colorize: true,
+      format: winston.format.combine(
+        // winston.format.splat(),
+        winston.format.printf((info) => `${info.message} ${info[SPLAT].join("")}`)
+      ),
+    })
+  )
+  .add(
+    new winston.transports.File({
+      level: "debug",
+      filename: logFilename,
+      json: false,
+      formatter: function(input) {
+        input.message = ansiStrip(input.message);
+        return ["[" + input.level + "]", input.message].join(" ");
+      },
+    })
+  );
 
 var debugging = false;
 if (_.includes(args, "--debug")) {

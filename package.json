@@ -108,7 +108,7 @@
     "unzipper": "^0.10.5",
     "update-notifier": "^2.5.0",
     "uuid": "^3.0.0",
-    "winston": "^1.0.1"
+    "winston": "^3.0.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.17.0",
