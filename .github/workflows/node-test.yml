@@ -72,7 +72,7 @@ jobs:
         script:
           - ./scripts/test-hosting.sh
           - ./scripts/test-triggers-end-to-end.sh
-          - ./scripts/client-integration-tests/run.sh
+          - npm run test:client-integration
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
