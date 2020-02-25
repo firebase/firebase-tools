@@ -16,7 +16,7 @@
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
-    "test:functional": "mocha --require ts-node/register --require source-map-support/register --require src/test/helpers/mocha-bootstrap.js scripts/example.ts"
+    "test:client-integration": "./scripts/client-integration-tests/run.sh"
   },
   "files": [
     "lib",
