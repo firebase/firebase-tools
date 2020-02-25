@@ -17,7 +17,11 @@ export class EmulatorGUI implements EmulatorInstance {
 
   start(): Promise<void> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
-      throw new FirebaseError(`Cannot start ${Constants.description(Emulators.GUI)} without ${Constants.description(Emulators.HUB)}!`);
+      throw new FirebaseError(
+        `Cannot start ${Constants.description(Emulators.GUI)} without ${Constants.description(
+          Emulators.HUB
+        )}!`
+      );
     }
     const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
     const { auto_download, host, port, projectId } = this.args;
