@@ -1,15 +1,13 @@
 import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
 import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorRegistry } from "./registry";
-import { DatabaseEmulator } from "./databaseEmulator";
-import { FirestoreEmulator } from "./firestoreEmulator";
-import * as url from "url";
 import { EmulatorHub } from "./hub";
+import { FirebaseError } from "../error";
+import { Constants } from "./constants";
 
 export interface EmulatorGUIOptions {
   port: number;
   host: string;
-  hubInfo: EmulatorInfo;
   projectId: string;
   auto_download?: boolean;
 }
@@ -18,11 +16,15 @@ export class EmulatorGUI implements EmulatorInstance {
   constructor(private args: EmulatorGUIOptions) {}
 
   start(): Promise<void> {
-    const { hubInfo, auto_download } = this.args;
+    if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
+      throw new FirebaseError(`Cannot start ${Constants.description(Emulators.GUI)} without ${Constants.description(Emulators.HUB)}!`);
+    }
+    const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
+    const { auto_download, host, port, projectId } = this.args;
     const env: NodeJS.ProcessEnv = {
-      HOST: this.args.host.toString(),
-      PORT: this.args.port.toString(),
-      GCLOUD_PROJECT: this.args.projectId,
+      HOST: host.toString(),
+      PORT: port.toString(),
+      GCLOUD_PROJECT: projectId,
       [EmulatorHub.EMULATOR_HUB_ENV]: `${hubInfo.host}:${hubInfo.port}`,
     };
 

@@ -336,7 +336,7 @@ export async function startAll(options: any): Promise<void> {
     await startEmulator(pubsubEmulator);
   }
 
-  if (shouldStart(options, Emulators.GUI) && EmulatorRegistry.isRunning(Emulators.HUB)) {
+  if (shouldStart(options, Emulators.GUI)) {
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);
@@ -355,12 +355,10 @@ export async function startAll(options: any): Promise<void> {
       );
     }
 
-    const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
     const gui = new EmulatorGUI({
       projectId,
       host: guiAddr.host,
       port: guiPort,
-      hubInfo,
       auto_download: true,
     });
     await startEmulator(gui);
