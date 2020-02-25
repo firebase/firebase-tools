@@ -221,10 +221,9 @@ export class Command {
       logger.add(
         new winston.transports.Console({
           level: process.env.DEBUG ? "debug" : "info",
-          format: winston.format.printf((info) =>
-            [info.message, ...(info[SPLAT] || [])].join(" ")),
+          format: winston.format.printf((info) => [info.message, ...(info[SPLAT] || [])].join(" ")),
         })
-      )
+      );
     }
 
     try {
