@@ -3,7 +3,8 @@ import * as url from "url";
 import { Address, Emulators } from "./types";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
-  hub: 4000,
+  gui: 4000,
+  hub: 4400,
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
@@ -57,6 +58,16 @@ export class Constants {
     const port = parseInt(portVal, 10);
 
     return { host, port };
+  }
+
+  static description(name: Emulators): string {
+    if (name === Emulators.HUB) {
+      return "emulator hub";
+    } else if (name === Emulators.GUI) {
+      return "emulator GUI";
+    } else {
+      return `${name} emulator`;
+    }
   }
 
   private static normalizeHost(host: string): string {

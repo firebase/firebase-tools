@@ -101,7 +101,7 @@ module.exports = new Command("emulators:exec <script>")
     }
     let exitCode = 0;
     try {
-      await controller.startAll(options);
+      await controller.startAll(options, /* noGui = */ true);
       exitCode = await runScript(script, extraEnv);
     } catch (e) {
       logger.debug("Error in emulators:exec", e);
