@@ -1,10 +1,10 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as express from "express";
-import * as request from "request";
 import * as clc from "cli-color";
 import * as http from "http";
 
+import * as api from "../api";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
@@ -36,6 +36,7 @@ import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
+import { database } from "firebase-admin";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -352,10 +353,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     projectId: string,
     definition: EmulatedTriggerDefinition
   ): Promise<boolean> {
-    const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
-    if (!databasePort) {
+    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
+    if (!databaseEmu) {
       return Promise.resolve(false);
     }
+    const databaseHost = databaseEmu.getInfo().host;
+    const databasePort = databaseEmu.getInfo().port;
+
     if (!definition.eventTrigger) {
       EmulatorLogger.log(
         "WARN",
@@ -382,67 +386,61 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
-    return new Promise<boolean>((resolve, reject) => {
-      let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
-      if (projectId !== "") {
-        setTriggersPath += `?ns=${projectId}`;
-      } else {
-        EmulatorLogger.log(
-          "WARN",
-          `No project in use. Registering function trigger for sentinel namespace '${
-            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-          }'`
-        );
-      }
-      request.post(
-        setTriggersPath,
-        {
-          auth: {
-            bearer: "owner",
-          },
-          body: bundle,
-        },
-        (err, res, body) => {
-          if (err) {
-            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
-            reject();
-            return;
-          }
 
-          resolve(true);
-        }
+    let setTriggersPath = "/.settings/functionTriggers.json";
+    if (projectId !== "") {
+      setTriggersPath += `?ns=${projectId}`;
+    } else {
+      EmulatorLogger.log(
+        "WARN",
+        `No project in use. Registering function trigger for sentinel namespace '${
+          Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
+        }'`
       );
-    });
+    }
+
+    return api
+      .request("POST", setTriggersPath, {
+        origin: `http://${databaseHost}:${databasePort}`,
+        headers: {
+          Authorization: "Bearer owner",
+        },
+        data: bundle,
+        json: false,
+      })
+      .then(() => {
+        return true;
+      })
+      .catch((err) => {
+        EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+        throw err;
+      });
   }
 
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
-    const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
-    if (!firestorePort) {
+    const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
+    if (!firestoreEmu) {
       return Promise.resolve(false);
     }
+    const firestoreHost = firestoreEmu.getInfo().host;
+    const firestorePort = firestoreEmu.getInfo().port;
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    return new Promise<boolean>((resolve, reject) => {
-      request.put(
-        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
-          definition.name
-        }`,
-        {
-          body: bundle,
-        },
-        (err, res, body) => {
-          if (err) {
-            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
-            reject();
-            return;
-          }
-
-          resolve(true);
-        }
-      );
-    });
+    return api
+      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${definition.name}`, {
+        origin: `http://${firestoreHost}:${firestorePort}`,
+        data: bundle,
+        json: false,
+      })
+      .then(() => {
+        return true;
+      })
+      .catch((err) => {
+        EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+        throw err;
+      });
   }
 
   async addPubsubTrigger(

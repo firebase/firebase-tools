@@ -1,10 +1,10 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as request from "request";
 import * as clc from "cli-color";
 import * as path from "path";
 import * as pf from "portfinder";
 
+import * as api from "../api";
 import * as utils from "../utils";
 import * as javaEmulators from "../serve/javaEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
@@ -118,7 +118,6 @@ export class FirestoreEmulator implements EmulatorInstance {
     const projectId = this.args.projectId;
 
     const { host, port } = this.getInfo();
-    const url = `http://${host}:${port}/emulator/v1/projects/${projectId}:securityRules`;
     const body = {
       // Invalid rulesets will still result in a 200 response but with more information
       ignore_errors: true,
@@ -132,22 +131,18 @@ export class FirestoreEmulator implements EmulatorInstance {
       },
     };
 
-    return new Promise((resolve, reject) => {
-      request.put(url, { json: body }, (err, res, resBody) => {
-        if (err) {
-          reject(err);
-          return;
+    return api
+      .request("PUT", `/emulator/v1/projects/${projectId}:securityRules`, {
+        origin: `http://${host}:${port}`,
+        data: body,
+      })
+      .then((res) => {
+        if (res.body && res.body.issues) {
+          return res.body.issues as Issue[];
         }
 
-        const rulesValid = res.statusCode === 200 && !resBody.issues;
-        if (!rulesValid) {
-          const issues = resBody.issues as Issue[];
-          resolve(issues);
-        }
-
-        resolve([]);
+        return [];
       });
-    });
   }
 
   /**
