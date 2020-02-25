@@ -63,6 +63,7 @@ jobs:
       COMMIT_SHA: ${{ github.sha }}
       CI_JOB_ID: ${{ github.action }}
       FBTOOLS_TARGET_PROJECT: ${{ secrets.FBTOOLS_TARGET_PROJECT }}
+      FBTOOLS_CLIENT_INTEGRATION_SITE: ${{ secrets.FBTOOLS_CLIENT_INTEGRATION_SITE }}
 
     strategy:
       fail-fast: false
@@ -72,6 +73,7 @@ jobs:
         script:
           - ./scripts/test-hosting.sh
           - ./scripts/test-triggers-end-to-end.sh
+          - npm run test:client-integration
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
