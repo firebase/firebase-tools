@@ -28,12 +28,10 @@ describe("deployHosting", () => {
       targets: {
         [process.env.FBTOOLS_TARGET_PROJECT as string]: {
           hosting: {
-            "client-integration-site": [
-              process.env.FBTOOLS_CLIENT_INTEGRATION_SITE
-            ]
-          }
-        }
-      }
+            "client-integration-site": [process.env.FBTOOLS_CLIENT_INTEGRATION_SITE],
+          },
+        },
+      },
     };
     writeFileSync(firebasercFile, JSON.stringify(config));
   });
