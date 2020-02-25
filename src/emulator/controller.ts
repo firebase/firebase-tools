@@ -112,7 +112,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return (
       previews.emulatorgui &&
       !!options.project &&
-      targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.has(target))
+      targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.indexOf(target) >= 0)
     );
   }
   return targets.indexOf(name) >= 0;
