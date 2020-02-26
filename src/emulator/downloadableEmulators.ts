@@ -1,8 +1,8 @@
 import {
   Emulators,
   DownloadableEmulators,
-  JavaEmulatorCommand,
-  JavaEmulatorDetails,
+  DownloadableEmulatorCommand,
+  DownloadableEmulatorDetails,
   EmulatorDownloadDetails,
 } from "./types";
 import { Constants } from "./constants";
@@ -83,7 +83,7 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
   },
 };
 
-const EmulatorDetails: { [s in DownloadableEmulators]: JavaEmulatorDetails } = {
+const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
   database: {
     name: Emulators.DATABASE,
     instance: null,
@@ -106,7 +106,7 @@ const EmulatorDetails: { [s in DownloadableEmulators]: JavaEmulatorDetails } = {
   },
 };
 
-const Commands: { [s in DownloadableEmulators]: JavaEmulatorCommand } = {
+const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
@@ -157,7 +157,7 @@ function _getLogFileName(name: string): string {
 function _getCommand(
   emulator: DownloadableEmulators,
   args: { [s: string]: any }
-): JavaEmulatorCommand {
+): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
 
   const defaultPort = Constants.getDefaultPort(emulator);
@@ -196,7 +196,7 @@ function _getCommand(
   };
 }
 
-function _fatal(emulator: JavaEmulatorDetails, errorMsg: string): void {
+function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
   if (emulator.instance) {
     emulator.instance.kill("SIGINT");
   }
@@ -204,8 +204,8 @@ function _fatal(emulator: JavaEmulatorDetails, errorMsg: string): void {
 }
 
 async function _runBinary(
-  emulator: JavaEmulatorDetails,
-  command: JavaEmulatorCommand,
+  emulator: DownloadableEmulatorDetails,
+  command: DownloadableEmulatorCommand,
   extraEnv: NodeJS.ProcessEnv
 ): Promise<void> {
   return new Promise((resolve) => {
@@ -274,7 +274,7 @@ export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDow
   return DownloadDetails[emulator];
 }
 
-export function get(emulator: DownloadableEmulators): JavaEmulatorDetails {
+export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
   return EmulatorDetails[emulator];
 }
 
