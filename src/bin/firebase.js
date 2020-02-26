@@ -43,6 +43,55 @@ if (!process.env.DEBUG && _.includes(args, "--debug")) {
   process.env.DEBUG = true;
 }
 
+const TransportStream = require("winston-transport");
+const WebSocket = require("ws");
+
+// var isConnected = false;
+// document.body.innerHTML = "Disconnected.";
+// setInterval(() => {
+//   if (isConnected) return;
+//   isConnected = true;
+//   var exampleSocket = new WebSocket("ws://localhost:9999");
+//   document.body.innerHTML = "";
+//   exampleSocket.onopen = () => {document.body.innerHTML = "Connected. Waiting for logs...<br />"}
+//   exampleSocket.onmessage = (msg) => {
+//     const data = JSON.parse(msg.data);
+//     document.body.innerHTML += `${data.level} :: ${data.message}<br />`;
+//   };
+//   exampleSocket.onclose = () => {isConnected = false; document.body.innerHTML = "Disconnected."}
+// }, 1000);
+
+class WebSocketTransport extends TransportStream {
+  constructor(options = {}) {
+    super(options);
+    this.setMaxListeners(30);
+
+    this.wss = new WebSocket.Server({ port: 9999 });
+    this.connections = [];
+    this.wss.on("connection", (ws) => {
+      this.connections.push(ws);
+    });
+  }
+
+  log(info, callback) {
+    setImmediate(() => this.emit("logged", info));
+
+    const bundle = {
+      ...info,
+      message: ansiStrip([info.message, ...(info[SPLAT] || [])].join(" ")),
+    };
+
+    this.connections.forEach((ws) => {
+      ws.send(JSON.stringify(bundle));
+    });
+
+    if (callback) {
+      callback();
+    }
+  }
+}
+logger.add(new WebSocketTransport());
+
 logger.add(
   new winston.transports.File({
     level: "debug",
