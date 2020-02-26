@@ -4,7 +4,7 @@ import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
 import { confirmUpdateWarning } from "./updateHelper";
-import { logger } from "..";
+import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
@@ -112,14 +112,14 @@ export async function promptForUpdateWarnings(
  * Checks the audience field of a RegistryEntry, displays a warning text
  * for closed and open alpha extensions, and prompts the user to accept.
  */
-export async function promptForAudienceWarning(registryEntry: RegistryEntry): Promise<boolean> {
+export async function promptForAudienceConsent(registryEntry: RegistryEntry): Promise<boolean> {
   let consent = true;
   if (registryEntry.audience && AUDIENCE_WARNING_MESSAGES[registryEntry.audience]) {
     logger.info(AUDIENCE_WARNING_MESSAGES[registryEntry.audience]);
     consent = await promptOnce({
       type: "confirm",
       message: "Do you acknowledge the status of this extension?",
-      default: false,
+      default: true,
     });
   }
   return consent;

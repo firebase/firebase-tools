@@ -12,7 +12,7 @@ import * as getProjectId from "../getProjectId";
 import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
-  promptForAudienceWarning,
+  promptForAudienceConsent,
   resolveRegistryEntry,
   resolveSourceUrl,
 } from "../extensions/resolveSource";
@@ -173,7 +173,7 @@ export default new Command("ext:install [extensionName]")
       );
     }
 
-    const audienceConsent = await promptForAudienceWarning(registryEntry);
+    const audienceConsent = await promptForAudienceConsent(registryEntry);
     if (!audienceConsent) {
       return;
     }
