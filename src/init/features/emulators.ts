@@ -4,7 +4,7 @@ import * as utils from "../../utils";
 import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isJavaEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
-import { downloadIfNecessary } from "../../serve/javaEmulators";
+import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];

@@ -11,7 +11,7 @@ export enum Emulators {
   GUI = "gui",
 }
 
-export type JavaEmulators =
+export type DownloadableEmulators =
   | Emulators.FIRESTORE
   | Emulators.DATABASE
   | Emulators.PUBSUB
@@ -39,7 +39,7 @@ export const EMULATORS_SUPPORTED_BY_GUI = [Emulators.DATABASE];
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [Emulators.HUB, Emulators.GUI, ...ALL_SERVICE_EMULATORS];
 
-export function isJavaEmulator(value: string): value is JavaEmulators {
+export function isJavaEmulator(value: string): value is DownloadableEmulators {
   return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;
 }
 

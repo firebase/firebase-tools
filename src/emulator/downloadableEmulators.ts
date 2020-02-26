@@ -1,11 +1,11 @@
 import {
   Emulators,
-  JavaEmulators,
+  DownloadableEmulators,
   JavaEmulatorCommand,
   JavaEmulatorDetails,
   EmulatorDownloadDetails,
-} from "../emulator/types";
-import { Constants } from "../emulator/constants";
+} from "./types";
+import { Constants } from "./constants";
 
 import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
@@ -25,7 +25,7 @@ const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
-const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
+const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
     downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.0.jar"),
     version: "4.4.0",
@@ -83,7 +83,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   },
 };
 
-const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
+const EmulatorDetails: { [s in DownloadableEmulators]: JavaEmulatorDetails } = {
   database: {
     name: Emulators.DATABASE,
     instance: null,
@@ -106,7 +106,7 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
   },
 };
 
-const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
+const Commands: { [s in DownloadableEmulators]: JavaEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
@@ -140,7 +140,7 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   },
 };
 
-function getExecPath(name: JavaEmulators): string {
+function getExecPath(name: DownloadableEmulators): string {
   const details = getDownloadDetails(name);
   return details.binaryPath || details.downloadPath;
 }
@@ -154,7 +154,10 @@ function _getLogFileName(name: string): string {
  * @param emulator - string identifier for the emulator to start.
  * @param args - map<string,string> of addittional args
  */
-function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaEmulatorCommand {
+function _getCommand(
+  emulator: DownloadableEmulators,
+  args: { [s: string]: any }
+): JavaEmulatorCommand {
   const baseCmd = Commands[emulator];
 
   const defaultPort = Constants.getDefaultPort(emulator);
@@ -267,15 +270,15 @@ async function _runBinary(
   });
 }
 
-export function getDownloadDetails(emulator: JavaEmulators): EmulatorDownloadDetails {
+export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   return DownloadDetails[emulator];
 }
 
-export function get(emulator: JavaEmulators): JavaEmulatorDetails {
+export function get(emulator: DownloadableEmulators): JavaEmulatorDetails {
   return EmulatorDetails[emulator];
 }
 
-export async function stop(targetName: JavaEmulators): Promise<void> {
+export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = EmulatorDetails[targetName];
   return new Promise((resolve, reject) => {
     if (emulator.instance) {
@@ -298,7 +301,7 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
   });
 }
 
-export async function downloadIfNecessary(targetName: JavaEmulators): Promise<void> {
+export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
   if (hasEmulator) {
@@ -309,7 +312,7 @@ export async function downloadIfNecessary(targetName: JavaEmulators): Promise<vo
 }
 
 export async function start(
-  targetName: JavaEmulators,
+  targetName: DownloadableEmulators,
   args: any,
   extraEnv: NodeJS.ProcessEnv = {}
 ): Promise<void> {
