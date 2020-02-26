@@ -38,7 +38,10 @@ var utils = require("../utils");
 var cmd;
 
 var logFilename = path.join(process.cwd(), "/firebase-debug.log");
-process.env.DEBUG = _.includes(args, "--debug") || process.env.DEBUG;
+
+if (!process.env.DEBUG && _.includes(args, "--debug")) {
+  process.env.DEBUG = true;
+}
 
 logger.add(
   new winston.transports.File({
