@@ -7,6 +7,7 @@ var previews = _.assign(
   {
     // insert previews here...
     rtdbrules: false,
+    emulatorgui: false,
   },
   configstore.get("previews")
 );
