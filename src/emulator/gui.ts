@@ -1,5 +1,5 @@
 import { EmulatorInstance, EmulatorInfo, Emulators } from "./types";
-import * as javaEmulators from "../serve/javaEmulators";
+import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorHub } from "./hub";
 import { FirebaseError } from "../error";
@@ -32,7 +32,7 @@ export class EmulatorGUI implements EmulatorInstance {
       [EmulatorHub.EMULATOR_HUB_ENV]: `${hubInfo.host}:${hubInfo.port}`,
     };
 
-    return javaEmulators.start(Emulators.GUI, { auto_download }, env);
+    return downloadableEmulators.start(Emulators.GUI, { auto_download }, env);
   }
 
   async connect(): Promise<void> {
@@ -40,7 +40,7 @@ export class EmulatorGUI implements EmulatorInstance {
   }
 
   stop(): Promise<void> {
-    return javaEmulators.stop(Emulators.GUI);
+    return downloadableEmulators.stop(Emulators.GUI);
   }
 
   getInfo(): EmulatorInfo {
