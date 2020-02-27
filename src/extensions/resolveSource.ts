@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
@@ -9,12 +10,16 @@ import { promptOnce } from "../prompt";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
 const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
-  "open-alpha": `${clc.bold(
-    "Important"
-  )}: This extension is part of the preliminary-release program for extensions. Its functionality might change in backward-incompatible ways before its official release.`,
-  "closed-alpha": `${clc.yellow.bold(
-    "Important"
-  )}: This extension is part of the Firebase Alpha program. This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release.`,
+  "open-alpha": marked(
+    `${clc.bold("Important")}: This extension is part of the ${clc.bold(
+      "preliminary-release program"
+    )} for extensions. Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/next/.preliminary-release-extensions`
+  ),
+  "closed-alpha": marked(
+    `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
+      "Firebase Alpha program"
+    )}. This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/`
+  ),
 };
 
 export interface RegistryEntry {
