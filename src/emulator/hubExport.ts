@@ -6,7 +6,7 @@ import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
-import { getDownloadDetails } from "../serve/javaEmulators";
+import { getDownloadDetails } from "./downloadableEmulators";
 
 export interface ExportMetadata {
   version: string;
