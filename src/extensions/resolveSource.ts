@@ -13,12 +13,12 @@ const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
   "open-alpha": marked(
     `${clc.bold("Important")}: This extension is part of the ${clc.bold(
       "preliminary-release program"
-    )} for extensions. Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/next/.preliminary-release-extensions`
+    )} for extensions.\n Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/master/.preliminary-release-extensions`
   ),
   "closed-alpha": marked(
     `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
       "Firebase Alpha program"
-    )}. This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/`
+    )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
   ),
 };
 
