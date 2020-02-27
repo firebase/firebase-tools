@@ -175,7 +175,7 @@ export default new Command("ext:install [extensionName]")
 
     const audienceConsent = await promptForAudienceConsent(registryEntry);
     if (!audienceConsent) {
-      logger.info("Install cancelled.")
+      logger.info("Install cancelled.");
       return;
     }
 
