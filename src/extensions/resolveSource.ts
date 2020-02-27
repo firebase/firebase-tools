@@ -12,8 +12,8 @@ const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
   "open-alpha": `${clc.bold(
     "Important"
   )}: This extension is part of the preliminary-release program for extensions. Its functionality might change in backward-incompatible ways before its official release.`,
-  "closed-alpha": `${clc.bold(
-    "Caution"
+  "closed-alpha": `${clc.yellow.bold(
+    "Important"
   )}: This extension is part of the Firebase Alpha program. This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release.`,
 };
 
