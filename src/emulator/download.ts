@@ -5,7 +5,7 @@ import * as ProgressBar from "progress";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import { Emulators, EmulatorDownloadDetails } from "./types";
-import * as javaEmulators from "../serve/javaEmulators";
+import * as downloadableEmulators from "./downloadableEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -16,7 +16,7 @@ tmp.setGracefulCleanup();
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 module.exports = async (name: DownloadableEmulator) => {
-  const emulator = javaEmulators.getDownloadDetails(name);
+  const emulator = downloadableEmulators.getDownloadDetails(name);
   utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
   fs.ensureDirSync(emulator.opts.cacheDir);
 

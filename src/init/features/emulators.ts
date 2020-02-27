@@ -2,9 +2,9 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
-import { Emulators, ALL_SERVICE_EMULATORS, isJavaEmulator } from "../../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
-import { downloadIfNecessary } from "../../serve/javaEmulators";
+import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -68,7 +68,7 @@ export async function doSetup(setup: any, config: any) {
 
   if (selections.download) {
     for (const selected of selections.emulators) {
-      if (isJavaEmulator(selected)) {
+      if (isDownloadableEmulator(selected)) {
         await downloadIfNecessary(selected);
       }
     }
