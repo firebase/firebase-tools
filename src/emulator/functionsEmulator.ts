@@ -195,10 +195,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       proto,
       triggerId,
@@ -511,10 +511,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };

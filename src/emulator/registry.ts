@@ -1,6 +1,6 @@
 import * as clc from "cli-color";
 
-import { ALL_EMULATORS, EmulatorInstance, Emulators } from "./types";
+import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as controller from "./controller";
@@ -60,6 +60,15 @@ export class EmulatorRegistry {
 
   static get(emulator: Emulators): EmulatorInstance | undefined {
     return this.INSTANCES.get(emulator);
+  }
+
+  static getInfo(emulator: Emulators): EmulatorInfo | undefined {
+    const instance = this.INSTANCES.get(emulator);
+    if (!instance) {
+      return undefined;
+    }
+
+    return instance.getInfo();
   }
 
   static getPort(emulator: Emulators): number | undefined {
