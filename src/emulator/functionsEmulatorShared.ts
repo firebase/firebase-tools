@@ -44,10 +44,19 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   triggerType?: EmulatedTriggerType;
-  ports: {
-    firestore?: number;
-    database?: number;
-    pubsub?: number;
+  emulators: {
+    firestore?: {
+      host: string;
+      port: number;
+    };
+    database?: {
+      host: string;
+      port: number;
+    };
+    pubsub?: {
+      host: string;
+      port: number;
+    };
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
