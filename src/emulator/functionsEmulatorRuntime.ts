@@ -18,6 +18,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
+import { initializeNetworkRedirects } from "./functionsEmulatorProxy";
 
 const DATABASE_APP = "__database__";
 
@@ -376,36 +377,34 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
     obj[method] = function(...args: any[]): any {
-      const hrefs = args
-        .map((arg) => {
-          if (typeof arg === "string") {
-            try {
-              const url = new URL(arg);
-              return arg;
-            } catch (err) {
-              return;
-            }
-          } else if (typeof arg === "object") {
-            return arg.href;
-          } else {
-            return;
+      console.log(`Request: ${bundle.name}.${bundle.path}`);
+      for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        let href = undefined;
+        if (typeof arg === "string") {
+          try {
+            const url = new URL(arg);
+            href = arg;
+          } catch (err) {
+            // No-op
           }
-        })
-        .filter((v) => v);
-      const href = (hrefs.length && hrefs[0]) || "";
+        } else if (typeof arg === "object" && arg.href) {
+          href = arg.href;
+        }
 
-      if (href && !history[href]) {
-        history[href] = true;
-        if (href.indexOf("googleapis.com") !== -1) {
-          new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
-            href,
-            module: bundle.name,
-          }).log();
-        } else {
-          new EmulatorLog("SYSTEM", "unidentified-network-access", "", {
-            href,
-            module: bundle.name,
-          }).log();
+        if (href && !history[href]) {
+          history[href] = true;
+          if (href.indexOf("googleapis.com") !== -1) {
+            new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
+              href,
+              module: bundle.name,
+            }).log();
+          } else {
+            new EmulatorLog("SYSTEM", "unidentified-network-access", "", {
+              href,
+              module: bundle.name,
+            }).log();
+          }
         }
       }
 
@@ -1054,6 +1053,7 @@ async function initializeRuntime(
 
   if (isFeatureEnabled(frb, "network_filtering")) {
     initializeNetworkFiltering(frb);
+    initializeNetworkRedirects(frb);
   }
 
   if (isFeatureEnabled(frb, "functions_config_helper")) {
