@@ -22,6 +22,12 @@ export interface EmulatedTriggerDefinition {
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  schedule?: EventSchedule;
+}
+
+export interface EventSchedule {
+  schedule: string;
+  timeZone?: string;
 }
 
 export interface EventTrigger {
