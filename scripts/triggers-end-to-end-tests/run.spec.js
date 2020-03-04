@@ -206,6 +206,10 @@ TriggerEndToEndTest.prototype.writeToPubsub = function writeToPubsub(done) {
   return this.invokeHttpFunction("writeToPubsub", done);
 };
 
+TriggerEndToEndTest.prototype.writeToScheduledPubsub = function writeToScheduledPubsub(done) {
+  return this.invokeHttpFunction("writeToScheduledPubsub", done);
+};
+
 TriggerEndToEndTest.prototype.waitForCondition = function(conditionFn, timeout, callback) {
   let elapsed = 0;
   let interval = 10;
@@ -456,6 +460,21 @@ describe("pubsub emulator function triggers", function() {
 
   it("should have have triggered cloud functions", function(done) {
     expect(test.pubsub_trigger_count).to.equal(1);
+    done();
+  });
+
+  it("should write to the scheduled pubsub emulator", function(done) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    test.writeToScheduledPubsub(function(err, response) {
+      expect(err).to.be.null;
+      expect(response.statusCode).to.equal(200);
+      setTimeout(done, EMULATORS_WRITE_DELAY_MS);
+    });
+  });
+
+  it("should have have triggered cloud functions", function(done) {
+    expect(test.pubsub_trigger_count).to.equal(2);
     done();
   });
 });
