@@ -46,21 +46,6 @@ if (!process.env.DEBUG && _.includes(args, "--debug")) {
 const TransportStream = require("winston-transport");
 const WebSocket = require("ws");
 
-// var isConnected = false;
-// document.body.innerHTML = "Disconnected.";
-// setInterval(() => {
-//   if (isConnected) return;
-//   isConnected = true;
-//   var exampleSocket = new WebSocket("ws://localhost:9999");
-//   document.body.innerHTML = "";
-//   exampleSocket.onopen = () => {document.body.innerHTML = "Connected. Waiting for logs...<br />"}
-//   exampleSocket.onmessage = (msg) => {
-//     const data = JSON.parse(msg.data);
-//     document.body.innerHTML += `${data.level} :: ${data.message}<br />`;
-//   };
-//   exampleSocket.onclose = () => {isConnected = false; document.body.innerHTML = "Disconnected."}
-// }, 1000);
-
 class WebSocketTransport extends TransportStream {
   constructor(options = {}) {
     super(options);
@@ -76,10 +61,26 @@ class WebSocketTransport extends TransportStream {
   log(info, callback) {
     setImmediate(() => this.emit("logged", info));
 
-    const bundle = {
-      ...info,
-      message: ansiStrip([info.message, ...(info[SPLAT] || [])].join(" ")),
-    };
+    const bundle = { level: info.level, data: {}};
+
+    const splat = [info.message, ...(info[SPLAT] || [])]
+      .map((value) => {
+        if (typeof value == "string") {
+          try {
+            bundle.data = { ...bundle.data, ...JSON.parse(value) };
+            return null;
+          } catch (err) {
+            // If the value isn't JSONable, just treat it like a string
+            return value;
+          }
+        } else {
+          bundle.data = { ...bundle.data, ...value };
+        }
+      })
+      .filter((v) => v);
+
+    bundle.message = ansiStrip(splat.join(" "));
+    bundle.level = (bundle.data?.system?.level || bundle.level).toLowerCase();
 
     this.connections.forEach((ws) => {
       ws.send(JSON.stringify(bundle));
@@ -92,13 +93,25 @@ class WebSocketTransport extends TransportStream {
 }
 logger.add(new WebSocketTransport());
 
+function tryStringify(value) {
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
 logger.add(
   new winston.transports.File({
     level: "debug",
     filename: logFilename,
-    json: false,
     format: winston.format.printf(
-      (info) => `[${info.level}] ` + ansiStrip([info.message, ...(info[SPLAT] || [])].join(" "))
+      (info) =>
+        `[${info.level}] ${ansiStrip(
+          [info.message, ...(info[SPLAT] || [])].map(tryStringify).join(" ")
+        )}`
     ),
   })
 );

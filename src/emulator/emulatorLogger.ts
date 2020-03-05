@@ -30,6 +30,14 @@ export enum Verbosity {
   QUIET = 2,
 }
 
+function tryJSONParse(value: string) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
   static warnOnceCache = new Set<String>();
@@ -38,7 +46,7 @@ export class EmulatorLogger {
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
    */
-  static log(type: LogType, text: string): void {
+  static log(type: LogType, ...text: any[]): void {
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`${type}: ${text}`);
       return;
@@ -46,28 +54,28 @@ export class EmulatorLogger {
 
     switch (type) {
       case "DEBUG":
-        logger.debug(text);
+        logger.debug(...text);
         break;
       case "INFO":
-        logger.info(text);
+        logger.info(...text);
         break;
       case "USER":
-        logger.info(text);
+        logger.info(...text);
         break;
       case "BULLET":
-        utils.logBullet(text);
+        utils.logBullet(text.join(" "));
         break;
       case "WARN":
-        utils.logWarning(text);
+        utils.logWarning(text.join(" "));
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache.has(text)) {
-          utils.logWarning(text);
-          this.warnOnceCache.add(text);
+        if (!this.warnOnceCache.has(text.join(" "))) {
+          utils.logWarning(text.join(" "));
+          this.warnOnceCache.add(text.join(" "));
         }
         break;
       case "SUCCESS":
-        utils.logSuccess(text);
+        utils.logSuccess(text.join(" "));
         break;
     }
   }
@@ -81,7 +89,10 @@ export class EmulatorLogger {
         EmulatorLogger.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
+          system: log,
+          user: tryJSONParse(log.text),
+        });
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
