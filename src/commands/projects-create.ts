@@ -10,7 +10,9 @@ import { prompt } from "../prompt";
 import * as requireAuth from "../requireAuth";
 
 module.exports = new Command("projects:create [projectId]")
-  .description("create a new firebase project")
+  .description(
+    "creates a new Google Cloud Platform project, then adds Firebase resources to the project"
+  )
   .option("-n, --display-name <displayName>", "(optional) display name for the project")
   .option(
     "-o, --organization <organizationId>",
@@ -22,6 +24,7 @@ module.exports = new Command("projects:create [projectId]")
   )
   .before(requireAuth)
   .action(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (projectId: string | undefined, options: any): Promise<FirebaseProjectMetadata> => {
       options.projectId = projectId; // add projectId into options to pass into prompt function
 

@@ -195,10 +195,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       proto,
       triggerId,
@@ -462,8 +462,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
     const resource = definition.eventTrigger.resource;
-    const resourceParts = resource.split("/");
-    const topic = resourceParts[resourceParts.length - 1];
+    let topic;
+    if (definition.schedule) {
+      // In production this topic liiks like
+      // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
+      // the deploy location to match as closely as possible.
+      topic = "firebase-schedule-" + definition.name;
+    } else {
+      const resourceParts = resource.split("/");
+      topic = resourceParts[resourceParts.length - 1];
+    }
 
     try {
       await pubsubEmulator.addTrigger(topic, definition.name);
@@ -511,10 +519,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };

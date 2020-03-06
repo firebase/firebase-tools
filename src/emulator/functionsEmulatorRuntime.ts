@@ -527,8 +527,12 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
   // Configuration for talking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
-  databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-  databaseConfig.credential = makeFakeCredentials();
+  if (frb.emulators.database) {
+    databaseConfig.databaseURL = `http://${frb.emulators.database.host}:${
+      frb.emulators.database.port
+    }?ns=${frb.projectId}`;
+    databaseConfig.credential = makeFakeCredentials();
+  }
 
   const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
   const proxiedAdminModule = adminModuleProxy
@@ -574,7 +578,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (frb.ports.firestore) {
+      if (frb.emulators.firestore) {
         return proxiedFirestore;
       } else {
         warnAboutFirestoreProd();
@@ -582,7 +586,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }
     })
     .when("database", (target) => {
-      if (frb.ports.database) {
+      if (frb.emulators.database) {
         return proxiedDatabase;
       } else {
         warnAboutDatabaseProd();
@@ -608,7 +612,7 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (frb.ports.firestore) {
+      if (frb.emulators.firestore) {
         return proxiedFirestore;
       } else {
         warnAboutFirestoreProd();
@@ -616,7 +620,7 @@ function makeProxiedFirebaseApp(
       }
     })
     .when("database", (target: any) => {
-      if (frb.ports.database) {
+      if (frb.emulators.database) {
         return proxiedDatabase;
       } else {
         warnAboutDatabaseProd();
@@ -644,11 +648,11 @@ async function makeProxiedFirestore(
   const sslCreds = await getGRPCInsecureCredential(frb).catch(noOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    if (!hasInitializedFirestore && frb.ports.firestore) {
+    if (!hasInitializedFirestore && frb.emulators.firestore) {
       const emulatorSettings = {
         projectId: frb.projectId,
-        port: frb.ports.firestore,
-        servicePath: "localhost",
+        port: frb.emulators.firestore.port,
+        servicePath: frb.emulators.firestore.host,
         service: "firestore.googleapis.com",
         sslCreds,
         customHeaders: {
@@ -744,8 +748,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     }
   }
 
-  if (frb.ports.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
-    const pubsubHost = `localhost:${frb.ports.pubsub}`;
+  // The Firebase CLI is sometimes used as a module within Cloud Functions
+  // for tasks like deleting Firestore data. The CLI has an override system
+  // to change the host for most calls (see api.js)
+  //
+  // TODO(samstern): This should be done for RTDB as well but it's hard
+  // because the convention in prod is subdomain not ?ns=
+  if (frb.emulators.firestore) {
+    process.env.FIRESTORE_URL = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+  }
+
+  if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+    const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
   }
