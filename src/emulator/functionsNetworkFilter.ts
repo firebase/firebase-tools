@@ -65,7 +65,7 @@ function rewriteUrl(frb: FunctionsRuntimeBundle, href: string): string {
     new EmulatorLog(
       "DEBUG",
       "runtime-status",
-      `Rewriting URL ${url} (${redirectToAddress(entry)})`
+      `Rewriting URL ${url} ${redirectToAddress(entry)}`
     ).log();
     url.protocol = entry.protocol;
     url.host = entry.host;
@@ -83,7 +83,7 @@ function rewriteHttpsOptions(frb: FunctionsRuntimeBundle, options: any): any {
     new EmulatorLog(
       "DEBUG",
       "runtime-status",
-      `Rewriting options ${JSON.stringify(options)} (${redirectToAddress(entry)})`
+      `Rewriting options ${JSON.stringify(options)} to ${redirectToAddress(entry)}`
     ).log();
     options.protocol = entry.protocol;
     options.host = entry.host;
@@ -117,7 +117,7 @@ export function initializeNetworkRedirects(frb: FunctionsRuntimeBundle): void {
     new EmulatorLog(
       "WARN_ONCE",
       "runtime-status",
-      `Redirecting HTTP requests from ${host} to ${redirectToAddress(entry)}`
+      `Redirecting requests from ${host} to ${redirectToAddress(entry)}`
     ).log();
   });
 
@@ -125,37 +125,43 @@ export function initializeNetworkRedirects(frb: FunctionsRuntimeBundle): void {
   const networkMethods = {
     http: {
       module: require("http"),
-      method: "request",
+      methods: ["request", "get"],
     },
     https: {
       module: require("https"),
-      method: "request",
+      methods: ["request", "get"],
     },
   };
 
-  for (let [name, bundle] of Object.entries(networkMethods)) {
-    const obj = bundle.module;
-    const originalMethod = obj[bundle.method].bind(bundle.module);
+  for (let [moduleName, bundle] of Object.entries(networkMethods)) {
+    for (const methodName of bundle.methods) {
+      const originalMethod = bundle.module[methodName].bind(bundle.module);
 
-    /* tslint:disable:only-arrow-functions */
-    // This can't be an arrow function because it needs to be new'able
-    obj[bundle.method] = function(...args: any[]): any {
-      const dest = getProxyDestination(frb, args);
-      if (!dest) {
-        return originalMethod(args);
-      }
+      /* tslint:disable:only-arrow-functions */
+      // This can't be an arrow function because it needs to be new'able
+      bundle.module[methodName] = function(...args: any[]): any {
+        const dest = getProxyDestination(frb, args);
+        if (!dest) {
+          return originalMethod(args);
+        }
 
-      args = rewriteHttpsRequestArgs(frb, args);
+        args = rewriteHttpsRequestArgs(frb, args);
 
-      if (name === "https" && dest.protocol === "http") {
-        // TODO(samstern): This don't work
-        new EmulatorLog("DEBUG", "runtime-status", "Moving https request to http").log();
-        const httpModule = networkMethods.http.module;
-        const httpMethod = httpModule[bundle.method].bind(httpModule);
-        return httpMethod(...args);
-      }
+        new EmulatorLog(
+          "DEBUG",
+          "runtime-status",
+          `Proxied: ${moduleName}.${methodName}(${JSON.stringify(args)})`
+        ).log();
 
-      return originalMethod(...args);
-    };
+        if (moduleName === "https" && dest.protocol === "http") {
+          // TODO: This does NOT work
+          const httpModule = networkMethods.http.module;
+          const httpMethod = httpModule[methodName].bind(httpModule);
+          return httpMethod(...args);
+        }
+
+        return originalMethod(...args);
+      };
+    }
   }
 }
