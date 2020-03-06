@@ -18,7 +18,7 @@ import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
 import { URL } from "url";
 import * as _ from "lodash";
-import { initializeNetworkRedirects } from "./functionsEmulatorProxy";
+import { initializeNetworkRedirects } from "./functionsNetworkFilter";
 
 const DATABASE_APP = "__database__";
 
@@ -377,7 +377,6 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
     obj[method] = function(...args: any[]): any {
-      console.log(`Request: ${bundle.name}.${bundle.path}`);
       for (let i = 0; i < args.length; i++) {
         const arg = args[i];
         let href = undefined;
@@ -392,6 +391,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
           href = arg.href;
         }
 
+        // TODO: Don't warn if the host is localhost (or whatever the functions emu host is)
         if (href && !history[href]) {
           history[href] = true;
           if (href.indexOf("googleapis.com") !== -1) {
