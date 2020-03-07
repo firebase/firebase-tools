@@ -93,6 +93,10 @@ class MockRuntimeBundle implements FunctionsRuntimeBundle {
   projectId = "project-1234";
   triggerType = EmulatedTriggerType.HTTPS;
   cwd = "/home/users/dir";
+  address = {
+    host: "localhost",
+    port: 5001,
+  };
   emulators = {};
 
   constructor(public triggerId: string) {}

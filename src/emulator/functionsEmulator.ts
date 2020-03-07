@@ -519,6 +519,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
+      address: this.getInfo(),
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),

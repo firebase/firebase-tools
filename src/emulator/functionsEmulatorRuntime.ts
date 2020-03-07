@@ -247,7 +247,7 @@ async function resolveDeveloperNodeModule(
     resolution: resolveResult,
   };
 
-  logDebug(`Resolved module ${name}`, moduleResolution);
+  EmulatorLog.dbg(`Resolved module ${name}`, moduleResolution);
   return moduleResolution;
 }
 
@@ -357,9 +357,9 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     };
 
     networkingModules.push(gaxModule);
-    logDebug(`Found google-gax at ${gaxPath}`);
+    EmulatorLog.dbg(`Found google-gax at ${gaxPath}`);
   } catch (err) {
-    logDebug(
+    EmulatorLog.dbg(
       `Couldn't find @google-cloud/firestore or google-gax, this may be okay if using @google-cloud/firestore@2.0.0`
     );
   }
@@ -379,7 +379,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     obj[method] = function(...args: any[]): any {
       for (let i = 0; i < args.length; i++) {
         const arg = args[i];
-        let href = undefined;
+        let href: string | undefined = undefined;
         if (typeof arg === "string") {
           try {
             const url = new URL(arg);
@@ -391,8 +391,8 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
           href = arg.href;
         }
 
-        // TODO: Don't warn if the host is localhost (or whatever the functions emu host is)
-        if (href && !history[href]) {
+        const sameHost = href && href.startsWith(`http://${frb.address.host}`);
+        if (href && !history[href] && !sameHost) {
           history[href] = true;
           if (href.indexOf("googleapis.com") !== -1) {
             new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -419,7 +419,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     return { name: bundle.name, status: "mocked" };
   });
 
-  logDebug("Outgoing network have been stubbed.", results);
+  EmulatorLog.dbg("Outgoing network have been stubbed.", results);
 }
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
@@ -549,7 +549,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         ...opts,
       };
       defaultApp = makeProxiedFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
-      logDebug("initializeApp(DEFAULT)", defaultAppOptions);
+      EmulatorLog.dbg("initializeApp(DEFAULT)", defaultAppOptions);
 
       // The Realtime Database proxy relies on calling 'initializeApp()' with certain options
       // (such as credential) that can interfere with other services. Therefore we keep
@@ -600,7 +600,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
     exports: proxiedAdminModule,
   };
 
-  logDebug("firebase-admin has been stubbed.", {
+  EmulatorLog.dbg("firebase-admin has been stubbed.", {
     adminResolution,
   });
 }
@@ -761,7 +761,7 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
     const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
-    logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+    EmulatorLog.dbg(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
   }
 }
 
@@ -771,14 +771,14 @@ async function initializeFunctionsConfigHelper(functionsDir: string): Promise<vo
   });
 
   const ff = require(functionsResolution);
-  logDebug("Checked functions.config()", {
+  EmulatorLog.dbg("Checked functions.config()", {
     config: ff.config(),
   });
 
   const originalConfig = ff.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      logDebug("config() parent accessed!", {
+      EmulatorLog.dbg("config() parent accessed!", {
         parentKey,
         parentConfig,
       });
@@ -822,7 +822,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
   await new Promise((resolveEphemeralServer, rejectEphemeralServer) => {
     const handler = async (req: express.Request, res: express.Response) => {
       try {
-        logDebug(`Ephemeral server handling ${req.method} request`);
+        EmulatorLog.dbg(`Ephemeral server handling ${req.method} request`);
         const func = trigger.getRawFunction();
         res.on("finish", () => {
           instance.close((err) => {
@@ -875,7 +875,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
       functionRouter
     );
 
-    logDebug(`Attempting to listen to socketPath: ${socketPath}`);
+    EmulatorLog.dbg(`Attempting to listen to socketPath: ${socketPath}`);
     const instance = ephemeralServer.listen(socketPath, () => {
       new EmulatorLog("SYSTEM", "runtime-status", "ready", { state: "ready" }).log();
     });
@@ -889,7 +889,7 @@ async function processBackground(
   trigger: EmulatedTrigger
 ): Promise<void> {
   const proto = frb.proto;
-  logDebug("ProcessBackground", proto);
+  EmulatorLog.dbg("ProcessBackground", proto);
 
   // All formats of the payload should carry a "data" property. The "context" property does
   // not exist in all versions. Where it doesn't exist, context is everything besides data.
@@ -900,7 +900,7 @@ async function processBackground(
   // This is due to the fact that the Firestore emulator sends payloads in a newer
   // format than production firestore.
   if (context.resource && context.resource.name) {
-    logDebug("ProcessBackground: lifting resource.name from resource", context.resource);
+    EmulatorLog.dbg("ProcessBackground: lifting resource.name from resource", context.resource);
     context.resource = context.resource.name;
   }
 
@@ -918,14 +918,14 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
     caughtErr = err;
   }
 
-  logDebug(`Ephemeral server survived.`);
+  EmulatorLog.dbg(`Ephemeral server survived.`);
   if (caughtErr) {
     throw caughtErr;
   }
 }
 
 async function runBackground(proto: any, func: CloudFunction<any>): Promise<any> {
-  logDebug("RunBackground", proto);
+  EmulatorLog.dbg("RunBackground", proto);
 
   await runFunction(() => {
     return func(proto.data, proto.context);
@@ -975,10 +975,6 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
   }).log();
 }
 
-function logDebug(msg: string, data?: any): void {
-  new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
-}
-
 async function invokeTrigger(
   frb: FunctionsRuntimeBundle,
   triggers: EmulatedTriggerMap
@@ -992,10 +988,10 @@ async function invokeTrigger(
   }).log();
 
   const trigger = triggers[frb.triggerId];
-  logDebug("triggerDefinition", trigger.definition);
+  EmulatorLog.dbg("triggerDefinition", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
-  logDebug(`Running ${frb.triggerId} in mode ${mode}`);
+  EmulatorLog.dbg(`Running ${frb.triggerId} in mode ${mode}`);
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -1041,7 +1037,7 @@ async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
   serializedFunctionTrigger?: string
 ): Promise<EmulatedTriggerMap | undefined> {
-  logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
+  EmulatorLog.dbg(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
   const verified = await verifyDeveloperNodeModules(frb);
   if (!verified) {
@@ -1149,7 +1145,7 @@ async function handleMessage(message: string) {
     ).log();
     return;
   } else {
-    logDebug(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
+    EmulatorLog.dbg(`Trigger "${runtimeArgs.frb.triggerId}" has been found, beginning invocation!`);
   }
 
   try {
@@ -1169,7 +1165,7 @@ async function handleMessage(message: string) {
 }
 
 async function main(): Promise<void> {
-  logDebug("Functions runtime initialized.", {
+  EmulatorLog.dbg("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,
   });
@@ -1186,7 +1182,7 @@ async function main(): Promise<void> {
       .catch((err) => {
         // All errors *should* be handled within handleMessage. But just in case,
         // we want to exit fatally on any error related to message handling.
-        logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
+        EmulatorLog.dbg(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
         new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
         return flushAndExit(1);
       });

@@ -50,6 +50,10 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   triggerType?: EmulatedTriggerType;
+  address: {
+    host: string;
+    port: number;
+  };
   emulators: {
     firestore?: {
       host: string;

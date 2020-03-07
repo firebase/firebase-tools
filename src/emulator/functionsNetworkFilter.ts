@@ -12,24 +12,24 @@ interface RedirectMap {
 }
 
 function redirectToAddress(r: Redirect) {
-  return `${r.protocol}://${r.host}:${r.port}`;
+  return `${r.protocol}//${r.host}:${r.port}`;
 }
 
 function getRedirectMap(frb: FunctionsRuntimeBundle): RedirectMap {
   const rewrites: RedirectMap = {};
 
-  // TODO(samstern): other services
+  // TODO(samstern): What about RTDB, etc?
   if (frb.emulators.firestore) {
     rewrites["firestore.googleapis.com"] = {
-      protocol: "http",
+      protocol: "http:",
       host: frb.emulators.firestore.host,
       port: `${frb.emulators.firestore.port}`,
     };
   }
 
-  // TODO(samstern): remove
-  rewrites["example.com"] = {
-    protocol: "http",
+  // TODO: Real ports
+  rewrites["emulator-hub"] = {
+    protocol: "http:",
     host: "localhost",
     port: "4400",
   };
@@ -58,39 +58,31 @@ function getProxyDestination(frb: FunctionsRuntimeBundle, args: any[]): Redirect
 
 function rewriteUrl(frb: FunctionsRuntimeBundle, href: string): string {
   const map = getRedirectMap(frb);
-  const url = new URL(href);
+  const newUrl = new URL(href);
 
-  const entry = map[url.host];
+  const entry = map[newUrl.host];
   if (entry) {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
-      `Rewriting URL ${url} ${redirectToAddress(entry)}`
-    ).log();
-    url.protocol = entry.protocol;
-    url.host = entry.host;
-    url.port = entry.port;
+    newUrl.protocol = entry.protocol;
+    newUrl.host = entry.host;
+    newUrl.port = entry.port;
   }
 
-  return url.toString();
+  return newUrl.toString();
 }
 
 function rewriteHttpsOptions(frb: FunctionsRuntimeBundle, options: any): any {
   const map = getRedirectMap(frb);
 
+  const newOptions = Object.assign({}, options);
+
   const entry = map[options.host];
   if (entry) {
-    new EmulatorLog(
-      "DEBUG",
-      "runtime-status",
-      `Rewriting options ${JSON.stringify(options)} to ${redirectToAddress(entry)}`
-    ).log();
-    options.protocol = entry.protocol;
-    options.host = entry.host;
-    options.port = entry.port;
+    newOptions.protocol = entry.protocol;
+    newOptions.host = entry.host;
+    newOptions.port = entry.port;
   }
 
-  return options;
+  return newOptions;
 }
 
 function rewriteHttpsRequestArgs(frb: FunctionsRuntimeBundle, args: any[]): any[] {
@@ -121,8 +113,8 @@ export function initializeNetworkRedirects(frb: FunctionsRuntimeBundle): void {
     ).log();
   });
 
-  // TODO: DRY this with the logging
-  const networkMethods = {
+  // TODO: DRY this with the existing network warnings code
+  const networkModules = {
     http: {
       module: require("http"),
       methods: ["request", "get"],
@@ -133,7 +125,7 @@ export function initializeNetworkRedirects(frb: FunctionsRuntimeBundle): void {
     },
   };
 
-  for (let [moduleName, bundle] of Object.entries(networkMethods)) {
+  for (let [moduleName, bundle] of Object.entries(networkModules)) {
     for (const methodName of bundle.methods) {
       const originalMethod = bundle.module[methodName].bind(bundle.module);
 
@@ -145,22 +137,22 @@ export function initializeNetworkRedirects(frb: FunctionsRuntimeBundle): void {
           return originalMethod(args);
         }
 
-        args = rewriteHttpsRequestArgs(frb, args);
-
-        new EmulatorLog(
-          "DEBUG",
-          "runtime-status",
-          `Proxied: ${moduleName}.${methodName}(${JSON.stringify(args)})`
-        ).log();
-
-        if (moduleName === "https" && dest.protocol === "http") {
-          // TODO: This does NOT work
-          const httpModule = networkMethods.http.module;
+        const originalArgs = Array.from(args);
+        if (moduleName === "https" && dest.protocol === "http:") {
+          EmulatorLog.dbg(`Switching http to https: ${JSON.stringify(originalArgs)}`);
+          const httpModule = networkModules.http.module;
           const httpMethod = httpModule[methodName].bind(httpModule);
-          return httpMethod(...args);
+          return httpMethod(...originalArgs);
         }
 
-        return originalMethod(...args);
+        const newArgs = rewriteHttpsRequestArgs(frb, args);
+
+        const fullName = `${moduleName}.${methodName}`;
+        EmulatorLog.dbg(
+          `${fullName}: ${JSON.stringify(originalArgs)} -> ${JSON.stringify(newArgs)}`
+        );
+
+        return originalMethod(...newArgs);
       };
     }
   }

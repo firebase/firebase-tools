@@ -145,6 +145,10 @@ export class EmulatorLog {
     return new Date(this.timestamp);
   }
 
+  static dbg(msg: string, data?: any): void {
+    new EmulatorLog("DEBUG", "runtime-status", `[${process.pid}] ${msg}`, data).log();
+  }
+
   static waitForFlush(): Promise<void> {
     return new Promise((resolve) => {
       const interval = setInterval(() => {
