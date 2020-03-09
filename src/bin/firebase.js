@@ -47,6 +47,7 @@ const TransportStream = require("winston-transport");
 const WebSocket = require("ws");
 
 class WebSocketTransport extends TransportStream {
+  history = [];
   constructor(options = {}) {
     super(options);
     this.setMaxListeners(30);
@@ -55,13 +56,16 @@ class WebSocketTransport extends TransportStream {
     this.connections = [];
     this.wss.on("connection", (ws) => {
       this.connections.push(ws);
+      this.history.forEach((bundle) => {
+        ws.send(JSON.stringify(bundle));
+      });
     });
   }
 
   log(info, callback) {
     setImmediate(() => this.emit("logged", info));
 
-    const bundle = { level: info.level, data: {}};
+    const bundle = { level: info.level, data: {}, timestamp: new Date().getTime() };
 
     const splat = [info.message, ...(info[SPLAT] || [])]
       .map((value) => {
@@ -82,6 +86,7 @@ class WebSocketTransport extends TransportStream {
     bundle.message = ansiStrip(splat.join(" "));
     bundle.level = (bundle.data?.system?.level || bundle.level).toLowerCase();
 
+    this.history.push(bundle);
     this.connections.forEach((ws) => {
       ws.send(JSON.stringify(bundle));
     });
