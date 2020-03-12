@@ -254,7 +254,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       } else {
         utils.logLabeledWarning(
           "firestore",
-          `Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
