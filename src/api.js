@@ -155,6 +155,10 @@ var api = {
     "https://runtimeconfig.googleapis.com"
   ),
   storageOrigin: utils.envOverride("FIREBASE_STORAGE_URL", "https://storage.googleapis.com"),
+  firebaseStorageOrigin: utils.envOverride(
+    "FIREBASE_FIREBASESTORAGE_URL",
+    "https://firebasestorage.googleapis.com"
+  ),
   hostingApiOrigin: utils.envOverride(
     "FIREBASE_HOSTING_API_URL",
     "https://firebasehosting.googleapis.com"

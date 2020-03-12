@@ -1,4 +1,6 @@
 import * as clc from "cli-color";
+import * as childProcess from "child_process";
+
 import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
@@ -7,6 +9,10 @@ import requireAuth = require("../requireAuth");
 import requireConfig = require("../requireConfig");
 import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";
+import { DatabaseEmulator } from "../emulator/databaseEmulator";
+import { EmulatorRegistry } from "../emulator/registry";
+import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import * as getProjectId from "../getProjectId";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -21,6 +27,15 @@ export const DESC_INSPECT_FUNCTIONS =
 
 export const FLAG_IMPORT = "--import [dir]";
 export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
+
+// Flags for the ext:dev:emulators:* commands
+export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
+export const DESC_TEST_CONFIG =
+  "A firebase.json style file. Used to configure the Firestore and Realtime Database emulators.";
+
+export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
+export const DESC_TEST_PARAMS =
+  "A .env file containing test param values for your emulated extension.";
 
 /**
  * We want to be able to run the Firestore and Database emulators even in the absence
@@ -74,4 +89,94 @@ export function parseInspectionPort(options: any): number {
   }
 
   return parsed;
+}
+
+async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
+  utils.logBullet(`Running script: ${clc.bold(script)}`);
+
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
+
+  const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
+  if (databaseInstance) {
+    const info = databaseInstance.getInfo();
+    const address = `${info.host}:${info.port}`;
+    env[DatabaseEmulator.DATABASE_EMULATOR_ENV] = address;
+  }
+
+  const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
+  if (firestoreInstance) {
+    const info = firestoreInstance.getInfo();
+    const address = `${info.host}:${info.port}`;
+
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
+    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
+  }
+
+  const proc = childProcess.spawn(script, {
+    stdio: ["inherit", "inherit", "inherit"] as childProcess.StdioOptions,
+    shell: true,
+    windowsHide: true,
+    env,
+  });
+
+  logger.debug(`Running ${script} with environment ${JSON.stringify(env)}`);
+
+  return new Promise((resolve, reject) => {
+    proc.on("error", (err: any) => {
+      utils.logWarning(`There was an error running the script: ${JSON.stringify(err)}`);
+      reject();
+    });
+
+    // Due to the async nature of the node child_process library, sometimes
+    // we can get the "exit" callback before all "data" has been read from
+    // from the script's output streams. To make the logs look cleaner, we
+    // add a short delay before resolving/rejecting this promise after an
+    // exit.
+    const exitDelayMs = 500;
+    proc.once("exit", (code, signal) => {
+      if (signal) {
+        utils.logWarning(`Script exited with signal: ${signal}`);
+        setTimeout(reject, exitDelayMs);
+        return;
+      }
+
+      const exitCode = code || 0;
+      if (code === 0) {
+        utils.logSuccess(`Script exited successfully (code 0)`);
+      } else {
+        utils.logWarning(`Script exited unsuccessfully (code ${code})`);
+      }
+
+      setTimeout(() => {
+        resolve(exitCode);
+      }, exitDelayMs);
+    });
+  });
+}
+
+/** The action function for emulators:exec and ext:dev:emulators:exec.
+ *  Starts the appropriate emulators, executes the provided script,
+ *  and then exits.
+ *  @param script: A script to run after starting the emualtors.
+ *  @param options: A Commander options object.
+ */
+export async function emulatorExec(script: string, options: any) {
+  const projectId = getProjectId(options, true);
+  const extraEnv: Record<string, string> = {};
+  if (projectId) {
+    extraEnv.GCLOUD_PROJECT = projectId;
+  }
+  let exitCode = 0;
+  try {
+    await controller.startAll(options, /* noGui = */ true);
+    exitCode = await runScript(script, extraEnv);
+  } finally {
+    await controller.cleanShutdown();
+  }
+
+  if (exitCode !== 0) {
+    throw new FirebaseError(`Script "${clc.bold(script)}" exited with code ${exitCode}`, {
+      exit: exitCode,
+    });
+  }
 }

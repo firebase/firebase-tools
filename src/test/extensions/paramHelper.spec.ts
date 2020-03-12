@@ -219,13 +219,13 @@ describe("paramHelper", () => {
             param: "A_PARAMETER",
             label: "Param",
             default: "new default",
-            type: "STRING",
+            type: ParamType.STRING,
           },
           {
             param: "ANOTHER_PARAMETER",
             label: "Another",
             default: "default",
-            type: "STRING",
+            type: ParamType.STRING,
           },
         ]);
       });
@@ -246,19 +246,19 @@ describe("paramHelper", () => {
           param: "A_PARAMETER",
           label: "Param",
           default: "new default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
         {
           param: "ANOTHER_PARAMETER",
           label: "Another Param",
           default: "default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
         {
           param: "THIRD",
           label: "3rd",
           default: "New Default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
       ]);
     });

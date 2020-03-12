@@ -17,7 +17,7 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    utils.logSuccess("All emulators started, it is now safe to connect.");
+    utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
 
     // Hang until explicitly killed
     await new Promise((res, rej) => {
