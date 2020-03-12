@@ -11,7 +11,7 @@ export default new Command("database:instances:list")
     const projectNumber = await getProjectNumber(options);
     const instances = await firebaseDatabase.listDatabaseInstances(projectNumber);
     for (const instance of instances) {
-      const segments = instance.name.split('/');
+      const segments = instance.name.split("/");
       logger.info(segments[segments.length - 1]);
     }
     logger.info(`Project ${options.project} has ${instances.length} database instances`);

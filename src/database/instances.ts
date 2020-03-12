@@ -37,13 +37,17 @@ export async function createDatabaseInstance(
   instanceName: string,
   location: string = "us-central1"
 ): Promise<DatabaseInstance> {
-  const response = await api.request("POST", `/v1beta/projects/${projectNumber}/locations/${location}/instances?database_id=${instanceName}`, {
-    auth: true,
-    origin: api.firebaseDatabaseOrigin,
-    json: {
-      type: "USER_DATABASE",
-    },
-  });
+  const response = await api.request(
+    "POST",
+    `/v1beta/projects/${projectNumber}/locations/${location}/instances?database_id=${instanceName}`,
+    {
+      auth: true,
+      origin: api.firebaseDatabaseOrigin,
+      json: {
+        type: "USER_DATABASE",
+      },
+    }
+  );
   if (response.status === 200) {
     return response.body;
   }
@@ -56,12 +60,16 @@ export async function createDatabaseInstance(
  * @param instanceName The name for the new Realtime Database instance.
  */
 export async function listDatabaseInstances(projectNumber: number): Promise<DatabaseInstance[]> {
-  const response = await api.request("GET", `/v1beta/projects/${projectNumber}/locations/-/instances`, {
-    auth: true,
-    origin: api.firebaseDatabaseOrigin,
-  });
+  const response = await api.request(
+    "GET",
+    `/v1beta/projects/${projectNumber}/locations/-/instances`,
+    {
+      auth: true,
+      origin: api.firebaseDatabaseOrigin,
+    }
+  );
   if (response.status === 200) {
-      // TODO: consider adding more information.
+    // TODO: consider adding more information.
     return response.body.instances;
   }
   return _handleErrorResponse(response);
