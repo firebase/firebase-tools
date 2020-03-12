@@ -307,7 +307,9 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       } else {
         utils.logLabeledWarning(
           "database",
-          `Realtime Database rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Realtime Database rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist.`
         );
       }
     } else {
