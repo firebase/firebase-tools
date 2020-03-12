@@ -66,7 +66,7 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
     );
     utils.logLabeledBullet(
       name,
-      `To select a different host/port for the emulator, update your firebase.json:
+      `To select a different host/port for the emulator, specify that host/port in a firebase.json config file:
     {
       // ...
       "emulators": {
