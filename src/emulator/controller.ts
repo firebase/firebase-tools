@@ -60,8 +60,13 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   if (!portOpen) {
     await cleanShutdown();
     const description = Constants.description(name);
-    utils.logWarning(`Port ${port} is not open on ${host}, could not start ${description}.`);
-    utils.logBullet(`To select a different host/port for the emulator, update your "firebase.json":
+    utils.logLabeledWarning(
+      name,
+      `Port ${port} is not open on ${host}, could not start ${description}.`
+    );
+    utils.logLabeledBullet(
+      name,
+      `To select a different host/port for the emulator, specify that host/port in a firebase.json config file:
     {
       // ...
       "emulators": {
@@ -70,7 +75,8 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
           "port": "${clc.yellow("PORT")}"
         }
       }
-    }`);
+    }`
+    );
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
@@ -78,10 +84,10 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
 }
 
 export async function cleanShutdown(): Promise<boolean> {
-  utils.logBullet("Shutting down emulators.");
+  utils.logLabeledBullet("emulators", "Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    utils.logBullet(`Stoppping ${Constants.description(name)}`);
+    utils.logLabeledBullet(name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
 
@@ -141,7 +147,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
     for (const name of ignored) {
-      utils.logWarning(
+      utils.logLabeledWarning(
+        name,
         `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
           "firebase init"
         )}.`
@@ -239,19 +246,29 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
+    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
       if (fs.existsSync(rules)) {
         args.rules = rules;
       } else {
-        utils.logWarning(
-          `Firestore rules file ${clc.bold(
-            rules
-          )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
+        utils.logLabeledWarning(
+          "firestore",
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
-      utils.logWarning(`No Firestore rules file specified in firebase.json, using default rules.`);
+      utils.logLabeledWarning(
+        "firestore",
+        "Did not find a Cloud Firestore rules file specified in a firebase.json config file."
+      );
+    }
+
+    if (!foundRulesFile) {
+      utils.logLabeledWarning(
+        "firestore",
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+      );
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -282,19 +299,31 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     }
 
     const rulesLocalPath = options.config.get("database.rules");
+    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
       if (fs.existsSync(rules)) {
         args.rules = rules;
       } else {
-        utils.logWarning(
-          `Database rules file ${clc.bold(
+        utils.logLabeledWarning(
+          "database",
+          `Realtime Database rules file ${clc.bold(
             rules
-          )} specified in firebase.json does not exist, starting Database emulator without rules.`
+          )} specified in firebase.json does not exist.`
         );
       }
     } else {
-      utils.logWarning(`No Database rules file specified in firebase.json, using default rules.`);
+      utils.logLabeledWarning(
+        "database",
+        "Did not find a Realtime Database rules file specified in a firebase.json config file."
+      );
+    }
+
+    if (!foundRulesFile) {
+      utils.logLabeledWarning(
+        "database",
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+      );
     }
 
     const databaseEmulator = new DatabaseEmulator(args);
