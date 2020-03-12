@@ -119,7 +119,7 @@ var api = {
     "FIREBASE_EXT_REGISTRY_ORIGIN",
     "https://extensions-registry.firebaseapp.com"
   ),
-  firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
+  firebaseDatabaseOrigin: utils.envOverride("FIREBASE_DATABASE_URL", "https://firebasedatabase.googleapis.com"),
   firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
   functionsOrigin: utils.envOverride(
     "FIREBASE_FUNCTIONS_URL",
