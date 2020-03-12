@@ -1,3 +1,6 @@
 - Adds warning message when installing a closed or open alpha extension.
 - Adds support for scheduled pubsub functions to pubsub emulator.
 - Returns an error if the `public` parameter is not configured for Hosting in `firebase.json` or via the `-p` parameter.
+- Firestore Emulator now accepts service account tokens.
+- ListCollectionIds with Firestore Emulator now correctly omits empty collections.
+- The first request in Firestore Emulator now correctly interacts with imported data.
