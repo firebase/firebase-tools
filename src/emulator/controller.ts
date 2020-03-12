@@ -220,6 +220,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      env: options.extensionEnv,
+      predefinedTriggers: options.extensionTriggers,
     });
     await startEmulator(functionsEmulator);
   }
