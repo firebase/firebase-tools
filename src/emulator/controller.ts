@@ -254,7 +254,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       } else {
         utils.logLabeledWarning(
           "firestore",
-          `Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
@@ -267,7 +267,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     if (!foundRulesFile) {
       utils.logLabeledWarning(
         "firestore",
-        "The emulator will default to allowing all reads and wries. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     }
 
@@ -307,7 +307,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       } else {
         utils.logLabeledWarning(
           "database",
-          `Database rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Realtime Database rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
@@ -320,7 +320,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     if (!foundRulesFile) {
       utils.logLabeledWarning(
         "database",
-        "The emulator will default to allowing all reads and wries. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     }
 
