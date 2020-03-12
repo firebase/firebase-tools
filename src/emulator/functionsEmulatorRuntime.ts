@@ -1040,7 +1040,8 @@ async function invokeTrigger(
 
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
-  serializedFunctionTrigger?: string
+  serializedFunctionTrigger?: string,
+  extensionTriggers?: EmulatedTriggerDefinition[]
 ): Promise<EmulatedTriggerMap | undefined> {
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
@@ -1082,7 +1083,7 @@ async function initializeRuntime(
   }
 
   let triggers: EmulatedTriggerMap;
-  const triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let triggerDefinitions: EmulatedTriggerDefinition[] = [];
   let triggerModule;
 
   if (serializedFunctionTrigger) {
@@ -1096,8 +1097,12 @@ async function initializeRuntime(
       return;
     }
   }
+  if (extensionTriggers) {
+    triggerDefinitions = extensionTriggers;
+  } else {
+    require("../extractTriggers")(triggerModule, triggerDefinitions);
+  }
 
-  require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
@@ -1126,7 +1131,8 @@ async function handleMessage(message: string) {
 
   if (!triggers) {
     const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers);
+    const extensionTriggers = runtimeArgs.opts ? runtimeArgs.opts.extensionTriggers : undefined;
+    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers, extensionTriggers);
   }
 
   // If we don't have triggers by now, we can't run.

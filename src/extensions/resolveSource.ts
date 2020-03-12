@@ -37,15 +37,16 @@ export interface UpdateWarning {
 }
 
 /**
- * Gets the sourceUrl for a given extension name and version from the official extensions registry
- * @param version the version of the extension
+ * Gets the sourceUrl for a given extension name and version from a registry entry
+ * @param registryEntry the registry entry to look through.
  * @param name the name of the extension.
+ * @param version the version of the extension. Defaults to latest.
  * @returns the source corresponding to extensionName in the registry.
  */
 export function resolveSourceUrl(
   registryEntry: RegistryEntry,
   name: string,
-  version: string
+  version?: string
 ): string {
   const targetVersion = getTargetVersion(registryEntry, version);
   const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);

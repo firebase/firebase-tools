@@ -20,6 +20,7 @@ import * as paramHelper from "../extensions/paramHelper";
 import {
   instanceIdExists,
   ensureExtensionsApiEnabled,
+  createSourceFromLocation,
   logPrefix,
   promptForOfficialExtension,
   promptForRepeatInstance,
@@ -30,6 +31,8 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
+import * as previews from "../previews";
+
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
@@ -134,7 +137,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
  */
 export default new Command("ext:install [extensionName]")
   .description(
-    "install an extension if [extensionName] or [extensionName@version] is provided; or run with `-i` to see all available extensions."
+    "install an official extension if [extensionName] or [extensionName@version] is provided;" +
+    previews.extdev
+      ? "install a local extension if [localPathOrUrl] or [url#root] is provided;"
+      : "" + "or run with `-i` to see all available extensions."
   )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebasemods.instances.create"])
@@ -160,28 +166,42 @@ export default new Command("ext:install [extensionName]")
     }
 
     const [name, version] = extensionName.split("@");
-    let registryEntry;
+    let source;
     try {
-      registryEntry = await resolveRegistryEntry(name);
-    } catch (err) {
-      throw new FirebaseError(
-        `Unable to find extension source named ${clc.bold(extensionName)}. ` +
-          `Run ${clc.bold(
-            "firebase ext:install -i"
-          )} to select from the list of all available official extensions.`,
-        { original: err }
-      );
-    }
-
-    const audienceConsent = await promptForAudienceConsent(registryEntry);
-    if (!audienceConsent) {
-      logger.info("Install cancelled.");
-      return;
-    }
-
-    try {
+      const registryEntry = await resolveRegistryEntry(name);
+      const audienceConsent = await promptForAudienceConsent(registryEntry);
+      if (!audienceConsent) {
+        logger.info("Install cancelled.");
+        return;
+      }
       const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-      const source = await extensionsApi.getSource(sourceUrl);
+      source = await extensionsApi.getSource(sourceUrl);
+    } catch (err) {
+      if (previews.extdev) {
+        try {
+          source = await createSourceFromLocation(projectId, extensionName);
+        } catch (err) {
+          throw new FirebaseError(
+            `Unable to find official extension named ${clc.bold(extensionName)} ` +
+              `or local extension at ${clc.bold(extensionName)}` +
+              `Run ${clc.bold(
+                "firebase ext:install -i"
+              )} to select from the list of all available official extensions.`,
+            { original: err }
+          );
+        }
+      } else {
+        throw new FirebaseError(
+          `Unable to find offical extension source named ${clc.bold(extensionName)}. ` +
+            `Run ${clc.bold(
+              "firebase ext:install -i"
+            )} to select from the list of all available official extensions.`,
+          { original: err }
+        );
+      }
+    }
+
+    try {
       if (learnMore) {
         utils.logLabeledBullet(
           logPrefix,
