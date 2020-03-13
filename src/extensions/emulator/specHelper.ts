@@ -29,8 +29,12 @@ function wrappedSafeLoad(source: string): any {
   }
 }
 
-export async function readExtensionYaml(directory: string): Promise<ExtensionSpec> {
-  let source;
+/**
+ * Climbs directories loking for an extension.yaml file, and return the first
+ * directory that contains one. Throws an error if none is found.
+ * @param directory the directory to start from searching from.
+ */
+export async function findExtensionYaml(directory: string): Promise<string> {
   while (!fileExistsSync(path.resolve(directory, SPEC_FILE))) {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
@@ -40,8 +44,16 @@ export async function readExtensionYaml(directory: string): Promise<ExtensionSpe
     }
     directory = parentDir;
   }
+  return directory;
+}
+
+/**
+ * Reads an extension.yaml and parses its contents into an ExtensionSpec.
+ * @param directory the directory to look for a extensionYaml in.
+ */
+export async function readExtensionYaml(directory: string): Promise<ExtensionSpec> {
   const extensionYaml = await readFileFromDirectory(directory, SPEC_FILE);
-  source = extensionYaml.source;
+  const source = extensionYaml.source;
   return wrappedSafeLoad(source);
 }
 

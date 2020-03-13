@@ -199,7 +199,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
-      options.config.projectDir,
+      options.extensionDir || options.config.projectDir,
       options.config.get("functions.source")
     );
 
