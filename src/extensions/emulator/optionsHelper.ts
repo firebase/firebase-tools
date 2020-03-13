@@ -10,10 +10,11 @@ import * as Config from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import * as getProjectId from "../../getProjectId";
-import { json } from "body-parser";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionYaml = await specHelper.readExtensionYaml(process.cwd());
+  const extensionDir = await specHelper.findExtensionYaml(process.cwd());
+  options.extensionDir = extensionDir;
+  const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(extensionYaml);
 
   const params = await paramHelper.readParamsFile(options.testParams);
