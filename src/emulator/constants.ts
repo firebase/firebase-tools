@@ -20,6 +20,14 @@ export class Constants {
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";
+  // Note: the service name below are here solely for logging purposes.
+  // There is not an emulator available for these.
+  static SERVICE_ANALYTICS = "app-measurement.com";
+  static SERVICE_AUTH = "firebaseauth.googleapis.com";
+  static SERVICE_CRASHLYTICS = "fabric.io";
+  static SERVICE_REMOTE_CONFIG = "firebaseremoteconfig.googleapis.com";
+  static SERVICE_STORAGE = "storage.googleapis.com";
+  static SERVICE_TEST_LAB = "testing.googleapis.com";
 
   static getServiceName(service: string): string {
     switch (service) {
@@ -29,6 +37,18 @@ export class Constants {
         return "database";
       case this.SERVICE_PUBSUB:
         return "pubsub";
+      case this.SERVICE_ANALYTICS:
+        return "analytics";
+      case this.SERVICE_AUTH:
+        return "auth";
+      case this.SERVICE_CRASHLYTICS:
+        return "crashlytics";
+      case this.SERVICE_REMOTE_CONFIG:
+        return "remote config";
+      case this.SERVICE_STORAGE:
+        return "storage";
+      case this.SERVICE_TEST_LAB:
+        return "test lab";
       default:
         return service;
     }

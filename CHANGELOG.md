@@ -1,1 +1,0 @@
-Adds warning message when installing a closed or open alpha extension.

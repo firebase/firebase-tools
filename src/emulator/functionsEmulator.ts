@@ -56,6 +56,8 @@ export interface FunctionsEmulatorArgs {
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
+  env?: { [key: string]: string };
+  predefinedTriggers?: EmulatedTriggerDefinition[];
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -78,6 +80,7 @@ export interface FunctionsRuntimeInstance {
 export interface InvokeRuntimeOpts {
   nodeBinary: string;
   serializedTriggers?: string;
+  extensionTriggers?: EmulatedTriggerDefinition[];
   env?: { [key: string]: string };
   ignore_warnings?: boolean;
 }
@@ -115,7 +118,6 @@ export class FunctionsEmulator implements EmulatorInstance {
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
-
     // When debugging is enabled, the "timeout" feature needs to be disabled so that
     // functions don't timeout while a breakpoint is active.
     if (this.args.debugPort) {
@@ -195,17 +197,20 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       proto,
       triggerId,
       triggerType,
     };
-
-    const opts = runtimeOpts || { nodeBinary: this.nodeBinary };
+    const opts = runtimeOpts || {
+      nodeBinary: this.nodeBinary,
+      env: this.args.env,
+      extensionTriggers: this.args.predefinedTriggers,
+    };
     const worker = this.invokeRuntime(runtimeBundle, opts);
     return worker;
   }
@@ -251,6 +256,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const worker = this.invokeRuntime(this.getBaseBundle(), {
         nodeBinary: this.nodeBinary,
+        env: this.args.env,
+        extensionTriggers: this.args.predefinedTriggers,
       });
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
@@ -258,7 +265,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "SYSTEM",
         "triggers-parsed"
       );
-      const triggerDefinitions = triggerParseEvent.data
+      let triggerDefinitions = triggerParseEvent.data
         .triggerDefinitions as EmulatedTriggerDefinition[];
 
       const toSetup = triggerDefinitions.filter(
@@ -462,8 +469,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
     const resource = definition.eventTrigger.resource;
-    const resourceParts = resource.split("/");
-    const topic = resourceParts[resourceParts.length - 1];
+    let topic;
+    if (definition.schedule) {
+      // In production this topic liiks like
+      // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
+      // the deploy location to match as closely as possible.
+      topic = "firebase-schedule-" + definition.name;
+    } else {
+      const resourceParts = resource.split("/");
+      topic = resourceParts[resourceParts.length - 1];
+    }
 
     try {
       await pubsubEmulator.addTrigger(topic, definition.name);
@@ -511,10 +526,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
@@ -524,7 +539,6 @@ export class FunctionsEmulator implements EmulatorInstance {
    */
   async askInstallNodeVersion(cwd: string): Promise<string> {
     const pkg = require(path.join(cwd, "package.json"));
-
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if (!pkg.engines || !pkg.engines.node) {
       EmulatorLogger.log(
@@ -685,7 +699,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const reqBody = (req as RequestWithRawBody).rawBody;
 
-    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS);
+    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

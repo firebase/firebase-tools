@@ -1,0 +1,68 @@
+# Learn detailed information about the fields of an extension.yaml file in the docs
+
+name: greet-the-world  # Identifier for the extension
+specVersion: v1beta  # Version of the Firebase Extensions specification
+version: 0.0.1  # Follow semver versioning
+license: Apache-2.0  # https://spdx.org/licenses/
+
+# Friendly display name for your extension (~3-5 words)
+displayName: Greet the world
+
+# Brief description of the task your extension performs (~1 sentence)
+description: >-
+  Sends the world a specified greeting.
+
+billingRequired: false  # Learn more in the docs
+
+# For your extension to interact with other Google APIs (like Firestore, Cloud Storage, or Cloud Translation),
+# set the `apis` field. In addition, set the `roles` field to grant appropriate IAM access to interact with these products.
+# Learn about these fields in the docs
+
+# Learn about the `resources` field in the docs
+resources:
+  - name: greetTheWorld
+    type: firebaseextensions.v1beta.function
+    description: >-
+      HTTPS-triggered function that responds with a specified greeting message
+    properties:
+      location: ${LOCATION}
+      httpsTrigger: {}
+      # Optional, defaults to Node.js 8
+      runtime: "nodejs8"
+
+# Learn about the `params` field in the docs
+params:
+  - param: GREETING
+    type: string
+    label: Greeting for the world
+    description: >-
+      What do you want to say to the world? For example, Hello world? or What's up, world?
+    default: Hello
+    required: true
+    immutable: false
+
+  - param: LOCATION
+    type: select
+    label: Cloud Functions location
+    description: >-
+      Where do you want to deploy the functions created for this extension? For help selecting a
+      location, refer to the [location selection
+      guide](https://firebase.google.com/docs/functions/locations).
+    options:
+      - label: Iowa (us-central1)
+        value: us-central1
+      - label: South Carolina (us-east1)
+        value: us-east1
+      - label: Northern Virginia (us-east4)
+        value: us-east4
+      - label: Belgium (europe-west1)
+        value: europe-west1
+      - label: London (europe-west2)
+        value: europe-west2
+      - label: Hong Kong (asia-east2)
+        value: asia-east2
+      - label: Tokyo (asia-northeast1)
+        value: asia-northeast1
+    default: us-central1
+    required: true
+    immutable: true
