@@ -18,6 +18,8 @@ module.exports = new Command("database:profile")
     "collect database usage information for the specified number of seconds"
   )
   .option("--raw", "output the raw stats collected as newline delimited json")
+  .option("--live", "output live info")
+  .option("--live-min-size <bytes>", "minimum data size to report live", 0)
   .option("--no-collapse", "prevent collapsing similar paths into $wildcard locations")
   .option(
     "-i, --input <filename>",
