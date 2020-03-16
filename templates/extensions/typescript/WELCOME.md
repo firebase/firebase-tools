@@ -6,4 +6,4 @@ If you want to jump into the code to customize your extension, then modify **ind
 
 `npm run build --prefix=functions && firebase ext:install . --project=<project-id>`
 
-As always, you can find detailed instructions for creating your own extension in the docs.
+As always, in the docs, you can find detailed instructions for creating and testing your extension (including using the emulator!).

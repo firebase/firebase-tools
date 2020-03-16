@@ -124,8 +124,7 @@ export default new Command("ext:dev:init")
       const lang = await promptOnce({
         type: "list",
         name: "language",
-        message:
-          "What language would you like to use to write the Cloud Functions for your Extension?",
+        message: "In which language do you want to write the Cloud Functions for your extension?",
         default: "javascript",
         choices: [
           {
