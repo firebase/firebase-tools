@@ -98,7 +98,7 @@ process.on("exit", function(code) {
     }
     configstore.set("lastError", timestamp);
   } else {
-    configstore.del("lastError");
+    configstore.delete("lastError");
   }
 });
 require("exit-code");

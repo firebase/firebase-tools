@@ -59,7 +59,7 @@ module.exports = new Command("login")
         // store login scopes in case mandatory scopes grow over time
         configstore.set("loginScopes", result.scopes);
         // remove old session token, if it exists
-        configstore.del("session");
+        configstore.delete("session");
 
         logger.info();
         utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));

@@ -5,17 +5,4 @@ import * as logger from "./logger";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require("../package.json");
 
-class CLIConfigstore extends Configstore {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(pkgName: string, ...args: any[]) {
-    super(pkgName, ...args);
-  }
-
-  del(key: string): void {
-    const e = new Error("[configstore] `del` method is deprecated - use `delete`");
-    logger.debug(e.stack);
-    return this.delete(key);
-  }
-}
-
-export const configstore = new CLIConfigstore(pkg.name);
+export const configstore = new Configstore(pkg.name);

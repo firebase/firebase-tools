@@ -229,10 +229,10 @@ var _logoutCurrentSession = function(refreshToken) {
   var tokens = configstore.get("tokens");
   var currentToken = _.get(tokens, "refresh_token");
   if (refreshToken === currentToken) {
-    configstore.del("user");
-    configstore.del("tokens");
-    configstore.del("usage");
-    configstore.del("analytics-uuid");
+    configstore.delete("user");
+    configstore.delete("tokens");
+    configstore.delete("usage");
+    configstore.delete("analytics-uuid");
   }
 };
 
