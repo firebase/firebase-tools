@@ -101,16 +101,17 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 
     utils.logLabeledSuccess(
       logPrefix,
-      `successfully installed ${clc.bold(spec.displayName || spec.name)}, ` +
-        `its Instance ID is ${clc.bold(instanceId)}.`
+      `Successfully installed your instance of ${clc.bold(spec.displayName || spec.name)}! ` +
+        `Its Instance ID is ${clc.bold(instanceId)}.`
     );
     utils.logLabeledBullet(
       logPrefix,
       marked(
-        `View your new instance in the Firebase console: ${utils.consoleUrl(
-          projectId,
-          `/extensions/instances/${instanceId}?tab=usage`
-        )}`
+        "Go to the Firebase console to view instructions for using your extension, " +
+          `which may include some required post-installation tasks: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=usage`
+          )}`
       )
     );
     logger.info(
