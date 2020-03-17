@@ -14,7 +14,17 @@ function expandErrors(logger) {
   return logger;
 }
 
-const logger = expandErrors(new winston.Logger());
+const logger = expandErrors(winston.createLogger());
+
+logger.tryStringify = (value) => {
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+};
 
 const debug = logger.debug;
 logger.debug = function(...args) {
@@ -23,5 +33,4 @@ logger.debug = function(...args) {
 };
 
 logger.exitOnError = false;
-
 module.exports = logger;
