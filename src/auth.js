@@ -11,7 +11,7 @@ var portfinder = require("portfinder");
 var url = require("url");
 
 var api = require("./api");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var { prompt } = require("./prompt");

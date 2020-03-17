@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
-import * as configstore from "../../../configstore";
+import { configstore } from "../../../configstore";
 
 import { doSetup, ProjectInfo } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
