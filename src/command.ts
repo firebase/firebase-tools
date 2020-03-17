@@ -12,6 +12,7 @@ import * as configstore from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import logger = require("./logger");
 import track = require("./track");
+const ansiStrip = require("cli-color/strip");
 
 type ActionFunction = (...args: any[]) => any;
 
@@ -218,12 +219,26 @@ export class Command {
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
     } else {
-      logger.add(
-        new winston.transports.Console({
-          level: process.env.DEBUG ? "debug" : "info",
-          format: winston.format.printf((info) => [info.message, ...(info[SPLAT] || [])].join(" ")),
-        })
-      );
+      if (process.env.DEBUG) {
+        logger.add(
+          new winston.transports.Console({
+            level: "debug",
+            format: winston.format.printf((info) => {
+              const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
+              return `${ansiStrip(segments.join(" "))}`;
+            }),
+          })
+        );
+      } else {
+        logger.add(
+          new winston.transports.Console({
+            level: "info",
+            format: winston.format.printf((info) =>
+              [info.message, ...(info[SPLAT] || [])].join(" ")
+            ),
+          })
+        );
+      }
     }
 
     try {

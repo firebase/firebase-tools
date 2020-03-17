@@ -16,6 +16,16 @@ function expandErrors(logger) {
 
 const logger = expandErrors(winston.createLogger());
 
+logger.tryStringify = (value) => {
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
 const debug = logger.debug;
 logger.debug = function(...args) {
   args[0] = "[" + new Date().toISOString() + "] " + (args[0] || "");
@@ -23,5 +33,4 @@ logger.debug = function(...args) {
 };
 
 logger.exitOnError = false;
-
 module.exports = logger;

@@ -43,26 +43,14 @@ if (!process.env.DEBUG && _.includes(args, "--debug")) {
   process.env.DEBUG = true;
 }
 
-function tryStringify(value) {
-  if (typeof value === "string") return value;
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return value;
-  }
-}
-
 logger.add(
   new winston.transports.File({
     level: "debug",
     filename: logFilename,
-    format: winston.format.printf(
-      (info) =>
-        `[${info.level}] ${ansiStrip(
-          [info.message, ...(info[SPLAT] || [])].map(tryStringify).join(" ")
-        )}`
-    ),
+    format: winston.format.printf((info) => {
+      const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
+      return `[${info.level}] ${ansiStrip(segments.join(" "))}`;
+    }),
   })
 );
 
