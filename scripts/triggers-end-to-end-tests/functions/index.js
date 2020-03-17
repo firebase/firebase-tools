@@ -20,6 +20,7 @@ const START_DOCUMENT_NAME = "test/start";
 const END_DOCUMENT_NAME = "test/done";
 
 const PUBSUB_TOPIC = "test-topic";
+const PUBSUB_SCHEDULED_TOPIC = "firebase-schedule-pubsubScheduled";
 
 const pubsub = new PubSub();
 admin.initializeApp();
@@ -63,6 +64,15 @@ exports.writeToPubsub = functions.https.onRequest(async (req, res) => {
   res.json({ published: "ok" });
 });
 
+exports.writeToScheduledPubsub = functions.https.onRequest(async (req, res) => {
+  const msg = await pubsub
+    .topic(PUBSUB_SCHEDULED_TOPIC)
+    .publishJSON({ foo: "bar" }, { attr: "val" });
+  console.log("PubSub Emulator Host", process.env.PUBSUB_EMULATOR_HOST);
+  console.log("Wrote Scheduled PubSub Message", msg);
+  res.json({ published: "ok" });
+});
+
 exports.firestoreReaction = functions.firestore
   .document(START_DOCUMENT_NAME)
   .onWrite(async (/* change, ctx */) => {
@@ -103,5 +113,11 @@ exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* 
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Message", JSON.stringify(msg.json));
   console.log("Attributes", JSON.stringify(msg.attributes));
+  return true;
+});
+
+exports.pubsubScheduled = functions.pubsub.schedule("every mon 07:00").onRun((context) => {
+  console.log(PUBSUB_FUNCTION_LOG);
+  console.log("Resource", JSON.stringify(context.resource));
   return true;
 });

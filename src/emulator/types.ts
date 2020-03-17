@@ -11,12 +11,12 @@ export enum Emulators {
   GUI = "gui",
 }
 
-export type JavaEmulators =
+export type DownloadableEmulators =
   | Emulators.FIRESTORE
   | Emulators.DATABASE
   | Emulators.PUBSUB
   | Emulators.GUI;
-export const JAVA_EMULATORS = [
+export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
@@ -39,8 +39,8 @@ export const EMULATORS_SUPPORTED_BY_GUI = [Emulators.DATABASE];
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [Emulators.HUB, Emulators.GUI, ...ALL_SERVICE_EMULATORS];
 
-export function isJavaEmulator(value: string): value is JavaEmulators {
-  return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;
+export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
+  return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
 }
 
 export function isEmulator(value: string): value is Emulators {
@@ -84,7 +84,7 @@ export interface EmulatorInfo {
   port: number;
 }
 
-export interface JavaEmulatorCommand {
+export interface DownloadableEmulatorCommand {
   binary: string;
   args: string[];
   optionalArgs: string[];
@@ -117,7 +117,7 @@ export interface EmulatorDownloadDetails {
   binaryPath?: string;
 }
 
-export interface JavaEmulatorDetails {
+export interface DownloadableEmulatorDetails {
   name: Emulators;
   instance: ChildProcess | null;
   stdout: any | null;
