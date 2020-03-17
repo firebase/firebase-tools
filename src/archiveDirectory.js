@@ -132,7 +132,7 @@ const _zipDirectory = (sourceDirectory, tempFile, options) => {
     .readdirRecursive({ path: sourceDirectory, ignore: options.ignore })
     .catch((err) => {
       if (err.code === "ENOENT") {
-        return utils.reject(`Could not read directory "${sourceDirectory}"`, { origional: err });
+        return utils.reject(`Could not read directory "${sourceDirectory}"`, { original: err });
       }
       throw err;
     })

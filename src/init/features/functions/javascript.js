@@ -47,6 +47,6 @@ module.exports = function(setup, config) {
       return config.askWriteProjectFile("functions/.gitignore", GITIGNORE_TEMPLATE);
     })
     .then(function() {
-      return npmDependencies.askInstallDependencies(setup, config);
+      return npmDependencies.askInstallDependencies(setup.functions, config);
     });
 };

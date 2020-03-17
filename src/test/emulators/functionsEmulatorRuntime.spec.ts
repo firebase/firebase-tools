@@ -283,7 +283,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
       it("should expose Firestore prod when the emulator is not running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
-        frb.ports = {};
+        frb.emulators = {};
 
         const worker = InvokeRuntimeWithFunctions(frb, () => {
           const admin = require("firebase-admin");
@@ -306,8 +306,11 @@ describe("FunctionsEmulator-Runtime", () => {
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
-        frb.ports = {
-          firestore: 9090,
+        frb.emulators = {
+          firestore: {
+            host: "localhost",
+            port: 9090,
+          },
         };
 
         const worker = InvokeRuntimeWithFunctions(frb, () => {
@@ -331,7 +334,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
       it("should expose RTDB prod when the emulator is not running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
-        frb.ports = {};
+        frb.emulators = {};
 
         const worker = InvokeRuntimeWithFunctions(frb, () => {
           const admin = require("firebase-admin");
@@ -356,8 +359,11 @@ describe("FunctionsEmulator-Runtime", () => {
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
-        frb.ports = {
-          database: 9090,
+        frb.emulators = {
+          database: {
+            host: "localhost",
+            port: 9090,
+          },
         };
 
         const worker = InvokeRuntimeWithFunctions(frb, () => {
