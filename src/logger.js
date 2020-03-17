@@ -24,7 +24,7 @@ logger.tryStringify = (value) => {
   } catch {
     return value;
   }
-}
+};
 
 const debug = logger.debug;
 logger.debug = function(...args) {

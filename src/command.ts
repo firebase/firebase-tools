@@ -12,12 +12,14 @@ import * as configstore from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import logger = require("./logger");
 import track = require("./track");
-const ansiStrip = require("cli-color/strip");
+const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
 
 interface BeforeFunction {
   fn: ActionFunction;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[];
 }
 
@@ -33,6 +35,7 @@ interface CLIClient {
 export class Command {
   private name = "";
   private descriptionText = "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
   private actionFn: ActionFunction = (): void => {};
   private befores: BeforeFunction[] = [];
@@ -65,6 +68,7 @@ export class Command {
    * @param args the commander-style option definition.
    * @return the command, for chaining.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   option(...args: any[]): Command {
     this.options.push(args);
     return this;
@@ -76,6 +80,7 @@ export class Command {
    * @param args arguments, as an array, for the function.
    * @return the command, for chaining.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   before(fn: ActionFunction, ...args: any[]): Command {
     this.befores.push({ fn: fn, args: args });
     return this;
@@ -132,6 +137,7 @@ export class Command {
 
     // args is an array of all the arguments provided for the command PLUS the
     // options object as provided by Commander (on the end).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cmd.action((...args: any[]) => {
       const runner = this.runner();
       const start = new Date().getTime();
@@ -200,6 +206,7 @@ export class Command {
    * Extends the options with various properties for use in commands.
    * @param options the command options object.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private prepare(options: any): void {
     options = options || {};
     options.project = getInheritedOption(options, "project");
@@ -255,6 +262,7 @@ export class Command {
    * Apply configuration from .firebaserc files in the working directory tree.
    * @param options the command options object.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private applyRC(options: any): void {
     const rc = load(options.cwd);
     options.rc = rc;
@@ -282,7 +290,9 @@ export class Command {
    * command's action function.
    * @return an async function that executes the command.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   runner(): (...a: any[]) => Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // always provide at least an empty object for options
       if (args.length === 0) {
