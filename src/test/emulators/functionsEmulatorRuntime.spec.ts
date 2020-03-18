@@ -208,79 +208,6 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
-      it("should provide a stubbed Firestore through admin.firestore()", async () => {
-        const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          const admin = require("firebase-admin");
-          admin.initializeApp();
-          const firestore = admin.firestore();
-
-          // Need to use the Firestore object in order to trigger init.
-          const ref = firestore.collection("foo").doc("bar");
-
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                return true;
-              }),
-          };
-        });
-
-        const logs = await _countLogEntries(worker);
-        expect(logs["set-firestore-settings"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
-
-      it("should provide a stubbed Firestore through app.firestore()", async () => {
-        const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          const admin = require("firebase-admin");
-          const app = admin.initializeApp();
-          const firestore = app.firestore();
-
-          // Need to use the Firestore object in order to trigger init.
-          const ref = firestore.collection("foo").doc("bar");
-
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                return true;
-              }),
-          };
-        });
-
-        const logs = await _countLogEntries(worker);
-        expect(logs["set-firestore-settings"]).to.eq(1);
-      }).timeout(TIMEOUT_MED);
-
-      it("should provide the same stubs through admin-global or through the default app", async () => {
-        const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onRequest, () => {
-          const admin = require("firebase-admin");
-          const app = admin.initializeApp();
-
-          return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                appFirestoreSettings: app.firestore()._settings,
-                adminFirestoreSettings: admin.firestore()._settings,
-                appDatabaseRef: app
-                  .database()
-                  .ref()
-                  .toString(),
-                adminDatabaseRef: admin
-                  .database()
-                  .ref()
-                  .toString(),
-              });
-            }),
-          };
-        });
-
-        const data = await CallHTTPSFunction(worker, FunctionRuntimeBundles.onRequest);
-        const info = JSON.parse(data);
-        expect(info.appFirestoreSettings).to.deep.eq(info.adminFirestoreSettings);
-        expect(info.appDatabaseRef).to.eq(info.adminDatabaseRef);
-      }).timeout(TIMEOUT_MED);
-
       it("should expose Firestore prod when the emulator is not running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
         frb.emulators = {};
@@ -302,6 +229,31 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.projectId).to.eql("fake-project-id");
         expect(info.servicePath).to.be.undefined;
         expect(info.port).to.be.undefined;
+      }).timeout(TIMEOUT_MED);
+
+      it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        frb.emulators = {
+          firestore: {
+            host: "localhost",
+            port: 9090,
+          },
+        };
+
+        const worker = InvokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                var: process.env.FIRESTORE_EMULATOR_HOST,
+              });
+            }),
+          };
+        });
+
+        const data = await CallHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+
+        expect(res.var).to.eql("localhost:9090");
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
@@ -357,6 +309,31 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.url).to.eql("https://fake-project-id.firebaseio.com/");
       }).timeout(TIMEOUT_MED);
 
+      it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        frb.emulators = {
+          database: {
+            host: "localhost",
+            port: 9000,
+          },
+        };
+
+        const worker = InvokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({
+                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+              });
+            }),
+          };
+        });
+
+        const data = await CallHTTPSFunction(worker, frb);
+        const res = JSON.parse(data);
+
+        expect(res.var).to.eql("localhost:9000");
+      }).timeout(TIMEOUT_MED);
+
       it("should expose a stubbed RTDB when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
         frb.emulators = {
@@ -385,29 +362,6 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await CallHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
-      }).timeout(TIMEOUT_MED);
-
-      it("should merge .settings() with emulator settings", async () => {
-        const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          const admin = require("firebase-admin");
-          admin.initializeApp();
-          admin.firestore().settings({
-            timestampsInSnapshots: true,
-          });
-
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              // tslint:disable-next-line:no-empty
-              .onCreate(async () => {}),
-          };
-        });
-
-        worker.runtime.events.on("log", (el: EmulatorLog) => {
-          expect(el.text.indexOf("You can only call settings() once")).to.eq(-1);
-        });
-
-        await worker.runtime.exit;
       }).timeout(TIMEOUT_MED);
 
       it("should merge .initializeApp arguments from user", async () => {
