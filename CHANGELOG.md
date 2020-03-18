@@ -1,1 +1,1 @@
-* Updated `minimist` dependency to fix security vulnerability.
+* Release RTDB Emulator v4.4.1: Bugfix for unreleased feature.
