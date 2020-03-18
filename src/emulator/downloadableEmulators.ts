@@ -58,9 +58,11 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-v0.0.4.zip",
-      expectedSize: 2780400,
-      expectedChecksum: "0b41b098f577f7cd8a6ad68416d20e62",
+      expectedSize: -1,
+      expectedChecksum: "",
       namePrefix: "gui",
+      skipChecksumAndSize: true,
+      skipCache: true,
     },
   },
   pubsub: {
@@ -319,7 +321,7 @@ export async function start(
   const downloadDetails = DownloadDetails[targetName];
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(getExecPath(targetName));
-  if (!hasEmulator) {
+  if (!hasEmulator || downloadDetails.opts.skipCache) {
     if (args.auto_download) {
       if (process.env.CI) {
         utils.logWarning(

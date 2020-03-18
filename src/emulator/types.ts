@@ -99,6 +99,8 @@ export interface EmulatorDownloadOptions {
   expectedSize: number;
   expectedChecksum: string;
   namePrefix: string;
+  skipChecksumAndSize?: boolean;
+  skipCache?: boolean;
 }
 
 export interface EmulatorDownloadDetails {
