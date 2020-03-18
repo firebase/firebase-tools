@@ -13,6 +13,7 @@ import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as getProjectId from "../getProjectId";
+import { EmulatorHub } from "./hub";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -110,6 +111,13 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
+  }
+
+  const hubInstance = EmulatorRegistry.get(Emulators.HUB);
+  if (hubInstance) {
+    const info = hubInstance.getInfo();
+    const address = `${info.host}:${info.port}`;
+    env[EmulatorHub.EMULATOR_HUB_ENV] = address;
   }
 
   const proc = childProcess.spawn(script, {
