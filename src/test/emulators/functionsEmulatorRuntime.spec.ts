@@ -231,7 +231,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.port).to.be.undefined;
       }).timeout(TIMEOUT_MED);
 
-      it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async() => {
+      it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
         frb.emulators = {
           firestore: {
@@ -244,7 +244,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                var: process.env.FIRESTORE_EMULATOR_HOST
+                var: process.env.FIRESTORE_EMULATOR_HOST,
               });
             }),
           };
@@ -309,7 +309,7 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.url).to.eql("https://fake-project-id.firebaseio.com/");
       }).timeout(TIMEOUT_MED);
 
-      it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async() => {
+      it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
         const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
         frb.emulators = {
           database: {
@@ -322,7 +322,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST
+                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
               });
             }),
           };
