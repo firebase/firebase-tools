@@ -43,6 +43,8 @@ if (!process.env.DEBUG && _.includes(args, "--debug")) {
   process.env.DEBUG = true;
 }
 
+process.env.IS_FIREBASE_CLI = true;
+
 logger.add(
   new winston.transports.File({
     level: "debug",
