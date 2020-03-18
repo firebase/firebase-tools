@@ -70,12 +70,7 @@ export interface FunctionsRuntimeBundle {
 }
 
 export interface FunctionsRuntimeFeatures {
-  functions_config_helper?: boolean;
-  network_filtering?: boolean;
   timeout?: boolean;
-  memory_limiting?: boolean;
-  admin_stubs?: boolean;
-  pubsub_emulator?: boolean;
 }
 
 const memoryLookup = {
