@@ -17,9 +17,7 @@ function expandErrors(logger) {
 const logger = expandErrors(winston.createLogger());
 
 // Set a default silent logger to suppress logs during tests
-logger.add(
-  new winston.transports.Console({ silent: true })
-);
+logger.add(new winston.transports.Console({ silent: true }));
 
 logger.tryStringify = (value) => {
   if (typeof value === "string") return value;
