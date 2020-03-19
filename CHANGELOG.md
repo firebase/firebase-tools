@@ -1,3 +1,4 @@
-* **BREAKING:** Remove `firebase list` command.
-* **BREAKING:** Remove `firebase tools:migrate` command.
-* **BREAKING:** Remove `firebase setup:web` command.
+- **BREAKING:** Remove `firebase list` command.
+- **BREAKING:** Remove `firebase tools:migrate` command.
+- **BREAKING:** Remove `firebase setup:web` command.
+- **BREAKING:** Remove support for top-level `hosting` config.

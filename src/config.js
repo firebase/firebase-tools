@@ -52,11 +52,6 @@ var Config = function(src, options) {
   ) {
     this.set("functions.source", "functions");
   }
-
-  // use 'public' as signal for legacy hosting since it's a required key
-  if (!this.data.hosting && this._src.public) {
-    this.importLegacyHostingKeys();
-  }
 };
 
 Config.FILENAME = "firebase.json";
@@ -68,30 +63,6 @@ Config.MATERIALIZE_TARGETS = [
   "hosting",
   "storage",
 ];
-Config.LEGACY_HOSTING_KEYS = [
-  "public",
-  "rewrites",
-  "redirects",
-  "headers",
-  "ignore",
-  "cleanUrls",
-  "trailingSlash",
-];
-
-Config.prototype.importLegacyHostingKeys = function() {
-  var found = false;
-  Config.LEGACY_HOSTING_KEYS.forEach(function(key) {
-    if (_.has(this._src, key)) {
-      found = true;
-      this.set("hosting." + key, this._src[key]);
-    }
-  }, this);
-  if (found) {
-    utils.logWarning(
-      'Deprecation Warning: Firebase Hosting configuration should be moved under "hosting" key.'
-    );
-  }
-};
 
 Config.prototype._hasDeepKey = function(obj, key) {
   if (_.has(obj, key)) {
