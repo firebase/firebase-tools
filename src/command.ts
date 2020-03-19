@@ -223,6 +223,7 @@ export class Command {
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
     }
+
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
     } else {
@@ -236,7 +237,7 @@ export class Command {
             }),
           })
         );
-      } else {
+      } else if (process.env.IS_FIREBASE_CLI) {
         logger.add(
           new winston.transports.Console({
             level: "info",
