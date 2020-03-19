@@ -1036,7 +1036,7 @@ async function invokeTrigger(
         "runtime-status",
         `Your function timed out after ~${trigger.definition.timeout ||
           "60s"}. To configure this timeout, see
-      https:// firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
+      https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");
     }, trigger.timeoutMs);
