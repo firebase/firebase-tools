@@ -33,12 +33,9 @@ export function functionsDirectoryExists(cwd: string, sourceDirName: string): vo
  */
 export function functionNamesAreValid(functionNames: {}): void {
   const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
-  const invalidNames = _.reject(
-    _.keys(functionNames),
-    (name: string): boolean => {
-      return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
-    }
-  );
+  const invalidNames = _.reject(_.keys(functionNames), (name: string): boolean => {
+    return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
+  });
   if (!_.isEmpty(invalidNames)) {
     const msg =
       `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
@@ -71,9 +68,7 @@ export function packageJsonIsValid(
     assertFunctionsSourcePresent(data, sourceDir, projectDir);
     assertEnginesFieldPresent(data, sourceDirName);
   } catch (e) {
-    const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${
-      e.message
-    }`;
+    const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
     throw new FirebaseError(msg);
   }
 }

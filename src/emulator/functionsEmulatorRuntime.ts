@@ -530,9 +530,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   // Configuration for talking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
   if (frb.emulators.database) {
-    databaseConfig.databaseURL = `http://${frb.emulators.database.host}:${
-      frb.emulators.database.port
-    }?ns=${frb.projectId}`;
+    databaseConfig.databaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${frb.projectId}`;
     databaseConfig.credential = makeFakeCredentials();
   }
 
@@ -571,9 +569,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         new EmulatorLog(
           "WARN_ONCE",
           "runtime-status",
-          `You're using firebase-functions v${
-            functionsResolution.version
-          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`
+          `You're using firebase-functions v${functionsResolution.version}, please upgrade to firebase-functions v3.3.0 or higher for best results.`
         ).log();
       }
 
@@ -769,9 +765,7 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   // TODO(samstern): This should be done for RTDB as well but it's hard
   // because the convention in prod is subdomain not ?ns=
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${
-      frb.emulators.firestore.port
-    }`;
+    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
@@ -1086,9 +1080,7 @@ async function initializeRuntime(
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 

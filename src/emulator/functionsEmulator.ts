@@ -152,9 +152,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/${
-      this.args.projectId
-    }/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/${this.args.projectId}/triggers/:trigger_name`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -334,9 +332,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
-        const msg = `function ignored because the ${
-          result.type
-        } emulator does not exist or is not running.`;
+        const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
         EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
@@ -400,9 +396,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       EmulatorLogger.log(
         "WARN",
-        `No project in use. Registering function trigger for sentinel namespace '${
-          Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-        }'`
+        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
       );
     }
 
@@ -776,14 +770,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // Pipe the incoming request over the socket.
-    req
-      .pipe(
-        runtimeReq,
-        { end: true }
-      )
-      .on("error", () => {
-        res.end();
-      });
+    req.pipe(runtimeReq, { end: true }).on("error", () => {
+      res.end();
+    });
 
     await worker.waitForDone();
   }
