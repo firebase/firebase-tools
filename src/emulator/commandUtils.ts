@@ -5,7 +5,7 @@ import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import requireAuth = require("../requireAuth");
+import { requireAuth } from "../requireAuth";
 import requireConfig = require("../requireConfig");
 import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";

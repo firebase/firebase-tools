@@ -18,8 +18,6 @@ module.exports = function(context, options) {
       throw new FirebaseError("Cannot specify --public option with multi-site configuration.");
     }
 
-    // trigger legacy key import since public may not exist in firebase.json
-    options.config.importLegacyHostingKeys();
     options.config.set("hosting.public", options.public);
   }
 

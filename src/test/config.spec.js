@@ -11,62 +11,6 @@ var _fixtureDir = function(name) {
 };
 
 describe("Config", function() {
-  describe("#new", function() {
-    it("should hoist legacy hosting keys", function() {
-      var config = new Config(
-        {
-          name: "throwaway",
-          public: "public",
-          ignore: ["**/.*"],
-          rewrites: [],
-          redirects: [],
-          headers: [],
-        },
-        {}
-      );
-
-      expect(config.data.hosting).to.have.property("public", "public");
-      expect(config.data.hosting).to.have.property("ignore");
-      expect(config.data.hosting).to.have.property("rewrites");
-      expect(config.data.hosting).to.have.property("redirects");
-      expect(config.data.hosting).to.have.property("headers");
-    });
-
-    it("should not hoist if hosting key is present", function() {
-      var config = new Config(
-        {
-          name: "throwaway",
-          hosting: { public: "." },
-          rewrites: [],
-        },
-        {}
-      );
-
-      expect(config.data.hosting).to.have.property("public", ".");
-      expect(config.data.hosting).not.to.have.property("rewrites");
-    });
-  });
-
-  describe("#importLegacyHostingKeys", function() {
-    it("should respect non-overlapping keys in hosting", function() {
-      var redirects = [{ source: "/foo", destination: "/bar.html", type: 301 }];
-      var rewrites = [{ source: "**", destination: "/index.html" }];
-      var config = new Config(
-        {
-          rewrites: rewrites,
-          hosting: {
-            redirects: redirects,
-          },
-        },
-        {}
-      );
-
-      config.importLegacyHostingKeys();
-      expect(config.get("hosting.redirects")).to.eq(redirects);
-      expect(config.get("hosting.rewrites")).to.eq(rewrites);
-    });
-  });
-
   describe("#_parseFile", function() {
     it("should load a cjson file", function() {
       var config = new Config({}, { cwd: _fixtureDir("config-imports") });
