@@ -598,7 +598,7 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     }`;
   }
 
-  if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+  if (frb.emulators.pubsub) {
     const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
@@ -906,20 +906,10 @@ async function initializeRuntime(
     ).log();
   }
 
-  if (isFeatureEnabled(frb, "network_filtering")) {
-    initializeNetworkFiltering(frb);
-  }
-
-  if (isFeatureEnabled(frb, "functions_config_helper")) {
-    await initializeFunctionsConfigHelper(frb.cwd);
-  }
-
-  // TODO: Should this feature have a flag as well or is it required?
+  initializeNetworkFiltering(frb);
+  await initializeFunctionsConfigHelper(frb.cwd);
   await initializeFirebaseFunctionsStubs(frb);
-
-  if (isFeatureEnabled(frb, "admin_stubs")) {
-    await initializeFirebaseAdminStubs(frb);
-  }
+  await initializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];
