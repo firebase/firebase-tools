@@ -3,6 +3,7 @@
 var _ = require("lodash");
 var querystring = require("querystring");
 var request = require("request");
+var url = require('url');
 
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
@@ -253,8 +254,11 @@ var api = {
     };
 
     var secureRequest = true;
-    if (options.origin && options.origin.startsWith("http://")) {
-      secureRequest = false;
+    if (options.origin) {
+      // Only 'https' requests are secure. Protocol includes the final ':'
+      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
+      const originUrl = url.parse(options.origin);
+      secureRequest = originUrl.protocol === "https:";
     }
 
     if (options.auth === true) {
