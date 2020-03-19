@@ -211,7 +211,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         chunks = hierarchy;
       }
       const packagePath = path.join(chunks.join(path.sep), "package.json");
-      const serializedPackage = fs.readFileSync(packagePath).toString();
+      const serializedPackage = fs.readFileSync(packagePath, "utf8").toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");
       }
