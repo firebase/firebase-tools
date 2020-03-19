@@ -190,7 +190,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME)).toString()
+      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
     ) as ExportMetadata;
   }
 
