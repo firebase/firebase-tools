@@ -24,6 +24,23 @@ const functionsEmulator = new FunctionsEmulator({
 // This is normally discovered in FunctionsEmulator#start()
 functionsEmulator.nodeBinary = process.execPath;
 
+functionsEmulator.setTriggersForTesting([
+  {
+    name: "function_id",
+    entryPoint: "function_id",
+    httpsTrigger: {},
+    labels: {},
+  },
+  {
+    name: "callable_function_id",
+    entryPoint: "callable_function_id",
+    httpsTrigger: {},
+    labels: {
+      "deployment-callable": "true",
+    },
+  },
+]);
+
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
 function UseFunctions(triggers: () => {}): void {
@@ -197,6 +214,45 @@ describe("FunctionsEmulator-Hub", () => {
       .expect(200)
       .then((res) => {
         expect(res.body).to.deep.equal({ hello: "world" });
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should override callable auth", async () => {
+    UseFunctions(() => {
+      return {
+        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+          return {
+            auth: ctx.auth,
+          };
+        }),
+      };
+    });
+
+    // For token info:
+    // https://jwt.io/#debugger-io?token=eyJhbGciOiJub25lIiwia2lkIjoiZmFrZWtpZCJ9.eyJ1aWQiOiJhbGljZSIsImVtYWlsIjoiYWxpY2VAZXhhbXBsZS5jb20iLCJpYXQiOjAsInN1YiI6ImFsaWNlIn0.
+    await supertest(functionsEmulator.createHubServer())
+      .post("/fake-project-id/us-central1/callable_function_id")
+      .set({
+        "Content-Type": "application/json",
+        Authorization:
+          "Bearer eyJhbGciOiJub25lIiwia2lkIjoiZmFrZWtpZCJ9.eyJ1aWQiOiJhbGljZSIsImVtYWlsIjoiYWxpY2VAZXhhbXBsZS5jb20iLCJpYXQiOjAsInN1YiI6ImFsaWNlIn0.",
+      })
+      .send({ data: {} })
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({
+          result: {
+            auth: {
+              token: {
+                email: "alice@example.com",
+                iat: 0,
+                sub: "alice",
+                uid: "alice",
+              },
+              uid: "alice",
+            },
+          },
+        });
       });
   }).timeout(TIMEOUT_LONG);
 });

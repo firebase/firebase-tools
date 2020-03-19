@@ -473,6 +473,29 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
     return httpsProvider[methodName](handler, {});
   };
+
+  const onCallOriginal = httpsProvider.onCall;
+  httpsProvider.onCall = (handler: (data: any, context: any) => any | Promise<any>) => {
+    // Look for a special header provided by the functions emulator that lets us mock out
+    // callable functions auth.
+    const authContextHeaderKey = "X-Callable-Context-Auth";
+    const newHandler = (data: any, context: any) => {
+      if (context.rawRequest) {
+        const authContext = context.rawRequest.header(authContextHeaderKey);
+        if (authContext) {
+          logDebug("Callable functions auth override", {
+            key: authContextHeaderKey,
+            value: authContext,
+          });
+          context.auth = JSON.parse(authContext);
+        }
+      }
+
+      return handler(data, context);
+    };
+
+    return onCallOriginal(newHandler);
+  };
 }
 
 /*

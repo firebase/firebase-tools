@@ -92,6 +92,7 @@ interface RequestWithRawBody extends express.Request {
 interface TriggerDescription {
   name: string;
   type: string;
+  labels?: { [key: string]: any };
   details?: string;
   ignored?: boolean;
 }
@@ -293,6 +294,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           triggerResults.push({
             name: definition.name,
             type: "http",
+            labels: definition.labels,
             details: url,
           });
         } else {
@@ -300,6 +302,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           const result: TriggerDescription = {
             name: definition.name,
             type: Constants.getServiceName(service),
+            labels: definition.labels,
           };
 
           let added = false;
@@ -520,6 +523,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     throw new FirebaseError(`No trigger with name ${triggerId}`);
   }
 
+  setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
+    this.triggers = triggers;
+  }
+
   getBaseBundle(): FunctionsRuntimeBundle {
     return {
       cwd: this.args.functionsDir,
@@ -691,13 +698,55 @@ export class FunctionsEmulator implements EmulatorInstance {
     return res.json({ status: "acknowledged" });
   }
 
+  private tokenFromAuthHeader(authHeader: string) {
+    const match = authHeader.match(/^Bearer (.*)$/);
+    if (!match) {
+      return undefined;
+    }
+
+    const idToken = match[1];
+    const tokenParts = idToken.split(".");
+
+    if (tokenParts.length < 2) {
+      return undefined;
+    }
+
+    try {
+      const encodedClaims = tokenParts[1];
+      const buff = new Buffer(encodedClaims, "base64");
+      const decodedClaimsText = buff.toString("ascii");
+      const claims = JSON.parse(decodedClaimsText);
+
+      return claims;
+    } catch (e) {
+      return undefined;
+    }
+  }
+
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
+    const trigger = this.getTriggerById(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
+
+    // For callable functions we want to accept tokens without actually calling verifyIdToken
+    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
+    const authHeader = req.header("Authorization");
+    if (authHeader && isCallable) {
+      const token = this.tokenFromAuthHeader(authHeader);
+      if (token) {
+        const contextAuth = {
+          uid: token.uid,
+          token: token,
+        };
+
+        delete req.headers["authorization"];
+        req.headers["X-Callable-Context-Auth"] = JSON.stringify(contextAuth);
+      }
+    }
 
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
 
