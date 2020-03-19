@@ -21,11 +21,8 @@ module.exports = async (name: DownloadableEmulator) => {
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
-
-  if (!emulator.opts.skipChecksumAndSize) {
-    await validateSize(tmpfile, emulator.opts.expectedSize);
-    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
-  }
+  await validateSize(tmpfile, emulator.opts.expectedSize);
+  await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
 
   fs.copySync(tmpfile, emulator.downloadPath);
 

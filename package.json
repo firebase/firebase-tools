@@ -66,7 +66,6 @@
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
     "@types/js-yaml": "^3.12.2",
-    "@types/ws": "^7.2.3",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
@@ -113,8 +112,7 @@
     "unzipper": "^0.10.10",
     "update-notifier": "^2.5.0",
     "uuid": "^3.0.0",
-    "winston": "^3.0.0",
-    "ws": "^7.2.3"
+    "winston": "^3.0.0"
   },
   "devDependencies": {
     "@types/body-parser": "^1.17.0",

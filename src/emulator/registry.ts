@@ -24,6 +24,7 @@ export class EmulatorRegistry {
 
     const info = instance.getInfo();
     await controller.waitForPortClosed(info.port, info.host);
+
     this.set(instance.getName(), instance);
 
     utils.logLabeledSuccess(

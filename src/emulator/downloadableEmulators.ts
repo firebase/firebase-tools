@@ -51,18 +51,16 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   gui: {
-    version: "0.0.0",
-    downloadPath: path.join(CACHE_DIR, "gui-vEAP.zip"),
-    unzipDir: path.join(CACHE_DIR, "gui-vEAP"),
-    binaryPath: path.join(CACHE_DIR, "gui-vEAP", `server.bundle.js`),
+    version: "0.0.1",
+    downloadPath: path.join(CACHE_DIR, "gui-v0.0.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "gui-v0.0.1"),
+    binaryPath: path.join(CACHE_DIR, "gui-v0.0.1", `server.bundle.js`),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-vEAP.zip",
-      expectedSize: -1,
-      expectedChecksum: "",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-v0.0.1.zip",
+      expectedSize: 1204964,
+      expectedChecksum: "52847b962bb66de639487d96a07a69d3",
       namePrefix: "gui",
-      skipChecksumAndSize: true,
-      skipCache: true,
     },
   },
   pubsub: {
@@ -321,7 +319,7 @@ export async function start(
   const downloadDetails = DownloadDetails[targetName];
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(getExecPath(targetName));
-  if (!hasEmulator || downloadDetails.opts.skipCache) {
+  if (!hasEmulator) {
     if (args.auto_download) {
       if (process.env.CI) {
         utils.logWarning(
