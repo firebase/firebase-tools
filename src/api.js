@@ -251,12 +251,22 @@ var api = {
     var requestFunction = function() {
       return _request(reqOptions, options.logOptions);
     };
+
+    var secureRequest = true;
+    if (options.origin && options.origin.startsWith("http://")) {
+      secureRequest = false;
+    }
+
     if (options.auth === true) {
-      requestFunction = function() {
-        return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-          return _request(reqOptionsWithToken, options.logOptions);
-        });
-      };
+      if (secureRequest) {
+        requestFunction = function() {
+          return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
+            return _request(reqOptionsWithToken, options.logOptions);
+          });
+        };
+      } else {
+        logger.debug(`Ignoring options.auth for insecure origin: ${options.origin}`);
+      }
     }
 
     return requestFunction().catch(function(err) {
