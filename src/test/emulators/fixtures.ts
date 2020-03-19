@@ -6,8 +6,11 @@ export const TIMEOUT_MED = 5000;
 export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
 export const FunctionRuntimeBundles = {
   onCreate: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
     cwd: MODULE_ROOT,
     proto: {
@@ -39,8 +42,11 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onWrite: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
     cwd: MODULE_ROOT,
     proto: {
@@ -72,8 +78,11 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onDelete: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
     cwd: MODULE_ROOT,
     proto: {
@@ -105,8 +114,11 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onUpdate: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
     cwd: MODULE_ROOT,
     proto: {
@@ -150,8 +162,11 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onRequest: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
     cwd: MODULE_ROOT,
     triggerId: "function_id",

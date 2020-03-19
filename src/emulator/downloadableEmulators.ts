@@ -27,26 +27,26 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.0.jar"),
-    version: "4.4.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.1.jar"),
+    version: "4.4.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.0.jar",
-      expectedSize: 27902850,
-      expectedChecksum: "c7f4dbe10951938074b20c20a6c9abd5",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.1.jar",
+      expectedSize: 27926960,
+      expectedChecksum: "ca39f25810a0943caec07fe6b8c1eb3e",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.4.jar"),
-    version: "1.10.4",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.1.jar"),
+    version: "1.11.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.4.jar",
-      expectedSize: 88950303,
-      expectedChecksum: "f551a9c1716cd412d04fc971ef3e945b",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.1.jar",
+      expectedSize: 63439953,
+      expectedChecksum: "aa9a62f7b586731ed7664ab42fd20038",
       namePrefix: "cloud-firestore-emulator",
     },
   },

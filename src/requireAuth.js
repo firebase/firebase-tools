@@ -5,7 +5,7 @@ var clc = require("cli-color");
 var autoAuth = require("google-auto-auth");
 
 var api = require("./api");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var utils = require("./utils");
