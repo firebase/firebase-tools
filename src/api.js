@@ -3,7 +3,7 @@
 var _ = require("lodash");
 var querystring = require("querystring");
 var request = require("request");
-var url = require('url');
+var url = require("url");
 
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
