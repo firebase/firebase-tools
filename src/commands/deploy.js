@@ -4,7 +4,6 @@ var _ = require("lodash");
 
 var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
-var checkDupHostingKeys = require("../checkDupHostingKeys");
 var checkValidTargetFilters = require("../checkValidTargetFilters");
 var checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
 var { Command } = require("../command");
@@ -68,7 +67,6 @@ module.exports = new Command("deploy")
       return requireInstance(options);
     }
   })
-  .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
   .before(checkFirebaseSDKVersion)
   .action(function(options) {

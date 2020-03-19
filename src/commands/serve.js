@@ -8,7 +8,6 @@ var logger = require("../logger");
 var utils = require("../utils");
 var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
-var checkDupHostingKeys = require("../checkDupHostingKeys");
 var { serve } = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
@@ -52,7 +51,6 @@ module.exports = new Command("serve")
     }
     return requireConfig(options)
       .then(() => requirePermissions(options))
-      .then(() => checkDupHostingKeys(options))
       .then(() => getProjectNumber(options));
   })
   .action((options) => {
