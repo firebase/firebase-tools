@@ -701,14 +701,14 @@ export class FunctionsEmulator implements EmulatorInstance {
   private tokenFromAuthHeader(authHeader: string) {
     const match = authHeader.match(/^Bearer (.*)$/);
     if (!match) {
-      return undefined;
+      return;
     }
 
     const idToken = match[1];
     const tokenParts = idToken.split(".");
 
     if (tokenParts.length < 2) {
-      return undefined;
+      return;
     }
 
     try {
@@ -719,7 +719,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       return claims;
     } catch (e) {
-      return undefined;
+      return;
     }
   }
 
