@@ -44,7 +44,7 @@ export class EmulatorHub implements EmulatorInstance {
       return undefined;
     }
 
-    const data = fs.readFileSync(locatorPath).toString();
+    const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
 
     if (locator.version !== this.CLI_VERSION) {
