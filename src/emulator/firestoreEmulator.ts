@@ -41,7 +41,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const issues = await this.updateRules(newContent);

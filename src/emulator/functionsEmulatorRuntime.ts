@@ -746,7 +746,7 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   // Look for .runtimeconfig.json in the functions directory
   const configPath = `${frb.cwd}/.runtimeconfig.json`;
   try {
-    const configContent = fs.readFileSync(configPath);
+    const configContent = fs.readFileSync(configPath, "utf8");
     if (configContent) {
       logDebug(`Found local functions config: ${configPath}`);
       process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
