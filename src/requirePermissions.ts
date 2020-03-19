@@ -3,7 +3,7 @@ import { bold } from "cli-color";
 
 import { request, resourceManagerOrigin } from "./api";
 import getProjectId = require("./getProjectId");
-import requireAuth = require("./requireAuth");
+import { requireAuth } from "./requireAuth";
 import { debug } from "./logger";
 import { FirebaseError } from "./error";
 
