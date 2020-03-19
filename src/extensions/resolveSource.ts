@@ -1,17 +1,33 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
 import { confirmUpdateWarning } from "./updateHelper";
+import * as logger from "../logger";
+import { promptOnce } from "../prompt";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
+const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
+  "open-alpha": marked(
+    `${clc.bold("Important")}: This extension is part of the ${clc.bold(
+      "preliminary-release program"
+    )} for extensions.\n Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/master/.preliminary-release-extensions`
+  ),
+  "closed-alpha": marked(
+    `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
+      "Firebase Alpha program"
+    )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
+  ),
+};
 
 export interface RegistryEntry {
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
   updateWarnings?: { [key: string]: UpdateWarning[] };
+  audience?: string;
 }
 
 export interface UpdateWarning {
@@ -21,15 +37,16 @@ export interface UpdateWarning {
 }
 
 /**
- * Gets the sourceUrl for a given extension name and version from the official extensions registry
- * @param version the version of the extension
+ * Gets the sourceUrl for a given extension name and version from a registry entry
+ * @param registryEntry the registry entry to look through.
  * @param name the name of the extension.
+ * @param version the version of the extension. Defaults to latest.
  * @returns the source corresponding to extensionName in the registry.
  */
 export function resolveSourceUrl(
   registryEntry: RegistryEntry,
   name: string,
-  version: string
+  version?: string
 ): string {
   const targetVersion = getTargetVersion(registryEntry, version);
   const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);
@@ -95,6 +112,23 @@ export async function promptForUpdateWarnings(
       }
     }
   }
+}
+
+/**
+ * Checks the audience field of a RegistryEntry, displays a warning text
+ * for closed and open alpha extensions, and prompts the user to accept.
+ */
+export async function promptForAudienceConsent(registryEntry: RegistryEntry): Promise<boolean> {
+  let consent = true;
+  if (registryEntry.audience && AUDIENCE_WARNING_MESSAGES[registryEntry.audience]) {
+    logger.info(AUDIENCE_WARNING_MESSAGES[registryEntry.audience]);
+    consent = await promptOnce({
+      type: "confirm",
+      message: "Do you acknowledge the status of this extension?",
+      default: true,
+    });
+  }
+  return consent;
 }
 
 /**

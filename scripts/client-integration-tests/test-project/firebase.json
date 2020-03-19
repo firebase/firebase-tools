@@ -1,0 +1,11 @@
+{
+  "hosting": [{
+    "target": "client-integration-site",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }]
+}
