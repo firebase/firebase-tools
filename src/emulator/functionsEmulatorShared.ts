@@ -23,6 +23,7 @@ export interface EmulatedTriggerDefinition {
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
+  labels?: { [key: string]: any };
 }
 
 export interface EventSchedule {

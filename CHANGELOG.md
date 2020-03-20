@@ -3,3 +3,4 @@
 * Fixes a bug where `.runtimeconfig.json` files were not properly detected (#1836).
 * Adds support for setting `maxInstances` in Cloud Functions for Firebase.
 * Fixes a bug where rules were sometimes read as blank after a file save (#1980).
+* Fixes an issue where callable functions with authentication could not be emulated (#1475).
