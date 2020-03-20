@@ -1,8 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import * as chai from "chai";
 import * as utils from "../utils";
-import * as runtime from "../runtimeChoiceSelector";
+import * as runtime from "../parseRuntimeAndValidateSDK";
 import { FirebaseError } from "../error";
 // have to require this because no @types/cjson available
 // tslint:disable-next-line

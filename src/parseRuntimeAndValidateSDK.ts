@@ -3,8 +3,10 @@ import * as path from "path";
 import * as clc from "cli-color";
 import * as semver from "semver";
 
+import { getFunctionsSDKVersion } from "./checkFirebaseSDKVersion";
 import { FirebaseError } from "./error";
 import * as utils from "./utils";
+import * as logger from "./logger";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -62,10 +64,14 @@ export function getRuntimeChoice(sourceDir: string): any {
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
   if (!engines || !engines.node) {
-    return null;
-    // TODO(b/129422952): Change to throw error instead of returning null
-    // when engines field in package.json becomes required:
-    // throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
+    // We should really never hit this, since deploy/functions/prepare already checked that package.json has an "engines" field.
+    throw new FirebaseError(
+      `Engines field is required but was not found in package.json.\n` +
+        `To fix this, add the following lines to your package.json: \n
+      "engines": {
+        "node": "8"
+      }\n`
+    );
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
   if (!runtime) {
@@ -74,19 +80,34 @@ export function getRuntimeChoice(sourceDir: string): any {
 
   if (runtime === "nodejs6") {
     utils.logWarning(DEPRECATION_WARNING_MSG);
+  } else if (runtime === "nodejs10") {
+    if (functionsSDKTooOld(sourceDir, ">=3.4")) {
+      throw new FirebaseError(
+        "You must have a " +
+          clc.bold("firebase-functions") +
+          " version that is at least " +
+          clc.bold("3.4.0") +
+          " in order to deploy functions to Node 10 runtime. Please run " +
+          clc.bold("npm i --save firebase-functions@latest") +
+          " in the functions folder."
+      );
+    }
   } else {
-    // for any other runtime (8 or 10)
-    if (functionsSDKTooOld(loaded)) {
+    if (functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
   }
   return runtime;
 }
 
-function functionsSDKTooOld(loaded: any): boolean {
-  const SDKRange = _.get(loaded, "dependencies.firebase-functions");
+async function functionsSDKTooOld(sourceDir: string, minRange: string): Promise<boolean> {
+  const userVersion = await getFunctionsSDKVersion(sourceDir);
+  if (!userVersion) {
+    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
+    return false;
+  }
   try {
-    if (!semver.intersects(SDKRange, ">=2")) {
+    if (!semver.intersects(userVersion, minRange)) {
       return true;
     }
   } catch (e) {

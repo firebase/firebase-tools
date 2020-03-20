@@ -6,7 +6,7 @@ var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var checkDupHostingKeys = require("../checkDupHostingKeys");
 var checkValidTargetFilters = require("../checkValidTargetFilters");
-var checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
+var checkSDKVersion = require("../checkFirebaseSDKVersion").checkSDKVersion;
 var { Command } = require("../command");
 var deploy = require("../deploy");
 var requireConfig = require("../requireConfig");
@@ -70,7 +70,7 @@ module.exports = new Command("deploy")
   })
   .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
-  .before(checkFirebaseSDKVersion)
+  .before(checkSDKVersion)
   .action(function(options) {
     return deploy(options.filteredTargets, options);
   });
