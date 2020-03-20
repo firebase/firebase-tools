@@ -30,7 +30,7 @@ const fsutils = require("../fsutils");
 const path = require("path");
 const clc = require("cli-color");
 const ansiStrip = require("cli-color/strip");
-const configstore = require("../configstore");
+const { configstore } = require("../configstore");
 const _ = require("lodash");
 let args = process.argv.slice(2);
 const handlePreviewToggles = require("../handlePreviewToggles");
@@ -95,7 +95,7 @@ process.on("exit", function(code) {
     }
     configstore.set("lastError", timestamp);
   } else {
-    configstore.del("lastError");
+    configstore.delete("lastError");
   }
 });
 require("exit-code");

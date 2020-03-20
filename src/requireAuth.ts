@@ -2,7 +2,7 @@ import { GoogleAuth, GoogleAuthOptions } from "google-auth-library";
 import * as clc from "cli-color";
 
 import * as api from "./api";
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import * as utils from "./utils";

@@ -169,7 +169,10 @@ describe("askUserForParam", () => {
 
   describe("getInquirerDefaults", () => {
     it("should return the label of the option whose value matches the default", () => {
-      const options = [{ label: "lab", value: "val" }, { label: "lab1", value: "val1" }];
+      const options = [
+        { label: "lab", value: "val" },
+        { label: "lab1", value: "val1" },
+      ];
       const def = "val1";
 
       const res = getInquirerDefault(options, def);

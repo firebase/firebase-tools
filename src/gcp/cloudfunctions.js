@@ -29,9 +29,13 @@ function _functionsOpLogReject(func, type, err) {
   );
 }
 
+/**
+ * @param projectId
+ * @param location
+ */
 function _generateUploadUrl(projectId, location) {
-  var parent = "projects/" + projectId + "/locations/" + location;
-  var endpoint = "/" + API_VERSION + "/" + parent + "/functions:generateUploadUrl";
+  const parent = "projects/" + projectId + "/locations/" + location;
+  const endpoint = "/" + API_VERSION + "/" + parent + "/functions:generateUploadUrl";
 
   return api
     .request("POST", endpoint, {
@@ -42,7 +46,7 @@ function _generateUploadUrl(projectId, location) {
     })
     .then(
       function(result) {
-        var responseBody = JSON.parse(result.body);
+        const responseBody = JSON.parse(result.body);
         return Promise.resolve(responseBody.uploadUrl);
       },
       function(err) {
@@ -54,11 +58,14 @@ function _generateUploadUrl(projectId, location) {
     );
 }
 
+/**
+ * @param options
+ */
 function _createFunction(options) {
-  var location = "projects/" + options.projectId + "/locations/" + options.region;
-  var func = location + "/functions/" + options.functionName;
-  var endpoint = "/" + API_VERSION + "/" + location + "/functions";
-  var data = {
+  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const func = location + "/functions/" + options.functionName;
+  const endpoint = "/" + API_VERSION + "/" + location + "/functions";
+  const data = {
     sourceUploadUrl: options.sourceUploadUrl,
     name: func,
     entryPoint: options.entryPoint,
@@ -70,6 +77,10 @@ function _createFunction(options) {
   }
   if (options.timeout) {
     data.timeout = options.timeout;
+  }
+
+  if (options.maxInstances) {
+    data.maxInstances = Number(options.maxInstances);
   }
 
   return api
@@ -103,9 +114,7 @@ function _createFunction(options) {
  * @param {*} options.policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
  */
 async function _setIamPolicy(options) {
-  const name = `projects/${options.projectId}/locations/${options.region}/functions/${
-    options.functionName
-  }`;
+  const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;
   const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
 
   try {
@@ -125,11 +134,14 @@ async function _setIamPolicy(options) {
   }
 }
 
+/**
+ * @param options
+ */
 function _updateFunction(options) {
-  var location = "projects/" + options.projectId + "/locations/" + options.region;
-  var func = location + "/functions/" + options.functionName;
-  var endpoint = "/" + API_VERSION + "/" + func;
-  var data = _.assign(
+  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const func = location + "/functions/" + options.functionName;
+  const endpoint = "/" + API_VERSION + "/" + func;
+  const data = _.assign(
     {
       sourceUploadUrl: options.sourceUploadUrl,
       name: func,
@@ -137,7 +149,7 @@ function _updateFunction(options) {
     },
     options.trigger
   );
-  var masks = ["sourceUploadUrl", "name", "labels"];
+  let masks = ["sourceUploadUrl", "name", "labels"];
 
   if (options.runtime) {
     data.runtime = options.runtime;
@@ -150,6 +162,10 @@ function _updateFunction(options) {
   if (options.timeout) {
     data.timeout = options.timeout;
     masks.push("timeout");
+  }
+  if (options.maxInstances) {
+    data.maxInstances = Number(options.maxInstances);
+    masks.push("maxInstances");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
@@ -186,10 +202,13 @@ function _updateFunction(options) {
     );
 }
 
+/**
+ * @param options
+ */
 function _deleteFunction(options) {
-  var location = "projects/" + options.projectId + "/locations/" + options.region;
-  var func = location + "/functions/" + options.functionName;
-  var endpoint = "/" + API_VERSION + "/" + func;
+  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const func = location + "/functions/" + options.functionName;
+  const endpoint = "/" + API_VERSION + "/" + func;
   return api
     .request("DELETE", endpoint, {
       auth: true,
@@ -210,8 +229,12 @@ function _deleteFunction(options) {
     );
 }
 
+/**
+ * @param projectId
+ * @param region
+ */
 function _listFunctions(projectId, region) {
-  var endpoint =
+  const endpoint =
     "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
   return api
     .request("GET", endpoint, {
@@ -227,7 +250,7 @@ function _listFunctions(projectId, region) {
           );
         }
 
-        var functionsList = resp.body.functions || [];
+        const functionsList = resp.body.functions || [];
         _.forEach(functionsList, function(f) {
           f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
         });
@@ -241,11 +264,17 @@ function _listFunctions(projectId, region) {
     );
 }
 
+/**
+ * @param projectId
+ */
 function _listAllFunctions(projectId) {
   // "-" instead of a region string lists functions in all regions
   return _listFunctions(projectId, "-");
 }
 
+/**
+ * @param operation
+ */
 function _checkOperation(operation) {
   return api
     .request("GET", "/" + API_VERSION + "/" + operation.name, {

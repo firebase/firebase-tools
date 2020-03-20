@@ -3,7 +3,7 @@
 import { unset, has } from "lodash";
 import { bold } from "cli-color";
 
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 import * as previews from "./previews";
 
 function _errorOut(name) {
