@@ -139,7 +139,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 export default new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided;" +
-    previews.extdev
+      previews.extdev
       ? "install a local extension if [localPathOrUrl] or [url#root] is provided;"
       : "" + "or run with `-i` to see all available extensions."
   )
