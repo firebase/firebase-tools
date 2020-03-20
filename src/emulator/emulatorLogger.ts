@@ -121,25 +121,19 @@ export class EmulatorLogger {
       case "googleapis-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Google API requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n   - Be careful, this may be a production service.`
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
         EmulatorLogger.log(
           "WARN",
-          `External network resource requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n - Be careful, this may be a production service.`
+          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
         EmulatorLogger.log(
           "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${
-            systemLog.data.valuePath
-          }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
@@ -164,21 +158,15 @@ export class EmulatorLogger {
       case "uninstalled-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed. This package is in your package.json, but it's not available. \
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
 You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be version >${systemLog.data.minVersion} so your version is too old. \
-You can probably fix this by running "npm install ${
-            systemLog.data.name
-          }@latest" in your functions directory.`
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion} so your version is too old. \
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":

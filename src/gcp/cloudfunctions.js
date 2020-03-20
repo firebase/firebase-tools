@@ -114,9 +114,7 @@ function _createFunction(options) {
  * @param {*} options.policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
  */
 async function _setIamPolicy(options) {
-  const name = `projects/${options.projectId}/locations/${options.region}/functions/${
-    options.functionName
-  }`;
+  const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;
   const endpoint = `/${API_VERSION}/${name}:setIamPolicy`;
 
   try {

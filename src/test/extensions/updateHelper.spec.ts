@@ -12,8 +12,14 @@ const SPEC = {
   description: "descriptive",
   version: "1.0.0",
   license: "MIT",
-  apis: [{ apiName: "api1", reason: "" }, { apiName: "api2", reason: "" }],
-  roles: [{ role: "role1", reason: "" }, { role: "role2", reason: "" }],
+  apis: [
+    { apiName: "api1", reason: "" },
+    { apiName: "api2", reason: "" },
+  ],
+  roles: [
+    { role: "role1", reason: "" },
+    { role: "role2", reason: "" },
+  ],
   resources: [
     { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
     { name: "resource2", type: "other", description: "" },
@@ -102,7 +108,10 @@ describe("updateHelper", () => {
     it("should prompt for changes to apis and continue if user gives consent", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
-      newSpec.apis = [{ apiName: "api2", reason: "" }, { apiName: "api3", reason: "" }];
+      newSpec.apis = [
+        { apiName: "api2", reason: "" },
+        { apiName: "api3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).not.to.be.rejected;
 
@@ -114,7 +123,10 @@ describe("updateHelper", () => {
     it("should prompt for changes to roles and continue if user gives consent", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
-      newSpec.roles = [{ role: "role2", reason: "" }, { role: "role3", reason: "" }];
+      newSpec.roles = [
+        { role: "role2", reason: "" },
+        { role: "role3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).not.to.be.rejected;
 
@@ -158,7 +170,10 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.license = "New";
-      newSpec.roles = [{ role: "role2", reason: "" }, { role: "role3", reason: "" }];
+      newSpec.roles = [
+        { role: "role2", reason: "" },
+        { role: "role3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).to.be.rejectedWith(
         FirebaseError,
