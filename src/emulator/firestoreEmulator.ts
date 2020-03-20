@@ -19,7 +19,6 @@ export interface FirestoreEmulatorArgs {
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
-  webchannel_port?: number;
   seed_from_export?: string;
 }
 
@@ -56,33 +55,6 @@ export class FirestoreEmulator implements EmulatorInstance {
           utils.logLabeledSuccess("firestore", "Rules updated.");
         }
       });
-    }
-
-    // Firestore Emulator now serves WebChannel on the same port as gRPC, but
-    // for backward compatibility reasons, let's tell it to ALSO serve
-    // WebChannel on port+1, if it is available.
-    const host = this.getInfo().host;
-    const basePort = this.getInfo().port;
-    const port = basePort + 1;
-    try {
-      const webChannelPort = await pf.getPortPromise({
-        port,
-        stopPort: port,
-      });
-      this.args.webchannel_port = webChannelPort;
-
-      utils.logLabeledBullet(
-        "firestore",
-        `Serving ALL traffic (including WebChannel) on ${clc.bold(`http://${host}:${basePort}`)}`
-      );
-      utils.logLabeledWarning(
-        "firestore",
-        `Support for WebChannel on a separate port (${webChannelPort}) is DEPRECATED and will go away soon. ` +
-          "Please use port above instead."
-      );
-    } catch (e) {
-      // We don't need to take any action here since the emulator will still
-      // serve WebChannel on the main port anyway.
     }
 
     return downloadableEmulators.start(Emulators.FIRESTORE, this.args);
