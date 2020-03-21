@@ -24,9 +24,6 @@ const ENGINE_RUNTIMES: { [key: string]: string } = {
   10: "nodejs10",
 };
 
-export const ENGINES_FIELD_REQUIRED_MSG = clc.bold(
-  "Engines field is required in package.json but none was found."
-);
 export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
     `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}. ` +
@@ -45,6 +42,15 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold("npm i --save firebase-functions@latest") +
   " in the functions folder.";
 
+export const FUNCTIONS_SDK_VERSION_TOO_OLD_NODE10_ERROR =
+  "You must have a " +
+  clc.bold("firebase-functions") +
+  " version that is at least " +
+  clc.bold("3.4.0") +
+  " in order to deploy functions to Node 10 runtime. Please run " +
+  clc.bold("npm i --save firebase-functions@latest") +
+  " in the functions folder.";
+
 /**
  * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
  * for example. If no friendly name for runtime is found, returns back the raw runtime.
@@ -59,7 +65,7 @@ export function getHumanFriendlyRuntimeName(runtime: string): string {
  * package.json.
  * @param sourceDir directory where the functions are defined.
  */
-export function getRuntimeChoice(sourceDir: string): any {
+export async function getRuntimeChoice(sourceDir: string): Promise<string> {
   const packageJsonPath = path.join(sourceDir, "package.json");
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
@@ -81,19 +87,11 @@ export function getRuntimeChoice(sourceDir: string): any {
   if (runtime === "nodejs6") {
     utils.logWarning(DEPRECATION_WARNING_MSG);
   } else if (runtime === "nodejs10") {
-    if (functionsSDKTooOld(sourceDir, ">=3.4")) {
-      throw new FirebaseError(
-        "You must have a " +
-          clc.bold("firebase-functions") +
-          " version that is at least " +
-          clc.bold("3.4.0") +
-          " in order to deploy functions to Node 10 runtime. Please run " +
-          clc.bold("npm i --save firebase-functions@latest") +
-          " in the functions folder."
-      );
+    if (await functionsSDKTooOld(sourceDir, ">=3.4")) {
+      throw new FirebaseError(FUNCTIONS_SDK_VERSION_TOO_OLD_NODE10_ERROR);
     }
   } else {
-    if (functionsSDKTooOld(sourceDir, ">=2")) {
+    if (await functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
   }
@@ -113,5 +111,6 @@ async function functionsSDKTooOld(sourceDir: string, minRange: string): Promise<
   } catch (e) {
     // do nothing
   }
+
   return false;
 }
