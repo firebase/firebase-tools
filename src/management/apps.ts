@@ -38,7 +38,10 @@ export interface WebAppMetadata extends AppMetadata {
 
 export interface AppConfigurationData {
   fileName: string;
-  fileContents: string /* file contents in utf8 format */;
+  // File contents in utf8 format.
+  fileContents: string;
+  // Only for `AppPlatform.WEB`, the raw configuration parameters.
+  sdkConfig?: { [key: string]: string };
 }
 
 export enum AppPlatform {

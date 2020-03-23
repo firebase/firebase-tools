@@ -92,12 +92,12 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       spinner.succeed();
 
       const fileInfo = getAppConfigFile(configData, appPlatform);
+      if (appPlatform == AppPlatform.WEB) {
+        fileInfo.sdkConfig = configData;
+      }
 
       if (options.out === undefined) {
         logger.info(fileInfo.fileContents);
-        if (appPlatform == AppPlatform.WEB) {
-          return configData;
-        }
         return fileInfo;
       }
 
