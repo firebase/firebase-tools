@@ -382,6 +382,15 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (!noGui && shouldStart(options, Emulators.GUI)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+      ...options,
+    });
+
+    await startEmulator(loggingEmulator);
+
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);
