@@ -81,7 +81,7 @@ export class EmulatorLogger {
         EmulatorLogger.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, logger.tryParse(log.text));
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {user: logger.tryParse(log.text)});
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
