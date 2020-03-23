@@ -193,7 +193,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME)).toString()
+      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
     ) as ExportMetadata;
   }
 
@@ -351,6 +351,17 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  if (shouldStart(options, Emulators.LOGGING)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+      ...options,
+    });
+
+    await startEmulator(loggingEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {

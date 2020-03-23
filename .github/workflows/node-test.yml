@@ -55,7 +55,7 @@ jobs:
 
   integration:
     needs: unit
-    if: github.repository == 'firebase/firebase-tools' && github.event_name == 'push'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     env:

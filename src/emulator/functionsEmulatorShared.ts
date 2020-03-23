@@ -70,12 +70,7 @@ export interface FunctionsRuntimeBundle {
 }
 
 export interface FunctionsRuntimeFeatures {
-  functions_config_helper?: boolean;
-  network_filtering?: boolean;
   timeout?: boolean;
-  memory_limiting?: boolean;
-  admin_stubs?: boolean;
-  pubsub_emulator?: boolean;
 }
 
 const memoryLookup = {
@@ -211,7 +206,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         chunks = hierarchy;
       }
       const packagePath = path.join(chunks.join(path.sep), "package.json");
-      const serializedPackage = fs.readFileSync(packagePath).toString();
+      const serializedPackage = fs.readFileSync(packagePath, "utf8").toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");
       }

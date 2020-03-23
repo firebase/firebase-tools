@@ -16,6 +16,7 @@ import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -346,7 +347,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (href && !history[href]) {
+      if (href && !history[href] && !href.startsWith("http://localhost")) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -544,6 +545,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
+  // Look for .runtimeconfig.json in the functions directory
+  const configPath = `${frb.cwd}/.runtimeconfig.json`;
+  try {
+    const configContent = fs.readFileSync(configPath, "utf8");
+    if (configContent) {
+      logDebug(`Found local functions config: ${configPath}`);
+      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+    }
+  } catch (e) {
+    // Ignore, config is optional
+  }
+
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
@@ -581,33 +594,29 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   // TODO(samstern): This should be done for RTDB as well but it's hard
   // because the convention in prod is subdomain not ?ns=
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_URL = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${
-      frb.emulators.firestore.port
-    }`;
+    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${
-      frb.emulators.database.port
-    }`;
+    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
   }
 
-  if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+  if (frb.emulators.pubsub) {
     const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
   }
 }
 
-async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
   const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [functionsDir],
+    paths: [frb.cwd],
   });
 
   const ff = require(functionsResolution);
@@ -630,7 +639,17 @@ async function initializeFunctionsConfigHelper(functionsDir: string): Promise<vo
             return value;
           } else {
             const valuePath = [parentKey, childKey].join(".");
-            new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+
+            // Calling console.log() or util.inspect() on a config value can cause spurious logging
+            // if we don't ignore certain known-bad paths.
+            const ignore =
+              valuePath.endsWith(".inspect") ||
+              valuePath.endsWith(".toJSON") ||
+              valuePath.includes("Symbol(") ||
+              valuePath.includes("Symbol.iterator");
+            if (!ignore) {
+              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+            }
             return undefined;
           }
         })
@@ -900,26 +919,14 @@ async function initializeRuntime(
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 
-  if (isFeatureEnabled(frb, "network_filtering")) {
-    initializeNetworkFiltering(frb);
-  }
-
-  if (isFeatureEnabled(frb, "functions_config_helper")) {
-    await initializeFunctionsConfigHelper(frb.cwd);
-  }
-
-  // TODO: Should this feature have a flag as well or is it required?
+  initializeNetworkFiltering(frb);
+  await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
-
-  if (isFeatureEnabled(frb, "admin_stubs")) {
-    await initializeFirebaseAdminStubs(frb);
-  }
+  await initializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];

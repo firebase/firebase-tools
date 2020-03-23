@@ -26,7 +26,6 @@ module.exports = async (name: DownloadableEmulator) => {
     await validateSize(tmpfile, emulator.opts.expectedSize);
     await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
   }
-
   if (emulator.opts.skipCache) {
     await removeOldFiles(name, emulator, true);
   }

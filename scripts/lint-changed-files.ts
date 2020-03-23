@@ -1,6 +1,6 @@
 /*
  * lint-changed-files looks at the list of files that have changed from the
- * working branch and runs the linter on them. 
+ * working branch and runs the linter on them.
  */
 
 import { execSync } from "child_process";

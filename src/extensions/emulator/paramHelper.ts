@@ -7,7 +7,7 @@ import { FirebaseError } from "../../error";
 
 export function readParamsFile(envFilePath: string): any {
   try {
-    const buf = fs.readFileSync(path.resolve(envFilePath));
+    const buf = fs.readFileSync(path.resolve(envFilePath), "utf8");
     return dotenv.parse(buf.toString().trim(), { debug: true });
   } catch (err) {
     throw new FirebaseError(`Error reading --test-params file: ${err.message}\n`, {

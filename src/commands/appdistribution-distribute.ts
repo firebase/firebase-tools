@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 
 import { Command } from "../command";
 import * as utils from "../utils";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 import { AppDistributionApp, AppDistributionClient, UploadStatus } from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution } from "../appdistribution/distribution";
