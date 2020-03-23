@@ -315,10 +315,15 @@ export class Command {
 // https://cloud.google.com/resource-manager/reference/rest/v1beta1/projects#resource:-project
 // However, the regex below, matching internal ones, is more permissive so that
 // some legacy projects with irregular project IDs still works.
-const PROJECT_ID_REGEX = /^(?:[^:]+:)?[a-z0-9\-]+$/;
+const PROJECT_ID_REGEX = /^(?:[^:]+:)?[a-z0-9-]+$/;
 
+/**
+ * Validate the project id and throw on invalid format.
+ * @param project the project id to validate
+ * @throws {FirebaseError} if project id has invalid format.
+ */
 export function validateProjectId(project: string): void {
-  if (project.match(PROJECT_ID_REGEX)) {
+  if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
   const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
