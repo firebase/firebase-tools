@@ -36,7 +36,12 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.LOGGING,
 ];
 
-export const EMULATORS_SUPPORTED_BY_GUI = [Emulators.DATABASE, Emulators.LOGGING];
+export const EMULATORS_SUPPORTED_BY_GUI = [
+  Emulators.DATABASE,
+  Emulators.LOGGING,
+  Emulators.FIRESTORE,
+  Emulators.FUNCTIONS,
+];
 
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [Emulators.HUB, Emulators.GUI, ...ALL_SERVICE_EMULATORS];
