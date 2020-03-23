@@ -4,3 +4,4 @@
 * Adds support for setting `maxInstances` in Cloud Functions for Firebase.
 * Fixes a bug where rules were sometimes read as blank after a file save (#1980).
 * Fixes an issue where callable functions with authentication could not be emulated (#1475).
+* Adds an `sdkConfig` parameter to the results object of `apps:sdkconfig` requests for web apps.
