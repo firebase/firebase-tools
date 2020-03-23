@@ -37,7 +37,6 @@ export const ALL_SERVICE_EMULATORS = [
 
 export const EMULATORS_SUPPORTED_BY_GUI = [
   Emulators.DATABASE,
-  Emulators.LOGGING,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
 ];
