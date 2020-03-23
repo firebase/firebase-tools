@@ -58,7 +58,7 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-v0.0.0-EAP.zip?_=" +
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-vEAP.zip?_=" +
         new Date().getTime(),
       expectedSize: -1,
       expectedChecksum: "",
