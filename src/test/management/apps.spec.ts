@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as util from "util";
 import * as fs from "fs";
 
 import * as api from "../../api";
@@ -471,8 +470,8 @@ describe("App management", () => {
     it("should resolve with iOS app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateIosAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const iosApp: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const iosApp = { ...app };
         delete iosApp.platform;
         return iosApp;
       });
@@ -490,8 +489,8 @@ describe("App management", () => {
     it("should resolve with Android app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateAndroidAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const androidApps: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const androidApps = { ...app };
         delete androidApps.platform;
         return androidApps;
       });
@@ -509,8 +508,8 @@ describe("App management", () => {
     it("should resolve with Web app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateWebAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const webApp: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const webApp = { ...app };
         delete webApp.platform;
         return webApp;
       });

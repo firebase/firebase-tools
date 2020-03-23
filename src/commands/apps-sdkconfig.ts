@@ -25,7 +25,7 @@ async function selectAppInteractively(
     throw new FirebaseError("Project ID must not be empty.");
   }
 
-  const apps: AppMetadata[] = await listFirebaseApps(projectId, appPlatform);
+  const apps = await listFirebaseApps(projectId, appPlatform);
   if (apps.length === 0) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
@@ -33,6 +33,7 @@ async function selectAppInteractively(
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const choices = apps.map((app: any) => {
     return {
       name:
@@ -60,11 +61,8 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
   .option("-o, --out [file]", "(optional) write config output to a file")
   .before(requireAuth)
   .action(
-    async (
-      platform: string = "",
-      appId: string = "",
-      options: any
-    ): Promise<AppConfigurationData> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async (platform = "", appId = "", options: any): Promise<AppConfigurationData> => {
       let appPlatform = getAppPlatform(platform);
 
       if (!appId) {
