@@ -29,6 +29,16 @@ logger.tryStringify = (value) => {
   }
 };
 
+logger.tryParse = (value) => {
+  if (typeof value !== "string") return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
 const debug = logger.debug;
 logger.debug = function(...args) {
   args[0] = "[" + new Date().toISOString() + "] " + (args[0] || "");
