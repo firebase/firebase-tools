@@ -49,6 +49,11 @@ export enum AppPlatform {
   ANY = "ANY",
 }
 
+/**
+ * Returns the `AppPlatform` represented by the string.
+ * @param platform the platform to parse.
+ * @return the `AppPlatform`.
+ */
 export function getAppPlatform(platform: string): AppPlatform {
   switch (platform.toUpperCase()) {
     case "IOS":
@@ -235,13 +240,25 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
 }
 
 /**
- * Gets the configuration artifact associated with the specified a Firebase app
- * @return a promise that resolves to configuration file content of the requested app
+ * Returns information representing the file need to initalize the application.
+ * @param config the object from `getAppConfig`.
+ * @param platform the platform the `config` represents.
+ * @return the platform-specific file information (name and contents).
  */
-export async function getAppConfig(
-  appId: string,
-  platform: AppPlatform
-): Promise<AppConfigurationData> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
+  return parseConfigFromResponse(config, platform);
+}
+
+/**
+ * Gets the configuration artifact associated with the specified a Firebase app.
+ * @param appId the ID of the app.
+ * @param platform the platform of the app.
+ * @return for web, an object with the variables set; for iOS and Android, a file name and
+ *   base64-encoded content string.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getAppConfig(appId: string, platform: AppPlatform): Promise<any> {
   let response;
   try {
     response = await api.request("GET", getAppConfigResourceString(appId, platform), {
@@ -259,7 +276,7 @@ export async function getAppConfig(
       }
     );
   }
-  return parseConfigFromResponse(response.body, platform);
+  return response.body;
 }
 
 function getAppConfigResourceString(appId: string, platform: AppPlatform): string {
@@ -281,6 +298,7 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
   return `/v1beta1/projects/-/${platformResource}/${appId}/config`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
     const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");

@@ -7,6 +7,7 @@ import {
   AppMetadata,
   AppPlatform,
   getAppConfig,
+  getAppConfigFile,
   getAppPlatform,
   listFirebaseApps,
 } from "../management/apps";
@@ -88,12 +89,16 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         spinner.fail();
         throw err;
       }
-
       spinner.succeed();
 
+      const fileInfo = getAppConfigFile(configData, appPlatform);
+
       if (options.out === undefined) {
-        logger.info(configData.fileContents);
-        return configData;
+        logger.info(fileInfo.fileContents);
+        if (appPlatform == AppPlatform.WEB) {
+          return configData;
+        }
+        return fileInfo;
       }
 
       const shouldUseDefaultFilename = options.out === true || options.out === "";
