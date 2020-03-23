@@ -8,7 +8,6 @@ import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
-import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
