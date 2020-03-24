@@ -223,7 +223,7 @@ export function validateSpec(spec: any) {
         );
       }
     }
-    if (param.type && (param.type == ParamType.SELECT || param.type == ParamType.MULTISELECT)) {
+    if (param.type && (param.type == InputParamType.SELECT || param.type == InputParamType.MULTISELECT)) {
       if (param.validationRegex) {
         errors.push(
           `Param${
