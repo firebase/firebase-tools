@@ -16,7 +16,8 @@
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
-    "test:client-integration": "./scripts/client-integration-tests/run.sh"
+    "test:client-integration": "./scripts/client-integration-tests/run.sh",
+    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh"
   },
   "files": [
     "lib",
@@ -114,6 +115,7 @@
     "winston": "^1.0.1"
   },
   "devDependencies": {
+    "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.1.6",
     "@types/chai-as-promised": "^7.1.0",
