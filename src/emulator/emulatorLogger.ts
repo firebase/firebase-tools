@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorLog } from "./types";
+import { tryParse } from "../utils";
 
 /**
  * DEBUG - lowest level, not needed for most usages.
@@ -82,7 +83,7 @@ export class EmulatorLogger {
         break;
       case "USER":
         EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
-          user: logger.tryParse(log.text),
+          user: tryParse(log.text),
         });
         break;
       case "DEBUG":

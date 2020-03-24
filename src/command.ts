@@ -5,7 +5,7 @@ import { SPLAT } from "triple-beam";
 import * as winston from "winston";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption } from "./utils";
+import { getInheritedOption, tryStringify } from "./utils";
 import { load } from "./rc";
 import { load as _load } from "./config";
 import { configstore } from "./configstore";
@@ -232,7 +232,7 @@ export class Command {
           new winston.transports.Console({
             level: "debug",
             format: winston.format.printf((info) => {
-              const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
+              const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
               return `${ansiStrip(segments.join(" "))}`;
             }),
           })

@@ -2,6 +2,8 @@
 "use strict";
 
 // Make check for Node 6, which is no longer supported by the CLI.
+import { tryStringify } from "../utils";
+
 const semver = require("semver");
 const pkg = require("../../package.json");
 const nodeVersion = process.version;
@@ -50,7 +52,7 @@ logger.add(
     level: "debug",
     filename: logFilename,
     format: winston.format.printf((info) => {
-      const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
+      const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
       return `[${info.level}] ${ansiStrip(segments.join(" "))}`;
     }),
   })
