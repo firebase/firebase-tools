@@ -1,0 +1,1 @@
+* Fix issue with `context.auth.uid` in callable Cloud Functions (#2057).

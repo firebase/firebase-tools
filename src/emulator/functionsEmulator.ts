@@ -3,6 +3,7 @@ import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
+import * as jwt from "jsonwebtoken";
 
 import * as api from "../api";
 import * as logger from "../logger";
@@ -36,7 +37,6 @@ import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { database } from "firebase-admin";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -699,17 +699,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const idToken = match[1];
-    const tokenParts = idToken.split(".");
-
-    if (tokenParts.length < 2) {
-      return;
-    }
+    logger.debug(`ID Token: ${idToken}`);
 
     try {
-      const encodedClaims = tokenParts[1];
-      const buff = new Buffer(encodedClaims, "base64");
-      const decodedClaimsText = buff.toString("ascii");
-      const claims = JSON.parse(decodedClaimsText);
+      const decoded = jwt.decode(idToken, { complete: true });
+      if (!decoded || typeof decoded !== 'object') {
+        return;
+      }
+
+      // In firebase-functions we manually copy 'sub' to 'uid'
+      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
+      const claims = decoded.payload;
+      claims.uid = claims.sub;
 
       return claims;
     } catch (e) {
