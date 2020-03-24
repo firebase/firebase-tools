@@ -7,6 +7,6 @@
 * **BREAKING:** `firebase serve` can no longer start the Cloud Firestore or Realtime Database emulators.
 * **BREAKING:** Unifies the Cloud Functions for Firebase emulator within `firebase serve` and `firebase emulators:start`.
 * **BREAKING**: Removes support for separate WebChannel port in the Cloud Firestore emulator. Use the main port instead.
-* **BREAKING**: Rejectes project IDs with invalid format.
+* **BREAKING**: Rejects project IDs with invalid format.
 * Updates underlying logging infrastructure.
 * Replaces deprecated `google-auto-auth` package with `google-auth-library`.
