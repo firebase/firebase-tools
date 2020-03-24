@@ -30,7 +30,7 @@ import { envOverride } from "../utils";
  * This DOES NOT represent the param.type strings that the backend returns in spec.
  * ParamType, defined in extensionsApi.ts, describes the returned strings.
  */
-enum SpecParamType {
+export enum SpecParamType {
   SELECT = "select",
   MULTISELECT = "multiselect",
   STRING = "string",
