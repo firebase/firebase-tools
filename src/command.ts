@@ -12,6 +12,7 @@ import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
 import logger = require("./logger");
 import track = require("./track");
+import clc = require("cli-color");
 const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -259,6 +260,7 @@ export class Command {
 
     options.projectRoot = detectProjectRoot(options.cwd);
     this.applyRC(options);
+    if (options.project) validateProjectId(options.project);
   }
 
   /**
@@ -308,5 +310,30 @@ export class Command {
       }
       return this.actionFn(...args);
     };
+  }
+}
+
+// Project IDs must follow a certain format, as documented at:
+// https://cloud.google.com/resource-manager/reference/rest/v1beta1/projects#resource:-project
+// However, the regex below, matching internal ones, is more permissive so that
+// some legacy projects with irregular project IDs still works.
+const PROJECT_ID_REGEX = /^(?:[^:]+:)?[a-z0-9-]+$/;
+
+/**
+ * Validate the project id and throw on invalid format.
+ * @param project the project id to validate
+ * @throws {FirebaseError} if project id has invalid format.
+ */
+export function validateProjectId(project: string): void {
+  if (PROJECT_ID_REGEX.test(project)) {
+    return;
+  }
+  track("Project ID Check", "invalid");
+  const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
+  if (project.toLowerCase() !== project) {
+    // Attempt to be more helpful in case uppercase letters are used.
+    throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");
+  } else {
+    throw new FirebaseError(invalidMessage);
   }
 }
