@@ -243,21 +243,23 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body).to.deep.equal({
           result: {
             auth: {
-              provider_id: "anonymous",
-              iss: "https://securetoken.google.com/fir-dumpster",
-              aud: "fir-dumpster",
-              auth_time: 1585053264,
-              user_id: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
-              sub: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
               uid: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
-              iat: 1585053264,
-              exp: 1585056864,
-              firebase: {
-                identities: {},
-                sign_in_provider: "anonymous",
+              token: {
+                provider_id: "anonymous",
+                iss: "https://securetoken.google.com/fir-dumpster",
+                aud: "fir-dumpster",
+                auth_time: 1585053264,
+                user_id: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
+                sub: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
+                uid: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
+                iat: 1585053264,
+                exp: 1585056864,
+                firebase: {
+                  identities: {},
+                  sign_in_provider: "anonymous",
+                },
               },
             },
-            uid: "Smnz8O1rldfjmdx8ARUtMvXmmw62",
           },
         });
       });
