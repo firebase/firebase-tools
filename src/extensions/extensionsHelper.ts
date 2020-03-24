@@ -24,6 +24,18 @@ import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
 
+/**
+ * SpecParamType represents the exact strings that the extensions
+ * backend expects for each param type in the extensionYaml.
+ * This DOES NOT represent the param.type strings that the backend returns in spec.
+ * ParamType, defined in extensionsApi.ts, describes the returned strings.
+ */
+enum SpecParamType {
+  SELECT = "select",
+  MULTISELECT = "multiselect",
+  STRING = "string",
+}
+
 export const logPrefix = "extensions";
 const urlRegex = /^http[s]?:\/\/.*\.zip$/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
@@ -148,9 +160,9 @@ export function validateCommandLineParams(
 }
 
 /**
- * Validates an Extension spec by checking that all required fields are present
+ * Validates an Extension.yaml by checking that all required fields are present
  * and checking that invalid combinations of fields are not present.
- * @param spec An extension spec to validate.
+ * @param spec An extension.yaml to validate.
  */
 export function validateSpec(spec: any) {
   const errors = [];
@@ -190,19 +202,14 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-    enum InputParamType {
-      SELECT = "select",
-      MULTISELECT = "multiselect",
-      STRING = "string",
-    }
-    if (param.type && !_.includes(InputParamType, param.type)) {
+    if (param.type && !_.includes(SpecParamType, param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
         }. Valid types are ${_.values(ParamType).join(", ")}`
       );
     }
-    if (!param.type || param.type == InputParamType.STRING) {
+    if (!param.type || param.type == SpecParamType.STRING) {
       // ParamType defaults to STRING
       if (param.options) {
         errors.push(
@@ -223,7 +230,10 @@ export function validateSpec(spec: any) {
         );
       }
     }
-    if (param.type && (param.type == InputParamType.SELECT || param.type == InputParamType.MULTISELECT)) {
+    if (
+      param.type &&
+      (param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT)
+    ) {
       if (param.validationRegex) {
         errors.push(
           `Param${
