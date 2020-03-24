@@ -326,6 +326,7 @@ export function validateProjectId(project: string): void {
   if (PROJECT_ID_REGEX.test(project)) {
     return;
   }
+  track("error", "invalid-project-id");
   const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.
