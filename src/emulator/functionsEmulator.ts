@@ -28,6 +28,7 @@ import {
   getFunctionRegion,
   getFunctionService,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -739,7 +740,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
 
         delete req.headers["authorization"];
-        req.headers["X-Callable-Context-Auth"] = JSON.stringify(contextAuth);
+        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = JSON.stringify(contextAuth);
       }
     }
 
