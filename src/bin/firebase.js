@@ -50,7 +50,7 @@ logger.add(
     level: "debug",
     filename: logFilename,
     format: winston.format.printf((info) => {
-      const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
+      const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
       return `[${info.level}] ${ansiStrip(segments.join(" "))}`;
     }),
   })

@@ -258,3 +258,35 @@ export async function promiseProps(obj: any): Promise<any> {
   });
   return Promise.all(promises).then(() => resultObj);
 }
+
+/**
+ * Attempts to call JSON.stringify on an object, if it throws return the original value
+ * @param value
+ */
+export function tryStringify(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Attempts to call JSON.parse on an object, if it throws return the original value
+ * @param value
+ */
+export function tryParse(value: any) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
