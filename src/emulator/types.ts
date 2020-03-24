@@ -42,7 +42,7 @@ export const EMULATORS_SUPPORTED_BY_GUI = [
 ];
 
 // TODO: Is there a way we can just allow iteration over the enum?
-export const ALL_EMULATORS = [Emulators.HUB, Emulators.GUI, ...ALL_SERVICE_EMULATORS];
+export const ALL_EMULATORS = [Emulators.HUB, Emulators.GUI, Emulators.LOGGING, ...ALL_SERVICE_EMULATORS];
 
 export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
   return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
