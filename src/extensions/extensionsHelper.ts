@@ -190,11 +190,11 @@ export function validateSpec(spec: any) {
     if (!param.label) {
       errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
     }
-     enum InputParamType {
-       SELECT = "select",
-       MULTISELECT = "multiselect",
-       STRING = "string"
-     }
+    enum InputParamType {
+      SELECT = "select",
+      MULTISELECT = "multiselect",
+      STRING = "string",
+    }
     if (param.type && !_.includes(InputParamType, param.type)) {
       errors.push(
         `Invalid type ${param.type} for param${
@@ -223,7 +223,7 @@ export function validateSpec(spec: any) {
         );
       }
     }
-    if (paramType && (paramType == ParamType.SELECT || paramType == ParamType.MULTISELECT)) {
+    if (param.type && (param.type == ParamType.SELECT || param.type == ParamType.MULTISELECT)) {
       if (param.validationRegex) {
         errors.push(
           `Param${
