@@ -703,7 +703,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     try {
       const decoded = jwt.decode(idToken, { complete: true });
-      if (!decoded || typeof decoded !== 'object') {
+      if (!decoded || typeof decoded !== "object") {
         return;
       }
 
