@@ -242,7 +242,9 @@ export class Command {
           new winston.transports.Console({
             level: "info",
             format: winston.format.printf((info) =>
-              [info.message, ...(info[SPLAT] || [])].filter(chunk => typeof chunk == "string").join(" ")
+              [info.message, ...(info[SPLAT] || [])]
+                .filter((chunk) => typeof chunk == "string")
+                .join(" ")
             ),
           })
         );
