@@ -87,6 +87,10 @@ const memoryLookup = {
   "2GB": 2048,
 };
 
+export class HttpConstants {
+  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+}
+
 export class EmulatedTrigger {
   /*
   Here we create a trigger from a single definition (data about what resources does this trigger on, etc) and
