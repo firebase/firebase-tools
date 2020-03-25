@@ -1,1 +1,1 @@
-* Fixes an auth issue with `https.onCall` functions when rurntime options (`runWith`) are specified (#2059).
+* Fixes an auth issue with `https.onCall` functions when runtime options (`runWith`) are specified (#2059).
