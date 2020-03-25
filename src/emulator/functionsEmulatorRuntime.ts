@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { CloudFunction, DeploymentOptions } from "firebase-functions";
+import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -376,6 +376,10 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
   logDebug("Outgoing network have been stubbed.", results);
 }
+
+type CallableHandler = (data: any, context: https.CallableContext) => any | Promise<any>;
+type HttpsHandler = (req: Request, resp: Response) => void;
+
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
     which returns a promise. In this scenario, we can't catch errors which get raised in user code,
@@ -398,18 +402,14 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
+  const httpsProvider = require(httpsProviderResolution);
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  const methodName = "_onRequestWithOptions";
+  const onRequestInnerMethodName = "_onRequestWithOptions";
+  const onRequestMethodOriginal = httpsProvider[onRequestInnerMethodName];
 
-  const httpsProvider = require(httpsProviderResolution);
-  const requestWithOptions = httpsProvider[methodName];
-
-  httpsProvider[methodName] = (
-    handler: (req: Request, resp: Response) => void,
-    opts: DeploymentOptions
-  ) => {
-    const cf = requestWithOptions(handler, opts);
+  httpsProvider[onRequestInnerMethodName] = (handler: HttpsHandler, opts: DeploymentOptions) => {
+    const cf = onRequestMethodOriginal(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
@@ -418,34 +418,48 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   // so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
   // because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
   // the definition of _onRequestWithOptions does not replace the link to the original function
-  // which onRequest uses, so we need to manually force it to use our error-handle-able version.
-  httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
-    return httpsProvider[methodName](handler, {});
+  // which onRequest uses, so we need to manually force it to use our version.
+  httpsProvider.onRequest = (handler: HttpsHandler) => {
+    return httpsProvider[onRequestInnerMethodName](handler, {});
   };
 
-  const onCallOriginal = httpsProvider.onCall;
-  httpsProvider.onCall = (handler: (data: any, context: any) => any | Promise<any>) => {
-    // Look for a special header provided by the functions emulator that lets us mock out
-    // callable functions auth.
-    const newHandler = (data: any, context: any) => {
-      if (context.rawRequest) {
-        const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
-        if (authContext) {
-          logDebug("Callable functions auth override", {
-            key: HttpConstants.CALLABLE_AUTH_HEADER,
-            value: authContext,
-          });
-          context.auth = JSON.parse(authContext);
-        } else {
-          logDebug("No callable functions auth found");
-        }
+  // Mocking https.onCall is very similar to onRequest
+  const onCallInnerMethodName = "_onCallWithOptions";
+  const onCallMethodOriginal = httpsProvider[onCallInnerMethodName];
+
+  httpsProvider[onCallInnerMethodName] = (handler: CallableHandler, opts: DeploymentOptions) => {
+    const wrapped = wrapCallableHandler(handler);
+    const cf = onCallMethodOriginal(wrapped, opts);
+    return cf;
+  };
+
+  httpsProvider.onCall = (handler: CallableHandler) => {
+    return httpsProvider[onCallInnerMethodName](handler, {});
+  };
+}
+
+/**
+ * Wrap a callable functions handler with an outer method that extracts a special authorization
+ * header used to mock auth in the emulator.
+ */
+function wrapCallableHandler(handler: CallableHandler): CallableHandler {
+  const newHandler = (data: any, context: https.CallableContext) => {
+    if (context.rawRequest) {
+      const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
+      if (authContext) {
+        logDebug("Callable functions auth override", {
+          key: HttpConstants.CALLABLE_AUTH_HEADER,
+          value: authContext,
+        });
+        context.auth = JSON.parse(authContext);
+      } else {
+        logDebug("No callable functions auth found");
       }
-
-      return handler(data, context);
-    };
-
-    return onCallOriginal(newHandler);
+    }
+    return handler(data, context);
   };
+
+  return newHandler;
 }
 
 function getDefaultConfig(): any {
