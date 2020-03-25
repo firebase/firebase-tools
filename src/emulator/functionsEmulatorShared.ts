@@ -23,6 +23,7 @@ export interface EmulatedTriggerDefinition {
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
+  labels?: { [key: string]: any };
 }
 
 export interface EventSchedule {
@@ -80,6 +81,10 @@ const memoryLookup = {
   "1GB": 1024,
   "2GB": 2048,
 };
+
+export class HttpConstants {
+  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+}
 
 export class EmulatedTrigger {
   /*

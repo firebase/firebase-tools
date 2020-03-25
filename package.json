@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.15.1",
+  "version": "7.16.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -16,7 +16,8 @@
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
-    "test:client-integration": "./scripts/client-integration-tests/run.sh"
+    "test:client-integration": "./scripts/client-integration-tests/run.sh",
+    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh"
   },
   "files": [
     "lib",
@@ -65,7 +66,6 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
-    "@types/js-yaml": "^3.12.2",
     "@types/ws": "^7.2.3",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
@@ -117,6 +117,7 @@
     "ws": "^7.2.3"
   },
   "devDependencies": {
+    "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.1.6",
     "@types/chai-as-promised": "^7.1.0",
@@ -129,7 +130,8 @@
     "@types/fs-extra": "^5.0.5",
     "@types/glob": "^7.1.1",
     "@types/inquirer": "^6.0.3",
-    "@types/js-yaml": "^3.12.1",
+    "@types/js-yaml": "^3.12.2",
+    "@types/jsonwebtoken": "^8.3.8",
     "@types/lodash": "^4.14.136",
     "@types/marked": "^0.6.5",
     "@types/mocha": "^5.2.5",

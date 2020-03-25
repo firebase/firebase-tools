@@ -10,6 +10,7 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
@@ -420,6 +421,30 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   // which onRequest uses, so we need to manually force it to use our error-handle-able version.
   httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
     return httpsProvider[methodName](handler, {});
+  };
+
+  const onCallOriginal = httpsProvider.onCall;
+  httpsProvider.onCall = (handler: (data: any, context: any) => any | Promise<any>) => {
+    // Look for a special header provided by the functions emulator that lets us mock out
+    // callable functions auth.
+    const newHandler = (data: any, context: any) => {
+      if (context.rawRequest) {
+        const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
+        if (authContext) {
+          logDebug("Callable functions auth override", {
+            key: HttpConstants.CALLABLE_AUTH_HEADER,
+            value: authContext,
+          });
+          context.auth = JSON.parse(authContext);
+        } else {
+          logDebug("No callable functions auth found");
+        }
+      }
+
+      return handler(data, context);
+    };
+
+    return onCallOriginal(newHandler);
   };
 }
 

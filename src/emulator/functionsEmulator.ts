@@ -3,6 +3,7 @@ import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
+import * as jwt from "jsonwebtoken";
 
 import * as api from "../api";
 import * as logger from "../logger";
@@ -27,6 +28,7 @@ import {
   getFunctionRegion,
   getFunctionService,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -36,7 +38,6 @@ import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { database } from "firebase-admin";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -92,6 +93,7 @@ interface RequestWithRawBody extends express.Request {
 interface TriggerDescription {
   name: string;
   type: string;
+  labels?: { [key: string]: any };
   details?: string;
   ignored?: boolean;
 }
@@ -291,6 +293,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           triggerResults.push({
             name: definition.name,
             type: "http",
+            labels: definition.labels,
             details: url,
           });
         } else {
@@ -298,6 +301,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           const result: TriggerDescription = {
             name: definition.name,
             type: Constants.getServiceName(service),
+            labels: definition.labels,
           };
 
           let added = false;
@@ -514,6 +518,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     throw new FirebaseError(`No trigger with name ${triggerId}`);
   }
 
+  setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
+    this.triggers = triggers;
+  }
+
   getBaseBundle(): FunctionsRuntimeBundle {
     return {
       cwd: this.args.functionsDir,
@@ -685,13 +693,56 @@ export class FunctionsEmulator implements EmulatorInstance {
     return res.json({ status: "acknowledged" });
   }
 
+  private tokenFromAuthHeader(authHeader: string) {
+    const match = authHeader.match(/^Bearer (.*)$/);
+    if (!match) {
+      return;
+    }
+
+    const idToken = match[1];
+    logger.debug(`ID Token: ${idToken}`);
+
+    try {
+      const decoded = jwt.decode(idToken, { complete: true });
+      if (!decoded || typeof decoded !== "object") {
+        return;
+      }
+
+      // In firebase-functions we manually copy 'sub' to 'uid'
+      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
+      const claims = decoded.payload;
+      claims.uid = claims.sub;
+
+      return claims;
+    } catch (e) {
+      return;
+    }
+  }
+
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
+    const trigger = this.getTriggerById(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
+
+    // For callable functions we want to accept tokens without actually calling verifyIdToken
+    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
+    const authHeader = req.header("Authorization");
+    if (authHeader && isCallable) {
+      const token = this.tokenFromAuthHeader(authHeader);
+      if (token) {
+        const contextAuth = {
+          uid: token.uid,
+          token: token,
+        };
+
+        delete req.headers["authorization"];
+        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = JSON.stringify(contextAuth);
+      }
+    }
 
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
 

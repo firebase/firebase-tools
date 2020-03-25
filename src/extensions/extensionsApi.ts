@@ -87,9 +87,9 @@ export interface Param {
 }
 
 export enum ParamType {
-  STRING = "string",
-  SELECT = "select",
-  MULTISELECT = "multiselect",
+  STRING = "STRING",
+  SELECT = "SELECT",
+  MULTISELECT = "MULTISELECT",
 }
 
 export interface ParamOption {
