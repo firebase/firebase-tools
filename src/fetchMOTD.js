@@ -1,7 +1,7 @@
 "use strict";
 var logger = require("./logger");
 var request = require("request");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 var _ = require("lodash");
 var pkg = require("../package.json");
 var semver = require("semver");

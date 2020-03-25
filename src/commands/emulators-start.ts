@@ -8,6 +8,7 @@ module.exports = new Command("emulators:start")
   .description("start the local Firebase emulators")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
+  .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (options: any) => {
     try {
       await controller.startAll(options);
@@ -16,7 +17,7 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    utils.logSuccess("All emulators started, it is now safe to connect.");
+    utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
 
     // Hang until explicitly killed
     await new Promise((res, rej) => {

@@ -1,18 +1,47 @@
 import * as _ from "lodash";
+import * as ora from "ora";
 
+import { firebaseStorageOrigin } from "../api";
+import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getExtensionRegistry } from "./resolveSource";
+import { getExtensionRegistry, resolveSourceUrl, resolveRegistryEntry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
-import * as extensionsApi from "./extensionsApi";
+import { deleteObject, uploadObject } from "../gcp/storage";
 import * as getProjectId from "../getProjectId";
-import { Param } from "./extensionsApi";
+import {
+  createSource,
+  getInstance,
+  ExtensionSource,
+  ExtensionSpec,
+  getSource,
+  Param,
+  ParamType,
+} from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
+import { envOverride } from "../utils";
+
+/**
+ * SpecParamType represents the exact strings that the extensions
+ * backend expects for each param type in the extensionYaml.
+ * This DOES NOT represent the param.type strings that the backend returns in spec.
+ * ParamType, defined in extensionsApi.ts, describes the returned strings.
+ */
+export enum SpecParamType {
+  SELECT = "select",
+  MULTISELECT = "multiselect",
+  STRING = "string",
+}
 
 export const logPrefix = "extensions";
+const urlRegex = /^http[s]?:\/\/.*\.zip$/;
+export const EXTENSIONS_BUCKET_NAME = envOverride(
+  "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
+  "firebase-ext-eap-uploads"
+);
 
 export const resourceTypeToNiceName: { [key: string]: string } = {
   "firebaseextensions.v1beta.scheduledFunction": "Scheduled Function",
@@ -102,13 +131,10 @@ export function populateDefaultParams(paramVars: any, paramSpec: any): any {
  * @param envVars JSON object of params to values parsed from .env file
  * @param paramSpec information on params parsed from extension.yaml
  */
-export function validateCommandLineParams(envVars: any, paramSpec: any): void {
-  if (_.size(envVars) < _.size(paramSpec)) {
-    throw new FirebaseError(
-      "A param is missing from the passed in .env file." +
-        "Please check to see that all variables are set before installing again."
-    );
-  }
+export function validateCommandLineParams(
+  envVars: { [key: string]: string },
+  paramSpec: any[]
+): void {
   if (_.size(envVars) > _.size(paramSpec)) {
     const paramList = _.map(paramSpec, (param) => {
       return param.param;
@@ -121,17 +147,122 @@ export function validateCommandLineParams(envVars: any, paramSpec: any): void {
         `${misnamedParams.join(", ")}.`
     );
   }
-
-  // TODO: validate command line params for select/multiselect
+  let allParamsValid = true;
   _.forEach(paramSpec, (param) => {
     // Warns if invalid response was found in environment file.
     if (!checkResponse(envVars[param.param], param)) {
-      throw new FirebaseError(
-        `${param.param} is not valid for the reason listed above. Please set a valid value` +
-          " before installing again."
-      );
+      allParamsValid = false;
     }
   });
+  if (!allParamsValid) {
+    throw new FirebaseError(`Some param values are not valid. Please check your params file.`);
+  }
+}
+
+/**
+ * Validates an Extension.yaml by checking that all required fields are present
+ * and checking that invalid combinations of fields are not present.
+ * @param spec An extension.yaml to validate.
+ */
+export function validateSpec(spec: any) {
+  const errors = [];
+  if (!spec.name) {
+    errors.push("extension.yaml is missing required field: name");
+  }
+  if (!spec.specVersion) {
+    errors.push("extension.yaml is missing required field: specVersion");
+  }
+  if (!spec.version) {
+    errors.push("extension.yaml; is missing required field: version");
+  }
+  for (let resource of spec.resources) {
+    if (!resource.name) {
+      errors.push("Resource is missing required field: name");
+    }
+    if (!resource.type) {
+      errors.push(
+        `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`
+      );
+    }
+  }
+  for (let api of spec.apis || []) {
+    if (!api.apiName) {
+      errors.push("API is missing required field: apiName");
+    }
+  }
+  for (let role of spec.roles || []) {
+    if (!role.role) {
+      errors.push("Role is missing required field: role");
+    }
+  }
+  for (let param of spec.params || []) {
+    if (!param.param) {
+      errors.push("Param is missing required field: param");
+    }
+    if (!param.label) {
+      errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
+    }
+    if (param.type && !_.includes(SpecParamType, param.type)) {
+      errors.push(
+        `Invalid type ${param.type} for param${
+          param.param ? ` ${param.param}` : ""
+        }. Valid types are ${_.values(ParamType).join(", ")}`
+      );
+    }
+    if (!param.type || param.type == SpecParamType.STRING) {
+      // ParamType defaults to STRING
+      if (param.options) {
+        errors.push(
+          `Param${
+            param.param ? ` ${param.param}` : ""
+          } cannot have options because it is type STRING`
+        );
+      }
+      if (
+        param.default &&
+        param.validationRegex &&
+        !RegExp(param.validationRegex).test(param.default)
+      ) {
+        errors.push(
+          `Param${param.param ? ` ${param.param}` : ""} has default value '${
+            param.default
+          }', which does not pass the validationRegex ${param.validationRegex}`
+        );
+      }
+    }
+    if (
+      param.type &&
+      (param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT)
+    ) {
+      if (param.validationRegex) {
+        errors.push(
+          `Param${
+            param.param ? ` ${param.param}` : ""
+          } cannot have validationRegex because it is type ${param.type}`
+        );
+      }
+      if (!param.options) {
+        errors.push(
+          `Param${param.param ? ` ${param.param}` : ""} requires options because it is type ${
+            param.type
+          }`
+        );
+      }
+      for (let opt of param.options || []) {
+        if (opt.value == undefined) {
+          errors.push(
+            `Option for param${
+              param.param ? ` ${param.param}` : ""
+            } is missing required field: value`
+          );
+        }
+      }
+    }
+  }
+  if (errors.length) {
+    const message = `The extension.yaml has the following errors: \n${errors.join("\n")}`;
+    throw new FirebaseError(message);
+  }
 }
 
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
@@ -169,7 +300,80 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
 }
 
 /**
- * Display list of all official extensions and prompt user to select one.
+ * Zips and uploads a local extension to a bucket.
+ * @param extPath a local path to archive and upload
+ * @param bucketName the bucket to upload to
+ * @returns the path where the source was uploaded to
+ */
+async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
+  const zippedSource = await archiveDirectory(extPath, { type: "zip", ignore: ["node_modules"] });
+  return await uploadObject(zippedSource, bucketName);
+}
+
+/**
+ * Creates a source from a local path or URL. If a local path is given, it will be zipped
+ * and uploaded to EXTENSIONS_BUCKET_NAME, and then deleted after the source is created.
+ * @param projectId the project to create the source in
+ * @param sourceUri a local path containing an extension or a URL pointing at a zipped extension
+ */
+export async function createSourceFromLocation(
+  projectId: string,
+  sourceUri: string
+): Promise<ExtensionSource> {
+  let packageUri: string;
+  let extensionRoot: string;
+  let objectPath = "";
+  if (!urlRegex.test(sourceUri)) {
+    const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+    try {
+      uploadSpinner.start();
+      objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
+      uploadSpinner.succeed(" Uploaded extension source code");
+      packageUri = firebaseStorageOrigin + objectPath + "?alt=media";
+      extensionRoot = "/";
+    } catch (err) {
+      uploadSpinner.fail();
+      throw err;
+    }
+  } else {
+    [packageUri, extensionRoot] = sourceUri.split("#");
+  }
+  const res = await createSource(projectId, packageUri, extensionRoot);
+  // if we uploaded an object, delete it
+  if (objectPath.length) {
+    try {
+      await deleteObject(objectPath);
+      logger.debug("Cleaned up uploaded source archive");
+    } catch (err) {
+      logger.debug("Unable to clean up uploaded source archive");
+    }
+  }
+  return res;
+}
+
+/**
+ * Looks up a ExtensionSource from a extensionName. If no source exists for that extensionName, returns undefined.
+ * @param extensionName a official extension source name
+ *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
+ * @returns an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
+ */
+export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
+  const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
+  const existingSourceRegex = /projects\/.+\/sources\/.+/;
+  // if the provided extensionName contains only letters and hyphens, assume it is an official extension
+  if (officialExtensionRegex.test(extensionName)) {
+    const [name, version] = extensionName.split("@");
+    const registryEntry = await resolveRegistryEntry(name);
+    const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
+    return await getSource(sourceUrl);
+  } else if (existingSourceRegex.test(extensionName)) {
+    logger.info(`Fetching the source "${extensionName}"...`);
+    return await getSource(extensionName);
+  }
+  throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
+}
+
+/* Display list of all official extensions and prompt user to select one.
  * @param message The prompt message to display
  * @returns Promise that resolves to the extension name (e.g. storage-resize-images)
  */
@@ -203,7 +407,7 @@ export async function promptForRepeatInstance(
 }
 
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
-  const instanceRes = await extensionsApi.getInstance(projectId, instanceId, {
+  const instanceRes = await getInstance(projectId, instanceId, {
     resolveOnHTTPError: true,
   });
   if (instanceRes.error) {

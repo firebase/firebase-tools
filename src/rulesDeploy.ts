@@ -165,9 +165,7 @@ export class RulesDeploy {
             {
               type: "confirm",
               name: "confirm",
-              message: `You have ${
-                history.length
-              } rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+              message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
               default: false,
             },
           ]

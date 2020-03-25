@@ -46,6 +46,7 @@ module.exports = function(client) {
   client.deploy = loadCommand("deploy");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
+  client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
   client.experimental = {};
   client.experimental.functions = {};
@@ -57,6 +58,17 @@ module.exports = function(client) {
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
   client.ext.update = loadCommand("ext-update");
+  if (previews.ext) {
+    client.ext.sources = {};
+    client.ext.sources.create = loadCommand("ext-sources-create");
+  }
+  if (previews.extdev) {
+    client.ext.dev = {};
+    client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.emulators = {};
+    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
+    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+  }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");

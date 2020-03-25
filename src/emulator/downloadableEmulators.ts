@@ -1,11 +1,11 @@
 import {
   Emulators,
-  JavaEmulators,
-  JavaEmulatorCommand,
-  JavaEmulatorDetails,
+  DownloadableEmulators,
+  DownloadableEmulatorCommand,
+  DownloadableEmulatorDetails,
   EmulatorDownloadDetails,
-} from "../emulator/types";
-import { Constants } from "../emulator/constants";
+} from "./types";
+import { Constants } from "./constants";
 
 import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
@@ -25,31 +25,47 @@ const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
-const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
+const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.3.1.jar"),
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.1.jar"),
+    version: "4.4.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.3.1.jar",
-      expectedSize: 27893859,
-      expectedChecksum: "7d84e76144093406331571969f30444e",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.1.jar",
+      expectedSize: 27926960,
+      expectedChecksum: "ca39f25810a0943caec07fe6b8c1eb3e",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.10.4.jar"),
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.1.jar"),
+    version: "1.11.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.10.4.jar",
-      expectedSize: 88950303,
-      expectedChecksum: "f551a9c1716cd412d04fc971ef3e945b",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.1.jar",
+      expectedSize: 63439953,
+      expectedChecksum: "aa9a62f7b586731ed7664ab42fd20038",
       namePrefix: "cloud-firestore-emulator",
+    },
+  },
+  gui: {
+    version: "0.0.1",
+    downloadPath: path.join(CACHE_DIR, "gui-v0.0.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "gui-v0.0.1"),
+    binaryPath: path.join(CACHE_DIR, "gui-v0.0.1", `server.bundle.js`),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-v0.0.1.zip",
+      expectedSize: 1204964,
+      expectedChecksum: "52847b962bb66de639487d96a07a69d3",
+      namePrefix: "gui",
     },
   },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
+    version: "0.1.0",
     unzipDir: path.join(CACHE_DIR, "pubsub-emulator-0.1.0"),
     binaryPath: path.join(
       CACHE_DIR,
@@ -67,7 +83,7 @@ const DownloadDetails: { [s in JavaEmulators]: EmulatorDownloadDetails } = {
   },
 };
 
-const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
+const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
   database: {
     name: Emulators.DATABASE,
     instance: null,
@@ -83,9 +99,14 @@ const EmulatorDetails: { [s in JavaEmulators]: JavaEmulatorDetails } = {
     instance: null,
     stdout: null,
   },
+  gui: {
+    name: Emulators.GUI,
+    instance: null,
+    stdout: null,
+  },
 };
 
-const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
+const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
@@ -95,7 +116,14 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
   firestore: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
-    optionalArgs: ["port", "webchannel_port", "host", "rules", "functions_emulator"],
+    optionalArgs: [
+      "port",
+      "webchannel_port",
+      "host",
+      "rules",
+      "functions_emulator",
+      "seed_from_export",
+    ],
     joinArgs: false,
   },
   pubsub: {
@@ -104,9 +132,15 @@ const Commands: { [s in JavaEmulators]: JavaEmulatorCommand } = {
     optionalArgs: ["port", "host"],
     joinArgs: true,
   },
+  gui: {
+    binary: "node",
+    args: [getExecPath(Emulators.GUI)],
+    optionalArgs: [],
+    joinArgs: false,
+  },
 };
 
-function getExecPath(name: JavaEmulators): string {
+function getExecPath(name: DownloadableEmulators): string {
   const details = getDownloadDetails(name);
   return details.binaryPath || details.downloadPath;
 }
@@ -120,7 +154,10 @@ function _getLogFileName(name: string): string {
  * @param emulator - string identifier for the emulator to start.
  * @param args - map<string,string> of addittional args
  */
-function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaEmulatorCommand {
+function _getCommand(
+  emulator: DownloadableEmulators,
+  args: { [s: string]: any }
+): DownloadableEmulatorCommand {
   const baseCmd = Commands[emulator];
 
   const defaultPort = Constants.getDefaultPort(emulator);
@@ -159,7 +196,7 @@ function _getCommand(emulator: JavaEmulators, args: { [s: string]: any }): JavaE
   };
 }
 
-function _fatal(emulator: JavaEmulatorDetails, errorMsg: string): void {
+function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
   if (emulator.instance) {
     emulator.instance.kill("SIGINT");
   }
@@ -167,13 +204,15 @@ function _fatal(emulator: JavaEmulatorDetails, errorMsg: string): void {
 }
 
 async function _runBinary(
-  emulator: JavaEmulatorDetails,
-  command: JavaEmulatorCommand
+  emulator: DownloadableEmulatorDetails,
+  command: DownloadableEmulatorCommand,
+  extraEnv: NodeJS.ProcessEnv
 ): Promise<void> {
   return new Promise((resolve) => {
     emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
+        env: { ...process.env, ...extraEnv },
         stdio: ["inherit", "pipe", "pipe"],
       });
     } catch (e) {
@@ -189,14 +228,16 @@ async function _runBinary(
       _fatal(emulator, e);
     }
 
+    const description = Constants.description(emulator.name);
+
     if (emulator.instance == null) {
-      utils.logLabeledWarning(emulator.name, "Could not spawn child process for emulator.");
+      utils.logLabeledWarning(emulator.name, `Could not spawn child process for ${description}.`);
       return;
     }
 
     utils.logLabeledBullet(
       emulator.name,
-      `Emulator logging to ${clc.bold(_getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
     );
 
     emulator.instance.stdout.on("data", (data) => {
@@ -212,38 +253,39 @@ async function _runBinary(
       if (err.path === "java" && err.code === "ENOENT") {
         _fatal(
           emulator,
-          "emulator has exited because java is not installed, you can install it from https://openjdk.java.net/install/"
+          `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
         );
       } else {
-        _fatal(emulator, "emulator has exited: " + err);
+        _fatal(emulator, `${description} has exited: ${err}`);
       }
     });
     emulator.instance.once("exit", (code, signal) => {
       if (signal) {
-        utils.logWarning(`${emulator.name} emulator has exited upon receiving signal: ${signal}`);
+        utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        _fatal(emulator, `emulator has exited with code: ${code}`);
+        _fatal(emulator, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
   });
 }
 
-export function getDownloadDetails(emulator: JavaEmulators): EmulatorDownloadDetails {
+export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   return DownloadDetails[emulator];
 }
 
-export function get(emulator: JavaEmulators): JavaEmulatorDetails {
+export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
   return EmulatorDetails[emulator];
 }
 
-export async function stop(targetName: JavaEmulators): Promise<void> {
+export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = EmulatorDetails[targetName];
   return new Promise((resolve, reject) => {
     if (emulator.instance) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
-        const errorMsg = emulator.name + ": Unable to terminate emulator process (PID=" + pid + ")";
+        const errorMsg =
+          Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
         logger.debug(errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
@@ -259,7 +301,7 @@ export async function stop(targetName: JavaEmulators): Promise<void> {
   });
 }
 
-export async function downloadIfNecessary(targetName: JavaEmulators): Promise<void> {
+export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
   if (hasEmulator) {
@@ -269,7 +311,11 @@ export async function downloadIfNecessary(targetName: JavaEmulators): Promise<vo
   await downloadEmulator(targetName);
 }
 
-export async function start(targetName: JavaEmulators, args: any): Promise<void> {
+export async function start(
+  targetName: DownloadableEmulators,
+  args: any,
+  extraEnv: NodeJS.ProcessEnv = {}
+): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(getExecPath(targetName));
@@ -277,9 +323,9 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
     if (args.auto_download) {
       if (process.env.CI) {
         utils.logWarning(
-          `It appears you are running in a CI environment. You can avoid downloading the ${targetName} emulator repeatedly by caching the ${
-            downloadDetails.opts.cacheDir
-          } directory.`
+          `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
+            targetName
+          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
         );
       }
 
@@ -291,6 +337,8 @@ export async function start(targetName: JavaEmulators, args: any): Promise<void>
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(`Starting emulator ${targetName} with command ${JSON.stringify(command)}`);
-  return _runBinary(emulator, command);
+  logger.debug(
+    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
+  );
+  return _runBinary(emulator, command, extraEnv);
 }

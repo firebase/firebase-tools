@@ -1,6 +1,6 @@
 import * as api from "./api";
 import * as getProjectId from "./getProjectId";
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 
 export interface WebConfig {
   projectId: string;

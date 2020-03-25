@@ -4,6 +4,9 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as extensionsApi from "../../extensions/extensionsApi";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
+import * as resolveSource from "../../extensions/resolveSource";
+import { storage } from "../../gcp";
+import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
 
 describe("extensionsHelper", () => {
@@ -161,9 +164,351 @@ describe("extensionsHelper", () => {
 
       expect(() => {
         extensionsHelper.validateCommandLineParams(envFile, exampleParamSpec);
-      }).to.throw(FirebaseError, /param is missing/);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw a error if a required param is missing", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          required: true,
+        },
+        {
+          param: "BYE",
+          label: "goodbye",
+          required: false,
+        },
+      ];
+      const testParams = {
+        BYE: "val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should not throw a error if a non-required param is missing", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          required: true,
+        },
+        {
+          param: "BYE",
+          label: "goodbye",
+          required: false,
+        },
+      ];
+      const testParams = {
+        HI: "val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).not.to.throw();
+    });
+
+    it("should not throw a regex error if a non-required param is missing", () => {
+      const testParamSpec = [
+        {
+          param: "BYE",
+          label: "goodbye",
+          required: false,
+          validationRegex: "FAIL",
+        },
+      ];
+      const testParams = {};
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).not.to.throw();
+    });
+
+    it("should throw a error if a param value doesn't pass the validation regex", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          validationRegex: "FAIL",
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw a error if a multiselect value isn't an option", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          type: extensionsApi.ParamType.MULTISELECT,
+          options: [
+            {
+              value: "val",
+            },
+          ],
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "val,FAIL",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw a error if a multiselect param is missing options", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          type: extensionsApi.ParamType.MULTISELECT,
+          options: [],
+          validationRegex: "FAIL",
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "FAIL,val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should throw a error if a select param is missing options", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          type: extensionsApi.ParamType.SELECT,
+          validationRegex: "FAIL",
+          options: [],
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "FAIL,val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).to.throw(FirebaseError);
+    });
+
+    it("should not throw if a select value is an option", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          type: extensionsApi.ParamType.SELECT,
+          options: [
+            {
+              value: "val",
+            },
+          ],
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "val",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).not.to.throw();
+    });
+
+    it("should not throw if all multiselect values are options", () => {
+      const testParamSpec = [
+        {
+          param: "HI",
+          label: "hello",
+          type: extensionsApi.ParamType.MULTISELECT,
+          options: [
+            {
+              value: "val",
+            },
+            {
+              value: "val2",
+            },
+          ],
+          required: true,
+        },
+      ];
+      const testParams = {
+        HI: "val,val2",
+      };
+
+      expect(() => {
+        extensionsHelper.validateCommandLineParams(testParams, testParamSpec);
+      }).not.to.throw();
     });
   });
+
+  describe("validateSpec", () => {
+    it("should not error on a valid spec", () => {
+      const testSpec: extensionsApi.ExtensionSpec = {
+        name: "test",
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).not.to.throw();
+    });
+    it("should error if name is missing", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /name/);
+    });
+
+    it("should error if specVersion is missing", () => {
+      const testSpec = {
+        name: "test",
+        version: "0.1.0",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /specVersion/);
+    });
+
+    it("should error if version is missing", () => {
+      const testSpec = {
+        name: "test",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /version/);
+    });
+
+    it("should error if a resource is malformed", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [{}],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /name/);
+    });
+
+    it("should error if an api is malformed", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        apis: [{}],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /apiName/);
+    });
+
+    it("should error if a param is malformed", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [{}],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /param/);
+    });
+
+    it("should error if a STRING param has options.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [{ options: [] }],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /options/);
+    });
+
+    it("should error if a select param has validationRegex.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [{ type: extensionsHelper.SpecParamType.SELECT, validationRegex: "test" }],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /validationRegex/);
+    });
+    it("should error if a param has an invalid type.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [{ type: "test-type", validationRegex: "test" }],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /Invalid type/);
+    });
+    it("should error if a param has an invalid default.", () => {
+      const testSpec = {
+        version: "0.1.0",
+        specVersion: "v1beta",
+        params: [
+          { type: extensionsHelper.SpecParamType.STRING, validationRegex: "test", default: "fail" },
+        ],
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /default/);
+    });
+  });
+
   describe("promptForValidInstanceId", () => {
     let promptStub: sinon.SinonStub;
 
@@ -251,6 +596,151 @@ describe("extensionsHelper", () => {
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
+    });
+  });
+
+  describe("createSourceFromLocation", () => {
+    let archiveStub: sinon.SinonStub;
+    let uploadStub: sinon.SinonStub;
+    let createSourceStub: sinon.SinonStub;
+    let deleteStub: sinon.SinonStub;
+    const testUrl =
+      "https://firebasestorage.googleapis.com/v0/b/firebase-ext-eap-uploads/o/object.zip";
+    const testSource = {
+      name: "test",
+      packageUri: testUrl,
+      hash: "abc123",
+      spec: {
+        name: "projects/test-proj/sources/abc123",
+        sourceUrl: testUrl,
+        resources: [],
+      },
+    };
+
+    beforeEach(() => {
+      archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
+      uploadStub = sinon
+        .stub(storage, "uploadObject")
+        .resolves("/v0/b/firebase-ext-eap-uploads/o/object.zip");
+      createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
+      deleteStub = sinon.stub(storage, "deleteObject").resolves();
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should upload local sources to Firebase Storage then create an ExtensionSource", async () => {
+      const result = await extensionsHelper.createSourceFromLocation("test-proj", ".");
+
+      expect(result).to.equal(testSource);
+      expect(archiveStub).to.have.been.calledWith(".");
+      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
+      expect(deleteStub).to.have.been.calledWith(
+        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+      );
+    });
+
+    it("should succeed even when it fails to delete the uploaded archive", async () => {
+      deleteStub.throws();
+
+      const result = await extensionsHelper.createSourceFromLocation("test-proj", ".");
+
+      expect(result).to.equal(testSource);
+      expect(archiveStub).to.have.been.calledWith(".");
+      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
+      expect(deleteStub).to.have.been.calledWith(
+        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+      );
+    });
+
+    it("should create an ExtensionSource with url sources", async () => {
+      const url = "https://storage.com/my.zip";
+
+      const result = await extensionsHelper.createSourceFromLocation("test-proj", url);
+
+      expect(result).to.equal(testSource);
+      expect(createSourceStub).to.have.been.calledWith("test-proj", url);
+      expect(archiveStub).not.to.have.been.called;
+      expect(uploadStub).not.to.have.been.called;
+      expect(deleteStub).not.to.have.been.called;
+    });
+
+    it("should throw an error if one is thrown while uploading a local source ", async () => {
+      uploadStub.throws(new FirebaseError("something bad happened"));
+
+      await expect(extensionsHelper.createSourceFromLocation("test-proj", ".")).to.be.rejectedWith(
+        FirebaseError
+      );
+
+      expect(archiveStub).to.have.been.calledWith(".");
+      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(createSourceStub).not.to.have.been.called;
+      expect(deleteStub).not.to.have.been.called;
+    });
+  });
+
+  describe("getExtensionSourceFromName", () => {
+    let resolveRegistryEntryStub: sinon.SinonStub;
+    let getSourceStub: sinon.SinonStub;
+
+    const testOnePlatformSourceName = "projects/test-proj/sources/abc123";
+    const testRegistyEntry = {
+      labels: { latest: "0.1.1" },
+      versions: {
+        "0.1.0": "projects/test-proj/sources/def456",
+        "0.1.1": testOnePlatformSourceName,
+      },
+    };
+    const testSource = {
+      name: "test",
+      packageUri: "",
+      hash: "abc123",
+      spec: {
+        name: "",
+        sourceUrl: "",
+        resources: [],
+      },
+    };
+
+    beforeEach(() => {
+      resolveRegistryEntryStub = sinon
+        .stub(resolveSource, "resolveRegistryEntry")
+        .resolves(testRegistyEntry);
+      getSourceStub = sinon.stub(extensionsApi, "getSource").resolves(testSource);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should look up official source names in the registry and fetch the ExtensionSource found there", async () => {
+      const testOfficialName = "storage-resize-images";
+
+      const result = await extensionsHelper.getExtensionSourceFromName(testOfficialName);
+
+      expect(resolveRegistryEntryStub).to.have.been.calledWith(testOfficialName);
+      expect(getSourceStub).to.have.been.calledWith(testOnePlatformSourceName);
+      expect(result).to.equal(testSource);
+    });
+
+    it("should fetch ExtensionSources when given a one platform name", async () => {
+      const result = await extensionsHelper.getExtensionSourceFromName(testOnePlatformSourceName);
+
+      expect(resolveRegistryEntryStub).not.to.have.been.called;
+      expect(getSourceStub).to.have.been.calledWith(testOnePlatformSourceName);
+      expect(result).to.equal(testSource);
+    });
+
+    it("should throw an error if given a invalid namae", async () => {
+      await expect(extensionsHelper.getExtensionSourceFromName(".")).to.be.rejectedWith(
+        FirebaseError
+      );
+
+      expect(resolveRegistryEntryStub).not.to.have.been.called;
+      expect(getSourceStub).not.to.have.been.called;
     });
   });
 

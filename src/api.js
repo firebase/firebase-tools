@@ -3,6 +3,7 @@
 var _ = require("lodash");
 var querystring = require("querystring");
 var request = require("request");
+var url = require("url");
 
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
@@ -155,6 +156,10 @@ var api = {
     "https://runtimeconfig.googleapis.com"
   ),
   storageOrigin: utils.envOverride("FIREBASE_STORAGE_URL", "https://storage.googleapis.com"),
+  firebaseStorageOrigin: utils.envOverride(
+    "FIREBASE_FIREBASESTORAGE_URL",
+    "https://firebasestorage.googleapis.com"
+  ),
   hostingApiOrigin: utils.envOverride(
     "FIREBASE_HOSTING_API_URL",
     "https://firebasehosting.googleapis.com"
@@ -247,12 +252,25 @@ var api = {
     var requestFunction = function() {
       return _request(reqOptions, options.logOptions);
     };
+
+    var secureRequest = true;
+    if (options.origin) {
+      // Only 'https' requests are secure. Protocol includes the final ':'
+      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
+      const originUrl = url.parse(options.origin);
+      secureRequest = originUrl.protocol === "https:";
+    }
+
     if (options.auth === true) {
-      requestFunction = function() {
-        return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-          return _request(reqOptionsWithToken, options.logOptions);
-        });
-      };
+      if (secureRequest) {
+        requestFunction = function() {
+          return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
+            return _request(reqOptionsWithToken, options.logOptions);
+          });
+        };
+      } else {
+        logger.debug(`Ignoring options.auth for insecure origin: ${options.origin}`);
+      }
     }
 
     return requestFunction().catch(function(err) {

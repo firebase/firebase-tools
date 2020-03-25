@@ -14,7 +14,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   let responses: string[];
 
   if (spec.required && !response) {
-    utils.logWarning("You are required to enter a value for this question");
+    utils.logWarning(`Param ${spec.param} is required, but no value was provided.`);
     return false;
   }
   if (spec.type === ParamType.MULTISELECT) {
@@ -24,20 +24,21 @@ export function checkResponse(response: string, spec: Param): boolean {
     responses = [response];
   }
 
-  if (spec.validationRegex) {
+  if (spec.validationRegex && !!response) {
+    // !!response to ignore empty optional params
     const re = new RegExp(spec.validationRegex);
     _.forEach(responses, (resp) => {
       if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
-          `${resp} is not a valid answer since it` +
-          ` does not fit the regular expression "${spec.validationRegex}"`;
+          `${resp} is not a valid value for ${spec.param} since it` +
+          ` does not meet the requirements of the regex validation: "${spec.validationRegex}"`;
         utils.logWarning(spec.validationErrorMessage || genericWarn);
         valid = false;
       }
     });
   }
 
-  if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
+  if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
     _.forEach(responses, (r) => {
       // A choice is valid if it matches one of the option values.
       let validChoice = _.some(spec.options, (option: ParamOption) => {

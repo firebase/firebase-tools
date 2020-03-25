@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as util from "util";
 import * as fs from "fs";
 
 import * as api from "../../api";
@@ -11,6 +10,7 @@ import {
   createIosApp,
   createWebApp,
   getAppConfig,
+  getAppConfigFile,
   getAppPlatform,
   IosAppMetadata,
   listFirebaseApps,
@@ -470,8 +470,8 @@ describe("App management", () => {
     it("should resolve with iOS app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateIosAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const iosApp: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const iosApp = { ...app };
         delete iosApp.platform;
         return iosApp;
       });
@@ -489,8 +489,8 @@ describe("App management", () => {
     it("should resolve with Android app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateAndroidAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const androidApps: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const androidApps = { ...app };
         delete androidApps.platform;
         return androidApps;
       });
@@ -508,8 +508,8 @@ describe("App management", () => {
     it("should resolve with Web app list", async () => {
       const appCounts = 10;
       const expectedAppList = generateWebAppList(appCounts);
-      const apiResponseAppList: any[] = expectedAppList.map((app) => {
-        const webApp: any = { ...app };
+      const apiResponseAppList = expectedAppList.map((app) => {
+        const webApp = { ...app };
         delete webApp.platform;
         return webApp;
       });
@@ -670,17 +670,18 @@ describe("App management", () => {
     });
   });
 
-  describe("getAppConfig", () => {
+  describe("getAppConfigFile", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
-      const mockBase64Content = "dGVzdCBpT1MgY29uZmlndXJhdGlvbg==";
       const expectedConfigFileContent = "test iOS configuration";
+      const mockBase64Content = Buffer.from(expectedConfigFileContent).toString("base64");
       apiRequestStub.onFirstCall().resolves({
         body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
       });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
+      const fileData = getAppConfigFile(configData, AppPlatform.IOS);
 
-      expect(configData).to.deep.equal({
+      expect(fileData).to.deep.equal({
         fileName: "GoogleService-Info.plist",
         fileContents: expectedConfigFileContent,
       });
@@ -690,9 +691,51 @@ describe("App management", () => {
       );
     });
 
+    it("should resolve with Web app configuration if it succeeds", async () => {
+      const mockWebConfig = {
+        projectId: PROJECT_ID,
+        appId: APP_ID,
+        apiKey: "api-key",
+      };
+      apiRequestStub.onFirstCall().resolves({ body: mockWebConfig });
+      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
+
+      const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
+      const fileData = getAppConfigFile(configData, AppPlatform.WEB);
+
+      expect(fileData).to.deep.equal({
+        fileName: "google-config.js",
+        fileContents: JSON.stringify(mockWebConfig, null, 2),
+      });
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/webApps/${APP_ID}/config`
+      );
+      expect(readFileSyncStub).to.be.calledOnce;
+    });
+  });
+
+  describe("getAppConfig", () => {
+    it("should resolve with iOS app configuration if it succeeds", async () => {
+      const mockBase64Content = Buffer.from("test iOS configuration").toString("base64");
+      apiRequestStub.onFirstCall().resolves({
+        body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
+      });
+
+      const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
+
+      expect(configData).to.deep.equal({
+        configFilename: "GoogleService-Info.plist",
+        configFileContents: mockBase64Content,
+      });
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1beta1/projects/-/iosApps/${APP_ID}/config`
+      );
+    });
+
     it("should resolve with Android app configuration if it succeeds", async () => {
-      const mockBase64Content = "dGVzdCBBbmRyb2lkIGNvbmZpZ3VyYXRpb24=";
-      const expectedConfigFileContent = "test Android configuration";
+      const mockBase64Content = Buffer.from("test Android configuration").toString("base64");
       apiRequestStub.onFirstCall().resolves({
         body: { configFilename: "google-services.json", configFileContents: mockBase64Content },
       });
@@ -700,8 +743,8 @@ describe("App management", () => {
       const configData = await getAppConfig(APP_ID, AppPlatform.ANDROID);
 
       expect(configData).to.deep.equal({
-        fileName: "google-services.json",
-        fileContents: expectedConfigFileContent,
+        configFilename: "google-services.json",
+        configFileContents: mockBase64Content,
       });
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
@@ -716,14 +759,10 @@ describe("App management", () => {
         apiKey: "api-key",
       };
       apiRequestStub.onFirstCall().resolves({ body: mockWebConfig });
-      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
 
-      expect(configData).to.deep.equal({
-        fileName: "google-config.js",
-        fileContents: JSON.stringify(mockWebConfig, null, 2),
-      });
+      expect(configData).to.deep.equal(mockWebConfig);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
         `/v1beta1/projects/-/webApps/${APP_ID}/config`

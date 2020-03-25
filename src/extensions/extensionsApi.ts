@@ -65,6 +65,7 @@ export interface Resource {
   name: string;
   type: string;
   description?: string;
+  properties?: { [key: string]: any };
 }
 
 export interface Author {
@@ -85,7 +86,7 @@ export interface Param {
   immutable?: boolean;
 }
 
-export const enum ParamType {
+export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
   MULTISELECT = "MULTISELECT",
@@ -276,6 +277,35 @@ async function patchInstance(
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
     operationResourceName: updateRes.body.name,
+    masterTimeout: 600000,
+  });
+  return pollRes;
+}
+
+/**
+ * Create a new extension source
+ *
+ * @param projectId The project to create the source in
+ * @param packageUri A URI for a zipper archive of a extension source
+ * @param extensionRoot A directory inside the archive to look for extension.yaml
+ */
+export async function createSource(
+  projectId: string,
+  packageUri: string,
+  extensionRoot: string
+): Promise<ExtensionSource> {
+  const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/sources/`, {
+    auth: true,
+    origin: api.extensionsOrigin,
+    data: {
+      packageUri,
+      extensionRoot,
+    },
+  });
+  const pollRes = await operationPoller.pollOperation<ExtensionSource>({
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
+    operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
   return pollRes;

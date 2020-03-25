@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
-    "firebase-admin": "^8.0.0",
+    "firebase-admin": "^8.9.2",
     "firebase-functions": "^3.3.0"
   },
   "devDependencies": {

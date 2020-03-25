@@ -8,7 +8,7 @@ const convertConfig = require("./convertConfig");
 const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
 const fsutils = require("../../fsutils");
-const normalizedHostingConfigs = require("../../hosting/normalizedHostingConfigs");
+const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
 const { resolveProjectPath } = require("../../projectPath");
 
 module.exports = function(context, options) {
@@ -53,6 +53,12 @@ module.exports = function(context, options) {
       deploy.site = cfg.site;
     } else {
       throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
+    }
+
+    if (!cfg.public) {
+      throw new FirebaseError(
+        'Must supply a public directory using "public" in each "hosting" config.'
+      );
     }
 
     if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {

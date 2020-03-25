@@ -6,6 +6,7 @@ const chai = require("chai");
 const expect = chai.expect;
 const assert = chai.assert;
 const fs = require("fs");
+const os = require("os");
 
 const Firestore = require("@google-cloud/firestore");
 
@@ -32,7 +33,6 @@ const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to conn
  * parallel emulator subprocesses.
  */
 const TEST_SETUP_TIMEOUT = 60000;
-const EMULATORS_STARTUP_DELAY_TIMEOUT = 60000;
 const EMULATORS_WRITE_DELAY_MS = 5000;
 const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
@@ -43,6 +43,66 @@ const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
  */
 const FIRESTORE_COMPLETION_MARKER = "test/done_from_firestore";
 const DATABASE_COMPLETION_MARKER = "test/done_from_database";
+
+function CLIProcess(name) {
+  this.name = name;
+  this.process = undefined;
+}
+CLIProcess.prototype.constructor = CLIProcess;
+
+CLIProcess.prototype.start = function(cmd, additionalArgs, logDoneFn) {
+  const args = [PROJECT_ROOT + "/lib/bin/firebase.js", cmd, "--project", FIREBASE_PROJECT];
+
+  if (additionalArgs) {
+    args.push(...additionalArgs);
+  }
+
+  this.process = subprocess.spawn("node", args);
+
+  this.process.stdout.on("data", (data) => {
+    process.stdout.write(`[${this.name} stdout] ` + data);
+  });
+
+  this.process.stderr.on("data", (data) => {
+    console.log(`[${this.name} stderr] ` + data);
+  });
+
+  let started;
+  if (logDoneFn) {
+    started = new Promise((resolve) => {
+      this.process.stdout.on("data", (data) => {
+        if (logDoneFn(data)) {
+          resolve();
+        }
+      });
+    });
+  } else {
+    started = new Promise((resolve) => {
+      this.process.once("close", () => {
+        this.process = undefined;
+        resolve();
+      });
+    });
+  }
+
+  return started;
+};
+
+CLIProcess.prototype.stop = function() {
+  if (!this.process) {
+    return Promise.resolve();
+  }
+
+  const stopped = new Promise((resolve) => {
+    this.process.once("close", (/* exitCode, signal */) => {
+      this.process = undefined;
+      resolve();
+    });
+  });
+
+  this.process.kill("SIGINT");
+  return stopped;
+};
 
 function TriggerEndToEndTest(config) {
   this.rtdb_emulator_host = "localhost";
@@ -69,7 +129,7 @@ function TriggerEndToEndTest(config) {
   this.rtdb_from_rtdb = false;
   this.firestore_from_firestore = false;
 
-  this.emulators_process = null;
+  this.cli_process = null;
 }
 
 /*
@@ -86,50 +146,36 @@ TriggerEndToEndTest.prototype.success = function success() {
 };
 
 TriggerEndToEndTest.prototype.startEmulators = function startEmulators(additionalArgs) {
-  var self = this;
-  const args = [
-    PROJECT_ROOT + "/lib/bin/firebase.js",
-    "emulators:start",
-    "--project",
-    FIREBASE_PROJECT,
-  ];
+  const cli = new CLIProcess("default");
+  const started = cli.start("emulators:start", additionalArgs, (data) => {
+    return data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1;
+  });
 
-  if (additionalArgs) {
-    args.push(...additionalArgs);
-  }
-
-  self.emulators_process = subprocess.spawn("node", args);
-
-  self.emulators_process.stdout.on("data", function(data) {
-    process.stdout.write("[emulators stdout] " + data);
+  cli.process.stdout.on("data", (data) => {
     if (data.indexOf(RTDB_FUNCTION_LOG) > -1) {
-      self.rtdb_trigger_count++;
+      this.rtdb_trigger_count++;
     }
     if (data.indexOf(FIRESTORE_FUNCTION_LOG) > -1) {
-      self.firestore_trigger_count++;
+      this.firestore_trigger_count++;
     }
     if (data.indexOf(PUBSUB_FUNCTION_LOG) > -1) {
-      self.pubsub_trigger_count++;
-    }
-    if (data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1) {
-      self.all_emulators_started = true;
+      this.pubsub_trigger_count++;
     }
   });
 
-  self.emulators_process.stderr.on("data", function(data) {
-    console.log("[emulators stderr] " + data);
-  });
+  this.cli_process = cli;
+  return started;
+};
+
+TriggerEndToEndTest.prototype.startEmulatorsAndWait = function startEmulatorsAndWait(
+  additionalArgs,
+  done
+) {
+  this.startEmulators(additionalArgs).then(done);
 };
 
 TriggerEndToEndTest.prototype.stopEmulators = function stopEmulators(done) {
-  this.emulators_process.once("close", function(/* exitCode, signal */) {
-    done();
-  });
-
-  /*
-   * CLI process only shuts down emulators cleanly on SIGINT.
-   */
-  this.emulators_process.kill("SIGINT");
+  this.cli_process.stop().then(done);
 };
 
 TriggerEndToEndTest.prototype.invokeHttpFunction = function invokeHttpFunction(name, done) {
@@ -158,6 +204,10 @@ TriggerEndToEndTest.prototype.writeToFirestore = function writeToFirestore(done)
 
 TriggerEndToEndTest.prototype.writeToPubsub = function writeToPubsub(done) {
   return this.invokeHttpFunction("writeToPubsub", done);
+};
+
+TriggerEndToEndTest.prototype.writeToScheduledPubsub = function writeToScheduledPubsub(done) {
+  return this.invokeHttpFunction("writeToScheduledPubsub", done);
 };
 
 TriggerEndToEndTest.prototype.waitForCondition = function(conditionFn, timeout, callback) {
@@ -217,15 +267,7 @@ describe("database and firestore emulator function triggers", function() {
           });
         },
         function(done) {
-          test.startEmulators(["--only", "functions,database,firestore"]);
-          test.waitForCondition(
-            () => test.all_emulators_started,
-            EMULATORS_STARTUP_DELAY_TIMEOUT,
-            (err) => {
-              expect(err).to.be.undefined;
-              done();
-            }
-          );
+          test.startEmulatorsAndWait(["--only", "functions,database,firestore"], done);
         },
         function(done) {
           test.firestore_client = new Firestore({
@@ -259,10 +301,10 @@ describe("database and firestore emulator function triggers", function() {
           const database = test.database_client;
 
           /*
-         * Install completion marker handlers and have them update state
-         * in the global test fixture on success. We will later check that
-         * state to determine whether the test passed or failed.
-         */
+           * Install completion marker handlers and have them update state
+           * in the global test fixture on success. We will later check that
+           * state to determine whether the test passed or failed.
+           */
           database.ref(FIRESTORE_COMPLETION_MARKER).on(
             "value",
             function(/* snap */) {
@@ -390,15 +432,7 @@ describe("pubsub emulator function triggers", function() {
           });
         },
         function(done) {
-          test.startEmulators(["--only", "functions,pubsub"]);
-          test.waitForCondition(
-            () => test.all_emulators_started,
-            EMULATORS_STARTUP_DELAY_TIMEOUT,
-            (err) => {
-              expect(err).to.be.undefined;
-              done();
-            }
-          );
+          test.startEmulatorsAndWait(["--only", "functions,pubsub"], done);
         },
       ],
       done
@@ -428,4 +462,49 @@ describe("pubsub emulator function triggers", function() {
     expect(test.pubsub_trigger_count).to.equal(1);
     done();
   });
+
+  it("should write to the scheduled pubsub emulator", function(done) {
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    test.writeToScheduledPubsub(function(err, response) {
+      expect(err).to.be.null;
+      expect(response.statusCode).to.equal(200);
+      setTimeout(done, EMULATORS_WRITE_DELAY_MS);
+    });
+  });
+
+  it("should have have triggered cloud functions", function(done) {
+    expect(test.pubsub_trigger_count).to.equal(2);
+    done();
+  });
+});
+
+describe("import/export end to end", () => {
+  it("should be able to import/export firestore data", async () => {
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1");
+    await emulatorsCLI.start("emulators:start", ["--only", "firestore"], (data) => {
+      return data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1;
+    });
+
+    // Ask for export
+    const exportCLI = new CLIProcess("2");
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", [exportPath]);
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3");
+    await importCLI.start(
+      "emulators:start",
+      ["--only", "firestore", "--import", exportPath],
+      (data) => {
+        return data.indexOf(ALL_EMULATORS_STARTED_LOG) > -1;
+      }
+    );
+
+    await importCLI.stop();
+  }).timeout(2 * TEST_SETUP_TIMEOUT);
 });

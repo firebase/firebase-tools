@@ -2,12 +2,13 @@ import * as chokidar from "chokidar";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as request from "request";
 
+import * as api from "../api";
 import * as utils from "../utils";
-import * as javaEmulators from "../serve/javaEmulators";
+import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
+import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -31,7 +32,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
 
         utils.logLabeledBullet("database", "Change detected, updating rules...");
         try {
@@ -44,7 +45,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       });
     }
 
-    return javaEmulators.start(Emulators.DATABASE, this.args);
+    return downloadableEmulators.start(Emulators.DATABASE, this.args);
   }
 
   async connect(): Promise<void> {
@@ -52,7 +53,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    return javaEmulators.stop(Emulators.DATABASE);
+    return downloadableEmulators.stop(Emulators.DATABASE);
   }
 
   getInfo(): EmulatorInfo {
@@ -69,26 +70,22 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
-  private updateRules(content: string): Promise<any> {
+  private async updateRules(content: string): Promise<any> {
     const { host, port } = this.getInfo();
-    return new Promise((resolve, reject) => {
-      request.put(
-        {
-          uri: `http://${host}:${[port]}/.settings/rules.json?ns=${this.args.projectId}`,
-          headers: { Authorization: "Bearer owner" },
-          body: content,
-        },
-        (err, resp, body) => {
-          if (err) {
-            reject(err);
-          } else if (resp.statusCode !== 200) {
-            reject(JSON.parse(body).error);
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
+    try {
+      await api.request("PUT", `/.settings/rules.json?ns=${this.args.projectId}`, {
+        origin: `http://${host}:${[port]}`,
+        headers: { Authorization: "Bearer owner" },
+        data: content,
+        json: false,
+      });
+    } catch (e) {
+      // The body is already parsed as JSON
+      if (e.context && e.context.body) {
+        throw e.context.body.error;
+      }
+      throw e.original;
+    }
   }
 
   private prettyPrintRulesError(filePath: string, error: string): string {

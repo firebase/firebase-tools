@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import { Readable } from "stream";
 
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
 

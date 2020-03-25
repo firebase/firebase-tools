@@ -38,7 +38,10 @@ export interface WebAppMetadata extends AppMetadata {
 
 export interface AppConfigurationData {
   fileName: string;
-  fileContents: string /* file contents in utf8 format */;
+  // File contents in utf8 format.
+  fileContents: string;
+  // Only for `AppPlatform.WEB`, the raw configuration parameters.
+  sdkConfig?: { [key: string]: string };
 }
 
 export enum AppPlatform {
@@ -49,6 +52,11 @@ export enum AppPlatform {
   ANY = "ANY",
 }
 
+/**
+ * Returns the `AppPlatform` represented by the string.
+ * @param platform the platform to parse.
+ * @return the `AppPlatform`.
+ */
 export function getAppPlatform(platform: string): AppPlatform {
   switch (platform.toUpperCase()) {
     case "IOS":
@@ -67,7 +75,9 @@ export function getAppPlatform(platform: string): AppPlatform {
 /**
  * Send an API request to create a new Firebase iOS app and poll the LRO to get the new app
  * information.
- * @return a promise that resolves to the new iOS app information
+ * @param projectId the project in which to create the app.
+ * @param options options regarding the app.
+ * @return the new iOS app information
  */
 export async function createIosApp(
   projectId: string,
@@ -80,6 +90,7 @@ export async function createIosApp(
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create iOS app Poller",
       apiOrigin: api.firebaseApiOrigin,
@@ -99,7 +110,9 @@ export async function createIosApp(
 /**
  * Send an API request to create a new Firebase Android app and poll the LRO to get the new app
  * information.
- * @return a promise that resolves to the new Android app information
+ * @param projectId the project in which to create the app.
+ * @param options options regarding the app.
+ * @return the new Android app information.
  */
 export async function createAndroidApp(
   projectId: string,
@@ -112,6 +125,7 @@ export async function createAndroidApp(
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Android app Poller",
       apiOrigin: api.firebaseApiOrigin,
@@ -134,7 +148,9 @@ export async function createAndroidApp(
 /**
  * Send an API request to create a new Firebase Web app and poll the LRO to get the new app
  * information.
- * @return a promise that resolves to the resource name of the create Web app LRO
+ * @param projectId the project in which to create the app.
+ * @param options options regarding the app.
+ * @return the resource name of the create Web app LRO.
  */
 export async function createWebApp(
   projectId: string,
@@ -147,6 +163,7 @@ export async function createWebApp(
       timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
       data: options,
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Web app Poller",
       apiOrigin: api.firebaseApiOrigin,
@@ -159,55 +176,6 @@ export async function createWebApp(
     throw new FirebaseError(
       `Failed to create Web app for project ${projectId}. See firebase-debug.log for more info.`,
       { exit: 2, original: err }
-    );
-  }
-}
-
-/**
- * Lists all Firebase apps registered in a Firebase project, optionally filtered by a platform.
- * Repeatedly calls the paginated API until all pages have been read.
- * @return a promise that resolves to the list of all Firebase apps.
- */
-export async function listFirebaseApps(
-  projectId: string,
-  platform: AppPlatform,
-  pageSize: number = APP_LIST_PAGE_SIZE
-): Promise<AppMetadata[]> {
-  const apps: AppMetadata[] = [];
-  try {
-    let nextPageToken = "";
-    do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
-      const response = await api.request(
-        "GET",
-        getListAppsResourceString(projectId, platform) +
-          `?pageSize=${pageSize}${pageTokenQueryString}`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,
-          timeout: TIMEOUT_MILLIS,
-        }
-      );
-      if (response.body.apps) {
-        const appsOnPage = response.body.apps.map(
-          // app.platform does not exist if we use the endpoint for a specific platform
-          (app: any) => (app.platform ? app : { ...app, platform })
-        );
-        apps.push(...appsOnPage);
-      }
-      nextPageToken = response.body.nextPageToken;
-    } while (nextPageToken);
-
-    return apps;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
-        "apps. See firebase-debug.log for more info.",
-      {
-        exit: 2,
-        original: err,
-      }
     );
   }
 }
@@ -235,31 +203,56 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
 }
 
 /**
- * Gets the configuration artifact associated with the specified a Firebase app
- * @return a promise that resolves to configuration file content of the requested app
+ * Lists all Firebase apps registered in a Firebase project, optionally filtered by a platform.
+ * Repeatedly calls the paginated API until all pages have been read.
+ * @param projectId the project to list apps for.
+ * @param platform the platform to list apps for.
+ * @param pageSize the number of results to be returned in a response.
+ * @return list of all Firebase apps.
  */
-export async function getAppConfig(
-  appId: string,
-  platform: AppPlatform
-): Promise<AppConfigurationData> {
-  let response;
+export async function listFirebaseApps(
+  projectId: string,
+  platform: AppPlatform,
+  pageSize: number = APP_LIST_PAGE_SIZE
+): Promise<AppMetadata[]> {
+  const apps: AppMetadata[] = [];
   try {
-    response = await api.request("GET", getAppConfigResourceString(appId, platform), {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: TIMEOUT_MILLIS,
-    });
+    let nextPageToken = "";
+    do {
+      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const response = await api.request(
+        "GET",
+        getListAppsResourceString(projectId, platform) +
+          `?pageSize=${pageSize}${pageTokenQueryString}`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: TIMEOUT_MILLIS,
+        }
+      );
+      if (response.body.apps) {
+        const appsOnPage = response.body.apps.map(
+          // app.platform does not exist if we use the endpoint for a specific platform
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (app: any) => (app.platform ? app : { ...app, platform })
+        );
+        apps.push(...appsOnPage);
+      }
+      nextPageToken = response.body.nextPageToken;
+    } while (nextPageToken);
+
+    return apps;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get ${platform} app configuration. See firebase-debug.log for more info.`,
+      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
+        "apps. See firebase-debug.log for more info.",
       {
         exit: 2,
         original: err,
       }
     );
   }
-  return parseConfigFromResponse(response.body, platform);
 }
 
 function getAppConfigResourceString(appId: string, platform: AppPlatform): string {
@@ -281,6 +274,7 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
   return `/v1beta1/projects/-/${platformResource}/${appId}/config`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
     const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
@@ -295,4 +289,44 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
     };
   }
   throw new FirebaseError("Unexpected app platform");
+}
+
+/**
+ * Returns information representing the file need to initalize the application.
+ * @param config the object from `getAppConfig`.
+ * @param platform the platform the `config` represents.
+ * @return the platform-specific file information (name and contents).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
+  return parseConfigFromResponse(config, platform);
+}
+
+/**
+ * Gets the configuration artifact associated with the specified a Firebase app.
+ * @param appId the ID of the app.
+ * @param platform the platform of the app.
+ * @return for web, an object with the variables set; for iOS and Android, a file name and
+ *   base64-encoded content string.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getAppConfig(appId: string, platform: AppPlatform): Promise<any> {
+  let response;
+  try {
+    response = await api.request("GET", getAppConfigResourceString(appId, platform), {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: TIMEOUT_MILLIS,
+    });
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get ${platform} app configuration. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+  return response.body;
 }

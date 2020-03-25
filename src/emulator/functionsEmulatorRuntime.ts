@@ -10,12 +10,14 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -394,7 +396,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (href && !history[href]) {
+      if (href && !history[href] && !href.startsWith("http://localhost")) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -473,6 +475,30 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
     return httpsProvider[methodName](handler, {});
   };
+
+  const onCallOriginal = httpsProvider.onCall;
+  httpsProvider.onCall = (handler: (data: any, context: any) => any | Promise<any>) => {
+    // Look for a special header provided by the functions emulator that lets us mock out
+    // callable functions auth.
+    const newHandler = (data: any, context: any) => {
+      if (context.rawRequest) {
+        const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
+        if (authContext) {
+          logDebug("Callable functions auth override", {
+            key: HttpConstants.CALLABLE_AUTH_HEADER,
+            value: authContext,
+          });
+          context.auth = JSON.parse(authContext);
+        } else {
+          logDebug("No callable functions auth found");
+        }
+      }
+
+      return handler(data, context);
+    };
+
+    return onCallOriginal(newHandler);
+  };
 }
 
 /*
@@ -528,8 +554,10 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
   // Configuration for talking to the RTDB emulator
   const databaseConfig = getDefaultConfig();
-  databaseConfig.databaseURL = `http://localhost:${frb.ports.database}?ns=${frb.projectId}`;
-  databaseConfig.credential = makeFakeCredentials();
+  if (frb.emulators.database) {
+    databaseConfig.databaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${frb.projectId}`;
+    databaseConfig.credential = makeFakeCredentials();
+  }
 
   const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
   const proxiedAdminModule = adminModuleProxy
@@ -566,16 +594,14 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
         new EmulatorLog(
           "WARN_ONCE",
           "runtime-status",
-          `You're using firebase-functions v${
-            functionsResolution.version
-          }, please upgrade to firebase-functions v3.3.0 or higher for best results.`
+          `You're using firebase-functions v${functionsResolution.version}, please upgrade to firebase-functions v3.3.0 or higher for best results.`
         ).log();
       }
 
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (frb.ports.firestore) {
+      if (frb.emulators.firestore) {
         return proxiedFirestore;
       } else {
         warnAboutFirestoreProd();
@@ -583,7 +609,7 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       }
     })
     .when("database", (target) => {
-      if (frb.ports.database) {
+      if (frb.emulators.database) {
         return proxiedDatabase;
       } else {
         warnAboutDatabaseProd();
@@ -609,7 +635,7 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (frb.ports.firestore) {
+      if (frb.emulators.firestore) {
         return proxiedFirestore;
       } else {
         warnAboutFirestoreProd();
@@ -617,7 +643,7 @@ function makeProxiedFirebaseApp(
       }
     })
     .when("database", (target: any) => {
-      if (frb.ports.database) {
+      if (frb.emulators.database) {
         return proxiedDatabase;
       } else {
         warnAboutDatabaseProd();
@@ -645,11 +671,11 @@ async function makeProxiedFirestore(
   const sslCreds = await getGRPCInsecureCredential(frb).catch(noOp);
 
   const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    if (!hasInitializedFirestore && frb.ports.firestore) {
+    if (!hasInitializedFirestore && frb.emulators.firestore) {
       const emulatorSettings = {
         projectId: frb.projectId,
-        port: frb.ports.firestore,
-        servicePath: "localhost",
+        port: frb.emulators.firestore.port,
+        servicePath: frb.emulators.firestore.host,
         service: "firestore.googleapis.com",
         sslCreds,
         customHeaders: {
@@ -715,6 +741,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
+  // Look for .runtimeconfig.json in the functions directory
+  const configPath = `${frb.cwd}/.runtimeconfig.json`;
+  try {
+    const configContent = fs.readFileSync(configPath, "utf8");
+    if (configContent) {
+      logDebug(`Found local functions config: ${configPath}`);
+      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+    }
+  } catch (e) {
+    // Ignore, config is optional
+  }
+
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
@@ -745,16 +783,26 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     }
   }
 
-  if (frb.ports.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
-    const pubsubHost = `localhost:${frb.ports.pubsub}`;
+  // The Firebase CLI is sometimes used as a module within Cloud Functions
+  // for tasks like deleting Firestore data. The CLI has an override system
+  // to change the host for most calls (see api.js)
+  //
+  // TODO(samstern): This should be done for RTDB as well but it's hard
+  // because the convention in prod is subdomain not ?ns=
+  if (frb.emulators.firestore) {
+    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+  }
+
+  if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+    const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
   }
 }
 
-async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
   const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [functionsDir],
+    paths: [frb.cwd],
   });
 
   const ff = require(functionsResolution);
@@ -777,7 +825,17 @@ async function initializeFunctionsConfigHelper(functionsDir: string): Promise<vo
             return value;
           } else {
             const valuePath = [parentKey, childKey].join(".");
-            new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+
+            // Calling console.log() or util.inspect() on a config value can cause spurious logging
+            // if we don't ignore certain known-bad paths.
+            const ignore =
+              valuePath.endsWith(".inspect") ||
+              valuePath.endsWith(".toJSON") ||
+              valuePath.includes("Symbol(") ||
+              valuePath.includes("Symbol.iterator");
+            if (!ignore) {
+              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+            }
             return undefined;
           }
         })
@@ -1026,7 +1084,8 @@ async function invokeTrigger(
 
 async function initializeRuntime(
   frb: FunctionsRuntimeBundle,
-  serializedFunctionTrigger?: string
+  serializedFunctionTrigger?: string,
+  extensionTriggers?: EmulatedTriggerDefinition[]
 ): Promise<EmulatedTriggerMap | undefined> {
   logDebug(`Disabled runtime features: ${JSON.stringify(frb.disabled_features)}`);
 
@@ -1046,9 +1105,7 @@ async function initializeRuntime(
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 
@@ -1057,7 +1114,7 @@ async function initializeRuntime(
   }
 
   if (isFeatureEnabled(frb, "functions_config_helper")) {
-    await initializeFunctionsConfigHelper(frb.cwd);
+    await initializeFunctionsConfigHelper(frb);
   }
 
   // TODO: Should this feature have a flag as well or is it required?
@@ -1068,7 +1125,7 @@ async function initializeRuntime(
   }
 
   let triggers: EmulatedTriggerMap;
-  const triggerDefinitions: EmulatedTriggerDefinition[] = [];
+  let triggerDefinitions: EmulatedTriggerDefinition[] = [];
   let triggerModule;
 
   if (serializedFunctionTrigger) {
@@ -1082,8 +1139,12 @@ async function initializeRuntime(
       return;
     }
   }
+  if (extensionTriggers) {
+    triggerDefinitions = extensionTriggers;
+  } else {
+    require("../extractTriggers")(triggerModule, triggerDefinitions);
+  }
 
-  require("../extractTriggers")(triggerModule, triggerDefinitions);
   triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
@@ -1112,7 +1173,8 @@ async function handleMessage(message: string) {
 
   if (!triggers) {
     const serializedTriggers = runtimeArgs.opts ? runtimeArgs.opts.serializedTriggers : undefined;
-    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers);
+    const extensionTriggers = runtimeArgs.opts ? runtimeArgs.opts.extensionTriggers : undefined;
+    triggers = await initializeRuntime(runtimeArgs.frb, serializedTriggers, extensionTriggers);
   }
 
   // If we don't have triggers by now, we can't run.
@@ -1173,7 +1235,7 @@ async function main(): Promise<void> {
         // All errors *should* be handled within handleMessage. But just in case,
         // we want to exit fatally on any error related to message handling.
         logDebug(`Error in handleMessage: ${message} => ${err}: ${err.stack}`);
-        new EmulatorLog("FATAL", "runtime-error", err).log();
+        new EmulatorLog("FATAL", "runtime-error", err.message || err, err).log();
         return flushAndExit(1);
       });
   });

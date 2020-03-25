@@ -19,7 +19,7 @@ var fs = require("fs-extra");
 var cloudfunctions = require("../lib/gcp/cloudfunctions");
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
-var configstore = require("../lib/configstore");
+var { configstore } = require("../lib/configstore");
 var extractTriggers = require("../lib/extractTriggers");
 var functionsConfig = require("../lib/functionsConfig");
 
