@@ -66,7 +66,6 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
-    "@types/js-yaml": "^3.12.2",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
@@ -128,7 +127,8 @@
     "@types/fs-extra": "^5.0.5",
     "@types/glob": "^7.1.1",
     "@types/inquirer": "^6.0.3",
-    "@types/js-yaml": "^3.12.1",
+    "@types/js-yaml": "^3.12.2",
+    "@types/jsonwebtoken": "^8.3.8",
     "@types/lodash": "^4.14.136",
     "@types/marked": "^0.6.5",
     "@types/mocha": "^5.2.5",
