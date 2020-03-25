@@ -66,7 +66,6 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
-    "@types/ws": "^7.2.3",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
@@ -152,6 +151,7 @@
     "@types/unzipper": "^0.10.0",
     "@types/uuid": "^3.4.4",
     "@types/winston": "^2.4.4",
+    "@types/ws": "^7.2.3",
     "@typescript-eslint/eslint-plugin": "^2.3.0",
     "@typescript-eslint/parser": "^2.3.0",
     "chai": "^4.2.0",
