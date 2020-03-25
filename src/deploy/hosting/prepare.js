@@ -55,6 +55,12 @@ module.exports = function(context, options) {
       throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
     }
 
+    if (!cfg.public) {
+      throw new FirebaseError(
+        'Must supply a public directory using "public" in each "hosting" config.'
+      );
+    }
+
     if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {
       throw new FirebaseError(
         `Specified public directory '${cfg.public}' does not exist, ` +

@@ -29,7 +29,7 @@ var fsutils = require("../fsutils");
 var path = require("path");
 var clc = require("cli-color");
 var ansiStrip = require("cli-color/strip");
-var configstore = require("../configstore");
+var { configstore } = require("../configstore");
 var _ = require("lodash");
 var args = process.argv.slice(2);
 var handlePreviewToggles = require("../handlePreviewToggles");
@@ -98,7 +98,7 @@ process.on("exit", function(code) {
     }
     configstore.set("lastError", timestamp);
   } else {
-    configstore.del("lastError");
+    configstore.delete("lastError");
   }
 });
 require("exit-code");

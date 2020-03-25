@@ -6,7 +6,7 @@ import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
-import { getDownloadDetails } from "../serve/javaEmulators";
+import { getDownloadDetails } from "./downloadableEmulators";
 
 export interface ExportMetadata {
   version: string;
@@ -28,7 +28,7 @@ export class HubExport {
       return undefined;
     }
 
-    return JSON.parse(fs.readFileSync(metadataPath).toString()) as ExportMetadata;
+    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
   }
 
   public async exportAll(): Promise<void> {

@@ -9,7 +9,12 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
-import { EmulatorInstance, Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
+import {
+  EmulatorInstance,
+  Emulators,
+  ALL_SERVICE_EMULATORS,
+  EMULATORS_SUPPORTED_BY_GUI,
+} from "../emulator/types";
 import { Constants } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
@@ -21,6 +26,8 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
+import { EmulatorGUI } from "./gui";
+import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -52,9 +59,14 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const portOpen = await checkPortOpen(port, host);
   if (!portOpen) {
     await cleanShutdown();
-    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
-    utils.logWarning(`Port ${port} is not open on ${host}, could not start ${description}.`);
-    utils.logBullet(`To select a different host/port for the emulator, update your "firebase.json":
+    const description = Constants.description(name);
+    utils.logLabeledWarning(
+      name,
+      `Port ${port} is not open on ${host}, could not start ${description}.`
+    );
+    utils.logLabeledBullet(
+      name,
+      `To select a different host/port for the emulator, specify that host/port in a firebase.json config file:
     {
       // ...
       "emulators": {
@@ -63,7 +75,8 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
           "port": "${clc.yellow("PORT")}"
         }
       }
-    }`);
+    }`
+    );
     return utils.reject(`Could not start ${name} emulator, port taken.`, {});
   }
 
@@ -71,18 +84,17 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
 }
 
 export async function cleanShutdown(): Promise<boolean> {
-  utils.logBullet("Shutting down emulators.");
+  utils.logLabeledBullet("emulators", "Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    const description = name === Emulators.HUB ? "emulator hub" : `${name} emulator`;
-    utils.logBullet(`Stopping ${description}`);
+    utils.logLabeledBullet(name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
 
   return true;
 }
 
-export function filterEmulatorTargets(options: any): string[] {
+export function filterEmulatorTargets(options: any): Emulators[] {
   let targets = ALL_SERVICE_EMULATORS.filter((e) => {
     return options.config.has(e) || options.config.has(`emulators.${e}`);
   });
@@ -96,15 +108,23 @@ export function filterEmulatorTargets(options: any): string[] {
 
 export function shouldStart(options: any, name: Emulators): boolean {
   if (name === Emulators.HUB) {
-    // The hub only starts if we know the project ID
+    // The hub only starts if we know the project ID.
     return !!options.project;
   }
-
   const targets = filterEmulatorTargets(options);
+  if (name === Emulators.GUI) {
+    // The GUI only starts if we know the project ID AND at least one emulator
+    // supported by GUI is launching.
+    return (
+      previews.emulatorgui &&
+      !!options.project &&
+      targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.indexOf(target) >= 0)
+    );
+  }
   return targets.indexOf(name) >= 0;
 }
 
-export async function startAll(options: any): Promise<void> {
+export async function startAll(options: any, noGui: boolean = false): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -127,7 +147,8 @@ export async function startAll(options: any): Promise<void> {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
     for (const name of ignored) {
-      utils.logWarning(
+      utils.logLabeledWarning(
+        name,
         `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
           "firebase init"
         )}.`
@@ -148,7 +169,9 @@ export async function startAll(options: any): Promise<void> {
     if (hubPort != hubAddr.port) {
       utils.logLabeledWarning(
         "emulators",
-        `Emulator hub unable to start on port ${hubAddr.port}, starting on ${hubPort}`
+        `${Constants.description(Emulators.HUB)} unable to start on port ${
+          hubAddr.port
+        }, starting on ${hubPort}`
       );
     }
 
@@ -167,7 +190,7 @@ export async function startAll(options: any): Promise<void> {
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME)).toString()
+      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
     ) as ExportMetadata;
   }
 
@@ -176,7 +199,7 @@ export async function startAll(options: any): Promise<void> {
 
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
-      options.config.projectDir,
+      options.extensionDir || options.config.projectDir,
       options.config.get("functions.source")
     );
 
@@ -197,6 +220,8 @@ export async function startAll(options: any): Promise<void> {
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      env: options.extensionEnv,
+      predefinedTriggers: options.extensionTriggers,
     });
     await startEmulator(functionsEmulator);
   }
@@ -223,19 +248,29 @@ export async function startAll(options: any): Promise<void> {
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
+    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
       if (fs.existsSync(rules)) {
         args.rules = rules;
       } else {
-        utils.logWarning(
-          `Firestore rules file ${clc.bold(
-            rules
-          )} specified in firebase.json does not exist, starting Firestore emulator without rules.`
+        utils.logLabeledWarning(
+          "firestore",
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
-      utils.logWarning(`No Firestore rules file specified in firebase.json, using default rules.`);
+      utils.logLabeledWarning(
+        "firestore",
+        "Did not find a Cloud Firestore rules file specified in a firebase.json config file."
+      );
+    }
+
+    if (!foundRulesFile) {
+      utils.logLabeledWarning(
+        "firestore",
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+      );
     }
 
     const firestoreEmulator = new FirestoreEmulator(args);
@@ -266,19 +301,31 @@ export async function startAll(options: any): Promise<void> {
     }
 
     const rulesLocalPath = options.config.get("database.rules");
+    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
       if (fs.existsSync(rules)) {
         args.rules = rules;
       } else {
-        utils.logWarning(
-          `Database rules file ${clc.bold(
+        utils.logLabeledWarning(
+          "database",
+          `Realtime Database rules file ${clc.bold(
             rules
-          )} specified in firebase.json does not exist, starting Database emulator without rules.`
+          )} specified in firebase.json does not exist.`
         );
       }
     } else {
-      utils.logWarning(`No Database rules file specified in firebase.json, using default rules.`);
+      utils.logLabeledWarning(
+        "database",
+        "Did not find a Realtime Database rules file specified in a firebase.json config file."
+      );
+    }
+
+    if (!foundRulesFile) {
+      utils.logLabeledWarning(
+        "database",
+        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+      );
     }
 
     const databaseEmulator = new DatabaseEmulator(args);
@@ -318,6 +365,34 @@ export async function startAll(options: any): Promise<void> {
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  if (!noGui && shouldStart(options, Emulators.GUI)) {
+    // For the GUI we actually will find any available port
+    // since we don't want to explode if the GUI can't start on 3000.
+    const guiAddr = Constants.getAddress(Emulators.GUI, options);
+    const guiPort = await pf.getPortPromise({
+      host: guiAddr.host,
+      port: guiAddr.port,
+      stopPort: guiAddr.port + 100,
+    });
+
+    if (guiPort != guiAddr.port) {
+      utils.logLabeledWarning(
+        Emulators.GUI,
+        `${Constants.description(Emulators.GUI)} unable to start on port ${
+          guiAddr.port
+        }, starting on ${guiPort}`
+      );
+    }
+
+    const gui = new EmulatorGUI({
+      projectId,
+      host: guiAddr.host,
+      port: guiPort,
+      auto_download: true,
+    });
+    await startEmulator(gui);
   }
 
   const running = EmulatorRegistry.listRunning();

@@ -22,6 +22,13 @@ export interface EmulatedTriggerDefinition {
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  schedule?: EventSchedule;
+  labels?: { [key: string]: any };
+}
+
+export interface EventSchedule {
+  schedule: string;
+  timeZone?: string;
 }
 
 export interface EventTrigger {
@@ -44,10 +51,19 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   triggerType?: EmulatedTriggerType;
-  ports: {
-    firestore?: number;
-    database?: number;
-    pubsub?: number;
+  emulators: {
+    firestore?: {
+      host: string;
+      port: number;
+    };
+    database?: {
+      host: string;
+      port: number;
+    };
+    pubsub?: {
+      host: string;
+      port: number;
+    };
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
@@ -70,6 +86,10 @@ const memoryLookup = {
   "1GB": 1024,
   "2GB": 2048,
 };
+
+export class HttpConstants {
+  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+}
 
 export class EmulatedTrigger {
   /*
@@ -196,7 +216,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         chunks = hierarchy;
       }
       const packagePath = path.join(chunks.join(path.sep), "package.json");
-      const serializedPackage = fs.readFileSync(packagePath).toString();
+      const serializedPackage = fs.readFileSync(packagePath, "utf8").toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");
       }

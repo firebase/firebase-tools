@@ -6,7 +6,7 @@ import * as pf from "portfinder";
 
 import * as api from "../api";
 import * as utils from "../utils";
-import * as javaEmulators from "../serve/javaEmulators";
+import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
@@ -41,7 +41,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const issues = await this.updateRules(newContent);
@@ -85,7 +85,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       // serve WebChannel on the main port anyway.
     }
 
-    return javaEmulators.start(Emulators.FIRESTORE, this.args);
+    return downloadableEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
   async connect(): Promise<void> {
@@ -97,7 +97,7 @@ export class FirestoreEmulator implements EmulatorInstance {
       this.rulesWatcher.close();
     }
 
-    return javaEmulators.stop(Emulators.FIRESTORE);
+    return downloadableEmulators.stop(Emulators.FIRESTORE);
   }
 
   getInfo(): EmulatorInfo {

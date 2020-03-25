@@ -1,12 +1,15 @@
 "use strict";
 
 var _ = require("lodash");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 
 var previews = _.assign(
   {
     // insert previews here...
     rtdbrules: false,
+    ext: false,
+    extdev: false,
+    emulatorgui: false,
   },
   configstore.get("previews")
 );

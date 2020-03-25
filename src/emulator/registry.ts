@@ -1,9 +1,10 @@
 import * as clc from "cli-color";
 
-import { ALL_EMULATORS, EmulatorInstance, Emulators } from "./types";
+import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as controller from "./controller";
+import { Constants } from "./constants";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -13,8 +14,9 @@ import * as controller from "./controller";
  */
 export class EmulatorRegistry {
   static async start(instance: EmulatorInstance): Promise<void> {
+    const description = Constants.description(instance.getName());
     if (this.isRunning(instance.getName())) {
-      throw new FirebaseError(`Emulator ${instance.getName()} is already running!`, {});
+      throw new FirebaseError(`${description} is already running!`, {});
     }
 
     // Start the emulator and wait for it to grab its assigned port.
@@ -25,17 +27,10 @@ export class EmulatorRegistry {
 
     this.set(instance.getName(), instance);
 
-    if (instance.getName() === Emulators.HUB) {
-      utils.logLabeledSuccess(
-        "emulators",
-        `Emulator hub started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-      );
-    } else {
-      utils.logLabeledSuccess(
-        instance.getName(),
-        `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-      );
-    }
+    utils.logLabeledSuccess(
+      instance.getName(),
+      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
+    );
   }
 
   static async stop(name: Emulators): Promise<void> {
@@ -65,6 +60,15 @@ export class EmulatorRegistry {
 
   static get(emulator: Emulators): EmulatorInstance | undefined {
     return this.INSTANCES.get(emulator);
+  }
+
+  static getInfo(emulator: Emulators): EmulatorInfo | undefined {
+    const instance = this.INSTANCES.get(emulator);
+    if (!instance) {
+      return undefined;
+    }
+
+    return instance.getInfo();
   }
 
   static getPort(emulator: Emulators): number | undefined {

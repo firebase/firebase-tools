@@ -11,7 +11,7 @@ var portfinder = require("portfinder");
 var url = require("url");
 
 var api = require("./api");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var { prompt } = require("./prompt");
@@ -229,10 +229,10 @@ var _logoutCurrentSession = function(refreshToken) {
   var tokens = configstore.get("tokens");
   var currentToken = _.get(tokens, "refresh_token");
   if (refreshToken === currentToken) {
-    configstore.del("user");
-    configstore.del("tokens");
-    configstore.del("usage");
-    configstore.del("analytics-uuid");
+    configstore.delete("user");
+    configstore.delete("tokens");
+    configstore.delete("usage");
+    configstore.delete("analytics-uuid");
   }
 };
 

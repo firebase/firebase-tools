@@ -219,6 +219,7 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
                   runtime: runtime,
                   availableMemoryMb: functionInfo.availableMemoryMb,
                   timeout: functionInfo.timeout,
+                  maxInstances: functionInfo.maxInstances,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -292,6 +293,7 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
               labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
               availableMemoryMb: functionInfo.availableMemoryMb,
               timeout: functionInfo.timeout,
+              maxInstances: functionInfo.maxInstances,
             };
             if (context.runtimeChoice) {
               options.runtime = context.runtimeChoice;
