@@ -1,13 +1,13 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import { Readable } from "stream";
+import * as winston from "winston";
+import { SPLAT } from "triple-beam";
+const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
-import * as winston from "winston";
-import { SPLAT } from "triple-beam";
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
