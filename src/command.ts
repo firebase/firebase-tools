@@ -1,19 +1,15 @@
 import { bold } from "cli-color";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
-import { SPLAT } from "triple-beam";
-import * as winston from "winston";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, tryStringify } from "./utils";
+import { getInheritedOption, setupLoggers } from "./utils";
 import { load } from "./rc";
 import { load as _load } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import logger = require("./logger");
 import track = require("./track");
 import clc = require("cli-color");
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -228,28 +224,7 @@ export class Command {
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
     } else {
-      if (process.env.DEBUG) {
-        logger.add(
-          new winston.transports.Console({
-            level: "debug",
-            format: winston.format.printf((info) => {
-              const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-              return `${ansiStrip(segments.join(" "))}`;
-            }),
-          })
-        );
-      } else if (process.env.IS_FIREBASE_CLI) {
-        logger.add(
-          new winston.transports.Console({
-            level: "info",
-            format: winston.format.printf((info) =>
-              [info.message, ...(info[SPLAT] || [])]
-                .filter((chunk) => typeof chunk == "string")
-                .join(" ")
-            ),
-          })
-        );
-      }
+      setupLoggers();
     }
 
     try {
