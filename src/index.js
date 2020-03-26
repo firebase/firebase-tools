@@ -4,6 +4,7 @@ var program = require("commander");
 var pkg = require("../package.json");
 var clc = require("cli-color");
 var logger = require("./logger");
+var { setupLoggers } = require("./utils");
 var didYouMean = require("didyoumean");
 
 program.version(pkg.version);
@@ -67,6 +68,8 @@ var RENAMED_COMMANDS = {
 
 // Default handler, this is called when no other command action matches.
 program.action(function(_, args) {
+  setupLoggers();
+
   var cmd = args[0];
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
