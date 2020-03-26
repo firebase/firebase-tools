@@ -699,12 +699,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    const idToken = match[1];
+    let idToken = match[1];
     logger.debug(`ID Token: ${idToken}`);
+
+    // The @firebase/testing library sometimes produces JWTs with invalid padding, so we
+    // remove that via regex. This is the spec that says trailing = should be removed:
+    // https://tools.ietf.org/html/rfc7515#section-2
+    if (idToken && idToken.includes("=")) {
+      idToken = idToken.replace(/[=]+?\./g, ".");
+      logger.debug(`ID Token contained invalid padding, new value: ${idToken}`);
+    }
 
     try {
       const decoded = jwt.decode(idToken, { complete: true });
       if (!decoded || typeof decoded !== "object") {
+        logger.debug(`Failed to decode ID Token: ${decoded}`);
         return;
       }
 
