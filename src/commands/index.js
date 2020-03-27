@@ -84,6 +84,7 @@ module.exports = function(client) {
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.disable = loadCommand("hosting-disable");
+  client.info = loadCommand("info");
   client.init = loadCommand("init");
   client.list = loadCommand("list");
   client.login = loadCommand("login");

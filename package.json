@@ -79,6 +79,8 @@
     "cross-spawn": "^4.0.0",
     "csv-streamify": "^3.0.4",
     "didyoumean": "^1.2.1",
+    "envinfo": "^7.2.0",
+    "es6-set": "^0.1.4",
     "dotenv": "^6.1.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
