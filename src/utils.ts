@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import { Readable } from "stream";
+import * as winston from "winston";
+import { SPLAT } from "triple-beam";
+const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
@@ -257,4 +260,61 @@ export async function promiseProps(obj: any): Promise<any> {
     resultObj[key] = r;
   });
   return Promise.all(promises).then(() => resultObj);
+}
+
+/**
+ * Attempts to call JSON.stringify on an object, if it throws return the original value
+ * @param value
+ */
+export function tryStringify(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Attempts to call JSON.parse on an object, if it throws return the original value
+ * @param value
+ */
+export function tryParse(value: any) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+export function setupLoggers() {
+  if (process.env.DEBUG) {
+    logger.add(
+      new winston.transports.Console({
+        level: "debug",
+        format: winston.format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          return `${ansiStrip(segments.join(" "))}`;
+        }),
+      })
+    );
+  } else if (process.env.IS_FIREBASE_CLI) {
+    logger.add(
+      new winston.transports.Console({
+        level: "info",
+        format: winston.format.printf((info) =>
+          [info.message, ...(info[SPLAT] || [])]
+            .filter((chunk) => typeof chunk == "string")
+            .join(" ")
+        ),
+      })
+    );
+  }
 }

@@ -19,6 +19,7 @@ if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
   functionsDir: MODULE_ROOT,
+  quiet: true,
 });
 
 // This is normally discovered in FunctionsEmulator#start()

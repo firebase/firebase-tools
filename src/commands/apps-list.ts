@@ -6,7 +6,7 @@ import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
 import { FirebaseError } from "../error";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");

@@ -9,8 +9,6 @@ const TARGETS: {
 } = {
   hosting: require("./hosting"),
   functions: require("./functions"),
-  database: require("./database"),
-  firestore: require("./firestore"),
 };
 
 /**
