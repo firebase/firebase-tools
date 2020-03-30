@@ -116,7 +116,7 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         }
       }
 
-      fs.writeFileSync(filename, configData.fileContents);
+      fs.writeFileSync(filename, fileInfo.fileContents);
       logger.info(`App configuration is written in ${filename}`);
 
       return configData;
