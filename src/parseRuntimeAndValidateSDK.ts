@@ -15,7 +15,7 @@ const cjson = require("cjson");
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
   nodejs8: "Node.js 8",
-  nodejs10: "Node.js 10 (Beta)",
+  nodejs10: "Node.js 10",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
@@ -29,9 +29,15 @@ export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
     `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}. ` +
     `Note that Node.js 6 is now deprecated.`
 );
-export const DEPRECATION_WARNING_MSG =
+
+export const NODE6_DEPRECATION_WARNING_MSG =
   clc.bold.yellow("functions: ") +
-  "Deploying functions to Node 6 runtime, which is deprecated. Node 8 is available " +
+  "Deploying functions to Node 6 runtime, which is deprecated. Node 10 is available " +
+  "and is the recommended runtime.";
+
+export const NODE8_DEPRECATION_WARNING_MSG =
+  clc.bold.yellow("functions: ") +
+  "Deploying functions to Node 8 runtime, which will be deprecated in May 2020. Node 10 is available " +
   "and is the recommended runtime.";
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
@@ -39,15 +45,6 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   "You must have a " +
   clc.bold("firebase-functions") +
   " version that is at least 2.0.0. Please run " +
-  clc.bold("npm i --save firebase-functions@latest") +
-  " in the functions folder.";
-
-export const FUNCTIONS_SDK_VERSION_TOO_OLD_NODE10_ERROR =
-  "You must have a " +
-  clc.bold("firebase-functions") +
-  " version that is at least " +
-  clc.bold("3.4.0") +
-  " in order to deploy functions to Node 10 runtime. Please run " +
   clc.bold("npm i --save firebase-functions@latest") +
   " in the functions folder.";
 
@@ -85,11 +82,9 @@ export async function getRuntimeChoice(sourceDir: string): Promise<string> {
   }
 
   if (runtime === "nodejs6") {
-    utils.logWarning(DEPRECATION_WARNING_MSG);
-  } else if (runtime === "nodejs10") {
-    if (await functionsSDKTooOld(sourceDir, ">=3.4")) {
-      throw new FirebaseError(FUNCTIONS_SDK_VERSION_TOO_OLD_NODE10_ERROR);
-    }
+    utils.logWarning(NODE6_DEPRECATION_WARNING_MSG);
+  } else if (runtime === "nodejs8") {
+    utils.logWarning(NODE8_DEPRECATION_WARNING_MSG);  
   } else {
     if (await functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);

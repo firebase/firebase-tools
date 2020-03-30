@@ -35,15 +35,15 @@ describe("getRuntimeChoice", () => {
     SDKVersionStub.returns("2.0.0");
 
     expect(runtime.getRuntimeChoice("path/to/source")).to.eventually.deep.equal("nodejs6");
-    expect(warningSpy).calledWith(runtime.DEPRECATION_WARNING_MSG);
+    expect(warningSpy).calledWith(runtime.NODE6_DEPRECATION_WARNING_MSG);
   });
 
-  it("should return node 8 if package.json engines field is set to node 8", () => {
+  it("should return node 8 if package.json engines field is set to node 8 and print warning", () => {
     cjsonStub.returns({ engines: { node: "8" } });
     SDKVersionStub.returns("2.0.0");
 
     expect(runtime.getRuntimeChoice("path/to/source")).to.eventually.deep.equal("nodejs8");
-    expect(warningSpy).not.called;
+    expect(warningSpy).calledWith(runtime.NODE8_DEPRECATION_WARNING_MSG);
   });
 
   it("should return node 10 if package.json engines field is set to node 10", () => {

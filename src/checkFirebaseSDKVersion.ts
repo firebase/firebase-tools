@@ -4,8 +4,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
 import * as semver from "semver";
-import { spawnSync } from "child_process";
-
+import * as spawn from "cross-spawn";
 import * as utils from "./utils";
 import * as logger from "./logger";
 
@@ -28,7 +27,7 @@ interface NpmShowResult {
 
 export async function getFunctionsSDKVersion(sourceDir: string): Promise<string | void> {
   try {
-    const child = spawnSync("npm", ["list", "firebase-functions", "--json=true"], {
+    const child = spawn.sync("npm", ["list", "firebase-functions", "--json=true"], {
       cwd: sourceDir,
       encoding: "utf8",
     });
@@ -56,7 +55,7 @@ export async function checkSDKVersion(options: any): Promise<void> {
     return;
   }
   try {
-    const child = spawnSync("npm", ["show", "firebase-functions", "--json=true"], {
+    const child = spawn.sync("npm", ["show", "firebase-functions", "--json=true"], {
       encoding: "utf8",
     });
     if (child.error) {
