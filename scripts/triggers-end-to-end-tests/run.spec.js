@@ -301,10 +301,10 @@ describe("database and firestore emulator function triggers", function() {
           const database = test.database_client;
 
           /*
-         * Install completion marker handlers and have them update state
-         * in the global test fixture on success. We will later check that
-         * state to determine whether the test passed or failed.
-         */
+           * Install completion marker handlers and have them update state
+           * in the global test fixture on success. We will later check that
+           * state to determine whether the test passed or failed.
+           */
           database.ref(FIRESTORE_COMPLETION_MARKER).on(
             "value",
             function(/* snap */) {

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.15.1",
+  "version": "7.16.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -16,7 +16,8 @@
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
-    "test:client-integration": "./scripts/client-integration-tests/run.sh"
+    "test:client-integration": "./scripts/client-integration-tests/run.sh",
+    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh"
   },
   "files": [
     "lib",
@@ -65,7 +66,6 @@
   },
   "dependencies": {
     "@google-cloud/pubsub": "^1.1.5",
-    "@types/js-yaml": "^3.12.2",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",
@@ -114,6 +114,7 @@
     "winston": "^1.0.1"
   },
   "devDependencies": {
+    "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.1.6",
     "@types/chai-as-promised": "^7.1.0",
@@ -126,7 +127,8 @@
     "@types/fs-extra": "^5.0.5",
     "@types/glob": "^7.1.1",
     "@types/inquirer": "^6.0.3",
-    "@types/js-yaml": "^3.12.1",
+    "@types/js-yaml": "^3.12.2",
+    "@types/jsonwebtoken": "^8.3.8",
     "@types/lodash": "^4.14.136",
     "@types/marked": "^0.6.5",
     "@types/mocha": "^5.2.5",
@@ -151,18 +153,18 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.1",
-    "eslint": "^6.4.0",
+    "eslint": "^6.8.0",
     "eslint-config-google": "^0.14.0",
-    "eslint-config-prettier": "^6.3.0",
-    "eslint-plugin-jsdoc": "^17.1.0",
-    "eslint-plugin-prettier": "^3.0.0",
+    "eslint-config-prettier": "^6.10.0",
+    "eslint-plugin-jsdoc": "^22.1.0",
+    "eslint-plugin-prettier": "^3.1.0",
     "firebase": "^7.1.0",
     "firebase-admin": "^8.6.1",
     "firebase-functions": "^3.1.0",
     "mocha": "^5.0.5",
     "nock": "^9.3.3",
     "nyc": "^14.0.0",
-    "prettier": "1.14.3",
+    "prettier": "^1.19.0",
     "sinon": "^6.3.4",
     "sinon-chai": "^3.2.0",
     "source-map-support": "^0.5.9",

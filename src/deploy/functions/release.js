@@ -212,6 +212,7 @@ module.exports = function(context, options, payload) {
                   runtime: runtime,
                   availableMemoryMb: functionInfo.availableMemoryMb,
                   timeout: functionInfo.timeout,
+                  maxInstances: functionInfo.maxInstances,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -286,6 +287,7 @@ module.exports = function(context, options, payload) {
               availableMemoryMb: functionInfo.availableMemoryMb,
               timeout: functionInfo.timeout,
               runtime: runtime,
+              maxInstances: functionInfo.maxInstances,
             };
             utils.logBullet(
               clc.bold.cyan("functions: ") +

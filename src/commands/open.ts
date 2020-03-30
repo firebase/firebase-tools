@@ -82,9 +82,7 @@ export default new Command("open [link]")
       } else if (link.arg === "hosting:site") {
         url = utils.addSubdomain(api.hostingOrigin, options.instance);
       } else if (link.arg === "functions:log") {
-        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${
-          options.project
-        }`;
+        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
       } else {
         throw new FirebaseError(`Unable to determine URL for link: ${link}`);
       }
