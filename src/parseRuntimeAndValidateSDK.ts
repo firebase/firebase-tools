@@ -84,7 +84,7 @@ export async function getRuntimeChoice(sourceDir: string): Promise<string> {
   if (runtime === "nodejs6") {
     utils.logWarning(NODE6_DEPRECATION_WARNING_MSG);
   } else if (runtime === "nodejs8") {
-    utils.logWarning(NODE8_DEPRECATION_WARNING_MSG);  
+    utils.logWarning(NODE8_DEPRECATION_WARNING_MSG);
   } else {
     if (await functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);

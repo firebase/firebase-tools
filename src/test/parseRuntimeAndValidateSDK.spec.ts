@@ -55,7 +55,7 @@ describe("getRuntimeChoice", () => {
   });
 
   it("should print warning when firebase-functions version is below 2.0.0", async () => {
-    cjsonStub.returns({ engines: { node: "8" } });
+    cjsonStub.returns({ engines: { node: "10" } });
     SDKVersionStub.returns("0.5.0");
 
     await runtime.getRuntimeChoice("path/to/source");
@@ -63,9 +63,9 @@ describe("getRuntimeChoice", () => {
   });
 
   it("should not throw error if user's SDK version fails to be fetched", () => {
-    cjsonStub.returns({ engines: { node: "8" } });
+    cjsonStub.returns({ engines: { node: "10" } });
     // Intentionally not setting SDKVersionStub.
-    expect(runtime.getRuntimeChoice("path/to/source")).to.eventually.equal("nodejs8");
+    expect(runtime.getRuntimeChoice("path/to/source")).to.eventually.equal("nodejs10");
     expect(warningSpy).not.called;
   });
 
