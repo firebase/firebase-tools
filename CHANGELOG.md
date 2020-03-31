@@ -10,3 +10,4 @@
 * **BREAKING**: Rejects Firebase project IDs with invalid format.
 * Updates underlying logging infrastructure.
 * Replaces deprecated `google-auto-auth` package with `google-auth-library`.
+* Fixes file output of `apps:sdkconfig`.
