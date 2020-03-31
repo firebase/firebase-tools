@@ -72,7 +72,7 @@ export async function getRuntimeChoice(sourceDir: string): Promise<string> {
       `Engines field is required but was not found in package.json.\n` +
         `To fix this, add the following lines to your package.json: \n
       "engines": {
-        "node": "8"
+        "node": "10"
       }\n`
     );
   }
