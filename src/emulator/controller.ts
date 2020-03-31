@@ -353,17 +353,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     await startEmulator(hostingEmulator);
   }
 
-  if (shouldStart(options, Emulators.LOGGING)) {
-    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
-    const loggingEmulator = new LoggingEmulator({
-      host: loggingAddr.host,
-      port: loggingAddr.port,
-      ...options,
-    });
-
-    await startEmulator(loggingEmulator);
-  }
-
   if (shouldStart(options, Emulators.PUBSUB)) {
     if (!projectId) {
       throw new FirebaseError(
@@ -386,7 +375,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
       port: loggingAddr.port,
-      ...options,
     });
 
     await startEmulator(loggingEmulator);
