@@ -21,8 +21,14 @@ module.exports = async (name: DownloadableEmulator) => {
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
-  await validateSize(tmpfile, emulator.opts.expectedSize);
-  await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+
+  if (!emulator.opts.skipChecksumAndSize) {
+    await validateSize(tmpfile, emulator.opts.expectedSize);
+    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+  }
+  if (emulator.opts.skipCache) {
+    await removeOldFiles(name, emulator, true);
+  }
 
   fs.copySync(tmpfile, emulator.downloadPath);
 
@@ -45,7 +51,11 @@ function unzip(zipPath: string, unzipDir: string): Promise<void> {
   });
 }
 
-function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDetails): void {
+function removeOldFiles(
+  name: DownloadableEmulator,
+  emulator: EmulatorDownloadDetails,
+  removeAllVersions = false
+): void {
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
   const files = fs.readdirSync(emulator.opts.cacheDir);
@@ -59,7 +69,10 @@ function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDe
       continue;
     }
 
-    if (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) {
+    if (
+      (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
+      removeAllVersions
+    ) {
       utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`);
       fs.removeSync(fullFilePath);
     }

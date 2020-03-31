@@ -2,7 +2,7 @@
 
 var { Command } = require("../command");
 var logger = require("../logger");
-var requireAuth = require("../requireAuth");
+var { requireAuth } = require("../requireAuth");
 var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
 var clc = require("cli-color");
 var utils = require("../utils");

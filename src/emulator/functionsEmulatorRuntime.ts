@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { CloudFunction, DeploymentOptions } from "firebase-functions";
+import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -21,19 +21,12 @@ import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
-const DATABASE_APP = "__database__";
-
 let triggers: EmulatedTriggerMap | undefined;
 
-let hasInitializedFirestore = false;
 let hasAccessedFirestore = false;
 let hasAccessedDatabase = false;
 
 let defaultApp: admin.app.App;
-let databaseApp: admin.app.App;
-
-let proxiedFirestore: typeof admin.firestore;
-let proxiedDatabase: typeof admin.database;
 
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -57,24 +50,6 @@ async function requireResolveAsync(
   opts?: { paths: string[] }
 ): Promise<string> {
   return require.resolve(moduleName, opts);
-}
-
-/**
- * See admin.credential.Credential.
- */
-function makeFakeCredentials(): any {
-  return {
-    getAccessToken: () => {
-      return Promise.resolve({
-        expires_in: 1000000,
-        access_token: "owner",
-      });
-    },
-
-    getCertificate: () => {
-      return {};
-    },
-  };
 }
 
 interface PackageJSON {
@@ -270,8 +245,8 @@ async function assertResolveDeveloperNodeModule(
 
 async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<boolean> {
   const modBundles = [
-    { name: "firebase-admin", isDev: false, minVersion: "8.0.0" },
-    { name: "firebase-functions", isDev: false, minVersion: "3.0.0" },
+    { name: "firebase-admin", isDev: false, minVersion: "8.9.0" },
+    { name: "firebase-functions", isDev: false, minVersion: "3.3.0" },
   ];
 
   for (const modBundle of modBundles) {
@@ -320,21 +295,18 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
   }
 }
 
-/*
-      We mock out a ton of different paths that we can take to network I/O. It doesn't matter if they
-      overlap (like TLS and HTTPS) because the dev will either whitelist, block, or allow for one
-      invocation on the first prompt, so we can be aggressive here.
-
-      Sadly, these vary a lot between Node versions and it will always be possible to route around
-      this, it's not security - just a helper. A good example of something difficult to catch is
-      any I/O done via node-gyp (https://github.com/nodejs/node-gyp) since that I/O will be done in
-      C, we have to catch it before then (which is how the google-gax blocker could work). As of this note,
-      GRPC uses a native extension to do I/O (I think because old node lacks native HTTP2?), so that's
-      a place to keep an eye on. Luckily, mostly only Google uses GRPC and most Google APIs go via
-      google-gax which is mocked elsewhere, but still.
-
-      So yeah, we'll try our best and hopefully we can catch 90% of requests.
-     */
+/**
+ * We mock out a ton of different paths that we can take to network I/O. It doesn't matter if they
+ * overlap (like TLS and HTTPS) because the dev will either whitelist, block, or allow for one
+ * invocation on the first prompt, so we can be aggressive here.
+ *
+ * Sadly, these vary a lot between Node versions and it will always be possible to route around
+ * this, it's not security - just a helper. A good example of something difficult to catch is
+ * any I/O done via node-gyp (https://github.com/nodejs/node-gyp) since that I/O will be done in
+ * C, we have to catch it before then (which is how the google-gax blocker could work).
+ *
+ * So yeah, we'll try our best and hopefully we can catch 90% of requests.
+ */
 function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   const networkingModules = [
     { name: "http", module: require("http"), path: ["request"] },
@@ -344,26 +316,6 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
     { name: "net", module: require("net"), path: ["connect"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
-
-  try {
-    const gcFirestore = findModuleRoot(
-      "@google-cloud/firestore",
-      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
-    );
-    const gaxPath = require.resolve("google-gax", { paths: [gcFirestore] });
-    const gaxModule = {
-      module: require(gaxPath),
-      path: ["GrpcClient"],
-      name: "google-gax",
-    };
-
-    networkingModules.push(gaxModule);
-    logDebug(`Found google-gax at ${gaxPath}`);
-  } catch (err) {
-    logDebug(
-      `Couldn't find @google-cloud/firestore or google-gax, this may be okay if using @google-cloud/firestore@2.0.0`
-    );
-  }
 
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {
@@ -424,6 +376,10 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
   logDebug("Outgoing network have been stubbed.", results);
 }
+
+type CallableHandler = (data: any, context: https.CallableContext) => any | Promise<any>;
+type HttpsHandler = (req: Request, resp: Response) => void;
+
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
     which returns a promise. In this scenario, we can't catch errors which get raised in user code,
@@ -446,84 +402,64 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
+  const httpsProvider = require(httpsProviderResolution);
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  let methodName = "_onRequestWithOpts";
-  if (compareVersionStrings(firebaseFunctionsResolution.version, "3.1.0") >= 0) {
-    methodName = "_onRequestWithOptions";
-  }
+  const onRequestInnerMethodName = "_onRequestWithOptions";
+  const onRequestMethodOriginal = httpsProvider[onRequestInnerMethodName];
 
-  const httpsProvider = require(httpsProviderResolution);
-  const requestWithOptions = httpsProvider[methodName];
-
-  httpsProvider[methodName] = (
-    handler: (req: Request, resp: Response) => void,
-    opts: DeploymentOptions
-  ) => {
-    const cf = requestWithOptions(handler, opts);
+  httpsProvider[onRequestInnerMethodName] = (handler: HttpsHandler, opts: DeploymentOptions) => {
+    const cf = onRequestMethodOriginal(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
 
-  /*
-    If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOptions
-    so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
-    because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
-    the definition of _onRequestWithOptions does not replace the link to the original function
-    which onRequest uses, so we need to manually force it to use our error-handle-able version.
-     */
-  httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
-    return httpsProvider[methodName](handler, {});
+  // If you take a look at the link above, you'll see that onRequest relies on _onRequestWithOptions
+  // so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
+  // because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
+  // the definition of _onRequestWithOptions does not replace the link to the original function
+  // which onRequest uses, so we need to manually force it to use our version.
+  httpsProvider.onRequest = (handler: HttpsHandler) => {
+    return httpsProvider[onRequestInnerMethodName](handler, {});
   };
 
-  const onCallOriginal = httpsProvider.onCall;
-  httpsProvider.onCall = (handler: (data: any, context: any) => any | Promise<any>) => {
-    // Look for a special header provided by the functions emulator that lets us mock out
-    // callable functions auth.
-    const newHandler = (data: any, context: any) => {
-      if (context.rawRequest) {
-        const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
-        if (authContext) {
-          logDebug("Callable functions auth override", {
-            key: HttpConstants.CALLABLE_AUTH_HEADER,
-            value: authContext,
-          });
-          context.auth = JSON.parse(authContext);
-        } else {
-          logDebug("No callable functions auth found");
-        }
-      }
+  // Mocking https.onCall is very similar to onRequest
+  const onCallInnerMethodName = "_onCallWithOptions";
+  const onCallMethodOriginal = httpsProvider[onCallInnerMethodName];
 
-      return handler(data, context);
-    };
+  httpsProvider[onCallInnerMethodName] = (handler: CallableHandler, opts: DeploymentOptions) => {
+    const wrapped = wrapCallableHandler(handler);
+    const cf = onCallMethodOriginal(wrapped, opts);
+    return cf;
+  };
 
-    return onCallOriginal(newHandler);
+  httpsProvider.onCall = (handler: CallableHandler) => {
+    return httpsProvider[onCallInnerMethodName](handler, {});
   };
 }
 
-/*
-  @google-cloud/firestore@2.0.0 made a breaking change which swapped relying on "grpc" to "@grpc/grpc-js"
-  which has a slightly different signature. We need to detect the firestore version to know which version
-  of grpc to pass as a credential.
+/**
+ * Wrap a callable functions handler with an outer method that extracts a special authorization
+ * header used to mock auth in the emulator.
  */
-async function getGRPCInsecureCredential(frb: FunctionsRuntimeBundle): Promise<any> {
-  const firestorePackageJSON = require(path.join(
-    findModuleRoot(
-      "@google-cloud/firestore",
-      require.resolve("@google-cloud/firestore", { paths: [frb.cwd] })
-    ),
-    "package.json"
-  ));
+function wrapCallableHandler(handler: CallableHandler): CallableHandler {
+  const newHandler = (data: any, context: https.CallableContext) => {
+    if (context.rawRequest) {
+      const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
+      if (authContext) {
+        logDebug("Callable functions auth override", {
+          key: HttpConstants.CALLABLE_AUTH_HEADER,
+          value: authContext,
+        });
+        context.auth = JSON.parse(authContext);
+      } else {
+        logDebug("No callable functions auth found");
+      }
+    }
+    return handler(data, context);
+  };
 
-  if (firestorePackageJSON.version.startsWith("1")) {
-    const grpc = await requireAsync("grpc", { paths: [frb.cwd] }).catch(noOp);
-    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-native for admin credential").log();
-    return grpc.credentials.createInsecure();
-  } else {
-    const grpc = await requireAsync("@grpc/grpc-js", { paths: [frb.cwd] }).catch(noOp);
-    new EmulatorLog("SYSTEM", "runtime-status", "using grpc-js for admin credential").log();
-    return grpc.ChannelCredentials.createInsecure();
-  }
+  return newHandler;
 }
 
 function getDefaultConfig(): any {
@@ -546,18 +482,8 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
   const localFunctionsModule = require(functionsResolution.resolution);
 
-  // Set up global proxied Firestore
-  proxiedFirestore = await makeProxiedFirestore(frb, localAdminModule);
-
   // Configuration from the environment
   const defaultConfig = getDefaultConfig();
-
-  // Configuration for talking to the RTDB emulator
-  const databaseConfig = getDefaultConfig();
-  if (frb.emulators.database) {
-    databaseConfig.databaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${frb.projectId}`;
-    databaseConfig.credential = makeFakeCredentials();
-  }
 
   const adminModuleProxy = new Proxied<typeof admin>(localAdminModule);
   const proxiedAdminModule = adminModuleProxy
@@ -576,45 +502,22 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       defaultApp = makeProxiedFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
-      // The Realtime Database proxy relies on calling 'initializeApp()' with certain options
-      // (such as credential) that can interfere with other services. Therefore we keep
-      // RTDB isolated in its own FirebaseApp.
-      const databaseAppOptions = {
-        ...databaseConfig,
-        ...opts,
-      };
-      databaseApp = adminModuleTarget.initializeApp(databaseAppOptions, DATABASE_APP);
-      proxiedDatabase = makeProxiedDatabase(adminModuleTarget);
-
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
-      if (localFunctionsModule.app.setEmulatedAdminApp) {
-        localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
-      } else {
-        new EmulatorLog(
-          "WARN_ONCE",
-          "runtime-status",
-          `You're using firebase-functions v${functionsResolution.version}, please upgrade to firebase-functions v3.3.0 or higher for best results.`
-        ).log();
-      }
-
+      localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (frb.emulators.firestore) {
-        return proxiedFirestore;
-      } else {
+      if (!frb.emulators.firestore) {
         warnAboutFirestoreProd();
-        return Proxied.getOriginal(target, "firestore");
       }
+      return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      if (frb.emulators.database) {
-        return proxiedDatabase;
-      } else {
+      if (!frb.emulators.database) {
         warnAboutDatabaseProd();
-        return Proxied.getOriginal(target, "database");
       }
+      return Proxied.getOriginal(target, "database");
     })
     .finalize();
 
@@ -635,76 +538,16 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (frb.emulators.firestore) {
-        return proxiedFirestore;
-      } else {
+      if (!frb.emulators.firestore) {
         warnAboutFirestoreProd();
-        return Proxied.getOriginal(target, "firestore");
       }
+      return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      if (frb.emulators.database) {
-        return proxiedDatabase;
-      } else {
+      if (!frb.emulators.database) {
         warnAboutDatabaseProd();
-        return Proxied.getOriginal(target, "database");
       }
-    })
-    .finalize();
-}
-
-function makeProxiedDatabase(target: typeof admin): typeof admin.database {
-  return new Proxied<typeof admin.database>(target.database)
-    .applied(() => {
-      return databaseApp.database();
-    })
-    .finalize();
-}
-
-async function makeProxiedFirestore(
-  frb: FunctionsRuntimeBundle,
-  target: any
-): Promise<typeof admin.firestore> {
-  // If we can't get sslCreds that means either grpc or grpc-js doesn't exist. If this is the save,
-  // then there's probably something really wrong (like a failed node-gyp build). If that's the case
-  // we should swallow the error here and allow the error to raise in user-code so they can debug appropriately.
-  const sslCreds = await getGRPCInsecureCredential(frb).catch(noOp);
-
-  const initializeFirestoreSettings = (firestoreTarget: any, userSettings: any) => {
-    if (!hasInitializedFirestore && frb.emulators.firestore) {
-      const emulatorSettings = {
-        projectId: frb.projectId,
-        port: frb.emulators.firestore.port,
-        servicePath: frb.emulators.firestore.host,
-        service: "firestore.googleapis.com",
-        sslCreds,
-        customHeaders: {
-          Authorization: "Bearer owner",
-        },
-        ...userSettings,
-      };
-      firestoreTarget.settings(emulatorSettings);
-
-      new EmulatorLog("DEBUG", "set-firestore-settings", "", emulatorSettings).log();
-    }
-
-    hasInitializedFirestore = true;
-  };
-
-  const firestoreProxy = new Proxied<typeof admin.firestore>(target.firestore);
-  return firestoreProxy
-    .applied(() => {
-      return new Proxied(target.firestore())
-        .when("settings", (firestoreTarget) => {
-          return (settings: any) => {
-            initializeFirestoreSettings(firestoreTarget, settings);
-          };
-        })
-        .any((firestoreTarget, field) => {
-          initializeFirestoreSettings(firestoreTarget, {});
-          return Proxied.getOriginal(firestoreTarget, field);
-        })
-        .finalize();
+      return Proxied.getOriginal(target, "database");
     })
     .finalize();
 }
@@ -793,7 +636,17 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
-  if (frb.emulators.pubsub && isFeatureEnabled(frb, "pubsub_emulator")) {
+  // Make firebase-admin point at the Firestore emulator
+  if (frb.emulators.firestore) {
+    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+  }
+
+  // Make firebase-admin point at the Database emulator
+  if (frb.emulators.database) {
+    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+  }
+
+  if (frb.emulators.pubsub) {
     const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
@@ -1109,20 +962,10 @@ async function initializeRuntime(
     ).log();
   }
 
-  if (isFeatureEnabled(frb, "network_filtering")) {
-    initializeNetworkFiltering(frb);
-  }
-
-  if (isFeatureEnabled(frb, "functions_config_helper")) {
-    await initializeFunctionsConfigHelper(frb);
-  }
-
-  // TODO: Should this feature have a flag as well or is it required?
+  initializeNetworkFiltering(frb);
+  await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
-
-  if (isFeatureEnabled(frb, "admin_stubs")) {
-    await initializeFirebaseAdminStubs(frb);
-  }
+  await initializeFirebaseAdminStubs(frb);
 
   let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];

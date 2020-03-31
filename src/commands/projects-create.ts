@@ -7,7 +7,7 @@ import {
   PROJECTS_CREATE_QUESTIONS,
 } from "../management/projects";
 import { prompt } from "../prompt";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 
 module.exports = new Command("projects:create [projectId]")
   .description(
