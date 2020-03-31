@@ -1,18 +1,15 @@
 import { bold } from "cli-color";
 import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
-import { SPLAT } from "triple-beam";
-import * as winston from "winston";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption } from "./utils";
+import { getInheritedOption, setupLoggers } from "./utils";
 import { load } from "./rc";
 import { load as _load } from "./config";
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import logger = require("./logger");
 import track = require("./track");
-const ansiStrip = require("cli-color/strip") as (input: string) => string;
+import clc = require("cli-color");
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -227,26 +224,7 @@ export class Command {
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
     } else {
-      if (process.env.DEBUG) {
-        logger.add(
-          new winston.transports.Console({
-            level: "debug",
-            format: winston.format.printf((info) => {
-              const segments = [info.message, ...(info[SPLAT] || [])].map(logger.tryStringify);
-              return `${ansiStrip(segments.join(" "))}`;
-            }),
-          })
-        );
-      } else if (process.env.IS_FIREBASE_CLI) {
-        logger.add(
-          new winston.transports.Console({
-            level: "info",
-            format: winston.format.printf((info) =>
-              [info.message, ...(info[SPLAT] || [])].join(" ")
-            ),
-          })
-        );
-      }
+      setupLoggers();
     }
 
     try {
@@ -257,6 +235,7 @@ export class Command {
 
     options.projectRoot = detectProjectRoot(options.cwd);
     this.applyRC(options);
+    if (options.project) validateProjectId(options.project);
   }
 
   /**
@@ -306,5 +285,30 @@ export class Command {
       }
       return this.actionFn(...args);
     };
+  }
+}
+
+// Project IDs must follow a certain format, as documented at:
+// https://cloud.google.com/resource-manager/reference/rest/v1beta1/projects#resource:-project
+// However, the regex below, matching internal ones, is more permissive so that
+// some legacy projects with irregular project IDs still works.
+const PROJECT_ID_REGEX = /^(?:[^:]+:)?[a-z0-9-]+$/;
+
+/**
+ * Validate the project id and throw on invalid format.
+ * @param project the project id to validate
+ * @throws {FirebaseError} if project id has invalid format.
+ */
+export function validateProjectId(project: string): void {
+  if (PROJECT_ID_REGEX.test(project)) {
+    return;
+  }
+  track("Project ID Check", "invalid");
+  const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
+  if (project.toLowerCase() !== project) {
+    // Attempt to be more helpful in case uppercase letters are used.
+    throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");
+  } else {
+    throw new FirebaseError(invalidMessage);
   }
 }

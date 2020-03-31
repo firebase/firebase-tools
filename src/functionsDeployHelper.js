@@ -134,24 +134,24 @@ function getFunctionName(fullName) {
 }
 
 /*
-** getScheduleName transforms a full function name (projects/blah/locations/blah/functions/blah)
-** into a job name for cloud scheduler
-** DANGER: We use the pattern defined here to deploy and delete schedules,
-** and to display scheduled functions in the Firebase console
-** If you change this pattern, Firebase console will stop displaying schedule descriptions
-** and schedules created under the old pattern will no longer be cleaned up correctly
-*/
+ ** getScheduleName transforms a full function name (projects/blah/locations/blah/functions/blah)
+ ** into a job name for cloud scheduler
+ ** DANGER: We use the pattern defined here to deploy and delete schedules,
+ ** and to display scheduled functions in the Firebase console
+ ** If you change this pattern, Firebase console will stop displaying schedule descriptions
+ ** and schedules created under the old pattern will no longer be cleaned up correctly
+ */
 function getScheduleName(fullName, appEngineLocation) {
   var [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/${regionsPrefix}/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`;
 }
 
 /*
-** getTopicName transforms a full function name (projects/blah/locations/blah/functions/blah)
-** into a topic name for pubsub
-** DANGER: We use the pattern defined here to deploy and delete topics
-** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
-*/
+ ** getTopicName transforms a full function name (projects/blah/locations/blah/functions/blah)
+ ** into a topic name for pubsub
+ ** DANGER: We use the pattern defined here to deploy and delete topics
+ ** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
+ */
 function getTopicName(fullName) {
   var [projectsPrefix, project, , region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/topics/firebase-schedule-${functionName}-${region}`;

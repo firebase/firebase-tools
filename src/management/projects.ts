@@ -160,12 +160,14 @@ async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
 async function selectProjectFromList(
   projects: FirebaseProjectMetadata[] = []
 ): Promise<FirebaseProjectMetadata> {
-  let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
-    return {
-      name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
-      value: p.projectId,
-    };
-  });
+  let choices = projects
+    .filter((p: FirebaseProjectMetadata) => !!p)
+    .map((p) => {
+      return {
+        name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
+        value: p.projectId,
+      };
+    });
   choices = _.orderBy(choices, ["name"], ["asc"]);
 
   if (choices.length >= 25) {
@@ -218,13 +220,15 @@ export async function promptAvailableProjectId(): Promise<string> {
       message: "Please input the ID of the Google Cloud Project you would like to add Firebase:",
     });
   } else {
-    let choices = projects.filter((p: CloudProjectInfo) => !!p).map((p) => {
-      const projectId = getProjectId(p);
-      return {
-        name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
-        value: projectId,
-      };
-    });
+    let choices = projects
+      .filter((p: CloudProjectInfo) => !!p)
+      .map((p) => {
+        const projectId = getProjectId(p);
+        return {
+          name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
+          value: projectId,
+        };
+      });
     choices = _.orderBy(choices, ["name"], ["asc"]);
     return await promptOnce({
       type: "list",

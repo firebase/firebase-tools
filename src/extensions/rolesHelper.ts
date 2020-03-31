@@ -98,6 +98,10 @@ export async function createServiceAccountAndSetRoles(
     }
     throw err;
   }
-  await grantRoles(projectId, serviceAccount.email, roles.map((role) => role.role));
+  await grantRoles(
+    projectId,
+    serviceAccount.email,
+    roles.map((role) => role.role)
+  );
   return serviceAccount.email;
 }

@@ -28,7 +28,7 @@ export class HubExport {
       return undefined;
     }
 
-    return JSON.parse(fs.readFileSync(metadataPath).toString()) as ExportMetadata;
+    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
   }
 
   public async exportAll(): Promise<void> {

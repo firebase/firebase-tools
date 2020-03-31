@@ -193,7 +193,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   if (options.import) {
     const importDir = path.resolve(options.import);
     exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME)).toString()
+      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
     ) as ExportMetadata;
   }
 
@@ -353,17 +353,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     await startEmulator(hostingEmulator);
   }
 
-  if (shouldStart(options, Emulators.LOGGING)) {
-    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
-    const loggingEmulator = new LoggingEmulator({
-      host: loggingAddr.host,
-      port: loggingAddr.port,
-      ...options,
-    });
-
-    await startEmulator(loggingEmulator);
-  }
-
   if (shouldStart(options, Emulators.PUBSUB)) {
     if (!projectId) {
       throw new FirebaseError(
@@ -382,6 +371,14 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (!noGui && shouldStart(options, Emulators.GUI)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+    });
+
+    await startEmulator(loggingEmulator);
+
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);

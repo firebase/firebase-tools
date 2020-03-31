@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorLog } from "./types";
+import { tryParse } from "../utils";
 
 /**
  * DEBUG - lowest level, not needed for most usages.
@@ -38,7 +39,7 @@ export class EmulatorLogger {
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
    */
-  static log(type: LogType, text: string): void {
+  static log(type: LogType, text: string, data?: any): void {
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`${type}: ${text}`);
       return;
@@ -46,28 +47,28 @@ export class EmulatorLogger {
 
     switch (type) {
       case "DEBUG":
-        logger.debug(text);
+        logger.debug(text, data);
         break;
       case "INFO":
-        logger.info(text);
+        logger.info(text, data);
         break;
       case "USER":
-        logger.info(text);
+        logger.info(text, data);
         break;
       case "BULLET":
-        utils.logBullet(text);
+        utils.logBullet(text, data);
         break;
       case "WARN":
-        utils.logWarning(text);
+        utils.logWarning(text, data);
         break;
       case "WARN_ONCE":
         if (!this.warnOnceCache.has(text)) {
-          utils.logWarning(text);
+          utils.logWarning(text, data);
           this.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
-        utils.logSuccess(text);
+        utils.logSuccess(text, data);
         break;
     }
   }
@@ -81,7 +82,9 @@ export class EmulatorLogger {
         EmulatorLogger.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
+          user: tryParse(log.text),
+        });
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
@@ -121,25 +124,19 @@ export class EmulatorLogger {
       case "googleapis-network-access":
         EmulatorLogger.log(
           "WARN",
-          `Google API requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n   - Be careful, this may be a production service.`
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
         EmulatorLogger.log(
           "WARN",
-          `External network resource requested!\n   - URL: "${
-            systemLog.data.href
-          }"\n - Be careful, this may be a production service.`
+          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
         EmulatorLogger.log(
           "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${
-            systemLog.data.valuePath
-          }"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
@@ -164,21 +161,15 @@ export class EmulatorLogger {
       case "uninstalled-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be installed. This package is in your package.json, but it's not available. \
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
 You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
         EmulatorLogger.log(
           "WARN",
-          `The Cloud Functions emulator requires the module "${
-            systemLog.data.name
-          }" to be version >${systemLog.data.minVersion} so your version is too old. \
-You can probably fix this by running "npm install ${
-            systemLog.data.name
-          }@latest" in your functions directory.`
+          `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion} so your version is too old. \
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":

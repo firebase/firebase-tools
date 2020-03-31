@@ -3,6 +3,7 @@ import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
 import * as http from "http";
+import * as jwt from "jsonwebtoken";
 
 import * as api from "../api";
 import * as logger from "../logger";
@@ -27,6 +28,7 @@ import {
   getFunctionRegion,
   getFunctionService,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -36,7 +38,6 @@ import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
-import { database } from "firebase-admin";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -92,6 +93,7 @@ interface RequestWithRawBody extends express.Request {
 interface TriggerDescription {
   name: string;
   type: string;
+  labels?: { [key: string]: any };
   details?: string;
   ignored?: boolean;
 }
@@ -152,9 +154,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/${
-      this.args.projectId
-    }/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/${this.args.projectId}/triggers/:trigger_name`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -293,6 +293,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           triggerResults.push({
             name: definition.name,
             type: "http",
+            labels: definition.labels,
             details: url,
           });
         } else {
@@ -300,6 +301,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           const result: TriggerDescription = {
             name: definition.name,
             type: Constants.getServiceName(service),
+            labels: definition.labels,
           };
 
           let added = false;
@@ -334,9 +336,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
-        const msg = `function ignored because the ${
-          result.type
-        } emulator does not exist or is not running.`;
+        const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
         EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
@@ -400,9 +400,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       EmulatorLogger.log(
         "WARN",
-        `No project in use. Registering function trigger for sentinel namespace '${
-          Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-        }'`
+        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
       );
     }
 
@@ -518,6 +516,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     throw new FirebaseError(`No trigger with name ${triggerId}`);
+  }
+
+  setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
+    this.triggers = triggers;
   }
 
   getBaseBundle(): FunctionsRuntimeBundle {
@@ -691,13 +693,65 @@ export class FunctionsEmulator implements EmulatorInstance {
     return res.json({ status: "acknowledged" });
   }
 
+  private tokenFromAuthHeader(authHeader: string) {
+    const match = authHeader.match(/^Bearer (.*)$/);
+    if (!match) {
+      return;
+    }
+
+    let idToken = match[1];
+    logger.debug(`ID Token: ${idToken}`);
+
+    // The @firebase/testing library sometimes produces JWTs with invalid padding, so we
+    // remove that via regex. This is the spec that says trailing = should be removed:
+    // https://tools.ietf.org/html/rfc7515#section-2
+    if (idToken && idToken.includes("=")) {
+      idToken = idToken.replace(/[=]+?\./g, ".");
+      logger.debug(`ID Token contained invalid padding, new value: ${idToken}`);
+    }
+
+    try {
+      const decoded = jwt.decode(idToken, { complete: true });
+      if (!decoded || typeof decoded !== "object") {
+        logger.debug(`Failed to decode ID Token: ${decoded}`);
+        return;
+      }
+
+      // In firebase-functions we manually copy 'sub' to 'uid'
+      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
+      const claims = decoded.payload;
+      claims.uid = claims.sub;
+
+      return claims;
+    } catch (e) {
+      return;
+    }
+  }
+
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
+    const trigger = this.getTriggerById(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
+
+    // For callable functions we want to accept tokens without actually calling verifyIdToken
+    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
+    const authHeader = req.header("Authorization");
+    if (authHeader && isCallable) {
+      const token = this.tokenFromAuthHeader(authHeader);
+      if (token) {
+        const contextAuth = {
+          uid: token.uid,
+          token: token,
+        };
+
+        delete req.headers["authorization"];
+        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = JSON.stringify(contextAuth);
+      }
+    }
 
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
 
@@ -776,14 +830,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // Pipe the incoming request over the socket.
-    req
-      .pipe(
-        runtimeReq,
-        { end: true }
-      )
-      .on("error", () => {
-        res.end();
-      });
+    req.pipe(runtimeReq, { end: true }).on("error", () => {
+      res.end();
+    });
 
     await worker.waitForDone();
   }

@@ -1,5 +1,5 @@
 import { EmulatorLog } from "./types";
-import { CloudFunction, DeploymentOptions } from "firebase-functions";
+import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
 import {
   EmulatedTrigger,
   EmulatedTriggerDefinition,
@@ -10,12 +10,14 @@ import {
   FunctionsRuntimeFeatures,
   getEmulatedTriggersFromDefinitions,
   FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";
+import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
@@ -346,7 +348,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .filter((v) => v);
       const href = (hrefs.length && hrefs[0]) || "";
 
-      if (href && !history[href]) {
+      if (href && !history[href] && !href.startsWith("http://localhost")) {
         history[href] = true;
         if (href.indexOf("googleapis.com") !== -1) {
           new EmulatorLog("SYSTEM", "googleapis-network-access", "", {
@@ -374,6 +376,10 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
   logDebug("Outgoing network have been stubbed.", results);
 }
+
+type CallableHandler = (data: any, context: https.CallableContext) => any | Promise<any>;
+type HttpsHandler = (req: Request, resp: Response) => void;
+
 /*
     This stub handles a very specific use-case, when a developer (incorrectly) provides a HTTPS handler
     which returns a promise. In this scenario, we can't catch errors which get raised in user code,
@@ -396,18 +402,14 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
+  const httpsProvider = require(httpsProviderResolution);
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
-  const methodName = "_onRequestWithOptions";
+  const onRequestInnerMethodName = "_onRequestWithOptions";
+  const onRequestMethodOriginal = httpsProvider[onRequestInnerMethodName];
 
-  const httpsProvider = require(httpsProviderResolution);
-  const requestWithOptions = httpsProvider[methodName];
-
-  httpsProvider[methodName] = (
-    handler: (req: Request, resp: Response) => void,
-    opts: DeploymentOptions
-  ) => {
-    const cf = requestWithOptions(handler, opts);
+  httpsProvider[onRequestInnerMethodName] = (handler: HttpsHandler, opts: DeploymentOptions) => {
+    const cf = onRequestMethodOriginal(handler, opts);
     cf.__emulator_func = handler;
     return cf;
   };
@@ -416,10 +418,48 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
   // so in theory, we should only need to mock _onRequestWithOptions, however that is not the case
   // because onRequest is defined in the same scope as _onRequestWithOptions, so replacing
   // the definition of _onRequestWithOptions does not replace the link to the original function
-  // which onRequest uses, so we need to manually force it to use our error-handle-able version.
-  httpsProvider.onRequest = (handler: (req: Request, resp: Response) => void) => {
-    return httpsProvider[methodName](handler, {});
+  // which onRequest uses, so we need to manually force it to use our version.
+  httpsProvider.onRequest = (handler: HttpsHandler) => {
+    return httpsProvider[onRequestInnerMethodName](handler, {});
   };
+
+  // Mocking https.onCall is very similar to onRequest
+  const onCallInnerMethodName = "_onCallWithOptions";
+  const onCallMethodOriginal = httpsProvider[onCallInnerMethodName];
+
+  httpsProvider[onCallInnerMethodName] = (handler: CallableHandler, opts: DeploymentOptions) => {
+    const wrapped = wrapCallableHandler(handler);
+    const cf = onCallMethodOriginal(wrapped, opts);
+    return cf;
+  };
+
+  httpsProvider.onCall = (handler: CallableHandler) => {
+    return httpsProvider[onCallInnerMethodName](handler, {});
+  };
+}
+
+/**
+ * Wrap a callable functions handler with an outer method that extracts a special authorization
+ * header used to mock auth in the emulator.
+ */
+function wrapCallableHandler(handler: CallableHandler): CallableHandler {
+  const newHandler = (data: any, context: https.CallableContext) => {
+    if (context.rawRequest) {
+      const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
+      if (authContext) {
+        logDebug("Callable functions auth override", {
+          key: HttpConstants.CALLABLE_AUTH_HEADER,
+          value: authContext,
+        });
+        context.auth = JSON.parse(authContext);
+      } else {
+        logDebug("No callable functions auth found");
+      }
+    }
+    return handler(data, context);
+  };
+
+  return newHandler;
 }
 
 function getDefaultConfig(): any {
@@ -544,6 +584,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
+  // Look for .runtimeconfig.json in the functions directory
+  const configPath = `${frb.cwd}/.runtimeconfig.json`;
+  try {
+    const configContent = fs.readFileSync(configPath, "utf8");
+    if (configContent) {
+      logDebug(`Found local functions config: ${configPath}`);
+      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+    }
+  } catch (e) {
+    // Ignore, config is optional
+  }
+
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
@@ -581,21 +633,17 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   // TODO(samstern): This should be done for RTDB as well but it's hard
   // because the convention in prod is subdomain not ?ns=
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_URL = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${
-      frb.emulators.firestore.port
-    }`;
+    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${
-      frb.emulators.database.port
-    }`;
+    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -605,9 +653,9 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
   }
 }
 
-async function initializeFunctionsConfigHelper(functionsDir: string): Promise<void> {
+async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
   const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [functionsDir],
+    paths: [frb.cwd],
   });
 
   const ff = require(functionsResolution);
@@ -630,7 +678,17 @@ async function initializeFunctionsConfigHelper(functionsDir: string): Promise<vo
             return value;
           } else {
             const valuePath = [parentKey, childKey].join(".");
-            new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+
+            // Calling console.log() or util.inspect() on a config value can cause spurious logging
+            // if we don't ignore certain known-bad paths.
+            const ignore =
+              valuePath.endsWith(".inspect") ||
+              valuePath.endsWith(".toJSON") ||
+              valuePath.includes("Symbol(") ||
+              valuePath.includes("Symbol.iterator");
+            if (!ignore) {
+              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
+            }
             return undefined;
           }
         })
@@ -900,14 +958,12 @@ async function initializeRuntime(
     new EmulatorLog(
       "WARN",
       "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${
-        process.env.GOOGLE_APPLICATION_CREDENTIALS
-      }. Non-emulated services will access production using these credentials. Be careful!`
+      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
     ).log();
   }
 
   initializeNetworkFiltering(frb);
-  await initializeFunctionsConfigHelper(frb.cwd);
+  await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 

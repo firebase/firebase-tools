@@ -1,7 +1,7 @@
 "use strict";
 
 var _ = require("lodash");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 
 var previews = _.assign(
   {

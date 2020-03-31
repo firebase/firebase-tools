@@ -452,20 +452,6 @@ describe("extensionsHelper", () => {
       }).to.throw(FirebaseError, /param/);
     });
 
-    it("should error if a param is malformed", () => {
-      const testSpec = {
-        version: "0.1.0",
-        specVersion: "v1beta",
-        params: [{}],
-        resources: [],
-        sourceUrl: "https://test-source.fake",
-      };
-
-      expect(() => {
-        extensionsHelper.validateSpec(testSpec);
-      }).to.throw(FirebaseError, /param/);
-    });
-
     it("should error if a STRING param has options.", () => {
       const testSpec = {
         version: "0.1.0",
@@ -484,7 +470,7 @@ describe("extensionsHelper", () => {
       const testSpec = {
         version: "0.1.0",
         specVersion: "v1beta",
-        params: [{ type: extensionsApi.ParamType.SELECT, validationRegex: "test" }],
+        params: [{ type: extensionsHelper.SpecParamType.SELECT, validationRegex: "test" }],
         resources: [],
         sourceUrl: "https://test-source.fake",
       };
@@ -510,7 +496,9 @@ describe("extensionsHelper", () => {
       const testSpec = {
         version: "0.1.0",
         specVersion: "v1beta",
-        params: [{ type: "string", validationRegex: "test", default: "fail" }],
+        params: [
+          { type: extensionsHelper.SpecParamType.STRING, validationRegex: "test", default: "fail" },
+        ],
         resources: [],
         sourceUrl: "https://test-source.fake",
       };

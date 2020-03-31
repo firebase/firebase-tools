@@ -27,37 +27,39 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.0.jar"),
-    version: "4.4.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.1.jar"),
+    version: "4.4.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.0.jar",
-      expectedSize: 27902850,
-      expectedChecksum: "c7f4dbe10951938074b20c20a6c9abd5",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.1.jar",
+      expectedSize: 27926960,
+      expectedChecksum: "ca39f25810a0943caec07fe6b8c1eb3e",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.1.jar"),
-    version: "1.11.1",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.2.jar"),
+    version: "1.11.2",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.1.jar",
-      expectedSize: 63439953,
-      expectedChecksum: "aa9a62f7b586731ed7664ab42fd20038",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.2.jar",
+      expectedSize: 89334889,
+      expectedChecksum: "e6f010eb356cbe92c97fe11098599566",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   gui: {
     version: "0.0.0",
-    downloadPath: path.join(CACHE_DIR, "gui-vEAP.zip"),
-    unzipDir: path.join(CACHE_DIR, "gui-vEAP"),
-    binaryPath: path.join(CACHE_DIR, "gui-vEAP", `server.bundle.js`),
+    downloadPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP.zip"),
+    unzipDir: path.join(CACHE_DIR, "gui-v0.0.0-EAP"),
+    binaryPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP", `server.bundle.js`),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-vEAP.zip",
+      remoteUrl:
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-vEAP.zip?_=" +
+        new Date().getTime(),
       expectedSize: -1,
       expectedChecksum: "",
       namePrefix: "gui",

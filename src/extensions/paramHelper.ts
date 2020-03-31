@@ -64,7 +64,7 @@ export async function getParams(
   let commandLineParams;
   if (envFilePath) {
     try {
-      const buf = fs.readFileSync(path.resolve(envFilePath));
+      const buf = fs.readFileSync(path.resolve(envFilePath), "utf8");
       commandLineParams = dotenv.parse(buf.toString().trim(), { debug: true });
       track("Extension Env File", "Present");
     } catch (err) {

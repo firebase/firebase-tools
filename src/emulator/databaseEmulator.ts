@@ -8,7 +8,6 @@ import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
-import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -32,7 +31,7 @@ export class DatabaseEmulator implements EmulatorInstance {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
 
         utils.logLabeledBullet("database", "Change detected, updating rules...");
         try {

@@ -29,6 +29,16 @@ export class LoggingEmulator implements EmulatorInstance {
 
   async stop(): Promise<void> {
     logger.remove(this.transport);
+
+    if (this.transport && this.transport.wss) {
+      const wss = this.transport.wss;
+      return new Promise((resolve, reject) => {
+        wss.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
   }
 
   getInfo(): EmulatorInfo {
