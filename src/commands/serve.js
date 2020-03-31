@@ -8,14 +8,14 @@ var logger = require("../logger");
 var utils = require("../utils");
 var { requirePermissions } = require("../requirePermissions");
 var requireConfig = require("../requireConfig");
-var checkDupHostingKeys = require("../checkDupHostingKeys");
 var { serve } = require("../serve/index");
 var filterTargets = require("../filterTargets");
 var getProjectNumber = require("../getProjectNumber");
+var { FirebaseError } = require("../error");
 
-var VALID_EMULATORS = ["database", "firestore", "functions", "hosting"];
 var VALID_TARGETS = ["hosting", "functions"];
 var REQUIRES_AUTH = ["hosting", "functions"];
+var ALL_TARGETS = _.union(VALID_TARGETS, ["database", "firestore"]);
 
 var filterOnly = (list, only) => {
   if (!only) {
@@ -35,9 +35,7 @@ module.exports = new Command("serve")
   .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: " +
-      _.union(VALID_TARGETS, VALID_EMULATORS).join(", ") +
-      ")"
+    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
   .option(
     "--except <targets>",
@@ -53,19 +51,21 @@ module.exports = new Command("serve")
     }
     return requireConfig(options)
       .then(() => requirePermissions(options))
-      .then(() => checkDupHostingKeys(options))
       .then(() => getProjectNumber(options));
   })
   .action((options) => {
-    options.targets = filterOnly(VALID_EMULATORS, options.only);
+    options.targets = filterOnly(ALL_TARGETS, options.only);
     if (options.targets.includes("database") || options.targets.includes("firestore")) {
-      utils.logWarning(
+      throw new FirebaseError(
         `Please use ${clc.bold(
           "firebase emulators:start"
-        )} to start the Realtime Database or Cloud Firestore emulators.`
+        )} to start the Realtime Database or Cloud Firestore emulators. ${clc.bold(
+          "firebase serve"
+        )} only supports Hosting and Cloud Functions.`
       );
     }
 
+    options.targets = filterOnly(VALID_TARGETS, options.only);
     if (options.targets.length > 0) {
       return serve(options);
     }

@@ -10,9 +10,9 @@ import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
+  ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
-  ALL_SERVICE_EMULATORS,
   EMULATORS_SUPPORTED_BY_GUI,
 } from "../emulator/types";
 import { Constants } from "../emulator/constants";
@@ -27,6 +27,7 @@ import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorGUI } from "./gui";
+import { LoggingEmulator } from "./loggingEmulator";
 import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
@@ -121,6 +122,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
       targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.indexOf(target) >= 0)
     );
   }
+
   return targets.indexOf(name) >= 0;
 }
 
@@ -146,6 +148,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
+
     for (const name of ignored) {
       utils.logLabeledWarning(
         name,
@@ -350,6 +353,17 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     await startEmulator(hostingEmulator);
   }
 
+  if (shouldStart(options, Emulators.LOGGING)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+      ...options,
+    });
+
+    await startEmulator(loggingEmulator);
+  }
+
   if (shouldStart(options, Emulators.PUBSUB)) {
     if (!projectId) {
       throw new FirebaseError(
@@ -368,6 +382,15 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (!noGui && shouldStart(options, Emulators.GUI)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+      ...options,
+    });
+
+    await startEmulator(loggingEmulator);
+
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);

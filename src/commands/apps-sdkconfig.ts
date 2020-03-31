@@ -13,7 +13,7 @@ import {
 } from "../management/apps";
 import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 

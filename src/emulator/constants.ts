@@ -5,6 +5,7 @@ import { Address, Emulators } from "./types";
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
   gui: 4000,
   hub: 4400,
+  logging: 4500,
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
