@@ -11,3 +11,4 @@
 * Updates underlying logging infrastructure.
 * Replaces deprecated `google-auto-auth` package with `google-auth-library`.
 * Fixes file output of `apps:sdkconfig`.
+* Replaces instances of `firebaseapp.com` with `web.app` for Firebase Hosting URLs.
