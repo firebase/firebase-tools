@@ -265,4 +265,43 @@ describe("FunctionsEmulator-Hub", () => {
         });
       });
   }).timeout(TIMEOUT_LONG);
+
+  it("should override callable auth with a poorly padded ID Token", async () => {
+    UseFunctions(() => {
+      return {
+        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
+          return {
+            auth: ctx.auth,
+          };
+        }),
+      };
+    });
+
+    // For token info:
+    // https://jwt.io/#debugger-io?token=eyJhbGciOiJub25lIiwia2lkIjoiZmFrZWtpZCJ9.eyJ1aWQiOiJhbGljZSIsImVtYWlsIjoiYWxpY2VAZXhhbXBsZS5jb20iLCJpYXQiOjAsInN1YiI6ImFsaWNlIn0%3D.
+    await supertest(functionsEmulator.createHubServer())
+      .post("/fake-project-id/us-central1/callable_function_id")
+      .set({
+        "Content-Type": "application/json",
+        Authorization:
+          "Bearer eyJhbGciOiJub25lIiwia2lkIjoiZmFrZWtpZCJ9.eyJ1aWQiOiJhbGljZSIsImVtYWlsIjoiYWxpY2VAZXhhbXBsZS5jb20iLCJpYXQiOjAsInN1YiI6ImFsaWNlIn0=.",
+      })
+      .send({ data: {} })
+      .expect(200)
+      .then((res) => {
+        expect(res.body).to.deep.equal({
+          result: {
+            auth: {
+              uid: "alice",
+              token: {
+                uid: "alice",
+                email: "alice@example.com",
+                iat: 0,
+                sub: "alice",
+              },
+            },
+          },
+        });
+      });
+  }).timeout(TIMEOUT_LONG);
 });
