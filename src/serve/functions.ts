@@ -21,21 +21,6 @@ module.exports = {
       ...args,
     };
 
-    // TODO(samstern): This would be much cleaner as a whitelist
-    if (!args.disabledRuntimeFeatures) {
-      // When running the functions emulator through 'firebase serve' we disable some
-      // of the more adventurous features that could be breaking/unexpected behavior
-      // for those used to the legacy emulator.
-      args.disabledRuntimeFeatures = {
-        functions_config_helper: true,
-        network_filtering: true,
-        timeout: true,
-        memory_limiting: true,
-        admin_stubs: true,
-        pubsub_emulator: true,
-      };
-    }
-
     if (options.host) {
       args.host = options.host;
     }

@@ -14,7 +14,10 @@ function expandErrors(logger) {
   return logger;
 }
 
-const logger = expandErrors(new winston.Logger());
+const logger = expandErrors(winston.createLogger());
+
+// Set a default silent logger to suppress logs during tests
+logger.add(new winston.transports.Console({ silent: true }));
 
 const debug = logger.debug;
 logger.debug = function(...args) {
@@ -23,5 +26,4 @@ logger.debug = function(...args) {
 };
 
 logger.exitOnError = false;
-
 module.exports = logger;

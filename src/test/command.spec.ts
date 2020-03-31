@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
-import { Command } from "../command";
+import { Command, validateProjectId } from "../command";
+import { FirebaseError } from "../error";
 
 describe("Command", () => {
   let command: Command;
@@ -78,5 +79,37 @@ describe("Command", () => {
       const result = run();
       await expect(result).to.be.rejectedWith("foo");
     });
+  });
+});
+
+describe("validateProjectId", () => {
+  it("should not throw for valid project ids", () => {
+    expect(() => validateProjectId("example")).not.to.throw();
+    expect(() => validateProjectId("my-project")).not.to.throw();
+    expect(() => validateProjectId("myproject4fun")).not.to.throw();
+  });
+
+  it("should not throw for legacy project ids", () => {
+    // The project IDs below are not technically valid, but some legacy projects
+    // may have IDs like that. We should not block these.
+    // https://cloud.google.com/resource-manager/reference/rest/v1beta1/projects#resource:-project
+    expect(() => validateProjectId("example-")).not.to.throw();
+    expect(() => validateProjectId("0123456")).not.to.throw();
+    expect(() => validateProjectId("google.com:some-project")).not.to.throw();
+  });
+
+  it("should block invalid project ids", () => {
+    expect(() => validateProjectId("EXAMPLE")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId("!")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId("with space")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId(" leadingspace")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId("trailingspace ")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId("has.dot")).to.throw(FirebaseError, /Invalid project id/);
+  });
+
+  it("should error with additional note for uppercase project ids", () => {
+    expect(() => validateProjectId("EXAMPLE")).to.throw(FirebaseError, /lowercase/);
+    expect(() => validateProjectId("Example")).to.throw(FirebaseError, /lowercase/);
+    expect(() => validateProjectId("Example-Project")).to.throw(FirebaseError, /lowercase/);
   });
 });
