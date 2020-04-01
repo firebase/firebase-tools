@@ -15,6 +15,14 @@ export async function requirePermissions(options: any, permissions: string[] = [
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
 
   await requireAuth(options);
+
+  if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
+    debug(
+      "[iam] skipping informational IAM permission check as FIREBASE_SKIP_INFORMATIONAL_IAM is present"
+    );
+    return;
+  }
+
   debug(
     `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
   );
