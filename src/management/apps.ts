@@ -277,10 +277,13 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
+    const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),
+      fileContents: JS_TEMPLATE.replace(
+        "/*--CONFIG--*/",
+        `var firebaseConfig = ${JSON.stringify(responseBody, null, 2)}`
+      ),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
