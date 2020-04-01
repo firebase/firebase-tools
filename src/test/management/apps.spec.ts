@@ -698,14 +698,14 @@ describe("App management", () => {
         apiKey: "api-key",
       };
       apiRequestStub.onFirstCall().resolves({ body: mockWebConfig });
-      readFileSyncStub.onFirstCall().returns("{/*--CONFIG--*/}");
+      readFileSyncStub.onFirstCall().returns("/*--CONFIG--*/");
 
       const configData = await getAppConfig(APP_ID, AppPlatform.WEB);
       const fileData = getAppConfigFile(configData, AppPlatform.WEB);
 
       expect(fileData).to.deep.equal({
         fileName: "google-config.js",
-        fileContents: JSON.stringify(mockWebConfig, null, 2),
+        fileContents: `var firebaseConfig = ${JSON.stringify(mockWebConfig, null, 2)}`,
       });
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
