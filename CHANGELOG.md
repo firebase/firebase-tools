@@ -1,0 +1,1 @@
+- Allow skipping informational permissions check by setting `FIREBASE_SKIP_INFORMATIONAL_IAM`. (Fixes #2083)
