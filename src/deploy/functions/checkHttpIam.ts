@@ -9,8 +9,20 @@ import { testIamPermissions } from "../../gcp/iam";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
-export async function checkHttpIam(context: any, options: any, payload: any): Promise<void> {
-  const triggers = options.config.get("functions.triggers");
+/**
+ * Checks a functions deployment for HTTP function creation, and tests IAM
+ * permissions accordingly.
+ *
+ * @param context The deploy context.
+ * @param options The command-wide options object.
+ * @param payload The deploy payload.
+ */
+export async function checkHttpIam(
+  context: { projectId: string; existingFunctions: { name: string } },
+  options: unknown,
+  payload: { functions: { triggers: { name: string; httpsTrigger?: {} }[] } }
+): Promise<void> {
+  const triggers = payload.functions.triggers;
   const functionsInfo = getFunctionsInfo(triggers, context.projectId);
   const filterGroups = getFilterGroups(options);
 
@@ -37,6 +49,7 @@ export async function checkHttpIam(context: any, options: any, payload: any): Pr
   );
   const { passed } = await testIamPermissions(context.projectId, [PERMISSION]);
   if (!passed) {
+    track("Error (User)", "deploy:functions:http_create_missing_iam");
     throw new FirebaseError(
       `Missing required permission on project ${bold(
         context.projectId

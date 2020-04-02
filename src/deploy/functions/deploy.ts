@@ -1,6 +1,5 @@
 import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
-import { set } from "lodash";
 
 import * as gcp from "../../gcp";
 import { logBullet, logSuccess, logWarning } from "../../utils";
