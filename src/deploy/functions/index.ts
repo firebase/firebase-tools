@@ -1,4 +1,4 @@
-export * as prepare from "./prepare";
-export * as release from "./release";
+import * as prepare from "./prepare";
+import * as release from "./release";
 export { deploy } from "./deploy";
 export { prepare, release };
