@@ -36,9 +36,8 @@ export async function deploy(context: any, options: any, payload: any): Promise<
         " directory for uploading..."
     );
 
-    const allFunctions = await gcp.cloudfunctions.listAll(context.projectId);
     const source = await prepareFunctionsUpload(context, options);
-    context.existingFunctions = allFunctions;
+    context.existingFunctions = await gcp.cloudfunctions.listAll(context.projectId);
     payload.functions = {
       triggers: options.config.get("functions.triggers"),
     };
