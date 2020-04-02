@@ -20,7 +20,7 @@ async function uploadSource(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-module.exports = async function(context: any, options: any, payload: any): Promise<void> {
+export async function deploy(context: any, options: any, payload: any): Promise<void> {
   if (options.config.get("functions")) {
     logBullet(
       clc.cyan.bold("functions:") +
@@ -50,4 +50,4 @@ module.exports = async function(context: any, options: any, payload: any): Promi
       throw err;
     }
   }
-};
+}
