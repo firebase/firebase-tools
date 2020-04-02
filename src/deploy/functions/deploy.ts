@@ -19,6 +19,12 @@ async function uploadSource(
   await gcp.storage.upload(source, apiUploadUrl);
 }
 
+/**
+ * The "deploy" stage for Cloud Functions -- uploads source code to a generated URL.
+ * @param context The deploy context.
+ * @param options The command-wide options object.
+ * @param payload The deploy payload.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deploy(context: any, options: any, payload: any): Promise<void> {
   if (options.config.get("functions")) {
