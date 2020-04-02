@@ -8,16 +8,18 @@ const GCP_REGION = gcp.cloudfunctions.DEFAULT_REGION;
 
 setGracefulCleanup();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function uploadSource(
   context: { projectId: string; uploadUrl?: string },
   source: any
 ): Promise<void> {
-  let uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
+  const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
   const apiUploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
   await gcp.storage.upload(source, apiUploadUrl);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 module.exports = async function(context: any, options: any, payload: any): Promise<any> {
   if (options.config.get("functions")) {
     logBullet(

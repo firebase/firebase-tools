@@ -1,7 +1,4 @@
-import { difference } from "lodash";
 import { bold } from "cli-color";
-
-import { request, resourceManagerOrigin } from "./api";
 import getProjectId = require("./getProjectId");
 import { requireAuth } from "./requireAuth";
 import { debug } from "./logger";
@@ -11,6 +8,7 @@ import { testIamPermissions } from "./gcp/iam";
 // Permissions required for all commands.
 const BASE_PERMISSIONS = ["firebase.projects.get"];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
   const projectId = getProjectId(options);
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();

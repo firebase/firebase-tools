@@ -40,6 +40,7 @@ export async function createServiceAccount(
  *
  * @param projectId the id of the project containing the service account
  * @param accountEmail the email of the service account to delete
+ * @return The raw API response, including status, body, etc.
  */
 export function deleteServiceAccount(projectId: string, accountEmail: string): Promise<any> {
   return api.request(
@@ -57,7 +58,7 @@ export function deleteServiceAccount(projectId: string, accountEmail: string): P
  * Given a name, returns corresponding Role, see
  * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
  * for more details.
- * @param {string} role
+ * @param role The IAM role to get, e.g. "editor".
  * @return Details about the IAM role.
  */
 export async function getRole(role: string): Promise<{ title: string; description: string }> {
@@ -71,6 +72,8 @@ export async function getRole(role: string): Promise<{ title: string; descriptio
 
 /**
  * List permissions not held by the authenticating credential on the given project.
+ * @param projectId The project against which to test permissions.
+ * @param permissions An array of string permissions, e.g. `["cloudfunctions.functions.create"]`.
  */
 export async function testIamPermissions(
   projectId: string,
