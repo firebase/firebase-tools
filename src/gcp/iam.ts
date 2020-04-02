@@ -17,6 +17,7 @@ export async function createServiceAccount(
   accountId: string,
   description: string,
   displayName: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const response = await api.request(
     "POST",
@@ -42,6 +43,7 @@ export async function createServiceAccount(
  * @param accountEmail the email of the service account to delete
  * @return The raw API response, including status, body, etc.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function deleteServiceAccount(projectId: string, accountEmail: string): Promise<any> {
   return api.request(
     "DELETE",

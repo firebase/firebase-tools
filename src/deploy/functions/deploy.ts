@@ -1,6 +1,7 @@
-import * as gcp from "../../gcp";
 import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
+
+import * as gcp from "../../gcp";
 import { logBullet, logSuccess, logWarning } from "../../utils";
 import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
 
@@ -8,10 +9,9 @@ const GCP_REGION = gcp.cloudfunctions.DEFAULT_REGION;
 
 setGracefulCleanup();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function uploadSource(
   context: { projectId: string; uploadUrl?: string },
-  source: any
+  source: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<void> {
   const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
@@ -20,7 +20,7 @@ async function uploadSource(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-module.exports = async function(context: any, options: any, payload: any): Promise<any> {
+module.exports = async function(context: any, options: any, payload: any): Promise<void> {
   if (options.config.get("functions")) {
     logBullet(
       clc.cyan.bold("functions:") +
@@ -35,7 +35,7 @@ module.exports = async function(context: any, options: any, payload: any): Promi
     };
 
     if (!source) {
-      return undefined;
+      return;
     }
     try {
       await uploadSource(context, source);
@@ -47,7 +47,7 @@ module.exports = async function(context: any, options: any, payload: any): Promi
       );
     } catch (err) {
       logWarning(clc.yellow("functions:") + " Upload Error: " + err.message);
-      return Promise.reject(err);
+      throw err;
     }
   }
 };

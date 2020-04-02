@@ -8,6 +8,12 @@ import { testIamPermissions } from "./gcp/iam";
 // Permissions required for all commands.
 const BASE_PERMISSIONS = ["firebase.projects.get"];
 
+/**
+ * Before filter that verifies authentication and performs informational IAM permissions check.
+ *
+ * @param options The command-wide options object.
+ * @param permissions A list of IAM permissions to require.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
   const projectId = getProjectId(options);
