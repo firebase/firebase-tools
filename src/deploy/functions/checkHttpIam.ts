@@ -18,7 +18,7 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
  * @param payload The deploy payload.
  */
 export async function checkHttpIam(
-  context: { projectId: string; existingFunctions: { name: string } },
+  context: { projectId: string; existingFunctions: { name: string }[] },
   options: unknown,
   payload: { functions: { triggers: { name: string; httpsTrigger?: {} }[] } }
 ): Promise<void> {
