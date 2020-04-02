@@ -1,4 +1,3 @@
-import { set } from "lodash";
 import * as gcp from "../../gcp";
 import * as clc from "cli-color";
 import { setGracefulCleanup } from "tmp";
@@ -9,11 +8,14 @@ const GCP_REGION = gcp.cloudfunctions.DEFAULT_REGION;
 
 setGracefulCleanup();
 
-async function uploadSource(context: any, source: any): Promise<void> {
+async function uploadSource(
+  context: { projectId: string; uploadUrl?: string },
+  source: any
+): Promise<void> {
   let uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
   context.uploadUrl = uploadUrl;
-  uploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
-  await gcp.storage.upload(source, uploadUrl);
+  const apiUploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
+  await gcp.storage.upload(source, apiUploadUrl);
 }
 
 module.exports = async function(context: any, options: any, payload: any): Promise<any> {
