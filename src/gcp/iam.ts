@@ -1,6 +1,7 @@
 import * as api from "../api";
 import { endpoint } from "../utils";
 import { difference } from "lodash";
+import { debug } from "winston";
 
 const API_VERSION = "v1";
 
@@ -92,6 +93,15 @@ export async function testResourceIamPermissions(
   resourceName: string,
   permissions: string[]
 ): Promise<TestIamResult> {
+  if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
+    debug(
+      "[iam] skipping informational check of permissions",
+      JSON.stringify(permissions),
+      "on resource",
+      resourceName
+    );
+    return { allowed: permissions, missing: [], passed: true };
+  }
   const response = await api.request("POST", `/${apiVersion}/${resourceName}:testIamPermissions`, {
     auth: true,
     data: { permissions },

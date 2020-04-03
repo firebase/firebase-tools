@@ -10,11 +10,6 @@ import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
 export async function checkServiceAccountIam(projectId: string): Promise<void> {
-  if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
-    "[iam] skipping informational functions service account IAM permission check as FIREBASE_SKIP_INFORMATIONAL_IAM is present";
-    return;
-  }
-
   const saEmail = `${projectId}@appspot.gserviceaccount.com`;
   try {
     const { passed } = await testResourceIamPermissions(
@@ -52,11 +47,6 @@ export async function checkHttpIam(
   options: unknown,
   payload: { functions: { triggers: { name: string; httpsTrigger?: {} }[] } }
 ): Promise<void> {
-  if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
-    "[iam] skipping informational functions HTTP IAM permission check as FIREBASE_SKIP_INFORMATIONAL_IAM is present";
-    return;
-  }
-
   const triggers = payload.functions.triggers;
   const functionsInfo = getFunctionsInfo(triggers, context.projectId);
   const filterGroups = getFilterGroups(options);
