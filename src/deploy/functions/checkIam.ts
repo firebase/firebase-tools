@@ -28,9 +28,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
         `Missing permissions required for functions deploy. You must have permission ${bold(
           "iam.serviceAccounts.ActAs"
         )} on service account ${bold(saEmail)}.\n\n` +
-          `To address this error, ask a ${bold(
-            "project owner"
-          )} to grant your account the "Service Account User" role from this URL:\n\n` +
+          `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
           `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
       );
     }
@@ -83,9 +81,9 @@ export async function checkHttpIam(
     throw new FirebaseError(
       `Missing required permission on project ${bold(
         context.projectId
-      )} to create HTTPS functions. Permission ${bold(
+      )} to deploy new HTTPS functions. The permission ${bold(
         PERMISSION
-      )} is required for this deploy. Affected functions:\n\n- ` +
+      )} is required to deploy the following functions:\n\n- ` +
         newHttpFunctions.map((name) => last(name.split("/"))).join("\n- ") +
         `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
     );
