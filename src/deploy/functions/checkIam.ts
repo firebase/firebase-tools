@@ -5,9 +5,28 @@ import { debug } from "../../logger";
 import * as track from "../../track";
 import { getReleaseNames, getFunctionsInfo, getFilterGroups } from "../../functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { testIamPermissions } from "../../gcp/iam";
+import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
+
+export async function checkServiceAccountIam(projectId: string): Promise<void> {
+  const saEmail = `${projectId}@appspot.gserviceaccount.com`;
+  const { passed } = await testResourceIamPermissions(
+    "https://iam.googleapis.com",
+    "v1",
+    `projects/${projectId}/serviceAccounts/${saEmail}`,
+    ["iam.serviceAccounts.actAs"]
+  );
+  if (!passed) {
+    throw new FirebaseError(
+      "Missing permissions required for functions deploy. You must have permission\n" +
+        `${bold("iam.serviceAccounts.ActAs")} on service account ${bold(saEmail)}.\n\n` +
+        `To address this error, ask a ${bold("project owner")} to grant your account the\n` +
+        `"Service Account User" role from this URL:\n\n` +
+        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
+    );
+  }
+}
 
 /**
  * Checks a functions deployment for HTTP function creation, and tests IAM
@@ -57,8 +76,8 @@ export async function checkHttpIam(
         `Permission ${bold(PERMISSION)} is required for this deploy. Affected functions:\n\n- ` +
         newHttpFunctions.map((name) => last(name.split("/"))).join("\n- ") +
         "\n\n" +
-        'To address this error, please ask a project owner to grant your account the "Develop Admin" role\n' +
-        `in the Firebase Console: https://console.firebase.google.com/project/${context.projectId}/settings/iam`
+        'To address this error, please ask a project owner to grant your account the "Cloud Functions Admin" role\n' +
+        `at the following URL: https://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
     );
   }
   debug("[functions] found setIamPolicy permission, proceeding with deploy");
