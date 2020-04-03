@@ -9,6 +9,11 @@ import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 
 const PERMISSION = "cloudfunctions.functions.setIamPolicy";
 
+/**
+ * Checks to see if the authenticated account has `iam.serviceAccounts.actAs` permissions
+ * on a specified project (required for functions deployments).
+ * @param projectId The project ID to check.
+ */
 export async function checkServiceAccountIam(projectId: string): Promise<void> {
   const saEmail = `${projectId}@appspot.gserviceaccount.com`;
   try {
@@ -82,7 +87,7 @@ export async function checkHttpIam(
         PERMISSION
       )} is required for this deploy. Affected functions:\n\n- ` +
         newHttpFunctions.map((name) => last(name.split("/"))).join("\n- ") +
-        `\n\nTo address this error, please ask a project owner to grant your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
+        `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`
     );
   }
   debug("[functions] found setIamPolicy permission, proceeding with deploy");
