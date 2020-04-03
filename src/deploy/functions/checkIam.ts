@@ -16,24 +16,28 @@ const PERMISSION = "cloudfunctions.functions.setIamPolicy";
  */
 export async function checkServiceAccountIam(projectId: string): Promise<void> {
   const saEmail = `${projectId}@appspot.gserviceaccount.com`;
+  let passed = false;
   try {
-    const { passed } = await testResourceIamPermissions(
+    const iamResult = await testResourceIamPermissions(
       "https://iam.googleapis.com",
       "v1",
       `projects/${projectId}/serviceAccounts/${saEmail}`,
       ["iam.serviceAccounts.actAs"]
     );
-    if (!passed) {
-      throw new FirebaseError(
-        `Missing permissions required for functions deploy. You must have permission ${bold(
-          "iam.serviceAccounts.ActAs"
-        )} on service account ${bold(saEmail)}.\n\n` +
-          `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
-          `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
-      );
-    }
+    passed = iamResult.passed;
   } catch (err) {
-    debug("[functions] service account IAM check errored, deploy may fail");
+    debug("[functions] service account IAM check errored, deploy may fail:", err);
+    return;
+  }
+
+  if (!passed) {
+    throw new FirebaseError(
+      `Missing permissions required for functions deploy. You must have permission ${bold(
+        "iam.serviceAccounts.ActAs"
+      )} on service account ${bold(saEmail)}.\n\n` +
+        `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
+        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`
+    );
   }
 }
 
