@@ -27,6 +27,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
     passed = iamResult.passed;
   } catch (err) {
     debug("[functions] service account IAM check errored, deploy may fail:", err);
+    // we want to fail this check open and not rethrow since it's informational only
     return;
   }
 
@@ -79,7 +80,17 @@ export async function checkHttpIam(
     newHttpFunctions.length,
     "new HTTP functions, testing setIamPolicy permission..."
   );
-  const { passed } = await testIamPermissions(context.projectId, [PERMISSION]);
+
+  let passed = true;
+  try {
+    const iamResult = await testIamPermissions(context.projectId, [PERMISSION]);
+    passed = iamResult.passed;
+  } catch (e) {
+    debug("[functions] failed http create setIamPolicy permission check. deploy may fail:", e);
+    // fail open since this is an informational check
+    return;
+  }
+
   if (!passed) {
     track("Error (User)", "deploy:functions:http_create_missing_iam");
     throw new FirebaseError(

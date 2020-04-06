@@ -1,7 +1,7 @@
 import * as api from "../api";
 import { endpoint } from "../utils";
 import { difference } from "lodash";
-import { debug } from "winston";
+import { debug } from "../logger";
 
 const API_VERSION = "v1";
 
