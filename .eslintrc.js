@@ -73,8 +73,8 @@ module.exports = {
         "@typescript-eslint/unbound-method": "off",
 
         "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
-        "no-var": "warn", // TODO(bkendall): remove, allow to error.
-        "prefer-arrow-callback": "warn", // TODO(bkendall): remove, allow to error.
+        "no-var": "off", // TODO(bkendall): remove, allow to error.
+        "prefer-arrow-callback": "off", // TODO(bkendall): remove, allow to error.
       },
     },
     {
