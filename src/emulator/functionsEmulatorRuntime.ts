@@ -12,6 +12,7 @@ import {
   FunctionsRuntimeArgs,
   HttpConstants,
 } from "./functionsEmulatorShared";
+import { Constants } from "./constants";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
@@ -626,24 +627,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     }
   }
 
-  // The Firebase CLI is sometimes used as a module within Cloud Functions
-  // for tasks like deleting Firestore data. The CLI has an override system
-  // to change the host for most calls (see api.js)
-  //
-  // TODO(samstern): This should be done for RTDB as well but it's hard
-  // because the convention in prod is subdomain not ?ns=
-  if (frb.emulators.firestore) {
-    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
-  }
-
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env[
+      Constants.FIRESTORE_EMULATOR_HOST
+    ] = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+    process.env[
+      Constants.FIREBASE_DATABASE_EMULATOR_HOST
+    ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
   }
 
   if (frb.emulators.pubsub) {

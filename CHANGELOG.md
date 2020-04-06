@@ -1,1 +1,2 @@
 - Improves error messages for Cloud Functions for Firebase deployment permissions. (#2086)
+- Makes Firestore commands respect `FIRESTORE_EMULATOR_HOST` when appropriate.
