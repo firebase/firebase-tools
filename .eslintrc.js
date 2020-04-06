@@ -19,7 +19,7 @@ module.exports = {
     "prettier/prettier": "error",
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
-    "require-atomic-updates": "off", // This rule is so noisey and isn't useful: https://github.com/eslint/eslint/issues/11899
+    "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-restricted-globals": ["error", "name", "length"],
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
