@@ -1,0 +1,1 @@
+- Improves error messages for Cloud Functions for Firebase deployment permissions. (#2086)
