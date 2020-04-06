@@ -1,6 +1,7 @@
 import * as api from "../api";
 import { endpoint } from "../utils";
 import { difference } from "lodash";
+import { debug } from "../logger";
 
 const API_VERSION = "v1";
 
@@ -72,19 +73,39 @@ export async function getRole(role: string): Promise<{ title: string; descriptio
   return response.body;
 }
 
+export interface TestIamResult {
+  allowed: string[];
+  missing: string[];
+  passed: boolean;
+}
+
 /**
- * List permissions not held by the authenticating credential on the given project.
- * @param projectId The project against which to test permissions.
- * @param permissions An array of string permissions, e.g. `["cloudfunctions.functions.create"]`.
+ * List permissions not held by an arbitrary resource implementing the IAM APIs.
+ *
+ * @param origin Resource origin e.g. `https://iam.googleapis.com`.
+ * @param apiVersion API version e.g. `v1`.
+ * @param resourceName Resource name e.g. `projects/my-projct/widgets/abc`
+ * @param permissions An array of string permissions, e.g. `["iam.serviceAccounts.actAs"]`
  */
-export async function testIamPermissions(
-  projectId: string,
+export async function testResourceIamPermissions(
+  origin: string,
+  apiVersion: string,
+  resourceName: string,
   permissions: string[]
-): Promise<{ allowed: string[]; missing: string[]; passed: boolean }> {
-  const response = await api.request("POST", `/v1/projects/${projectId}:testIamPermissions`, {
+): Promise<TestIamResult> {
+  if (process.env.FIREBASE_SKIP_INFORMATIONAL_IAM) {
+    debug(
+      "[iam] skipping informational check of permissions",
+      JSON.stringify(permissions),
+      "on resource",
+      resourceName
+    );
+    return { allowed: permissions, missing: [], passed: true };
+  }
+  const response = await api.request("POST", `/${apiVersion}/${resourceName}:testIamPermissions`, {
     auth: true,
     data: { permissions },
-    origin: api.resourceManagerOrigin,
+    origin,
   });
 
   const allowed = (response.body.permissions || []).sort();
@@ -95,4 +116,21 @@ export async function testIamPermissions(
     missing,
     passed: missing.length === 0,
   };
+}
+
+/**
+ * List permissions not held by the authenticating credential on the given project.
+ * @param projectId The project against which to test permissions.
+ * @param permissions An array of string permissions, e.g. `["cloudfunctions.functions.create"]`.
+ */
+export async function testIamPermissions(
+  projectId: string,
+  permissions: string[]
+): Promise<TestIamResult> {
+  return testResourceIamPermissions(
+    api.resourceManagerOrigin,
+    "v1",
+    `projects/${projectId}`,
+    permissions
+  );
 }
