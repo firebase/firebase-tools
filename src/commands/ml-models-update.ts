@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import {FirebaseModel} from "../ml/models";
+import { FirebaseModel } from "../ml/models";
 
 module.exports = new Command("ml:models:update <modelId>")
   .description(
@@ -13,6 +13,6 @@ module.exports = new Command("ml:models:update <modelId>")
   .action(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (modelId: string, options: any): Promise<FirebaseModel> => {
-      throw new Error('Not Implemented');
+      throw new Error("Not Implemented");
     }
   );
