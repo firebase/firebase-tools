@@ -5,6 +5,7 @@ var querystring = require("querystring");
 var request = require("request");
 var url = require("url");
 
+var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var responseToError = require("./responseToError");
@@ -121,7 +122,16 @@ var api = {
     "https://extensions-registry.firebaseapp.com"
   ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
-  firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
+  firestoreOrigin: utils.envOverride(
+    "FIRESTORE_URL",
+    utils.envOverride(
+      Constants.FIRESTORE_EMULATOR_HOST,
+      "https://firestore.googleapis.com",
+      (val) => {
+        return `http://${val}`;
+      }
+    )
+  ),
   functionsOrigin: utils.envOverride(
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
