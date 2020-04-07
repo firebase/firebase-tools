@@ -9,11 +9,13 @@ introduced in the following PRs:
 # Running Instructions
 
 Install dependencies:
+
 ```
 cd firebase-tools/scripts/triggers-end-to-end-tests && npm install
 ```
 
 Run the test:
+
 ```
 $ cd firebase-tools/scripts/triggers-end-to-end-tests && npm test
 ```
@@ -49,11 +51,11 @@ To verify (2), the test installs the following http function:
 
 ```javascript
 exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
-    const ref = admin.database().ref(START_DOCUMENT_NAME);
-    await ref.set({ start: (new Date().toISOString()) });
-    ref.once('value', (snap) => {
-        res.json({ data: snap });
-    });
+  const ref = admin.database().ref(START_DOCUMENT_NAME);
+  await ref.set({ start: new Date().toISOString() });
+  ref.once("value", (snap) => {
+    res.json({ data: snap });
+  });
 });
 ```
 
@@ -62,17 +64,18 @@ database function:
 
 ```javascript
 exports.rtdbReaction = functions.database.ref(START_DOCUMENT_NAME).onWrite(async (change, ctx) => {
-    console.log(RTDB_FUNCTION_LOG);
+  console.log(RTDB_FUNCTION_LOG);
 
-    const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
-    await ref.set({ done: (new Date().toISOString()) });
+  const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
+  await ref.set({ done: new Date().toISOString() });
 
-    const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
-    await firestoreref.set({ done: (new Date().toISOString()) });
+  const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
+  await firestoreref.set({ done: new Date().toISOString() });
 
-    return true;
+  return true;
 });
 ```
+
 The driver program for the end-to-end test has spawned the functions emulator as
 a subprocess and searches for the presence of `RTDB_FUNCTION_LOG` in the process
 to confirm (2).
