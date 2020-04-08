@@ -64,7 +64,11 @@ module.exports = new Command("database:get <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    let url = utils.getDatabaseUrl(api.realtimeOriginOrEmulator, options.instance, path + ".json");
+    let dbUrl = utils.getDatabaseUrl(
+      api.realtimeOriginOrEmulator,
+      options.instance,
+      path + ".json"
+    );
     var query = {};
     if (options.shallow) {
       query.shallow = "true";
@@ -88,16 +92,16 @@ module.exports = new Command("database:get <path>")
       ["orderBy", "startAt", "endAt", "equalTo"]
     );
 
-    const urlObj = new url.URL(url);
+    const urlObj = new url.URL(dbUrl);
     Object.keys(query).forEach((key) => {
       urlObj.searchParams.set(key, query[key]);
     });
 
-    url = urlObj.href;
+    dbUrl = urlObj.href;
 
-    logger.debug("Query URL: ", url);
+    logger.debug("Query URL: ", dbUrl);
     var reqOptions = {
-      url: url,
+      url: dbUrl,
     };
 
     return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
