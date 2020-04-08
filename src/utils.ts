@@ -105,7 +105,6 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
     });
     url.searchParams.set("ns", namespace);
     return url.href;
-    // return url.href + "?" + params.toString();
   }
 }
 
