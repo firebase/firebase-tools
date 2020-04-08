@@ -50,7 +50,6 @@ export function warnRealtimeDatabaseEmulated(
   options: any,
   emulatorSupported: boolean
 ): void | Promise<void> {
-  console.log("SUPPORTED: ", emulatorSupported);
   const envKey = Constants.FIREBASE_DATABASE_EMULATOR_HOST;
   const envVal = process.env[envKey];
   if (envVal) {
