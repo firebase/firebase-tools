@@ -3,7 +3,8 @@ import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
-import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 export default new Command("database:rules:list")
   .description("list realtime database rulesets")
@@ -13,7 +14,7 @@ export default new Command("database:rules:list")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .before(warnRealtimeDatabaseEmulated, false)
+  .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
     const labeled = await metadata.getRulesetLabels(options.instance);
     const rulesets = await metadata.listAllRulesets(options.instance);

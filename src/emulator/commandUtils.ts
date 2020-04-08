@@ -46,81 +46,54 @@ export const DESC_TEST_PARAMS =
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
 
-export function warnRealtimeDatabaseEmulated(
-  options: any,
-  emulatorSupported: boolean
-): void | Promise<void> {
-  const envKey = Constants.FIREBASE_DATABASE_EMULATOR_HOST;
+export function printNoticeIfEmulated(options: any, emulator: Emulators): void {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
+
+  const emuName = Constants.description(emulator);
+  const envKey = emulator === Emulators.DATABASE ? Constants.FIREBASE_DATABASE_EMULATOR_HOST : Constants.FIRESTORE_EMULATOR_HOST;
   const envVal = process.env[envKey];
   if (envVal) {
-    if (emulatorSupported) {
-      utils.logBullet(
-        `You have set ${clc.bold(
-          `${envKey}=${envVal}`
-        )}, this command will execute against the Realtime Database emulator running at that address.`
-      );
-    } else {
-      utils.logWarning(
-        `You have set ${clc.bold(
-          `${envKey}=${envVal}`
-        )}, however this command does not support running against the emulator so this action will affect production.`
-      );
-
-      const opts = {
-        confirm: undefined,
-      };
-      return prompt(opts, [
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message: "Do you want to continue?",
-        },
-      ]).then(() => {
-        if (!opts.confirm) {
-          return utils.reject("Command aborted.", { exit: 1 });
-        }
-      });
-    }
+    utils.logBullet(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, this command will execute against the ${emuName} emulator running at that address.`
+    );
   }
 }
 
-export function warnFirestoreEmulated(
-  options: any,
-  emulatorSupported: boolean
-): void | Promise<void> {
-  const envKey = Constants.FIRESTORE_EMULATOR_HOST;
-  const envVal = process.env[envKey];
-  if (envVal) {
-    if (emulatorSupported) {
-      utils.logBullet(
-        `You have set ${clc.bold(
-          `${envKey}=${envVal}`
-        )}, this command will execute against the Cloud Firestore emulator running at that address.`
-      );
-    } else {
-      utils.logWarning(
-        `You have set ${clc.bold(
-          `${envKey}=${envVal}`
-        )}, however this command does not support running against the emulator so this action will affect production.`
-      );
+export function warnEmulatorNotSupported(options: any, emulator: Emulators): void | Promise<void> {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
 
-      const promptRes = {
-        confirm: false,
-      };
-      return prompt(promptRes, [
-        {
-          type: "confirm",
-          name: "confirm",
-          default: false,
-          message: "Do you want to continue?",
-        },
-      ]).then(() => {
-        if (!promptRes.confirm) {
-          return utils.reject("Command aborted.", { exit: 1 });
-        }
-      });
-    }
+  const emuName = Constants.description(emulator);
+  const envKey = emulator === Emulators.DATABASE ? Constants.FIREBASE_DATABASE_EMULATOR_HOST : Constants.FIRESTORE_EMULATOR_HOST;
+  const envVal = process.env[envKey];
+
+  if (envVal) {
+    utils.logWarning(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, however this command does not support running against the ${emuName} emulator so this action will affect production.`
+    );
+
+    const opts = {
+      confirm: undefined,
+    };
+    return prompt(opts, [
+      {
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Do you want to continue?",
+      },
+    ]).then(() => {
+      if (!opts.confirm) {
+        return utils.reject("Command aborted.", { exit: 1 });
+      }
+    });
   }
 }
 

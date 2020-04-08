@@ -8,7 +8,8 @@ var api = require("../api");
 var responseToError = require("../responseToError");
 var logger = require("../logger");
 var { FirebaseError } = require("../error");
-var { warnRealtimeDatabaseEmulated } = require("../emulator/commandUtils");
+var { Emulators } = require("../emulator/types");
+var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var _ = require("lodash");
@@ -56,7 +57,7 @@ module.exports = new Command("database:get <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .before(warnRealtimeDatabaseEmulated, true)
+  .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });

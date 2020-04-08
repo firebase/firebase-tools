@@ -1,9 +1,9 @@
 import { Command } from "../command";
-import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
-import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 export default new Command("database:rules:release <rulesetId>")
   .description("mark a staged ruleset as the stable ruleset")
@@ -13,7 +13,7 @@ export default new Command("database:rules:release <rulesetId>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
-  .before(warnRealtimeDatabaseEmulated, false)
+  .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (rulesetId: string, options: any) => {
     const oldLabels = await metadata.getRulesetLabels(options.instance);
     const newLabels = {

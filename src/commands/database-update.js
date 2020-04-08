@@ -7,7 +7,8 @@ var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
 var { FirebaseError } = require("../error");
-var { warnRealtimeDatabaseEmulated } = require("../emulator/commandUtils");
+var { Emulators } = require("../emulator/types");
+var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var clc = require("cli-color");
@@ -26,7 +27,7 @@ module.exports = new Command("database:update <path> [infile]")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
-  .before(warnRealtimeDatabaseEmulated, true)
+  .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
