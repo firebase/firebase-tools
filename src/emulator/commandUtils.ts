@@ -52,7 +52,10 @@ export function printNoticeIfEmulated(options: any, emulator: Emulators): void {
   }
 
   const emuName = Constants.description(emulator);
-  const envKey = emulator === Emulators.DATABASE ? Constants.FIREBASE_DATABASE_EMULATOR_HOST : Constants.FIRESTORE_EMULATOR_HOST;
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
   const envVal = process.env[envKey];
   if (envVal) {
     utils.logBullet(
@@ -69,7 +72,10 @@ export function warnEmulatorNotSupported(options: any, emulator: Emulators): voi
   }
 
   const emuName = Constants.description(emulator);
-  const envKey = emulator === Emulators.DATABASE ? Constants.FIREBASE_DATABASE_EMULATOR_HOST : Constants.FIRESTORE_EMULATOR_HOST;
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
   const envVal = process.env[envKey];
 
   if (envVal) {
