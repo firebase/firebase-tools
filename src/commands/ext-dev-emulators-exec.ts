@@ -8,6 +8,7 @@ module.exports = new Command("ext:dev:emulators:exec <script>")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_TEST_CONFIG, commandUtils.DESC_TEST_CONFIG)
   .option(commandUtils.FLAG_TEST_PARAMS, commandUtils.DESC_TEST_PARAMS)
+  .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (script: string, options: any) => {
     const emulatorOptions = await optionsHelper.buildOptions(options);
     commandUtils.beforeEmulatorCommand(emulatorOptions);
