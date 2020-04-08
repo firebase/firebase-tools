@@ -14,6 +14,7 @@ var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 var utils = require("../utils");
 var _ = require("lodash");
 var fs = require("fs");
+var url = require("url");
 
 var _applyStringOpts = function(dest, src, keys, jsonKeys) {
   _.forEach(keys, function(key) {
@@ -87,7 +88,7 @@ module.exports = new Command("database:get <path>")
       ["orderBy", "startAt", "endAt", "equalTo"]
     );
 
-    const urlObj = new URL(url);
+    const urlObj = new url.URL(url);
     Object.keys(query).forEach((key) => {
       urlObj.searchParams.set(key, query[key]);
     });

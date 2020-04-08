@@ -81,8 +81,8 @@ export function getDatabaseViewDataUrl(
   namespace: string,
   pathname: string
 ): string {
-  const url = new URL(origin);
-  if (url.hostname.includes("firebaseio.com")) {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
     return consoleUrl(namespace, "/database/data" + pathname);
   } else {
     // TODO(samstern): View in GUI
@@ -96,15 +96,12 @@ export function getDatabaseViewDataUrl(
  *  - Emulator: Add `?ns=` parameter.
  */
 export function addDatabaseNamespace(origin: string, namespace: string): string {
-  const url = new URL(origin);
-  if (url.hostname.includes("firebaseio.com")) {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
     return addSubdomain(origin, namespace);
   } else {
-    const params = new URLSearchParams({
-      ns: namespace,
-    });
-    url.searchParams.set("ns", namespace);
-    return url.href;
+    urlObj.searchParams.set("ns", namespace);
+    return urlObj.href;
   }
 }
 
