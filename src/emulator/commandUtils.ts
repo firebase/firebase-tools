@@ -46,7 +46,7 @@ export const DESC_TEST_PARAMS =
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
 
-export function printNoticeIfEmulated(options: any, emulator: Emulators): void {
+export function printNoticeIfEmulated(options: any, emulator: Emulators.DATABASE | Emulators.FIRESTORE): void {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
   }
