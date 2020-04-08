@@ -64,7 +64,7 @@ export function envOverride(
 }
 
 /**
- * TODO(samstern): Docs
+ * Get the full URL to a path in the database or database emulator.
  */
 export function getDatabaseUrl(origin: string, namespace: string, pathname: string): string {
   const withPath = url.resolve(origin, pathname);
@@ -72,7 +72,9 @@ export function getDatabaseUrl(origin: string, namespace: string, pathname: stri
 }
 
 /**
- * TODO(samstern): Docs
+ * Get the URL to view data in the database or database emulator.
+ *  - Prod: Firebase Console URL
+ *  - Emulator: Localhost URL to a `.json` endpoint.
  */
 export function getDatabaseViewDataUrl(
   origin: string,
@@ -89,7 +91,9 @@ export function getDatabaseViewDataUrl(
 }
 
 /**
- * TODO(samstern): Docs
+ * Add the namespace to a database or database emulator URL.
+ *  - Prod: Add a subdomain.
+ *  - Emulator: Add `?ns=` parameter.
  */
 export function addDatabaseNamespace(origin: string, namespace: string): string {
   const url = new URL(origin);
@@ -99,7 +103,9 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
     const params = new URLSearchParams({
       ns: namespace,
     });
-    return url.href + "?" + params.toString();
+    url.searchParams.set("ns", namespace);
+    return url.href;
+    // return url.href + "?" + params.toString();
   }
 }
 
