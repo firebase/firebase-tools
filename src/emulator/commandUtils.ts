@@ -82,7 +82,7 @@ export function warnEmulatorNotSupported(options: any, emulator: Emulators): voi
     utils.logWarning(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, however this command does not support running against the ${emuName} emulator so this action will affect production.`
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`
     );
 
     const opts = {
