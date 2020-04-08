@@ -61,7 +61,7 @@ export function printNoticeIfEmulated(options: any, emulator: Emulators): void {
     utils.logBullet(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, this command will execute against the ${emuName} emulator running at that address.`
+      )}, this command will execute against the ${emuName} running at that address.`
     );
   }
 }
