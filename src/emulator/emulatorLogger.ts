@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorLog } from "./types";
+import { tryParse } from "../utils";
 
 /**
  * DEBUG - lowest level, not needed for most usages.
@@ -38,7 +39,7 @@ export class EmulatorLogger {
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
    */
-  static log(type: LogType, text: string): void {
+  static log(type: LogType, text: string, data?: any): void {
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`${type}: ${text}`);
       return;
@@ -46,28 +47,28 @@ export class EmulatorLogger {
 
     switch (type) {
       case "DEBUG":
-        logger.debug(text);
+        logger.debug(text, data);
         break;
       case "INFO":
-        logger.info(text);
+        logger.info(text, data);
         break;
       case "USER":
-        logger.info(text);
+        logger.info(text, data);
         break;
       case "BULLET":
-        utils.logBullet(text);
+        utils.logBullet(text, data);
         break;
       case "WARN":
-        utils.logWarning(text);
+        utils.logWarning(text, data);
         break;
       case "WARN_ONCE":
         if (!this.warnOnceCache.has(text)) {
-          utils.logWarning(text);
+          utils.logWarning(text, data);
           this.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
-        utils.logSuccess(text);
+        utils.logSuccess(text, data);
         break;
     }
   }
@@ -81,7 +82,9 @@ export class EmulatorLogger {
         EmulatorLogger.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`);
+        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
+          user: tryParse(log.text),
+        });
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {

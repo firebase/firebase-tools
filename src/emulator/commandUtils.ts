@@ -5,11 +5,11 @@ import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import requireAuth = require("../requireAuth");
+import { Constants } from "./constants";
+import { requireAuth } from "../requireAuth";
 import requireConfig = require("../requireConfig");
 import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";
-import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as getProjectId from "../getProjectId";
@@ -44,6 +44,30 @@ export const DESC_TEST_PARAMS =
  * config interactions can become fairly complex.
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+
+export function warnRealtimeDatabaseEmulated(): void {
+  const envKey = Constants.FIREBASE_DATABASE_EMULATOR_HOST;
+  const envVal = process.env[envKey];
+  if (envVal) {
+    utils.logWarning(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, this command will execute against the Realtime Database emulator running at that address.`
+    );
+  }
+}
+
+export function warnFirestoreEmulated(): void {
+  const envKey = Constants.FIRESTORE_EMULATOR_HOST;
+  const envVal = process.env[envKey];
+  if (envVal) {
+    utils.logWarning(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, this command will execute against the Cloud Firestore emulator running at that address.`
+    );
+  }
+}
 
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
@@ -101,7 +125,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   if (databaseInstance) {
     const info = databaseInstance.getInfo();
     const address = `${info.host}:${info.port}`;
-    env[DatabaseEmulator.DATABASE_EMULATOR_ENV] = address;
+    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
   }
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
@@ -109,7 +133,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     const info = firestoreInstance.getInfo();
     const address = `${info.host}:${info.port}`;
 
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
+    env[Constants.FIRESTORE_EMULATOR_HOST] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 

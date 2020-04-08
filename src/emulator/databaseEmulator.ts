@@ -8,7 +8,6 @@ import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
-import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,8 +20,6 @@ export interface DatabaseEmulatorArgs {
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
-  static DATABASE_EMULATOR_ENV = "FIREBASE_DATABASE_EMULATOR_HOST";
-
   rulesWatcher?: chokidar.FSWatcher;
 
   constructor(private args: DatabaseEmulatorArgs) {}

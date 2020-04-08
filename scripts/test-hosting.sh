@@ -64,6 +64,6 @@ echo "Tested local serve."
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
 sleep 5
-VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.firebaseapp.com/${TARGET_FILE})"
+VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
 echo "Tested hosting deployment."

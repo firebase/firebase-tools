@@ -1,12 +1,12 @@
 ---
 name: ⚠️ Bug report
 about: Create a report to help us improve
-title: ''
+title: ""
 labels: bug
-assignees: ''
-
+assignees: ""
 ---
-<!-- DO NOT DELETE 
+
+<!-- DO NOT DELETE
 validate_template=true
 template_path=.github/ISSUE_TEMPLATE/bug_report.md
 -->
@@ -40,9 +40,11 @@ Additional locations to check for solutions or assistance from the community:
 <!-- What version of the Firebase CLI (`firebase-tools`) are you using? Note that your issue may already be fixed in the latest versions. The latest version can be found at https://github.com/firebase/firebase-tools/releases -->
 
 <!-- Output of `firebase --version` -->
+
 **firebase-tools:**
 
 <!-- e.g. macOS, Windows, Ubuntu -->
+
 **Platform:**
 
 ### [REQUIRED] Test case

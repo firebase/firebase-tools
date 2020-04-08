@@ -5,6 +5,7 @@ import { Address, Emulators } from "./types";
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
   gui: 4000,
   hub: 4400,
+  logging: 4500,
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
@@ -16,6 +17,12 @@ const DEFAULT_HOST = "localhost";
 
 export class Constants {
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
+
+  // Environment variable to override SDK/CLI to point at the Firestore emulator.
+  static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
+
+  // Environment variable tok override SDK/CLI to point at the Realtime Database emulator.
+  static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";

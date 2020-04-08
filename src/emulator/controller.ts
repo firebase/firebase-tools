@@ -10,9 +10,9 @@ import * as utils from "../utils";
 import * as track from "../track";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
+  ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
-  ALL_SERVICE_EMULATORS,
   EMULATORS_SUPPORTED_BY_GUI,
 } from "../emulator/types";
 import { Constants } from "../emulator/constants";
@@ -27,6 +27,7 @@ import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorGUI } from "./gui";
+import { LoggingEmulator } from "./loggingEmulator";
 import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
@@ -121,6 +122,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
       targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.indexOf(target) >= 0)
     );
   }
+
   return targets.indexOf(name) >= 0;
 }
 
@@ -146,6 +148,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
+
     for (const name of ignored) {
       utils.logLabeledWarning(
         name,
@@ -279,7 +282,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.FIRESTORE,
       `For testing set ${clc.bold(
-        `${FirestoreEmulator.FIRESTORE_EMULATOR_ENV}=${firestoreAddr.host}:${firestoreAddr.port}`
+        `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
       )}`
     );
   }
@@ -334,7 +337,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.DATABASE,
       `For testing set ${clc.bold(
-        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+        `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
       )}`
     );
   }
@@ -368,6 +371,14 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (!noGui && shouldStart(options, Emulators.GUI)) {
+    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingEmulator = new LoggingEmulator({
+      host: loggingAddr.host,
+      port: loggingAddr.port,
+    });
+
+    await startEmulator(loggingEmulator);
+
     // For the GUI we actually will find any available port
     // since we don't want to explode if the GUI can't start on 3000.
     const guiAddr = Constants.getAddress(Emulators.GUI, options);

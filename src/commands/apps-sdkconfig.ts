@@ -13,7 +13,7 @@ import {
 } from "../management/apps";
 import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 
@@ -116,7 +116,7 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         }
       }
 
-      fs.writeFileSync(filename, configData.fileContents);
+      fs.writeFileSync(filename, fileInfo.fileContents);
       logger.info(`App configuration is written in ${filename}`);
 
       return configData;

@@ -3,18 +3,20 @@ import { CommanderStatic } from "commander";
 import { first, last, get, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption } from "./utils";
+import { getInheritedOption, setupLoggers } from "./utils";
 import { load } from "./rc";
 import { load as _load } from "./config";
 import { configstore } from "./configstore";
 import { detectProjectRoot } from "./detectProjectRoot";
-import logger = require("./logger");
 import track = require("./track");
+import clc = require("cli-color");
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
 
 interface BeforeFunction {
   fn: ActionFunction;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[];
 }
 
@@ -30,6 +32,7 @@ interface CLIClient {
 export class Command {
   private name = "";
   private descriptionText = "";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
   private actionFn: ActionFunction = (): void => {};
   private befores: BeforeFunction[] = [];
@@ -62,6 +65,7 @@ export class Command {
    * @param args the commander-style option definition.
    * @return the command, for chaining.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   option(...args: any[]): Command {
     this.options.push(args);
     return this;
@@ -73,6 +77,7 @@ export class Command {
    * @param args arguments, as an array, for the function.
    * @return the command, for chaining.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   before(fn: ActionFunction, ...args: any[]): Command {
     this.befores.push({ fn: fn, args: args });
     return this;
@@ -129,6 +134,7 @@ export class Command {
 
     // args is an array of all the arguments provided for the command PLUS the
     // options object as provided by Commander (on the end).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cmd.action((...args: any[]) => {
       const runner = this.runner();
       const start = new Date().getTime();
@@ -197,6 +203,7 @@ export class Command {
    * Extends the options with various properties for use in commands.
    * @param options the command options object.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private prepare(options: any): void {
     options = options || {};
     options.project = getInheritedOption(options, "project");
@@ -211,12 +218,13 @@ export class Command {
     }
 
     if (getInheritedOption(options, "debug")) {
-      logger.transports.console.level = "debug";
       options.debug = true;
     }
+
     if (getInheritedOption(options, "json")) {
       options.nonInteractive = true;
-      logger.transports.console.level = "none";
+    } else {
+      setupLoggers();
     }
 
     try {
@@ -227,12 +235,14 @@ export class Command {
 
     options.projectRoot = detectProjectRoot(options.cwd);
     this.applyRC(options);
+    if (options.project) validateProjectId(options.project);
   }
 
   /**
    * Apply configuration from .firebaserc files in the working directory tree.
    * @param options the command options object.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private applyRC(options: any): void {
     const rc = load(options.cwd);
     options.rc = rc;
@@ -260,7 +270,9 @@ export class Command {
    * command's action function.
    * @return an async function that executes the command.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   runner(): (...a: any[]) => Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
       // always provide at least an empty object for options
       if (args.length === 0) {
@@ -273,5 +285,30 @@ export class Command {
       }
       return this.actionFn(...args);
     };
+  }
+}
+
+// Project IDs must follow a certain format, as documented at:
+// https://cloud.google.com/resource-manager/reference/rest/v1beta1/projects#resource:-project
+// However, the regex below, matching internal ones, is more permissive so that
+// some legacy projects with irregular project IDs still works.
+const PROJECT_ID_REGEX = /^(?:[^:]+:)?[a-z0-9-]+$/;
+
+/**
+ * Validate the project id and throw on invalid format.
+ * @param project the project id to validate
+ * @throws {FirebaseError} if project id has invalid format.
+ */
+export function validateProjectId(project: string): void {
+  if (PROJECT_ID_REGEX.test(project)) {
+    return;
+  }
+  track("Project ID Check", "invalid");
+  const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
+  if (project.toLowerCase() !== project) {
+    // Attempt to be more helpful in case uppercase letters are used.
+    throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");
+  } else {
+    throw new FirebaseError(invalidMessage);
   }
 }

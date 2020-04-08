@@ -1,20 +1,20 @@
 "use strict";
 
-var _ = require("lodash");
+const _ = require("lodash");
 
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var checkDupHostingKeys = require("../checkDupHostingKeys");
-var checkValidTargetFilters = require("../checkValidTargetFilters");
-var checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
-var { Command } = require("../command");
-var deploy = require("../deploy");
-var requireConfig = require("../requireConfig");
-var filterTargets = require("../filterTargets");
+const requireInstance = require("../requireInstance");
+const { requirePermissions } = require("../requirePermissions");
+const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
+const checkValidTargetFilters = require("../checkValidTargetFilters");
+const checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
+const { Command } = require("../command");
+const deploy = require("../deploy");
+const requireConfig = require("../requireConfig");
+const filterTargets = require("../filterTargets");
 
 // in order of least time-consuming to most time-consuming
-var VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
-var TARGET_PERMISSIONS = {
+const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
+const TARGET_PERMISSIONS = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
   functions: [
@@ -62,13 +62,17 @@ module.exports = new Command("deploy")
     }, []);
     return requirePermissions(options, permissions);
   })
+  .before((options) => {
+    if (options.filteredTargets.includes("functions")) {
+      return checkServiceAccountIam(options.project);
+    }
+  })
   .before(function(options) {
     // only fetch the default instance for hosting or database deploys
     if (_.intersection(options.filteredTargets, ["hosting", "database"]).length > 0) {
       return requireInstance(options);
     }
   })
-  .before(checkDupHostingKeys)
   .before(checkValidTargetFilters)
   .before(checkFirebaseSDKVersion)
   .action(function(options) {
