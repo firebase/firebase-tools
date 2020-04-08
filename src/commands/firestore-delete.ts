@@ -2,7 +2,7 @@
 
 import * as clc from "cli-color";
 import { Command } from "../command";
-import * as commandUtils from "../emulator/commandUtils";
+import { warnFirestoreEmulated } from "../emulator/commandUtils";
 import * as FirestoreDelete from "../firestore/delete";
 import { prompt } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
@@ -71,7 +71,7 @@ module.exports = new Command("firestore:delete [path]")
       "including all collections and documents. Any other flags or arguments will be ignored."
   )
   .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(commandUtils.warnFirestoreEmulated)
+  .before(warnFirestoreEmulated, true)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
   .action(async (path: string | undefined, options: any) => {
     // Guarantee path

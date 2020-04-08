@@ -1,2 +1,3 @@
 - Improves error messages for Cloud Functions for Firebase deployment permissions. (#2086)
-- Makes Firestore commands respect `FIRESTORE_EMULATOR_HOST` when appropriate.
+- Makes `firestore:delete` respect `FIRESTORE_EMULATOR_HOST`.
+- Makes `database:get`, `database:set`, `database:push`, and `database:update` respect `FIREBASE_DATABASE_EMULATOR_HOST`.

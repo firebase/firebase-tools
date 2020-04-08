@@ -16,6 +16,7 @@ import {
   HELP_TEXT,
   INVALID_PATH_ERROR,
 } from "../database/settings";
+import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
 
 export default new Command("database:settings:get <path>")
   .description("read the realtime database setting at path")
@@ -26,6 +27,7 @@ export default new Command("database:settings:get <path>")
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action((path: string, options: any) => {
     if (!DATABASE_SETTINGS.has(path)) {
       return utils.reject(INVALID_PATH_ERROR, { exit: 1 });

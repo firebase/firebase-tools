@@ -14,7 +14,7 @@ export async function listCollectionIds(project: string): Promise<string[]> {
   return api
     .request("POST", url, {
       auth: true,
-      origin: api.firestoreOrigin,
+      origin: api.firestoreOriginOrEmulator,
       data: {
         // Maximum 32-bit integer
         pageSize: 2147483647,
@@ -37,7 +37,7 @@ export async function listCollectionIds(project: string): Promise<string[]> {
 export async function deleteDocument(doc: any): Promise<any> {
   return api.request("DELETE", _API_ROOT + doc.name, {
     auth: true,
-    origin: api.firestoreOrigin,
+    origin: api.firestoreOriginOrEmulator,
   });
 }
 
@@ -64,7 +64,7 @@ export async function deleteDocuments(project: string, docs: any[]): Promise<num
     const res = await api.request("POST", url, {
       auth: true,
       data: body,
-      origin: api.firestoreOrigin,
+      origin: api.firestoreOriginOrEmulator,
     });
     return res.body.writeResults.length;
   } catch (err) {

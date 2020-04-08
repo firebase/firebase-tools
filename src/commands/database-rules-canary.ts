@@ -3,6 +3,7 @@ import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
+import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
 
 export default new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")
@@ -12,6 +13,7 @@ export default new Command("database:rules:canary <rulesetId>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action(async (rulesetId: string, options: any) => {
     const oldLabels = await metadata.getRulesetLabels(options.instance);
     const newLabels = {

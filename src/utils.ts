@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import * as url from "url";
 import * as clc from "cli-color";
 import { Readable } from "stream";
 import * as winston from "winston";
@@ -60,6 +61,46 @@ export function envOverride(
     return currentEnvValue;
   }
   return value;
+}
+
+/**
+ * TODO(samstern): Docs
+ */
+export function getDatabaseUrl(origin: string, namespace: string, pathname: string): string {
+  const withPath = url.resolve(origin, pathname);
+  return addDatabaseNamespace(withPath, namespace);
+}
+
+/**
+ * TODO(samstern): Docs
+ */
+export function getDatabaseViewDataUrl(
+  origin: string,
+  namespace: string,
+  pathname: string
+): string {
+  const url = new URL(origin);
+  if (url.hostname.includes("firebaseio.com")) {
+    return consoleUrl(namespace, "/database/data" + pathname);
+  } else {
+    // TODO(samstern): View in GUI
+    return getDatabaseUrl(origin, namespace, pathname + ".json");
+  }
+}
+
+/**
+ * TODO(samstern): Docs
+ */
+export function addDatabaseNamespace(origin: string, namespace: string): string {
+  const url = new URL(origin);
+  if (url.hostname.includes("firebaseio.com")) {
+    return addSubdomain(origin, namespace);
+  } else {
+    const params = new URLSearchParams({
+      ns: namespace,
+    });
+    return url.href + "?" + params.toString();
+  }
 }
 
 /**

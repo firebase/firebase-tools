@@ -6,10 +6,11 @@ var { requirePermissions } = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
+var logger = require("../logger");
 var { FirebaseError } = require("../error");
+var { warnRealtimeDatabaseEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
-var querystring = require("querystring");
 var _ = require("lodash");
 var fs = require("fs");
 
@@ -55,12 +56,13 @@ module.exports = new Command("database:get <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, true)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+    let url = utils.getDatabaseUrl(api.realtimeOriginOrEmulator, options.instance, path + ".json");
     var query = {};
     if (options.shallow) {
       query.shallow = "true";
@@ -84,8 +86,14 @@ module.exports = new Command("database:get <path>")
       ["orderBy", "startAt", "endAt", "equalTo"]
     );
 
-    url += querystring.stringify(query);
+    const urlObj = new URL(url);
+    Object.keys(query).forEach((key) => {
+      urlObj.searchParams.set(key, query[key]);
+    });
 
+    url = urlObj.href;
+
+    logger.debug("Query URL: ", url);
     var reqOptions = {
       url: url,
     };

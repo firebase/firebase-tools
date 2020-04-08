@@ -7,6 +7,7 @@ var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 var profiler = require("../profiler");
+var { warnRealtimeDatabaseEmulated } = require("../emulator/commandUtils");
 
 var description = "profile the Realtime Database and generate a usage report";
 
@@ -30,6 +31,7 @@ module.exports = new Command("database:profile")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action(function(options) {
     // Validate options
     if (options.raw && options.input) {

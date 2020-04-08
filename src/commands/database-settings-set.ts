@@ -16,6 +16,7 @@ import {
   HELP_TEXT,
   INVALID_PATH_ERROR,
 } from "../database/settings";
+import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
 
 export default new Command("database:settings:set <path> <value>")
   .description("set the realtime database setting at path.")
@@ -26,6 +27,7 @@ export default new Command("database:settings:set <path> <value>")
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action((path: string, value: string, options: any) => {
     const setting = DATABASE_SETTINGS.get(path);
     if (setting === undefined) {

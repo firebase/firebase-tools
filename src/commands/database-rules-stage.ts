@@ -5,6 +5,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { warnRealtimeDatabaseEmulated } from "../emulator/commandUtils";
 
 export default new Command("database:rules:stage")
   .description("create a new realtime database ruleset")
@@ -14,6 +15,7 @@ export default new Command("database:rules:stage")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action(async (options: any) => {
     const filepath = options.config.data.database.rules;
     logger.info(`staging ruleset from ${filepath}`);

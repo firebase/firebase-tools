@@ -5,6 +5,7 @@ var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove").default;
 var api = require("../api");
+var { warnRealtimeDatabaseEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var { prompt } = require("../prompt");
@@ -20,6 +21,7 @@ module.exports = new Command("database:remove <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnRealtimeDatabaseEmulated, false)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
