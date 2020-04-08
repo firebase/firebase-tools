@@ -61,7 +61,7 @@ export function printNoticeIfEmulated(options: any, emulator: Emulators): void {
     utils.logBullet(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, this command will execute against the ${emuName} emulator running at that address.`
+      )}, this command will execute against the ${emuName} running at that address.`
     );
   }
 }
@@ -82,7 +82,7 @@ export function warnEmulatorNotSupported(options: any, emulator: Emulators): voi
     utils.logWarning(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, however this command does not support running against the ${emuName} emulator so this action will affect production.`
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`
     );
 
     const opts = {
