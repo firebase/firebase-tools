@@ -122,16 +122,14 @@ var api = {
     "https://extensions-registry.firebaseapp.com"
   ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
-  firestoreOrigin: utils.envOverride(
-    "FIRESTORE_URL",
-    utils.envOverride(
-      Constants.FIRESTORE_EMULATOR_HOST,
-      "https://firestore.googleapis.com",
-      (val) => {
-        return `http://${val}`;
-      }
-    )
+  firestoreOriginOrEmulator: utils.envOverride(
+    Constants.FIRESTORE_EMULATOR_HOST,
+    "https://firestore.googleapis.com",
+    (val) => {
+      return `http://${val}`;
+    }
   ),
+  firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
   functionsOrigin: utils.envOverride(
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
@@ -150,6 +148,13 @@ var api = {
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
+  ),
+  realtimeOriginOrEmulator: utils.envOverride(
+    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
+    "https://firebaseio.com",
+    (val) => {
+      return `http://${val}`;
+    }
   ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   rtdbMetadataOrigin: utils.envOverride(

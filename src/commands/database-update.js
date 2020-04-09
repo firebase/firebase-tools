@@ -7,6 +7,8 @@ var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
 var { FirebaseError } = require("../error");
+var { Emulators } = require("../emulator/types");
+var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var clc = require("cli-color");
@@ -25,20 +27,20 @@ module.exports = new Command("database:update <path> [infile]")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
+    const origin = api.realtimeOriginOrEmulator;
+    const url = utils.getDatabaseUrl(origin, options.instance, path);
     return prompt(options, [
       {
         type: "confirm",
         name: "confirm",
         default: false,
-        message:
-          "You are about to modify data at " +
-          clc.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
-          ". Are you sure?",
+        message: "You are about to modify data at " + clc.cyan(url) + ". Are you sure?",
       },
     ]).then(function() {
       if (!options.confirm) {
@@ -48,14 +50,14 @@ module.exports = new Command("database:update <path> [infile]")
       var inStream =
         utils.stringToStream(options.data) ||
         (infile ? fs.createReadStream(infile) : process.stdin);
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+      var jsonUrl = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
       if (!infile && !options.data) {
         utils.explainStdin();
       }
 
       var reqOptions = {
-        url: url,
+        url: jsonUrl,
         json: true,
       };
 
@@ -78,7 +80,7 @@ module.exports = new Command("database:update <path> [infile]")
               logger.info();
               logger.info(
                 clc.bold("View data at:"),
-                utils.consoleUrl(options.project, "/database/data" + path)
+                utils.getDatabaseViewDataUrl(origin, options.project, path)
               );
               return resolve();
             })

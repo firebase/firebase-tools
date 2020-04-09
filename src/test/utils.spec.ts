@@ -1,6 +1,7 @@
 import { expect } from "chai";
 
 import * as utils from "../utils";
+import { exec } from "child_process";
 
 describe("utils", () => {
   describe("consoleUrl", () => {
@@ -66,6 +67,66 @@ describe("utils", () => {
       expect(utils.envOverride("FOO_BAR_BAZ", "notset", coerce)).to.deep.equal("notset");
 
       delete process.env.FOO_BAR_BAZ;
+    });
+  });
+
+  describe("getDatabaseUrl", () => {
+    it("should create a url for prod", () => {
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
+        "https://fir-proj.firebaseio.com/"
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar"
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar.json"
+      );
+    });
+
+    it("should create a url for the emulator", () => {
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/")).to.equal(
+        "http://localhost:9000/?ns=fir-proj"
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj"
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar.json")).to.equal(
+        "http://localhost:9000/foo/bar.json?ns=fir-proj"
+      );
+    });
+  });
+
+  describe("getDatabaseViewDataUrl", () => {
+    it("should get a view data url for prod", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "/foo/bar")
+      ).to.equal("https://console.firebase.google.com/project/fir-proj/database/data/foo/bar");
+    });
+
+    it("should get a view data url for the emulator", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "/foo/bar")
+      ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-proj");
+    });
+  });
+
+  describe("addDatabaseNamespace", () => {
+    it("should add the namespace for prod", () => {
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/"
+      );
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/foo/bar", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar"
+      );
+    });
+
+    it("should add the namespace for the emulator", () => {
+      expect(utils.addDatabaseNamespace("http://localhost:9000/", "fir-proj")).to.equal(
+        "http://localhost:9000/?ns=fir-proj"
+      );
+      expect(utils.addDatabaseNamespace("http://localhost:9000/foo/bar", "fir-proj")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj"
+      );
     });
   });
 
