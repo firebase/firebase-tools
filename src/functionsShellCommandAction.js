@@ -1,5 +1,6 @@
 "use strict";
 
+var clc = require("cli-color");
 var repl = require("repl");
 var _ = require("lodash");
 
@@ -12,7 +13,7 @@ var utils = require("./utils");
 var logger = require("./logger");
 var shell = require("./emulator/functionsEmulatorShell");
 var commandUtils = require("./emulator/commandUtils");
-var { ALL_SERVICE_EMULATORS } = require("./emulator/types");
+var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
 var { EmulatorHubClient } = require("./emulator/hubClient");
 
 module.exports = async function(options) {
@@ -30,12 +31,12 @@ module.exports = async function(options) {
     logger.debug("Running emulators: ", remoteEmulators);
   }
 
-  for (const e of ALL_SERVICE_EMULATORS) {
-    const info = remoteEmulators[e];
-    if (info) {
-      utils.logBullet(`Connecting to running ${e} emulator at ${info.host}:${info.port}`);
-    }
-  }
+  const runningEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
+    (e) => remoteEmulators[e] !== undefined
+  );
+  const otherEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
+    (e) => remoteEmulators[e] === undefined
+  );
 
   return serveFunctions
     .start(options, {
@@ -57,6 +58,22 @@ module.exports = async function(options) {
         logger.info("No functions emulated.");
         process.exit();
       }
+
+      for (const e of runningEmulators) {
+        const info = remoteEmulators[e];
+        utils.logLabeledBullet(
+          "functions",
+          `Connected to running ${clc.bold(e)} emulator at ${info.host}:${
+            info.port
+          }, Calls to this service will affect the emulator`
+        );
+      }
+      utils.logLabeledWarning(
+        "functions",
+        `The following emulators are not running, Calls to these services will affect production: ${clc.bold(
+          otherEmulators.join(", ")
+        )}`
+      );
 
       var writer = function(output) {
         // Prevent full print out of Request object when a request is made
