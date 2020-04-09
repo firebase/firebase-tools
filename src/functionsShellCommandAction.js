@@ -65,12 +65,12 @@ module.exports = async function(options) {
           "functions",
           `Connected to running ${clc.bold(e)} emulator at ${info.host}:${
             info.port
-          }, Calls to this service will affect the emulator`
+          }, calls to this service will affect the emulator`
         );
       }
       utils.logLabeledWarning(
         "functions",
-        `The following emulators are not running, Calls to these services will affect production: ${clc.bold(
+        `The following emulators are not running, calls to these services will affect production: ${clc.bold(
           otherEmulators.join(", ")
         )}`
       );
