@@ -58,6 +58,7 @@ export interface FunctionsEmulatorArgs {
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
   env?: { [key: string]: string };
+  remoteEmulators?: { [key: string]: EmulatorInfo };
   predefinedTriggers?: EmulatedTriggerDefinition[];
 }
 
@@ -198,9 +199,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
       emulators: {
-        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
+        firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
+        database: this.getEmulatorInfo(Emulators.DATABASE),
+        pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
       },
       proto,
       triggerId,
@@ -691,6 +692,20 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     await worker.waitForDone();
     return res.json({ status: "acknowledged" });
+  }
+
+  /**
+   * Gets the address of a running emulator, either from explicit args or by
+   * consulting the emulator registry.
+   */
+  private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
+    if (this.args.remoteEmulators) {
+      if (this.args.remoteEmulators[emulator]) {
+        return this.args.remoteEmulators[emulator];
+      }
+    }
+
+    return EmulatorRegistry.getInfo(emulator);
   }
 
   private tokenFromAuthHeader(authHeader: string) {

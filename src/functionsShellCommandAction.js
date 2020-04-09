@@ -8,16 +8,33 @@ var util = require("util");
 
 var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
+var utils = require("./utils");
 var logger = require("./logger");
 var shell = require("./emulator/functionsEmulatorShell");
-var commandUtitls = require("./emulator/commandUtils");
+var commandUtils = require("./emulator/commandUtils");
+var { ALL_SERVICE_EMULATORS } = require("./emulator/types");
+var { EmulatorHubClient } = require("./emulator/hubClient");
 
-module.exports = function(options) {
+module.exports = async function(options) {
   options.port = parseInt(options.port, 10);
 
   let debugPort = undefined;
   if (options.inspectFunctions) {
-    debugPort = commandUtitls.parseInspectionPort(options);
+    debugPort = commandUtils.parseInspectionPort(options);
+  }
+
+  const hubClient = new EmulatorHubClient(options.project);
+  let remoteEmulators = {};
+  if (hubClient.foundHub()) {
+    remoteEmulators = await hubClient.getEmulators();
+    logger.debug("Running emulators: ", remoteEmulators);
+  }
+
+  for (const e of ALL_SERVICE_EMULATORS) {
+    const info = remoteEmulators[e];
+    if (info) {
+      utils.logBullet(`Connecting to running ${e} emulator at ${info.host}:${info.port}`);
+    }
   }
 
   return serveFunctions
@@ -26,6 +43,7 @@ module.exports = function(options) {
       // and when we eventually move to all TypeScript we'll have to start adding
       // projectId and functionsDir here.
       quiet: true,
+      remoteEmulators,
       debugPort,
     })
     .then(function() {

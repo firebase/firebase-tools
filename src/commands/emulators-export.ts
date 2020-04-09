@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as rimraf from "rimraf";
 
-import * as api from "../api";
 import { Command } from "../command";
 import * as commandUtils from "../emulator/commandUtils";
 import * as utils from "../utils";
@@ -11,6 +10,7 @@ import { EmulatorHub } from "../emulator/hub";
 import { FirebaseError } from "../error";
 import { HubExport } from "../emulator/hubExport";
 import { promptOnce } from "../prompt";
+import { EmulatorHubClient } from "../emulator/hubClient";
 
 module.exports = new Command("emulators:export <path>")
   .description("export data from running emulators")
@@ -25,29 +25,26 @@ module.exports = new Command("emulators:export <path>")
       );
     }
 
-    const locator = EmulatorHub.readLocatorFile(projectId);
-    if (!locator) {
+    const hubClient = new EmulatorHubClient(projectId);
+    if (!hubClient.foundHub()) {
       throw new FirebaseError(
         `Did not find any running emulators for project ${clc.bold(projectId)}.`,
         { exit: 1 }
       );
     }
-    const hubOrigin = `http://${locator.host}:${locator.port}`;
 
     try {
-      await api.request("GET", "/", {
-        origin: hubOrigin,
-      });
+      await hubClient.getStatus();
     } catch (e) {
       const filePath = EmulatorHub.getLocatorFilePath(projectId);
       throw new FirebaseError(
-        `The emulator hub at ${hubOrigin} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
+        `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
         { exit: 1 }
       );
     }
 
     utils.logBullet(
-      `Found running emulator hub for project ${clc.bold(projectId)} at ${hubOrigin}`
+      `Found running emulator hub for project ${clc.bold(projectId)} at ${hubClient.origin}`
     );
 
     // If the export target directory does not exist, we should attempt to create it
@@ -88,20 +85,14 @@ module.exports = new Command("emulators:export <path>")
     }
 
     utils.logBullet(`Exporting data to: ${exportAbsPath}`);
-    await api
-      .request("POST", EmulatorHub.PATH_EXPORT, {
-        origin: hubOrigin,
-        json: true,
-        data: {
-          path: exportAbsPath,
-        },
-      })
-      .catch((e) => {
-        throw new FirebaseError("Export request failed, see emulator logs for more information.", {
-          exit: 1,
-          original: e,
-        });
+    try {
+      await hubClient.postExport(exportAbsPath);
+    } catch (e) {
+      throw new FirebaseError("Export request failed, see emulator logs for more information.", {
+        exit: 1,
+        original: e,
       });
+    }
 
     utils.logSuccess("Export complete");
   });
