@@ -10,7 +10,7 @@ import * as logger from "../logger";
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
 function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: string): void {
-  if (projects.length === 0) {
+  if (!projects.length) {
     return;
   }
 
