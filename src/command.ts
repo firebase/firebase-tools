@@ -128,6 +128,7 @@ export class Command {
 
     if (this.helpText) {
       cmd.on("--help", () => {
+        console.log(); // Empty line to seperate it from the options printed before.
         console.log(this.helpText);
       });
     }
