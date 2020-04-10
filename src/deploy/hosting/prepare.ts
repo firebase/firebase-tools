@@ -30,7 +30,7 @@ export async function prepare(context: any, options: any): Promise<void> {
   }
 
   context.hosting = {
-    deploys: configs.map(function(cfg) {
+    deploys: configs.map((cfg: any) => {
       return { config: cfg };
     }),
   };
@@ -38,7 +38,7 @@ export async function prepare(context: any, options: any): Promise<void> {
   const functionRewrites: string[] = [];
   const versionCreates: Promise<void>[] = [];
 
-  _.each(context.hosting.deploys, function(deploy) {
+  _.each(context.hosting.deploys, (deploy: any) => {
     let cfg = deploy.config;
 
     if (cfg.target) {
@@ -89,7 +89,7 @@ export async function prepare(context: any, options: any): Promise<void> {
             labels: deploymentTool.labels,
           },
         })
-        .then(function(result) {
+        .then((result: { body: { name: string } }) => {
           deploy.version = result.body.name;
         })
     );
