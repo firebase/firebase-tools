@@ -163,7 +163,7 @@ class TriggerEndToEndTest {
 
     const req = request.get(url);
 
-    req.on("response", function(response: request.Response) {
+    req.on("response", (response: request.Response) => {
       response.body = "";
       response.on("data", (data) => {
         response.body += data.toString();
@@ -173,7 +173,7 @@ class TriggerEndToEndTest {
       });
     });
 
-    req.once("error", function(err: Error) {
+    req.once("error", (err: Error) => {
       done(err);
     });
   }
@@ -203,7 +203,7 @@ class TriggerEndToEndTest {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function readConfig(configPath: string, done: (err: any, conf?: Config) => any): void {
-  fs.readFile(configPath, function(err: Error | null, data: Buffer) {
+  fs.readFile(configPath, (err: Error | null, data: Buffer) => {
     if (err) {
       done(err);
       return;
@@ -219,7 +219,7 @@ function readConfig(configPath: string, done: (err: any, conf?: Config) => any):
   });
 }
 
-describe("extension emulator", function() {
+describe("extension emulator", () => {
   let test: TriggerEndToEndTest;
 
   before(function(done) {
@@ -231,10 +231,7 @@ describe("extension emulator", function() {
     async.series(
       [
         function(done: (err?: Error) => void) {
-          readConfig(`${EXTENSION_ROOT}/${TEST_CONFIG_FILE}`, function(
-            err: Error,
-            config?: Config
-          ) {
+          readConfig(`${EXTENSION_ROOT}/${TEST_CONFIG_FILE}`, (err: Error, config?: Config) => {
             if (err) {
               done(new Error("Error reading test config: " + err));
               return;
@@ -265,14 +262,14 @@ describe("extension emulator", function() {
     done();
   });
 
-  it("should execute an HTTP function", function(done) {
-    test.invokeHttpFunction(TEST_FUNCTION_NAME, function(
-      err: Error | null,
-      response?: request.Response
-    ) {
-      expect(response?.statusCode).to.equal(200);
-      expect(response?.body).to.equal("Hello World from greet-the-world");
-      done(err);
-    });
+  it("should execute an HTTP function", (done) => {
+    test.invokeHttpFunction(
+      TEST_FUNCTION_NAME,
+      (err: Error | null, response?: request.Response) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body).to.equal("Hello World from greet-the-world");
+        done(err);
+      }
+    );
   }).timeout(EMULATOR_TEST_TIMEOUT);
 });

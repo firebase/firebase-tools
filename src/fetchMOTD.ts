@@ -1,19 +1,23 @@
-"use strict";
-var logger = require("./logger");
-var request = require("request");
-var { configstore } = require("./configstore");
-var _ = require("lodash");
-var pkg = require("../package.json");
-var semver = require("semver");
-var clc = require("cli-color");
-var utils = require("./utils");
-var api = require("./api");
+import * as _ from "lodash";
+import * as clc from "cli-color";
+import * as request from "request";
+import * as semver from "semver";
 
-var ONE_DAY_MS = 1000 * 60 * 60 * 24;
+import { configstore } from "./configstore";
+import * as api from "./api";
+import * as logger from "./logger";
+import * as utils from "./utils";
 
-module.exports = function() {
-  var motd = configstore.get("motd");
-  var motdFetched = configstore.get("motd.fetched") || 0;
+const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
+
+const ONE_DAY_MS = 1000 * 60 * 60 * 24;
+
+/**
+ * Fetches the message of the day.
+ */
+export function fetchMOTD(): void {
+  let motd = configstore.get("motd");
+  const motdFetched = configstore.get("motd.fetched") || 0;
 
   if (motd && motdFetched > Date.now() - ONE_DAY_MS) {
     if (motd.minVersion && semver.gt(motd.minVersion, pkg.version)) {
@@ -30,7 +34,7 @@ module.exports = function() {
     }
 
     if (motd.message && process.stdout.isTTY) {
-      var lastMessage = configstore.get("motd.lastMessage");
+      const lastMessage = configstore.get("motd.lastMessage");
       if (lastMessage !== motd.message) {
         logger.info();
         logger.info(motd.message);
@@ -44,7 +48,7 @@ module.exports = function() {
         url: utils.addSubdomain(api.realtimeOrigin, "firebase-public") + "/cli.json",
         json: true,
       },
-      function(err, res, body) {
+      (err, res, body) => {
         if (err) {
           return;
         }
@@ -54,4 +58,4 @@ module.exports = function() {
       }
     );
   }
-};
+}

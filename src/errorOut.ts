@@ -18,7 +18,7 @@ export function errorOut(error: Error): void {
 
   logError(fbError);
   process.exitCode = fbError.exit || 2;
-  setTimeout(function() {
+  setTimeout(() => {
     process.exit();
   }, 250);
 }

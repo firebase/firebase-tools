@@ -16,11 +16,14 @@ module.exports = {
   rules: {
     "jsdoc/newline-after-description": "off",
     "jsdoc/require-jsdoc": ["warn", { publicOnly: true }],
-    "prettier/prettier": "error",
-    "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
-    "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
-    "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-restricted-globals": ["error", "name", "length"],
+    "prefer-arrow-callback": "error",
+    "prettier/prettier": "error",
+    "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
+    "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
+    "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
+
+    "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
     "prefer-const": "warn", // TODO(bkendall): remove, allow to error.
     "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
@@ -29,6 +32,9 @@ module.exports = {
     {
       files: ["*.ts"],
       rules: {
+        "jsdoc/require-param-type": "off",
+        "jsdoc/require-returns-type": "off",
+
         "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
@@ -45,14 +51,11 @@ module.exports = {
         "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
         camelcase: "warn", // TODO(bkendall): remove, allow to error.
-        "jsdoc/require-param-type": "off",
-        "jsdoc/require-returns-type": "off",
         "new-cap": "warn", // TODO(bkendall): remove, allow to error.
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
         "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
-        "require-atomic-updates": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
@@ -68,8 +71,10 @@ module.exports = {
         "@typescript-eslint/prefer-includes": "off",
         "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/unbound-method": "off",
+
         "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
-        "no-var": "warn", // TODO(bkendall): remove, allow to error.
+        "no-var": "off", // TODO(bkendall): remove, allow to error.
+        "prefer-arrow-callback": "off", // TODO(bkendall): remove, allow to error.
       },
     },
     {

@@ -68,7 +68,7 @@ if (utils.envOverrides.length) {
 logger.debug(_.repeat("-", 70));
 logger.debug();
 
-require("../fetchMOTD")();
+require("../fetchMOTD").fetchMOTD();
 
 process.on("exit", function(code) {
   code = process.exitCode || code;
