@@ -1,5 +1,10 @@
 import { list } from "../../gcp/cloudfunctions";
 
+/**
+ * Detect function rewrites that point to non-existent Cloud Functions in `us-central1` in the project.
+ * @param projectId Project to check.
+ * @param functionNames Array of function names to check.
+ */
 export async function checkFunctionRewrites(
   projectId: string,
   functionNames: string[]

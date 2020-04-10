@@ -1,6 +1,4 @@
-"use strict";
-
-import * as _ from "lodash";
+import { isArray } from "lodash";
 import * as clc from "cli-color";
 
 import * as api from "../../api";
@@ -12,12 +10,17 @@ import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs
 import { resolveProjectPath } from "../../projectPath";
 import { checkFunctionRewrites } from "./checkFunctionRewrites";
 import { logLabeledWarning } from "../../utils";
-import * as logger from "../../logger";
 
+/**
+ * Prepare all Hosting targets for deployment.
+ * @param context The deploy context.
+ * @param options The command-wide options object.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function prepare(context: any, options: any): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
-    if (_.isArray(options.config.get("hosting"))) {
+    if (isArray(options.config.get("hosting"))) {
       throw new FirebaseError("Cannot specify --public option with multi-site configuration.");
     }
 
@@ -30,6 +33,7 @@ export async function prepare(context: any, options: any): Promise<void> {
   }
 
   context.hosting = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deploys: configs.map((cfg: any) => {
       return { config: cfg };
     }),
@@ -38,8 +42,9 @@ export async function prepare(context: any, options: any): Promise<void> {
   const functionRewrites: string[] = [];
   const versionCreates: Promise<void>[] = [];
 
-  _.each(context.hosting.deploys, (deploy: any) => {
-    let cfg = deploy.config;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context.hosting.deploys.forEach((deploy: any) => {
+    const cfg = deploy.config;
 
     if (cfg.target) {
       const matchingTargets = options.rc.requireTarget(options.project, "hosting", cfg.target);
@@ -71,7 +76,7 @@ export async function prepare(context: any, options: any): Promise<void> {
       );
     }
 
-    if (_.isArray(cfg.rewrites)) {
+    if (isArray(cfg.rewrites)) {
       cfg.rewrites.forEach((rewrite: { function?: string }) => {
         if (rewrite.function && !functionRewrites.includes(rewrite.function)) {
           functionRewrites.push(rewrite.function);
