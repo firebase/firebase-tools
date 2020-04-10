@@ -18,6 +18,12 @@ const DEFAULT_HOST = "localhost";
 export class Constants {
   static DEFAULT_DATABASE_EMULATOR_NAMESPACE = "fake-server";
 
+  // Environment variable to override SDK/CLI to point at the Firestore emulator.
+  static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
+
+  // Environment variable tok override SDK/CLI to point at the Realtime Database emulator.
+  static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
+
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";

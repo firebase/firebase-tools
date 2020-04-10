@@ -1,9 +1,9 @@
 # Learn detailed information about the fields of an extension.yaml file in the docs
 
-name: greet-the-world  # Identifier for the extension
-specVersion: v1beta  # Version of the Firebase Extensions specification
-version: 0.0.1  # Follow semver versioning
-license: Apache-2.0  # https://spdx.org/licenses/
+name: greet-the-world # Identifier for the extension
+specVersion: v1beta # Version of the Firebase Extensions specification
+version: 0.0.1 # Follow semver versioning
+license: Apache-2.0 # https://spdx.org/licenses/
 
 # Friendly display name for your extension (~3-5 words)
 displayName: Greet the world
@@ -12,7 +12,7 @@ displayName: Greet the world
 description: >-
   Sends the world a specified greeting.
 
-billingRequired: false  # Learn more in the docs
+billingRequired: false # Learn more in the docs
 
 # For your extension to interact with other Google APIs (like Firestore, Cloud Storage, or Cloud Translation),
 # set the `apis` field. In addition, set the `roles` field to grant appropriate IAM access to interact with these products.
