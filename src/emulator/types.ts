@@ -35,6 +35,12 @@ export const ALL_SERVICE_EMULATORS = [
   Emulators.PUBSUB,
 ];
 
+export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.PUBSUB,
+];
+
 export const EMULATORS_SUPPORTED_BY_GUI = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,

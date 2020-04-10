@@ -1,13 +1,15 @@
 "use strict";
 
-var clc = require("cli-color");
-var { Command } = require("../command");
-var FirestoreDelete = require("../firestore/delete");
-var { prompt } = require("../prompt");
-var { requirePermissions } = require("../requirePermissions");
-var utils = require("../utils");
+import * as clc from "cli-color";
+import { Command } from "../command";
+import { Emulators } from "../emulator/types";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import * as FirestoreDelete from "../firestore/delete";
+import { prompt } from "../prompt";
+import { requirePermissions } from "../requirePermissions";
+import * as utils from "../utils";
 
-var _getConfirmationMessage = function(deleteOp, options) {
+function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
   if (options.allCollections) {
     return (
       "You are about to delete " +
@@ -48,7 +50,7 @@ var _getConfirmationMessage = function(deleteOp, options) {
     clc.cyan(deleteOp.path) +
     ". Are you sure?"
   );
-};
+}
 
 module.exports = new Command("firestore:delete [path]")
   .description("Delete data from Cloud Firestore.")
@@ -70,42 +72,38 @@ module.exports = new Command("firestore:delete [path]")
       "including all collections and documents. Any other flags or arguments will be ignored."
   )
   .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .before(printNoticeIfEmulated, Emulators.FIRESTORE)
   .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
-  .action(function(path, options) {
+  .action(async (path: string | undefined, options: any) => {
     // Guarantee path
     if (!path && !options.allCollections) {
       return utils.reject("Must specify a path.", { exit: 1 });
     }
 
-    var deleteOp = new FirestoreDelete(options.project, path, {
+    const deleteOp = new FirestoreDelete(options.project, path, {
       recursive: options.recursive,
       shallow: options.shallow,
       allCollections: options.allCollections,
     });
 
-    var checkPrompt;
-    if (options.yes) {
-      checkPrompt = Promise.resolve({ confirm: true });
-    } else {
-      checkPrompt = prompt(options, [
+    if (!options.yes) {
+      const res = await prompt(options, [
         {
           type: "confirm",
           name: "confirm",
           default: false,
-          message: _getConfirmationMessage(deleteOp, options),
+          message: getConfirmationMessage(deleteOp, options),
         },
       ]);
-    }
 
-    return checkPrompt.then(function(res) {
       if (!res.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
+    }
 
-      if (options.allCollections) {
-        return deleteOp.deleteDatabase();
-      }
+    if (options.allCollections) {
+      return deleteOp.deleteDatabase();
+    }
 
-      return deleteOp.execute();
-    });
+    return deleteOp.execute();
   });

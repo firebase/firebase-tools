@@ -4,6 +4,7 @@ const _ = require("lodash");
 
 const requireInstance = require("../requireInstance");
 const { requirePermissions } = require("../requirePermissions");
+const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
 const checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
 const { Command } = require("../command");
@@ -61,6 +62,11 @@ module.exports = new Command("deploy")
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
     return requirePermissions(options, permissions);
+  })
+  .before((options) => {
+    if (options.filteredTargets.includes("functions")) {
+      return checkServiceAccountIam(options.project);
+    }
   })
   .before(function(options) {
     // only fetch the default instance for hosting or database deploys

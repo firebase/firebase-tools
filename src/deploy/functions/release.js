@@ -154,8 +154,7 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
   let deleteReleaseNames;
   let existingScheduledFunctions;
 
-  return gcp.cloudfunctions
-    .listAll(projectId)
+  return Promise.resolve(context.existingFunctions)
     .then(function(existingFunctions) {
       const pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "7.16.2",
+  "version": "8.0.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -10,9 +10,13 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rimraf lib",
-    "format": "npm run lint -- --fix --quiet",
-    "lint": "eslint '**/*.{js,ts}'",
+    "format": "npm run format:ts && npm run format:other",
+    "format:other": "npm run lint:other -- --write",
+    "format:ts": "npm run lint:ts -- --fix --quiet",
+    "lint": "npm run lint:ts && npm run lint:other",
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
+    "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
+    "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha": "nyc mocha --opts mocha.opts",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint -- --quiet && npm run mocha",
@@ -65,7 +69,7 @@
     ]
   },
   "dependencies": {
-    "@google-cloud/pubsub": "^1.1.5",
+    "@google-cloud/pubsub": "^1.7.0",
     "JSONStream": "^1.2.1",
     "archiver": "^3.0.0",
     "body-parser": "^1.19.0",

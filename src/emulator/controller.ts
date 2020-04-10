@@ -282,7 +282,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.FIRESTORE,
       `For testing set ${clc.bold(
-        `${FirestoreEmulator.FIRESTORE_EMULATOR_ENV}=${firestoreAddr.host}:${firestoreAddr.port}`
+        `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
       )}`
     );
   }
@@ -337,7 +337,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.DATABASE,
       `For testing set ${clc.bold(
-        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+        `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
       )}`
     );
   }
@@ -351,17 +351,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     });
 
     await startEmulator(hostingEmulator);
-  }
-
-  if (shouldStart(options, Emulators.LOGGING)) {
-    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
-    const loggingEmulator = new LoggingEmulator({
-      host: loggingAddr.host,
-      port: loggingAddr.port,
-      ...options,
-    });
-
-    await startEmulator(loggingEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {
@@ -386,7 +375,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
       port: loggingAddr.port,
-      ...options,
     });
 
     await startEmulator(loggingEmulator);

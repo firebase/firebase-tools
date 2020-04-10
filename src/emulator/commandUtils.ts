@@ -5,14 +5,15 @@ import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
 import requireConfig = require("../requireConfig");
 import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
 import { FirebaseError } from "../error";
-import { DatabaseEmulator } from "../emulator/databaseEmulator";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as getProjectId from "../getProjectId";
+import { prompt } from "../prompt";
 import { EmulatorHub } from "./hub";
 
 export const FLAG_ONLY = "--only <emulators>";
@@ -44,6 +45,69 @@ export const DESC_TEST_PARAMS =
  * config interactions can become fairly complex.
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+
+export function printNoticeIfEmulated(
+  options: any,
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+): void {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
+
+  const emuName = Constants.description(emulator);
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
+  const envVal = process.env[envKey];
+  if (envVal) {
+    utils.logBullet(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, this command will execute against the ${emuName} running at that address.`
+    );
+  }
+}
+
+export function warnEmulatorNotSupported(
+  options: any,
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+): void | Promise<void> {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
+
+  const emuName = Constants.description(emulator);
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
+  const envVal = process.env[envKey];
+
+  if (envVal) {
+    utils.logWarning(
+      `You have set ${clc.bold(
+        `${envKey}=${envVal}`
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`
+    );
+
+    const opts = {
+      confirm: undefined,
+    };
+    return prompt(opts, [
+      {
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Do you want to continue?",
+      },
+    ]).then(() => {
+      if (!opts.confirm) {
+        return utils.reject("Command aborted.", { exit: 1 });
+      }
+    });
+  }
+}
 
 export async function beforeEmulatorCommand(options: any): Promise<any> {
   const optionsWithDefaultConfig = {
@@ -101,7 +165,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   if (databaseInstance) {
     const info = databaseInstance.getInfo();
     const address = `${info.host}:${info.port}`;
-    env[DatabaseEmulator.DATABASE_EMULATOR_ENV] = address;
+    env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
   }
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
@@ -109,7 +173,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
     const info = firestoreInstance.getInfo();
     const address = `${info.host}:${info.port}`;
 
-    env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV] = address;
+    env[Constants.FIRESTORE_EMULATOR_HOST] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 

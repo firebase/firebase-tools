@@ -7,6 +7,8 @@ var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
 var { FirebaseError } = require("../error");
+var { Emulators } = require("../emulator/types");
+var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var clc = require("cli-color");
@@ -23,6 +25,7 @@ module.exports = new Command("database:push <path> [infile]")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
@@ -30,7 +33,9 @@ module.exports = new Command("database:push <path> [infile]")
 
     var inStream =
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
-    var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
+
+    const origin = api.realtimeOriginOrEmulator;
+    var url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -60,7 +65,11 @@ module.exports = new Command("database:push <path> [infile]")
               path += "/";
             }
 
-            var consoleUrl = utils.consoleUrl(options.project, "/database/data" + path + body.name);
+            var consoleUrl = utils.getDatabaseViewDataUrl(
+              origin,
+              options.instance,
+              path + body.name
+            );
 
             utils.logSuccess("Data pushed successfully");
             logger.info();
