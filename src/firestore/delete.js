@@ -226,7 +226,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
     .request("POST", "/v1beta1/" + url, {
       auth: true,
       data: body,
-      origin: api.firestoreOrigin,
+      origin: api.firestoreOriginOrEmulator,
     })
     .then(function(res) {
       // Return the 'document' property for each element in the response,

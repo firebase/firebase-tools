@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import * as url from "url";
 import * as clc from "cli-color";
 import { Readable } from "stream";
 import * as winston from "winston";
@@ -60,6 +61,48 @@ export function envOverride(
     return currentEnvValue;
   }
   return value;
+}
+
+/**
+ * Get the full URL to a path in the database or database emulator.
+ */
+export function getDatabaseUrl(origin: string, namespace: string, pathname: string): string {
+  const withPath = url.resolve(origin, pathname);
+  return addDatabaseNamespace(withPath, namespace);
+}
+
+/**
+ * Get the URL to view data in the database or database emulator.
+ *  - Prod: Firebase Console URL
+ *  - Emulator: Localhost URL to a `.json` endpoint.
+ */
+export function getDatabaseViewDataUrl(
+  origin: string,
+  namespace: string,
+  pathname: string
+): string {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
+    return consoleUrl(namespace, "/database/data" + pathname);
+  } else {
+    // TODO(samstern): View in GUI
+    return getDatabaseUrl(origin, namespace, pathname + ".json");
+  }
+}
+
+/**
+ * Add the namespace to a database or database emulator URL.
+ *  - Prod: Add a subdomain.
+ *  - Emulator: Add `?ns=` parameter.
+ */
+export function addDatabaseNamespace(origin: string, namespace: string): string {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
+    return addSubdomain(origin, namespace);
+  } else {
+    urlObj.searchParams.set("ns", namespace);
+    return urlObj.href;
+  }
 }
 
 /**

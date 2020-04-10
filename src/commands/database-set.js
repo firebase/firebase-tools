@@ -7,6 +7,8 @@ var request = require("request");
 var api = require("../api");
 var responseToError = require("../responseToError");
 var { FirebaseError } = require("../error");
+var { Emulators } = require("../emulator/types");
+var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 
 var utils = require("../utils");
 var clc = require("cli-color");
@@ -25,20 +27,22 @@ module.exports = new Command("database:set <path> [infile]")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
+
+    const origin = api.realtimeOriginOrEmulator;
+    const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
+    const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     return prompt(options, [
       {
         type: "confirm",
         name: "confirm",
         default: false,
-        message:
-          "You are about to overwrite all data at " +
-          clc.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
-          ". Are you sure?",
+        message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
       },
     ]).then(function() {
       if (!options.confirm) {
@@ -48,14 +52,13 @@ module.exports = new Command("database:set <path> [infile]")
       var inStream =
         utils.stringToStream(options.data) ||
         (infile ? fs.createReadStream(infile) : process.stdin);
-      var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + path + ".json?";
 
       if (!infile && !options.data) {
         utils.explainStdin();
       }
 
       var reqOptions = {
-        url: url,
+        url: dbJsonPath,
         json: true,
       };
 
@@ -65,6 +68,7 @@ module.exports = new Command("database:set <path> [infile]")
             request.put(reqOptionsWithToken, function(err, res, body) {
               logger.info();
               if (err) {
+                logger.debug(err);
                 return reject(
                   new FirebaseError("Unexpected error while setting data", {
                     exit: 2,
@@ -78,7 +82,7 @@ module.exports = new Command("database:set <path> [infile]")
               logger.info();
               logger.info(
                 clc.bold("View data at:"),
-                utils.consoleUrl(options.project, "/database/data" + path)
+                utils.getDatabaseViewDataUrl(origin, options.instance, path)
               );
               return resolve();
             })

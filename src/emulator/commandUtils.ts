@@ -13,6 +13,7 @@ import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "../emulator/registry";
 import { FirestoreEmulator } from "../emulator/firestoreEmulator";
 import * as getProjectId from "../getProjectId";
+import { prompt } from "../prompt";
 import { EmulatorHub } from "./hub";
 
 export const FLAG_ONLY = "--only <emulators>";
@@ -45,27 +46,66 @@ export const DESC_TEST_PARAMS =
  */
 const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
 
-export function warnRealtimeDatabaseEmulated(): void {
-  const envKey = Constants.FIREBASE_DATABASE_EMULATOR_HOST;
+export function printNoticeIfEmulated(
+  options: any,
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+): void {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
+
+  const emuName = Constants.description(emulator);
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
   const envVal = process.env[envKey];
   if (envVal) {
-    utils.logWarning(
+    utils.logBullet(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, this command will execute against the Realtime Database emulator running at that address.`
+      )}, this command will execute against the ${emuName} running at that address.`
     );
   }
 }
 
-export function warnFirestoreEmulated(): void {
-  const envKey = Constants.FIRESTORE_EMULATOR_HOST;
+export function warnEmulatorNotSupported(
+  options: any,
+  emulator: Emulators.DATABASE | Emulators.FIRESTORE
+): void | Promise<void> {
+  if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
+    return;
+  }
+
+  const emuName = Constants.description(emulator);
+  const envKey =
+    emulator === Emulators.DATABASE
+      ? Constants.FIREBASE_DATABASE_EMULATOR_HOST
+      : Constants.FIRESTORE_EMULATOR_HOST;
   const envVal = process.env[envKey];
+
   if (envVal) {
     utils.logWarning(
       `You have set ${clc.bold(
         `${envKey}=${envVal}`
-      )}, this command will execute against the Cloud Firestore emulator running at that address.`
+      )}, however this command does not support running against the ${emuName} so this action will affect production.`
     );
+
+    const opts = {
+      confirm: undefined,
+    };
+    return prompt(opts, [
+      {
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Do you want to continue?",
+      },
+    ]).then(() => {
+      if (!opts.confirm) {
+        return utils.reject("Command aborted.", { exit: 1 });
+      }
+    });
   }
 }
 
