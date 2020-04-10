@@ -1,8 +1,9 @@
 import { Command } from "../command";
-import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 export default new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")
@@ -12,6 +13,7 @@ export default new Command("database:rules:canary <rulesetId>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (rulesetId: string, options: any) => {
     const oldLabels = await metadata.getRulesetLabels(options.instance);
     const newLabels = {
