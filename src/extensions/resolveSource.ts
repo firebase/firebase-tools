@@ -133,10 +133,21 @@ export async function promptForAudienceConsent(registryEntry: RegistryEntry): Pr
 
 /**
  * Fetches the official extensions registry.
+ * @param onlyFeatured If true, only return the featured extensions.
  */
-export async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
+export async function getExtensionRegistry(
+  onlyFeatured?: boolean
+): Promise<{ [key: string]: RegistryEntry }> {
   const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
     origin: api.firebaseExtensionsRegistryOrigin,
   });
-  return res.body.mods;
+  const extensions = _.get(res, "body.mods") as { [key: string]: RegistryEntry };
+
+  if (onlyFeatured) {
+    const featuredList = _.get(res, "body.featured.discover");
+    return _.pickBy(extensions, (_entry, extensionName: string) => {
+      return _.includes(featuredList, extensionName);
+    });
+  }
+  return extensions;
 }

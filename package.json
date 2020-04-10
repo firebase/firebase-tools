@@ -136,7 +136,7 @@
     "@types/inquirer": "^6.0.3",
     "@types/js-yaml": "^3.12.2",
     "@types/jsonwebtoken": "^8.3.8",
-    "@types/lodash": "^4.14.136",
+    "@types/lodash": "^4.14.149",
     "@types/marked": "^0.6.5",
     "@types/mocha": "^5.2.5",
     "@types/nock": "^9.3.0",
