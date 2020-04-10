@@ -5,7 +5,10 @@ export async function checkFunctionRewrites(
   functionNames: string[]
 ): Promise<{ found: string[]; missing: string[]; passed: boolean }> {
   const listResult = await list(projectId, "us-central1");
-  const foundNames: string[] = listResult.map((fn: { functionName: string }) => fn.functionName);
+  const foundNames: string[] = listResult
+    // look only for https functions
+    .filter((fn: { httpsTrigger?: {} }) => typeof fn.httpsTrigger === "object")
+    .map((fn: { functionName: string }) => fn.functionName);
 
   const missing: string[] = [];
   const found: string[] = [];
