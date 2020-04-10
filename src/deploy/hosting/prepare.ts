@@ -1,17 +1,20 @@
 "use strict";
 
-const _ = require("lodash");
-const clc = require("cli-color");
+import * as _ from "lodash";
+import * as clc from "cli-color";
 
-const api = require("../../api");
-const convertConfig = require("./convertConfig");
-const deploymentTool = require("../../deploymentTool");
-const { FirebaseError } = require("../../error");
-const fsutils = require("../../fsutils");
-const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
-const { resolveProjectPath } = require("../../projectPath");
+import * as api from "../../api";
+import * as convertConfig from "./convertConfig";
+import * as deploymentTool from "../../deploymentTool";
+import { FirebaseError } from "../../error";
+import * as fsutils from "../../fsutils";
+import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
+import { resolveProjectPath } from "../../projectPath";
+import { checkFunctionRewrites } from "./checkFunctionRewrites";
+import { logLabeledWarning } from "../../utils";
+import * as logger from "../../logger";
 
-module.exports = function(context, options) {
+export async function prepare(context: any, options: any): Promise<void> {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (_.isArray(options.config.get("hosting"))) {
@@ -23,7 +26,7 @@ module.exports = function(context, options) {
 
   const configs = normalizedHostingConfigs(options);
   if (configs.length === 0) {
-    return Promise.resolve();
+    return;
   }
 
   context.hosting = {
@@ -32,7 +35,8 @@ module.exports = function(context, options) {
     }),
   };
 
-  const versionCreates = [];
+  const functionRewrites: string[] = [];
+  const versionCreates: Promise<void>[] = [];
 
   _.each(context.hosting.deploys, function(deploy) {
     let cfg = deploy.config;
@@ -67,6 +71,14 @@ module.exports = function(context, options) {
       );
     }
 
+    if (_.isArray(cfg.rewrites)) {
+      cfg.rewrites.forEach((rewrite: { function?: string }) => {
+        if (rewrite.function && !functionRewrites.includes(rewrite.function)) {
+          functionRewrites.push(rewrite.function);
+        }
+      });
+    }
+
     versionCreates.push(
       api
         .request("POST", "/v1beta1/sites/" + deploy.site + "/versions", {
@@ -83,5 +95,23 @@ module.exports = function(context, options) {
     );
   });
 
-  return Promise.all(versionCreates);
-};
+  if (functionRewrites.length > 0) {
+    const functionCheckResult = await checkFunctionRewrites(options.project, functionRewrites);
+    if (!functionCheckResult.passed) {
+      logLabeledWarning(
+        "hosting",
+        `Found rewrites to functions not found in location ${clc.bold(
+          "us-central1"
+        )} for project ${clc.bold(
+          options.project
+        )}. Missing functions:\n     - ${functionCheckResult.missing.join("\n     - ")}`
+      );
+      logLabeledWarning(
+        "hosting",
+        `Only HTTPS functions in ${clc.bold("us-central1")} can be rewritten by Firebase Hosting.`
+      );
+    }
+  }
+
+  await Promise.all(versionCreates);
+}
