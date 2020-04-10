@@ -19,7 +19,7 @@ var MIN_ID = "__id-9223372036854775808__";
  *
  * @constructor
  * @param {string} project the Firestore project ID.
- * @param {string} path path to a document or collection.
+ * @param {string | undefined} path path to a document or collection.
  * @param {boolean} options.recursive true if the delete should be recursive.
  * @param {boolean} options.shallow true if the delete should be shallow (non-recursive).
  * @param {boolean} options.allCollections true if the delete should universally remove all collections and docs.
@@ -226,7 +226,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
     .request("POST", "/v1beta1/" + url, {
       auth: true,
       data: body,
-      origin: api.firestoreOrigin,
+      origin: api.firestoreOriginOrEmulator,
     })
     .then(function(res) {
       // Return the 'document' property for each element in the response,
@@ -272,6 +272,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
 
   var failures = [];
   var retried = {};
+  var fetchFailures = 0;
 
   var queueLoop = function() {
     if (queue.length == 0 && numPendingDeletes == 0 && !pagesRemaining) {
@@ -279,7 +280,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
     }
 
     if (failures.length > 0) {
-      logger.debug("Found " + failures.length + " failed deletes, failing.");
+      logger.debug("Found " + failures.length + " failed operations, failing.");
       return true;
     }
 
@@ -289,6 +290,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
       self
         ._getDescendantBatch(self.allDescendants, readBatchSize, lastDocName)
         .then(function(docs) {
+          fetchFailures = 0;
           pageIncoming = false;
 
           if (docs.length == 0) {
@@ -302,6 +304,11 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
         .catch(function(e) {
           logger.debug("Failed to fetch page after " + lastDocName, e);
           pageIncoming = false;
+
+          fetchFailures++;
+          if (fetchFailures === 3) {
+            failures.push(e);
+          }
         });
     }
 
@@ -361,7 +368,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
         if (failures.length == 0) {
           resolve();
         } else {
-          reject("Failed to delete documents " + failures);
+          reject(new FirebaseError("Failed to delete documents " + failures, { exit: 1 }));
         }
       }
     }, 0);

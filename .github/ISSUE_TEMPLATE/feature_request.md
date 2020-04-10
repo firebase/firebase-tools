@@ -1,12 +1,12 @@
 ---
 name: 💡 Feature request
 about: Suggest an idea for this project
-title: ''
+title: ""
 labels: feature request
-assignees: ''
-
+assignees: ""
 ---
-<!-- DO NOT DELETE 
+
+<!-- DO NOT DELETE
 validate_template=false
 template_path=.github/ISSUE_TEMPLATE/feature_request.md
 -->
