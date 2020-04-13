@@ -49,10 +49,24 @@ describe("deployHosting", () => {
   }).timeout(10 * 1e3); // Deploying takes several steps.
 });
 
-describe("appsList", () => {
+describe("apps:list", () => {
   it("should list apps configuration", async () => {
     const apps = await client.apps.list("web", { project: process.env.FBTOOLS_TARGET_PROJECT });
 
     expect(apps).to.have.length.greaterThan(0);
+  });
+});
+
+describe("apps:sdkconfig", () => {
+  it("should return the web app configuration", async () => {
+    const opts = { project: process.env.FBTOOLS_TARGET_PROJECT };
+    const apps = await client.apps.list("web", opts);
+    expect(apps).to.have.length.greaterThan(0);
+    const appID = apps[0].appId;
+
+    const config = await client.apps.sdkconfig("web", appID, opts);
+
+    expect(config.sdkConfig).to.exist;
+    expect(config.sdkConfig.appId).to.equal(appID);
   });
 });
