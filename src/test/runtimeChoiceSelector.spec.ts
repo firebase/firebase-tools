@@ -33,7 +33,7 @@ describe("getRuntimeChoice", () => {
 
     expect(() => {
       runtime.getRuntimeChoice("path/to/source");
-    }).to.throw(runtime.ENGINES_FIELD_REQUIRED_MSG);
+    }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_MSG);
   });
 
   it("should return node 8 if package.json engines field is set to node 8", () => {

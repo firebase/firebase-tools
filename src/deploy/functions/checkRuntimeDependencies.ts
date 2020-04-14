@@ -59,17 +59,17 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
 
   const shouldError = now > errorAfter;
 
-  // we don't need to warn or error if it's currently before all time checks
-  if (now < warnAfter) {
-    return;
-  }
-
   logger.debug(
     "[functions] runtime dependency check dates: warning:",
     new Date(warnAfter).toISOString(),
     "error:",
     new Date(errorAfter).toISOString()
   );
+
+  // we don't need to warn or error if it's currently before all time checks
+  if (now < warnAfter) {
+    return;
+  }
 
   // print deprecation warning for Node 8 functions once Cloud Build enforcement begins
   if (shouldError && runtime === "nodejs8") {
