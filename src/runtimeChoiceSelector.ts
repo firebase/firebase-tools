@@ -27,8 +27,7 @@ export const ENGINES_FIELD_REQUIRED_MSG = clc.bold(
 );
 export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}. ` +
-    `Note that Node.js 6 is now deprecated.`
+    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}.`
 );
 export const DEPRECATION_WARNING_MSG =
   clc.bold.yellow("functions: ") +
@@ -62,10 +61,7 @@ export function getRuntimeChoice(sourceDir: string): any {
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
   if (!engines || !engines.node) {
-    return null;
-    // TODO(b/129422952): Change to throw error instead of returning null
-    // when engines field in package.json becomes required:
-    // throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
+    throw new FirebaseError(ENGINES_FIELD_REQUIRED_MSG, { exit: 1 });
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
   if (!runtime) {
@@ -73,7 +69,7 @@ export function getRuntimeChoice(sourceDir: string): any {
   }
 
   if (runtime === "nodejs6") {
-    utils.logWarning(DEPRECATION_WARNING_MSG);
+    throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   } else {
     // for any other runtime (8 or 10)
     if (functionsSDKTooOld(loaded)) {

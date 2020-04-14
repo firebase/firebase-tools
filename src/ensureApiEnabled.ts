@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import { bold } from "cli-color";
 
 import * as api from "./api";
 import * as utils from "./utils";
@@ -20,7 +21,7 @@ export async function check(
 
   const isEnabled = _.get(response.body, "state") === "ENABLED";
   if (isEnabled && !silent) {
-    utils.logLabeledSuccess(prefix, "all necessary APIs are enabled");
+    utils.logLabeledSuccess(prefix, `required API ${bold(apiName)} is enabled`);
   }
   return isEnabled;
 }
@@ -39,14 +40,14 @@ export async function ensure(
   silent: boolean = false
 ): Promise<void> {
   if (!silent) {
-    utils.logLabeledBullet(prefix, "ensuring necessary APIs are enabled...");
+    utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);
   }
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
     return;
   }
   if (!silent) {
-    utils.logLabeledWarning(prefix, "missing necessary APIs. Enabling now...");
+    utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
   }
   return enableApiWithRetries(projectId, apiName, prefix, silent);
 }
@@ -71,7 +72,7 @@ async function pollCheckEnabled(
     return;
   }
   if (!silent) {
-    utils.logLabeledBullet(prefix, "waiting for APIs to activate...");
+    utils.logLabeledBullet(prefix, `waiting for API ${bold(apiName)} to activate...`);
   }
   return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries, pollRetries + 1);
 }
@@ -85,7 +86,7 @@ async function enableApiWithRetries(
 ): Promise<void> {
   if (enablementRetries > 1) {
     throw new FirebaseError(
-      "Timed out while waiting for APIs to enable. Please try again in a few minutes."
+      `Timed out waiting for API ${bold(apiName)} to enable. Please try again in a few minutes.`
     );
   }
   await enable(projectId, apiName);
