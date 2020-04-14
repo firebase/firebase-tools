@@ -3,6 +3,7 @@ import * as clc from "cli-color";
 import * as path from "path";
 import * as semver from "semver";
 import * as spawn from "cross-spawn";
+
 import * as utils from "./utils";
 import * as logger from "./logger";
 
@@ -23,9 +24,12 @@ interface NpmShowResult {
   };
 }
 
-/** Returns the version of firebase-functions SDK specified by package.json and package-lock.json.
+/**
+ * Returns the version of firebase-functions SDK specified by package.json and package-lock.json.
  * @param sourceDir Source directory of functions code
- **/
+ * @returns version string (e.g. "3.1.2"), or void if firebase-functions is not in package.json
+ * or if we had trouble getting the version.
+ */
 export function getFunctionsSDKVersion(sourceDir: string): string | void {
   try {
     const child = spawn.sync("npm", ["list", "firebase-functions", "--json=true"], {
@@ -33,7 +37,7 @@ export function getFunctionsSDKVersion(sourceDir: string): string | void {
       encoding: "utf8",
     });
     if (child.error) {
-      logger.debug(child.error.stack);
+      logger.debug("getFunctionsSDKVersion encountered error:", child.error.stack);
       return;
     }
     const output: NpmListResult = JSON.parse(child.stdout);
@@ -46,6 +50,7 @@ export function getFunctionsSDKVersion(sourceDir: string): string | void {
 
 /**
  * Checks if firebase-functions SDK is not the latest version in NPM, and prints update notice if it is outdated.
+ * If it is unable to do the check, it does nothing.
  * @param options Options object from "firebase deploy" command.
  */
 export function checkFunctionsSDKVersion(options: any): void {
@@ -64,11 +69,14 @@ export function checkFunctionsSDKVersion(options: any): void {
       encoding: "utf8",
     });
     if (child.error) {
-      logger.debug(child.error.stack);
+      logger.debug(
+        "checkFunctionsSDKVersion was unable to fetch information from NPM",
+        child.error.stack
+      );
       return;
     }
     const output: NpmShowResult = JSON.parse(child.stdout);
-    if (!output || _.isEmpty(output)) {
+    if (_.isEmpty(output)) {
       return;
     }
     const latest = _.get(output, ["dist-tags", "latest"]);
