@@ -114,11 +114,9 @@ module.exports = function(context, options) {
   var configValues;
   var sourceDir = options.config.path(options.config.get("functions.source"));
 
-  return getRuntimeChoice(sourceDir)
-    .then(function(runtime) {
-      context.runtimeChoice = runtime;
-      return _getFunctionsConfig(context);
-    })
+  context.runtimeChoice = getRuntimeChoice(sourceDir);
+
+  return _getFunctionsConfig(context)
     .then(function(result) {
       configValues = result;
       return parseTriggers(getProjectId(options), sourceDir, configValues);

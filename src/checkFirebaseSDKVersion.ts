@@ -1,5 +1,3 @@
-"use strict";
-
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as path from "path";
@@ -25,7 +23,10 @@ interface NpmShowResult {
   };
 }
 
-export async function getFunctionsSDKVersion(sourceDir: string): Promise<string | void> {
+/** Returns the version of firebase-functions SDK specified by package.json and package-lock.json.
+ * @param sourceDir Source directory of functions code
+ **/
+export function getFunctionsSDKVersion(sourceDir: string): string | void {
   try {
     const child = spawn.sync("npm", ["list", "firebase-functions", "--json=true"], {
       cwd: sourceDir,
@@ -43,13 +44,17 @@ export async function getFunctionsSDKVersion(sourceDir: string): Promise<string 
   }
 }
 
-export async function checkSDKVersion(options: any): Promise<void> {
+/**
+ * Checks if firebase-functions SDK is not the latest version in NPM, and prints update notice if it is outdated.
+ * @param options Options object from "firebase deploy" command.
+ */
+export function checkFunctionsSDKVersion(options: any): void {
   if (!options.config.has("functions")) {
     return;
   }
 
   const sourceDir = path.join(options.config.projectDir, options.config.get("functions.source"));
-  const currentVersion = await getFunctionsSDKVersion(sourceDir);
+  const currentVersion = getFunctionsSDKVersion(sourceDir);
   if (!currentVersion) {
     logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
     return;
@@ -85,7 +90,7 @@ export async function checkSDKVersion(options: any): Promise<void> {
       }
     }
   } catch (e) {
-    logger.debug("checkSDKVersion encountered error:", e);
+    logger.debug("checkFunctionsSDKVersion encountered error:", e);
     return;
   }
 }

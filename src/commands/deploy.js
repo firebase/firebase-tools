@@ -5,7 +5,7 @@ var _ = require("lodash");
 var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var checkValidTargetFilters = require("../checkValidTargetFilters");
-var checkSDKVersion = require("../checkFirebaseSDKVersion").checkSDKVersion;
+var checkFunctionsSDKVersion = require("../checkFirebaseSDKVersion").checkFunctionsSDKVersion;
 var { Command } = require("../command");
 var deploy = require("../deploy");
 var requireConfig = require("../requireConfig");
@@ -68,7 +68,7 @@ module.exports = new Command("deploy")
     }
   })
   .before(checkValidTargetFilters)
-  .before(checkSDKVersion)
+  .before(checkFunctionsSDKVersion)
   .action(function(options) {
     return deploy(options.filteredTargets, options);
   });

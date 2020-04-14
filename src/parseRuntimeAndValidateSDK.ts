@@ -30,14 +30,9 @@ export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
     `Note that Node.js 6 is now deprecated.`
 );
 
-export const NODE6_DEPRECATION_WARNING_MSG =
+export const DEPRECATION_WARNING_MSG =
   clc.bold.yellow("functions: ") +
-  "Deploying functions to Node 6 runtime, which is deprecated. Node 10 is available " +
-  "and is the recommended runtime.";
-
-export const NODE8_DEPRECATION_WARNING_MSG =
-  clc.bold.yellow("functions: ") +
-  "Deploying functions to Node 8 runtime, which will be deprecated in May 2020. Node 10 is available " +
+  "Deploying functions to Node 6 runtime, which is deprecated. Node 8 is available " +
   "and is the recommended runtime.";
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
@@ -62,7 +57,7 @@ export function getHumanFriendlyRuntimeName(runtime: string): string {
  * package.json.
  * @param sourceDir directory where the functions are defined.
  */
-export async function getRuntimeChoice(sourceDir: string): Promise<string> {
+export function getRuntimeChoice(sourceDir: string): string {
   const packageJsonPath = path.join(sourceDir, "package.json");
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
@@ -82,19 +77,17 @@ export async function getRuntimeChoice(sourceDir: string): Promise<string> {
   }
 
   if (runtime === "nodejs6") {
-    utils.logWarning(NODE6_DEPRECATION_WARNING_MSG);
-  } else if (runtime === "nodejs8") {
-    utils.logWarning(NODE8_DEPRECATION_WARNING_MSG);
+    utils.logWarning(DEPRECATION_WARNING_MSG);
   } else {
-    if (await functionsSDKTooOld(sourceDir, ">=2")) {
+    if (functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
   }
   return runtime;
 }
 
-async function functionsSDKTooOld(sourceDir: string, minRange: string): Promise<boolean> {
-  const userVersion = await getFunctionsSDKVersion(sourceDir);
+function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
+  const userVersion = getFunctionsSDKVersion(sourceDir);
   if (!userVersion) {
     logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
     return false;
