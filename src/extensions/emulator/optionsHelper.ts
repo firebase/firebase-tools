@@ -39,6 +39,7 @@ export async function buildOptions(options: any): Promise<any> {
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extensionTriggers = functionEmuTriggerDefs;
+  options.extensionNodeVersion = specHelper.getNodeVersion(functionResources);
   return options;
 }
 

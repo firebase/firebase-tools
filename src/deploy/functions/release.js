@@ -153,8 +153,7 @@ module.exports = function(context, options, payload) {
   var existingScheduledFunctions;
 
   delete payload.functions;
-  return gcp.cloudfunctions
-    .listAll(projectId)
+  return Promise.resolve(context.existingFunctions)
     .then(function(existingFunctions) {
       var pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'

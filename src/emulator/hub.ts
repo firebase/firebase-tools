@@ -27,6 +27,8 @@ export interface EmulatorHubArgs {
   host?: string;
 }
 
+export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
+
 export class EmulatorHub implements EmulatorInstance {
   static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
@@ -73,7 +75,7 @@ export class EmulatorHub implements EmulatorInstance {
     });
 
     this.hub.get(EmulatorHub.PATH_EMULATORS, async (req, res) => {
-      const body: Record<string, EmulatorInfo> = {};
+      const body: GetEmulatorsResponse = {};
       EmulatorRegistry.listRunning().forEach((name) => {
         body[name] = EmulatorRegistry.get(name)!.getInfo();
       });

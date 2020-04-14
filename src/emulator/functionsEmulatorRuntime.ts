@@ -12,6 +12,7 @@ import {
   FunctionsRuntimeArgs,
   HttpConstants,
 } from "./functionsEmulatorShared";
+import { Constants } from "./constants";
 import { parseVersionString, compareVersionStrings } from "./functionsEmulatorUtils";
 import * as express from "express";
 import * as path from "path";
@@ -614,36 +615,30 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     // Setup predefined environment variables for Node.js 10 and subsequent runtimes
     // https://cloud.google.com/functions/docs/env-var
     const pkg = requirePackageJson(frb);
-    if (pkg && pkg.engines && pkg.engines.node) {
+    // If nodeMajorVersion is set, we are emulating an extension so we ignore pkg.engines.node
+    // to match backend behavior.
+    if (frb.nodeMajorVersion) {
+      setNode10EnvVars(target, mode, service);
+    } else if (pkg?.engines?.node) {
       const nodeVersion = parseVersionString(pkg.engines.node);
       if (nodeVersion.major >= 10) {
-        process.env.FUNCTION_TARGET = target;
-        process.env.FUNCTION_SIGNATURE_TYPE = mode;
-        process.env.K_SERVICE = service;
-        process.env.K_REVISION = "1";
-        process.env.PORT = "80";
+        setNode10EnvVars(target, mode, service);
       }
     }
   }
 
-  // The Firebase CLI is sometimes used as a module within Cloud Functions
-  // for tasks like deleting Firestore data. The CLI has an override system
-  // to change the host for most calls (see api.js)
-  //
-  // TODO(samstern): This should be done for RTDB as well but it's hard
-  // because the convention in prod is subdomain not ?ns=
-  if (frb.emulators.firestore) {
-    process.env.FIRESTORE_URL = `http://${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
-  }
-
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env.FIRESTORE_EMULATOR_HOST = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env[
+      Constants.FIRESTORE_EMULATOR_HOST
+    ] = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env.FIREBASE_DATABASE_EMULATOR_HOST = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+    process.env[
+      Constants.FIREBASE_DATABASE_EMULATOR_HOST
+    ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -697,6 +692,18 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
     .finalize();
 
   ff.config = () => proxiedConfig;
+}
+
+/**
+ * Setup predefined environment variables for Node.js 10 and subsequent runtimes
+ * https://cloud.google.com/functions/docs/env-var
+ */
+function setNode10EnvVars(target: string, mode: "event" | "http", service: string) {
+  process.env.FUNCTION_TARGET = target;
+  process.env.FUNCTION_SIGNATURE_TYPE = mode;
+  process.env.K_SERVICE = service;
+  process.env.K_REVISION = "1";
+  process.env.PORT = "80";
 }
 
 /*

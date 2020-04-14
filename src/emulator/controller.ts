@@ -225,6 +225,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       debugPort: inspectFunctions,
       env: options.extensionEnv,
       predefinedTriggers: options.extensionTriggers,
+      nodeMajorVersion: options.extensionNodeVersion,
     });
     await startEmulator(functionsEmulator);
   }
@@ -282,7 +283,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.FIRESTORE,
       `For testing set ${clc.bold(
-        `${FirestoreEmulator.FIRESTORE_EMULATOR_ENV}=${firestoreAddr.host}:${firestoreAddr.port}`
+        `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
       )}`
     );
   }
@@ -337,7 +338,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.DATABASE,
       `For testing set ${clc.bold(
-        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+        `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
       )}`
     );
   }

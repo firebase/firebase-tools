@@ -1,9 +1,8 @@
 # Learn detailed information about the fields of an extension.yaml file in the docs
 
 name: greet-the-world  # Identifier for the extension
-specVersion: v1beta  # Version of the Firebase Extensions specification
 version: 0.0.1  # Follow semver versioning
-license: Apache-2.0  # https://spdx.org/licenses/
+specVersion: v1beta  # Version of the Firebase Extensions specification
 
 # Friendly display name for your extension (~3-5 words)
 displayName: Greet the world
@@ -11,6 +10,11 @@ displayName: Greet the world
 # Brief description of the task your extension performs (~1 sentence)
 description: >-
   Sends the world a specified greeting.
+
+license: Apache-2.0  # https://spdx.org/licenses/
+
+# Public URL for the source code of your extension
+sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/extensions
 
 billingRequired: false  # Learn more in the docs
 
@@ -27,7 +31,6 @@ resources:
     properties:
       location: ${LOCATION}
       httpsTrigger: {}
-      # Optional, defaults to Node.js 8
       runtime: "nodejs8"
 
 # Learn about the `params` field in the docs
@@ -59,6 +62,8 @@ params:
         value: europe-west1
       - label: London (europe-west2)
         value: europe-west2
+      - label: Frankfurt (europe-west3)
+        value: europe-west3
       - label: Hong Kong (asia-east2)
         value: asia-east2
       - label: Tokyo (asia-northeast1)
