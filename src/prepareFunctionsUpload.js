@@ -15,7 +15,6 @@ var logger = require("./logger");
 var utils = require("./utils");
 var parseTriggers = require("./parseTriggers");
 var fsAsync = require("./fsAsync");
-var { getRuntimeChoice } = require("./runtimeChoiceSelector");
 
 var CONFIG_DEST_FILE = ".runtimeconfig.json";
 

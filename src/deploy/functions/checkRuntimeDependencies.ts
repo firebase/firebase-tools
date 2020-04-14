@@ -16,14 +16,14 @@ const NODE8_DEPRECATION_WARNING = `The Node.js 8 runtime is deprecated and will 
   "2020-12-05"
 )}. For more information, see: ${FAQ_URL}`;
 
-const NODE10_BILLING_WARNING = (errorAfter: number) =>
+const node10BillingWarning = (errorAfter: number): string =>
   `Cloud Functions will soon require the pay-as-you-go (Blaze) billing plan to deploy. To avoid service disruption, upgrade before ${bold(
     new Date(errorAfter).toISOString().substr(0, 10)
   )}. For more information, see: ${FAQ_URL}`;
 
-const NODE10_BILLING_ERROR = (
+const node10BillingError = (
   projectId: string
-) => `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
+): string => `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
       
 https://console.firebase.google.com/project/${projectId}/usage/details
 
@@ -50,9 +50,10 @@ function isBillingError(e: {
  * of the deployed functions.
  *
  * @param projectId Project ID upon which to check enablement.
+ * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
  */
 export async function checkRuntimeDependencies(projectId: string, runtime: string): Promise<void> {
-  const warnAfter = Date.now() - 10000; // configstore.get("motd.cloudBuildWarnAfter") || DEFAULT_WARN_AFTER;
+  const warnAfter = configstore.get("motd.cloudBuildWarnAfter") || DEFAULT_WARN_AFTER;
   const errorAfter = configstore.get("motd.cloudBuildErrorAfter") || DEFAULT_ERROR_AFTER;
   const now = Date.now();
 
@@ -62,6 +63,13 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
   if (now < warnAfter) {
     return;
   }
+
+  logger.debug(
+    "[functions] runtime dependency check dates: warning:",
+    new Date(warnAfter).toISOString(),
+    "error:",
+    new Date(errorAfter).toISOString()
+  );
 
   // print deprecation warning for Node 8 functions once Cloud Build enforcement begins
   if (shouldError && runtime === "nodejs8") {
@@ -81,13 +89,13 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
   } catch (e) {
     if (isBillingError(e)) {
       if (shouldError) {
-        throw new FirebaseError(NODE10_BILLING_ERROR(projectId), {
+        throw new FirebaseError(node10BillingError(projectId), {
           exit: 1,
         });
       }
 
       logger.warn();
-      logLabeledWarning("functions", NODE10_BILLING_WARNING(errorAfter));
+      logLabeledWarning("functions", node10BillingWarning(errorAfter));
       logger.warn();
       return;
     }

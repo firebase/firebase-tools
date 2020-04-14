@@ -7,7 +7,7 @@ import { FirebaseError } from "./error";
 import * as utils from "./utils";
 
 // have to require this because no @types/cjson available
-// tslint:disable-next-line
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
@@ -46,17 +46,32 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
  * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
  * for example. If no friendly name for runtime is found, returns back the raw runtime.
  * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
+ * @return A human-friendly string describing the runtime.
  */
 export function getHumanFriendlyRuntimeName(runtime: string): string {
   return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function functionsSDKTooOld(loaded: any): boolean {
+  const SDKRange = _.get(loaded, "dependencies.firebase-functions");
+  try {
+    if (!semver.intersects(SDKRange, ">=2")) {
+      return true;
+    }
+  } catch (e) {
+    // do nothing
+  }
+  return false;
 }
 
 /**
  * Returns the Node.js version to be used for the function(s) as defined in the
  * package.json.
  * @param sourceDir directory where the functions are defined.
+ * @return The runtime, e.g. `nodejs10`.
  */
-export function getRuntimeChoice(sourceDir: string): any {
+export function getRuntimeChoice(sourceDir: string): string {
   const packageJsonPath = path.join(sourceDir, "package.json");
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
@@ -77,16 +92,4 @@ export function getRuntimeChoice(sourceDir: string): any {
     }
   }
   return runtime;
-}
-
-function functionsSDKTooOld(loaded: any): boolean {
-  const SDKRange = _.get(loaded, "dependencies.firebase-functions");
-  try {
-    if (!semver.intersects(SDKRange, ">=2")) {
-      return true;
-    }
-  } catch (e) {
-    // do nothing
-  }
-  return false;
 }

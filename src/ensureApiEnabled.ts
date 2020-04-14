@@ -8,11 +8,18 @@ import { FirebaseError } from "./error";
 const POLL_INTERVAL = 10000; // 10 seconds
 const POLLS_BEFORE_RETRY = 12; // Retry enabling the API after 2 minutes
 
+/**
+ * Check if the specified API is enabled.
+ * @param projectId The project on which to check enablement.
+ * @param apiName The name of the API e.g. `someapi.googleapis.com`.
+ * @param prefix The logging prefix to use when printing messages about enablement.
+ * @param silent Whether or not to print log messages.
+ */
 export async function check(
   projectId: string,
   apiName: string,
   prefix: string,
-  silent: boolean = false
+  silent = false
 ): Promise<boolean> {
   const response = await api.request("GET", `/v1/projects/${projectId}/services/${apiName}`, {
     auth: true,
@@ -26,30 +33,17 @@ export async function check(
   return isEnabled;
 }
 
+/**
+ * Attempt to enable an API on the specified project (just once).
+ *
+ * @param projectId The project in which to enable the API.
+ * @param apiName The name of the API e.g. `someapi.googleapis.com`.
+ */
 export async function enable(projectId: string, apiName: string): Promise<void> {
   return api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
     auth: true,
     origin: api.serviceUsageOrigin,
   });
-}
-
-export async function ensure(
-  projectId: string,
-  apiName: string,
-  prefix: string,
-  silent: boolean = false
-): Promise<void> {
-  if (!silent) {
-    utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);
-  }
-  const isEnabled = await check(projectId, apiName, prefix, silent);
-  if (isEnabled) {
-    return;
-  }
-  if (!silent) {
-    utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
-  }
-  return enableApiWithRetries(projectId, apiName, prefix, silent);
 }
 
 async function pollCheckEnabled(
@@ -58,9 +52,10 @@ async function pollCheckEnabled(
   prefix: string,
   silent: boolean,
   enablementRetries: number,
-  pollRetries: number = 0
+  pollRetries = 0
 ): Promise<void> {
   if (pollRetries > POLLS_BEFORE_RETRY) {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return enableApiWithRetries(projectId, apiName, prefix, silent, enablementRetries + 1);
   }
 
@@ -91,4 +86,31 @@ async function enableApiWithRetries(
   }
   await enable(projectId, apiName);
   return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries);
+}
+
+/**
+ * Check if an API is enabled on a project, try to enable it if not with polling and retries.
+ *
+ * @param projectId The project on which to check enablement.
+ * @param apiName The name of the API e.g. `someapi.googleapis.com`.
+ * @param prefix The logging prefix to use when printing messages about enablement.
+ * @param silent Whether or not to print log messages.
+ */
+export async function ensure(
+  projectId: string,
+  apiName: string,
+  prefix: string,
+  silent = false
+): Promise<void> {
+  if (!silent) {
+    utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);
+  }
+  const isEnabled = await check(projectId, apiName, prefix, silent);
+  if (isEnabled) {
+    return;
+  }
+  if (!silent) {
+    utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
+  }
+  return enableApiWithRetries(projectId, apiName, prefix, silent);
 }
