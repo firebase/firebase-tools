@@ -1,1 +1,3 @@
+- **Important:** Disables Node.js 6 runtime deploys for Cloud Functions.
 - Fixes a bug where `firebase-functions` SDK version checking was unreliable and did not consider `package-lock.json`.
+- Improves Cloud Functions error messaging around required APIs.

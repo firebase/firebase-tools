@@ -25,6 +25,13 @@ describe("checkRuntimeDependencies()", () => {
     logStub = sandbox.stub(logger, "warn");
   });
 
+  afterEach(() => {
+    expect(nock.isDone()).to.be.true;
+    sandbox.restore();
+    timeStub = null;
+    logStub = null;
+  });
+
   function mockServiceCheck(isEnabled = false): void {
     nock(api.serviceUsageOrigin)
       .get("/v1/projects/test-project/services/cloudbuild.googleapis.com")
@@ -146,12 +153,5 @@ describe("checkRuntimeDependencies()", () => {
           .rejected;
       });
     });
-  });
-
-  afterEach(() => {
-    expect(nock.isDone()).to.be.true;
-    sandbox.restore();
-    timeStub = null;
-    logStub = null;
   });
 });
