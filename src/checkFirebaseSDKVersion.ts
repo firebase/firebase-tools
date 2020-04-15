@@ -27,7 +27,7 @@ interface NpmShowResult {
 /**
  * Returns the version of firebase-functions SDK specified by package.json and package-lock.json.
  * @param sourceDir Source directory of functions code
- * @returns version string (e.g. "3.1.2"), or void if firebase-functions is not in package.json
+ * @return version string (e.g. "3.1.2"), or void if firebase-functions is not in package.json
  * or if we had trouble getting the version.
  */
 export function getFunctionsSDKVersion(sourceDir: string): string | void {
