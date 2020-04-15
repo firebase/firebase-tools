@@ -1,0 +1,1 @@
+- Fixes a bug where `firebase-functions` SDK version checking was unreliable and did not consider `package-lock.json`.
