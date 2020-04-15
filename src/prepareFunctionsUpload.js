@@ -112,6 +112,7 @@ var _packageSource = function(options, sourceDir, configValues) {
 module.exports = function(context, options) {
   var configValues;
   var sourceDir = options.config.path(options.config.get("functions.source"));
+
   return _getFunctionsConfig(context)
     .then(function(result) {
       configValues = result;
