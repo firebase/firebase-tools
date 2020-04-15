@@ -15,7 +15,7 @@ var logger = require("./logger");
 var utils = require("./utils");
 var parseTriggers = require("./parseTriggers");
 var fsAsync = require("./fsAsync");
-var { getRuntimeChoice } = require("./runtimeChoiceSelector");
+var { getRuntimeChoice } = require("./parseRuntimeAndValidateSDK");
 
 var CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -113,7 +113,9 @@ var _packageSource = function(options, sourceDir, configValues) {
 module.exports = function(context, options) {
   var configValues;
   var sourceDir = options.config.path(options.config.get("functions.source"));
+
   context.runtimeChoice = getRuntimeChoice(sourceDir);
+
   return _getFunctionsConfig(context)
     .then(function(result) {
       configValues = result;
