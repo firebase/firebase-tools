@@ -5,8 +5,10 @@ import * as api from "./api";
 import * as utils from "./utils";
 import { FirebaseError } from "./error";
 
-const POLL_INTERVAL = 10000; // 10 seconds
-const POLLS_BEFORE_RETRY = 12; // Retry enabling the API after 2 minutes
+export const POLL_SETTINGS = {
+  pollInterval: 10000,
+  pollsBeforeRetry: 12,
+};
 
 /**
  * Check if the specified API is enabled.
@@ -54,13 +56,13 @@ async function pollCheckEnabled(
   enablementRetries: number,
   pollRetries = 0
 ): Promise<void> {
-  if (pollRetries > POLLS_BEFORE_RETRY) {
+  if (pollRetries > POLL_SETTINGS.pollsBeforeRetry) {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     return enableApiWithRetries(projectId, apiName, prefix, silent, enablementRetries + 1);
   }
 
   await new Promise((resolve) => {
-    setTimeout(resolve, POLL_INTERVAL);
+    setTimeout(resolve, POLL_SETTINGS.pollInterval);
   });
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {

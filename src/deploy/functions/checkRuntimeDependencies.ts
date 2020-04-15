@@ -12,24 +12,40 @@ const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
 const DEFAULT_WARN_AFTER = 1588636800000; // 2020-05-05T00:00:00.000Z
 const DEFAULT_ERROR_AFTER = 1591315200000; // 2020-06-05T00:00:00.000Z
 
-const NODE8_DEPRECATION_WARNING = `The Node.js 8 runtime is deprecated and will be decommissioned on ${bold(
-  "2020-12-05"
-)}. For more information, see: ${FAQ_URL}`;
+function node8DeprecationWarning(): void {
+  logger.warn();
+  logLabeledWarning(
+    "functions",
+    `The Node.js 8 runtime is deprecated and will be decommissioned on ${bold(
+      "2020-12-05"
+    )}. For more information, see: ${FAQ_URL}`
+  );
+  logger.warn();
+}
 
-const node10BillingWarning = (errorAfter: number): string =>
-  `Cloud Functions will soon require the pay-as-you-go (Blaze) billing plan to deploy. To avoid service disruption, upgrade before ${bold(
-    new Date(errorAfter).toISOString().substr(0, 10)
-  )}. For more information, see: ${FAQ_URL}`;
+function node10BillingWarning(errorAfter: number): void {
+  logger.warn();
+  logLabeledWarning(
+    "functions",
+    `Cloud Functions will soon require the pay-as-you-go (Blaze) billing plan to deploy. To avoid service disruption, upgrade before ${bold(
+      new Date(errorAfter).toISOString().substr(0, 10)
+    )}. For more information, see: ${FAQ_URL}`
+  );
+  logger.warn();
+}
 
-const node10BillingError = (
-  projectId: string
-): string => `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
+function node10BillingError(projectId: string): FirebaseError {
+  return new FirebaseError(
+    `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
       
 https://console.firebase.google.com/project/${projectId}/usage/details
 
 For additional information about this requirement, see Firebase FAQs:
 
-${FAQ_URL}`;
+${FAQ_URL}`,
+    { exit: 1 }
+  );
+}
 
 function isBillingError(e: {
   context?: {
@@ -73,9 +89,7 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
 
   // print deprecation warning for Node 8 functions once Cloud Build enforcement begins
   if (shouldError && runtime === "nodejs8") {
-    logger.warn();
-    logLabeledWarning("functions", NODE8_DEPRECATION_WARNING);
-    logger.warn();
+    node8DeprecationWarning();
     return;
   }
 
@@ -85,18 +99,17 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
   }
 
   try {
+    console.log("before ensure");
     await ensure(projectId, CLOUD_BUILD_API, "functions");
+    console.log("after ensure");
   } catch (e) {
+    console.log("isBillingError", isBillingError(e));
     if (isBillingError(e)) {
       if (shouldError) {
-        throw new FirebaseError(node10BillingError(projectId), {
-          exit: 1,
-        });
+        throw node10BillingError(projectId);
       }
 
-      logger.warn();
-      logLabeledWarning("functions", node10BillingWarning(errorAfter));
-      logger.warn();
+      node10BillingWarning(errorAfter);
       return;
     }
 
