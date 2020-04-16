@@ -74,13 +74,16 @@ export function getRuntimeChoice(sourceDir: string): string {
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
   if (!runtime) {
+    track("functions_runtime_notices", "package_missing_runtime");
     throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   }
 
   if (runtime === "nodejs6") {
+    track("functions_runtime_notices", "nodejs6_deploy_prohibited");
     throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   } else {
     if (functionsSDKTooOld(sourceDir, ">=2")) {
+      track("functions_runtime_notices", "functions_sdk_too_old");
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
   }

@@ -1,5 +1,6 @@
 import { bold } from "cli-color";
 
+import * as track from "../../track";
 import { configstore } from "../../configstore";
 import * as logger from "../../logger";
 import { ensure } from "../../ensureApiEnabled";
@@ -13,6 +14,7 @@ const DEFAULT_WARN_AFTER = 1588636800000; // 2020-05-05T00:00:00.000Z
 const DEFAULT_ERROR_AFTER = 1591315200000; // 2020-06-05T00:00:00.000Z
 
 function node8DeprecationWarning(): void {
+  track("functions_runtime_notices", "nodejs8_deprecation_warning");
   logger.warn();
   logLabeledWarning(
     "functions",
@@ -24,6 +26,7 @@ function node8DeprecationWarning(): void {
 }
 
 function node10BillingWarning(errorAfter: number): void {
+  track("functions_runtime_notices", "nodejs10_billing_warning");
   logger.warn();
   logLabeledWarning(
     "functions",
@@ -35,6 +38,7 @@ function node10BillingWarning(errorAfter: number): void {
 }
 
 function node10BillingError(projectId: string): FirebaseError {
+  track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
       
@@ -99,11 +103,8 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
   }
 
   try {
-    console.log("before ensure");
     await ensure(projectId, CLOUD_BUILD_API, "functions");
-    console.log("after ensure");
   } catch (e) {
-    console.log("isBillingError", isBillingError(e));
     if (isBillingError(e)) {
       if (shouldError) {
         throw node10BillingError(projectId);
