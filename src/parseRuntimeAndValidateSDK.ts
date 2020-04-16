@@ -7,6 +7,7 @@ import { getFunctionsSDKVersion } from "./checkFirebaseSDKVersion";
 import { FirebaseError } from "./error";
 import * as utils from "./utils";
 import * as logger from "./logger";
+import * as track from "./track";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -42,6 +43,23 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold("npm i --save firebase-functions@latest") +
   " in the functions folder.";
 
+function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
+  const userVersion = getFunctionsSDKVersion(sourceDir);
+  if (!userVersion) {
+    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
+    return false;
+  }
+  try {
+    if (!semver.intersects(userVersion, minRange)) {
+      return true;
+    }
+  } catch (e) {
+    // do nothing
+  }
+
+  return false;
+}
+
 /**
  * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
  * for example. If no friendly name for runtime is found, returns back the raw runtime.
@@ -74,32 +92,18 @@ export function getRuntimeChoice(sourceDir: string): string {
   }
   const runtime = ENGINE_RUNTIMES[engines.node];
   if (!runtime) {
+    track("functions_runtime_notices", "package_missing_runtime");
     throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   }
 
   if (runtime === "nodejs6") {
+    track("functions_runtime_notices", "nodejs6_deploy_prohibited");
     throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   } else {
     if (functionsSDKTooOld(sourceDir, ">=2")) {
+      track("functions_runtime_notices", "functions_sdk_too_old");
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
   }
   return runtime;
-}
-
-function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
-  const userVersion = getFunctionsSDKVersion(sourceDir);
-  if (!userVersion) {
-    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
-    return false;
-  }
-  try {
-    if (!semver.intersects(userVersion, minRange)) {
-      return true;
-    }
-  } catch (e) {
-    // do nothing
-  }
-
-  return false;
 }
