@@ -1,3 +1,5 @@
 - **Important:** Disables Node.js 6 runtime deploys for Cloud Functions. This change corrects a previous oversight that allowed Node.js 6 deploys past intended date of full deprecation. Please immediately [upgrade Node.js 6 functions](https://firebase.google.com/docs/functions/manage-functions#set_nodejs_version) to a newer runtime to avoid service disruption.
 - Fixes a bug where `firebase-functions` SDK version checking was unreliable and did not consider `package-lock.json`.
 - Improves Cloud Functions error messaging around required APIs.
+- Fixes rolling back an already failed transaction in Cloud Firestore Emulator.
+- Fixes gRPC issue on large rules coverage reports in Cloud Firestore Emulator.
