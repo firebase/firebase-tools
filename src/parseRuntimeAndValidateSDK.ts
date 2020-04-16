@@ -43,6 +43,23 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold("npm i --save firebase-functions@latest") +
   " in the functions folder.";
 
+function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
+  const userVersion = getFunctionsSDKVersion(sourceDir);
+  if (!userVersion) {
+    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
+    return false;
+  }
+  try {
+    if (!semver.intersects(userVersion, minRange)) {
+      return true;
+    }
+  } catch (e) {
+    // do nothing
+  }
+
+  return false;
+}
+
 /**
  * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
  * for example. If no friendly name for runtime is found, returns back the raw runtime.
@@ -89,21 +106,4 @@ export function getRuntimeChoice(sourceDir: string): string {
     }
   }
   return runtime;
-}
-
-function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
-  const userVersion = getFunctionsSDKVersion(sourceDir);
-  if (!userVersion) {
-    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
-    return false;
-  }
-  try {
-    if (!semver.intersects(userVersion, minRange)) {
-      return true;
-    }
-  } catch (e) {
-    // do nothing
-  }
-
-  return false;
 }
