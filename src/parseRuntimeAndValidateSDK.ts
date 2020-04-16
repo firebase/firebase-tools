@@ -7,6 +7,7 @@ import { getFunctionsSDKVersion } from "./checkFirebaseSDKVersion";
 import { FirebaseError } from "./error";
 import * as utils from "./utils";
 import * as logger from "./logger";
+import * as track from "./track";
 
 // have to require this because no @types/cjson available
 // eslint-disable-next-line @typescript-eslint/no-var-requires
