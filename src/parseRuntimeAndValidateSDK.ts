@@ -9,7 +9,7 @@ import * as utils from "./utils";
 import * as logger from "./logger";
 
 // have to require this because no @types/cjson available
-// tslint:disable-next-line
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
@@ -26,8 +26,7 @@ const ENGINE_RUNTIMES: { [key: string]: string } = {
 
 export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}. ` +
-    `Note that Node.js 6 is now deprecated.`
+    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}.`
 );
 
 export const DEPRECATION_WARNING_MSG =
@@ -47,6 +46,7 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
  * Returns a friendly string denoting the chosen runtime: Node.js 8 for nodejs 8
  * for example. If no friendly name for runtime is found, returns back the raw runtime.
  * @param runtime name of runtime in raw format, ie, "nodejs8" or "nodejs10"
+ * @return A human-friendly string describing the runtime.
  */
 export function getHumanFriendlyRuntimeName(runtime: string): string {
   return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
@@ -56,6 +56,7 @@ export function getHumanFriendlyRuntimeName(runtime: string): string {
  * Returns the Node.js version to be used for the function(s) as defined in the
  * package.json.
  * @param sourceDir directory where the functions are defined.
+ * @return The runtime, e.g. `nodejs10`.
  */
 export function getRuntimeChoice(sourceDir: string): string {
   const packageJsonPath = path.join(sourceDir, "package.json");
@@ -77,7 +78,7 @@ export function getRuntimeChoice(sourceDir: string): string {
   }
 
   if (runtime === "nodejs6") {
-    utils.logWarning(DEPRECATION_WARNING_MSG);
+    throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
   } else {
     if (functionsSDKTooOld(sourceDir, ">=2")) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);

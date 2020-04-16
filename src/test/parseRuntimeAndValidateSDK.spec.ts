@@ -30,12 +30,13 @@ describe("getRuntimeChoice", () => {
     sandbox.restore();
   });
 
-  it("should return node 6 if package.json engines field is set to node 6 and print warning", () => {
+  it("should error if package.json engines field is set to node 6", () => {
     cjsonStub.returns({ engines: { node: "6" } });
     SDKVersionStub.returns("2.0.0");
 
-    expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs6");
-    expect(warningSpy).calledWith(runtime.DEPRECATION_WARNING_MSG);
+    expect(() => {
+      runtime.getRuntimeChoice("path/to/source");
+    }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_MSG);
   });
 
   it("should return node 8 if package.json engines field is set to node 8", () => {
