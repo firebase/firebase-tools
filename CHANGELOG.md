@@ -1,1 +1,1 @@
-- Fixes error when deploying functions from project subdirectory. (#2138)
+- Fixes error when deploying Cloud Functions for Firebase from a project subdirectory. (#2138)
