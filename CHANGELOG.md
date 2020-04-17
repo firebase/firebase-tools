@@ -1,0 +1,1 @@
+- Fixes error when deploying functions from project subdirectory. (#2138)
