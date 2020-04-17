@@ -31,7 +31,7 @@ module.exports = function(context, options, payload) {
     return Promise.reject(e);
   }
 
-  context.runtimeChoice = getRuntimeChoice(sourceDirName);
+  context.runtimeChoice = getRuntimeChoice(sourceDir);
 
   return Promise.all([
     ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
