@@ -1,5 +1,6 @@
 "use strict";
 
+var _ = require("lodash");
 var { Command } = require("../command");
 var logger = require("../logger");
 var { configstore } = require("../configstore");
@@ -51,7 +52,7 @@ module.exports = new Command("login")
             "To change your data collection preference at any time, run `firebase logout` and log in again."
           );
         }
-        return auth.login(options.localhost);
+        return auth.login(options.localhost, _.get(user, "email"));
       })
       .then(function(result) {
         configstore.set("user", result.user);
