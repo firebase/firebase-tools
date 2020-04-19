@@ -208,10 +208,10 @@ var login = function(localhost, userHint) {
   if (localhost) {
     return _getPort().then(
       function(port) {
-        _loginWithLocalhost(port, userHint);
+        return _loginWithLocalhost(port, userHint);
       },
       function() {
-        _loginWithoutLocalhost(userHint);
+        return _loginWithoutLocalhost(userHint);
       }
     );
   }
