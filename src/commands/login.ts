@@ -17,7 +17,7 @@ module.exports = new Command("login")
     "copy and paste a code instead of starting a local server for authentication"
   )
   .option("--reauth", "force reauthentication even if already logged in")
-  .action(async (options: object) => {
+  .action(async (options: any) => {
     if (options.nonInteractive) {
       throw new FirebaseError(
         "Cannot run login in non-interactive mode. See " +
