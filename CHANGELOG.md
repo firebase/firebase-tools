@@ -1,0 +1,1 @@
+- Improves login flow when using the `--reauth` flag.
