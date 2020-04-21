@@ -378,7 +378,7 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
  * @returns Promise that resolves to the extension name (e.g. storage-resize-images)
  */
 export async function promptForOfficialExtension(message: string): Promise<string> {
-  const officialExts = await getExtensionRegistry();
+  const officialExts = await getExtensionRegistry(true);
   return await promptOnce({
     name: "input",
     type: "list",
