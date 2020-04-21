@@ -13,7 +13,7 @@ const logger = require("../../logger");
 const track = require("../../track");
 const utils = require("../../utils");
 const helper = require("../../functionsDeployHelper");
-const runtimeSelector = require("../../runtimeChoiceSelector");
+const friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFriendlyRuntimeName;
 const { getAppEngineLocation } = require("../../functionsConfig");
 const { promptOnce } = require("../../prompt");
 const { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
@@ -150,6 +150,7 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
     "gs://" + "staging." + context.firebaseConfig.storageBucket + "/firebase-functions-source";
   // Used in CLI releases v3.3.0 and prior
   const legacySourceUrlOne = "gs://" + projectId + "-gcf/" + projectId;
+  const runtime = context.runtimeChoice;
   const functionFilterGroups = helper.getFilterGroups(options);
   let deleteReleaseNames;
   let existingScheduledFunctions;
@@ -175,7 +176,6 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
       );
       // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
       deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
-
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
 
       // Create functions
@@ -187,11 +187,10 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
           const functionTrigger = helper.getFunctionTrigger(functionInfo);
           const functionName = helper.getFunctionName(name);
           const region = helper.getRegion(name);
-          const runtime = context.runtimeChoice || helper.getDefaultRuntime();
           utils.logBullet(
             clc.bold.cyan("functions: ") +
               "creating " +
-              runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+              friendlyRuntimeName(runtime) +
               " function " +
               clc.bold(helper.getFunctionLabel(name)) +
               "..."
@@ -292,16 +291,13 @@ function releaseFunctions(context, options, uploadedNames, functionsInfo, attemp
               labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
               availableMemoryMb: functionInfo.availableMemoryMb,
               timeout: functionInfo.timeout,
+              runtime: runtime,
               maxInstances: functionInfo.maxInstances,
             };
-            if (context.runtimeChoice) {
-              options.runtime = context.runtimeChoice;
-            }
-            const runtime = options.runtime || _.get(existingFunction, "runtime", "nodejs6"); // legacy functions are Node 6
             utils.logBullet(
               clc.bold.cyan("functions: ") +
                 "updating " +
-                runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+                friendlyRuntimeName(runtime) +
                 " function " +
                 clc.bold(helper.getFunctionLabel(name)) +
                 "..."

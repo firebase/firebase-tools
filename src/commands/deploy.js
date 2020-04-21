@@ -1,12 +1,11 @@
 "use strict";
 
 const _ = require("lodash");
-
 const requireInstance = require("../requireInstance");
 const { requirePermissions } = require("../requirePermissions");
 const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
-const checkFirebaseSDKVersion = require("../checkFirebaseSDKVersion");
+const checkFunctionsSDKVersion = require("../checkFirebaseSDKVersion").checkFunctionsSDKVersion;
 const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
@@ -75,7 +74,7 @@ module.exports = new Command("deploy")
     }
   })
   .before(checkValidTargetFilters)
-  .before(checkFirebaseSDKVersion)
+  .before(checkFunctionsSDKVersion)
   .action(function(options) {
     return deploy(options.filteredTargets, options);
   });

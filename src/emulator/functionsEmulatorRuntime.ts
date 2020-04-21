@@ -615,14 +615,14 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     // Setup predefined environment variables for Node.js 10 and subsequent runtimes
     // https://cloud.google.com/functions/docs/env-var
     const pkg = requirePackageJson(frb);
-    if (pkg && pkg.engines && pkg.engines.node) {
+    // If nodeMajorVersion is set, we are emulating an extension so we ignore pkg.engines.node
+    // to match backend behavior.
+    if (frb.nodeMajorVersion) {
+      setNode10EnvVars(target, mode, service);
+    } else if (pkg?.engines?.node) {
       const nodeVersion = parseVersionString(pkg.engines.node);
       if (nodeVersion.major >= 10) {
-        process.env.FUNCTION_TARGET = target;
-        process.env.FUNCTION_SIGNATURE_TYPE = mode;
-        process.env.K_SERVICE = service;
-        process.env.K_REVISION = "1";
-        process.env.PORT = "80";
+        setNode10EnvVars(target, mode, service);
       }
     }
   }
@@ -692,6 +692,18 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
     .finalize();
 
   ff.config = () => proxiedConfig;
+}
+
+/**
+ * Setup predefined environment variables for Node.js 10 and subsequent runtimes
+ * https://cloud.google.com/functions/docs/env-var
+ */
+function setNode10EnvVars(target: string, mode: "event" | "http", service: string) {
+  process.env.FUNCTION_TARGET = target;
+  process.env.FUNCTION_SIGNATURE_TYPE = mode;
+  process.env.K_SERVICE = service;
+  process.env.K_REVISION = "1";
+  process.env.PORT = "80";
 }
 
 /*

@@ -7,6 +7,7 @@ import { fileExistsSync } from "../../fsutils";
 import { ExtensionSpec, Resource, Param } from "../extensionsApi";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "./paramHelper";
+import { EmulatorLogger } from "../../emulator/emulatorLogger";
 
 const SPEC_FILE = "extension.yaml";
 const validFunctionTypes = [
@@ -99,4 +100,58 @@ export function getFunctionResourcesWithParamSubstitution(
 
 export function getFunctionProperties(resources: Resource[]) {
   return resources.map((r) => r.properties);
+}
+
+/**
+ * Choses a node version to use based on the 'nodeVersion' field in resources.
+ * Currently, the emulator will use 1 node version for all functions, even though
+ * an extension can specify different node versions for each function when deployed.
+ * For now, we choose the newest version that a user lists in their function resources,
+ * and fall back to node 8 if none is listed.
+ */
+export function getNodeVersion(resources: Resource[]): string {
+  const functionNamesWithoutRuntime: string[] = [];
+  const versions = resources.map((r: Resource) => {
+    if (_.includes(r.type, "function")) {
+      if (r.properties?.runtime) {
+        return r.properties?.runtime;
+      } else {
+        functionNamesWithoutRuntime.push(r.name);
+      }
+    }
+    return "nodejs8";
+  });
+
+  if (functionNamesWithoutRuntime.length) {
+    EmulatorLogger.logLabeled(
+      "WARN",
+      "extensions",
+      `No 'runtime' property found for the following functions, defaulting to nodejs8: ${functionNamesWithoutRuntime.join(
+        ", "
+      )}`
+    );
+  }
+  const invalidRuntimes = _.filter(versions, (v) => {
+    return !_.includes(v, "nodejs");
+  });
+
+  if (invalidRuntimes.length) {
+    throw new FirebaseError(
+      `The following runtimes are not supported by the Emulator Suite: ${invalidRuntimes.join(
+        ", "
+      )}. \n Only Node runtimes are supported.`
+    );
+  }
+  if (_.includes(versions, "nodejs10")) {
+    return "10";
+  }
+  if (_.includes(versions, "nodejs6")) {
+    EmulatorLogger.logLabeled(
+      "WARN",
+      "extensions",
+      "Node 6 is deprecated. We recommend upgrading to a newer version."
+    );
+    return "6";
+  }
+  return "8";
 }
