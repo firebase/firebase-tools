@@ -56,19 +56,23 @@ var _getCallbackUrl = function(port) {
   return "http://localhost:" + port;
 };
 
-var _getLoginUrl = function(callbackUrl) {
+var _getLoginUrl = function(callbackUrl, userHint) {
   return (
     api.authOrigin +
     "/o/oauth2/auth?" +
-    _.map(
+    _.flatMap(
       {
         client_id: api.clientId,
         scope: SCOPES.join(" "),
         response_type: "code",
         state: _nonce,
         redirect_uri: callbackUrl,
+        login_hint: userHint,
       },
       function(v, k) {
+        if (!v) {
+          return [];
+        }
         return k + "=" + encodeURIComponent(v);
       }
     ).join("&")
@@ -125,9 +129,9 @@ var _respondWithFile = function(req, res, statusCode, filename) {
   });
 };
 
-var _loginWithoutLocalhost = function() {
+var _loginWithoutLocalhost = function(userHint) {
   var callbackUrl = _getCallbackUrl();
-  var authUrl = _getLoginUrl(callbackUrl);
+  var authUrl = _getLoginUrl(callbackUrl, userHint);
 
   logger.info();
   logger.info("Visit this URL on any device to log in:");
@@ -155,10 +159,10 @@ var _loginWithoutLocalhost = function() {
     });
 };
 
-var _loginWithLocalhost = function(port) {
+var _loginWithLocalhost = function(port, userHint) {
   return new Promise(function(resolve, reject) {
     var callbackUrl = _getCallbackUrl(port);
-    var authUrl = _getLoginUrl(callbackUrl);
+    var authUrl = _getLoginUrl(callbackUrl, userHint);
 
     var server = http.createServer(function(req, res) {
       var tokens;
@@ -195,16 +199,23 @@ var _loginWithLocalhost = function(port) {
     });
 
     server.on("error", function() {
-      _loginWithoutLocalhost().then(resolve, reject);
+      _loginWithoutLocalhost(userHint).then(resolve, reject);
     });
   });
 };
 
-var login = function(localhost) {
+var login = function(localhost, userHint) {
   if (localhost) {
-    return _getPort().then(_loginWithLocalhost, _loginWithoutLocalhost);
+    return _getPort().then(
+      function(port) {
+        return _loginWithLocalhost(port, userHint);
+      },
+      function() {
+        return _loginWithoutLocalhost(userHint);
+      }
+    );
   }
-  return _loginWithoutLocalhost();
+  return _loginWithoutLocalhost(userHint);
 };
 
 var _haveValidAccessToken = function(refreshToken, authScopes) {
