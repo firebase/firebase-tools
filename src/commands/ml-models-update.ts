@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { FirebaseModel } from "../ml/models";
 
-module.exports = new Command("ml:models:update <modelId>")
+export default new Command("ml:models:update <modelId>")
   .description(
     "updates the Firebase ML Model with the given modelId. At least one option must be specified."
   )

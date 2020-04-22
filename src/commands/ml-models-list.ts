@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { FirebaseModel } from "../ml/models";
 
-module.exports = new Command("ml:models:list")
+export default new Command("ml:models:list")
   .description("lists all the Firebase ML Models in the current project.")
   .option("-f --filter <filterString>", "(optional) A valid filterString.")
   .action(
