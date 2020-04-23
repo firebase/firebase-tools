@@ -42,8 +42,8 @@ export class FirestoreEmulator implements EmulatorInstance {
         // There have been some race conditions reported (on Windows) where reading the
         // file too quickly after the watcher fires results in an empty file being read.
         // Adding a small delay prevents that at very little cost.
-        await new Promise(res => setTimeout(res, 5));
-        
+        await new Promise((res) => setTimeout(res, 5));
+
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
         const newContent = fs.readFileSync(rulesPath, "utf8").toString();
         const issues = await this.updateRules(newContent);
