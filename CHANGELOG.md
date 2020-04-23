@@ -1,2 +1,1 @@
 - Improves login flow when using the `--reauth` flag.
-- Removes old code paths that are no longer used.
