@@ -100,7 +100,6 @@ var api = {
     "FIREBASE_CLOUDLOGGING_URL",
     "https://logging.googleapis.com"
   ),
-  adminOrigin: utils.envOverride("FIREBASE_ADMIN_URL", "https://admin.firebase.com"),
   appDistributionOrigin: utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
@@ -225,12 +224,15 @@ var api = {
     options = _.extend(
       {
         data: {},
-        origin: api.adminOrigin, // default to hitting the admin backend
         resolveOnHTTPError: false, // by default, status codes >= 400 leads to reject
         json: true,
       },
       options
     );
+
+    if (!options.origin) {
+      throw new FirebaseError("Cannot make request without an origin", { exit: 2 });
+    }
 
     var validMethods = ["GET", "PUT", "POST", "DELETE", "PATCH"];
 
