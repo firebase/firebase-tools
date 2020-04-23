@@ -1,1 +1,2 @@
 - Improves login flow when using the `--reauth` flag.
+- Increases minimum Node.js version to v8.6.0, accurately reflecting underlying requirements.
