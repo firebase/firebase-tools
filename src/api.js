@@ -169,6 +169,7 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
+  mlOrigin: utils.envOverride("FIREBASE_ML_URL", "https://firebaseml.googleapis.com"),
 
   setRefreshToken: function(token) {
     refreshToken = token;
