@@ -1,2 +1,3 @@
 - Improves login flow when using the `--reauth` flag.
 - Increases minimum Node.js version to v8.6.0, accurately reflecting underlying requirements of the CLI tool.
+- Fixes possible bug with rules hot reloading showing empty content (#2132).
