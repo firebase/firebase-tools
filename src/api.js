@@ -300,32 +300,6 @@ var api = {
       return Promise.reject(err);
     });
   },
-
-  /**
-   * Deprecated. Call `listFirebaseProjects()` from `./management/project.ts` instead
-   * TODO: remove this function
-   */
-  getProjects: function() {
-    logger.debug(
-      `[WARNING] ${new Error("getProjects() is deprecated - update the implementation").stack}`
-    );
-    return api
-      .request("GET", "/v1/projects", {
-        auth: true,
-      })
-      .then(function(res) {
-        if (res.body && res.body.projects) {
-          return res.body.projects;
-        }
-
-        return Promise.reject(
-          new FirebaseError("Server Error: Unexpected Response. Please try again", {
-            context: res,
-            exit: 2,
-          })
-        );
-      });
-  },
 };
 
 module.exports = api;
