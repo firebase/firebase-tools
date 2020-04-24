@@ -1,2 +1,3 @@
 - Improves login flow when using the `--reauth` flag.
 - Increases minimum Node.js version to v8.6.0, accurately reflecting underlying requirements of the CLI tool.
+- Updates `firebase-functions` and `typescript` dependencies in template files for `firebase init`.
