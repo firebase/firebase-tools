@@ -1,4 +1,2 @@
-- Improves error messages for Cloud Functions for Firebase deployment permissions. (#2086)
-- Makes `firestore:delete` respect `FIRESTORE_EMULATOR_HOST`.
-- Makes `database:get`, `database:set`, `database:push`, and `database:update` respect `FIREBASE_DATABASE_EMULATOR_HOST`.
-- Makes `functions:shell` connect to running service emulators when appropriate.
+- Improves login flow when using the `--reauth` flag.
+- Increases minimum Node.js version to v8.6.0, accurately reflecting underlying requirements of the CLI tool.

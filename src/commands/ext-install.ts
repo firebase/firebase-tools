@@ -183,12 +183,10 @@ export default new Command("ext:install [extensionName]")
           source = await createSourceFromLocation(projectId, extensionName);
         } catch (err) {
           throw new FirebaseError(
-            `Unable to find official extension named ${clc.bold(extensionName)} ` +
-              `or local extension at ${clc.bold(extensionName)}` +
-              `Run ${clc.bold(
-                "firebase ext:install -i"
-              )} to select from the list of all available official extensions.`,
-            { original: err }
+            `Unable to find official extension named ${clc.bold(extensionName)}, ` +
+              `and encountered the following error when trying to create an extension from '${clc.bold(
+                extensionName
+              )}':\n ${err.message}`
           );
         }
       } else {

@@ -225,6 +225,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       debugPort: inspectFunctions,
       env: options.extensionEnv,
       predefinedTriggers: options.extensionTriggers,
+      nodeMajorVersion: options.extensionNodeVersion,
     });
     await startEmulator(functionsEmulator);
   }
