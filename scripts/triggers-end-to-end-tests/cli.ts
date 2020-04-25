@@ -59,12 +59,10 @@ export class CLIProcess {
     const stopped = new Promise((resolve) => {
       this.process?.on("exit", (/* exitCode, signal */) => {
         this.process = undefined;
-        console.log('killed.')
         resolve();
       });
     }).then(() => undefined); // Fixes return type.
 
-    console.error("killing");
     this.process.kill("SIGINT");
     return stopped;
   }

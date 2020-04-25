@@ -46,7 +46,6 @@ describe("database and firestore emulator function triggers", () => {
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
 
-    console.log(111);
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
     await new Promise((resolve) =>
@@ -124,16 +123,12 @@ describe("database and firestore emulator function triggers", () => {
   });
 
   after(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
     await firestore?.terminate();
-    // eslint-disable-next-line no-invalid-this
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (test) {
-      console.log('test stopping');
-      await test.stopEmulators();
-    }
-    console.log('test stopped');
+    await test?.stopEmulators();
   });
 
   it("should write to the database emulator", async function() {
