@@ -2,7 +2,7 @@
 
 source scripts/set-default-credentials.sh
 
-# npm link
+npm link
 
 mocha \
   --require ts-node/register \
