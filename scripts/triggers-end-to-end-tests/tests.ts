@@ -8,7 +8,7 @@ import * as path from "path";
 import { CLIProcess } from "./cli";
 import { TriggerEndToEndTest } from "./framework";
 
-const FIREBASE_PROJECT = process.env.FIREBASE_PROJECT || "";
+const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
 const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to connect.";
 
