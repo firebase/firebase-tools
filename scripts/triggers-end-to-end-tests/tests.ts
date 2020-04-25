@@ -34,7 +34,7 @@ function readConfig(): unknown {
   return JSON.parse(data);
 }
 
-describe.only("database and firestore emulator function triggers", () => {
+describe("database and firestore emulator function triggers", () => {
   let test: TriggerEndToEndTest;
   let database: admin.database.Database | undefined;
   let firestore: admin.firestore.Firestore | undefined;
