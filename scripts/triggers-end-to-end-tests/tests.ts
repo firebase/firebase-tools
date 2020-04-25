@@ -34,11 +34,11 @@ function readConfig(): unknown {
   return JSON.parse(data);
 }
 
-describe("database and firestore emulator function triggers", () => {
+describe.only("database and firestore emulator function triggers", () => {
   let test: TriggerEndToEndTest;
   let database: admin.database.Database | undefined;
   let firestore: admin.firestore.Firestore | undefined;
-  let firestoreUnsub: Array<() => void> = [];
+  const firestoreUnsub: Array<() => void> = [];
 
   before(async function() {
     // eslint-disable-next-line no-invalid-this
@@ -128,7 +128,7 @@ describe("database and firestore emulator function triggers", () => {
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
     await firestore?.terminate();
-    await test?.stopEmulators();
+    await test.stopEmulators();
   });
 
   it("should write to the database emulator", async function() {
@@ -186,9 +186,7 @@ describe("pubsub emulator function triggers", () => {
   after(async function() {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
-    if (test) {
-      await test.stopEmulators();
-    }
+    await test.stopEmulators();
   });
 
   it("should write to the pubsub emulator", async function() {
@@ -222,6 +220,7 @@ describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function() {
     // eslint-disable-next-line no-invalid-this
     this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Start up emulator suite
     const emulatorsCLI = new CLIProcess("1", __dirname);
@@ -230,8 +229,8 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "firestore"],
       (data: unknown) => {
-        if (typeof data != "string") {
-          throw new Error("Data is not a string");
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
       }
@@ -240,7 +239,13 @@ describe("import/export end to end", () => {
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath]);
+    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
 
     // Stop the suite
     await emulatorsCLI.stop();
@@ -252,13 +257,15 @@ describe("import/export end to end", () => {
       FIREBASE_PROJECT,
       ["--only", "firestore", "--import", exportPath],
       (data: unknown) => {
-        if (typeof data != "string") {
-          throw new Error("Data is not a string");
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
         }
         return data.includes(ALL_EMULATORS_STARTED_LOG);
       }
     );
 
     await importCLI.stop();
+
+    expect(true).to.be.true;
   });
 });
