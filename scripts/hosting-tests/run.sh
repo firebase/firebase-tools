@@ -21,10 +21,6 @@ echo "Creating temp directory..."
 TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
 
-echo "Installing firebase-tools..."
-npm link
-echo "Installed firebase-tools: $(which firebase)"
-
 echo "Initalizing temp directory..."
 cd "${TEMP_DIR}"
 cat > "firebase.json" <<- EOM
