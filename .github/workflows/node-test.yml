@@ -14,22 +14,23 @@ jobs:
     strategy:
       matrix:
         node-version: [8.x]
-    - uses: actions/checkout@v1
-    - uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
-    - uses: actions/cache@v1
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
-    - run: npm ci
-    - run: npm pack
-    - shell: bash
-      run: mkdir builds && mv firebase-tools-*.tgz builds/firebase-tools-${{ github.sha }}.tgz
-    - uses: actions/upload-artifact@v1
-      with:
-        name: module-package
-        path: builds
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+      - run: npm ci
+      - run: npm pack
+      - shell: bash
+        run: mkdir builds && mv firebase-tools-*.tgz builds/firebase-tools-${{ github.sha }}.tgz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: module-package
+          path: builds
 
   lint:
     runs-on: ubuntu-latest
@@ -111,8 +112,8 @@ jobs:
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - name: download built firebase-tools package
         uses: actions/download-artifact@v1
-          with:
-            name: module-package
+        with:
+          name: module-package
       - name: install firebase-tools from package
         run: npm i --global module-package/firebase-tools-${{ github.sha }}.tgz
       - run: ${{ matrix.script }}
