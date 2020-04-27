@@ -13,6 +13,20 @@ const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to connect.";
 
+interface ConnectionInfo {
+  host: string;
+  port: number;
+}
+
+export interface FrameworkOptions {
+  emulators: {
+    database: ConnectionInfo;
+    firestore: ConnectionInfo;
+    functions: ConnectionInfo;
+    pubsub: ConnectionInfo;
+  };
+}
+
 export class TriggerEndToEndTest {
   rtdbEmulatorHost = "localhost";
   rtdbEmulatorPort: number;
@@ -32,7 +46,7 @@ export class TriggerEndToEndTest {
   firestoreFromFirestore = false;
   cliProcess?: CLIProcess;
 
-  constructor(public project: string, private readonly workdir: string, config: any) {
+  constructor(public project: string, private readonly workdir: string, config: FrameworkOptions) {
     this.rtdbEmulatorPort = config.emulators.database.port;
     this.firestoreEmulatorPort = config.emulators.firestore.port;
     this.functionsEmulatorPort = config.emulators.functions.port;
@@ -43,7 +57,7 @@ export class TriggerEndToEndTest {
    * Check that all directions of database <-> functions <-> firestore
    * worked.
    */
-  success() {
+  success(): boolean {
     return (
       this.rtdbFromFirestore &&
       this.rtdbFromRtdb &&
@@ -52,7 +66,7 @@ export class TriggerEndToEndTest {
     );
   }
 
-  startEmulators(additionalArgs: string[] = []) {
+  startEmulators(additionalArgs: string[] = []): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
     const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
       if (typeof data != "string" && !Buffer.isBuffer(data)) {
@@ -85,7 +99,7 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  invokeHttpFunction(name: string): Promise<unknown> {
+  invokeHttpFunction(name: string): Promise<request.Response> {
     return new Promise((resolve, reject) => {
       const url = `http://localhost:${[
         this.functionsEmulatorPort,
@@ -101,19 +115,19 @@ export class TriggerEndToEndTest {
     });
   }
 
-  writeToRtdb(): Promise<unknown> {
+  writeToRtdb(): Promise<request.Response> {
     return this.invokeHttpFunction("writeToRtdb");
   }
 
-  writeToFirestore(): Promise<unknown> {
+  writeToFirestore(): Promise<request.Response> {
     return this.invokeHttpFunction("writeToFirestore");
   }
 
-  writeToPubsub(): Promise<unknown> {
+  writeToPubsub(): Promise<request.Response> {
     return this.invokeHttpFunction("writeToPubsub");
   }
 
-  writeToScheduledPubsub(): Promise<unknown> {
+  writeToScheduledPubsub(): Promise<request.Response> {
     return this.invokeHttpFunction("writeToScheduledPubsub");
   }
 

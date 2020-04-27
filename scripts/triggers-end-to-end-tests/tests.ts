@@ -6,7 +6,7 @@ import * as os from "os";
 import * as path from "path";
 
 import { CLIProcess } from "./cli";
-import { TriggerEndToEndTest } from "./framework";
+import { FrameworkOptions, TriggerEndToEndTest } from "./framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 
@@ -28,7 +28,7 @@ const EMULATOR_TEST_TIMEOUT = EMULATORS_WRITE_DELAY_MS * 2;
 const FIRESTORE_COMPLETION_MARKER = "test/done_from_firestore";
 const DATABASE_COMPLETION_MARKER = "test/done_from_database";
 
-function readConfig(): unknown {
+function readConfig(): FrameworkOptions {
   const filename = path.join(__dirname, "firebase.json");
   const data = fs.readFileSync(filename, "utf8");
   return JSON.parse(data);
@@ -135,7 +135,7 @@ describe("database and firestore emulator function triggers", () => {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
-    const response: any = await test.writeToRtdb();
+    const response = await test.writeToRtdb();
     expect(response.statusCode).to.equal(200);
   });
 
@@ -143,7 +143,7 @@ describe("database and firestore emulator function triggers", () => {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
-    const response: any = await test.writeToFirestore();
+    const response = await test.writeToFirestore();
     expect(response.statusCode).to.equal(200);
 
     /*
@@ -193,7 +193,7 @@ describe("pubsub emulator function triggers", () => {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
-    const response: any = await test.writeToPubsub();
+    const response = await test.writeToPubsub();
     expect(response.statusCode).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
@@ -206,7 +206,7 @@ describe("pubsub emulator function triggers", () => {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
-    const response: any = await test.writeToScheduledPubsub();
+    const response = await test.writeToScheduledPubsub();
     expect(response.statusCode).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
