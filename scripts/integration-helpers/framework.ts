@@ -19,7 +19,7 @@ interface ConnectionInfo {
 }
 
 export interface FrameworkOptions {
-  emulators: {
+  emulators?: {
     database: ConnectionInfo;
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
@@ -29,13 +29,13 @@ export interface FrameworkOptions {
 
 export class TriggerEndToEndTest {
   rtdbEmulatorHost = "localhost";
-  rtdbEmulatorPort: number;
+  rtdbEmulatorPort = 0;
   firestoreEmulatorHost = "localhost";
-  firestoreEmulatorPort: number;
+  firestoreEmulatorPort = 0;
   functionsEmulatorHost = "localhost";
-  functionsEmulatorPort: number;
+  functionsEmulatorPort = 0;
   pubsubEmulatorHost = "localhost";
-  pubsubEmulatorPort: number;
+  pubsubEmulatorPort = 0;
   allEmulatorsStarted = false;
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
@@ -47,10 +47,12 @@ export class TriggerEndToEndTest {
   cliProcess?: CLIProcess;
 
   constructor(public project: string, private readonly workdir: string, config: FrameworkOptions) {
-    this.rtdbEmulatorPort = config.emulators.database.port;
-    this.firestoreEmulatorPort = config.emulators.firestore.port;
-    this.functionsEmulatorPort = config.emulators.functions.port;
-    this.pubsubEmulatorPort = config.emulators.pubsub.port;
+    if (config.emulators) {
+      this.rtdbEmulatorPort = config.emulators.database?.port;
+      this.firestoreEmulatorPort = config.emulators.firestore?.port;
+      this.functionsEmulatorPort = config.emulators.functions?.port;
+      this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+    }
   }
 
   /*
@@ -91,27 +93,37 @@ export class TriggerEndToEndTest {
     return started;
   }
 
-  startEmulatorsAndWait(additionalArgs: string[], done: (_: unknown) => void): void {
-    this.startEmulators(additionalArgs).then(done);
+  startExtEmulators(additionalArgs: string[]): Promise<void> {
+    const cli = new CLIProcess("default", this.workdir);
+    const started = cli.start(
+      "ext:dev:emulators:start",
+      this.project,
+      additionalArgs,
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    this.cliProcess = cli;
+    return started;
   }
 
   stopEmulators(): Promise<void> {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  invokeHttpFunction(name: string): Promise<request.Response> {
+  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<request.Response> {
+    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
+      "/"
+    )}`;
     return new Promise((resolve, reject) => {
-      const url = `http://localhost:${[
-        this.functionsEmulatorPort,
-        this.project,
-        FIREBASE_PROJECT_ZONE,
-        name,
-      ].join("/")}`;
-
-      console.log(`URL: ${url}`);
-      const req = request.get(url);
-      req.once("response", resolve);
-      req.once("error", reject);
+      request.get(url, {}, (err, res) => {
+        if (err) return reject(err);
+        resolve(res);
+      });
     });
   }
 
