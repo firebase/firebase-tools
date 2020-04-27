@@ -8,6 +8,29 @@ env:
   CI: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        node-version: [8.x]
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - uses: actions/cache@v1
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+    - run: npm ci
+    - run: npm pack
+    - shell: bash
+      run: mkdir builds && mv firebase-tools-*.tgz builds/firebase-tools-${{ github.sha }}.tgz
+    - uses: actions/upload-artifact@v1
+      with:
+        name: module-package
+        path: builds
+
   lint:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -54,7 +77,7 @@ jobs:
       - run: npm test
 
   integration:
-    needs: unit
+    needs: [unit, build]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
@@ -68,52 +91,42 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version:
-          - 8.x
+        node-version: [8.x]
         script:
           - npm run test:hosting
           - ./scripts/test-triggers-end-to-end.sh
           - npm run test:client-integration
           - npm run test:extensions-emulator
+
     steps:
-      - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
         with:
-          node-version: 8.x
-
-      - name: Cache npm
-        uses: actions/cache@v1
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Cache firebase emulators
+          node-version: ${{ matrix.node-version }}
+      - name: cache firebase emulators
         uses: actions/cache@v1
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
-
-      - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
+      - name: download built firebase-tools package
+        uses: actions/download-artifact@v1
+          with:
+            name: module-package
+      - name: install firebase-tools from package
+        run: npm i --global module-package/firebase-tools-${{ github.sha }}.tgz
       - run: ${{ matrix.script }}
-
-      - name: Print debug logs
+      - name: print debug logs
         if: failure()
         run: find . -type f -name "*debug.log" | xargs cat
 
   check-package-lock:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [12.x]
-
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - uses: actions/setup-node@v1
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 12.x
       - run: npm install --package-lock-only
       - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
