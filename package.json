@@ -22,8 +22,9 @@
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run mocha",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
+    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
-    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh"
+    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh"
   },
   "files": [
     "lib",
