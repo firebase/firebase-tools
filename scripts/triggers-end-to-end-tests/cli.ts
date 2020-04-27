@@ -17,10 +17,11 @@ export class CLIProcess {
       args.push(...additionalArgs);
     }
 
-    this.process = subprocess.spawn("firebase", args, { cwd: this.workdir });
-    if (!this.process) {
+    const p = subprocess.spawn("firebase", args, { cwd: this.workdir });
+    if (!p) {
       throw new Error("Failed to start firebase CLI");
     }
+    this.process = p;
 
     this.process.stdout.on("data", (data: unknown) => {
       process.stdout.write(`[${this.name} stdout] ` + data);
@@ -32,16 +33,24 @@ export class CLIProcess {
 
     let started: Promise<void>;
     if (logDoneFn) {
-      started = new Promise((resolve) => {
-        this.process?.stdout.on("data", (data: unknown) => {
+      started = new Promise((resolve, reject) => {
+        const customCallback = (data: unknown): void => {
           if (logDoneFn(data)) {
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            p.stdout.removeListener("close", customFailure);
             resolve();
           }
-        });
+        };
+        const customFailure = (): void => {
+          p.stdout.removeListener("data", customCallback);
+          reject(new Error("failed to resolve startup before process.stdout closed"));
+        };
+        p.stdout.on("data", customCallback);
+        p.stdout.on("close", customFailure);
       });
     } else {
       started = new Promise((resolve) => {
-        this.process?.once("close", () => {
+        p.once("close", () => {
           this.process = undefined;
           resolve();
         });
