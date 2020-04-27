@@ -52,18 +52,19 @@ export class CLIProcess {
   }
 
   stop(): Promise<void> {
-    if (!this.process) {
+    const p = this.process;
+    if (!p) {
       return Promise.resolve();
     }
 
     const stopped = new Promise((resolve) => {
-      this.process?.once("exit", (/* exitCode, signal */) => {
+      p.once("exit", (/* exitCode, signal */) => {
         this.process = undefined;
         resolve();
       });
     }).then(() => undefined); // Fixes return type.
 
-    this.process.kill("SIGINT");
+    p.kill("SIGINT");
     return stopped;
   }
 }
