@@ -2,3 +2,4 @@
 - Increases minimum Node.js version to v8.6.0, accurately reflecting underlying requirements of the CLI tool.
 - Updates `firebase-functions` and `typescript` dependencies in template files for `firebase init`.
 - Adds the project number to the output when listing projects.
+- Fixes possible bug with rules hot reloading showing empty content (#2132).
