@@ -48,9 +48,7 @@ describe("database and firestore emulator function triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await new Promise((resolve) =>
-      test.startEmulatorsAndWait(["--only", "functions,database,firestore"], resolve)
-    );
+    await test.startEmulators(["--only", "functions,database,firestore"]);
 
     firestore = new Firestore({
       port: test.firestoreEmulatorPort,
@@ -178,9 +176,7 @@ describe("pubsub emulator function triggers", () => {
 
     const config = readConfig();
     test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
-    await new Promise((resolve) =>
-      test.startEmulatorsAndWait(["--only", "functions,pubsub"], resolve)
-    );
+    await test.startEmulators(["--only", "functions,pubsub"]);
   });
 
   after(async function() {

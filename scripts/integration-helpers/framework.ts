@@ -93,10 +93,6 @@ export class TriggerEndToEndTest {
     return started;
   }
 
-  startEmulatorsAndWait(additionalArgs: string[], done: (_: unknown) => void): void {
-    this.startEmulators(additionalArgs).then(done);
-  }
-
   startExtEmulators(additionalArgs: string[]): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
     const started = cli.start(
