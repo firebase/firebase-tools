@@ -57,7 +57,14 @@ export async function requireAuth(options: any): Promise<void> {
   } else if (user) {
     logger.debug("> authorizing via signed-in user");
   } else {
-    return autoAuth(options, options.authScopes);
+    try {
+      return await autoAuth(options, options.authScopes);
+    } catch (e) {
+      throw new FirebaseError(
+        `Failed to authenticate, have you run ${clc.bold("firebase login")}?`,
+        { original: e }
+      );
+    }
   }
 
   tokenOpt = tokenOpt || process.env.FIREBASE_TOKEN;
