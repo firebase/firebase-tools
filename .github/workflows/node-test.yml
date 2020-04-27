@@ -71,7 +71,7 @@ jobs:
         node-version:
           - 8.x
         script:
-          - ./scripts/test-hosting.sh
+          - npm run test:hosting
           - npm run test:client-integration
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
