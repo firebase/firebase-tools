@@ -116,7 +116,7 @@ jobs:
         with:
           name: module-package
       - name: install firebase-tools from package
-        run: npm i --global module-package/firebase-tools-${{ github.sha }}.tgz
+        run: npm i --global ./module-package/firebase-tools-${{ github.sha }}.tgz
       - run: ${{ matrix.script }}
       - name: print debug logs
         if: failure()
