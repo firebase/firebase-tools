@@ -95,9 +95,9 @@ jobs:
         node-version: [8.x]
         script:
           - npm run test:hosting
-          - ./scripts/test-triggers-end-to-end.sh
           - npm run test:client-integration
           - npm run test:extensions-emulator
+          - npm run test:triggers-end-to-end
 
     steps:
       - uses: actions/checkout@v1
