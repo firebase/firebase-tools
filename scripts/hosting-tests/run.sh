@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -e
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 CWD="$(pwd)"
 
-source $DIR/set-default-credentials.sh
+source scripts/set-default-credentials.sh
 
 TARGET_FILE="${COMMIT_SHA}-${CI_JOB_ID}.txt"
 
@@ -22,13 +21,8 @@ echo "Creating temp directory..."
 TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
 
-echo "Building and packaging firebase-tools..."
-npm pack
-FBT_PACKAGE="$(pwd)/$(ls *.tgz)"
-echo "Built and packaged firebase-tools: ${FBT_PACKAGE}"
-
 echo "Installing firebase-tools..."
-npm install --global "${FBT_PACKAGE}"
+npm link
 echo "Installed firebase-tools: $(which firebase)"
 
 echo "Initalizing temp directory..."
@@ -60,6 +54,17 @@ test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && fa
 kill "$PID"
 wait
 echo "Tested local serve."
+
+echo "Testing local hosting emulator..."
+PORT=5000
+firebase emulators:start --only hosting --project "${FBTOOLS_TARGET_PROJECT}" &
+PID="$!"
+sleep 5
+VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
+test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+kill "$PID"
+wait
+echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
