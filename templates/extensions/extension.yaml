@@ -1,6 +1,7 @@
-# Learn detailed information about the fields of an extension.yaml file in the docs
+# Learn detailed information about the fields of an extension.yaml file in the docs:
+# https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml
 
-name: greet-the-world  # Identifier for the extension
+name: greet-the-world  # Identifier for your extension
 version: 0.0.1  # Follow semver versioning
 specVersion: v1beta  # Version of the Firebase Extensions specification
 
@@ -9,48 +10,58 @@ displayName: Greet the world
 
 # Brief description of the task your extension performs (~1 sentence)
 description: >-
-  Sends the world a specified greeting.
+  Sends the world a greeting.
 
 license: Apache-2.0  # https://spdx.org/licenses/
 
 # Public URL for the source code of your extension
 sourceUrl: https://github.com/firebase/firebase-tools/tree/master/templates/extensions
 
-billingRequired: false  # Learn more in the docs
+# Specify whether a paid-tier billing plan is required to use your extension.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#billing-required-field
+billingRequired: false
 
-# For your extension to interact with other Google APIs (like Firestore, Cloud Storage, or Cloud Translation),
-# set the `apis` field. In addition, set the `roles` field to grant appropriate IAM access to interact with these products.
-# Learn about these fields in the docs
+# In an `apis` field, list any Google APIs (like Cloud Translation, BigQuery, etc.)
+# required for your extension to operate.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#apis-field
 
-# Learn about the `resources` field in the docs
+# In a `roles` field, list any IAM access roles required for your extension to operate.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#roles-field
+
+# In the `resources` field, list each of your extension's functions, including the trigger for each function.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#resources-field
 resources:
   - name: greetTheWorld
     type: firebaseextensions.v1beta.function
     description: >-
-      HTTPS-triggered function that responds with a specified greeting message
+      HTTP request-triggered function that responds with a specified greeting message
     properties:
+      # LOCATION is a user-configured parameter value specified by the user during installation.
       location: ${LOCATION}
+      # httpsTrigger is used for an HTTP triggered function.
       httpsTrigger: {}
       runtime: "nodejs8"
 
-# Learn about the `params` field in the docs
+# In the `params` field, set up your extension's user-configured parameters.
+# Learn more in the docs: https://firebase.google.com/docs/extensions/alpha/ref-extension-yaml#params-field
 params:
   - param: GREETING
-    type: string
     label: Greeting for the world
     description: >-
-      What do you want to say to the world? For example, Hello world? or What's up, world?
+      What do you want to say to the world?
+      For example, Hello world? or What's up, world?
+    type: string
     default: Hello
     required: true
     immutable: false
 
   - param: LOCATION
-    type: select
     label: Cloud Functions location
     description: >-
-      Where do you want to deploy the functions created for this extension? For help selecting a
-      location, refer to the [location selection
+      Where do you want to deploy the functions created for this extension?
+      For help selecting a location, refer to the [location selection
       guide](https://firebase.google.com/docs/functions/locations).
+    type: select
     options:
       - label: Iowa (us-central1)
         value: us-central1
