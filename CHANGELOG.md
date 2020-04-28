@@ -1,0 +1,1 @@
+- Sets FIREBASE_CONFIG environment variable during functions deploys to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
