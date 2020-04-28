@@ -172,7 +172,7 @@ module.exports = function(context, options, payload) {
       deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
 
-      const envVariables = {
+      const defaultEnvVariables = {
         FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
       };
 
@@ -216,7 +216,7 @@ module.exports = function(context, options, payload) {
                   availableMemoryMb: functionInfo.availableMemoryMb,
                   timeout: functionInfo.timeout,
                   maxInstances: functionInfo.maxInstances,
-                  environmentVariables: envVariables,
+                  environmentVariables: defaultEnvVariables,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -292,7 +292,7 @@ module.exports = function(context, options, payload) {
               timeout: functionInfo.timeout,
               runtime: runtime,
               maxInstances: functionInfo.maxInstances,
-              environmentVariables: envVariables,
+              environmentVariables: _.assign({}, existingFunction.environmentVariables, defaultEnvVariables),
             };
             utils.logBullet(
               clc.bold.cyan("functions: ") +
