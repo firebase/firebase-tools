@@ -292,7 +292,11 @@ module.exports = function(context, options, payload) {
               timeout: functionInfo.timeout,
               runtime: runtime,
               maxInstances: functionInfo.maxInstances,
-              environmentVariables: _.assign({}, existingFunction.environmentVariables, defaultEnvVariables),
+              environmentVariables: _.assign(
+                {},
+                existingFunction.environmentVariables,
+                defaultEnvVariables
+              ),
             };
             utils.logBullet(
               clc.bold.cyan("functions: ") +
