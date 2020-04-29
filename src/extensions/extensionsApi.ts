@@ -199,7 +199,9 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
         pageToken,
       },
     });
-    instances.push(...res.body.instances);
+    if (Array.isArray(res.body.instances)) {
+      instances.push(...res.body.instances);
+    }
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }
