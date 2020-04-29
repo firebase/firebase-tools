@@ -90,6 +90,7 @@ module.exports = function(client) {
   client.logout = loadCommand("logout");
   client.ml = {};
   client.ml.deleteModel = loadCommand("ml-models-delete");
+  client.ml.getModel = loadCommand("ml-models-get");
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");

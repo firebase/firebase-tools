@@ -1,5 +1,10 @@
+import Table = require("cli-table");
 import { ensure } from "../ensureApiEnabled";
 import * as getProjectId from "../getProjectId";
+import { FirebaseModel } from "./models";
+
+export const logPrefix = "ml";
+export const verticalTableFormat = { style: { head: ["yellow"] } };
 
 /**
  * Ensures the Firebase ML API is enabled for the project.
@@ -21,4 +26,56 @@ export function isValidModelId(modelId: string): boolean {
     return false;
   }
   return !isNaN(Number(modelId));
+}
+
+/**
+ * Extracts the modelId from the modelName.
+ * @param resourceName The full resource name of the model to extract the ID from.
+ * @return {string} The modelId portion of the model name.
+ */
+function extractModelId(resourceName: string): string {
+  return resourceName?.split("/").pop() || "";
+}
+
+/**
+ * Extract a status string from a model based on its state property.
+ * @param model The model to extract the status string from
+ * @return {string} The status of the model.
+ */
+function extractModelStatus(model: FirebaseModel): string {
+  if (model.state?.validationError) {
+    return "Invalid";
+  }
+  if (model.state?.published) {
+    return "Published";
+  }
+  return "Ready to publish";
+}
+
+/**
+ * Creates the display table for a model. (Used in GetModel.)
+ * @param model The model to create the display Table for.
+ * @return {Table} The display table.
+ */
+export function getTableForModel(model: FirebaseModel): Table {
+  const table = new Table(verticalTableFormat);
+  table.push({ modelId: extractModelId(model.name) }, { displayName: model.displayName });
+  if (model.tags) {
+    table.push({ tags: model.tags.join(", ") });
+  }
+  table.push({ status: extractModelStatus(model) });
+  table.push({ locked: (model.activeOperations !== undefined).toString() });
+  if (model.tfliteModel) {
+    table.push(
+      { modelFormat: "TFLite" },
+      { "modelSize (bytes)": model.tfliteModel.sizeBytes },
+      { modelSource: model.tfliteModel.automlModel || model.tfliteModel.gcsTfliteUri || "unknown" }
+    );
+  }
+  table.push(
+    { createDate: new Date(model.createTime).toUTCString() },
+    { updateDate: new Date(model.updateTime).toUTCString() }
+  );
+
+  return table;
 }
