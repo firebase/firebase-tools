@@ -1,2 +1,2 @@
 - Fixes an issue where `ext:list` would fail when no extensions were installed.
-- Ffixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
+- Fixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
