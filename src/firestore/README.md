@@ -1,4 +1,7 @@
+Now let's just do plain Markdown that works here and in Firesite.
 
-/**
- * An entry specifying a compound or other non-default index.
- */
+h2. A head
+Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
+
+h2. Another head
+Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
