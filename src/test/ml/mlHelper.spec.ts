@@ -95,7 +95,7 @@ describe("mlHelper", () => {
         { displayName: DISPLAY_NAME_1 },
         { tags: TAGS_12_STRING },
         { status: "Published" },
-        { locked: "false" },
+        { locked: false },
         { modelFormat: "TFLite" },
         { "modelSize (bytes)": SIZE_BYTES },
         { modelSource: GCS_TFLITE_URI },
@@ -112,7 +112,7 @@ describe("mlHelper", () => {
         { displayName: DISPLAY_NAME_2 },
         { tags: TAGS_123_STRING },
         { status: "Ready to publish" },
-        { locked: "false" },
+        { locked: false },
         { modelFormat: "TFLite" },
         { "modelSize (bytes)": SIZE_BYTES },
         { modelSource: GCS_TFLITE_URI },
@@ -128,7 +128,7 @@ describe("mlHelper", () => {
         { modelId: MODEL_ID_3 },
         { displayName: DISPLAY_NAME_3 },
         { status: "Invalid" },
-        { locked: "false" },
+        { locked: false },
         { createDate: CREATE_TIME_STRING },
         { updateDate: UPDATE_TIME_STRING }
       );

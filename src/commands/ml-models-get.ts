@@ -7,6 +7,7 @@ import { ensureFirebaseMlApiEnabled, isValidModelId, getTableForModel } from "..
 import * as mlApi from "../ml/mlApi";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
+import * as utils from "../utils";
 
 export default new Command("ml:models:get <modelId>")
   .description("get the Firebase ML Model with the given modelId")
@@ -26,28 +27,31 @@ export default new Command("ml:models:get <modelId>")
         model = await mlApi.getModel(projectId, modelId);
       } catch (err) {
         if (err.status === 404) {
-          return Promise.reject(
-            new FirebaseError(`No model ${modelId} in project ${projectId}.`, options)
-          );
+          throw new FirebaseError(`No model ${modelId} in project ${projectId}.`, options);
         }
         throw err;
       }
 
       if (model.state?.validationError) {
-        logger.info(
+        logger.info();
+        utils.logWarning(
           clc.bold.red(
-            `\n\n    Model ${modelId} has validation error: ${model.state.validationError.message}\n`
+            `Model ${modelId} has validation error: ${model.state.validationError.message}`
           )
         );
+        logger.info();
         logger.info("To update this model with a valid source run:");
         logger.info("$ firebase ", `ml:models:update ${modelId} --source <your_source>`);
       }
 
       const table = getTableForModel(model);
-      logger.info("\n" + table.toString());
 
-      logger.info("\nView your model in the firebase console:");
-      logger.info(`\n    https://console.firebase.google.com/project/${projectId}/ml/custom\n`);
+      logger.info();
+      logger.info(table.toString());
+      logger.info();
+      logger.info("View your model in the firebase console:");
+      logger.info();
+      logger.info(`    https://console.firebase.google.com/project/${projectId}/ml/custom\n`);
 
       return model;
     }

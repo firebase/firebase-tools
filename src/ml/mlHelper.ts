@@ -52,6 +52,14 @@ function extractModelStatus(model: FirebaseModel): string {
   return "Ready to publish";
 }
 
+function extractModelLockStatus(model: FirebaseModel): boolean {
+  // Model is "locked" if there are active server operations on it.
+  if (!Array.isArray(model.activeOperations)) {
+    return false;
+  }
+  return model.activeOperations.length > 0;
+}
+
 /**
  * Creates the display table for a model. (Used in GetModel.)
  * @param model The model to create the display Table for.
@@ -64,7 +72,7 @@ export function getTableForModel(model: FirebaseModel): Table {
     table.push({ tags: model.tags.join(", ") });
   }
   table.push({ status: extractModelStatus(model) });
-  table.push({ locked: (model.activeOperations !== undefined).toString() });
+  table.push({ locked: extractModelLockStatus(model) });
   if (model.tfliteModel) {
     table.push(
       { modelFormat: "TFLite" },
