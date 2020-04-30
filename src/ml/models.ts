@@ -3,6 +3,18 @@ export interface StatusErrorResponse {
   readonly message: string;
 }
 
+export interface ModelOperationMetadata {
+  readonly name: string;
+}
+
+export interface ModelOperation {
+  readonly name?: string;
+  readonly metadata?: ModelOperationMetadata;
+  readonly done: boolean;
+  readonly error?: StatusErrorResponse;
+  readonly response?: FirebaseModel;
+}
+
 export interface FirebaseModel {
   readonly name: string /* The fully qualified resource name of the Firebase model */;
   displayName?: string; // Optional input during update with mask. Required otherwise.
@@ -11,6 +23,7 @@ export interface FirebaseModel {
   readonly updateTime: string;
   readonly etag: string;
   readonly modelHash?: string;
+  readonly activeOperations?: ModelOperation[];
   state?: {
     readonly validationError?: StatusErrorResponse;
     published?: boolean;
