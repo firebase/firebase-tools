@@ -91,6 +91,7 @@ module.exports = function(client) {
   client.ml = {};
   client.ml.deleteModel = loadCommand("ml-models-delete");
   client.ml.getModel = loadCommand("ml-models-get");
+  client.ml.listModels = loadCommand("ml-models-list");
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");

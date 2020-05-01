@@ -7,10 +7,12 @@ const PROJECT_ID = "test-project";
 const MODEL_ID_1 = "123456789";
 const MODEL_ID_2 = "234567980";
 const MODEL_ID_3 = "345679801";
+const MODEL_ID_4 = "456798012";
 
 const DISPLAY_NAME_1 = "model_1";
 const DISPLAY_NAME_2 = "model_2";
 const DISPLAY_NAME_3 = "model_3";
+const DISPLAY_NAME_4 = "model_4";
 
 const TAGS_12 = ["tag1", "tag2"];
 const TAGS_123 = ["tag1", "tag2", "tag3"];
@@ -66,6 +68,21 @@ const INVALID_MODEL = {
   updateTime: UPDATE_TIME,
   displayName: DISPLAY_NAME_3,
   etag: ETAG,
+  state: { validationError: { code: ERROR_CODE, message: ERROR_MESSAGE } },
+};
+
+const OPERATION_ID = "987654";
+const MODEL_OPERATION = {
+  name: `projects/${PROJECT_ID}/operations/${OPERATION_ID}`,
+  done: false,
+};
+const LOCKED_MODEL = {
+  name: `projects/${PROJECT_ID}/models/${MODEL_ID_4}`,
+  createTime: CREATE_TIME,
+  updateTime: UPDATE_TIME,
+  etag: ETAG,
+  displayName: DISPLAY_NAME_4,
+  activeOperations: [MODEL_OPERATION],
   state: { validationError: { code: ERROR_CODE, message: ERROR_MESSAGE } },
 };
 
@@ -133,6 +150,33 @@ describe("mlHelper", () => {
         { updateDate: UPDATE_TIME_STRING }
       );
       expect(mlHelper.getTableForModel(INVALID_MODEL)).to.deep.equal(expectedTable);
+    });
+
+    it("should return the proper table for locked models", () => {
+      const expectedTable = new Table(mlHelper.verticalTableFormat);
+      expectedTable.push(
+        { modelId: MODEL_ID_4 },
+        { displayName: DISPLAY_NAME_4 },
+        { status: "Invalid" },
+        { locked: true },
+        { createDate: CREATE_TIME_STRING },
+        { updateDate: UPDATE_TIME_STRING }
+      );
+      expect(mlHelper.getTableForModel(LOCKED_MODEL)).to.deep.equal(expectedTable);
+    });
+  });
+
+  describe("getTableForModelList", () => {
+    it("should return the proper table for different types of models", () => {
+      const expectedTable = new Table(mlHelper.horizontalTableFormat);
+      expectedTable.push(
+        [MODEL_ID_1, DISPLAY_NAME_1, TAGS_12_STRING, "Published", "TFLite"],
+        [MODEL_ID_2, DISPLAY_NAME_2, TAGS_123_STRING, "Ready to publish", "TFLite"],
+        [MODEL_ID_3, DISPLAY_NAME_3, "", "Invalid", ""]
+      );
+      const models = [PUBLISHED_MODEL, UNPUBLISHED_MODEL, INVALID_MODEL];
+
+      expect(mlHelper.getTableForModelList(models)).to.deep.equal(expectedTable);
     });
   });
 });
