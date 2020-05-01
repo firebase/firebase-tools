@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import { FirebaseModel } from "../ml/models";
+import { FirebaseModel, ModelsPage } from "../ml/models";
 import { requirePermissions } from "../requirePermissions";
 import { ensureFirebaseMlApiEnabled, getTableForModelList } from "../ml/mlHelper";
 import * as mlApi from "../ml/mlApi";
@@ -17,7 +17,7 @@ export default new Command("ml:models:list")
   .before(ensureFirebaseMlApiEnabled)
   .action(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async (options: any): Promise<{ models: FirebaseModel[] }> => {
+    async (options: any): Promise<ModelsPage> => {
       const projectId = getProjectId(options);
       const models: FirebaseModel[] = await mlApi.listModels(projectId, options);
 

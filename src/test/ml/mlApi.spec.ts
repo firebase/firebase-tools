@@ -8,6 +8,7 @@ import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
 import * as mlApi from "../../ml/mlApi";
+import { ModelsPage } from "../../ml/models";
 
 const VERSION = "v1beta2";
 
@@ -47,12 +48,11 @@ const MODEL_2_RESPONSE = {
 
 const MODEL_FILTER_STRING = "filter1";
 
-const MODEL_LIST_RESPONSE = {
+const MODEL_LIST_RESPONSE: ModelsPage = {
   models: [MODEL_1_RESPONSE, MODEL_2_RESPONSE],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const MODEL_LIST_RESPONSE_WITH_NEXT_PAGE: any = _.cloneDeep(MODEL_LIST_RESPONSE);
+const MODEL_LIST_RESPONSE_WITH_NEXT_PAGE: ModelsPage = _.cloneDeep(MODEL_LIST_RESPONSE);
 MODEL_LIST_RESPONSE_WITH_NEXT_PAGE.nextPageToken = "abc123";
 
 describe("mlApi", () => {
