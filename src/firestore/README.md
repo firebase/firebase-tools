@@ -1,5 +1,5 @@
 
-Cloud Firestore automatically creates indexes for the most common types of queries, but allows you to define custom indexes as described in the [Firebase documentation](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview). You can set up custom indexes in the Firebase console, or in a JSON-formatted configuration file rolled out to production using the CLI's <code>firebase deploy</code> command.
+Cloud Firestore automatically creates indexes for the most common types of queries, but allows you to define custom indexes as described in the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview). You can set up custom indexes in the Firebase console, or in a JSON-formatted configuration file rolled out to production using the CLI's <code>firebase deploy</code> command.
 
 Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
