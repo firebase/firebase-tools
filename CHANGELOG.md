@@ -1,1 +1,2 @@
+- Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
 - Fixes an issue where `ext:list` would fail when no extensions were installed.
