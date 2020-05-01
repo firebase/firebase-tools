@@ -37,9 +37,16 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
 <table>
   <tr>
-    <td>Key</td>
-    <td>Required</td>
-    <td>Value</td>
+    <th>Key</th>
+    <th>Required</th>
+    <th>Data type</th>
+    <th>Value</th>
+  </tr>
+  <tr>
+    <td>collectionGroup</td>
+    <td>x</td>
+    <td>string</td>
+    <td></td>
   </tr>
 </table>
 
