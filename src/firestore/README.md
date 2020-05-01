@@ -1,6 +1,4 @@
 
-[comment]: # (This actually is the most platform independent comment)
-
 Now let's just do plain Markdown that works here and in Firesite.
 
 Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
