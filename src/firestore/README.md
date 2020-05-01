@@ -1,7 +1,7 @@
 
 Cloud Firestore automatically creates indexes for the most common types of queries, but allows you to define custom indexes as described in the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview). You can set up custom indexes in the Firebase console, or in a JSON-formatted configuration file rolled out to production using the CLI's <code>firebase deploy</code> command.
 
-An index configuration files defines one object containing an <code>indexes</code> array and an optional <code>fieldOverrides</code> array. Here's an example:
+An index configuration file defines one object containing an <code>indexes</code> array and an optional <code>fieldOverrides</code> array. Here's an example:
 
 ```javascript
 {
