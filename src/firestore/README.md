@@ -2,10 +2,6 @@ Now let's just do plain Markdown that works here and in Firesite.
 
 Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
-## Deploying an index configuration
-
-## JSON format
-
 ```javascript
 {
   // Required, specify compound indexes
@@ -30,3 +26,12 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
   ]
 }
 ```
+
+## Deploying an index configuration
+
+
+## JSON format
+
+### Field
+
+### FieldOverride
