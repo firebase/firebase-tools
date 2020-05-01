@@ -48,6 +48,13 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
     <td>string</td>
     <td></td>
   </tr>
+  <tr>
+    <td>queryScope</td>
+    <td>x</td>
+    <td>string</td>
+    <td>One of:
+    </td>
+  </tr>
 </table>
 
 ### FieldOverrides
