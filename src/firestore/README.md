@@ -32,6 +32,6 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
 ## JSON format
 
-### Field
+### Indexes
 
-### FieldOverride
+### FieldOverrides
