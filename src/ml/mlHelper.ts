@@ -5,6 +5,10 @@ import { FirebaseModel } from "./models";
 
 export const logPrefix = "ml";
 export const verticalTableFormat = { style: { head: ["yellow"] } };
+export const horizontalTableFormat = {
+  head: ["modelId", "displayName", "tags", "status", "modelFormat"],
+  style: { head: ["yellow"] },
+};
 
 /**
  * Ensures the Firebase ML API is enabled for the project.
@@ -84,6 +88,27 @@ export function getTableForModel(model: FirebaseModel): Table {
     { createDate: new Date(model.createTime).toUTCString() },
     { updateDate: new Date(model.updateTime).toUTCString() }
   );
+
+  return table;
+}
+
+/**
+ * Creates the display table for a list of models (Used in ListModels)
+ * @param models The models to create the table for
+ * @return {Table} The display table.
+ */
+export function getTableForModelList(models: FirebaseModel[]): Table {
+  const table = new Table(horizontalTableFormat);
+  // head: ["modelId", "displayName", "tags", "status", "modelFormat"],
+  for (const model of models) {
+    table.push([
+      extractModelId(model.name),
+      model.displayName,
+      model.tags ? model.tags.join(", ") : "",
+      extractModelStatus(model),
+      model.tfliteModel ? "TFLite" : "",
+    ]);
+  }
 
   return table;
 }
