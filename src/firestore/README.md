@@ -1,13 +1,12 @@
 Now let's just do plain Markdown that works here and in Firesite.
 
-## A head
 Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
-## Another head
+## Deploying an index configuration
 
-So the file might look like:
+## JSON format
 
-```
+```json
 {
   // Required, specify compound indexes
   indexes: [
