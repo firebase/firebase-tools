@@ -6,7 +6,7 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
 ## JSON format
 
-```json
+```javascript
 {
   // Required, specify compound indexes
   indexes: [
