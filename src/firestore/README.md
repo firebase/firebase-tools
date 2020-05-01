@@ -35,4 +35,12 @@ Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum. Lorem ipsum.
 
 ### Indexes
 
+<table>
+  <tr>
+    <td>Key</td>
+    <td>Required</td>
+    <td>Value</td>
+  </tr>
+</table>
+
 ### FieldOverrides
