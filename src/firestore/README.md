@@ -28,7 +28,7 @@ An index configuration file defines one object containing an <code>indexes</code
 }
 ```
 
-## Deploying an index configuration
+## Deploy an index configuration
 
 
 ## JSON format
