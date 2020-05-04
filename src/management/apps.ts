@@ -422,7 +422,6 @@ export async function createAppAndroidSha(
 
 /**
  * Send an API request to delete an existing Firebase Android app SHA certificate hash
- * information.
  * @param projectId the project to delete SHA certificate hash.
  * @param appId the app ID to delete SHA certificate hash.
  * @param shaId the sha ID.
