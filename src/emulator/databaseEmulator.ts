@@ -35,7 +35,10 @@ export class DatabaseEmulator implements EmulatorInstance {
           // Adding a small delay prevents that at very little cost.
           await new Promise((res) => setTimeout(res, 5));
 
-          utils.logLabeledBullet("database", `Change detected, updating rules for ${c.instance}...`);
+          utils.logLabeledBullet(
+            "database",
+            `Change detected, updating rules for ${c.instance}...`
+          );
           const newContent = fs.readFileSync(rulesPath, "utf8").toString();
           try {
             await this.updateRules(c.instance, newContent);

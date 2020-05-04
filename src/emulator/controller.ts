@@ -307,7 +307,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     const rc = dbRulesConfig.getRulesConfig(projectId, options);
     logger.debug("database rules config: ", JSON.stringify(rc));
-    
+
     args.rules = rc;
 
     if (rc.length === 0) {
