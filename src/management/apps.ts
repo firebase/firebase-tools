@@ -357,16 +357,14 @@ export async function listAppAndroidSha(
   try {
     const response = await api.request(
       "GET",
-      `/v1beta1/projects/${appId == "" ? projectId : "-"}/androidApps/${
-        appId == "" ? "-" : appId
-      }/sha`,
+      `/v1beta1/projects/${!appId ? projectId : "-"}/androidApps/${!appId ? "-" : appId}/sha`,
       {
         auth: true,
         origin: api.firebaseApiOrigin,
       }
     );
     if (response.body.certificates) {
-      shaCertificates.push(response.body.certificates);
+      shaCertificates.push(...response.body.certificates);
     }
 
     return shaCertificates;

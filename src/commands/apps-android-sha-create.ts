@@ -3,6 +3,7 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
+import { FirebaseError } from "../error";
 import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
@@ -40,8 +41,18 @@ module.exports = new Command("apps:android:sha:create [appId] [shaHash]")
     async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {
       const projectId = getProjectId(options);
 
+      if (!appId) {
+        throw new FirebaseError("App ID must not be empty.");
+      }
+
+      if (!shaHash) {
+        throw new FirebaseError("SHA hash must not be empty.");
+      }
+
       logger.info(
-        `Create your SHA hash certificate ${clc.bold(shaHash)} in Android app ${clc.bold(appId)}:`
+        `Create your SHA certificate hash ${clc.bold(shaHash)} with Android app Id ${clc.bold(
+          appId
+        )}:`
       );
 
       const appData = await initiateAppAndroidShaCreation(projectId, appId, {

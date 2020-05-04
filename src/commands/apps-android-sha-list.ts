@@ -17,7 +17,9 @@ function logCertificatesList(certificates: AppAndroidShaData[]): void {
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
   certificates.forEach(({ name, shaHash, certType }) => {
     const splitted = name.split("/");
-    table.push([splitted[3], splitted[5], shaHash, certType]);
+    const appId = splitted[3];
+    const shaId = splitted[5];
+    table.push([appId, shaId, shaHash, certType]);
   });
 
   logger.info(table.toString());
@@ -39,7 +41,9 @@ module.exports = new Command("apps:android:sha:list [appId]")
       const projectId = getProjectId(options);
 
       let certificates;
-      const spinner = ora("Preparing the list of your Firebase Android app SHA certificate hashes").start();
+      const spinner = ora(
+        "Preparing the list of your Firebase Android app SHA certificate hashes"
+      ).start();
       try {
         certificates = await listAppAndroidSha(projectId, appId);
       } catch (err) {

@@ -3,6 +3,7 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
+import { FirebaseError } from "../error";
 import { deleteAppAndroidSha } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
@@ -30,10 +31,18 @@ module.exports = new Command("apps:android:sha:delete [appId] [shaId]")
     async (appId: string = "", shaId: string = "", options: any): Promise<void> => {
       const projectId = getProjectId(options);
 
+      if (!appId) {
+        throw new FirebaseError("App ID must not be empty.");
+      }
+
+      if (!shaId) {
+        throw new FirebaseError("SHA Id must not be empty.");
+      }
+
       logger.info(
-        `Delete your SHA certificate hash with SHA id ${clc.bold(shaId)} in Android app ${clc.bold(
-          appId
-        )}:`
+        `Delete your SHA certificate hash with SHA id ${clc.bold(
+          shaId
+        )} with Android app Id ${clc.bold(appId)}:`
       );
 
       await initiateAppAndroidShaDeletion(projectId, appId, shaId);
