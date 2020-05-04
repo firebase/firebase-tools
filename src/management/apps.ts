@@ -61,7 +61,7 @@ export enum AppPlatform {
 export enum ShaCertificateType {
   SHA_CERTIFICATE_TYPE_UNSPECIFIED = "SHA_CERTIFICATE_TYPE_UNSPECIFIED",
   SHA_1 = "SHA_1",
-  SHA_256 = "SHA_256",  
+  SHA_256 = "SHA_256",
 }
 
 /**
@@ -346,41 +346,35 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
 /**
  * Lists all Firebase android app SHA certificates identified by the specified app ID.
  * @param projectId the project to list SHA certificates for.
- * @param appId the ID of the app. 
+ * @param appId the ID of the app.
  * @return list of all Firebase android app SHA certificates.
  */
 export async function listAppAndroidSha(
   projectId: string,
   appId: string
 ): Promise<AppAndroidShaData[]> {
-  const shacertificates: AppAndroidShaData[] = [];
+  const shaCertificates: AppAndroidShaData[] = [];
   try {
-    
-        
-      const response = await api.request(
-        "GET",
-        `/v1beta1/projects/${appId==""?projectId:"-"}/androidApps/${appId==""?"-":appId}/sha`,
-        {
-          auth: true,
-          origin: api.firebaseApiOrigin,          
-        }
-      );
-      if (response.body.certificates) {
-        const appsOnPage = response.body.certificates.map(
-          // app.platform does not exist if we use the endpoint for a specific platform
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (certificate: any) => ( certificate )
-        );
-        shacertificates.push(...appsOnPage);
+    const response = await api.request(
+      "GET",
+      `/v1beta1/projects/${appId == "" ? projectId : "-"}/androidApps/${
+        appId == "" ? "-" : appId
+      }/sha`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
       }
-     
+    );
+    if (response.body.certificates) {
+      shaCertificates.push(response.body.certificates);
+    }
 
-    return shacertificates;
+    return shaCertificates;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to list Firebase ${appId}` +
-        "app certificates. See firebase-debug.log for more info.",
+        "Android app SHA certificates. See firebase-debug.log for more info.",
       {
         exit: 2,
         original: err,
@@ -390,29 +384,32 @@ export async function listAppAndroidSha(
 }
 
 /**
- * Send an API request to create a new SHA hash for an Firebase Android app
+ * Send an API request to add a new SHA hash for an Firebase Android app
+ * @param projectId the project to add SHA certificate hash.
  * @param appId the app ID.
- * @param options options regarding the android app certificate.
+ * @param options options regarding the Android app certificate.
  * @return the created Android Certificate.
  */
 export async function createAppAndroidSha(
+  projectId: string,
   appId: string,
   options: { shaHash: string; certType: string }
 ): Promise<AppAndroidShaData> {
-  let shacertificate= <AppAndroidShaData>{};
-  try {    
-    const response = await api.request("POST", `/v1beta1/projects/-/androidApps/${appId}/sha`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
-    });
-    
-    shacertificate.name = response.body["name"];
-    shacertificate.certType = response.body["certType"];
-    shacertificate.shaHash = response.body["shaHash"];
-   
-    return shacertificate;
+  try {
+    const response = await api.request(
+      "POST",
+      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+        data: options,
+      }
+    );
+
+    const shaCertificate = response.body;
+
+    return shaCertificate;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
@@ -429,22 +426,25 @@ export async function createAppAndroidSha(
  * Send an API request to delete an existing Firebase Android app SHA certificate hash
  * information.
  * @param projectId the project to delete SHA certificate hash.
- * @param appId the app ID to delete SHA certificate hash. 
- * @param shaId the sha ID. 
- * @return
+ * @param appId the app ID to delete SHA certificate hash.
+ * @param shaId the sha ID.
  */
 export async function deleteAppAndroidSha(
   projectId: string,
   appId: string,
-  shaId: string 
-): Promise<void> { 
-  try {    
-    await api.request("DELETE", `/v1beta1/projects/${projectId}/androidApps/${appId}/sha/${shaId}`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: null,
-    });    
+  shaId: string
+): Promise<void> {
+  try {
+    await api.request(
+      "DELETE",
+      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha/${shaId}`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+        data: null,
+      }
+    );
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
@@ -456,4 +456,3 @@ export async function deleteAppAndroidSha(
     );
   }
 }
-

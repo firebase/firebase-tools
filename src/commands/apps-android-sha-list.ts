@@ -4,7 +4,7 @@ import Table = require("cli-table");
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import {  listAppAndroidSha, AppAndroidShaData } from "../management/apps";
+import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
@@ -13,14 +13,14 @@ function logCertificatesList(certificates: AppAndroidShaData[]): void {
     logger.info(clc.bold("No SHA certificate hashes found."));
     return;
   }
-  const tableHead = ["App Id","SHA Id", "SHA Hash", "SHA Hash Type"];
+  const tableHead = ["App Id", "SHA Id", "SHA Hash", "SHA Hash Type"];
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
   certificates.forEach(({ name, shaHash, certType }) => {
-    let splitted = name.split("/");
+    const splitted = name.split("/");
     table.push([splitted[3], splitted[5], shaHash, certType]);
   });
 
-  logger.info(table.toString());  
+  logger.info(table.toString());
 }
 
 function logCertificatesCount(count: number = 0): void {
@@ -32,20 +32,16 @@ function logCertificatesCount(count: number = 0): void {
 }
 
 module.exports = new Command("apps:android:sha:list [appId]")
-  .description(
-    "list the SHA certificate hashes for a given app id. "
-  )
+  .description("list the SHA certificate hashes for a given app id. ")
   .before(requireAuth)
   .action(
     async (appId: string = "", options: any): Promise<AppAndroidShaData[]> => {
-      const projectId = getProjectId(options);      
+      const projectId = getProjectId(options);
 
       let certificates;
-      const spinner = ora(
-        "Preparing the list of your Firebase android app SHA hashes"
-      ).start();
+      const spinner = ora("Preparing the list of your Firebase Android app SHA certificate hashes").start();
       try {
-        certificates = await listAppAndroidSha(projectId,appId);
+        certificates = await listAppAndroidSha(projectId, appId);
       } catch (err) {
         spinner.fail();
         throw err;
