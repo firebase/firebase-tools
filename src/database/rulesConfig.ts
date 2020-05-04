@@ -1,5 +1,5 @@
-import * as Config from "../config";
 import { FirebaseError } from "../error";
+import * as logger from "../logger";
 
 export interface RulesInstanceConfig {
   instance: string;
@@ -13,19 +13,22 @@ interface DatabaseConfig {
 }
 
 export function getRulesConfig(projectId: string, options: any): RulesInstanceConfig[] {
-  // TODO(samstern): Use the real config type here
+  // TODO(samstern): Config should be typed
   const config = options.config as any;
 
-  // First check if the config is of the simple variety "database: { rules: string }"
-  const simpleRules: string | undefined = config.get("database.rules");
-  if (simpleRules) {
-    return [{ rules: simpleRules, instance: options.instance }];
-  }
+  const dbConfig: { rules?: string } | DatabaseConfig[] | undefined = config.get("database");
 
-  // Now we know the config is either undefined or more complex
-  const dbConfig: DatabaseConfig[] | undefined = config.get("database");
   if (dbConfig === undefined) {
     return [];
+  }
+
+  if (!Array.isArray(dbConfig)) {
+    if (dbConfig && dbConfig.rules) {
+      return [{ rules: dbConfig.rules, instance: options.instance }]
+    } else {
+      logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
+      return [];
+    }
   }
 
   const results: RulesInstanceConfig[] = [];
