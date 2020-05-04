@@ -44,12 +44,24 @@ export interface AppConfigurationData {
   sdkConfig?: { [key: string]: string };
 }
 
+export interface AppAndroidShaData {
+  name: string;
+  shaHash: string;
+  certType: ShaCertificateType.SHA_1;
+}
+
 export enum AppPlatform {
   PLATFORM_UNSPECIFIED = "PLATFORM_UNSPECIFIED",
   IOS = "IOS",
   ANDROID = "ANDROID",
   WEB = "WEB",
   ANY = "ANY",
+}
+
+export enum ShaCertificateType {
+  SHA_CERTIFICATE_TYPE_UNSPECIFIED = "SHA_CERTIFICATE_TYPE_UNSPECIFIED",
+  SHA_1 = "SHA_1",
+  SHA_256 = "SHA_256",  
 }
 
 /**
@@ -330,3 +342,118 @@ export async function getAppConfig(appId: string, platform: AppPlatform): Promis
   }
   return response.body;
 }
+
+/**
+ * Lists all Firebase android app SHA certificates identified by the specified app ID.
+ * @param projectId the project to list SHA certificates for.
+ * @param appId the ID of the app. 
+ * @return list of all Firebase android app SHA certificates.
+ */
+export async function listAppAndroidSha(
+  projectId: string,
+  appId: string
+): Promise<AppAndroidShaData[]> {
+  const shacertificates: AppAndroidShaData[] = [];
+  try {
+    
+        
+      const response = await api.request(
+        "GET",
+        `/v1beta1/projects/${appId==""?projectId:"-"}/androidApps/${appId==""?"-":appId}/sha`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,          
+        }
+      );
+      if (response.body.certificates) {
+        const appsOnPage = response.body.certificates.map(
+          // app.platform does not exist if we use the endpoint for a specific platform
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (certificate: any) => ( certificate )
+        );
+        shacertificates.push(...appsOnPage);
+      }
+     
+
+    return shacertificates;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to list Firebase ${appId}` +
+        "app certificates. See firebase-debug.log for more info.",
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+/**
+ * Send an API request to create a new SHA hash for an Firebase Android app
+ * @param appId the app ID.
+ * @param options options regarding the android app certificate.
+ * @return the created Android Certificate.
+ */
+export async function createAppAndroidSha(
+  appId: string,
+  options: { shaHash: string; certType: string }
+): Promise<AppAndroidShaData> {
+  let shacertificate= <AppAndroidShaData>{};
+  try {    
+    const response = await api.request("POST", `/v1beta1/projects/-/androidApps/${appId}/sha`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+      data: options,
+    });
+    
+    shacertificate.name = response.body["name"];
+    shacertificate.certType = response.body["certType"];
+    shacertificate.shaHash = response.body["shaHash"];
+   
+    return shacertificate;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to create SHA certificate hash for Android app ${appId}. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+/**
+ * Send an API request to delete an existing Firebase Android app SHA certificate hash
+ * information.
+ * @param projectId the project to delete SHA certificate hash.
+ * @param appId the app ID to delete SHA certificate hash. 
+ * @param shaId the sha ID. 
+ * @return
+ */
+export async function deleteAppAndroidSha(
+  projectId: string,
+  appId: string,
+  shaId: string 
+): Promise<void> { 
+  try {    
+    await api.request("DELETE", `/v1beta1/projects/${projectId}/androidApps/${appId}/sha/${shaId}`, {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+      data: null,
+    });    
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to delete SHA certificate hash for Android app ${appId}. See firebase-debug.log for more info.`,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
