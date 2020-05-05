@@ -1,13 +1,15 @@
 "use strict";
 
-var { Command } = require("../command");
-var logger = require("../logger");
-var { requireAuth } = require("../requireAuth");
-var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
-var clc = require("cli-color");
-var utils = require("../utils");
 var _ = require("lodash");
+var clc = require("cli-color");
+
+var { Command } = require("../command");
+var { getFirebaseProject, listFirebaseProjects } = require("../management/projects");
 var { prompt } = require("../prompt");
+var { requireAuth } = require("../requireAuth");
+var { validateProjectId } = require("../command");
+var logger = require("../logger");
+var utils = require("../utils");
 
 var listAliases = function(options) {
   if (options.rc.hasProjects) {
@@ -60,6 +62,7 @@ module.exports = new Command("use [alias_or_project_id]")
       var aliasedProject = options.rc.get(["projects", newActive]);
       var project = null;
       const lookupProject = aliasedProject || newActive;
+      validateProjectId(lookupProject);
       return getFirebaseProject(lookupProject)
         .then((foundProject) => {
           project = foundProject;
