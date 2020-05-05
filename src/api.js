@@ -211,11 +211,26 @@ var api = {
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(reqOptions) {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
+  addRequestHeaders: function(options, reqOptions) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
     _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
-    return api.getAccessToken().then(function(result) {
+
+    var secureRequest = true;
+    if (options.origin) {
+      // Only 'https' requests are secure. Protocol includes the final ':'
+      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
+      const originUrl = url.parse(options.origin);
+      secureRequest = originUrl.protocol === "https:";
+    }
+
+    // For insecure requests we send a special 'owner" token which the emulators
+    // will accept and other secure APIs will deny.
+    var getTokenPromise = secureRequest
+      ? api.getAccessToken()
+      : Promise.resolve({ access_token: "owner" });
+
+    // Runtime fetch of Auth singleton to prevent circular module dependencies
+    return getTokenPromise.then(function(result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
     });
@@ -270,24 +285,12 @@ var api = {
       return _request(reqOptions, options.logOptions);
     };
 
-    var secureRequest = true;
-    if (options.origin) {
-      // Only 'https' requests are secure. Protocol includes the final ':'
-      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
-      const originUrl = url.parse(options.origin);
-      secureRequest = originUrl.protocol === "https:";
-    }
-
     if (options.auth === true) {
-      if (secureRequest) {
-        requestFunction = function() {
-          return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-            return _request(reqOptionsWithToken, options.logOptions);
-          });
-        };
-      } else {
-        logger.debug(`Ignoring options.auth for insecure origin: ${options.origin}`);
-      }
+      requestFunction = function() {
+        return api.addRequestHeaders(options, reqOptions).then(function(reqOptionsWithToken) {
+          return _request(reqOptionsWithToken, options.logOptions);
+        });
+      };
     }
 
     return requestFunction().catch(function(err) {

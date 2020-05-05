@@ -1,3 +1,4 @@
 - Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
 - Fixes an issue where `ext:list` would fail when no extensions were installed.
 - Fixes an issue where database emulator could not load rules from target configurations (#2184).
+- Fixes an issue where the CLI did not send the proper auth tokens when performing Firestore / RTDB emulator operations.
