@@ -211,12 +211,12 @@ var api = {
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(options, reqOptions) {
+  addRequestHeaders: function(reqOptions, options) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
     _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
 
     var secureRequest = true;
-    if (options.origin) {
+    if (options && options.origin) {
       // Only 'https' requests are secure. Protocol includes the final ':'
       // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
       const originUrl = url.parse(options.origin);
@@ -287,7 +287,7 @@ var api = {
 
     if (options.auth === true) {
       requestFunction = function() {
-        return api.addRequestHeaders(options, reqOptions).then(function(reqOptionsWithToken) {
+        return api.addRequestHeaders(reqOptions, options).then(function(reqOptionsWithToken) {
           return _request(reqOptionsWithToken, options.logOptions);
         });
       };
