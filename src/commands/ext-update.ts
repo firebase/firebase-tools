@@ -5,7 +5,7 @@ import * as ora from "ora";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import { ensureExtensionsApiEnabled, logPrefix,  createSourceFromLocation} from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
 import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
@@ -13,6 +13,7 @@ import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
+import * as previews from "../previews";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -21,11 +22,11 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <extensionInstanceId>")
-  .description("update an existing extension instance to the latest version")
+export default new Command("ext:update <extensionInstanceId> [localPathOrUrl]")
+  .description(previews.extdev ? "update an existing extension instance to the latest version or from a local or tarball URL source": "update an existing extension instance to the latest version")
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .before(ensureExtensionsApiEnabled)
-  .action(async (instanceId: string, options: any) => {
+  .action(async (instanceId: string, localSource: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
@@ -50,35 +51,60 @@ export default new Command("ext:update <extensionInstanceId>")
         "config.source.spec"
       );
       const currentParams = _.get(existingInstance, "config.params");
-
-      const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
-      const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
-      utils.logLabeledBullet(
-        logPrefix,
-        `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(
-          targetVersion
-        )}`
-      );
-      await resolveSource.promptForUpdateWarnings(
-        registryEntry,
-        currentSpec.version,
-        targetVersion
-      );
-      const sourceUrl = resolveSource.resolveSourceUrl(
-        registryEntry,
-        currentSpec.name,
-        targetVersion
-      );
-      const newSource = await extensionsApi.getSource(sourceUrl);
-      const newSpec = newSource.spec;
-      if (currentSpec.version === newSpec.version) {
+      
+      let source;
+      let sourceUrl;
+      if (localSource) {
+        try {
+          source = await createSourceFromLocation(projectId, localSource);
+          utils.logLabeledBullet(
+            logPrefix,
+            `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to ${clc.bold(localSource)} (${clc.bold(
+              source.spec.version
+            )})`
+          );
+          sourceUrl = source.name;
+        } catch (err) {
+          throw new FirebaseError(
+            `Unable to create new source from '${clc.bold(
+                localSource
+              )}':\n ${err.message}`
+          );
+        }
+      } else {
+        const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+        const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
         utils.logLabeledBullet(
           logPrefix,
-          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
-            currentSpec.version
-          )}.`
+          `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(
+            targetVersion
+          )}`
         );
-        return;
+        await resolveSource.promptForUpdateWarnings(
+          registryEntry,
+          currentSpec.version,
+          targetVersion
+        );
+        sourceUrl = resolveSource.resolveSourceUrl(
+          registryEntry,
+          currentSpec.name,
+          targetVersion
+        );
+      }
+      
+      // Unnecesarry API call for a local source, but good sanity check.
+      const newSource = await extensionsApi.getSource(sourceUrl);
+      const newSpec = newSource.spec;
+      if (!localSource) {
+        if (currentSpec.version === newSpec.version) {
+          utils.logLabeledBullet(
+            logPrefix,
+            `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+              currentSpec.version
+            )}.`
+          );
+          return;
+        }
       }
       await displayChanges(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(
