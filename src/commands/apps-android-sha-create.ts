@@ -1,29 +1,10 @@
 import * as clc from "cli-color";
-import * as ora from "ora";
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../management/apps";
 import { requireAuth } from "../requireAuth";
-import * as logger from "../logger";
-
-async function initiateAppAndroidShaCreation(
-  projectId: string,
-  appId: string,
-  options: { shaHash: string; certType: string }
-): Promise<AppAndroidShaData> {
-  const spinner = ora("Creating Android SHA certificate").start();
-  let certificateData;
-  try {
-    certificateData = await createAppAndroidSha(projectId, appId, options);
-    spinner.succeed();
-  } catch (err) {
-    spinner.fail();
-    throw err;
-  }
-
-  return certificateData;
-}
+import { promiseWithSpinner } from "../utils";
 
 function getCertHashType(shaHash: string): string {
   shaHash = shaHash.replace(/:/g, "");
@@ -40,17 +21,17 @@ module.exports = new Command("apps:android:sha:create <appId> <shaHash>")
     async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {
       const projectId = getProjectId(options);
 
-      logger.info(
-        `Create your SHA certificate hash ${clc.bold(shaHash)} with Android app Id ${clc.bold(
-          appId
-        )}:`
+      const shaCertificate = await promiseWithSpinner<AppAndroidShaData>(
+        async () =>
+          await createAppAndroidSha(projectId, appId, {
+            shaHash: shaHash,
+            certType: getCertHashType(shaHash),
+          }),
+        `Creating Android SHA certificate ${clc.bold(
+          options.shaHash
+        )}with Android app Id ${clc.bold(appId)}`
       );
 
-      const appData = await initiateAppAndroidShaCreation(projectId, appId, {
-        shaHash: shaHash,
-        certType: getCertHashType(shaHash),
-      });
-
-      return appData;
+      return shaCertificate;
     }
   );

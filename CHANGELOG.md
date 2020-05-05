@@ -1,2 +1,3 @@
 - Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
 - Fixes an issue where `ext:list` would fail when no extensions were installed.
+- New API commands that handle list/create/delete operations on the Android SHA certificate hashes `apps:android:sha:list <appId>` `apps:android:sha:create <appId> <shaHash>` `apps:android:sha:delete <appId> <shaId>`

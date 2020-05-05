@@ -357,7 +357,7 @@ export async function listAppAndroidSha(
   try {
     const response = await api.request(
       "GET",
-      `/v1beta1/projects/${!appId ? projectId : "-"}/androidApps/${!appId ? "-" : appId}/sha`,
+      `/v1beta1/projects/${projectId}/androidApps/${appId}/sha`,
       {
         auth: true,
         origin: api.firebaseApiOrigin,
@@ -371,8 +371,8 @@ export async function listAppAndroidSha(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to list Firebase ${appId}` +
-        "Android app SHA certificates. See firebase-debug.log for more info.",
+      `Failed to list SHA certificate hashes for Android app ${appId}.` +
+        " See firebase-debug.log for more info.",
       {
         exit: 2,
         original: err,
