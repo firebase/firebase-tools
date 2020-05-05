@@ -207,6 +207,7 @@ var api = {
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
   },
   getAccessToken: function() {
+    // Runtime fetch of Auth singleton to prevent circular module dependencies
     return accessToken
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
@@ -229,7 +230,6 @@ var api = {
       ? api.getAccessToken()
       : Promise.resolve({ access_token: "owner" });
 
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
     return getTokenPromise.then(function(result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
