@@ -29,6 +29,7 @@ import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorGUI } from "./gui";
 import { LoggingEmulator } from "./loggingEmulator";
 import previews = require("../previews");
+import * as dbRulesConfig from "../database/rulesConfig";
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -304,32 +305,28 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       args.functions_emulator_port = functionsAddr.port;
     }
 
-    const rulesLocalPath = options.config.get("database.rules");
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
-    if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      if (fs.existsSync(rules)) {
-        args.rules = rules;
-      } else {
-        utils.logLabeledWarning(
-          "database",
-          `Realtime Database rules file ${clc.bold(
-            rules
-          )} specified in firebase.json does not exist.`
-        );
-      }
-    } else {
-      utils.logLabeledWarning(
-        "database",
-        "Did not find a Realtime Database rules file specified in a firebase.json config file."
-      );
-    }
+    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    logger.debug("database rules config: ", JSON.stringify(rc));
 
-    if (!foundRulesFile) {
+    args.rules = rc;
+
+    if (rc.length === 0) {
       utils.logLabeledWarning(
         "database",
-        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
+    } else {
+      for (const c of rc) {
+        const rules: string = path.join(options.projectRoot, c.rules);
+        if (!fs.existsSync(rules)) {
+          utils.logLabeledWarning(
+            "database",
+            `Realtime Database rules file ${clc.bold(
+              rules
+            )} specified in firebase.json does not exist.`
+          );
+        }
+      }
     }
 
     const databaseEmulator = new DatabaseEmulator(args);
