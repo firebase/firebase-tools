@@ -38,7 +38,7 @@ An index configuration file defines one object containing an <code>indexes</code
 The schema for one object in the `indexes` array is as follows. Optional properties are identified with the `?` character.
 
 ```javascript
-  collectionGroup: string.    // test
+  collectionGroup: string     // test
   queryScope: string          // this 
   fields: array               // comment
     fieldPath: string
