@@ -5,6 +5,8 @@ import * as path from "path";
 import * as tcpport from "tcp-port-used";
 import * as pf from "portfinder";
 
+import * as api from "../api";
+import { configstore } from "../configstore";
 import * as logger from "../logger";
 import * as utils from "../utils";
 import * as track from "../track";
@@ -238,13 +240,27 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       );
     }
 
+    const tokens = configstore.get("tokens");
+    const credentialEnv = {} as any;
+    if (tokens && tokens.refresh_token) {
+      credentialEnv.FIREBASE_EMULATOR_CREDENTIALS = JSON.stringify({
+        client_id: api.clientId,
+        client_secret: api.clientSecret,
+        refresh_token: tokens.refresh_token,
+        type: "authorized_user",
+      });
+    }
+
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: options.extensionEnv,
+      env: {
+        ...credentialEnv,
+        ...options.extensionEnv,
+      },
       predefinedTriggers: options.extensionTriggers,
       nodeMajorVersion: options.extensionNodeVersion,
     });
