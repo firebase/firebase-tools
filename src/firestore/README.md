@@ -67,9 +67,15 @@ An index configuration file defines one object containing an <code>indexes</code
     <td>string</td>
     <td></td>
   </tr>
-    <tr>
+  <tr>
     <td>order</td>
-    <td>x</td>
+    <td></td>
+    <td>string</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>arrayConfig</td>
+    <td></td>
     <td>string</td>
     <td></td>
   </tr>
