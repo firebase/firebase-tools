@@ -24,7 +24,9 @@ An index configuration file defines one object containing an <code>indexes</code
     {
       collectionGroup: "posts",
       fieldPath: "myBigMapField",
-      indexes: []
+      indexes: [
+        { queryScope: "COLLECTION_SCOPE" }
+      ]
     }
   ]
 }
