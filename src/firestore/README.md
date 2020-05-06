@@ -43,7 +43,7 @@ Deploy your index configuration with the `firebase deploy` command. If you only 
 The schema for one object in the `indexes` array is as follows. Optional properties are identified with the `?` character.
 
 ```javascript
-  collectionGroup: string     // Collection ID in the Firebase console
+  collectionGroup: string     // Labeled "Collection ID" in the Firebase console
   queryScope: string          // One of "COLLECTION", "COLLECTION_GROUP"
   fields: array               
     fieldPath: string
@@ -55,7 +55,7 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 The schema for one object in the `fieldOverrides` array is as follows. Optional properties are identified with the `?` character.
 
 ```javascript
-  collectionGroup: string     // Collection ID in the Firebase console
+  collectionGroup: string     // Labeled "Collection ID" in the Firebase console
   fieldPath: string
   indexes: array              // Use an empty array to disable indexes
     queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
