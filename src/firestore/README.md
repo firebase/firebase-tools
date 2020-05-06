@@ -44,7 +44,7 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 
 ```javascript
   collectionGroup: string     // Collection ID in the Firebase console
-  queryScope: string          // One of "COLLECTION", "COLLECTION_SCOPE"
+  queryScope: string          // One of "COLLECTION", "COLLECTION_GROUP"
   fields: array               
     fieldPath: string
     order?: string            // One of "ASCENDING", "DESCENDING"
@@ -58,7 +58,7 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
   collectionGroup: string     // Collection ID in the Firebase console
   fieldPath: string
   indexes: array              // 
-    queryScope: string        // One of "COLLECTION", "COLLECTION_SCOPE"
+    queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
     order?: string            // One of "ASCENDING", "DESCENDING"
     arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
 ```
