@@ -43,7 +43,7 @@ The schema for one object in the `indexes` array is as follows. Optional propert
   fields: array               
     fieldPath: string
     order?: string            // One of "ASCENDING", "DESCENDING"
-    arrayConfig?: string      // If this parameter used, must be "CONTAINS"
+    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
 ```
 ### FieldOverrides
 
@@ -55,6 +55,6 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
   indexes: array              
     queryScope: string        // One of "COLLECTION", "COLLECTION_SCOPE"
     order?: string            // One of "ASCENDING", "DESCENDING"
-    arrayConfig?: string      // If this parameter used, must be "CONTAINS"
+    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
 }
 ```
