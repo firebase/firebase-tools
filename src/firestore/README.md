@@ -42,6 +42,8 @@ Deploy your index configuration with the `firebase deploy` command. If you only 
 
 The schema for one object in the `indexes` array is as follows. Optional properties are identified with the `?` character.
 
+Note that document fields can only be indexed in one mode, thus a field config cannot use both the `order` and `arrayConfig` parameters.
+
 ```javascript
   collectionGroup: string     // Labeled "Collection ID" in the Firebase console
   queryScope: string          // One of "COLLECTION", "COLLECTION_GROUP"
@@ -53,6 +55,8 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 ### FieldOverrides
 
 The schema for one object in the `fieldOverrides` array is as follows. Optional properties are identified with the `?` character.
+
+Note that document fields can only be indexed in one mode, thus a field config cannot use both the `order` and `arrayConfig` parameters.
 
 ```javascript
   collectionGroup: string     // Labeled "Collection ID" in the Firebase console
