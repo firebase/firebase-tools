@@ -55,6 +55,24 @@ An index configuration file defines one object containing an <code>indexes</code
     <td>One of:
     </td>
   </tr>
+  <tr>
+    <td>fields</td>
+    <td>x</td>
+    <td>array</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>fieldPath</td>
+    <td>x</td>
+    <td>string</td>
+    <td></td>
+  </tr>
+    <tr>
+    <td>order</td>
+    <td>x</td>
+    <td>string</td>
+    <td></td>
+  </tr>
 </table>
 
 ### FieldOverrides
