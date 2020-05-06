@@ -71,10 +71,10 @@ jobs:
         node-version:
           - 8.x
         script:
-          - ./scripts/test-hosting.sh
-          - ./scripts/test-triggers-end-to-end.sh
+          - npm run test:hosting
           - npm run test:client-integration
           - npm run test:extensions-emulator
+          - npm run test:triggers-end-to-end
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
@@ -103,7 +103,6 @@ jobs:
         run: find . -type f -name "*debug.log" | xargs cat
 
   check-package-lock:
-
     runs-on: ubuntu-latest
 
     strategy:
@@ -111,10 +110,10 @@ jobs:
         node-version: [12.x]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
-    - run: npm install --package-lock-only
-    - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install --package-lock-only
+      - run: "git diff --exit-code -- package-lock.json || (echo 'Error: package-lock.json is changed during npm install! Please make sure to use npm >= 6.9.0 and commit package-lock.json.' && false)"

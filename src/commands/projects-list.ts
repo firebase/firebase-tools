@@ -10,20 +10,25 @@ import * as logger from "../logger";
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
 function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: string): void {
-  if (projects.length === 0) {
-    logger.info(clc.bold("No projects found."));
+  if (!projects.length) {
     return;
   }
 
-  const tableHead = ["Project Display Name", "Project ID", "Resource Location ID"];
+  const tableHead = [
+    "Project Display Name",
+    "Project ID",
+    "Project Number",
+    "Resource Location ID",
+  ];
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
-  projects.forEach(({ projectId, displayName, resources }) => {
+  projects.forEach(({ projectId, projectNumber, displayName, resources }) => {
     if (projectId === currentProjectId) {
       projectId = clc.cyan.bold(`${projectId} (current)`);
     }
     table.push([
       displayName || NOT_SPECIFIED,
       projectId,
+      projectNumber,
       (resources && resources.locationId) || NOT_SPECIFIED,
     ]);
   });
@@ -31,18 +36,20 @@ function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: 
   logger.info(table.toString());
 }
 
-function logProjectCount(count: number = 0): void {
-  if (count === 0) {
+function logProjectCount(arr: FirebaseProjectMetadata[] = []): void {
+  if (!arr.length) {
+    logger.info(clc.bold("No projects found."));
     return;
   }
   logger.info("");
-  logger.info(`${count} project(s) total.`);
+  logger.info(`${arr.length} project(s) total.`);
 }
 
 module.exports = new Command("projects:list")
   .description("list all Firebase projects you have access to")
   .before(requireAuth)
   .action(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (options: any): Promise<FirebaseProjectMetadata[]> => {
       const spinner = ora("Preparing the list of your Firebase projects").start();
       let projects;
@@ -56,7 +63,7 @@ module.exports = new Command("projects:list")
 
       spinner.succeed();
       logProjectsList(projects, options.project);
-      logProjectCount(projects.length);
+      logProjectCount(projects);
       return projects;
     }
   );

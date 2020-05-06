@@ -29,6 +29,7 @@ import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorGUI } from "./gui";
 import { LoggingEmulator } from "./loggingEmulator";
 import previews = require("../previews");
+import * as dbRulesConfig from "../database/rulesConfig";
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -123,6 +124,27 @@ export function shouldStart(options: any, name: Emulators): boolean {
     );
   }
 
+  // Don't start the functions emulator if we can't find the source directory
+  if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
+    utils.logLabeledWarning(
+      "functions",
+      `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
+        "firebase init functions"
+      )}?`
+    );
+    return false;
+  }
+
+  if (name === Emulators.HOSTING && !options.config.get("hosting")) {
+    utils.logLabeledWarning(
+      "hosting",
+      `The hosting emulator is configured but there is no hosting configuration. Have you run ${clc.bold(
+        "firebase init hosting"
+      )}?`
+    );
+    return false;
+  }
+
   return targets.indexOf(name) >= 0;
 }
 
@@ -199,7 +221,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
@@ -225,6 +246,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       debugPort: inspectFunctions,
       env: options.extensionEnv,
       predefinedTriggers: options.extensionTriggers,
+      nodeMajorVersion: options.extensionNodeVersion,
     });
     await startEmulator(functionsEmulator);
   }
@@ -282,7 +304,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.FIRESTORE,
       `For testing set ${clc.bold(
-        `${FirestoreEmulator.FIRESTORE_EMULATOR_ENV}=${firestoreAddr.host}:${firestoreAddr.port}`
+        `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
       )}`
     );
   }
@@ -303,32 +325,28 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       args.functions_emulator_port = functionsAddr.port;
     }
 
-    const rulesLocalPath = options.config.get("database.rules");
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
-    if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      if (fs.existsSync(rules)) {
-        args.rules = rules;
-      } else {
-        utils.logLabeledWarning(
-          "database",
-          `Realtime Database rules file ${clc.bold(
-            rules
-          )} specified in firebase.json does not exist.`
-        );
-      }
-    } else {
-      utils.logLabeledWarning(
-        "database",
-        "Did not find a Realtime Database rules file specified in a firebase.json config file."
-      );
-    }
+    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    logger.debug("database rules config: ", JSON.stringify(rc));
 
-    if (!foundRulesFile) {
+    args.rules = rc;
+
+    if (rc.length === 0) {
       utils.logLabeledWarning(
         "database",
-        "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
+        "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
+    } else {
+      for (const c of rc) {
+        const rules: string = path.join(options.projectRoot, c.rules);
+        if (!fs.existsSync(rules)) {
+          utils.logLabeledWarning(
+            "database",
+            `Realtime Database rules file ${clc.bold(
+              rules
+            )} specified in firebase.json does not exist.`
+          );
+        }
+      }
     }
 
     const databaseEmulator = new DatabaseEmulator(args);
@@ -337,7 +355,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     utils.logLabeledBullet(
       Emulators.DATABASE,
       `For testing set ${clc.bold(
-        `${DatabaseEmulator.DATABASE_EMULATOR_ENV}=${databaseAddr.host}:${databaseAddr.port}`
+        `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
       )}`
     );
   }

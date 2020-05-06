@@ -58,7 +58,9 @@ export interface FunctionsEmulatorArgs {
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
   debugPort?: number;
   env?: { [key: string]: string };
+  remoteEmulators?: { [key: string]: EmulatorInfo };
   predefinedTriggers?: EmulatedTriggerDefinition[];
+  nodeMajorVersion?: string; // Lets us specify the node version when emulating extensions.
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -198,10 +200,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
       emulators: {
-        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
+        firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
+        database: this.getEmulatorInfo(Emulators.DATABASE),
+        pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
       },
+      nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
       triggerId,
       triggerType,
@@ -216,7 +219,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
+    this.nodeBinary = await this.askInstallNodeVersion(
+      this.args.functionsDir,
+      this.args.nodeMajorVersion
+    );
     const { host, port } = this.getInfo();
     this.workQueue.start();
     this.server = this.createHubServer().listen(port, host);
@@ -469,7 +475,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const resource = definition.eventTrigger.resource;
     let topic;
     if (definition.schedule) {
-      // In production this topic liiks like
+      // In production this topic looks like
       // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
       // the deploy location to match as closely as possible.
       topic = "firebase-schedule-" + definition.name;
@@ -538,11 +544,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
   /**
    * Returns the path to a "node" executable to use.
+   * @param cwd the directory to checkout for a package.json file.
+   * @param nodeMajorVersion forces the emulator to choose this version. Used when emulating extensions,
+   *  since in production, extensions ignore the node version provided in package.json and use the version
+   *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
+   *  are using the default version.
    */
-  async askInstallNodeVersion(cwd: string): Promise<string> {
+  async askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): Promise<string> {
     const pkg = require(path.join(cwd, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
-    if (!pkg.engines || !pkg.engines.node) {
+    if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {
       EmulatorLogger.log(
         "WARN",
         "Your functions directory does not specify a Node version.\n   " +
@@ -552,7 +563,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion = pkg.engines.node;
+    const requestedMajorVersion = nodeMajorVersion || pkg.engines.node;
     let localMajorVersion = "0";
     const localNodePath = path.join(cwd, "node_modules/.bin/node");
 
@@ -691,6 +702,20 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     await worker.waitForDone();
     return res.json({ status: "acknowledged" });
+  }
+
+  /**
+   * Gets the address of a running emulator, either from explicit args or by
+   * consulting the emulator registry.
+   */
+  private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
+    if (this.args.remoteEmulators) {
+      if (this.args.remoteEmulators[emulator]) {
+        return this.args.remoteEmulators[emulator];
+      }
+    }
+
+    return EmulatorRegistry.getInfo(emulator);
   }
 
   private tokenFromAuthHeader(authHeader: string) {

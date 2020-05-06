@@ -1,3 +1,4 @@
 /templates
 /node_modules
 /lib/**/*
+/CONTRIBUTING.md

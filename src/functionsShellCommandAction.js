@@ -1,5 +1,6 @@
 "use strict";
 
+var clc = require("cli-color");
 var repl = require("repl");
 var _ = require("lodash");
 
@@ -8,17 +9,34 @@ var util = require("util");
 
 var serveFunctions = require("./serve/functions");
 var LocalFunction = require("./localFunction");
+var utils = require("./utils");
 var logger = require("./logger");
 var shell = require("./emulator/functionsEmulatorShell");
-var commandUtitls = require("./emulator/commandUtils");
+var commandUtils = require("./emulator/commandUtils");
+var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
+var { EmulatorHubClient } = require("./emulator/hubClient");
 
-module.exports = function(options) {
+module.exports = async function(options) {
   options.port = parseInt(options.port, 10);
 
   let debugPort = undefined;
   if (options.inspectFunctions) {
-    debugPort = commandUtitls.parseInspectionPort(options);
+    debugPort = commandUtils.parseInspectionPort(options);
   }
+
+  const hubClient = new EmulatorHubClient(options.project);
+  let remoteEmulators = {};
+  if (hubClient.foundHub()) {
+    remoteEmulators = await hubClient.getEmulators();
+    logger.debug("Running emulators: ", remoteEmulators);
+  }
+
+  const runningEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
+    (e) => remoteEmulators[e] !== undefined
+  );
+  const otherEmulators = EMULATORS_SUPPORTED_BY_FUNCTIONS.filter(
+    (e) => remoteEmulators[e] === undefined
+  );
 
   return serveFunctions
     .start(options, {
@@ -26,6 +44,7 @@ module.exports = function(options) {
       // and when we eventually move to all TypeScript we'll have to start adding
       // projectId and functionsDir here.
       quiet: true,
+      remoteEmulators,
       debugPort,
     })
     .then(function() {
@@ -39,6 +58,22 @@ module.exports = function(options) {
         logger.info("No functions emulated.");
         process.exit();
       }
+
+      for (const e of runningEmulators) {
+        const info = remoteEmulators[e];
+        utils.logLabeledBullet(
+          "functions",
+          `Connected to running ${clc.bold(e)} emulator at ${info.host}:${
+            info.port
+          }, calls to this service will affect the emulator`
+        );
+      }
+      utils.logLabeledWarning(
+        "functions",
+        `The following emulators are not running, calls to these services will affect production: ${clc.bold(
+          otherEmulators.join(", ")
+        )}`
+      );
 
       var writer = function(output) {
         // Prevent full print out of Request object when a request is made
