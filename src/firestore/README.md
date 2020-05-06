@@ -52,8 +52,9 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 ```javascript
   collectionGroup: string     // test
   fieldPath: string           // this 
-  fields: array               // comment
-    fieldPath: string
-    order?: string
-    arrayConfig?: string
+  indexes: array              // comment
+    queryScope: 
+    order?: 
+    arrayConfig?: 
+}
 ```
