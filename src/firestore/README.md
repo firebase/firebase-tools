@@ -33,13 +33,20 @@ An index configuration file defines one object containing an <code>indexes</code
 
 ## JSON format
 
+### Indexes
+
 The schema for one object in the `indexes` array is as follows. Optional properties are identified with the `?` character.
 
 ```
   collectionGroup: string
+  queryScope: string
+  fields: array
+    fieldPath: string
+    order?: string
+    arrayConfig?: 
 ```
 
-### Indexes
+
 
 <table>
   <tr>
