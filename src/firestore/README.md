@@ -45,12 +45,12 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 Note that document fields can only be indexed in one mode, thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
 ```javascript
-  collectionGroup: string     // Labeled "Collection ID" in the Firebase console
-  queryScope: string          // One of "COLLECTION", "COLLECTION_GROUP"
+  collectionGroup: string   // Labeled "Collection ID" in the Firebase console
+  queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
   fields: array               
     fieldPath: string
-    order?: string            // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
-    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"; excludes order property
+    order?: string          // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
+    arrayConfig?: string    // If this parameter used, value must be "CONTAINS"; excludes order property
 ```
 ### FieldOverrides
 
@@ -59,10 +59,10 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 Note that document fields can only be indexed in one mode, thus a field object cannot both the `order` and `arrayConfig` properties.
 
 ```javascript
-  collectionGroup: string     // Labeled "Collection ID" in the Firebase console
+  collectionGroup: string   // Labeled "Collection ID" in the Firebase console
   fieldPath: string
-  indexes: array              // Use an empty array to disable indexes on this collectionGroup + fieldPath
-    queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
-    order?: string            // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
-    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"; excludes order property
+  indexes: array            // Use an empty array to disable indexes on this collectionGroup + fieldPath
+    queryScope: string      // One of "COLLECTION", "COLLECTION_GROUP"
+    order?: string          // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
+    arrayConfig?: string    // If this parameter used, value must be "CONTAINS"; excludes order property
 ```
