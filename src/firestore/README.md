@@ -34,7 +34,7 @@ An index configuration file defines one object containing an <code>indexes</code
 
 ## Deploy an index configuration
 
-Deploy your index configuration with the `firebase deploy` command. If you only want to deploy indexes, add the `--only firestore:indexes` flag. If you make edits to the indexes using the Firebase console, make sure you also update your local indexes file.
+Deploy your index configuration with the `firebase deploy` command. If you only want to deploy indexes, add the `--only&nbsp; firestore:indexes` flag. If you make edits to the indexes using the Firebase console, make sure you also update your local indexes file.
 
 ## JSON format
 
