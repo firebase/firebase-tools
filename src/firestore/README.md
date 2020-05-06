@@ -13,7 +13,7 @@ An index configuration file defines one object containing an <code>indexes</code
       collectionGroup: "posts",
       queryScope: "COLLECTION",
       fields: [
-        { fieldPath: "author", order: "ASCENDING" },
+        { fieldPath: "author", arrayConfig: "CONTAINS" },
         { fieldPath: "timestamp", order: "DESCENDING" }
       ]
     }
