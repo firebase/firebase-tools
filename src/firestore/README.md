@@ -40,9 +40,9 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 ```javascript
   collectionGroup: string     // test
   queryScope: string          // One of "COLLECTION", "COLLECTION_SCOPE"
-  fields: array               // comment
+  fields: array               
     fieldPath: string
-    order?: string
+    order?: string            // One of "ASCENDING", "DESCENDING"
     arrayConfig?: string
 ```
 ### FieldOverrides
@@ -52,9 +52,9 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 ```javascript
   collectionGroup: string     // test
   fieldPath: string           // this 
-  indexes: array              // comment
-    queryScope: string
-    order?: string
+  indexes: array              
+    queryScope: string        // One of "COLLECTION", "COLLECTION_SCOPE"
+    order?: string            // One of "ASCENDING", "DESCENDING"
     arrayConfig?: string
 }
 ```
