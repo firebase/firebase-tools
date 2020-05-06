@@ -57,7 +57,7 @@ The schema for one object in the `fieldOverrides` array is as follows. Optional 
 ```javascript
   collectionGroup: string     // Labeled "Collection ID" in the Firebase console
   fieldPath: string
-  indexes: array              // Use an empty array to disable indexes
+  indexes: array              // Use an empty array to disable indexes on this collectionGroup + fieldPath
     queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
     order?: string            // One of "ASCENDING", "DESCENDING"
     arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
