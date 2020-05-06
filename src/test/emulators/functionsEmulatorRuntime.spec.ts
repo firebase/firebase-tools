@@ -166,6 +166,33 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(logs["default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
+      it("should provide a stubbed app with custom options", async () => {
+        const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+          require("firebase-admin").initializeApp({
+            custom: true,
+          });
+          return {
+            function_id: require("firebase-functions")
+              .firestore.document("test/test")
+              // tslint:disable-next-line:no-empty
+              .onCreate(async () => {}),
+          };
+        });
+
+        let foundMatch = false;
+        worker.runtime.events.on("log", (el: EmulatorLog) => {
+          if (el.level !== "SYSTEM" || el.type !== "default-admin-app-used") {
+            return;
+          }
+
+          foundMatch = true;
+          expect(el.data).to.eql({ opts: { custom: true } });
+        });
+
+        await worker.runtime.exit;
+        expect(foundMatch).to.be.true;
+      }).timeout(TIMEOUT_MED);
+
       it("should provide non-stubbed non-default app from initializeApp", async () => {
         const worker = InvokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
           require("firebase-admin").initializeApp(); // We still need to initialize default for snapshots
