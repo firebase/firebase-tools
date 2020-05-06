@@ -39,7 +39,7 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 
 ```javascript
   collectionGroup: string     // test
-  queryScope: string          // this 
+  queryScope: string          // One of "COLLECTION", "COLLECTION_SCOPE"
   fields: array               // comment
     fieldPath: string
     order?: string
