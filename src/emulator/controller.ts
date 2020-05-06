@@ -124,6 +124,27 @@ export function shouldStart(options: any, name: Emulators): boolean {
     );
   }
 
+  // Don't start the functions emulator if we can't find the source directory
+  if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
+    utils.logLabeledWarning(
+      "functions",
+      `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
+        "firebase init functions"
+      )}?`
+    );
+    return false;
+  }
+
+  if (name === Emulators.HOSTING && !options.config.get("hosting")) {
+    utils.logLabeledWarning(
+      "hosting",
+      `The hosting emulator is configured but there is no hosting configuration. Have you run ${clc.bold(
+        "firebase init hosting"
+      )}?`
+    );
+    return false;
+  }
+
   return targets.indexOf(name) >= 0;
 }
 
@@ -200,7 +221,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,

@@ -1,4 +1,7 @@
 - Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
 - Fixes an issue where `ext:list` would fail when no extensions were installed.
 - Fixes an issue where database emulator could not load rules from target configurations (#2184).
+- Adds new API commands that handle list/create/delete operations on the Android SHA certificate hashes `apps:android:sha:list`, `apps:android:sha:create`, and `apps:android:sha:delete`.
+- Fixes an issue where the CLI did not assume admin privileges when performing Firestore / RTDB emulator operations.
+- Fixes an issue where the functions and hosting emulators would crash when not properly initialized (#2112).
 - Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
