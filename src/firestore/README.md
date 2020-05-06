@@ -49,8 +49,8 @@ Note that document fields can only be indexed in one mode, thus a field config c
   queryScope: string          // One of "COLLECTION", "COLLECTION_GROUP"
   fields: array               
     fieldPath: string
-    order?: string            // One of "ASCENDING", "DESCENDING"
-    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
+    order?: string            // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
+    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"; excludes order property
 ```
 ### FieldOverrides
 
@@ -63,6 +63,6 @@ Note that document fields can only be indexed in one mode, thus a field config c
   fieldPath: string
   indexes: array              // Use an empty array to disable indexes on this collectionGroup + fieldPath
     queryScope: string        // One of "COLLECTION", "COLLECTION_GROUP"
-    order?: string            // One of "ASCENDING", "DESCENDING"
-    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"
+    order?: string            // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
+    arrayConfig?: string      // If this parameter used, value must be "CONTAINS"; excludes order property
 ```
