@@ -24,9 +24,8 @@ An index configuration file defines one object containing an <code>indexes</code
     {
       collectionGroup: "posts",
       fieldPath: "myBigMapField",
-      indexes: [
-        { queryScope: "COLLECTION_GROUP" }
-      ]
+      // We want to disable indexing on our big map field, and so empty the indexes array
+      indexes: []
     }
   ]
 }
