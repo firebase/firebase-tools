@@ -8,6 +8,7 @@ import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
+import { EmulatorRegistry } from "./registry";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -25,6 +26,11 @@ export class DatabaseEmulator implements EmulatorInstance {
   constructor(private args: DatabaseEmulatorArgs) {}
 
   async start(): Promise<void> {
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator_host = functionsInfo.host;
+      this.args.functions_emulator_port = functionsInfo.port;
+    }
     if (this.args.rules) {
       for (const c of this.args.rules) {
         const rulesPath = c.rules;
