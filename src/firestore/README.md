@@ -60,7 +60,7 @@ Note that Cloud Firestore document fields can only be indexed in one mode, thus 
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console
   fieldPath: string
-  indexes: array           // Use an empty array to disable indexes on this collectionGroup + fieldPath
+  indexes: array           // Set empty array to disable indexes on this collectionGroup + fieldPath
     queryScope: string     // One of "COLLECTION", "COLLECTION_GROUP"
     order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
     arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order property
