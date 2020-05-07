@@ -45,7 +45,7 @@ module.exports = new Command("emulators:start")
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            isSupportedByGUI ? `http://${guiInfo?.host}:${guiInfo?.port}/${emulator}` : "",
+            isSupportedByGUI && guiInfo ? `http://${guiInfo.host}:${guiInfo.port}/${emulator}` : "",
           ];
         })
         .filter((v) => v)
