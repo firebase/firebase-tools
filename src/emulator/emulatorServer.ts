@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 
 /**
  * Wrapper object to expose an EmulatorInstance for "firebase serve" that
- * al`so registers the emulator with the registry.
+ * also registers the emulator with the registry.
  */
 export class EmulatorServer {
   constructor(public instance: EmulatorInstance) {}
