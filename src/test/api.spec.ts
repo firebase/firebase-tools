@@ -4,19 +4,23 @@ import * as utils from "../utils";
 
 describe("api", () => {
   beforeEach(() => {
-    delete process.env.FIREBASE_DATABASE_EMULATOR_HOST;
-    delete process.env.FIREBASE_REALTIME_URL;
-    delete process.env.FIRESTORE_EMULATOR_HOST;
-    delete process.env.FIRESTORE_URL;
-
     // The api module resolves env var statically so we need to
     // do lazy imports and clear the import each time.
     delete require.cache[require.resolve("../api")];
   });
 
   afterEach(() => {
+    delete process.env.FIREBASE_DATABASE_EMULATOR_HOST;
+    delete process.env.FIREBASE_REALTIME_URL;
+    delete process.env.FIRESTORE_EMULATOR_HOST;
+    delete process.env.FIRESTORE_URL;
+
     // This is dirty, but utils keeps stateful overrides and we need to clear it
     utils.envOverrides.splice(0, utils.envOverrides.length);
+  });
+
+  after(() => {
+    delete require.cache[require.resolve("../api")];
   });
 
   it("should add HTTP to emulator URL with no protocol", () => {
