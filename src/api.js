@@ -125,6 +125,9 @@ var api = {
     Constants.FIRESTORE_EMULATOR_HOST,
     utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
@@ -152,6 +155,9 @@ var api = {
     Constants.FIREBASE_DATABASE_EMULATOR_HOST,
     utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
