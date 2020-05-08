@@ -16,7 +16,7 @@ describe("api", () => {
     delete process.env.FIRESTORE_URL;
 
     // This is dirty, but utils keeps stateful overrides and we need to clear it
-    utils.envOverrides.splice(0, utils.envOverrides.length);
+    utils.envOverrides.length = 0;
   });
 
   after(() => {
