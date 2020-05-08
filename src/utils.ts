@@ -159,7 +159,7 @@ export function logLabeledWarning(label: string, message: string, type = "warn")
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
