@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import * as url from "url";
 import * as clc from "cli-color";
+import * as ora from "ora";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -158,7 +159,7 @@ export function logLabeledWarning(label: string, message: string, type = "warn")
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
@@ -360,4 +361,21 @@ export function setupLoggers() {
       })
     );
   }
+}
+
+/**
+ * Runs a given function inside a spinner with a message
+ */
+export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
+  const spinner = ora(message).start();
+  let data;
+  try {
+    data = await action();
+    spinner.succeed();
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  return data;
 }

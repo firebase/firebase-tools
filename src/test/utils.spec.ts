@@ -41,7 +41,7 @@ describe("utils", () => {
       process.env.FOO_BAR_BAZ = "set";
 
       expect(utils.envOverride("FOO_BAR_BAZ", "notset")).to.equal("set");
-      expect(utils.envOverrides).to.deep.equal(["FOO_BAR_BAZ"]);
+      expect(utils.envOverrides).to.contain("FOO_BAR_BAZ");
 
       delete process.env.FOO_BAR_BAZ;
     });
