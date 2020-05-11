@@ -17,6 +17,14 @@ const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
 let server: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+const logData = {
+  metadata: {
+    emulator: {
+      name: "hosting",
+    },
+  },
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
   const firebaseMiddleware = initMiddleware(init);
@@ -28,13 +36,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     callback: (error?: Error | null) => void
   ) => {
     if (chunk instanceof Buffer) {
-      utils.logLabeledBullet("hosting", chunk.toString().trim(), "info", {
-        metadata: {
-          emulator: {
-            name: "hosting",
-          },
-        },
-      });
+      utils.logLabeledBullet("hosting", chunk.toString().trim(), "info", logData);
     }
 
     callback();
@@ -71,11 +73,17 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     const label = siteName ? "hosting[" + siteName + "]" : "hosting";
 
     if (config.public && config.public !== ".") {
-      utils.logLabeledBullet(label, "Serving hosting files from: " + clc.bold(config.public));
+      utils.logLabeledBullet(
+        label,
+        "Serving hosting files from: " + clc.bold(config.public),
+        "info",
+        logData
+      );
     }
     utils.logLabeledSuccess(
       label,
-      "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port))
+      "Local server: " +
+        clc.underline(clc.bold("http://" + options.host + ":" + port), "info", logData)
     );
   });
 
@@ -84,7 +92,11 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     if (err.code === "EADDRINUSE") {
       const message = "Port " + options.port + " is not available.";
       if (attempts < MAX_PORT_ATTEMPTS) {
-        utils.logWarning(clc.yellow("hosting: ") + message + " Trying another port...");
+        utils.logWarning(
+          clc.yellow("hosting: ") + message + " Trying another port...",
+          "warn",
+          logData
+        );
         // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
         attempts++;
         startServer(options, config, port + 5, init);
