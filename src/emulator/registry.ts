@@ -2,7 +2,6 @@ import * as clc from "cli-color";
 
 import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
 import * as controller from "./controller";
 import { Constants } from "./constants";
 

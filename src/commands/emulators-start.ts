@@ -4,8 +4,15 @@ import * as commandUtils from "../emulator/commandUtils";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
+import { DOWNLOADABLE_EMULATORS, Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
+import * as clc from "cli-color";
+import { getLogFileName } from "../emulator/downloadableEmulators";
+
 const Table = require("cli-table");
+
+function stylizeLink(url: String) {
+  return clc.underline(clc.bold(url));
+}
 
 module.exports = new Command("emulators:start")
   .before(commandUtils.beforeEmulatorCommand)
@@ -22,42 +29,57 @@ module.exports = new Command("emulators:start")
     }
 
     utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
+
+    const guiInfo = EmulatorRegistry.getInfo(Emulators.GUI);
+    const guiUrl = `http://${guiInfo?.host}:${guiInfo?.port}`;
+    const head = ["Emulator", "Host:Port", "Log File"];
+
+    if (guiInfo) {
+      head.push("View in GUI");
+    }
+
     const table = new Table({
-      head: ["Emulator", "Host:Port", "View in Browser"],
+      head: head,
       style: {
         head: ["yellow"],
       },
     });
 
-    const guiInfo = EmulatorRegistry.getInfo(Emulators.GUI);
     table.push(
       ...controller
         .filterEmulatorTargets(options)
         .map((emulator) => {
+          const instance = EmulatorRegistry.get(emulator);
           const info = EmulatorRegistry.getInfo(emulator);
           const emulatorName = emulator.slice(0, 1).toUpperCase() + emulator.slice(1);
           const isSupportedByGUI = EMULATORS_SUPPORTED_BY_GUI.includes(emulator);
 
           if (!info) {
-            return [emulatorName, "Failed to initialize (see above)", ""];
+            return [emulatorName, "Failed to initialize (see above)", "", ""];
           }
 
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            isSupportedByGUI && guiInfo ? `http://${guiInfo.host}:${guiInfo.port}/${emulator}` : "",
+            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0 ? getLogFileName(emulator) : "",
+            isSupportedByGUI && guiInfo ? stylizeLink(`${guiUrl}/${emulator}`) : "",
           ];
         })
+        .map((col) => col.slice(0, head.length))
         .filter((v) => v)
     );
 
-    logger.info(`${table.toString()}
- 
-You can also view status and logs of the emulators by pointing your browser to http://${
-      guiInfo?.host
-    }:${guiInfo?.port}/.
- 
-Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach log files named *-debug.log in current directory.
+    logger.info(`\n${table.toString()}
+${
+  guiInfo
+    ? `\nYou can also view status and logs of the emulators by pointing your browser to ${stylizeLink(
+        guiUrl
+      )}/.\n`
+    : ""
+} 
+Issues? Report them at ${stylizeLink(
+      "https://github.com/firebase/firebase-tools/issues"
+    )} and attach the log files.
  `);
 
     // Add this line above once connect page is implemented

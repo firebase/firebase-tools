@@ -149,7 +149,7 @@ function getExecPath(name: DownloadableEmulators): string {
   return details.binaryPath || details.downloadPath;
 }
 
-function _getLogFileName(name: string): string {
+export function getLogFileName(name: string): string {
   return `${name}-debug.log`;
 }
 
@@ -213,7 +213,7 @@ async function _runBinary(
   extraEnv: NodeJS.ProcessEnv
 ): Promise<void> {
   return new Promise((resolve) => {
-    emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
+    emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
@@ -238,11 +238,6 @@ async function _runBinary(
       utils.logLabeledWarning(emulator.name, `Could not spawn child process for ${description}.`);
       return;
     }
-
-    utils.logLabeledBullet(
-      emulator.name,
-      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
-    );
 
     emulator.instance.stdout.on("data", (data) => {
       logger.debug(data.toString());
