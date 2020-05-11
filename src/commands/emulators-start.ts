@@ -35,17 +35,20 @@ module.exports = new Command("emulators:start")
     const head = ["Emulator", "Host:Port", "Log File"];
 
     if (guiInfo) {
-      head.push("View in GUI");
+      head.push("View in UI");
     }
 
-    const table = new Table({
+    const uiTable = new Table();
+    uiTable.push([`${clc.green('✔')}  All emulators ready! View status and logs at ${stylizeLink(guiUrl)}`]);
+
+    const emulatorsTable = new Table({
       head: head,
       style: {
         head: ["yellow"],
       },
     });
 
-    table.push(
+    emulatorsTable.push(
       ...controller
         .filterEmulatorTargets(options)
         .map((emulator) => {
@@ -61,22 +64,17 @@ module.exports = new Command("emulators:start")
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0 ? getLogFileName(emulator) : "",
-            isSupportedByGUI && guiInfo ? stylizeLink(`${guiUrl}/${emulator}`) : "",
+            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0 ? getLogFileName(emulator) : clc.blackBright("n/a"),
+            isSupportedByGUI && guiInfo ? stylizeLink(`${guiUrl}/${emulator}`) : clc.blackBright("n/a"),
           ];
         })
         .map((col) => col.slice(0, head.length))
         .filter((v) => v)
     );
 
-    logger.info(`\n${table.toString()}
-${
-  guiInfo
-    ? `\nYou can also view status and logs of the emulators by pointing your browser to ${stylizeLink(
-        guiUrl
-      )}/.\n`
-    : ""
-} 
+    logger.info(`\n${emulatorsTable.toString()}
+    
+${uiTable.toString() + "\n"}
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
     )} and attach the log files.
