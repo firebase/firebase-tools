@@ -144,7 +144,7 @@ export default new Command("ext:install [extensionName]")
       : "" + "or run with `-i` to see all available extensions."
   )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
-  .before(requirePermissions, ["firebasemods.instances.create"])
+  .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (extensionName: string, options: any) => {
     const projectId = getProjectId(options, false);
