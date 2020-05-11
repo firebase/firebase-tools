@@ -6,3 +6,4 @@
 - Fixes an issue where the functions and hosting emulators would crash when not properly initialized (#2112).
 - Fixes an issue where `use` would allow an invalid project identifier.
 - Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
+- Fixes an issue where the suggested redeploy command for Firebase Functions was incorrect for names with dashes.
