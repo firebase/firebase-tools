@@ -13,6 +13,17 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   pubsub: 8085,
 };
 
+export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
+  gui: true,
+  hub: true,
+  logging: true,
+  hosting: false,
+  functions: false,
+  firestore: false,
+  database: false,
+  pubsub: false,
+};
+
 const DEFAULT_HOST = "localhost";
 
 export class Constants {
@@ -77,16 +88,6 @@ export class Constants {
     return `emulators.${emulator.toString()}.port`;
   }
 
-  static getAddress(emulator: Emulators, options: any): Address {
-    const hostVal = options.config.get(this.getHostKey(emulator), DEFAULT_HOST);
-    const portVal = options.config.get(this.getPortKey(emulator), this.getDefaultPort(emulator));
-
-    const host = this.normalizeHost(hostVal);
-    const port = parseInt(portVal, 10);
-
-    return { host, port };
-  }
-
   static description(name: Emulators): string {
     if (name === Emulators.HUB) {
       return "emulator hub";
@@ -97,7 +98,7 @@ export class Constants {
     }
   }
 
-  private static normalizeHost(host: string): string {
+  static normalizeHost(host: string): string {
     let normalized = host;
     if (!normalized.startsWith("http")) {
       normalized = `http://${normalized}`;

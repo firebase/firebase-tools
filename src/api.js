@@ -123,8 +123,11 @@ var api = {
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,
-    "https://firestore.googleapis.com",
+    utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
@@ -150,8 +153,11 @@ var api = {
   ),
   realtimeOriginOrEmulator: utils.envOverride(
     Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    "https://firebaseio.com",
+    utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
