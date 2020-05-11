@@ -1,5 +1,6 @@
 import clc = require("cli-color");
 const superstatic = require("superstatic").server; // Superstatic has no types, requires odd importing.
+const morgan = require("morgan");
 
 import { detectProjectRoot } from "../detectProjectRoot";
 import { FirebaseError } from "../error";
@@ -9,6 +10,8 @@ import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import * as utils from "../utils";
 import cloudRunProxy from "../hosting/cloudRunProxy";
 import functionsProxy from "../hosting/functionsProxy";
+import { NextFunction, Request, Response } from "express";
+import { Writable } from "stream";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
@@ -16,15 +19,48 @@ let server: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
+  const firebaseMiddleware = initMiddleware(init);
+
+  const morganStream = new Writable();
+  morganStream._write = (
+    chunk: any,
+    encoding: string,
+    callback: (error?: Error | null) => void
+  ) => {
+    if (chunk instanceof Buffer) {
+      utils.logLabeledBullet("hosting", chunk.toString().trim(), "info", {
+        metadata: {
+          emulator: {
+            name: "hosting",
+          },
+        },
+      });
+    }
+
+    callback();
+  };
+
+  const morganMiddleware = morgan("combined", {
+    stream: morganStream,
+  });
+
   server = superstatic({
-    debug: true,
+    debug: false,
     port: port,
     host: options.host,
     config: config,
     cwd: detectProjectRoot(options.cwd),
     stack: "strict",
     before: {
-      files: initMiddleware(init),
+      middleware: (req: Request, res: Response, next: NextFunction) => {
+        // We do these in a single method to ensure order of operations
+        morganMiddleware(req, res, () => {
+          /*
+          NoOp next function
+        */
+        });
+        firebaseMiddleware(req, res, next);
+      },
     },
     rewriters: {
       function: functionsProxy(options),
