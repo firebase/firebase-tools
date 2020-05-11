@@ -82,8 +82,9 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     }
     utils.logLabeledSuccess(
       label,
-      "Local server: " +
-        clc.underline(clc.bold("http://" + options.host + ":" + port), "info", logData)
+      "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port)),
+      "info",
+      logData
     );
   });
 

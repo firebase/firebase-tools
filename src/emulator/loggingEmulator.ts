@@ -15,10 +15,10 @@ export interface LogData {
   user?: any;
   metadata?: {
     emulator?: {
-      name?: string;
+      name: string;
     };
     function?: {
-      name?: string;
+      name: string;
     };
   };
 }

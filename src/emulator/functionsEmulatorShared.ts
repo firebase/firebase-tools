@@ -49,7 +49,7 @@ export interface FunctionsRuntimeArgs {
 export interface FunctionsRuntimeBundle {
   projectId: string;
   proto?: any;
-  triggerId: string;
+  triggerId?: string;
   triggerType?: EmulatedTriggerType;
   emulators: {
     firestore?: {

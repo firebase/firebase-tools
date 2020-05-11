@@ -2,7 +2,7 @@ import * as clc from "cli-color";
 
 import * as utils from "../utils";
 import * as logger from "../logger";
-import { EmulatorLog } from "./types";
+import { EmulatorLog, Emulators } from "./types";
 import { tryParse } from "../utils";
 import { LogData, LogDataOrUndefined } from "./loggingEmulator";
 
@@ -34,13 +34,46 @@ export enum Verbosity {
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
-  static warnOnceCache = new Set<String>();
+  static warnOnceCache = new Set<string>();
+
+  constructor(private data: LogData = {}) {}
+
+  static forEmulator(emulator: Emulators) {
+    return new EmulatorLogger({
+      metadata: {
+        emulator: {
+          name: emulator,
+        },
+      },
+    });
+  }
+
+  static forFunction(functionName: string) {
+    return new EmulatorLogger({
+      metadata: {
+        emulator: {
+          name: "functions",
+        },
+        function: {
+          name: functionName,
+        },
+      },
+    });
+  }
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
+   *
+   * @param type
+   * @param text
+   * @param data
    */
-  static log(type: LogType, text: string, data: LogDataOrUndefined = undefined): void {
+  log(type: LogType, text: string, data?: LogData): void {
+    if (!data) {
+      data = this.data;
+    }
+
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`${type}: ${text}`);
       return;
@@ -63,9 +96,9 @@ export class EmulatorLogger {
         utils.logWarning(text, "warn", data);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache.has(text)) {
+        if (!EmulatorLogger.warnOnceCache.has(text)) {
           utils.logWarning(text, "warn", data);
-          this.warnOnceCache.add(text);
+          EmulatorLogger.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
@@ -74,113 +107,79 @@ export class EmulatorLogger {
     }
   }
 
-  static handleRuntimeLog(triggerId: string, log: EmulatorLog, ignore: string[] = []): void {
-    const logData = {
-      metadata: {
-        emulator: {
-          name: "functions",
-        },
-        function: {
-          name: triggerId,
-        },
-      },
-    };
-
-    if (ignore.indexOf(log.level) >= 0) {
+  handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
+    if (ignore.includes(log.level)) {
       return;
     }
     switch (log.level) {
       case "SYSTEM":
-        EmulatorLogger.handleSystemLog(triggerId, log);
+        this.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
+        this.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
           user: tryParse(log.text),
-          ...logData,
+          ...this.data,
         });
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
-          EmulatorLogger.log(
-            "DEBUG",
-            `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`,
-            logData
-          );
+          this.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
         } else {
-          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`, logData);
+          this.log("DEBUG", `[${log.type}] ${log.text}`);
         }
         break;
       case "INFO":
-        EmulatorLogger.logLabeled("BULLET", "functions", log.text, logData);
+        this.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text, logData);
+        this.logLabeled("WARN", "functions", log.text);
         break;
       case "WARN_ONCE":
-        EmulatorLogger.logLabeled("WARN_ONCE", "functions", log.text, logData);
+        this.logLabeled("WARN_ONCE", "functions", log.text);
         break;
       case "FATAL":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text, logData);
+        this.logLabeled("WARN", "functions", log.text);
         break;
       default:
-        EmulatorLogger.log("INFO", `${log.level}: ${log.text}`, logData);
+        this.log("INFO", `${log.level}: ${log.text}`);
         break;
     }
   }
 
-  static handleSystemLog(triggerId: string, systemLog: EmulatorLog): void {
-    const logData = {
-      metadata: {
-        emulator: {
-          name: "functions",
-        },
-        function: {
-          name: triggerId,
-        },
-      },
-    };
-
+  handleSystemLog(systemLog: EmulatorLog): void {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          EmulatorLogger.log(
-            "WARN",
-            `Your function was killed because it raised an unhandled error.`,
-            logData
-          );
+          this.log("WARN", `Your function was killed because it raised an unhandled error.`);
         }
         break;
       case "googleapis-network-access":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
-          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`,
-          logData
+          `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
-          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`,
-          logData
+          `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`,
-          logData
+          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
-            `- This instance will *not* be mocked and will access production resources.`,
-          logData
+            `- This instance will *not* be mocked and will access production resources.`
         );
         break;
       case "missing-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -188,35 +187,31 @@ export class EmulatorLogger {
             systemLog.data.isDev ? "development dependency" : "dependency"
           }. To fix this, run "npm install ${systemLog.data.isDev ? "--save-dev" : "--save"} ${
             systemLog.data.name
-          }" in your functions directory.`,
-          logData
+          }" in your functions directory.`
         );
         break;
       case "uninstalled-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
-You probably need to run "npm install" in your functions directory.`,
-          logData
+You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion} so your version is too old. \
-You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`,
-          logData
+You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
-          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`,
-          logData
+          `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
       case "function-code-resolution-failed":
-        EmulatorLogger.log("WARN", systemLog.data.error);
+        this.log("WARN", systemLog.data.error);
         const helper = ["We were unable to load your functions code. (see above)"];
         if (systemLog.data.isPotentially.wrong_directory) {
           helper.push(`   - There is no "package.json" file in your functions directory.`);
@@ -231,7 +226,7 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
             `   - You may be able to run "npm run build" in your functions directory to resolve this.`
           );
         }
-        utils.logWarning(helper.join("\n"), "warn", logData);
+        utils.logWarning(helper.join("\n"), "warn", this.data);
       default:
       // Silence
     }
@@ -240,13 +235,13 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
   /**
    * Within this file, utils.logLabeldFoo() should not be called directly,
    * so that we can respect the "quiet" flag.
+   *
+   * @param type
+   * @param label
+   * @param text
+   * @param data
    */
-  static logLabeled(
-    type: LogType,
-    label: string,
-    text: string,
-    data: LogDataOrUndefined = undefined
-  ): void {
+  logLabeled(type: LogType, label: string, text: string): void {
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`[${label}] ${text}`);
       return;
@@ -257,18 +252,18 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         logger.debug(`[${label}] ${text}`);
         break;
       case "BULLET":
-        utils.logLabeledBullet(label, text, "info", data);
+        utils.logLabeledBullet(label, text, "info", this.data);
         break;
       case "SUCCESS":
-        utils.logLabeledSuccess(label, text, "info", data);
+        utils.logLabeledSuccess(label, text, "info", this.data);
         break;
       case "WARN":
-        utils.logLabeledWarning(label, text, "warn", data);
+        utils.logLabeledWarning(label, text, "warn", this.data);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache.has(text)) {
-          utils.logLabeledWarning(label, text, "warn", data);
-          this.warnOnceCache.add(text);
+        if (!EmulatorLogger.warnOnceCache.has(text)) {
+          utils.logLabeledWarning(label, text, "warn", this.data);
+          EmulatorLogger.warnOnceCache.add(text);
         }
         break;
     }
