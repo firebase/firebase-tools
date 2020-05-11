@@ -17,7 +17,13 @@ type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = downloadableEmulators.getDownloadDetails(name);
-  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
+  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`, "info", {
+    metadata: {
+      emulator: {
+        name,
+      },
+    },
+  });
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
@@ -73,7 +79,13 @@ function removeOldFiles(
       (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
       removeAllVersions
     ) {
-      utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`);
+      utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`, "info", {
+        metadata: {
+          emulator: {
+            name,
+          },
+        },
+      });
       fs.removeSync(fullFilePath);
     }
   }

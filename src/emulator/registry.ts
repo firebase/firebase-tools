@@ -28,7 +28,15 @@ export class EmulatorRegistry {
 
     utils.logLabeledSuccess(
       instance.getName(),
-      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
+      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`,
+      "info",
+      {
+        metadata: {
+          emulator: {
+            name: instance.getName(),
+          },
+        },
+      }
     );
   }
 

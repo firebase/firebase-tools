@@ -247,7 +247,7 @@ export class RuntimeWorkerPool {
     return;
   }
 
-  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
+  addWorker(triggerId: string, runtime: FunctionsRuntimeInstance): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
     this.log(`addWorker(${worker.key})`);
 
@@ -256,7 +256,7 @@ export class RuntimeWorkerPool {
     this.setTriggerWorkers(triggerId, keyWorkers);
 
     worker.onLogs((log: EmulatorLog) => {
-      EmulatorLogger.handleRuntimeLog(log);
+      EmulatorLogger.handleRuntimeLog(triggerId, log);
     }, true /* listen forever */);
 
     this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);

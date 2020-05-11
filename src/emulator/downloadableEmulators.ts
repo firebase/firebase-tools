@@ -10,7 +10,7 @@ import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { EmulatorLogger } from "./emulatorLogger";
 
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
@@ -170,9 +170,14 @@ function _getCommand(
   }
 
   const cmdLineArgs = baseCmd.args.slice();
+  const logMetadata = {
+    metadata: {
+      emulator: { name: emulator },
+    },
+  };
   Object.keys(args).forEach((key) => {
     if (baseCmd.optionalArgs.indexOf(key) < 0) {
-      logger.debug(`Ignoring unsupported arg: ${key}`);
+      EmulatorLogger.log("DEBUG", `Ignoring unsupported arg: ${key}`, logMetadata);
       return;
     }
 
@@ -180,7 +185,7 @@ function _getCommand(
     const argVal = args[key];
 
     if (argVal === undefined) {
-      logger.debug(`Ignoring empty arg for key: ${key}`);
+      EmulatorLogger.log("DEBUG", `Ignoring empty arg for key: ${key}`, logMetadata);
       return;
     }
 
@@ -233,6 +238,11 @@ async function _runBinary(
     }
 
     const description = Constants.description(emulator.name);
+    const logMetadata = {
+      metadata: {
+        emulator: { name: emulator.name },
+      },
+    };
 
     if (emulator.instance == null) {
       utils.logLabeledWarning(emulator.name, `Could not spawn child process for ${description}.`);
@@ -241,15 +251,23 @@ async function _runBinary(
 
     utils.logLabeledBullet(
       emulator.name,
-      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`,
+      "info",
+      {
+        metadata: {
+          emulator: {
+            name: emulator.name,
+          },
+        },
+      }
     );
 
     emulator.instance.stdout.on("data", (data) => {
-      logger.debug(data.toString());
+      EmulatorLogger.log("DEBUG", data.toString(), logMetadata);
       emulator.stdout.write(data);
     });
     emulator.instance.stderr.on("data", (data) => {
-      logger.debug(data.toString());
+      EmulatorLogger.log("DEBUG", data.toString(), logMetadata);
       emulator.stdout.write(data);
     });
 
@@ -284,13 +302,18 @@ export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetail
 
 export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = EmulatorDetails[targetName];
+  const logMetadata = {
+    metadata: {
+      emulator: { name: targetName },
+    },
+  };
   return new Promise((resolve, reject) => {
     if (emulator.instance) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
           Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
-        logger.debug(errorMsg);
+        EmulatorLogger.log("DEBUG", errorMsg, logMetadata);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
 
@@ -341,8 +364,15 @@ export async function start(
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(
-    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
+  const logMetadata = {
+    metadata: {
+      emulator: { name: targetName },
+    },
+  };
+  EmulatorLogger.log(
+    "DEBUG",
+    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`,
+    logMetadata
   );
   return _runBinary(emulator, command, extraEnv);
 }

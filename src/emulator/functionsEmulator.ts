@@ -100,6 +100,14 @@ interface TriggerDescription {
   ignored?: boolean;
 }
 
+const functionsEmulatorLogData = {
+  metadata: {
+    emulator: {
+      name: "functions",
+    },
+  },
+};
+
 export class FunctionsEmulator implements EmulatorInstance {
   static getHttpFunctionUrl(
     host: string,
@@ -232,7 +240,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     EmulatorLogger.logLabeled(
       "BULLET",
       "functions",
-      `Watching "${this.args.functionsDir}" for Cloud Functions...`
+      `Watching "${this.args.functionsDir}" for Cloud Functions...`,
+      functionsEmulatorLogData
     );
 
     const watcher = chokidar.watch(this.args.functionsDir, {
@@ -322,7 +331,11 @@ export class FunctionsEmulator implements EmulatorInstance {
               added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             default:
-              EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+              EmulatorLogger.log(
+                "DEBUG",
+                `Unsupported trigger: ${JSON.stringify(definition)}`,
+                functionsEmulatorLogData
+              );
               break;
           }
           result.ignored = !added;
@@ -337,19 +350,33 @@ export class FunctionsEmulator implements EmulatorInstance {
         const msg = result.details
           ? `${clc.bold(result.type)} function initialized (${result.details}).`
           : `${clc.bold(result.type)} function initialized.`;
-        EmulatorLogger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
+        EmulatorLogger.logLabeled(
+          "SUCCESS",
+          `functions[${result.name}]`,
+          msg,
+          functionsEmulatorLogData
+        );
       }
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
         const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
-        EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
+        EmulatorLogger.logLabeled(
+          "BULLET",
+          `functions[${result.name}]`,
+          msg,
+          functionsEmulatorLogData
+        );
       }
     };
 
     const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
     watcher.on("change", (filePath) => {
-      EmulatorLogger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
+      EmulatorLogger.log(
+        "DEBUG",
+        `File ${filePath} changed, reloading triggers`,
+        functionsEmulatorLogData
+      );
       return debouncedLoadTriggers();
     });
 
@@ -376,7 +403,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!definition.eventTrigger) {
       EmulatorLogger.log(
         "WARN",
-        `Event trigger "${definition.name}" has undefined "eventTrigger" member`
+        `Event trigger "${definition.name}" has undefined "eventTrigger" member`,
+        functionsEmulatorLogData
       );
       return Promise.reject();
     }
@@ -386,7 +414,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.log(
         "WARN",
         `Event trigger "${definition.name}" has malformed "resource" member. ` +
-          `${definition.eventTrigger.resource}`
+          `${definition.eventTrigger.resource}`,
+        functionsEmulatorLogData
       );
       return Promise.reject();
     }
@@ -406,7 +435,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     } else {
       EmulatorLogger.log(
         "WARN",
-        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
+        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`,
+        functionsEmulatorLogData
       );
     }
 
@@ -423,7 +453,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+        EmulatorLogger.log("WARN", "Error adding trigger: " + err, functionsEmulatorLogData);
         throw err;
       });
   }
@@ -449,7 +479,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       })
       .catch((err) => {
-        EmulatorLogger.log("WARN", "Error adding trigger: " + err);
+        EmulatorLogger.log("WARN", "Error adding trigger: " + err, functionsEmulatorLogData);
         throw err;
       });
   }
@@ -557,7 +587,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.log(
         "WARN",
         "Your functions directory does not specify a Node version.\n   " +
-          "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
+          "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options",
+        functionsEmulatorLogData
       );
       return process.execPath;
     }
@@ -580,7 +611,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.logLabeled(
         "SUCCESS",
         "functions",
-        `Using node@${requestedMajorVersion} from host.`
+        `Using node@${requestedMajorVersion} from host.`,
+        functionsEmulatorLogData
       );
       return process.execPath;
     }
@@ -590,7 +622,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       EmulatorLogger.logLabeled(
         "SUCCESS",
         "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
+        `Using node@${requestedMajorVersion} from local cache.`,
+        functionsEmulatorLogData
       );
       return localNodePath;
     }
@@ -601,7 +634,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     EmulatorLogger.log(
       "WARN",
-      `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
+      `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`,
+      functionsEmulatorLogData
     );
 
     return process.execPath;
@@ -681,7 +715,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     const method = req.method;
     const triggerId = req.params.trigger_name;
 
-    EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
+    EmulatorLogger.log(
+      "DEBUG",
+      `Accepted request ${method} ${req.url} --> ${triggerId}`,
+      functionsEmulatorLogData
+    );
 
     const reqBody = (req as RequestWithRawBody).rawBody;
     const proto = JSON.parse(reqBody.toString());
@@ -791,7 +829,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     track(EVENT_INVOKE, "https");
 
-    EmulatorLogger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
+    EmulatorLogger.log(
+      "DEBUG",
+      `[functions] Runtime ready! Sending request!`,
+      functionsEmulatorLogData
+    );
 
     if (!worker.lastArgs) {
       throw new FirebaseError("Cannot execute on a worker with no arguments");

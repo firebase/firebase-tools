@@ -11,6 +11,20 @@ export interface LoggingEmulatorArgs {
   host?: string;
 }
 
+export interface LogData {
+  user?: any;
+  metadata?: {
+    emulator?: {
+      name?: string;
+    };
+    function?: {
+      name?: string;
+    };
+  };
+}
+
+export type LogDataOrUndefined = LogData | undefined;
+
 export class LoggingEmulator implements EmulatorInstance {
   static LOGGING_EMULATOR_ENV = "FIREBASE_LOGGING_EMULATOR_HOST";
   private transport?: WebSocketTransport;
@@ -111,8 +125,8 @@ class WebSocketTransport extends TransportStream {
 
     bundle.message = ansiStrip(splat.join(" "));
 
-    if (bundle.data && bundle.data.system && bundle.data.system.level) {
-      bundle.level = bundle.data.system.level.toLowerCase();
+    if (bundle.data && bundle.data.metadata && bundle.data.metadata.level) {
+      bundle.level = bundle.data.metadata.level.toLowerCase();
     } else {
       bundle.level = bundle.level.toLowerCase();
     }
