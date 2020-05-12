@@ -19,7 +19,7 @@ import * as logger from "../logger";
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requirePermissions, ["firebasemods.instances.delete"])
+  .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const projectId = getProjectId(options);
