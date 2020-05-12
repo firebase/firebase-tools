@@ -123,8 +123,11 @@ var api = {
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,
-    "https://firestore.googleapis.com",
+    utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
@@ -150,8 +153,11 @@ var api = {
   ),
   realtimeOriginOrEmulator: utils.envOverride(
     Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    "https://firebaseio.com",
+    utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
     (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
       return `http://${val}`;
     }
   ),
@@ -207,15 +213,30 @@ var api = {
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
   },
   getAccessToken: function() {
+    // Runtime fetch of Auth singleton to prevent circular module dependencies
     return accessToken
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(reqOptions) {
-    // Runtime fetch of Auth singleton to prevent circular module dependencies
+  addRequestHeaders: function(reqOptions, options) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
     _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
-    return api.getAccessToken().then(function(result) {
+
+    var secureRequest = true;
+    if (options && options.origin) {
+      // Only 'https' requests are secure. Protocol includes the final ':'
+      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
+      const originUrl = url.parse(options.origin);
+      secureRequest = originUrl.protocol === "https:";
+    }
+
+    // For insecure requests we send a special 'owner" token which the emulators
+    // will accept and other secure APIs will deny.
+    var getTokenPromise = secureRequest
+      ? api.getAccessToken()
+      : Promise.resolve({ access_token: "owner" });
+
+    return getTokenPromise.then(function(result) {
       _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
       return reqOptions;
     });
@@ -270,24 +291,12 @@ var api = {
       return _request(reqOptions, options.logOptions);
     };
 
-    var secureRequest = true;
-    if (options.origin) {
-      // Only 'https' requests are secure. Protocol includes the final ':'
-      // https://developer.mozilla.org/en-US/docs/Web/API/URL/protocol
-      const originUrl = url.parse(options.origin);
-      secureRequest = originUrl.protocol === "https:";
-    }
-
     if (options.auth === true) {
-      if (secureRequest) {
-        requestFunction = function() {
-          return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-            return _request(reqOptionsWithToken, options.logOptions);
-          });
-        };
-      } else {
-        logger.debug(`Ignoring options.auth for insecure origin: ${options.origin}`);
-      }
+      requestFunction = function() {
+        return api.addRequestHeaders(reqOptions, options).then(function(reqOptionsWithToken) {
+          return _request(reqOptionsWithToken, options.logOptions);
+        });
+      };
     }
 
     return requestFunction().catch(function(err) {

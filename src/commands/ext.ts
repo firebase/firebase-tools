@@ -36,7 +36,7 @@ module.exports = new Command("ext")
 
     // Print out a list of all extension instances on project, if called with a project.
     try {
-      await requirePermissions(options, ["firebasemods.instances.list"]);
+      await requirePermissions(options, ["firebaseextensions.instances.list"]);
       const projectId = getProjectId(options);
       return listExtensions(projectId);
     } catch (err) {

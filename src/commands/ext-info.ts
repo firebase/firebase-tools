@@ -27,7 +27,7 @@ export default new Command("ext:info <extensionName>")
       }
       spec = await getLocalExtensionSpec(extensionName);
     } else {
-      await requirePermissions(options, ["firebasemods.sources.get"]);
+      await requirePermissions(options, ["firebaseextensions.sources.get"]);
       await ensureExtensionsApiEnabled(options);
 
       const [name, version] = extensionName.split("@");
