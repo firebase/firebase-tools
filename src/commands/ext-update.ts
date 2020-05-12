@@ -5,7 +5,11 @@ import * as ora from "ora";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix,  createSourceFromLocation} from "../extensions/extensionsHelper";
+import {
+  ensureExtensionsApiEnabled,
+  logPrefix,
+  createSourceFromLocation,
+} from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
 import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
@@ -22,8 +26,12 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <extensionInstanceId> [localPathOrUrl]")
-  .description(previews.extdev ? "update an existing extension instance to the latest version or from a local or tarball URL source": "update an existing extension instance to the latest version")
+export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUrl]")
+  .description(
+    previews.extdev
+      ? "update an existing extension instance to the latest version or from a local or tarball URL source"
+      : "update an existing extension instance to the latest version"
+  )
   .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, localSource: string, options: any) => {
@@ -51,7 +59,7 @@ export default new Command("ext:update <extensionInstanceId> [localPathOrUrl]")
         "config.source.spec"
       );
       const currentParams = _.get(existingInstance, "config.params");
-      
+
       let source;
       let sourceUrl;
       if (localSource) {
@@ -59,16 +67,14 @@ export default new Command("ext:update <extensionInstanceId> [localPathOrUrl]")
           source = await createSourceFromLocation(projectId, localSource);
           utils.logLabeledBullet(
             logPrefix,
-            `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to ${clc.bold(localSource)} (${clc.bold(
-              source.spec.version
-            )})`
+            `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to ${clc.bold(
+              localSource
+            )} (${clc.bold(source.spec.version)})`
           );
           sourceUrl = source.name;
         } catch (err) {
           throw new FirebaseError(
-            `Unable to create new source from '${clc.bold(
-                localSource
-              )}':\n ${err.message}`
+            `Unable to create new source from '${clc.bold(localSource)}':\n ${err.message}`
           );
         }
       } else {
@@ -76,23 +82,27 @@ export default new Command("ext:update <extensionInstanceId> [localPathOrUrl]")
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
         utils.logLabeledBullet(
           logPrefix,
-          `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(
-            targetVersion
-          )}`
+          `Updating ${instanceId} from version ${clc.bold(
+            currentSpec.version
+          )} to version ${clc.bold(targetVersion)}`
+        );
+
+        const officialSourceMsg =
+          "You are updating this extension instance from an official source.";
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(
+            officialSourceMsg
+          )} All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.`
         );
         await resolveSource.promptForUpdateWarnings(
           registryEntry,
           currentSpec.version,
           targetVersion
         );
-        sourceUrl = resolveSource.resolveSourceUrl(
-          registryEntry,
-          currentSpec.name,
-          targetVersion
-        );
+        sourceUrl = resolveSource.resolveSourceUrl(registryEntry, currentSpec.name, targetVersion);
       }
-      
-      // Unnecesarry API call for a local source, but good sanity check.
+
       const newSource = await extensionsApi.getSource(sourceUrl);
       const newSpec = newSource.spec;
       if (!localSource) {
