@@ -8,12 +8,13 @@ import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
+import { EmulatorRegistry } from "./registry";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
   projectId?: string;
-  rules?: string;
+  rules?: { rules: string; instance: string }[];
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
@@ -25,25 +26,35 @@ export class DatabaseEmulator implements EmulatorInstance {
   constructor(private args: DatabaseEmulatorArgs) {}
 
   async start(): Promise<void> {
-    if (this.args.rules && this.args.projectId) {
-      const rulesPath = this.args.rules;
-      this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async (event, stats) => {
-        // There have been some race conditions reported (on Windows) where reading the
-        // file too quickly after the watcher fires results in an empty file being read.
-        // Adding a small delay prevents that at very little cost.
-        await new Promise((res) => setTimeout(res, 5));
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator_host = functionsInfo.host;
+      this.args.functions_emulator_port = functionsInfo.port;
+    }
+    if (this.args.rules) {
+      for (const c of this.args.rules) {
+        const rulesPath = c.rules;
+        this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+        this.rulesWatcher.on("change", async (event, stats) => {
+          // There have been some race conditions reported (on Windows) where reading the
+          // file too quickly after the watcher fires results in an empty file being read.
+          // Adding a small delay prevents that at very little cost.
+          await new Promise((res) => setTimeout(res, 5));
 
-        utils.logLabeledBullet("database", "Change detected, updating rules...");
-        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
-        try {
-          await this.updateRules(newContent);
-          utils.logLabeledSuccess("database", "Rules updated.");
-        } catch (e) {
-          utils.logWarning(this.prettyPrintRulesError(rulesPath, e));
-          utils.logWarning("Failed to update rules");
-        }
-      });
+          utils.logLabeledBullet(
+            "database",
+            `Change detected, updating rules for ${c.instance}...`
+          );
+          const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+          try {
+            await this.updateRules(c.instance, newContent);
+            utils.logLabeledSuccess("database", "Rules updated.");
+          } catch (e) {
+            utils.logWarning(this.prettyPrintRulesError(rulesPath, e));
+            utils.logWarning("Failed to update rules");
+          }
+        });
+      }
     }
 
     return downloadableEmulators.start(Emulators.DATABASE, this.args);
@@ -71,10 +82,10 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
-  private async updateRules(content: string): Promise<any> {
+  private async updateRules(instance: string, content: string): Promise<any> {
     const { host, port } = this.getInfo();
     try {
-      await api.request("PUT", `/.settings/rules.json?ns=${this.args.projectId}`, {
+      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
         origin: `http://${host}:${[port]}`,
         headers: { Authorization: "Bearer owner" },
         data: content,

@@ -59,6 +59,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         "config.source.spec"
       );
       const currentParams = _.get(existingInstance, "config.params");
+      const existingSource = _.get(existingInstance, "config.source.name");
 
       let source;
       let sourceUrl;
@@ -80,13 +81,10 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       } else {
         const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
-        utils.logLabeledBullet(
-          logPrefix,
-          `Updating ${instanceId} from version ${clc.bold(
-            currentSpec.version
-          )} to version ${clc.bold(targetVersion)}`
-        );
-
+        // TODO: replace with targeted error messaging once multiple source origins are supported.
+        if (!resolveSource.isOfficialSource(registryEntry, existingSource)) {
+          throw new FirebaseError(`Expected official extension source, but got: ${existingSource}`);
+        }
         const officialSourceMsg =
           "You are updating this extension instance from an official source.";
         utils.logLabeledBullet(

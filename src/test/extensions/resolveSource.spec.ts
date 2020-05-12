@@ -75,3 +75,21 @@ describe("checkForUpdateWarnings", () => {
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
   });
 });
+
+describe("isOfficialSource", () => {
+  it("should return true for an official source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/2kd"
+    );
+    expect(result).to.be.true;
+  });
+
+  it("should return false for an unofficial source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/invalid"
+    );
+    expect(result).to.be.false;
+  });
+});

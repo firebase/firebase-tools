@@ -5,7 +5,7 @@ var pkg = require("../package.json");
 var clc = require("cli-color");
 var logger = require("./logger");
 var { setupLoggers } = require("./utils");
-var didYouMean = require("didyoumean");
+var leven = require("leven");
 
 program.version(pkg.version);
 program.option(
@@ -41,7 +41,9 @@ require("./commands")(client);
  * @return {string|undefined} Returns the suggested command; undefined if none.
  */
 function suggestCommands(cmd, cmdList) {
-  var suggestion = didYouMean(cmd, cmdList);
+  var suggestion = cmdList.find(function(c) {
+    return leven(c, cmd) < c.length * 0.4;
+  });
   if (suggestion) {
     logger.error();
     logger.error("Did you mean " + clc.bold(suggestion) + "?");
