@@ -300,13 +300,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
-
-    utils.logLabeledBullet(
-      Emulators.FIRESTORE,
-      `For testing set ${clc.bold(
-        `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
-      )}`
-    );
   }
 
   if (shouldStart(options, Emulators.DATABASE)) {
@@ -351,13 +344,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
-
-    utils.logLabeledBullet(
-      Emulators.DATABASE,
-      `For testing set ${clc.bold(
-        `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
-      )}`
-    );
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {

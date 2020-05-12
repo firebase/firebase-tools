@@ -28,8 +28,6 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
-
     const guiInfo = EmulatorRegistry.getInfo(Emulators.GUI);
     const guiUrl = `http://${guiInfo?.host}:${guiInfo?.port}`;
     const head = ["Emulator", "Host:Port", "Log File"];
@@ -72,9 +70,9 @@ module.exports = new Command("emulators:start")
         .filter((v) => v)
     );
 
-    logger.info(`\n${emulatorsTable.toString()}
+    logger.info(`${"\n" + uiTable.toString() + "\n"}
+${emulatorsTable.toString()}
     
-${uiTable.toString() + "\n"}
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
     )} and attach the log files.
