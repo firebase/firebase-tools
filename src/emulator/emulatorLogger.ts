@@ -79,30 +79,38 @@ export class EmulatorLogger {
       return;
     }
 
+    const mergedData = {
+      ...data,
+      metadata: {
+        ...data.metadata,
+        message: text
+      }
+    }
+
     switch (type) {
       case "DEBUG":
-        logger.debug(text, data);
+        logger.debug(text, mergedData);
         break;
       case "INFO":
-        logger.info(text, data);
+        logger.info(text, mergedData);
         break;
       case "USER":
-        logger.info(text, data);
+        logger.info(text, mergedData);
         break;
       case "BULLET":
-        utils.logBullet(text, "info", data);
+        utils.logBullet(text, "info", mergedData);
         break;
       case "WARN":
-        utils.logWarning(text, "warn", data);
+        utils.logWarning(text, "warn", mergedData);
         break;
       case "WARN_ONCE":
         if (!EmulatorLogger.warnOnceCache.has(text)) {
-          utils.logWarning(text, "warn", data);
+          utils.logWarning(text, "warn", mergedData);
           EmulatorLogger.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
-        utils.logSuccess(text, "info", data);
+        utils.logSuccess(text, "info", mergedData);
         break;
     }
   }
@@ -247,22 +255,30 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
       return;
     }
 
+    const mergedData = {
+      ...this.data,
+      metadata: {
+        ...this.data.metadata,
+        message: text
+      }
+    }
+
     switch (type) {
       case "DEBUG":
         logger.debug(`[${label}] ${text}`);
         break;
       case "BULLET":
-        utils.logLabeledBullet(label, text, "info", this.data);
+        utils.logLabeledBullet(label, text, "info", mergedData);
         break;
       case "SUCCESS":
-        utils.logLabeledSuccess(label, text, "info", this.data);
+        utils.logLabeledSuccess(label, text, "info", mergedData);
         break;
       case "WARN":
-        utils.logLabeledWarning(label, text, "warn", this.data);
+        utils.logLabeledWarning(label, text, "warn", mergedData);
         break;
       case "WARN_ONCE":
         if (!EmulatorLogger.warnOnceCache.has(text)) {
-          utils.logLabeledWarning(label, text, "warn", this.data);
+          utils.logLabeledWarning(label, text, "warn", mergedData);
           EmulatorLogger.warnOnceCache.add(text);
         }
         break;

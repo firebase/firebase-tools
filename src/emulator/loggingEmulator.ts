@@ -125,13 +125,19 @@ class WebSocketTransport extends TransportStream {
       })
       .filter((v) => v);
 
-    bundle.message = ansiStrip(splat.join(" "));
+    bundle.message = splat.join(" ");
 
     if (bundle.data && bundle.data.metadata && bundle.data.metadata.level) {
       bundle.level = bundle.data.metadata.level.toLowerCase();
     } else {
       bundle.level = bundle.level.toLowerCase();
     }
+
+    if (bundle.data && bundle.data.metadata && bundle.data.metadata.message) {
+      bundle.message = bundle.data.metadata.message;
+    }
+
+    bundle.message = ansiStrip(bundle.message);
 
     this.history.push(bundle);
     this.connections.forEach((ws) => {

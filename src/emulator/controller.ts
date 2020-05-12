@@ -6,15 +6,15 @@ import * as tcpport from "tcp-port-used";
 import * as pf from "portfinder";
 
 import * as logger from "../logger";
-import * as utils from "../utils";
 import * as track from "../track";
+import * as utils from "../utils";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
+  Address,
   ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_GUI,
-  Address,
 } from "../emulator/types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
@@ -29,8 +29,9 @@ import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
 import { EmulatorGUI } from "./gui";
 import { LoggingEmulator } from "./loggingEmulator";
-import previews = require("../previews");
 import * as dbRulesConfig from "../database/rulesConfig";
+import { EmulatorLogger } from "./emulatorLogger";
+import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {
@@ -67,13 +68,15 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
   }
 
+  const logger = EmulatorLogger.forEmulator(emulator);
   const portOpen = await checkPortOpen(port, host);
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await pf.getPortPromise({ host, port });
       if (newPort != port) {
-        utils.logLabeledWarning(
-          "emulators",
+        logger.logLabeled(
+          "WARN",
+          emulator,
           `${Constants.description(
             emulator
           )} unable to start on port ${port}, starting on ${newPort} instead.`
@@ -83,11 +86,13 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     } else {
       await cleanShutdown();
       const description = Constants.description(emulator);
-      utils.logLabeledWarning(
+      logger.logLabeled(
+        "WARN",
         emulator,
         `Port ${port} is not open on ${host}, could not start ${description}.`
       );
-      utils.logLabeledBullet(
+      logger.logLabeled(
+        "WARN",
         emulator,
         `To select a different host/port, specify that host/port in a firebase.json config file:
       {
@@ -116,10 +121,10 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
 }
 
 export async function cleanShutdown(): Promise<boolean> {
-  utils.logLabeledBullet("emulators", "Shutting down emulators.");
+  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled("BULLET", "emulators", "Shutting down emulators.");
 
   for (const name of EmulatorRegistry.listRunning()) {
-    utils.logLabeledBullet(name, `Stopping ${Constants.description(name)}`);
+    EmulatorLogger.forEmulator(name).logLabeled("BULLET", name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
 
@@ -161,7 +166,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
 
   // Don't start the functions emulator if we can't find the source directory
   if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
-    utils.logLabeledWarning(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+      "WARN",
       "functions",
       `The functions emulator is configured but there is no functions source directory. Have you run ${clc.bold(
         "firebase init functions"
@@ -171,7 +177,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
   }
 
   if (name === Emulators.HOSTING && !options.config.get("hosting")) {
-    utils.logLabeledWarning(
+    EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
+      "WARN",
       "hosting",
       `The hosting emulator is configured but there is no hosting configuration. Have you run ${clc.bold(
         "firebase init hosting"
@@ -201,13 +208,14 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
   const projectId: string | undefined = getProjectId(options, true);
 
-  utils.logLabeledBullet("emulators", `Starting emulators: ${targets.join(", ")}`);
+  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
-      utils.logLabeledWarning(
+      EmulatorLogger.forEmulator(name as Emulators).logLabeled(
+        "WARN",
         name,
         `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
           "firebase init"
@@ -246,7 +254,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
-      utils.logLabeledWarning(
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN",
         "functions",
         `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
       );
@@ -266,6 +275,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
+    const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
     const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
 
     const args: FirestoreEmulatorArgs = {
@@ -282,7 +292,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
         exportMetadata.firestore.metadata_file
       );
 
-      utils.logLabeledBullet("firestore", `Importing data from ${exportMetadataFilePath}`);
+      firestoreLogger.logLabeled("BULLET", "firestore", `Importing data from ${exportMetadataFilePath}`);
       args.seed_from_export = exportMetadataFilePath;
     }
 
@@ -293,21 +303,24 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       if (fs.existsSync(rules)) {
         args.rules = rules;
       } else {
-        utils.logLabeledWarning(
-          "firestore",
+        firestoreLogger.logLabeled(
+          "WARN",
+          Emulators.FIRESTORE,
           `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
-      utils.logLabeledWarning(
-        "firestore",
+      firestoreLogger.logLabeled(
+        "WARN",
+        Emulators.FIRESTORE,
         "Did not find a Cloud Firestore rules file specified in a firebase.json config file."
       );
     }
 
     if (!foundRulesFile) {
-      utils.logLabeledWarning(
-        "firestore",
+      firestoreLogger.logLabeled(
+        "WARN",
+        Emulators.FIRESTORE,
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     }
@@ -315,7 +328,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
 
-    utils.logLabeledBullet(
+    firestoreLogger.logLabeled(
+      "BULLET",
       Emulators.FIRESTORE,
       `For testing set ${clc.bold(
         `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
@@ -324,6 +338,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.DATABASE)) {
+    const databaseLogger = EmulatorLogger.forEmulator(Emulators.DATABASE);
     const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
 
     const args: DatabaseEmulatorArgs = {
@@ -339,16 +354,18 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     args.rules = rc;
 
     if (rc.length === 0) {
-      utils.logLabeledWarning(
-        "database",
+      databaseLogger.logLabeled(
+        "WARN",
+        Emulators.DATABASE,
         "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     } else {
       for (const c of rc) {
         const rules: string = path.join(options.projectRoot, c.rules);
         if (!fs.existsSync(rules)) {
-          utils.logLabeledWarning(
-            "database",
+          databaseLogger.logLabeled(
+            "WARN",
+            Emulators.DATABASE,
             `Realtime Database rules file ${clc.bold(
               rules
             )} specified in firebase.json does not exist.`
@@ -360,7 +377,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
 
-    utils.logLabeledBullet(
+    databaseLogger.logLabeled(
+      "BULLET",
       Emulators.DATABASE,
       `For testing set ${clc.bold(
         `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
