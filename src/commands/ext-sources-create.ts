@@ -18,7 +18,7 @@ export default new Command("ext:sources:create <sourceLocation>")
       "For example, if your extension.yaml is in the my/extension directory of the archive, " +
       "you should use sourceUrl#my/extension. If no extensionRoot is specified, / is assumed."
   )
-  .before(requirePermissions, ["firebasemods.sources.create"])
+  .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (sourceLocation: string, options: any) => {
     const projectId = getProjectId(options);
