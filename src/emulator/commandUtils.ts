@@ -158,16 +158,24 @@ export function parseInspectionPort(options: any): number {
 
 export function shutdownWhenKilled(): Promise<void> {
   return new Promise((res, rej) => {
-    process.on("SIGINT", async () => {
-      try {
-        await controller.cleanShutdown();
-        res();
-        process.exit(0);
-      } catch (e) {
-        throw new FirebaseError("Failed to shut down cleanly", { original: e, exit: 1 });
-      }
+    process.on("SIGINT", () => {
+      controller
+        .cleanShutdown()
+        .then(res)
+        .catch(rej);
     });
-  });
+  })
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((e) => {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        "emulators failed to shut down cleanly, see firebase-debug.log for details."
+      );
+      process.exit(1);
+    });
 }
 
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
