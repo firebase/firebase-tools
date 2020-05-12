@@ -9,6 +9,7 @@ import {
   ensureExtensionsApiEnabled,
   logPrefix,
   createSourceFromLocation,
+  urlRegex,
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
@@ -18,6 +19,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
 import * as previews from "../previews";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -60,6 +62,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       );
       const currentParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
+      const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
 
       let source;
       let sourceUrl;
@@ -72,6 +75,26 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
               localSource
             )} (${clc.bold(source.spec.version)})`
           );
+          let msg1;
+          let msg2;
+          let msg3;
+          if (urlRegex) {
+            msg1 = "You are updating this extension instance from a URL source.";
+            msg2 =
+              "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
+            msg3 =
+              "After updating from a local source, this instance cannot be updated in the future to use an official source.";
+          } else {
+            msg1 = "You are updating this extension instance from a local source.";
+            msg2 =
+              "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
+            msg3 =
+              "After updating from a URL, this instance cannot be updated in the future to use an official source.";
+          }
+          utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)} ${msg2}`);
+          if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
+            logger.info(msg3);
+          }
           sourceUrl = source.name;
         } catch (err) {
           throw new FirebaseError(
@@ -79,12 +102,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           );
         }
       } else {
-        const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
-        // TODO: replace with targeted error messaging once multiple source origins are supported.
-        if (!resolveSource.isOfficialSource(registryEntry, existingSource)) {
-          throw new FirebaseError(`Expected official extension source, but got: ${existingSource}`);
-        }
         const officialSourceMsg =
           "You are updating this extension instance from an official source.";
         utils.logLabeledBullet(
