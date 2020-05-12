@@ -103,6 +103,12 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         }
       } else {
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
+        utils.logLabeledBullet(	
+          logPrefix,	
+          `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(	
+            targetVersion	
+          )}`	
+        );
         const officialSourceMsg =
           "You are updating this extension instance from an official source.";
         utils.logLabeledBullet(
