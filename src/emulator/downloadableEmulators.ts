@@ -216,7 +216,7 @@ async function _runBinary(
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
+    emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
@@ -246,7 +246,7 @@ async function _runBinary(
     logger.logLabeled(
       "BULLET",
       emulator.name,
-      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
     emulator.instance.stdout.on("data", (data) => {
