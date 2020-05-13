@@ -7,12 +7,14 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { DOWNLOADABLE_EMULATORS, Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
 import * as clc from "cli-color";
 import { getLogFileName } from "../emulator/downloadableEmulators";
+import { FirebaseError } from "../error";
 
 const Table = require("cli-table");
 
 function stylizeLink(url: String) {
   return clc.underline(clc.bold(url));
 }
+
 
 module.exports = new Command("emulators:start")
   .before(commandUtils.beforeEmulatorCommand)
@@ -21,6 +23,8 @@ module.exports = new Command("emulators:start")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (options: any) => {
+    const killSignalPromise = commandUtils.shutdownWhenKilled();
+
     try {
       await controller.startAll(options);
     } catch (e) {
@@ -82,12 +86,5 @@ Issues? Report them at ${stylizeLink(
     // It is now safe to connect your app. Instructions: http://${guiInfo?.host}:${guiInfo?.port}/connect
 
     // Hang until explicitly killed
-    await new Promise((res, rej) => {
-      process.on("SIGINT", () => {
-        controller
-          .cleanShutdown()
-          .then(res)
-          .catch(res);
-      });
-    });
+    await killSignalPromise;
   });

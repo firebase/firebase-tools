@@ -14,8 +14,9 @@ import {
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_GUI,
+  Address,
 } from "../emulator/types";
-import { Constants } from "../emulator/constants";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
@@ -51,49 +52,75 @@ export async function waitForPortClosed(port: number, host: string): Promise<voi
   }
 }
 
+async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
+  const host = Constants.normalizeHost(
+    options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
+  );
+
+  const portVal = options.config.get(Constants.getPortKey(emulator), undefined);
+  let port;
+  let findAvailablePort = false;
+  if (portVal) {
+    port = parseInt(portVal, 10);
+  } else {
+    port = Constants.getDefaultPort(emulator);
+    findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
+  }
+
+  const portOpen = await checkPortOpen(port, host);
+  if (!portOpen) {
+    if (findAvailablePort) {
+      const newPort = await pf.getPortPromise({ host, port });
+      if (newPort != port) {
+        utils.logLabeledWarning(
+          "emulators",
+          `${Constants.description(
+            emulator
+          )} unable to start on port ${port}, starting on ${newPort} instead.`
+        );
+        port = newPort;
+      }
+    } else {
+      await cleanShutdown();
+      const description = Constants.description(emulator);
+      utils.logLabeledWarning(
+        emulator,
+        `Port ${port} is not open on ${host}, could not start ${description}.`
+      );
+      utils.logLabeledBullet(
+        emulator,
+        `To select a different host/port, specify that host/port in a firebase.json config file:
+      {
+        // ...
+        "emulators": {
+          "${emulator}": {
+            "host": "${clc.yellow("HOST")}",
+            "port": "${clc.yellow("PORT")}"
+          }
+        }
+      }`
+      );
+      return utils.reject(`Could not start ${description}, port taken.`, {});
+    }
+  }
+  return { host, port };
+}
+
 export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   const name = instance.getName();
-  const { host, port } = instance.getInfo();
 
   // Log the command for analytics
   track("emulators:start", name);
 
-  const portOpen = await checkPortOpen(port, host);
-  if (!portOpen) {
-    await cleanShutdown();
-    const description = Constants.description(name);
-    utils.logLabeledWarning(
-      name,
-      `Port ${port} is not open on ${host}, could not start ${description}.`
-    );
-    utils.logLabeledBullet(
-      name,
-      `To select a different host/port for the emulator, specify that host/port in a firebase.json config file:
-    {
-      // ...
-      "emulators": {
-        "${name}": {
-          "host": "${clc.yellow("HOST")}",
-          "port": "${clc.yellow("PORT")}"
-        }
-      }
-    }`
-    );
-    return utils.reject(`Could not start ${name} emulator, port taken.`, {});
-  }
-
   await EmulatorRegistry.start(instance);
 }
 
-export async function cleanShutdown(): Promise<boolean> {
+export async function cleanShutdown(): Promise<void> {
   utils.logLabeledBullet("emulators", "Shutting down emulators.");
-
   for (const name of EmulatorRegistry.listRunning()) {
     utils.logLabeledBullet(name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
-
-  return true;
 }
 
 export function filterEmulatorTargets(options: any): Emulators[] {
@@ -115,6 +142,11 @@ export function shouldStart(options: any, name: Emulators): boolean {
   }
   const targets = filterEmulatorTargets(options);
   if (name === Emulators.GUI) {
+    if (options.config.get("emulators.gui.enabled") === false) {
+      // Allow disabling GUI via `{emulators: {"gui": {"enabled": false}}}`.
+      // GUI is by default enabled if that option is not specified.
+      return false;
+    }
     // The GUI only starts if we know the project ID AND at least one emulator
     // supported by GUI is launching.
     return (
@@ -182,29 +214,8 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.HUB)) {
-    // For the hub we actually will find any available port
-    // since we don't want to explode if the hub can't start on 4000
-    const hubAddr = Constants.getAddress(Emulators.HUB, options);
-    const hubPort = await pf.getPortPromise({
-      host: hubAddr.host,
-      port: hubAddr.port,
-      stopPort: hubAddr.port + 100,
-    });
-
-    if (hubPort != hubAddr.port) {
-      utils.logLabeledWarning(
-        "emulators",
-        `${Constants.description(Emulators.HUB)} unable to start on port ${
-          hubAddr.port
-        }, starting on ${hubPort}`
-      );
-    }
-
-    const hub = new EmulatorHub({
-      projectId,
-      host: hubAddr.host,
-      port: hubPort,
-    });
+    const hubAddr = await getAndCheckAddress(Emulators.HUB, options);
+    const hub = new EmulatorHub({ projectId, ...hubAddr });
     await startEmulator(hub);
   }
 
@@ -220,7 +231,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
-    const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
+    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
@@ -252,7 +263,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
-    const firestoreAddr = Constants.getAddress(Emulators.FIRESTORE, options);
+    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
@@ -303,7 +314,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.DATABASE)) {
-    const databaseAddr = Constants.getAddress(Emulators.DATABASE, options);
+    const databaseAddr = await getAndCheckAddress(Emulators.DATABASE, options);
 
     const args: DatabaseEmulatorArgs = {
       host: databaseAddr.host,
@@ -311,12 +322,6 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       projectId,
       auto_download: true,
     };
-
-    if (shouldStart(options, Emulators.FUNCTIONS)) {
-      const functionsAddr = Constants.getAddress(Emulators.FUNCTIONS, options);
-      args.functions_emulator_host = functionsAddr.host;
-      args.functions_emulator_port = functionsAddr.port;
-    }
 
     const rc = dbRulesConfig.getRulesConfig(projectId, options);
     logger.debug("database rules config: ", JSON.stringify(rc));
@@ -347,7 +352,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = Constants.getAddress(Emulators.HOSTING, options);
+    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
     const hostingEmulator = new HostingEmulator({
       host: hostingAddr.host,
       port: hostingAddr.port,
@@ -364,7 +369,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       );
     }
 
-    const pubsubAddr = Constants.getAddress(Emulators.PUBSUB, options);
+    const pubsubAddr = await getAndCheckAddress(Emulators.PUBSUB, options);
     const pubsubEmulator = new PubsubEmulator({
       host: pubsubAddr.host,
       port: pubsubAddr.port,
@@ -375,7 +380,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
   }
 
   if (!noGui && shouldStart(options, Emulators.GUI)) {
-    const loggingAddr = Constants.getAddress(Emulators.LOGGING, options);
+    const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
       port: loggingAddr.port,
@@ -383,29 +388,11 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     await startEmulator(loggingEmulator);
 
-    // For the GUI we actually will find any available port
-    // since we don't want to explode if the GUI can't start on 3000.
-    const guiAddr = Constants.getAddress(Emulators.GUI, options);
-    const guiPort = await pf.getPortPromise({
-      host: guiAddr.host,
-      port: guiAddr.port,
-      stopPort: guiAddr.port + 100,
-    });
-
-    if (guiPort != guiAddr.port) {
-      utils.logLabeledWarning(
-        Emulators.GUI,
-        `${Constants.description(Emulators.GUI)} unable to start on port ${
-          guiAddr.port
-        }, starting on ${guiPort}`
-      );
-    }
-
+    const guiAddr = await getAndCheckAddress(Emulators.GUI, options);
     const gui = new EmulatorGUI({
       projectId,
-      host: guiAddr.host,
-      port: guiPort,
       auto_download: true,
+      ...guiAddr,
     });
     await startEmulator(gui);
   }

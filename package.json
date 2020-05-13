@@ -18,7 +18,7 @@
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
-    "mocha": "nyc mocha src/test/**/*.{ts,js}",
+    "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run mocha",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
