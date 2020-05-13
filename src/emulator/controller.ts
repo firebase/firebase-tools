@@ -318,14 +318,14 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
       } else {
         firestoreLogger.logLabeled(
           "WARN",
-          Emulators.FIRESTORE,
+          "firestore",
           `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
         );
       }
     } else {
       firestoreLogger.logLabeled(
         "WARN",
-        Emulators.FIRESTORE,
+        "firestore",
         "Did not find a Cloud Firestore rules file specified in a firebase.json config file."
       );
     }
@@ -333,7 +333,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     if (!foundRulesFile) {
       firestoreLogger.logLabeled(
         "WARN",
-        Emulators.FIRESTORE,
+        "firestore",
         "The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     }
@@ -343,7 +343,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     firestoreLogger.logLabeled(
       "BULLET",
-      Emulators.FIRESTORE,
+      "firestore",
       `For testing set ${clc.bold(
         `${Constants.FIRESTORE_EMULATOR_HOST}=${firestoreAddr.host}:${firestoreAddr.port}`
       )}`
@@ -369,7 +369,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     if (rc.length === 0) {
       databaseLogger.logLabeled(
         "WARN",
-        Emulators.DATABASE,
+        "database",
         "Did not find a Realtime Database rules file specified in a firebase.json config file. The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."
       );
     } else {
@@ -378,7 +378,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
-            Emulators.DATABASE,
+            "database",
             `Realtime Database rules file ${clc.bold(
               rules
             )} specified in firebase.json does not exist.`
@@ -392,7 +392,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     databaseLogger.logLabeled(
       "BULLET",
-      Emulators.DATABASE,
+      "database",
       `For testing set ${clc.bold(
         `${Constants.FIREBASE_DATABASE_EMULATOR_HOST}=${databaseAddr.host}:${databaseAddr.port}`
       )}`
