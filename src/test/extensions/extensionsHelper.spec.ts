@@ -44,6 +44,38 @@ describe("extensionsHelper", () => {
     });
   });
 
+  it("should should substitute env variables with ${param:PARAM_NAME} syntax", () => {
+    const testResources = [
+      {
+        resourceOne: {
+          name: "${param:VAR_ONE}",
+          source: "path/${param:VAR_ONE}",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "${param:VAR_TWO}",
+          another: "$NOT_ENV",
+        },
+      },
+    ];
+    const testParam = { VAR_ONE: "foo", VAR_TWO: "bar", UNUSED: "faz" };
+    expect(extensionsHelper.substituteParams(testResources, testParam)).to.deep.equal([
+      {
+        resourceOne: {
+          name: "foo",
+          source: "path/foo",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "bar",
+          another: "$NOT_ENV",
+        },
+      },
+    ]);
+  });
+
   describe("getDBInstanceFromURL", () => {
     it("returns the correct instance name", () => {
       expect(extensionsHelper.getDBInstanceFromURL("https://my-db.firebaseio.com")).to.equal(
