@@ -15,7 +15,6 @@ function stylizeLink(url: String) {
   return clc.underline(clc.bold(url));
 }
 
-
 module.exports = new Command("emulators:start")
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")
@@ -41,7 +40,9 @@ module.exports = new Command("emulators:start")
     }
 
     const uiTable = new Table();
-    uiTable.push([`${clc.green('✔')}  All emulators ready! View status and logs at ${stylizeLink(guiUrl)}`]);
+    uiTable.push([
+      `${clc.green("✔")}  All emulators ready! View status and logs at ${stylizeLink(guiUrl)}`,
+    ]);
 
     const emulatorsTable = new Table({
       head: head,
@@ -66,8 +67,12 @@ module.exports = new Command("emulators:start")
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0 ? getLogFileName(emulator) : clc.blackBright("n/a"),
-            isSupportedByGUI && guiInfo ? stylizeLink(`${guiUrl}/${emulator}`) : clc.blackBright("n/a"),
+            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0
+              ? getLogFileName(emulator)
+              : clc.blackBright("n/a"),
+            isSupportedByGUI && guiInfo
+              ? stylizeLink(`${guiUrl}/${emulator}`)
+              : clc.blackBright("n/a"),
           ];
         })
         .map((col) => col.slice(0, head.length))
