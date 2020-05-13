@@ -2,6 +2,7 @@ import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
 import * as utils from "../utils";
+import { FirebaseError } from "../error";
 
 module.exports = new Command("emulators:start")
   .before(commandUtils.beforeEmulatorCommand)
@@ -10,6 +11,8 @@ module.exports = new Command("emulators:start")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .action(async (options: any) => {
+    const killSignalPromise = commandUtils.shutdownWhenKilled();
+
     try {
       await controller.startAll(options);
     } catch (e) {
@@ -20,12 +23,5 @@ module.exports = new Command("emulators:start")
     utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
 
     // Hang until explicitly killed
-    await new Promise((res, rej) => {
-      process.on("SIGINT", () => {
-        controller
-          .cleanShutdown()
-          .then(res)
-          .catch(res);
-      });
-    });
+    await killSignalPromise;
   });

@@ -115,15 +115,12 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   await EmulatorRegistry.start(instance);
 }
 
-export async function cleanShutdown(): Promise<boolean> {
+export async function cleanShutdown(): Promise<void> {
   utils.logLabeledBullet("emulators", "Shutting down emulators.");
-
   for (const name of EmulatorRegistry.listRunning()) {
     utils.logLabeledBullet(name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
-
-  return true;
 }
 
 export function filterEmulatorTargets(options: any): Emulators[] {

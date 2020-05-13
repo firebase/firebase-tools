@@ -8,3 +8,4 @@
 - Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
 - Changes `firebasemods.*.*` IAM permission checks to `firebaseextensions.*.*`
 - Fixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
+- Fixes an issue where emulators could not be cleanly shut down if they had not started properly (#2228).
