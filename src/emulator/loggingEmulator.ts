@@ -1,4 +1,4 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
 import { SPLAT } from "triple-beam";
 import * as WebSocket from "ws";
@@ -10,6 +10,23 @@ export interface LoggingEmulatorArgs {
   port?: number;
   host?: string;
 }
+
+export interface LogData {
+  user?: any; // User data, like JSON returned from a function call
+  metadata?: {
+    // Metadata used for Logger Emulator
+    level?: string; // Overrides log level specified in log call (like "USER" becoming "INFO")
+    message?: string; // Overrides message specified in log call (like a rich table being hidden)
+    emulator?: {
+      name: string;
+    };
+    function?: {
+      name: string;
+    };
+  };
+}
+
+export type LogDataOrUndefined = LogData | undefined;
 
 export class LoggingEmulator implements EmulatorInstance {
   static LOGGING_EMULATOR_ENV = "FIREBASE_LOGGING_EMULATOR_HOST";
@@ -109,13 +126,19 @@ class WebSocketTransport extends TransportStream {
       })
       .filter((v) => v);
 
-    bundle.message = ansiStrip(splat.join(" "));
+    bundle.message = splat.join(" ");
 
-    if (bundle.data && bundle.data.system && bundle.data.system.level) {
-      bundle.level = bundle.data.system.level.toLowerCase();
+    if (bundle.data && bundle.data.metadata && bundle.data.metadata.level) {
+      bundle.level = bundle.data.metadata.level.toLowerCase();
     } else {
       bundle.level = bundle.level.toLowerCase();
     }
+
+    if (bundle.data && bundle.data.metadata && bundle.data.metadata.message) {
+      bundle.message = bundle.data.metadata.message;
+    }
+
+    bundle.message = ansiStrip(bundle.message);
 
     this.history.push(bundle);
     this.connections.forEach((ws) => {

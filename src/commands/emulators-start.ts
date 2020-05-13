@@ -2,6 +2,8 @@ import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
 import * as utils from "../utils";
+import { EmulatorLogger } from "../emulator/emulatorLogger";
+import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 
 module.exports = new Command("emulators:start")
@@ -20,7 +22,11 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    utils.logLabeledSuccess("emulators", "All emulators started, it is now safe to connect.");
+    EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+      "SUCCESS",
+      "emulators",
+      "All emulators started, it is now safe to connect."
+    );
 
     // Hang until explicitly killed
     await killSignalPromise;
