@@ -23,7 +23,10 @@ marked.setOptions({
  */
 export default new Command("ext:update <extensionInstanceId>")
   .description("update an existing extension instance to the latest version")
-  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
+  .before(requirePermissions, [
+    "firebaseextensions.instances.update",
+    "firebaseextensions.instances.get",
+  ])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
