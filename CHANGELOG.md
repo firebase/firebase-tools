@@ -8,3 +8,4 @@
 - Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
 - Changes `firebasemods.*.*` IAM permission checks to `firebaseextensions.*.*`
 - Fixes an issue where the suggested redeploy command for Firebase Functions was incorrect for names with dashes.
+- Fixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
