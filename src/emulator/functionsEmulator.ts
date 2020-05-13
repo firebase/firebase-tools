@@ -777,7 +777,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         };
 
         delete req.headers["authorization"];
-        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = JSON.stringify(contextAuth);
+        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
+          JSON.stringify(contextAuth)
+        );
       }
     }
 

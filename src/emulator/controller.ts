@@ -127,8 +127,6 @@ export async function cleanShutdown(): Promise<boolean> {
     EmulatorLogger.forEmulator(name).logLabeled("BULLET", name, `Stopping ${Constants.description(name)}`);
     await EmulatorRegistry.stop(name);
   }
-
-  return true;
 }
 
 export function filterEmulatorTargets(options: any): Emulators[] {
