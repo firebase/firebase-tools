@@ -13,13 +13,18 @@ import {
 } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
-import { displayChanges, update, UpdateOptions } from "../extensions/updateHelper";
+import {
+  displayChanges,
+  update,
+  confirmUpdateWarning,
+  UpdateOptions,
+} from "../extensions/updateHelper";
 import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
 import * as previews from "../previews";
-import { logger } from "..";
+import * as logger from "../logger";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -78,7 +83,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           let msg1;
           let msg2;
           let msg3;
-          if (urlRegex) {
+          if (urlRegex.test(localSource)) {
             msg1 = "You are updating this extension instance from a URL source.";
             msg2 =
               "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
@@ -96,6 +101,11 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
             logger.info(msg3);
           }
           sourceUrl = source.name;
+          const updateWarning: resolveSource.UpdateWarning = {
+            from: "",
+            description: "",
+          };
+          await confirmUpdateWarning(updateWarning);
         } catch (err) {
           throw new FirebaseError(
             `Unable to create new source from '${clc.bold(localSource)}':\n ${err.message}`
@@ -103,11 +113,11 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         }
       } else {
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
-        utils.logLabeledBullet(	
-          logPrefix,	
-          `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to version ${clc.bold(	
-            targetVersion	
-          )}`	
+        utils.logLabeledBullet(
+          logPrefix,
+          `Updating ${instanceId} from version ${clc.bold(
+            currentSpec.version
+          )} to version ${clc.bold(targetVersion)}`
         );
         const officialSourceMsg =
           "You are updating this extension instance from an official source.";
