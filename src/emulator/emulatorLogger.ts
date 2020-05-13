@@ -83,9 +83,9 @@ export class EmulatorLogger {
       ...data,
       metadata: {
         ...data.metadata,
-        message: text
-      }
-    }
+        message: text,
+      },
+    };
 
     switch (type) {
       case "DEBUG":
@@ -259,9 +259,9 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
       ...this.data,
       metadata: {
         ...this.data.metadata,
-        message: text
-      }
-    }
+        message: text,
+      },
+    };
 
     switch (type) {
       case "DEBUG":

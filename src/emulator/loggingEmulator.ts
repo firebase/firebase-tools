@@ -1,4 +1,4 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
 import { SPLAT } from "triple-beam";
 import * as WebSocket from "ws";
@@ -13,7 +13,8 @@ export interface LoggingEmulatorArgs {
 
 export interface LogData {
   user?: any; // User data, like JSON returned from a function call
-  metadata?: { // Metadata used for Logger Emulator
+  metadata?: {
+    // Metadata used for Logger Emulator
     level?: string; // Overrides log level specified in log call (like "USER" becoming "INFO")
     message?: string; // Overrides message specified in log call (like a rich table being hidden)
     emulator?: {

@@ -121,10 +121,18 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
 }
 
 export async function cleanShutdown(): Promise<boolean> {
-  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled("BULLET", "emulators", "Shutting down emulators.");
+  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+    "BULLET",
+    "emulators",
+    "Shutting down emulators."
+  );
 
   for (const name of EmulatorRegistry.listRunning()) {
-    EmulatorLogger.forEmulator(name).logLabeled("BULLET", name, `Stopping ${Constants.description(name)}`);
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "BULLET",
+      name,
+      `Stopping ${Constants.description(name)}`
+    );
     await EmulatorRegistry.stop(name);
   }
 
@@ -208,7 +216,11 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
   const projectId: string | undefined = getProjectId(options, true);
 
-  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled("BULLET", "emulators", `Starting emulators: ${targets.join(", ")}`);
+  EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+    "BULLET",
+    "emulators",
+    `Starting emulators: ${targets.join(", ")}`
+  );
   if (options.only) {
     const requested: string[] = options.only.split(",");
     const ignored = _.difference(requested, targets);
@@ -292,7 +304,11 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
         exportMetadata.firestore.metadata_file
       );
 
-      firestoreLogger.logLabeled("BULLET", "firestore", `Importing data from ${exportMetadataFilePath}`);
+      firestoreLogger.logLabeled(
+        "BULLET",
+        "firestore",
+        `Importing data from ${exportMetadataFilePath}`
+      );
       args.seed_from_export = exportMetadataFilePath;
     }
 

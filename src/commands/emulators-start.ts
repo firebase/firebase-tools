@@ -19,7 +19,11 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    EmulatorLogger.forEmulator(Emulators.HUB).logLabeled("SUCCESS", "emulators", "All emulators started, it is now safe to connect.");
+    EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+      "SUCCESS",
+      "emulators",
+      "All emulators started, it is now safe to connect."
+    );
 
     // Hang until explicitly killed
     await new Promise((res, rej) => {
