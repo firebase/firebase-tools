@@ -45,7 +45,7 @@ For more on managing indexes, see the [Cloud Firestore guides](https://firebase.
 
 The schema for one object in the `indexes` array is as follows. Optional properties are identified with the `?` character.
 
-Note that Cloud Firestore document fields can only be indexed in one mode, thus a field object cannot contain both the `order` and `arrayConfig` properties.
+Note that Cloud Firestore document fields can only be indexed in one [mode](https://firebase.google.com/docs/firestore/query-data/index-overview#index_modes), thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console
@@ -59,7 +59,7 @@ Note that Cloud Firestore document fields can only be indexed in one mode, thus 
 
 The schema for one object in the `fieldOverrides` array is as follows. Optional properties are identified with the `?` character.
 
-Note that Cloud Firestore document fields can only be indexed in one mode, thus a field object cannot contain both the `order` and `arrayConfig` properties.
+Note that Cloud Firestore document fields can only be indexed in one [mode](https://firebase.google.com/docs/firestore/query-data/index-overview#index_modes), thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console
