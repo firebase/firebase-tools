@@ -1,13 +1,10 @@
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
-import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
-import { DOWNLOADABLE_EMULATORS, Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
+import { Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
 import * as clc from "cli-color";
-import { getLogFileName } from "../emulator/downloadableEmulators";
-import { FirebaseError } from "../error";
 
 const Table = require("cli-table");
 
@@ -33,15 +30,18 @@ module.exports = new Command("emulators:start")
 
     const guiInfo = EmulatorRegistry.getInfo(Emulators.GUI);
     const guiUrl = `http://${guiInfo?.host}:${guiInfo?.port}`;
-    const head = ["Emulator", "Host:Port", "Log File"];
+    const head = ["Emulator", "Host:Port"];
 
     if (guiInfo) {
       head.push("View in UI");
     }
 
-    const uiTable = new Table();
-    uiTable.push([
-      `${clc.green("✔")}  All emulators ready! View status and logs at ${stylizeLink(guiUrl)}`,
+    const successMessageTable = new Table();
+    successMessageTable.push([
+      `${clc.green("✔")}  All emulators ready! ` +
+        (guiInfo
+          ? `View status and logs at ${stylizeLink(guiUrl)}`
+          : `It is now safe to connect your apps.`),
     ]);
 
     const emulatorsTable = new Table({
@@ -67,9 +67,6 @@ module.exports = new Command("emulators:start")
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            DOWNLOADABLE_EMULATORS.indexOf(emulator) >= 0
-              ? getLogFileName(emulator)
-              : clc.blackBright("n/a"),
             isSupportedByGUI && guiInfo
               ? stylizeLink(`${guiUrl}/${emulator}`)
               : clc.blackBright("n/a"),
@@ -79,12 +76,14 @@ module.exports = new Command("emulators:start")
         .filter((v) => v)
     );
 
-    logger.info(`${"\n" + uiTable.toString() + "\n"}
-${emulatorsTable.toString()}
-    
+    logger.info(`\n${successMessageTable}
+
+${emulatorsTable}
+${clc.blackBright("  Other reserved ports:")} ${EmulatorRegistry.getInfo(Emulators.HUB)?.port}
+
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
-    )} and attach the log files.
+    )} and attach the *-debug.log files.
  `);
 
     // Add this line above once connect page is implemented
