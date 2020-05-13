@@ -120,13 +120,12 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   await EmulatorRegistry.start(instance);
 }
 
-export async function cleanShutdown(): Promise<boolean> {
+export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
     "emulators",
     "Shutting down emulators."
   );
-
   for (const name of EmulatorRegistry.listRunning()) {
     EmulatorLogger.forEmulator(name).logLabeled(
       "BULLET",
