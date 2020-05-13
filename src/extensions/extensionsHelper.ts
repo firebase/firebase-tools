@@ -94,14 +94,14 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
  */
 export function substituteParams(original: object[], params: { [key: string]: string }): Param[] {
   const startingString = JSON.stringify(original);
-  const applySubstitution = (startingString: string, paramVal: string, paramKey: string) => {
+  const applySubstitution = (unsubstitutedString: string, paramVal: string, paramKey: string) => {
     const exp1 = new RegExp("\\$\\{" + paramKey + "\\}", "g");
     const exp2 = new RegExp("\\$\\{param:" + paramKey + "\\}", "g");
     const regexes = [exp1, exp2];
-    const substituteRegexMatches = (intermediateResult: string, regex: RegExp) => {
-      return intermediateResult.replace(regex, paramVal);
+    const substituteRegexMatches = (unsubstituted: string, regex: RegExp) => {
+      return unsubstituted.replace(regex, paramVal);
     };
-    return _.reduce(regexes, substituteRegexMatches, startingString);
+    return _.reduce(regexes, substituteRegexMatches, unsubstitutedString);
   };
   return JSON.parse(_.reduce(params, applySubstitution, startingString));
 }
