@@ -4,6 +4,7 @@ import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./type
 import { FirebaseError } from "../error";
 import * as controller from "./controller";
 import { Constants } from "./constants";
+import { EmulatorLogger } from "./emulatorLogger";
 
 /**
  * Static registry for running emulators to discover each other.
