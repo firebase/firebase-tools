@@ -25,12 +25,6 @@ export class EmulatorRegistry {
     const info = instance.getInfo();
     await controller.waitForPortClosed(info.port, info.host);
     this.set(instance.getName(), instance);
-
-    EmulatorLogger.forEmulator(instance.getName()).logLabeled(
-      "SUCCESS",
-      instance.getName(),
-      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-    );
   }
 
   static async stop(name: Emulators): Promise<void> {
