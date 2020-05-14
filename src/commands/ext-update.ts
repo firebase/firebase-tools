@@ -67,7 +67,6 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       );
       const currentParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
-      const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
 
       let source;
       let sourceName;
@@ -102,9 +101,17 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           msg3 =
             "After updating from a URL, this instance cannot be updated in the future to use an official source.";
         }
-        utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)} \n\n`);
+        utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)}\n`);
         let updateWarning: resolveSource.UpdateWarning;
-        if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
+        let updatingFromOfficial = false;
+        try {
+          const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+          updatingFromOfficial = resolveSource.isOfficialSource(registryEntry, existingSource)
+        } catch {
+          // If registry entry does not exist, assume community extension source.
+        }
+        
+        if (updatingFromOfficial) {
           updateWarning = {
             from: "",
             description: `${msg2}\n\n${msg3}`,
@@ -112,13 +119,15 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         } else {
           updateWarning = {
             from: "",
-            description: `${msg2}\n`,
+            description: `${msg2}`,
           };
         }
 
         await confirmUpdateWarning(updateWarning);
       } else {
         // Updating to a published version
+        // Registry entry must exist.
+        const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
         utils.logLabeledBullet(
           logPrefix,
