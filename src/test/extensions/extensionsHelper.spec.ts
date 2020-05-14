@@ -44,7 +44,7 @@ describe("extensionsHelper", () => {
     });
   });
 
-  it("should should substitute env variables with ${param:PARAM_NAME} syntax", () => {
+  it("should should support both ${PARAM_NAME} (old) AND ${param:PARAM_NAME} (new) syntax", () => {
     const testResources = [
       {
         resourceOne: {
@@ -56,6 +56,12 @@ describe("extensionsHelper", () => {
         resourceTwo: {
           property: "${param:VAR_TWO}",
           another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "${VAR_TWO}${VAR_TWO}${param:VAR_TWO}",
+          another: "${not:VAR_TWO}",
         },
       },
     ];
@@ -71,6 +77,12 @@ describe("extensionsHelper", () => {
         resourceTwo: {
           property: "bar",
           another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "barbarbar",
+          another: "${not:VAR_TWO}",
         },
       },
     ]);
