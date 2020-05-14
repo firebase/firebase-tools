@@ -36,12 +36,12 @@ marked.setOptions({
 export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUrl]")
   .description(
     previews.extdev
-      ? "update an existing extension instance to the latest version or from a local or tarball URL source"
+      ? "update an existing extension instance to the latest version or from a local or URL source"
       : "update an existing extension instance to the latest version"
   )
-  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
+  .before(requirePermissions, ["firebaseextensions.instances.update", "firebasemods.instances.get"])
   .before(ensureExtensionsApiEnabled)
-  .action(async (instanceId: string, localSource: string, options: any) => {
+  .action(async (instanceId: string, directoryOrUrl: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
@@ -70,48 +70,55 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
 
       let source;
-      let sourceUrl;
-      if (localSource) {
+      let sourceName;
+      if (directoryOrUrl) {
         try {
-          source = await createSourceFromLocation(projectId, localSource);
-          utils.logLabeledBullet(
-            logPrefix,
-            `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to ${clc.bold(
-              localSource
-            )} (${clc.bold(source.spec.version)})`
-          );
-          let msg1;
-          let msg2;
-          let msg3;
-          if (urlRegex.test(localSource)) {
-            msg1 = "You are updating this extension instance from a URL source.";
-            msg2 =
-              "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
-            msg3 =
-              "After updating from a local source, this instance cannot be updated in the future to use an official source.";
-          } else {
-            msg1 = "You are updating this extension instance from a local source.";
-            msg2 =
-              "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
-            msg3 =
-              "After updating from a URL, this instance cannot be updated in the future to use an official source.";
-          }
-          utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)} ${msg2}`);
-          if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
-            logger.info(msg3);
-          }
-          sourceUrl = source.name;
-          const updateWarning: resolveSource.UpdateWarning = {
-            from: "",
-            description: "",
-          };
-          await confirmUpdateWarning(updateWarning);
+          source = await createSourceFromLocation(projectId, directoryOrUrl);
+          sourceName = source.name;
         } catch (err) {
           throw new FirebaseError(
-            `Unable to create new source from '${clc.bold(localSource)}':\n ${err.message}`
+            `Unable to create new source from '${clc.bold(directoryOrUrl)}':\n ${err.message}`
           );
         }
+        utils.logLabeledBullet(
+          logPrefix,
+          `Updating ${instanceId} from version ${clc.bold(currentSpec.version)} to ${clc.bold(
+            directoryOrUrl
+          )} (${clc.bold(source.spec.version)})`
+        );
+        let msg1;
+        let msg2;
+        let msg3;
+        if (urlRegex.test(directoryOrUrl)) {
+          msg1 = "You are updating this extension instance from a URL source.";
+          msg2 =
+            "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
+          msg3 =
+            "After updating from a local source, this instance cannot be updated in the future to use an official source.";
+        } else {
+          msg1 = "You are updating this extension instance from a local source.";
+          msg2 =
+            "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
+          msg3 =
+            "After updating from a URL, this instance cannot be updated in the future to use an official source.";
+        }
+        utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)} \n\n`);
+        let updateWarning: resolveSource.UpdateWarning;
+        if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
+          updateWarning = {
+            from: "",
+            description: `${msg2}\n\n${msg3}`,
+          };
+        } else {
+          updateWarning = {
+            from: "",
+            description: `${msg2}\n`,
+          };
+        }
+
+        await confirmUpdateWarning(updateWarning);
       } else {
+        // Updating to a published version
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
         utils.logLabeledBullet(
           logPrefix,
@@ -125,19 +132,18 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           logPrefix,
           `${clc.bold(
             officialSourceMsg
-          )} All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.`
+          )} \n\n All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.\n`
         );
         await resolveSource.promptForUpdateWarnings(
           registryEntry,
           currentSpec.version,
           targetVersion
         );
-        sourceUrl = resolveSource.resolveSourceUrl(registryEntry, currentSpec.name, targetVersion);
+        sourceName = resolveSource.resolveSourceUrl(registryEntry, currentSpec.name, targetVersion);
       }
-
-      const newSource = await extensionsApi.getSource(sourceUrl);
+      const newSource = await extensionsApi.getSource(sourceName);
       const newSpec = newSource.spec;
-      if (!localSource) {
+      if (!directoryOrUrl) {
         if (currentSpec.version === newSpec.version) {
           utils.logLabeledBullet(
             logPrefix,
