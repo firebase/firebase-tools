@@ -10,7 +10,7 @@ import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
-import * as logger from "../logger";
+import { EmulatorLogger } from "./emulatorLogger";
 
 import * as clc from "cli-color";
 import * as fs from "fs-extra";
@@ -20,7 +20,7 @@ import * as os from "os";
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
 
-const EMULATOR_INSTANCE_KILL_TIMEOUT = 2000; /* ms */
+const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
@@ -170,9 +170,11 @@ function _getCommand(
   }
 
   const cmdLineArgs = baseCmd.args.slice();
+
+  const logger = EmulatorLogger.forEmulator(emulator);
   Object.keys(args).forEach((key) => {
-    if (baseCmd.optionalArgs.indexOf(key) < 0) {
-      logger.debug(`Ignoring unsupported arg: ${key}`);
+    if (!baseCmd.optionalArgs.includes(key)) {
+      logger.log("DEBUG", `Ignoring unsupported arg: ${key}`);
       return;
     }
 
@@ -180,7 +182,7 @@ function _getCommand(
     const argVal = args[key];
 
     if (argVal === undefined) {
-      logger.debug(`Ignoring empty arg for key: ${key}`);
+      logger.log("DEBUG", `Ignoring empty arg for key: ${key}`);
       return;
     }
 
@@ -213,6 +215,7 @@ async function _runBinary(
   extraEnv: NodeJS.ProcessEnv
 ): Promise<void> {
   return new Promise((resolve) => {
+    const logger = EmulatorLogger.forEmulator(emulator.name);
     emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
@@ -223,7 +226,8 @@ async function _runBinary(
       if (e.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
-        utils.logLabeledWarning(
+        logger.logLabeled(
+          "WARN",
           emulator.name,
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
         );
@@ -235,21 +239,22 @@ async function _runBinary(
     const description = Constants.description(emulator.name);
 
     if (emulator.instance == null) {
-      utils.logLabeledWarning(emulator.name, `Could not spawn child process for ${description}.`);
+      logger.logLabeled("WARN", emulator.name, `Could not spawn child process for ${description}.`);
       return;
     }
 
-    utils.logLabeledBullet(
+    logger.logLabeled(
+      "BULLET",
       emulator.name,
       `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
     );
 
     emulator.instance.stdout.on("data", (data) => {
-      logger.debug(data.toString());
+      logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
     });
     emulator.instance.stderr.on("data", (data) => {
-      logger.debug(data.toString());
+      logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
     });
 
@@ -274,23 +279,33 @@ async function _runBinary(
   });
 }
 
+/**
+ * @param emulator
+ */
 export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
   return DownloadDetails[emulator];
 }
 
+/**
+ * @param emulator
+ */
 export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
   return EmulatorDetails[emulator];
 }
 
+/**
+ * @param targetName
+ */
 export async function stop(targetName: DownloadableEmulators): Promise<void> {
   const emulator = EmulatorDetails[targetName];
   return new Promise((resolve, reject) => {
+    const logger = EmulatorLogger.forEmulator(emulator.name);
     if (emulator.instance) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
           Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
-        logger.debug(errorMsg);
+        logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
 
@@ -305,6 +320,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
   });
 }
 
+/**
+ * @param targetName
+ */
 export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
@@ -315,6 +333,11 @@ export async function downloadIfNecessary(targetName: DownloadableEmulators): Pr
   await downloadEmulator(targetName);
 }
 
+/**
+ * @param targetName
+ * @param args
+ * @param extraEnv
+ */
 export async function start(
   targetName: DownloadableEmulators,
   args: any,
@@ -323,6 +346,7 @@ export async function start(
   const downloadDetails = DownloadDetails[targetName];
   const emulator = EmulatorDetails[targetName];
   const hasEmulator = fs.existsSync(getExecPath(targetName));
+  const logger = EmulatorLogger.forEmulator(targetName);
   if (!hasEmulator || downloadDetails.opts.skipCache) {
     if (args.auto_download) {
       if (process.env.CI) {
@@ -341,7 +365,9 @@ export async function start(
   }
 
   const command = _getCommand(targetName, args);
-  logger.debug(
+
+  logger.log(
+    "DEBUG",
     `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
   );
   return _runBinary(emulator, command, extraEnv);

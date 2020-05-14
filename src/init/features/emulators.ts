@@ -5,6 +5,7 @@ import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import previews = require("../../previews");
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -56,6 +57,41 @@ export async function doSetup(setup: any, config: any) {
   }
 
   if (selections.emulators.length) {
+    if (previews.emulatorgui) {
+      if (setup.config.emulators.gui && setup.config.emulators.gui.enabled !== false) {
+        const currentPort = setup.config.emulators.gui.port || "(automatic)";
+        utils.logBullet(`Emulator GUI already enabled with port: ${clc.cyan(currentPort)}`);
+      } else {
+        const gui = setup.config.emulators.gui || {};
+        setup.config.emulators.gui = gui;
+
+        await prompt(gui, [
+          {
+            name: "enabled",
+            type: "confirm",
+            message: "Would you like to enable the Emulator GUI?",
+            default: true,
+          },
+        ]);
+
+        if (gui.enabled) {
+          await prompt(gui, [
+            {
+              type: "input",
+              name: "port",
+              message: `Which port do you want to use for the ${clc.underline(
+                "Emulator GUI"
+              )} (leave empty to use any available port)?`,
+            },
+          ]);
+          if (!gui.port) {
+            // Don't write `port: ""` into the config file.
+            delete gui.port;
+          }
+        }
+      }
+    }
+
     await prompt(selections, [
       {
         name: "download",

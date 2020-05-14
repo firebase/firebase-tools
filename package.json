@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.1.1",
+  "version": "8.2.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -18,11 +18,13 @@
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
-    "mocha": "nyc mocha --opts mocha.opts",
+    "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run mocha",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
-    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh"
+    "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
+    "test:hosting": "./scripts/hosting-tests/run.sh",
+    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh"
   },
   "files": [
     "lib",
@@ -83,7 +85,6 @@
     "cross-env": "^5.1.3",
     "cross-spawn": "^7.0.1",
     "csv-streamify": "^3.0.4",
-    "didyoumean": "^1.2.1",
     "dotenv": "^6.1.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
@@ -96,10 +97,12 @@
     "js-yaml": "^3.13.1",
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^8.2.1",
+    "leven": "^3.1.0",
     "lodash": "^4.17.14",
     "marked": "^0.7.0",
     "marked-terminal": "^3.3.0",
     "minimatch": "^3.0.4",
+    "morgan": "^1.10.0",
     "open": "^6.3.0",
     "ora": "^3.4.0",
     "plist": "^3.0.1",

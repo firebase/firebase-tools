@@ -78,9 +78,11 @@ function _createFunction(options) {
   if (options.timeout) {
     data.timeout = options.timeout;
   }
-
   if (options.maxInstances) {
     data.maxInstances = Number(options.maxInstances);
+  }
+  if (options.environmentVariables) {
+    data.environmentVariables = options.environmentVariables;
   }
 
   return api
@@ -166,6 +168,10 @@ function _updateFunction(options) {
   if (options.maxInstances) {
     data.maxInstances = Number(options.maxInstances);
     masks.push("maxInstances");
+  }
+  if (options.environmentVariables) {
+    data.environmentVariables = options.environmentVariables;
+    masks.push("environmentVariables");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
