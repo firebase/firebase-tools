@@ -106,11 +106,11 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         let updatingFromOfficial = false;
         try {
           const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
-          updatingFromOfficial = resolveSource.isOfficialSource(registryEntry, existingSource)
+          updatingFromOfficial = resolveSource.isOfficialSource(registryEntry, existingSource);
         } catch {
           // If registry entry does not exist, assume community extension source.
         }
-        
+
         if (updatingFromOfficial) {
           updateWarning = {
             from: "",
