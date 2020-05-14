@@ -1,5 +1,5 @@
 import { EmulatorLogger } from "./emulatorLogger";
-import { FunctionsExecutionMode } from "./types";
+import { Emulators, FunctionsExecutionMode } from "./types";
 
 type Work = () => Promise<any>;
 
@@ -69,7 +69,7 @@ export class WorkQueue {
       try {
         await next();
       } catch (e) {
-        EmulatorLogger.log("DEBUG", e);
+        EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log("DEBUG", e);
       } finally {
         this.workRunningCount--;
         this.logState();
@@ -78,7 +78,7 @@ export class WorkQueue {
   }
 
   private logState() {
-    EmulatorLogger.logLabeled(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "DEBUG",
       "work-queue",
       JSON.stringify({
