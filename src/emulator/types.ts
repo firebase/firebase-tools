@@ -8,7 +8,7 @@ export enum Emulators {
   DATABASE = "database",
   HOSTING = "hosting",
   PUBSUB = "pubsub",
-  GUI = "gui",
+  UI = "ui",
   LOGGING = "logging",
 }
 
@@ -16,12 +16,12 @@ export type DownloadableEmulators =
   | Emulators.FIRESTORE
   | Emulators.DATABASE
   | Emulators.PUBSUB
-  | Emulators.GUI;
+  | Emulators.UI;
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.PUBSUB,
-  Emulators.GUI,
+  Emulators.UI,
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE;
@@ -41,7 +41,7 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
   Emulators.PUBSUB,
 ];
 
-export const EMULATORS_SUPPORTED_BY_GUI = [
+export const EMULATORS_SUPPORTED_BY_UI = [
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,
@@ -50,7 +50,7 @@ export const EMULATORS_SUPPORTED_BY_GUI = [
 // TODO: Is there a way we can just allow iteration over the enum?
 export const ALL_EMULATORS = [
   Emulators.HUB,
-  Emulators.GUI,
+  Emulators.UI,
   Emulators.LOGGING,
   ...ALL_SERVICE_EMULATORS,
 ];

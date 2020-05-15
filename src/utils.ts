@@ -87,7 +87,7 @@ export function getDatabaseViewDataUrl(
   if (urlObj.hostname.includes("firebaseio.com")) {
     return consoleUrl(namespace, "/database/data" + pathname);
   } else {
-    // TODO(samstern): View in GUI
+    // TODO(samstern): View in Emulator UI
     return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
 }

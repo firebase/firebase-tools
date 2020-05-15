@@ -262,7 +262,7 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    await controller.startAll(options, /* noGui = */ true);
+    await controller.startAll(options, /* noUi = */ true);
     exitCode = await runScript(script, extraEnv);
   } finally {
     await controller.cleanShutdown();
