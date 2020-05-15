@@ -18,13 +18,14 @@ import {
   update,
   confirmUpdateWarning,
   UpdateOptions,
+  retryUpdate,
 } from "../extensions/updateHelper";
 import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
 import * as previews from "../previews";
-import * as logger from "../logger";
+import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -39,7 +40,10 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       ? "update an existing extension instance to the latest version or from a local or URL source"
       : "update an existing extension instance to the latest version"
   )
-  .before(requirePermissions, ["firebaseextensions.instances.update", "firebasemods.instances.get"])
+  .before(requirePermissions, [
+    "firebaseextensions.instances.update",
+    "firebaseextensions.instances.get",
+  ])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, directoryOrUrl: string, options: any) => {
     const spinner = ora.default(
@@ -126,8 +130,15 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         await confirmUpdateWarning(updateWarning);
       } else {
         // Updating to a published version
-        // Registry entry must exist.
-        const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+        let registryEntry;
+        try {
+          registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+        } catch (err) {
+          // If registry entry does not exist, assume community extension source.
+          throw new FirebaseError(
+            `Unable to update community extension without a local or URL source. Please run "firebase ext:update ${instanceId} <localDirectoryOrUrl>"`
+          );
+        }
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
         utils.logLabeledBullet(
           logPrefix,
@@ -160,7 +171,11 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
               currentSpec.version
             )}.`
           );
-          return;
+          const retry = await retryUpdate();
+          if (!retry) {
+            utils.logLabeledBullet(logPrefix, "Update aborted.");
+            return;
+          }
         }
       }
       await displayChanges(currentSpec, newSpec);
