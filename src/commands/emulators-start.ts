@@ -3,8 +3,9 @@ import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
 import * as logger from "../logger";
 import { EmulatorRegistry } from "../emulator/registry";
-import { Emulators, EMULATORS_SUPPORTED_BY_GUI } from "../emulator/types";
+import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
+import { Constants } from "../emulator/constants";
 
 const Table = require("cli-table");
 
@@ -28,19 +29,26 @@ module.exports = new Command("emulators:start")
       throw e;
     }
 
-    const guiInfo = EmulatorRegistry.getInfo(Emulators.GUI);
-    const guiUrl = `http://${guiInfo?.host}:${guiInfo?.port}`;
+    const reservedPorts = [] as number[];
+    for (const internalEmulator of [Emulators.HUB, Emulators.LOGGING]) {
+      const info = EmulatorRegistry.getInfo(internalEmulator);
+      if (info) {
+        reservedPorts.push(info.port);
+      }
+    }
+    const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
+    const uiUrl = `http://${uiInfo?.host}:${uiInfo?.port}`;
     const head = ["Emulator", "Host:Port"];
 
-    if (guiInfo) {
-      head.push("View in UI");
+    if (uiInfo) {
+      head.push(`View in ${Constants.description(Emulators.UI)}`);
     }
 
     const successMessageTable = new Table();
     successMessageTable.push([
       `${clc.green("✔")}  All emulators ready! ` +
-        (guiInfo
-          ? `View status and logs at ${stylizeLink(guiUrl)}`
+        (uiInfo
+          ? `View status and logs at ${stylizeLink(uiUrl)}`
           : `It is now safe to connect your apps.`),
     ]);
 
@@ -55,10 +63,9 @@ module.exports = new Command("emulators:start")
       ...controller
         .filterEmulatorTargets(options)
         .map((emulator) => {
-          const instance = EmulatorRegistry.get(emulator);
           const info = EmulatorRegistry.getInfo(emulator);
-          const emulatorName = emulator.slice(0, 1).toUpperCase() + emulator.slice(1);
-          const isSupportedByGUI = EMULATORS_SUPPORTED_BY_GUI.includes(emulator);
+          const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
+          const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
 
           if (!info) {
             return [emulatorName, "Failed to initialize (see above)", "", ""];
@@ -67,8 +74,8 @@ module.exports = new Command("emulators:start")
           return [
             emulatorName,
             `${info?.host}:${info?.port}`,
-            isSupportedByGUI && guiInfo
-              ? stylizeLink(`${guiUrl}/${emulator}`)
+            isSupportedByUi && uiInfo
+              ? stylizeLink(`${uiUrl}/${emulator}`)
               : clc.blackBright("n/a"),
           ];
         })
@@ -79,7 +86,7 @@ module.exports = new Command("emulators:start")
     logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
-${clc.blackBright("  Other reserved ports:")} ${EmulatorRegistry.getInfo(Emulators.HUB)?.port}
+${clc.blackBright("  Other reserved ports:")} ${reservedPorts.join(", ")}
 
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
@@ -87,7 +94,7 @@ Issues? Report them at ${stylizeLink(
  `);
 
     // Add this line above once connect page is implemented
-    // It is now safe to connect your app. Instructions: http://${guiInfo?.host}:${guiInfo?.port}/connect
+    // It is now safe to connect your app. Instructions: http://${uiInfo?.host}:${uiInfo?.port}/connect
 
     // Hang until explicitly killed
     await killSignalPromise;

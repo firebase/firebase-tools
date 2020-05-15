@@ -14,7 +14,7 @@ import {
   ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
-  EMULATORS_SUPPORTED_BY_GUI,
+  EMULATORS_SUPPORTED_BY_UI,
 } from "../emulator/types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "../emulator/constants";
 import { FunctionsEmulator } from "../emulator/functionsEmulator";
@@ -27,7 +27,7 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
 import { ExportMetadata, HubExport } from "./hubExport";
-import { EmulatorGUI } from "./gui";
+import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -154,18 +154,18 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
-  if (name === Emulators.GUI) {
-    if (options.config.get("emulators.gui.enabled") === false) {
-      // Allow disabling GUI via `{emulators: {"gui": {"enabled": false}}}`.
-      // GUI is by default enabled if that option is not specified.
+  if (name === Emulators.UI) {
+    if (options.config.get("emulators.ui.enabled") === false) {
+      // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
+      // Emulator UI is by default enabled if that option is not specified.
       return false;
     }
-    // The GUI only starts if we know the project ID AND at least one emulator
-    // supported by GUI is launching.
+    // Emulator UI only starts if we know the project ID AND at least one
+    // emulator supported by Emulator UI is launching.
     return (
       previews.emulatorgui &&
       !!options.project &&
-      targets.some((target) => EMULATORS_SUPPORTED_BY_GUI.indexOf(target) >= 0)
+      targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
     );
   }
 
@@ -195,7 +195,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
   return targets.indexOf(name) >= 0;
 }
 
-export async function startAll(options: any, noGui: boolean = false): Promise<void> {
+export async function startAll(options: any, noUi: boolean = false): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -411,7 +411,7 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
     await startEmulator(pubsubEmulator);
   }
 
-  if (!noGui && shouldStart(options, Emulators.GUI)) {
+  if (!noUi && shouldStart(options, Emulators.UI)) {
     const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,
@@ -420,13 +420,13 @@ export async function startAll(options: any, noGui: boolean = false): Promise<vo
 
     await startEmulator(loggingEmulator);
 
-    const guiAddr = await getAndCheckAddress(Emulators.GUI, options);
-    const gui = new EmulatorGUI({
+    const uiAddr = await getAndCheckAddress(Emulators.UI, options);
+    const ui = new EmulatorUI({
       projectId,
       auto_download: true,
-      ...guiAddr,
+      ...uiAddr,
     });
-    await startEmulator(gui);
+    await startEmulator(ui);
   }
 
   const running = EmulatorRegistry.listRunning();

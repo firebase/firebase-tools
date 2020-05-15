@@ -3,7 +3,7 @@ import * as url from "url";
 import { Address, Emulators } from "./types";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
-  gui: 4000,
+  ui: 4000,
   hub: 4400,
   logging: 4500,
   hosting: 5000,
@@ -14,7 +14,7 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
-  gui: true,
+  ui: true,
   hub: true,
   logging: true,
   hosting: false,
@@ -22,6 +22,17 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   firestore: false,
   database: false,
   pubsub: false,
+};
+
+export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
+  ui: "Emulator UI",
+  hub: "emulator hub",
+  logging: "Logging Emulator",
+  hosting: "Hosting Emulator",
+  functions: "Functions Emulator",
+  firestore: "Firestore Emulator",
+  database: "Database Emulator",
+  pubsub: "Pub/Sub Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
@@ -89,13 +100,7 @@ export class Constants {
   }
 
   static description(name: Emulators): string {
-    if (name === Emulators.HUB) {
-      return "emulator hub";
-    } else if (name === Emulators.GUI) {
-      return "emulator GUI";
-    } else {
-      return `${name} emulator`;
-    }
+    return EMULATOR_DESCRIPTION[name];
   }
 
   static normalizeHost(host: string): string {
