@@ -97,13 +97,13 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           msg2 =
             "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
           msg3 =
-            "After updating from a local source, this instance cannot be updated in the future to use an official source.";
+            "After updating from a URL source, this instance cannot be updated in the future to use an official source.";
         } else {
           msg1 = "You are updating this extension instance from a local source.";
           msg2 =
             "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
           msg3 =
-            "After updating from a URL, this instance cannot be updated in the future to use an official source.";
+            "After updating from a local source, this instance cannot be updated in the future to use an official source.";
         }
         utils.logLabeledBullet(logPrefix, `${clc.bold(msg1)}\n`);
         let updateWarning: resolveSource.UpdateWarning;
