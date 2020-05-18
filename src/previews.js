@@ -9,7 +9,6 @@ var previews = _.assign(
     rtdbrules: false,
     ext: false,
     extdev: false,
-    emulatorgui: false,
   },
   configstore.get("previews")
 );
