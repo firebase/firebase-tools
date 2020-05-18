@@ -10,6 +10,7 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
+import { LogData, LogDataOrUndefined } from "./emulator/loggingEmulator";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -86,7 +87,7 @@ export function getDatabaseViewDataUrl(
   if (urlObj.hostname.includes("firebaseio.com")) {
     return consoleUrl(namespace, "/database/data" + pathname);
   } else {
-    // TODO(samstern): View in GUI
+    // TODO(samstern): View in Emulator UI
     return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
 }
@@ -117,49 +118,76 @@ export function addSubdomain(origin: string, subdomain: string): string {
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logSuccess(message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message);
+export function logSuccess(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logLabeledSuccess(label: string, message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message);
+export function logLabeledSuccess(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logBullet(message: string, type = "info"): void {
-  logger[type](clc.cyan.bold("i "), message);
+export function logBullet(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold("i "), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledBullet(label: string, message: string, type = "info"): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message);
+export function logLabeledBullet(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logWarning(message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message);
+export function logWarning(
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledWarning(label: string, message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
+export function logLabeledWarning(
+  label: string,
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 

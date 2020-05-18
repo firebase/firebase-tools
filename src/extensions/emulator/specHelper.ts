@@ -4,10 +4,11 @@ import * as path from "path";
 import * as fs from "fs-extra";
 
 import { fileExistsSync } from "../../fsutils";
-import { ExtensionSpec, Resource, Param } from "../extensionsApi";
+import { ExtensionSpec, Resource } from "../extensionsApi";
 import { FirebaseError } from "../../error";
 import { substituteParams } from "./paramHelper";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
+import { Emulators } from "../../emulator/types";
 
 const SPEC_FILE = "extension.yaml";
 const validFunctionTypes = [
@@ -123,7 +124,7 @@ export function getNodeVersion(resources: Resource[]): string {
   });
 
   if (functionNamesWithoutRuntime.length) {
-    EmulatorLogger.logLabeled(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "extensions",
       `No 'runtime' property found for the following functions, defaulting to nodejs8: ${functionNamesWithoutRuntime.join(
@@ -146,7 +147,7 @@ export function getNodeVersion(resources: Resource[]): string {
     return "10";
   }
   if (_.includes(versions, "nodejs6")) {
-    EmulatorLogger.logLabeled(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "extensions",
       "Node 6 is deprecated. We recommend upgrading to a newer version."

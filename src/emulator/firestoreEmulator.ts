@@ -30,9 +30,9 @@ export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: FirestoreEmulatorArgs) {}
 
   async start(): Promise<void> {
-    const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
-    if (functionsPort) {
-      this.args.functions_emulator = `localhost:${functionsPort}`;
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator = `${functionsInfo.host}:${functionsInfo.port}`;
     }
 
     if (this.args.rules && this.args.projectId) {

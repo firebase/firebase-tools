@@ -59,6 +59,16 @@ export function resolveSourceUrl(
 }
 
 /**
+ * Checks if the given source comes from an official extension.
+ * @param registryEntry the registry entry to look through.
+ * @param sourceUrl the source URL of the extension.
+ */
+export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
+  const versions = _.get(registryEntry, "versions");
+  return _.includes(versions, sourceUrl);
+}
+
+/**
  * Looks up and returns a entry from the official extensions registry.
  * @param name the name of the extension.
  */

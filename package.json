@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.2.0",
+  "version": "8.3.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -18,7 +18,7 @@
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
     "lint:quiet": "npm run lint:ts -- --quiet && npm run lint:other",
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
-    "mocha": "nyc mocha src/test/**/*.{ts,js}",
+    "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
     "test": "npm run lint:quiet && npm run mocha",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
@@ -102,6 +102,7 @@
     "marked": "^0.7.0",
     "marked-terminal": "^3.3.0",
     "minimatch": "^3.0.4",
+    "morgan": "^1.10.0",
     "open": "^6.3.0",
     "ora": "^3.4.0",
     "plist": "^3.0.1",

@@ -23,7 +23,10 @@ marked.setOptions({
  */
 export default new Command("ext:update <extensionInstanceId>")
   .description("update an existing extension instance to the latest version")
-  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
+  .before(requirePermissions, [
+    "firebaseextensions.instances.update",
+    "firebaseextensions.instances.get",
+  ])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
@@ -50,8 +53,14 @@ export default new Command("ext:update <extensionInstanceId>")
         "config.source.spec"
       );
       const currentParams = _.get(existingInstance, "config.params");
+      const existingSource = _.get(existingInstance, "config.source.name");
 
       const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
+      // TODO: replace with targeted error messaging once multiple source origins are supported.
+      if (!resolveSource.isOfficialSource(registryEntry, existingSource)) {
+        throw new FirebaseError(`Expected official extension source, but got: ${existingSource}`);
+      }
+
       const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
       utils.logLabeledBullet(
         logPrefix,

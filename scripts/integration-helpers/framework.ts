@@ -11,7 +11,7 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
-const ALL_EMULATORS_STARTED_LOG = "All emulators started, it is now safe to connect.";
+const ALL_EMULATORS_STARTED_LOG = "is now safe to connect";
 
 interface ConnectionInfo {
   host: string;

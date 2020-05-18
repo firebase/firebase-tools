@@ -27,8 +27,6 @@ let triggers: EmulatedTriggerMap | undefined;
 let hasAccessedFirestore = false;
 let hasAccessedDatabase = false;
 
-let defaultApp: admin.app.App;
-
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -452,7 +450,7 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
           key: HttpConstants.CALLABLE_AUTH_HEADER,
           value: authContext,
         });
-        context.auth = JSON.parse(authContext);
+        context.auth = JSON.parse(decodeURIComponent(authContext));
       } else {
         logDebug("No callable functions auth found");
       }
@@ -490,17 +488,21 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
   const proxiedAdminModule = adminModuleProxy
     .when("initializeApp", (adminModuleTarget) => (opts?: admin.AppOptions, appName?: string) => {
       if (appName) {
-        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName }).log();
+        new EmulatorLog("SYSTEM", "non-default-admin-app-used", "", { appName, opts }).log();
         return adminModuleTarget.initializeApp(opts, appName);
-      } else {
-        new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultConfig}`).log();
       }
 
-      const defaultAppOptions = {
-        ...defaultConfig,
-        ...opts,
-      };
-      defaultApp = makeProxiedFirebaseApp(frb, adminModuleTarget.initializeApp(defaultAppOptions));
+      // If initializeApp() is called with options we use the provided options, otherwise
+      // we use the default options.
+      const defaultAppOptions = opts ? opts : defaultConfig;
+      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultAppOptions}`, {
+        opts: defaultAppOptions,
+      }).log();
+
+      const defaultApp: admin.app.App = makeProxiedFirebaseApp(
+        frb,
+        adminModuleTarget.initializeApp(defaultAppOptions)
+      );
       logDebug("initializeApp(DEFAULT)", defaultAppOptions);
 
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"

@@ -5,6 +5,7 @@ import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
+import previews = require("../../previews");
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -56,6 +57,42 @@ export async function doSetup(setup: any, config: any) {
   }
 
   if (selections.emulators.length) {
+    if (previews.emulatorgui) {
+      const uiDesc = Constants.description(Emulators.UI);
+      if (setup.config.emulators.ui && setup.config.emulators.ui.enabled !== false) {
+        const currentPort = setup.config.emulators.ui.port || "(automatic)";
+        utils.logBullet(`${uiDesc} already enabled with port: ${clc.cyan(currentPort)}`);
+      } else {
+        const ui = setup.config.emulators.ui || {};
+        setup.config.emulators.ui = ui;
+
+        await prompt(ui, [
+          {
+            name: "enabled",
+            type: "confirm",
+            message: `Would you like to enable the ${uiDesc}?`,
+            default: true,
+          },
+        ]);
+
+        if (ui.enabled) {
+          await prompt(ui, [
+            {
+              type: "input",
+              name: "port",
+              message: `Which port do you want to use for the ${clc.underline(
+                uiDesc
+              )} (leave empty to use any available port)?`,
+            },
+          ]);
+          if (!ui.port) {
+            // Don't write `port: ""` into the config file.
+            delete ui.port;
+          }
+        }
+      }
+    }
+
     await prompt(selections, [
       {
         name: "download",

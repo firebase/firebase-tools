@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import { EmulatedTriggerDefinition } from "../../emulator/functionsEmulatorShared";
 import { Constants } from "../../emulator/constants";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
+import { Emulators } from "../../emulator/types";
 
 export function functionResourceToEmulatedTriggerDefintion(
   resource: any
@@ -26,7 +27,7 @@ export function functionResourceToEmulatedTriggerDefintion(
     properties.eventTrigger.service = getServiceFromEventType(properties.eventTrigger.eventType);
     etd.eventTrigger = properties.eventTrigger;
   } else {
-    EmulatorLogger.log(
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
       "WARN",
       `Function '${resource.name} is missing a trigger in extension.yaml. Please add one, as triggers defined in code are ignored.`
     );
