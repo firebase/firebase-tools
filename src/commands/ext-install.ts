@@ -31,7 +31,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
-import * as previews from "../previews";
+import { previews } from "../previews";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

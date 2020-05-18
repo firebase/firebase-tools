@@ -5,7 +5,7 @@ import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
-import previews = require("../../previews");
+import { previews } from "../../previews";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
