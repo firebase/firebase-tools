@@ -136,7 +136,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         } catch (err) {
           // If registry entry does not exist, assume community extension source.
           throw new FirebaseError(
-            `Unable to update community extension without a local or URL source. Please run "firebase ext:update ${instanceId} <localDirectoryOrUrl>"`
+            `Unable to update this extension without a local or URL source. Please run "firebase ext:update ${instanceId} <localDirectoryOrUrl>"`
           );
         }
         const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
