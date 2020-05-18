@@ -50,7 +50,7 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
       namePrefix: "cloud-firestore-emulator",
     },
   },
-  gui: {
+  ui: {
     version: "0.0.0",
     downloadPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP.zip"),
     unzipDir: path.join(CACHE_DIR, "gui-v0.0.0-EAP"),
@@ -103,8 +103,8 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
-  gui: {
-    name: Emulators.GUI,
+  ui: {
+    name: Emulators.UI,
     instance: null,
     stdout: null,
   },
@@ -136,9 +136,9 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: ["port", "host"],
     joinArgs: true,
   },
-  gui: {
+  ui: {
     binary: "node",
-    args: [getExecPath(Emulators.GUI)],
+    args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
   },
