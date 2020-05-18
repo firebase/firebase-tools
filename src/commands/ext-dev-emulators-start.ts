@@ -26,7 +26,7 @@ module.exports = new Command("ext:dev:emulators:start")
       throw e;
     }
 
-    utils.logSuccess("All emulators started, it is now safe to connect.");
+    utils.logSuccess("All emulators ready, it is now safe to connect.");
 
     // Hang until explicitly killed
     await killSignalPromise;
