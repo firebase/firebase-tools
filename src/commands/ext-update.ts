@@ -80,7 +80,10 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           sourceName = source.name;
         } catch (err) {
           throw new FirebaseError(
-            `Unable to create new source from '${clc.bold(directoryOrUrl)}':\n ${err.message}\n${clc.bold("Note:"
+            `Unable to create new source from '${clc.bold(directoryOrUrl)}':\n ${
+              err.message
+            }\n${clc.bold(
+              "Note:"
             )} If this extension was updated using a local or URL source previously, it cannot be updated in the future to use an official source.`
           );
         }
