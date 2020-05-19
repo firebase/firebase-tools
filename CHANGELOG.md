@@ -1,1 +1,1 @@
-* Fixes bug causing Hosting emulator to serve invalid /__/* files.
+- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
