@@ -8,10 +8,10 @@ import * as logger from "./logger";
 // Interface for a valid JSON refresh token credential, so the
 // fields must be snake_case not camelCase.
 interface RefreshTokenCredential {
-  client_id: string;
-  client_secret: string;
-  refresh_token: string;
-  type: string;
+  client_id: string; // eslint-disable-line
+  client_secret: string; // eslint-disable-line
+  refresh_token: string; // eslint-disable-line
+  type: string; // eslint-disable-line
 }
 
 /**
