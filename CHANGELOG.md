@@ -1,2 +1,2 @@
 - Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
-- `firebase init functions` now choose Node 10 by default.
+- `firebase init functions` now chooses Node 10 by default.
