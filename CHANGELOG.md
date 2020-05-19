@@ -1,1 +1,2 @@
-* Adds application default credentials inside the Functions emulator (#1940)
+- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Adds application default credentials inside the Functions emulator (#1940)
