@@ -8,7 +8,7 @@ import * as pf from "portfinder";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
-import { DefaultCredentials } from "../defaultCredentials";
+import { getCredentialPathAsync } from "../defaultCredentials";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
   Address,
@@ -281,7 +281,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
       );
     } else {
-      const defaultCredPath = await new DefaultCredentials().getPathAsync();
+      const defaultCredPath = await getCredentialPathAsync();
       if (defaultCredPath) {
         functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
         credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
