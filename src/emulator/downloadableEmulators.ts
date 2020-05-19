@@ -50,7 +50,7 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
       namePrefix: "cloud-firestore-emulator",
     },
   },
-  gui: {
+  ui: {
     version: "0.0.0",
     downloadPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP.zip"),
     unzipDir: path.join(CACHE_DIR, "gui-v0.0.0-EAP"),
@@ -103,8 +103,8 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
-  gui: {
-    name: Emulators.GUI,
+  ui: {
+    name: Emulators.UI,
     instance: null,
     stdout: null,
   },
@@ -136,9 +136,9 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: ["port", "host"],
     joinArgs: true,
   },
-  gui: {
+  ui: {
     binary: "node",
-    args: [getExecPath(Emulators.GUI)],
+    args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
   },
@@ -149,7 +149,7 @@ function getExecPath(name: DownloadableEmulators): string {
   return details.binaryPath || details.downloadPath;
 }
 
-function _getLogFileName(name: string): string {
+export function getLogFileName(name: string): string {
   return `${name}-debug.log`;
 }
 
@@ -216,7 +216,7 @@ async function _runBinary(
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
+    emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
@@ -246,7 +246,7 @@ async function _runBinary(
     logger.logLabeled(
       "BULLET",
       emulator.name,
-      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
     emulator.instance.stdout.on("data", (data) => {
