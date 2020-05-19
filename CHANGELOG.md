@@ -1,0 +1,1 @@
+- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
