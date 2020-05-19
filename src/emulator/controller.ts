@@ -6,10 +6,10 @@ import * as tcpport from "tcp-port-used";
 import * as pf from "portfinder";
 
 import * as api from "../api";
-import { configstore } from "../configstore";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
+import { DefaultCredentials } from "../defaultCredentials";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
   Address,
@@ -253,6 +253,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
@@ -265,22 +266,27 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+      functionsLogger.logLabeled(
         "WARN",
         "functions",
         `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
       );
     }
 
-    const tokens = configstore.get("tokens");
+    // Provide default application credentials when appropriate
     const credentialEnv = {} as any;
-    if (tokens && tokens.refresh_token) {
-      credentialEnv.FIREBASE_EMULATOR_CREDENTIALS = JSON.stringify({
-        client_id: api.clientId,
-        client_secret: api.clientSecret,
-        refresh_token: tokens.refresh_token,
-        type: "authorized_user",
-      });
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+      );
+    } else {
+      const defaultCredPath = await new DefaultCredentials().getPathAsync();
+      if (defaultCredPath) {
+        functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      }
     }
 
     const functionsEmulator = new FunctionsEmulator({
