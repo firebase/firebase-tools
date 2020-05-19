@@ -5,7 +5,6 @@ import * as path from "path";
 import * as tcpport from "tcp-port-used";
 import * as pf from "portfinder";
 
-import * as api from "../api";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
