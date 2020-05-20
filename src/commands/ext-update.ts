@@ -86,7 +86,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
             "firebase ext:update <extension-instance-id>"
           )}\` to update from the official source.\n
           - Check your directory path or URL, then run \`${clc.bold(
-            "firebase ext:update <extension-instance-id> <localOrUrl>"
+            "firebase ext:update <extension-instance-id> <localDirectoryOrUrl>"
           )}\` to update from a local directory or URL source.`;
           throw new FirebaseError(invalidSourceErr);
         }
