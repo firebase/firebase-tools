@@ -3,3 +3,4 @@
 - Fixes support in Firestore emulator for `?show_missing` in listing collection.
 - Supports `?disableTriggers=true` for disabling function triggers in RTDB Emulator REST APIs.
 - Includes other production Realtime Database improvements into the RTDB Emulator.
+- Fixes bug where functions would run in local time zone instead of UTC (#2253).
