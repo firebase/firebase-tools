@@ -313,9 +313,9 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      foundRulesFile = fs.existsSync(rules);
+      rulesFileFound = fs.existsSync(rules);
       
-      if (foundRulesFile) {
+      if (rulesFileFound) {
         args.rules = rules;
       } else {
         firestoreLogger.logLabeled(
@@ -332,7 +332,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    if (!foundRulesFile) {
+    if (!rulesFileFound) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
