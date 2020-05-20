@@ -314,7 +314,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
-      
       if (rulesFileFound) {
         args.rules = rules;
       } else {
