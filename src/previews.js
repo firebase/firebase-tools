@@ -10,6 +10,7 @@ var previews = _.assign(
     ext: false,
     extdev: false,
     emulatorgui: false,
+    hostingchannels: false,
   },
   configstore.get("previews")
 );

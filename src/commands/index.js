@@ -89,6 +89,11 @@ module.exports = function(client) {
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.disable = loadCommand("hosting-disable");
+  if (previews.hostingchannels) {
+    client.hosting.channel = {
+      deploy: loadCommand("hosting-channel-deploy"),
+    };
+  }
   client.init = loadCommand("init");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
