@@ -1,1 +1,3 @@
 - Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Fixes bug in Firestore emulator for evaluating rules in query listening.
+- Fixes support in Firestore emulator for `?show_missing` in listing collection.
