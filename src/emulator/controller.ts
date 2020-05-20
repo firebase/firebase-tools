@@ -310,10 +310,12 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
-    const rules: string = path.join(options.projectRoot, rulesLocalPath);
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rules);
+    let rulesFileFound = false;
     if (rulesLocalPath) {
-      if (fs.existsSync(rules)) {
+      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      foundRulesFile = fs.existsSync(rules);
+      
+      if (foundRulesFile) {
         args.rules = rules;
       } else {
         firestoreLogger.logLabeled(
