@@ -1,1 +1,2 @@
 - Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Fixes bug where functions would run in local time zone instead of UTC (#2253).
