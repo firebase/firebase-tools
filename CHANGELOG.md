@@ -1,1 +1,3 @@
 - Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Supports `?disableTriggers=true` for disabling function triggers in RTDB Emulator REST APIs.
+- Includes other production Realtime Database improvements into the RTDB Emulator.
