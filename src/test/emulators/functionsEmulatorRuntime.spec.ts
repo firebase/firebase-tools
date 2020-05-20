@@ -679,6 +679,23 @@ describe("FunctionsEmulator-Runtime", () => {
 
         expect(JSON.parse(data)).to.deep.equal({ hostname: "real-hostname" });
       }).timeout(TIMEOUT_MED);
+
+      it("should report GMT time zone", async () => {
+        const frb = FunctionRuntimeBundles.onRequest;
+        const worker = InvokeRuntimeWithFunctions(frb, () => {
+          return {
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                const now = new Date();
+                res.json({ offset: now.getTimezoneOffset() });
+              }
+            ),
+          };
+        });
+
+        const data = await CallHTTPSFunction(worker, frb);
+        expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
+      });
     });
 
     describe("Cloud Firestore", () => {
