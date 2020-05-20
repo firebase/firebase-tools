@@ -170,7 +170,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       }
       const newSource = await extensionsApi.getSource(sourceName);
       const newSpec = newSource.spec;
-      if (!(previews.extdev && directoryOrUrl)) {
+      if (!previews.extdev || !directoryOrUrl) {
         if (currentSpec.version === newSpec.version) {
           utils.logLabeledBullet(
             logPrefix,
