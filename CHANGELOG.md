@@ -1,8 +1,0 @@
-- Support referencing variables in extension.yaml using \${param:PARAM_NAME} syntax
-- Releases the Local Emulator UI, which now starts with `firebase emulators:start`.
-- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
-- Fixes bug in Firestore emulator for evaluating rules in query listening. (#2197)
-- Fixes support in Firestore emulator for `?show_missing` in listing collection.
-- Supports `?disableTriggers=true` for disabling function triggers in RTDB Emulator REST APIs.
-- Includes other production Realtime Database improvements into the RTDB Emulator.
-- Fixes bug where functions would run in local time zone instead of UTC (#2253).
