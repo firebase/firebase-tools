@@ -58,8 +58,8 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.0.0.zip",
-      expectedSize: 3176675,
-      expectedChecksum: "7f45215e99b337267eb3d9dd4b371a93",
+      expectedSize: 3176654,
+      expectedChecksum: "5381640c543b2adb53d075ac1ab5cc28",
       namePrefix: "ui",
     },
   },
