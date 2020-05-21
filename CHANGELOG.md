@@ -1,0 +1,1 @@
+- Improved error messages for `firebase init` with new projects (#2266).
