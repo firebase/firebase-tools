@@ -11,7 +11,7 @@ import * as prompt from "../../prompt";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
-    it("should should substitute env variables", () => {
+    it("should substitute env variables", () => {
       const testResources = [
         {
           resourceOne: {
@@ -44,7 +44,7 @@ describe("extensionsHelper", () => {
     });
   });
 
-  it("should should support both ${PARAM_NAME} (old) AND ${param:PARAM_NAME} (new) syntax", () => {
+  it("should support both ${PARAM_NAME} AND ${param:PARAM_NAME} syntax", () => {
     const testResources = [
       {
         resourceOne: {
