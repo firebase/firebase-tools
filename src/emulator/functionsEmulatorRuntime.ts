@@ -450,7 +450,7 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
           key: HttpConstants.CALLABLE_AUTH_HEADER,
           value: authContext,
         });
-        context.auth = JSON.parse(authContext);
+        context.auth = JSON.parse(decodeURIComponent(authContext));
       } else {
         logDebug("No callable functions auth found");
       }
@@ -584,6 +584,7 @@ function warnAboutDatabaseProd(): void {
 }
 
 function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 

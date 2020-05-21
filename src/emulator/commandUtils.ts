@@ -156,6 +156,28 @@ export function parseInspectionPort(options: any): number {
   return parsed;
 }
 
+export function shutdownWhenKilled(): Promise<void> {
+  return new Promise((res, rej) => {
+    process.on("SIGINT", () => {
+      controller
+        .cleanShutdown()
+        .then(res)
+        .catch(rej);
+    });
+  })
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((e) => {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        "emulators failed to shut down cleanly, see firebase-debug.log for details."
+      );
+      process.exit(1);
+    });
+}
+
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
@@ -240,7 +262,7 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    await controller.startAll(options, /* noGui = */ true);
+    await controller.startAll(options, /* noUi = */ true);
     exitCode = await runScript(script, extraEnv);
   } finally {
     await controller.cleanShutdown();
