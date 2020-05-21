@@ -36,7 +36,7 @@ export enum SpecParamType {
 }
 
 export const logPrefix = "extensions";
-const urlRegex = /^http[s]?:\/\/.*\.zip$/;
+export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)$/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
