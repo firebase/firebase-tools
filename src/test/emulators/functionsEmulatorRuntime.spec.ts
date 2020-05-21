@@ -691,7 +691,7 @@ describe("FunctionsEmulator-Runtime", () => {
               }
             ),
           };
-        });
+        }).timeout(TIMEOUT_MED);
 
         const data = await CallHTTPSFunction(worker, frb);
         expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
