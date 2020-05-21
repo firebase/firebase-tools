@@ -15,7 +15,6 @@ import {
   createSource,
   getInstance,
   ExtensionSource,
-  ExtensionSpec,
   getSource,
   Param,
   ParamType,
@@ -94,11 +93,16 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
  */
 export function substituteParams(original: object[], params: { [key: string]: string }): Param[] {
   const startingString = JSON.stringify(original);
-  const reduceFunction = (intermediateResult: string, paramVal: string, paramKey: string) => {
-    const regex = new RegExp("\\$\\{" + paramKey + "\\}", "g");
-    return intermediateResult.replace(regex, paramVal);
+  const applySubstitution = (str: string, paramVal: string, paramKey: string): string => {
+    const exp1 = new RegExp("\\$\\{" + paramKey + "\\}", "g");
+    const exp2 = new RegExp("\\$\\{param:" + paramKey + "\\}", "g");
+    const regexes = [exp1, exp2];
+    const substituteRegexMatches = (unsubstituted: string, regex: RegExp): string => {
+      return unsubstituted.replace(regex, paramVal);
+    };
+    return _.reduce(regexes, substituteRegexMatches, str);
   };
-  return JSON.parse(_.reduce(params, reduceFunction, startingString));
+  return JSON.parse(_.reduce(params, applySubstitution, startingString));
 }
 
 /**

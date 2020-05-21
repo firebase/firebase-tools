@@ -1,3 +1,4 @@
+- Support referencing variables in extension.yaml using \${param:PARAM_NAME} syntax
 - Releases the Local Emulator UI, which now starts with `firebase emulators:start`.
 - Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
 - Fixes bug in Firestore emulator for evaluating rules in query listening. (#2197)
