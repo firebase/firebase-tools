@@ -308,10 +308,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
+    let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      if (fs.existsSync(rules)) {
+      rulesFileFound = fs.existsSync(rules);
+      if (rulesFileFound) {
         args.rules = rules;
       } else {
         firestoreLogger.logLabeled(
@@ -328,7 +329,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    if (!foundRulesFile) {
+    if (!rulesFileFound) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
