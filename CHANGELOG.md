@@ -1,11 +1,8 @@
-- Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
-- Fixes an issue where `ext:list` would fail when no extensions were installed.
-- Fixes an issue where database emulator could not load rules from target configurations (#2184).
-- Adds new API commands that handle list/create/delete operations on the Android SHA certificate hashes `apps:android:sha:list`, `apps:android:sha:create`, and `apps:android:sha:delete`.
-- Fixes an issue where the CLI did not assume admin privileges when performing Firestore / RTDB emulator operations.
-- Fixes an issue where the functions and hosting emulators would crash when not properly initialized (#2112).
-- Fixes an issue where `use` would allow an invalid project identifier.
-- Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
-- Changes `firebasemods.*.*` IAM permission checks to `firebaseextensions.*.*`
-- Fixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
-- Fixes an issue where emulators could not be cleanly shut down if they had not started properly (#2228).
+- Support referencing variables in extension.yaml using ${param:PARAM_NAME} syntax
+- Releases the Local Emulator UI, which now starts with `firebase emulators:start`.
+- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Fixes bug in Firestore emulator for evaluating rules in query listening. (#2197)
+- Fixes support in Firestore emulator for `?show_missing` in listing collection.
+- Supports `?disableTriggers=true` for disabling function triggers in RTDB Emulator REST APIs.
+- Includes other production Realtime Database improvements into the RTDB Emulator.
+- Fixes bug where functions would run in local time zone instead of UTC (#2253).
