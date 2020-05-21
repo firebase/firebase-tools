@@ -119,7 +119,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
           const registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
           updatingFromOfficial = resolveSource.isOfficialSource(registryEntry, existingSource);
         } catch {
-          // If registry entry does not exist, assume community extension source.
+          // If registry entry does not exist, assume local directory or URL extension source.
         }
 
         if (updatingFromOfficial) {
@@ -136,12 +136,12 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
 
         await confirmUpdateWarning(updateWarning);
       } else {
-        // Updating to a published version
+        // Updating to a version from an official source
         let registryEntry;
         try {
           registryEntry = await resolveSource.resolveRegistryEntry(currentSpec.name);
         } catch (err) {
-          // If registry entry does not exist, assume community extension source.
+          // If registry entry does not exist, assume local directory or URL extension source.
           throw new FirebaseError(
             `Unable to update this instance without a local or URL source. To update this instance, run "firebase ext:update ${instanceId} <localDirectoryOrUrl>".`
           );
