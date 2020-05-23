@@ -176,7 +176,7 @@ The Firebase CLI can also be used programmatically as a standard Node module. Ea
 
 ```js
 var client = require("firebase-tools");
-client
+client.projects
   .list()
   .then(function(data) {
     console.log(data);
