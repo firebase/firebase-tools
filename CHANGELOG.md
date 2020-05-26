@@ -1,1 +1,1 @@
-- Remove proxying of `functions.config()` inside the Functions emulator.
+- Remove deep proxying of `functions.config()` inside the Functions emulator.

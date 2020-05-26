@@ -173,6 +173,12 @@ export class EmulatorLogger {
           `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
+      case "functions-config-missing-value":
+        this.log(
+          "WARN_ONCE",
+          `It looks like you're trying to access functions.config().${systemLog.data.key} but there is no value there. You can learn more about setting up config here: https://firebase.google.com/docs/functions/local-emulator`
+        );
+        break;
       case "non-default-admin-app-used":
         this.log(
           "WARN",
