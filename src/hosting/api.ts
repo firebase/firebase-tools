@@ -52,7 +52,7 @@ interface Release {
   message: string;
 }
 
-interface Channel {
+export interface Channel {
   // The fully-qualified identifier of the Channel.
   name: string;
 
