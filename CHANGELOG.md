@@ -1,0 +1,1 @@
+- Fixes incorrect warning about emulator configuration (#2290).
