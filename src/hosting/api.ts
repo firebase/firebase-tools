@@ -114,6 +114,43 @@ export async function getChannel(
 }
 
 /**
+ * listChannels retrieves information about a channel.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the channel.
+ */
+export async function listChannels(
+  project: string | number = "-",
+  site: string
+): Promise<Channel[]> {
+  const channels: Channel[] = [];
+  let nextPageToken = "";
+  for (;;) {
+    try {
+      const res = await api.request("GET", `/v1beta1/projects/${project}/sites/${site}/channels`, {
+        auth: true,
+        origin: api.hostingApiOrigin,
+        query: { pageToken: nextPageToken },
+      });
+      const c = res.body?.channels;
+      if (c) {
+        channels.push(...c);
+      }
+      nextPageToken = res.body?.nextPageToken;
+      if (!nextPageToken) {
+        return channels;
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        throw new FirebaseError(`could not find channels for site "${site}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  }
+}
+
+/**
  * Creates a Channel.
  * @param project the project ID or number (can be provided `-`),
  * @param site the site for the channel.
