@@ -95,6 +95,7 @@ module.exports = function(client) {
     client.hosting.channel.delete = loadCommand("hosting-channel-delete");
     client.hosting.channel.deploy = loadCommand("hosting-channel-deploy");
     client.hosting.channel.list = loadCommand("hosting-channel-list");
+    client.hosting.channel.open = loadCommand("hosting-channel-open");
   }
   client.init = loadCommand("init");
   client.login = loadCommand("login");
