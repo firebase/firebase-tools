@@ -46,7 +46,7 @@ export async function doSetup(setup: any, config: any) {
     } else {
       await prompt(setup.config.emulators[selected], [
         {
-          type: "input",
+          type: "number",
           name: "port",
           message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
           default: Constants.getDefaultPort(selected as Emulators),
@@ -76,7 +76,7 @@ export async function doSetup(setup: any, config: any) {
       if (ui.enabled) {
         await prompt(ui, [
           {
-            type: "input",
+            type: "number",
             name: "port",
             message: `Which port do you want to use for the ${clc.underline(
               uiDesc
@@ -105,6 +105,10 @@ export async function doSetup(setup: any, config: any) {
       if (isDownloadableEmulator(selected)) {
         await downloadIfNecessary(selected);
       }
+    }
+
+    if (_.get(setup, "config.emulators.ui.enabled")) {
+      downloadIfNecessary(Emulators.UI);
     }
   }
 }

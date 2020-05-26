@@ -1,1 +1,3 @@
+- Fixes issue where custom emulator ports were strings not numbers (#2287).
+- Fixes issue where Emulator UI was never downloaded during `firebase init emulators`.
 - Improved error messages for `firebase init` with new projects (#2266).
