@@ -434,38 +434,6 @@ describe("FunctionsEmulator-Runtime", () => {
         await worker.runtime.exit;
       }).timeout(TIMEOUT_MED);
     });
-
-    describe("_InitializeFunctionsConfigHelper()", () => {
-      it("should tell the user if they've accessed a non-existent function field", async () => {
-        const worker = InvokeRuntimeWithFunctions(
-          FunctionRuntimeBundles.onCreate,
-          () => {
-            require("firebase-admin").initializeApp();
-            return {
-              function_id: require("firebase-functions")
-                .firestore.document("test/test")
-                .onCreate(async () => {
-                  /* tslint:disable:no-console */
-                  console.log(require("firebase-functions").config().doesnt.exist);
-                  console.log(require("firebase-functions").config().does.exist);
-                  console.log(require("firebase-functions").config().also_doesnt.exist);
-                }),
-            };
-          },
-          {
-            nodeBinary: process.execPath,
-            env: {
-              CLOUD_RUNTIME_CONFIG: JSON.stringify({
-                does: { exist: "already exists" },
-              }),
-            },
-          }
-        );
-
-        const logs = await _countLogEntries(worker);
-        expect(logs["functions-config-missing-value"]).to.eq(2);
-      }).timeout(TIMEOUT_MED);
-    });
   });
 
   describe("Runtime", () => {

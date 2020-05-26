@@ -495,9 +495,14 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // If initializeApp() is called with options we use the provided options, otherwise
       // we use the default options.
       const defaultAppOptions = opts ? opts : defaultConfig;
-      new EmulatorLog("SYSTEM", "default-admin-app-used", `config=${defaultAppOptions}`, {
-        opts: defaultAppOptions,
-      }).log();
+      new EmulatorLog(
+        "SYSTEM",
+        "default-admin-app-used",
+        `config=${JSON.stringify(defaultAppOptions)}`,
+        {
+          opts: defaultAppOptions,
+        }
+      ).log();
 
       const defaultApp: admin.app.App = makeProxiedFirebaseApp(
         frb,
@@ -649,52 +654,6 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
   }
-}
-
-async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [frb.cwd],
-  });
-
-  const ff = require(functionsResolution);
-  logDebug("Checked functions.config()", {
-    config: ff.config(),
-  });
-
-  const originalConfig = ff.config();
-  const proxiedConfig = new Proxied(originalConfig)
-    .any((parentConfig, parentKey) => {
-      logDebug("config() parent accessed!", {
-        parentKey,
-        parentConfig,
-      });
-
-      return new Proxied(parentConfig[parentKey] || ({} as { [key: string]: any }))
-        .any((childConfig, childKey) => {
-          const value = childConfig[childKey];
-          if (value) {
-            return value;
-          } else {
-            const valuePath = [parentKey, childKey].join(".");
-
-            // Calling console.log() or util.inspect() on a config value can cause spurious logging
-            // if we don't ignore certain known-bad paths.
-            const ignore =
-              valuePath.endsWith(".inspect") ||
-              valuePath.endsWith(".toJSON") ||
-              valuePath.includes("Symbol(") ||
-              valuePath.includes("Symbol.iterator");
-            if (!ignore) {
-              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
-            }
-            return undefined;
-          }
-        })
-        .finalize();
-    })
-    .finalize();
-
-  ff.config = () => proxiedConfig;
 }
 
 /**
@@ -973,7 +932,6 @@ async function initializeRuntime(
   }
 
   initializeNetworkFiltering(frb);
-  await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
