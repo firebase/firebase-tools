@@ -92,6 +92,7 @@ module.exports = function(client) {
   if (previews.hostingchannels) {
     client.hosting.channel = {};
     client.hosting.channel.create = loadCommand("hosting-channel-create");
+    client.hosting.channel.delete = loadCommand("hosting-channel-delete");
     client.hosting.channel.deploy = loadCommand("hosting-channel-deploy");
     client.hosting.channel.list = loadCommand("hosting-channel-list");
   }

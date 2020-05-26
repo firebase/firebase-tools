@@ -197,3 +197,20 @@ export async function updateChannelTtl(
   }
   return c;
 }
+
+/**
+ * Deletes a channel.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the channel.
+ * @param channelId the specific channel ID.
+ */
+export async function deleteChannel(
+  project: string | number = "-",
+  site: string,
+  channelId: string
+): Promise<void> {
+  await api.request("DELETE", `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`, {
+    auth: true,
+    origin: api.hostingApiOrigin,
+  });
+}
