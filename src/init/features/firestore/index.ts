@@ -18,7 +18,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     throw new FirebaseError(
       `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold.underline(
         `https://console.firebase.google.com/project/${setup.projectId}/database`
-      )} to create your Firestore database.`,
+      )} to create your Cloud Firestore database.`,
       { exit: 1 }
     );
   }
