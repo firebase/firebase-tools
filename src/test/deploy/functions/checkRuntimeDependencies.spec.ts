@@ -54,6 +54,16 @@ describe("checkRuntimeDependencies()", () => {
       });
   }
 
+  function mockServiceEnablePermissionError(): void {
+    nock(api.serviceUsageOrigin)
+      .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
+      .reply(403, {
+        error: {
+          status: "PERMISSION_DENIED",
+        },
+      });
+  }
+
   let timeStub: sinon.SinonStub | null;
   function stubTimes(warnAfter: number, errorAfter: number): void {
     timeStub = sandbox.stub(configstore, "get");
@@ -137,6 +147,27 @@ describe("checkRuntimeDependencies()", () => {
       beforeEach(() => {
         mockServiceCheck(false);
         mockServiceEnableBillingError();
+      });
+
+      it("should print warnings after warntime before errortime", async () => {
+        stubTimes(Date.now() - 10000, Date.now() + 20000);
+        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
+          .fulfilled;
+        expect(logStub?.callCount).to.be.gt(1); // enabling an api logs a warning
+      });
+
+      it("should error after errortime", async () => {
+        stubTimes(Date.now() - 10000, Date.now() - 5000);
+
+        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
+          .rejected;
+      });
+    });
+
+    describe("with cloudbuild service disabled, but enabling fails with permission error", () => {
+      beforeEach(() => {
+        mockServiceCheck(false);
+        mockServiceEnablePermissionError();
       });
 
       it("should print warnings after warntime before errortime", async () => {
