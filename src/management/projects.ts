@@ -266,7 +266,7 @@ export async function createCloudProject(
   } catch (err) {
     if (err.status === 409) {
       throw new FirebaseError(
-        `Failed to create Google Cloud project because there is already a project with ID ${clc.bold(
+        `Failed to create project because there is already a project with ID ${clc.bold(
           projectId
         )}. Please try again with a unique Project ID.`,
         {
