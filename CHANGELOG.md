@@ -3,3 +3,4 @@
 - Skip app selection in `firebase apps:sdkconfig` if there is a single matching app.
 - Fixes incorrect warning about emulator configuration (#2290).
 - Improves error messages for `firebase init` with new projects (#2266).
+- Remove deep proxying of `functions.config()` inside the Functions emulator.
