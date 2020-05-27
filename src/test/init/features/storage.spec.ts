@@ -55,7 +55,7 @@ describe("storage", () => {
       );
     });
 
-    it("should error when the storage API is not enabled", async () => {
+    it("should error when the Cloud Storage API is not enabled", async () => {
       const setup = {
         config: {},
         rcfile: {},
