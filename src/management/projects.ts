@@ -275,10 +275,10 @@ export async function createCloudProject(
         }
       );
     } else {
-      throw new FirebaseError(
-        "Failed to create project. See firebase-debug.log for more info.",
-        { exit: 2, original: err }
-      );
+      throw new FirebaseError("Failed to create project. See firebase-debug.log for more info.", {
+        exit: 2,
+        original: err,
+      });
     }
   }
 }
