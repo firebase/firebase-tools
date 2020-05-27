@@ -268,7 +268,7 @@ export async function createCloudProject(
       throw new FirebaseError(
         `Failed to create project because there is already a project with ID ${clc.bold(
           projectId
-        )}. Please try again with a unique Project ID.`,
+        )}. Please try again with a unique project ID.`,
         {
           exit: 2,
           original: err,
