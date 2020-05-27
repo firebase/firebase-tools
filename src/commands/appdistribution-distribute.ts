@@ -98,11 +98,11 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       );
     }
 
-    const releaseHash = await distribution.releaseHash();
+    let binaryName = await distribution.binaryName(app);
 
     // Upload the distribution if it hasn't been uploaded before
     let releaseId: string;
-    const uploadStatus = await requests.getUploadStatus(releaseHash);
+    const uploadStatus = await requests.getUploadStatus(binaryName);
     if (uploadStatus.status === UploadStatus.SUCCESS) {
       utils.logWarning("this distribution has been uploaded before, skipping upload");
       releaseId = uploadStatus.release.id;
@@ -111,11 +111,10 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       utils.logBullet("uploading distribution...");
 
       try {
-        const token = await requests.getJwtToken();
-        const releaseEtag = await requests.uploadDistribution(token, distribution);
+        binaryName = await requests.uploadDistribution(distribution);
 
         // The upload process is asynchronous, so poll to figure out when the upload has finished successfully
-        releaseId = await requests.pollReleaseIdByHash(releaseEtag);
+        releaseId = await requests.pollUploadStatus(binaryName);
         utils.logSuccess("uploaded distribution successfully!");
       } catch (err) {
         throw new FirebaseError(`failed to upload distribution. ${err.message}`, { exit: 1 });

@@ -37,7 +37,7 @@ export interface UploadStatusResponse {
  * Proxies HTTPS requests to the App Distribution server backend.
  */
 export class AppDistributionClient {
-  static MAX_POLLING_RETRIES = 30;
+  static MAX_POLLING_RETRIES = 60;
   static POLLING_INTERVAL_MS = 2000;
 
   constructor(private readonly appId: string) {}
@@ -53,38 +53,25 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async getJwtToken(): Promise<string> {
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}/jwt`, {
+  async uploadDistribution(distribution: Distribution): Promise<string> {
+    const apiResponse = await api.request("POST", `/app-binary-uploads?app_id=${this.appId}`, {
       auth: true,
       origin: api.appDistributionOrigin,
-    });
-
-    return _.get(apiResponse, "body.token");
-  }
-
-  async uploadDistribution(token: string, distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", "/spi/v1/jwt_distributions", {
-      origin: api.appDistributionUploadOrigin,
       headers: {
-        Authorization: `Bearer ${token}`,
         "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
         "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
         "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
+        "Content-Type": "application/octet-stream",
       },
-      files: {
-        file: {
-          stream: distribution.readStream(),
-          size: distribution.fileSize(),
-          contentType: "multipart/form-data",
-        },
-      },
+      data: distribution.readStream(),
+      json: false,
     });
 
-    return _.get(apiResponse, "response.headers.etag");
+    return _.get(JSON.parse(apiResponse.body), "token");
   }
 
-  async pollReleaseIdByHash(hash: string, retryCount = 0): Promise<string> {
-    const uploadStatus = await this.getUploadStatus(hash);
+  async pollUploadStatus(binaryName: string, retryCount = 0): Promise<string> {
+    const uploadStatus = await this.getUploadStatus(binaryName);
     if (uploadStatus.status === UploadStatus.IN_PROGRESS) {
       if (retryCount >= AppDistributionClient.MAX_POLLING_RETRIES) {
         throw new FirebaseError(
@@ -95,7 +82,7 @@ export class AppDistributionClient {
       await new Promise((resolve) =>
         setTimeout(resolve, AppDistributionClient.POLLING_INTERVAL_MS)
       );
-      return this.pollReleaseIdByHash(hash, retryCount + 1);
+      return this.pollUploadStatus(binaryName, retryCount + 1);
     } else if (uploadStatus.status === UploadStatus.SUCCESS) {
       return uploadStatus.release.id;
     } else {
@@ -105,10 +92,11 @@ export class AppDistributionClient {
     }
   }
 
-  async getUploadStatus(hash: string): Promise<UploadStatusResponse> {
+  async getUploadStatus(binaryName: string): Promise<UploadStatusResponse> {
+    const encodedBinaryName = encodeURIComponent(binaryName);
     const apiResponse = await api.request(
       "GET",
-      `/v1alpha/apps/${this.appId}/upload_status/${hash}`,
+      `/v1alpha/apps/${this.appId}/upload_status/${encodedBinaryName}`,
       {
         origin: api.appDistributionOrigin,
         auth: true,

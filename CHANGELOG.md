@@ -4,3 +4,4 @@
 - Fixes incorrect warning about emulator configuration (#2290).
 - Improves error messages for `firebase init` with new projects (#2266).
 - Remove deep proxying of `functions.config()` inside the Functions emulator.
+- Update App Distribution upload URL.
