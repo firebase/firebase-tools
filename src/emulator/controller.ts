@@ -154,6 +154,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
+  const emulatorInTargets = targets.indexOf(name) >= 0;
+
   if (name === Emulators.UI) {
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
@@ -168,7 +170,11 @@ export function shouldStart(options: any, name: Emulators): boolean {
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
+  if (
+    name === Emulators.FUNCTIONS &&
+    emulatorInTargets &&
+    !options.config.get("functions.source")
+  ) {
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "functions",
@@ -179,7 +185,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  if (name === Emulators.HOSTING && !options.config.get("hosting")) {
+  if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
     EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
       "WARN",
       "hosting",
@@ -190,7 +196,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  return targets.indexOf(name) >= 0;
+  return emulatorInTargets;
 }
 
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
