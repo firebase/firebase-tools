@@ -2,3 +2,4 @@
 - Fixes issue where Emulator UI was never downloaded during `firebase init emulators`.
 - Skip app selection in `firebase apps:sdkconfig` if there is a single matching app.
 - Fixes incorrect warning about emulator configuration (#2290).
+- Improves error messages for `firebase init` with new projects (#2266).
