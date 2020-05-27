@@ -7,9 +7,15 @@ import * as firestore from "../../../init/features/firestore";
 import * as indexes from "../../../init/features/firestore/indexes";
 import * as rules from "../../../init/features/firestore/rules";
 import * as requirePermissions from "../../../requirePermissions";
+import * as apiEnabled from "../../../ensureApiEnabled";
 
 describe("firestore", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+  let checkApiStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    checkApiStub = sandbox.stub(apiEnabled, "check");
+  });
 
   afterEach(() => {
     sandbox.restore();
@@ -22,6 +28,8 @@ describe("firestore", () => {
         .resolves();
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
+      checkApiStub.returns(true);
+
       const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
 
       await firestore.doSetup(setup, {});
@@ -33,11 +41,24 @@ describe("firestore", () => {
     });
 
     it("should error when cloud resource location is not set", async () => {
+      checkApiStub.returns(true);
+
       const setup = { config: {}, projectId: "my-project-123" };
 
       expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
+      );
+    });
+
+    it("should error when the firestore API is not enabled", async () => {
+      checkApiStub.returns(false);
+
+      const setup = { config: {}, projectId: "my-project-123" };
+
+      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+        FirebaseError,
+        "It looks like you haven't used Cloud Firestore"
       );
     });
   });

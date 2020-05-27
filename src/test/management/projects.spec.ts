@@ -286,7 +286,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create Google Cloud project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
         expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
@@ -314,7 +314,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create Google Cloud project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
         expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
