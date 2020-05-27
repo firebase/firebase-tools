@@ -264,11 +264,22 @@ export async function createCloudProject(
     });
     return projectInfo;
   } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      "Failed to create Google Cloud project. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
-    );
+    if (err.status === 409) {
+      throw new FirebaseError(
+        `Failed to create project because there is already a project with ID ${clc.bold(
+          projectId
+        )}. Please try again with a unique project ID.`,
+        {
+          exit: 2,
+          original: err,
+        }
+      );
+    } else {
+      throw new FirebaseError("Failed to create project. See firebase-debug.log for more info.", {
+        exit: 2,
+        original: err,
+      });
+    }
   }
 }
 
