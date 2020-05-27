@@ -155,6 +155,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
+  const emulatorInTargets = targets.indexOf(name) >= 0;
+
   if (name === Emulators.UI) {
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
@@ -164,14 +166,16 @@ export function shouldStart(options: any, name: Emulators): boolean {
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
     return (
-      previews.emulatorgui &&
-      !!options.project &&
-      targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
+      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
     );
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
+  if (
+    name === Emulators.FUNCTIONS &&
+    emulatorInTargets &&
+    !options.config.get("functions.source")
+  ) {
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "functions",
@@ -182,7 +186,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  if (name === Emulators.HOSTING && !options.config.get("hosting")) {
+  if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
     EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
       "WARN",
       "hosting",
@@ -193,7 +197,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  return targets.indexOf(name) >= 0;
+  return emulatorInTargets;
 }
 
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
@@ -331,10 +335,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
+    let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      if (fs.existsSync(rules)) {
+      rulesFileFound = fs.existsSync(rules);
+      if (rulesFileFound) {
         args.rules = rules;
       } else {
         firestoreLogger.logLabeled(
@@ -351,7 +356,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    if (!foundRulesFile) {
+    if (!rulesFileFound) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",

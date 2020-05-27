@@ -10,6 +10,7 @@ import { UpdateWarning } from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
+import { FAILSAFE_SCHEMA } from "js-yaml";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -193,6 +194,17 @@ export async function displayChanges(
   );
   displayChangesNoInput(spec, newSpec);
   await displayChangesRequiringConfirmation(spec, newSpec);
+}
+
+/**
+ * Prompts the user to confirm before continuing to update.
+ */
+export async function retryUpdate(): Promise<boolean> {
+  return promptOnce({
+    type: "confirm",
+    message: "Are you sure you want to continue with updating anyways?",
+    default: false,
+  });
 }
 
 /**
