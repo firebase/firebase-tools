@@ -6,3 +6,4 @@
 - Improves handling of permission denied errors during API enablement.
 - Removes deep proxying of `functions.config()` inside the Functions emulator.
 - Updates App Distribution upload URL.
+- Fixes an incompatibility between the functions emulator and `firebase-functions` version `3.6.2` (#2301)
