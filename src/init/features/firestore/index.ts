@@ -18,8 +18,8 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     { exit: 1 }
   );
 
-  // First check if the Firestore API is enabled. If it's not they need to go set up
-  // Firestore in the console.
+  // First check if the Firestore API is enabled. If it's not, then the developer needs
+  // to go set up Firestore in the console.
   const isFirestoreEnabled = await apiEnabled.check(
     setup.projectId,
     "firestore.googleapis.com",
