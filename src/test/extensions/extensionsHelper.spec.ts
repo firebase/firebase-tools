@@ -11,7 +11,7 @@ import * as prompt from "../../prompt";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
-    it("should should substitute env variables", () => {
+    it("should substitute env variables", () => {
       const testResources = [
         {
           resourceOne: {
@@ -42,6 +42,50 @@ describe("extensionsHelper", () => {
         },
       ]);
     });
+  });
+
+  it("should support both ${PARAM_NAME} AND ${param:PARAM_NAME} syntax", () => {
+    const testResources = [
+      {
+        resourceOne: {
+          name: "${param:VAR_ONE}",
+          source: "path/${param:VAR_ONE}",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "${param:VAR_TWO}",
+          another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "${VAR_TWO}${VAR_TWO}${param:VAR_TWO}",
+          another: "${not:VAR_TWO}",
+        },
+      },
+    ];
+    const testParam = { VAR_ONE: "foo", VAR_TWO: "bar", UNUSED: "faz" };
+    expect(extensionsHelper.substituteParams(testResources, testParam)).to.deep.equal([
+      {
+        resourceOne: {
+          name: "foo",
+          source: "path/foo",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "bar",
+          another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "barbarbar",
+          another: "${not:VAR_TWO}",
+        },
+      },
+    ]);
   });
 
   describe("getDBInstanceFromURL", () => {

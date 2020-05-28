@@ -1,2 +1,9 @@
-- Fixes bug causing Hosting emulator to serve invalid /\_\_/\* files.
+- Fixes issue where custom emulator ports were strings not numbers (#2287).
+- Fixes issue where Emulator UI was never downloaded during `firebase init emulators`.
+- Skips app selection in `firebase apps:sdkconfig` if there is a single matching app.
+- Fixes incorrect warning about emulator configuration (#2290).
+- Improves error messages for `firebase init` with new projects (#2266).
+- Improves handling of permission denied errors during API enablement.
+- Removes deep proxying of `functions.config()` inside the Functions emulator.
+- Updates App Distribution upload URL.
 - Adds application default credentials inside the Functions emulator (#1940)

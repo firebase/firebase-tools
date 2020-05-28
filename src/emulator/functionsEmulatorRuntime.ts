@@ -584,6 +584,7 @@ function warnAboutDatabaseProd(): void {
 }
 
 function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
@@ -663,33 +664,13 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
   const originalConfig = ff.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      logDebug("config() parent accessed!", {
-        parentKey,
-        parentConfig,
-      });
+      if (!parentConfig[parentKey]) {
+        new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
+          key: parentKey,
+        }).log();
+      }
 
-      return new Proxied(parentConfig[parentKey] || ({} as { [key: string]: any }))
-        .any((childConfig, childKey) => {
-          const value = childConfig[childKey];
-          if (value) {
-            return value;
-          } else {
-            const valuePath = [parentKey, childKey].join(".");
-
-            // Calling console.log() or util.inspect() on a config value can cause spurious logging
-            // if we don't ignore certain known-bad paths.
-            const ignore =
-              valuePath.endsWith(".inspect") ||
-              valuePath.endsWith(".toJSON") ||
-              valuePath.includes("Symbol(") ||
-              valuePath.includes("Symbol.iterator");
-            if (!ignore) {
-              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
-            }
-            return undefined;
-          }
-        })
-        .finalize();
+      return parentConfig[parentKey];
     })
     .finalize();
 
