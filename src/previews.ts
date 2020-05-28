@@ -5,7 +5,6 @@ interface PreviewFlags {
   rtdbrules: boolean;
   ext: boolean;
   extdev: boolean;
-  emulatorgui: boolean;
 }
 
 export const previews: PreviewFlags = Object.assign(
@@ -14,7 +13,6 @@ export const previews: PreviewFlags = Object.assign(
     rtdbrules: false,
     ext: false,
     extdev: false,
-    emulatorgui: false,
   },
   configstore.get("previews")
 );
