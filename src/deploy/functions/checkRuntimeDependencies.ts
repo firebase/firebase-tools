@@ -51,6 +51,38 @@ ${FAQ_URL}`,
   );
 }
 
+function node10PermissionError(projectId: string): FirebaseError {
+  track("functions_runtime_notices", "nodejs10_permission_error");
+  return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${bold(
+    projectId
+  )}.
+
+Please ask a project owner to visit the following URL to enable Cloud Build:
+
+https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project=${projectId}
+
+For additional information about this requirement, see Firebase FAQs:
+${FAQ_URL}
+`);
+}
+
+function node10PermissionWarning(errorAfter: number, projectId: string): void {
+  track("functions_runtime_notices", "nodejs10_permission_warning");
+  logger.warn();
+  logLabeledWarning(
+    "functions",
+    `Cloud Functions will soon require the Cloud Build API to be enabled on your project to deploy. To avoid service disruption, please ask a project owner to enable the API before ${bold(
+      new Date(errorAfter).toISOString().substr(0, 10)
+    )}.`
+  );
+  logLabeledWarning(
+    "functions",
+    `Enable URL: https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project=${projectId}`
+  );
+  logLabeledWarning("functions", `Additional Information: ${FAQ_URL}`);
+  logger.warn();
+}
+
 function isBillingError(e: {
   context?: {
     body?: {
@@ -63,6 +95,10 @@ function isBillingError(e: {
   return !!e.context?.body?.error?.details?.find((d) =>
     d.violations?.find((v) => v.type === "serviceusage/billing-enabled")
   );
+}
+
+function isPermissionError(e: { context?: { body?: { error?: { status?: string } } } }): boolean {
+  return e.context?.body?.error?.status === "PERMISSION_DENIED";
 }
 
 /**
@@ -111,6 +147,13 @@ export async function checkRuntimeDependencies(projectId: string, runtime: strin
       }
 
       node10BillingWarning(errorAfter);
+      return;
+    } else if (isPermissionError(e)) {
+      if (shouldError) {
+        throw node10PermissionError(projectId);
+      }
+
+      node10PermissionWarning(errorAfter, projectId);
       return;
     }
 

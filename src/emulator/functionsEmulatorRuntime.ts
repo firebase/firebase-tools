@@ -584,6 +584,7 @@ function warnAboutDatabaseProd(): void {
 }
 
 function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
@@ -651,49 +652,42 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
 }
 
 async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [frb.cwd],
-  });
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const localFunctionsModule = require(functionsResolution.resolution);
 
-  const ff = require(functionsResolution);
   logDebug("Checked functions.config()", {
-    config: ff.config(),
+    config: localFunctionsModule.config(),
   });
 
-  const originalConfig = ff.config();
+  const originalConfig = localFunctionsModule.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      logDebug("config() parent accessed!", {
-        parentKey,
-        parentConfig,
-      });
+      const isInternal = parentKey.startsWith("Symbol(") || parentKey.startsWith("inspect");
+      if (!parentConfig[parentKey] && !isInternal) {
+        new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
+          key: parentKey,
+        }).log();
+      }
 
-      return new Proxied(parentConfig[parentKey] || ({} as { [key: string]: any }))
-        .any((childConfig, childKey) => {
-          const value = childConfig[childKey];
-          if (value) {
-            return value;
-          } else {
-            const valuePath = [parentKey, childKey].join(".");
-
-            // Calling console.log() or util.inspect() on a config value can cause spurious logging
-            // if we don't ignore certain known-bad paths.
-            const ignore =
-              valuePath.endsWith(".inspect") ||
-              valuePath.endsWith(".toJSON") ||
-              valuePath.includes("Symbol(") ||
-              valuePath.includes("Symbol.iterator");
-            if (!ignore) {
-              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
-            }
-            return undefined;
-          }
-        })
-        .finalize();
+      return parentConfig[parentKey];
     })
     .finalize();
 
-  ff.config = () => proxiedConfig;
+  const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
+  const proxiedFunctionsModule = functionsModuleProxy
+    .when("config", (target) => () => {
+      return proxiedConfig;
+    })
+    .finalize();
+
+  // Stub the functions module in the require cache
+  require.cache[functionsResolution.resolution] = {
+    exports: proxiedFunctionsModule,
+  };
+
+  logDebug("firebase-functions has been stubbed.", {
+    functionsResolution,
+  });
 }
 
 /**

@@ -104,10 +104,6 @@ var api = {
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
   ),
-  appDistributionUploadOrigin: utils.envOverride(
-    "FIREBASE_APP_DISTRIBUTION_UPLOAD_URL",
-    "https://appdistribution-uploads.crashlytics.com"
-  ),
   appengineOrigin: utils.envOverride("FIREBASE_APPENGINE_URL", "https://appengine.googleapis.com"),
   authOrigin: utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com"),
   consoleOrigin: utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com"),
