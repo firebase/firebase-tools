@@ -33,7 +33,7 @@ export async function getCredentialPathAsync(): Promise<string | undefined> {
   // We could use fs.writeFileSync() here but it's important that the caller understands
   // that this is a somewhat expensive operation so we make it a Promise.
   return new Promise((res, rej) => {
-    fs.writeFile(filePath, JSON.stringify(cred), "utf8", (err) => {
+    fs.writeFile(filePath, JSON.stringify(cred, undefined, 2), "utf8", (err) => {
       if (err) {
         rej(err);
       } else {

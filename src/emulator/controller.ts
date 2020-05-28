@@ -289,6 +289,12 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       if (defaultCredPath) {
         functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
         credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      } else {
+        functionsLogger.logLabeled(
+          "WARN",
+          "functions",
+          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+        );
       }
     }
 
