@@ -277,7 +277,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
 
     // Provide default application credentials when appropriate
-    const credentialEnv = {} as any;
+    const credentialEnv: Record<string, string> = {};
     if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       functionsLogger.logLabeled(
         "WARN",
