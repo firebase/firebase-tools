@@ -39,7 +39,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     throw firestoreUnusedError;
   } else if (dbType !== "CLOUD_FIRESTORE") {
     throw new FirebaseError(
-      `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore Mode. The Firebase CLI can only manage projects using Firestore in Native Mode. For more information, see: https://cloud.google.com/datastore/docs/firestore-or-datastore`,
+      `It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode. The Firebase CLI can only manage projects using Cloud Firestore in Native mode. For more information, visit https://cloud.google.com/datastore/docs/firestore-or-datastore`,
       { exit: 1 }
     );
   }
