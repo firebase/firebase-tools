@@ -1,5 +1,4 @@
 import * as api from "../api";
-import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 const VERSION = "v1";
 

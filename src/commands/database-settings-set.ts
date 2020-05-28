@@ -1,10 +1,8 @@
 import { Response } from "request";
-import * as _ from "lodash";
 import * as request from "request";
 
 import * as responseToError from "../responseToError";
 import { Command } from "../command";
-import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -12,7 +10,6 @@ import * as api from "../api";
 import * as requireInstance from "../requireInstance";
 import {
   DATABASE_SETTINGS,
-  DatabaseSetting,
   HELP_TEXT,
   INVALID_PATH_ERROR,
 } from "../database/settings";
