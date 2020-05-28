@@ -44,7 +44,7 @@ functionsEmulator.setTriggersForTesting([
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
 const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
-function UseFunctions(triggers: () => {}): void {
+function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
   functionsEmulator.startFunctionRuntime = (
@@ -62,7 +62,7 @@ function UseFunctions(triggers: () => {}): void {
 
 describe("FunctionsEmulator-Hub", () => {
   it("should route requests to /:project_id/:region/:trigger_id to HTTPS Function", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -82,7 +82,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should route requests to /:project_id/:region/:trigger_id/ to HTTPS Function", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -102,7 +102,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should route requests to /:project_id/:region/:trigger_id/a/b to HTTPS Function", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -122,7 +122,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should reject requests to a non-emulator path", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       return {
         function_id: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
@@ -138,7 +138,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -158,7 +158,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.baseUrl to show /:project_id/:region/:trigger_id", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -178,7 +178,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should route request body", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -199,7 +199,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should route query parameters", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
@@ -219,7 +219,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should override callable auth", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       return {
         callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
@@ -267,7 +267,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should override callable auth with unicode", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       return {
         callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
@@ -316,7 +316,7 @@ describe("FunctionsEmulator-Hub", () => {
   }).timeout(TIMEOUT_LONG);
 
   it("should override callable auth with a poorly padded ID Token", async () => {
-    UseFunctions(() => {
+    useFunctions(() => {
       return {
         callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
           return {
