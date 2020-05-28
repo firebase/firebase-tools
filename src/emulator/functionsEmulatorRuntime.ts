@@ -652,19 +652,18 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
 }
 
 async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [frb.cwd],
-  });
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const localFunctionsModule = require(functionsResolution.resolution);
 
-  const ff = require(functionsResolution);
   logDebug("Checked functions.config()", {
-    config: ff.config(),
+    config: localFunctionsModule.config(),
   });
 
-  const originalConfig = ff.config();
+  const originalConfig = localFunctionsModule.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      if (!parentConfig[parentKey]) {
+      const isInternal = parentKey.startsWith("Symbol(") || parentKey.startsWith("inspect");
+      if (!parentConfig[parentKey] && !isInternal) {
         new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
           key: parentKey,
         }).log();
@@ -674,7 +673,21 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
     })
     .finalize();
 
-  ff.config = () => proxiedConfig;
+  const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
+  const proxiedFunctionsModule = functionsModuleProxy
+    .when("config", (target) => () => {
+      return proxiedConfig;
+    })
+    .finalize();
+
+  // Stub the functions module in the require cache
+  require.cache[functionsResolution.resolution] = {
+    exports: proxiedFunctionsModule,
+  };
+
+  logDebug("firebase-functions has been stubbed.", {
+    functionsResolution,
+  });
 }
 
 /**
