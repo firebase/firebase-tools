@@ -49,7 +49,7 @@ describe("firestore", () => {
     it("should error when cloud resource location is not set", async () => {
       const setup = { config: {}, projectId: "my-project-123" };
 
-      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
       );
@@ -60,7 +60,7 @@ describe("firestore", () => {
 
       const setup = { config: {}, projectId: "my-project-123" };
 
-      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like you haven't used Cloud Firestore"
       );
@@ -72,7 +72,7 @@ describe("firestore", () => {
 
       const setup = { config: {}, projectId: "my-project-123" };
 
-      expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
+      await expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode."
       );

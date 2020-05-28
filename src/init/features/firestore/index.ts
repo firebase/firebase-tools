@@ -1,4 +1,3 @@
-import * as api from "../../../api";
 import * as logger from "../../../logger";
 import * as apiEnabled from "../../../ensureApiEnabled";
 import { ensureLocationSet } from "../../../ensureCloudResourceLocation";
