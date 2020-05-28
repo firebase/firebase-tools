@@ -74,7 +74,7 @@ describe("firestore", () => {
 
       expect(firestore.doSetup(setup, {})).to.eventually.be.rejectedWith(
         FirebaseError,
-        "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore Mode."
+        "It looks like this project is using Cloud Datastore or Cloud Firestore in Datastore mode."
       );
     });
   });
