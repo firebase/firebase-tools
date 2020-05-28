@@ -6,3 +6,4 @@
 - Improves handling of permission denied errors during API enablement.
 - Removes deep proxying of `functions.config()` inside the Functions emulator.
 - Updates App Distribution upload URL.
+- Fixes error message when `firebase init firestore` is used on a project with Firestore in Datastore Mode.
