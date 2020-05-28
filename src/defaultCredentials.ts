@@ -32,6 +32,7 @@ export async function getCredentialPathAsync(): Promise<string | undefined> {
 
   // We could use fs.writeFileSync() here but it's important that the caller understands
   // that this is a somewhat expensive operation so we make it a Promise.
+  logger.debug(`defaultcredentials: writing to file ${filePath}`);
   return new Promise((res, rej) => {
     fs.writeFile(filePath, JSON.stringify(cred, undefined, 2), "utf8", (err) => {
       if (err) {
@@ -41,6 +42,22 @@ export async function getCredentialPathAsync(): Promise<string | undefined> {
       }
     });
   });
+}
+
+/**
+ * Delete the credentials, to be used when logging out.
+ */
+export function clearCredentials(): void {
+  const filePath = credFilePath();
+  if (!filePath) {
+    return;
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  fs.unlinkSync(filePath);
 }
 
 function getCredential(): RefreshTokenCredential | undefined {
@@ -76,10 +93,18 @@ function credFilePath(): string | undefined {
     fs.mkdirSync(configDir);
   }
 
-  const fbtConfigDir = path.join(configDir, "firebase-tools");
+  const fbtConfigDir = path.join(configDir, "firebase");
   if (!fs.existsSync(fbtConfigDir)) {
     fs.mkdirSync(fbtConfigDir);
   }
 
-  return path.join(fbtConfigDir, "application_default_credentials.json");
+  return path.join(fbtConfigDir, `${userEmailSlug()}_application_default_credentials.json`);
+}
+
+function userEmailSlug(): string {
+  const user = configstore.get("user");
+  const email = user && user.email ? user.email : "unknown_user";
+  const slug = email.replace("@", "_").replace(".", "_");
+
+  return slug;
 }
