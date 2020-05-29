@@ -31,7 +31,6 @@ import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
-import previews = require("../previews");
 
 export async function checkPortOpen(port: number, host: string): Promise<boolean> {
   try {

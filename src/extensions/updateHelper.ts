@@ -10,7 +10,6 @@ import { UpdateWarning } from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
-import { FAILSAFE_SCHEMA } from "js-yaml";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

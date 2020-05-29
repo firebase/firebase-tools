@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
 import {
