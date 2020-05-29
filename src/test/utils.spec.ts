@@ -1,7 +1,6 @@
 import { expect } from "chai";
 
 import * as utils from "../utils";
-import { exec } from "child_process";
 
 describe("utils", () => {
   describe("consoleUrl", () => {

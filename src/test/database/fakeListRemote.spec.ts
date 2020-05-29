@@ -1,4 +1,3 @@
-import * as pathLib from "path";
 import * as chai from "chai";
 
 import { ListRemote } from "../../database/listRemote";

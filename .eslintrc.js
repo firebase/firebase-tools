@@ -50,11 +50,9 @@ module.exports = {
         "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
         camelcase: "warn", // TODO(bkendall): remove, allow to error.
-        "new-cap": "warn", // TODO(bkendall): remove, allow to error.
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-        "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {

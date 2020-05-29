@@ -1,6 +1,6 @@
 "use strict";
 
-var previews = require("../previews"); //eslint-disable-line
+const previews = require("../previews").previews;
 
 module.exports = function(client) {
   var loadCommand = function(name) {

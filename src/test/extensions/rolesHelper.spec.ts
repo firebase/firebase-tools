@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
 import * as api from "../../api";
