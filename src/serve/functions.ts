@@ -15,11 +15,7 @@ module.exports = {
       options.config.get("functions.source")
     );
 
-    args = {
-      projectId,
-      functionsDir,
-      ...args,
-    };
+    args = Object.assign({}, args, { functionsDir, projectId });
 
     if (options.host) {
       args.host = options.host;

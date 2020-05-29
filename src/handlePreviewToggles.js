@@ -16,8 +16,8 @@ module.exports = function(args) {
   if (args[0] === "--open-sesame") {
     if (isValidPreview) {
       console.log("Enabling preview feature", bold(args[1]) + "...");
-      previews[args[1]] = true;
-      configstore.set("previews", previews);
+      const newPreviews = Object.assign({}, previews, { [args[1]]: true });
+      configstore.set("previews", newPreviews);
       console.log("Preview feature enabled!");
       return process.exit(0);
     }
@@ -26,8 +26,9 @@ module.exports = function(args) {
   } else if (args[0] === "--close-sesame") {
     if (isValidPreview) {
       console.log("Disabling preview feature", bold(args[1]));
-      unset(previews, args[1]);
-      configstore.set("previews", previews);
+      const newPreviews = Object.assign({}, previews);
+      unset(newPreviews, args[1]);
+      configstore.set("previews", newPreviews);
       return process.exit(0);
     }
 
