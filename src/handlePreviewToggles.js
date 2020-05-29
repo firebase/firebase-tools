@@ -4,7 +4,7 @@ import { unset, has } from "lodash";
 import { bold } from "cli-color";
 
 import { configstore } from "./configstore";
-import * as previews from "./previews";
+import { previews } from "./previews";
 
 function _errorOut(name) {
   console.log(bold.red("Error:"), "Did not recognize preview feature", bold(name));
