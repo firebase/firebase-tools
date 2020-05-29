@@ -33,7 +33,7 @@ const ansiStrip = require("cli-color/strip");
 const { configstore } = require("../configstore");
 const _ = require("lodash");
 let args = process.argv.slice(2);
-const handlePreviewToggles = require("../handlePreviewToggles");
+const { handlePreviewToggles } = require("../handlePreviewToggles");
 const utils = require("../utils");
 let cmd;
 
