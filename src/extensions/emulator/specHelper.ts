@@ -36,7 +36,7 @@ function wrappedSafeLoad(source: string): any {
  * directory that contains one. Throws an error if none is found.
  * @param directory the directory to start from searching from.
  */
-export async function findExtensionYaml(directory: string): Promise<string> {
+export function findExtensionYaml(directory: string): Promise<string> {
   while (!fileExistsSync(path.resolve(directory, SPEC_FILE))) {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
@@ -46,7 +46,7 @@ export async function findExtensionYaml(directory: string): Promise<string> {
     }
     directory = parentDir;
   }
-  return directory;
+  return Promise.resolve(directory);
 }
 
 /**
@@ -62,7 +62,7 @@ export async function readExtensionYaml(directory: string): Promise<ExtensionSpe
 /**
  * Retrieves a file from the directory.
  */
-export async function readFileFromDirectory(
+export function readFileFromDirectory(
   directory: string,
   file: string
 ): Promise<{ [key: string]: any }> {

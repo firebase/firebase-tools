@@ -120,7 +120,7 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "aValue",
       });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(
         FirebaseError,
@@ -147,7 +147,7 @@ describe("paramHelper", () => {
     it("should throw FirebaseError if an invalid envFilePath is provided", async () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });

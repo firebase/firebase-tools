@@ -22,7 +22,7 @@ export class FakeListRemote implements ListRemote {
     this.delay = 0;
   }
 
-  async listPath(
+  listPath(
     path: string,
     numChildren: number,
     startAfter?: string,
@@ -43,9 +43,9 @@ export class FakeListRemote implements ListRemote {
         keys = keys.filter((key) => key > startAfter);
       }
       keys = keys.slice(0, numChildren);
-      return keys;
+      return Promise.resolve(keys);
     }
-    return [];
+    return Promise.resolve([]);
   }
 
   private size(data: any): number {

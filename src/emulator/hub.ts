@@ -70,11 +70,11 @@ export class EmulatorHub implements EmulatorInstance {
     this.hub = express();
     this.hub.use(bodyParser.json());
 
-    this.hub.get("/", async (req, res) => {
+    this.hub.get("/", (req, res) => {
       res.json(this.getLocator());
     });
 
-    this.hub.get(EmulatorHub.PATH_EMULATORS, async (req, res) => {
+    this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
       EmulatorRegistry.listRunning().forEach((name) => {
         body[name] = EmulatorRegistry.get(name)!.getInfo();

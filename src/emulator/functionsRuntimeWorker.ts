@@ -63,7 +63,7 @@ export class RuntimeWorker {
     });
   }
 
-  async execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts) {
+  execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): Promise<void> {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
 
@@ -77,6 +77,7 @@ export class RuntimeWorker {
     this.state = RuntimeWorkerState.BUSY;
     this.lastArgs = args;
     this.runtime.send(args);
+    return Promise.resolve();
   }
 
   get state(): RuntimeWorkerState {

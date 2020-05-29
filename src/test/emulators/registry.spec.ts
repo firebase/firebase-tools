@@ -8,7 +8,7 @@ describe("EmulatorRegistry", () => {
     await EmulatorRegistry.stopAll();
   });
 
-  it("should not report any running emulators when empty", async () => {
+  it("should not report any running emulators when empty", () => {
     for (const name of ALL_EMULATORS) {
       expect(EmulatorRegistry.isRunning(name)).to.be.false;
     }

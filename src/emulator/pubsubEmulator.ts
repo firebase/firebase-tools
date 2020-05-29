@@ -42,8 +42,8 @@ export class PubsubEmulator implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.PUBSUB, this.args);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
   async stop(): Promise<void> {

@@ -29,7 +29,7 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
  * @param directory the directory containing the file
  * @param file the name of the file
  */
-export async function readFile(pathToFile: string): Promise<string> {
+export function readFile(pathToFile: string): Promise<string> {
   try {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err) {

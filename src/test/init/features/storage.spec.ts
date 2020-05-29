@@ -49,7 +49,7 @@ describe("storage", () => {
       };
       checkApiStub.returns(true);
 
-      expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
+      await expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
       );
@@ -63,7 +63,7 @@ describe("storage", () => {
       };
       checkApiStub.returns(false);
 
-      expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
+      await expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
         FirebaseError,
         "It looks like you haven't used Cloud Storage"
       );
