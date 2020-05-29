@@ -15,8 +15,7 @@ function errorOut(name: string): void {
  * @param args commander args.
  * @return void.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handlePreviewToggles(args: any): void {
+export function handlePreviewToggles(args: string[]): void {
   const previewFeature = args[1];
   const isValidPreview = has(previews, previewFeature);
   if (args[0] === "--open-sesame") {
