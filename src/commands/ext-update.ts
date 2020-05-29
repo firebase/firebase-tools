@@ -25,7 +25,6 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import TerminalRenderer = require("marked-terminal");
 import * as previews from "../previews";
-import { logger } from "..";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),

@@ -2,7 +2,6 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as clc from "cli-color";
 import * as path from "path";
-import * as pf from "portfinder";
 
 import * as api from "../api";
 import * as utils from "../utils";

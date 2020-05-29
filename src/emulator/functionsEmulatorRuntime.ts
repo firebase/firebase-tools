@@ -333,7 +333,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .map((arg) => {
           if (typeof arg === "string") {
             try {
-              const url = new URL(arg);
+              new URL(arg);
               return arg;
             } catch (err) {
               return;

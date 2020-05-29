@@ -54,7 +54,6 @@ module.exports = {
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-        "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {
