@@ -49,7 +49,7 @@ module.exports = async (name: DownloadableEmulator) => {
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir }))
+      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
       .on("error", reject)
       .on("finish", resolve);
   });

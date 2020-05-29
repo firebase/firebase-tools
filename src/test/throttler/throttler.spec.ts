@@ -10,17 +10,17 @@ import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-erro
 
 const TEST_ERROR = new Error("foobar");
 
-type ThrottlerConstructor = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
+type ThrottlerConstructorType = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
 
-const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
+const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => {
   it("should have no waiting task after creation", () => {
-    const queue = new throttlerConstructor({});
+    const queue = new ThrottlerConstructor({});
     expect(queue.hasWaitingTask()).to.equal(false);
   });
 
   it("should return the task as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -32,7 +32,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should return the index as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -43,7 +43,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should return 'finished task' as the task name", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -57,7 +57,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should handle function tasks", () => {
     const task = sinon.stub().resolves();
-    const q = new throttlerConstructor({});
+    const q = new ThrottlerConstructor({});
 
     q.add(task);
     q.close();
@@ -74,7 +74,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should handle tasks", () => {
     const handler = sinon.stub().resolves();
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 
@@ -93,7 +93,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should not retry", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
       retries: 0,
     });
@@ -123,7 +123,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
 
   it("should retry the number of retries, plus one", () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       handler,
       retries: 3,
@@ -167,7 +167,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       return Promise.reject();
     };
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       concurrency: 2,
       handler,
@@ -204,7 +204,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       .onCall(8)
       .resolves(0);
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       backoff: 0,
       concurrency: 1, // this makes sure only one task is running at a time, so not flaky
       handler,
@@ -236,7 +236,7 @@ const throttlerTest = (throttlerConstructor: ThrottlerConstructor) => {
       return Promise.resolve(`result: ${task}`);
     };
 
-    const q = new throttlerConstructor({
+    const q = new ThrottlerConstructor({
       handler,
     });
 

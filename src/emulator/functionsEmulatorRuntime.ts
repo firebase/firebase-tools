@@ -365,7 +365,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        const newed = new original(...args);
+        const newed = new original(...args); // eslint-disable-line new-cap
         return newed;
       }
     };
@@ -712,7 +712,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
-  const functionRouter = express.Router();
+  const functionRouter = express.Router(); // eslint-disable-line new-cap
   const socketPath = frb.socketPath;
 
   if (!socketPath) {
