@@ -36,7 +36,10 @@ export enum SpecParamType {
 }
 
 export const logPrefix = "extensions";
-export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)(#.+)?$/;
+// Extension archive URLs follow this format: {GITHUB_ARCHIVE_URL}#{EXTENSION_ROOT},
+// e.g. https://github.com/firebase/extensions/archive/next.zip#extensions-next/delete-user-data.
+// EXTENSION_ROOT is optional for single-extension archives and required for multi-extension archives.
+export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)(#.*)?$/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
