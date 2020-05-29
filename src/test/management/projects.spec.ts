@@ -97,10 +97,9 @@ describe("Project management", () => {
 
   describe("Interactive flows", () => {
     let promptOnceStub: sinon.SinonStub;
-    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
+      sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     });
 

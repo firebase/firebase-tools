@@ -1,0 +1,1 @@
+- Fixes error message when `firebase init firestore` is used on a project with Cloud Firestore in Datastore mode.

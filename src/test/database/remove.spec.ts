@@ -1,7 +1,6 @@
 import { expect } from "chai";
 
 import DatabaseRemove from "../../database/remove";
-import { RemoveRemote } from "../../database/removeRemote";
 import { FakeRemoveRemote } from "./fakeRemoveRemote.spec";
 import { FakeListRemote } from "./fakeListRemote.spec";
 
