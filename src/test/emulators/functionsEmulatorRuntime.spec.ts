@@ -197,7 +197,9 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {}),
+              .onCreate(() => {
+                return Promise.resolve();
+              }),
           };
         });
         const logs = await _countLogEntries(worker);
@@ -214,6 +216,7 @@ describe("FunctionsEmulator-Runtime", () => {
                 console.log(
                   JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -241,6 +244,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json(admin.firestore()._settings);
+              return Promise.resolve();
             }),
           };
         });
@@ -268,6 +272,7 @@ describe("FunctionsEmulator-Runtime", () => {
               res.json({
                 var: process.env.FIRESTORE_EMULATOR_HOST,
               });
+              return Promise.resolve();
             }),
           };
         });
@@ -294,6 +299,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json(admin.firestore()._settings);
+              return Promise.resolve();
             }),
           };
         });
@@ -322,6 +328,7 @@ describe("FunctionsEmulator-Runtime", () => {
                   .ref()
                   .toString(),
               });
+              return Promise.resolve();
             }),
           };
         });
@@ -693,6 +700,7 @@ describe("FunctionsEmulator-Runtime", () => {
                     after_exists: change.after.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -722,6 +730,7 @@ describe("FunctionsEmulator-Runtime", () => {
                     after_exists: change.after.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -749,6 +758,7 @@ describe("FunctionsEmulator-Runtime", () => {
                     snap_exists: snap.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -776,6 +786,7 @@ describe("FunctionsEmulator-Runtime", () => {
                     snap_exists: snap.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
