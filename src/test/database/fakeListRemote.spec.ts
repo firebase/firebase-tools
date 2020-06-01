@@ -29,7 +29,7 @@ export class FakeListRemote implements ListRemote {
     timeout?: number
   ): Promise<string[]> {
     if (timeout === 0) {
-      throw new Error("timeout");
+      return Promise.reject(new Error("timeout"));
     }
     const d = this.dataAtPath(path);
     if (d) {
