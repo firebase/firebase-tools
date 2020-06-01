@@ -1,1 +1,2 @@
 - Fixes error message when `firebase init firestore` is used on a project with Cloud Firestore in Datastore mode.
+- Fixes error message when Java version is too low to run the emulators (#2307).
