@@ -1,11 +1,9 @@
 import * as clc from "cli-color";
 import * as fs from "fs";
 
-import * as apiEnabled from "../../ensureApiEnabled";
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 import { ensureLocationSet } from "../../ensureCloudResourceLocation";
-import { FirebaseError } from "../../error";
 
 const RULES_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../templates/init/storage/storage.rules",
@@ -13,21 +11,6 @@ const RULES_TEMPLATE = fs.readFileSync(
 );
 
 export async function doSetup(setup: any, config: any): Promise<void> {
-  const isStorageInabled = await apiEnabled.check(
-    setup.projectId,
-    "firebasestorage.googleapis.com",
-    "",
-    true
-  );
-  if (!isStorageInabled) {
-    throw new FirebaseError(
-      `It looks like you haven't used Cloud Storage in this project before. Go to ${clc.bold.underline(
-        `https://console.firebase.google.com/project/${setup.projectId}/storage`
-      )} to create your Storage bucket.`,
-      { exit: 1 }
-    );
-  }
-
   setup.config.storage = {};
   ensureLocationSet(setup.projectLocation, "Cloud Storage");
 
