@@ -41,15 +41,15 @@ exports.Script_NodeJS = function() {
   });
 
   require("child_process")
-      .fork(script, scriptArgv, {
-        env: process.env,
-        cwd: process.cwd(),
-        stdio: "inherit",
-        execArgv
-      })
-      .on("exit", code => {
-        process.exit(code);
-      });
+    .fork(script, scriptArgv, {
+      env: process.env,
+      cwd: process.cwd(),
+      stdio: "inherit",
+      execArgv
+    })
+    .on("exit", code => {
+      process.exit(code);
+    });
 };
 
 /*
