@@ -24,16 +24,32 @@
   "--foo" argument.
 */
 exports.Script_NodeJS = function() {
-  const [script, ...otherArgs] = process.argv.slice(2);
+  const execArgv = [];
+  let script = "";
+  const scriptArgv = [];
+
+  process.argv.slice(2).forEach((arg) => {
+    if (!script) {
+      if (arg.startsWith("--")) {
+        execArgv.push(arg);
+      } else {
+        script = arg;
+      }
+    } else {
+      scriptArgv.push(arg);
+    }
+  });
+
   require("child_process")
-    .fork(script, otherArgs, {
-      env: process.env,
-      cwd: process.cwd(),
-      stdio: "inherit"
-    })
-    .on("exit", code => {
-      process.exit(code);
-    });
+      .fork(script, scriptArgv, {
+        env: process.env,
+        cwd: process.cwd(),
+        stdio: "inherit",
+        execArgv
+      })
+      .on("exit", code => {
+        process.exit(code);
+      });
 };
 
 /*
