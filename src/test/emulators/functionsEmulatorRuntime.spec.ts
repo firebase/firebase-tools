@@ -99,7 +99,6 @@ describe("FunctionsEmulator-Runtime", () => {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  // tslint:disable-next-line:no-console
                   console.log(require("http").get.toString());
                   require("http").get("http://example.com", resolve);
                 });
@@ -157,8 +156,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              // tslint:disable-next-line:no-empty
-              .onCreate(async () => {}),
+              .onCreate(() => {}),
           };
         });
 
@@ -174,8 +172,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              // tslint:disable-next-line:no-empty
-              .onCreate(async () => {}),
+              .onCreate(() => {}),
           };
         });
 
@@ -200,8 +197,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              // tslint:disable-next-line:no-empty
-              .onCreate(async () => {}),
+              .onCreate(() => {}),
           };
         });
         const logs = await _countLogEntries(worker);
@@ -214,11 +210,11 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                // tslint:disable-next-line:no-console
+              .onCreate(() => {
                 console.log(
                   JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -246,6 +242,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json(admin.firestore()._settings);
+              return Promise.resolve();
             }),
           };
         });
@@ -273,6 +270,7 @@ describe("FunctionsEmulator-Runtime", () => {
               res.json({
                 var: process.env.FIRESTORE_EMULATOR_HOST,
               });
+              return Promise.resolve();
             }),
           };
         });
@@ -299,6 +297,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json(admin.firestore()._settings);
+              return Promise.resolve();
             }),
           };
         });
@@ -327,6 +326,7 @@ describe("FunctionsEmulator-Runtime", () => {
                   .ref()
                   .toString(),
               });
+              return Promise.resolve();
             }),
           };
         });
@@ -407,7 +407,7 @@ describe("FunctionsEmulator-Runtime", () => {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
               .onCreate(async (snap: any, ctx: any) => {
-                admin
+                await admin
                   .database()
                   .ref("write-test")
                   .set({
@@ -445,9 +445,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {
-                /* tslint:disable:no-console */
-
+              .onCreate(() => {
                 // Exists
                 console.log(require("firebase-functions").config().real);
 
@@ -479,11 +477,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json({ from_trigger: true });
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({ from_trigger: true });
+            }),
           };
         });
 
@@ -497,11 +493,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json(req.body);
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(req.body);
+            }),
           };
         });
 
@@ -526,11 +520,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json(req.body);
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(req.body);
+            }),
           };
         });
 
@@ -555,11 +547,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json(req.body);
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(req.body);
+            }),
           };
         });
 
@@ -584,11 +574,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json(req.body);
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(req.body);
+            }),
           };
         });
 
@@ -614,11 +602,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.send(req.rawBody);
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.send(req.rawBody);
+            }),
           };
         });
 
@@ -667,11 +653,9 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                res.json({ hostname: req.hostname });
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json({ hostname: req.hostname });
+            }),
           };
         });
 
@@ -688,12 +672,10 @@ describe("FunctionsEmulator-Runtime", () => {
         const frb = FunctionRuntimeBundles.onRequest;
         const worker = invokeRuntimeWithFunctions(frb, () => {
           return {
-            function_id: require("firebase-functions").https.onRequest(
-              async (req: any, res: any) => {
-                const now = new Date();
-                res.json({ offset: now.getTimezoneOffset() });
-              }
-            ),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              const now = new Date();
+              res.json({ offset: now.getTimezoneOffset() });
+            }),
           };
         });
 
@@ -709,14 +691,14 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onWrite(async (change: Change<DocumentSnapshot>) => {
-                /* tslint:disable:no-console */
+              .onWrite((change: Change<DocumentSnapshot>) => {
                 console.log(
                   JSON.stringify({
                     before_exists: change.before.exists,
                     after_exists: change.after.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -739,14 +721,14 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onUpdate(async (change: Change<DocumentSnapshot>) => {
-                /* tslint:disable:no-console */
+              .onUpdate((change: Change<DocumentSnapshot>) => {
                 console.log(
                   JSON.stringify({
                     before_exists: change.before.exists,
                     after_exists: change.after.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -768,13 +750,13 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onDelete(async (snap: DocumentSnapshot) => {
-                /* tslint:disable:no-console */
+              .onDelete((snap: DocumentSnapshot) => {
                 console.log(
                   JSON.stringify({
                     snap_exists: snap.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -796,13 +778,13 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async (snap: DocumentSnapshot) => {
-                /* tslint:disable:no-console */
+              .onCreate((snap: DocumentSnapshot) => {
                 console.log(
                   JSON.stringify({
                     snap_exists: snap.exists,
                   })
                 );
+                return Promise.resolve();
               }),
           };
         });
@@ -826,7 +808,7 @@ describe("FunctionsEmulator-Runtime", () => {
           require("firebase-admin").initializeApp();
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              (global as any)["not a thing"]();
+              throw new Error("not a thing");
             }),
           };
         });
@@ -849,7 +831,8 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest(
               async (req: any, res: any) => {
-                (global as any)["not a thing"]();
+                await Promise.resolve(); // Required `await` for `async`.
+                return Promise.reject(new Error("not a thing"));
               }
             ),
           };
@@ -874,7 +857,8 @@ describe("FunctionsEmulator-Runtime", () => {
             function_id: require("firebase-functions")
               .runWith({})
               .https.onRequest(async (req: any, res: any) => {
-                (global as any)["not a thing"]();
+                await Promise.resolve(); // Required `await` for `async`.
+                return Promise.reject(new Error("not a thing"));
               }),
           };
         });
