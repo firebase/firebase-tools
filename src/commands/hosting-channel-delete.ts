@@ -1,7 +1,6 @@
-import { bold } from "cli-color";
+import { bold, underline } from "cli-color";
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
 import { deleteChannel } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
@@ -9,6 +8,7 @@ import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getInstanceId from "../getInstanceId";
 import { logLabeledSuccess } from "../utils";
+import { promptOnce } from "../prompt";
 
 interface ChannelInfo {
   target: string | null;
@@ -32,12 +32,21 @@ export default new Command("hosting:channel:delete <channelId>")
       const projectId = getProjectId(options);
       const siteId = options.site || (await getInstanceId(options));
 
-      // TODO: implement --force to not prompt (see below).
-      if (options.force) {
-        throw new FirebaseError("force is not yet implemented");
+      let confirmed = Boolean(options.force);
+      if (!confirmed) {
+        confirmed = await promptOnce({
+          message: `Are you sure you want to delete the Hosting Channel ${underline(
+            channelId
+          )} for site ${underline(siteId)}?`,
+          type: "confirm",
+          default: false,
+        });
       }
 
-      // TODO: implement prompting and confirmation.
+      if (!confirmed) {
+        return;
+      }
+
       await deleteChannel(projectId, siteId, channelId);
 
       logLabeledSuccess(
