@@ -196,6 +196,17 @@ export async function displayChanges(
 }
 
 /**
+ * Prompts the user to confirm before continuing to update.
+ */
+export async function retryUpdate(): Promise<boolean> {
+  return promptOnce({
+    type: "confirm",
+    message: "Are you sure you want to continue with updating anyways?",
+    default: false,
+  });
+}
+
+/**
  * @param projectId Id of the project containing the instance to update
  * @param instanceId Id of the instance to update
  * @param source A ExtensionSource to update to

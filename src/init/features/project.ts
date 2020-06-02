@@ -1,7 +1,6 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import * as Config from "../../config";
 import { FirebaseError } from "../../error";
 import {
   addFirebaseToCloudProjectAndLog,

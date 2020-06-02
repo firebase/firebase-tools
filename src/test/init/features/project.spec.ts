@@ -3,7 +3,7 @@ import * as _ from "lodash";
 import * as sinon from "sinon";
 import { configstore } from "../../../configstore";
 
-import { doSetup, ProjectInfo } from "../../../init/features/project";
+import { doSetup } from "../../../init/features/project";
 import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
 import * as Config from "../../../config";
@@ -19,21 +19,6 @@ const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
     storageBucket: "my-project.appspot.com",
     locationId: "us-central",
   },
-};
-
-const ANOTHER_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
-  projectId: "another-project",
-  projectNumber: "987654321",
-  displayName: "another-project",
-  name: "projects/another-project",
-  resources: {},
-};
-
-const TEST_PROJECT_INFO: ProjectInfo = {
-  id: "my-project-123",
-  label: "my-project-123 (my-project)",
-  instance: "my-project",
-  location: "us-central",
 };
 
 describe("project", () => {

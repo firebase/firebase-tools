@@ -60,11 +60,11 @@ export class DatabaseEmulator implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     return downloadableEmulators.stop(Emulators.DATABASE);
   }
 

@@ -8,7 +8,7 @@ import * as bodyParser from "body-parser";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { Constants } from "./constants";
-import { Emulators, EmulatorInstance, EmulatorInfo, IMPORT_EXPORT_EMULATORS } from "./types";
+import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
 
@@ -70,11 +70,11 @@ export class EmulatorHub implements EmulatorInstance {
     this.hub = express();
     this.hub.use(bodyParser.json());
 
-    this.hub.get("/", async (req, res) => {
+    this.hub.get("/", (req, res) => {
       res.json(this.getLocator());
     });
 
-    this.hub.get(EmulatorHub.PATH_EMULATORS, async (req, res) => {
+    this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
       EmulatorRegistry.listRunning().forEach((name) => {
         body[name] = EmulatorRegistry.get(name)!.getInfo();

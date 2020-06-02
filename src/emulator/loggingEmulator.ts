@@ -34,20 +34,21 @@ export class LoggingEmulator implements EmulatorInstance {
 
   constructor(private args: LoggingEmulatorArgs) {}
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
     this.transport = new WebSocketTransport();
     this.transport.start(this.getInfo());
     logger.add(this.transport);
+    return Promise.resolve();
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     logger.remove(this.transport);
 
-    if (this.transport && this.transport.wss) {
+    if (this.transport?.wss) {
       const wss = this.transport.wss;
       return new Promise((resolve, reject) => {
         wss.close((err) => {
@@ -56,6 +57,8 @@ export class LoggingEmulator implements EmulatorInstance {
         });
       });
     }
+
+    return Promise.resolve();
   }
 
   getInfo(): EmulatorInfo {
