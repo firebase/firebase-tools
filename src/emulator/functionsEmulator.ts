@@ -219,14 +219,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     return worker;
   }
 
-  async start(): Promise<void> {
-    this.nodeBinary = await this.askInstallNodeVersion(
+  start(): Promise<void> {
+    this.nodeBinary = this.askInstallNodeVersion(
       this.args.functionsDir,
       this.args.nodeMajorVersion
     );
     const { host, port } = this.getInfo();
     this.workQueue.start();
     this.server = this.createHubServer().listen(port, host);
+    return Promise.resolve();
   }
 
   async connect(): Promise<void> {
@@ -357,10 +358,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     this.workQueue.stop();
     this.workerPool.exit();
-    await Promise.resolve(this.server && this.server.close());
+    this.server?.close();
+    return Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(
@@ -551,7 +553,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
    *  are using the default version.
    */
-  askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): Promise<string> {
+  askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): string {
     const pkg = require(path.join(cwd, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {
@@ -560,7 +562,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "Your functions directory does not specify a Node version.\n   " +
           "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
       );
-      return Promise.resolve(process.execPath);
+      return process.execPath;
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
@@ -583,7 +585,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         `Using node@${requestedMajorVersion} from host.`
       );
-      return Promise.resolve(process.execPath);
+      return process.execPath;
     }
 
     // If the requested version is already locally available, let's use that
@@ -593,7 +595,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         `Using node@${requestedMajorVersion} from local cache.`
       );
-      return Promise.resolve(localNodePath);
+      return localNodePath;
     }
 
     /*
@@ -605,7 +607,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
     );
 
-    return Promise.resolve(process.execPath);
+    return process.execPath;
   }
 
   invokeRuntime(frb: FunctionsRuntimeBundle, opts: InvokeRuntimeOpts): RuntimeWorker {
