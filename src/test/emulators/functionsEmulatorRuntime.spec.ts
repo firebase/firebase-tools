@@ -156,7 +156,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {}),
+              .onCreate(() => {}),
           };
         });
 
@@ -172,7 +172,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(async () => {}),
+              .onCreate(() => {}),
           };
         });
 
@@ -197,9 +197,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {
-                return Promise.resolve();
-              }),
+              .onCreate(() => {}),
           };
         });
         const logs = await _countLogEntries(worker);
@@ -831,11 +829,12 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              return new Promise((resolve, reject) => {
-                reject(new Error("not a thing"));
-              });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              async (req: any, res: any) => {
+                await Promise.resolve(); // Required `await` for `async`.
+                return Promise.reject(new Error("not a thing"));
+              }
+            ),
           };
         });
 
@@ -857,10 +856,9 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .runWith({})
-              .https.onRequest((req: any, res: any) => {
-                return new Promise((resolve, reject) => {
-                  reject(new Error("not a thing"));
-                });
+              .https.onRequest(async (req: any, res: any) => {
+                await Promise.resolve(); // Required `await` for `async`.
+                return Promise.reject(new Error("not a thing"));
               }),
           };
         });

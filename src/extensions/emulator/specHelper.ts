@@ -36,7 +36,7 @@ function wrappedSafeLoad(source: string): any {
  * directory that contains one. Throws an error if none is found.
  * @param directory the directory to start from searching from.
  */
-export function findExtensionYaml(directory: string): Promise<string> {
+export function findExtensionYaml(directory: string): string {
   while (!fileExistsSync(path.resolve(directory, SPEC_FILE))) {
     const parentDir = path.dirname(directory);
     if (parentDir === directory) {
@@ -46,7 +46,7 @@ export function findExtensionYaml(directory: string): Promise<string> {
     }
     directory = parentDir;
   }
-  return Promise.resolve(directory);
+  return directory;
 }
 
 /**
