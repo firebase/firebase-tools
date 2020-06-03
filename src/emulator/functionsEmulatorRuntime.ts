@@ -40,15 +40,12 @@ function noOp(): false {
   return false;
 }
 
-async function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
-  return require(require.resolve(moduleName, opts));
+function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
+  return Promise.resolve(require(require.resolve(moduleName, opts)));
 }
 
-async function requireResolveAsync(
-  moduleName: string,
-  opts?: { paths: string[] }
-): Promise<string> {
-  return require.resolve(moduleName, opts);
+function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Promise<string> {
+  return Promise.resolve(require.resolve(moduleName, opts));
 }
 
 interface PackageJSON {

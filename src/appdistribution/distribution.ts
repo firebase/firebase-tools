@@ -62,7 +62,7 @@ export class Distribution {
    *
    * This is used to check the distribution upload status.
    */
-  async binaryName(app: AppDistributionApp): Promise<string> {
+  binaryName(app: AppDistributionApp): Promise<string> {
     return new Promise<string>((resolve) => {
       const hash = crypto.createHash("sha256");
       const stream = this.readStream();

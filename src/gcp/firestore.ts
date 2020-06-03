@@ -8,7 +8,7 @@ const _API_ROOT = "/v1beta1/";
  * @param {string} project the Google Cloud project ID.
  * @return {Promise<string[]>} a promise for an array of collection IDs.
  */
-export async function listCollectionIds(project: string): Promise<string[]> {
+export function listCollectionIds(project: string): Promise<string[]> {
   const url =
     _API_ROOT + "projects/" + project + "/databases/(default)/documents:listCollectionIds";
   return api

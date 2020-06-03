@@ -14,7 +14,7 @@ const INDEXES_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
-export async function initIndexes(setup: any, config: any): Promise<any> {
+export function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
   logger.info("maintaining performance that scales with the size of the result");
@@ -57,7 +57,7 @@ export async function initIndexes(setup: any, config: any): Promise<any> {
     });
 }
 
-async function getIndexesFromConsole(projectId: any): Promise<any> {
+function getIndexesFromConsole(projectId: any): Promise<any> {
   const indexesPromise = indexes.listIndexes(projectId);
   const fieldOverridesPromise = indexes.listFieldOverrides(projectId);
 

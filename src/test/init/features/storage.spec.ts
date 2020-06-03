@@ -44,7 +44,7 @@ describe("storage", () => {
         projectId: "my-project-123",
       };
 
-      expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
+      await expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
       );
