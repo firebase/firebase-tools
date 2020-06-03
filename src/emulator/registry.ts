@@ -1,6 +1,6 @@
 import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
-import * as controller from "./controller";
+import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
 
 /**
@@ -20,7 +20,7 @@ export class EmulatorRegistry {
     await instance.start();
 
     const info = instance.getInfo();
-    await controller.waitForPortClosed(info.port, info.host);
+    await portUtils.waitForPortClosed(info.port, info.host);
     this.set(instance.getName(), instance);
   }
 

@@ -1,3 +1,4 @@
 - Fixes error message when `firebase init firestore` is used on a project with Cloud Firestore in Datastore mode.
 - Fixes error message when Java version is too low to run the emulators (#2307).
 - Fixes issue where `firebase init storage` incorrectly reports Cloud Storage has not been used.
+- Adds warning message when an emulator starts on a port restricted by Chrome (#2276).
