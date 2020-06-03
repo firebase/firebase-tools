@@ -2,8 +2,6 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as tcpport from "tcp-port-used";
-import * as pf from "portfinder";
 
 import * as logger from "../logger";
 import * as track from "../track";
@@ -31,26 +29,7 @@ import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
-
-export async function checkPortOpen(port: number, host: string): Promise<boolean> {
-  try {
-    const inUse = await tcpport.check(port, host);
-    return !inUse;
-  } catch (e) {
-    logger.debug(`port check error: ${e}`);
-    return false;
-  }
-}
-
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
-  const interval = 250;
-  const timeout = 30000;
-  try {
-    await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
-  } catch (e) {
-    throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
-  }
-}
+import * as portUtils from "./portUtils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -68,10 +47,10 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
   }
 
   const logger = EmulatorLogger.forEmulator(emulator);
-  const portOpen = await checkPortOpen(port, host);
+  const portOpen = await portUtils.checkPortOpen(port, host);
   if (!portOpen) {
     if (findAvailablePort) {
-      const newPort = await pf.getPortPromise({ host, port });
+      const newPort = await portUtils.findAvailablePort(host, port);
       if (newPort != port) {
         logger.logLabeled(
           "WARN",
@@ -107,6 +86,16 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
       return utils.reject(`Could not start ${description}, port taken.`, {});
     }
   }
+
+  if (portUtils.isRestricted(port)) {
+    const suggested = portUtils.suggestUnrestricted(port);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}`
+    );
+  }
+
   return { host, port };
 }
 
