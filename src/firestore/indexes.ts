@@ -91,13 +91,6 @@ export class FirestoreIndexes {
       }
     }
 
-    if (shouldDeleteIndexes) {
-      utils.logLabeledBullet("firestore", `Deleting ${indexesToDelete.length} indexes...`);
-      for (const index of indexesToDelete) {
-        await this.deleteIndex(index);
-      }
-    }
-
     for (const index of indexesToDeploy) {
       const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
       if (exists) {
@@ -105,6 +98,13 @@ export class FirestoreIndexes {
       } else {
         logger.debug(`Creating new index: ${JSON.stringify(index)}`);
         await this.createIndex(options.project, index);
+      }
+    }
+
+    if (shouldDeleteIndexes && indexesToDelete.length > 0) {
+      utils.logLabeledBullet("firestore", `Deleting ${indexesToDelete.length} indexes...`);
+      for (const index of indexesToDelete) {
+        await this.deleteIndex(index);
       }
     }
 
@@ -147,7 +147,7 @@ export class FirestoreIndexes {
       }
     }
 
-    if (shouldDeleteFields) {
+    if (shouldDeleteFields && fieldOverridesToDelete.length > 0) {
       utils.logLabeledBullet(
         "firestore",
         `Deleting ${fieldOverridesToDelete.length} field overrides...`
