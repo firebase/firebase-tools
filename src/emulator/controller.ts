@@ -92,7 +92,7 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     logger.logLabeled(
       "WARN",
       emulator,
-      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}`
+      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
     );
   }
 
