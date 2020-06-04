@@ -2,4 +2,5 @@
 - Fixes error message when Java version is too low to run the emulators (#2307).
 - Fixes issue where `firebase init storage` incorrectly reports Cloud Storage has not been used.
 - Adds warning message when an emulator starts on a port restricted by Chrome (#2276).
+- Allows deleting Firestore indexes with the `--force` flag (#2002).
 - Fixes issue where massively parallel functions could lock the host machine (#2277).
