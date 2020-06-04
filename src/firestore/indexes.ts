@@ -80,7 +80,7 @@ export class FirestoreIndexes {
         );
       }
 
-      if (!options.force) {
+      if (!shouldDeleteIndexes) {
         shouldDeleteIndexes = await promptOnce({
           type: "confirm",
           name: "confirm",
@@ -126,7 +126,7 @@ export class FirestoreIndexes {
         );
       }
 
-      if (!options.force) {
+      if (!shouldDeleteFields) {
         shouldDeleteFields = await promptOnce({
           type: "confirm",
           name: "confirm",
