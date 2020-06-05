@@ -199,9 +199,6 @@ function _getCommand(
 }
 
 function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
-  if (emulator.instance) {
-    emulator.instance.kill("SIGINT");
-  }
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
@@ -252,6 +249,14 @@ async function _runBinary(
     emulator.instance.stderr.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
+
+      if (data.toString().includes("java.lang.UnsupportedClassVersionError")) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          "Unsupported java version, make sure java --version reports 1.8 or higher."
+        );
+      }
     });
 
     emulator.instance.on("error", (err: any) => {

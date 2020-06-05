@@ -15,9 +15,11 @@ function resolveIn(ms: number) {
 
 describe("WorkQueue", () => {
   describe("mode=AUTO", () => {
+    const MAX_PARALLEL = 10;
     let queue: WorkQueue;
+
     beforeEach(() => {
-      queue = new WorkQueue(FunctionsExecutionMode.AUTO);
+      queue = new WorkQueue(FunctionsExecutionMode.AUTO, MAX_PARALLEL);
       queue.start();
     });
 
@@ -61,6 +63,26 @@ describe("WorkQueue", () => {
       await resolveIn(10);
 
       expect(hasRun1 && hasRun2, "hasRun1 && hasRun2");
+    });
+
+    it("never runs more than the maximum allowed parallel work", async () => {
+      let numRun = 0;
+      let timePerJob = 5;
+
+      const numJobs = MAX_PARALLEL * 2;
+      for (let i = 0; i < numJobs; i++) {
+        const work = () => {
+          numRun++;
+          return resolveIn(timePerJob);
+        };
+        queue.submit(work);
+      }
+
+      await resolveIn(timePerJob - 1);
+      expect(queue.getState().workRunningCount).to.eq(MAX_PARALLEL);
+
+      await resolveIn(numJobs * timePerJob + 10);
+      expect(numRun).to.eq(numJobs);
     });
   });
 

@@ -63,7 +63,7 @@ export class RuntimeWorker {
     });
   }
 
-  async execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts) {
+  execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
 
