@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as ora from "ora";
 
-import { firebaseStorageOrigin } from "../api";
+import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
@@ -336,7 +336,7 @@ export async function createSourceFromLocation(
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
       uploadSpinner.succeed(" Uploaded extension source code");
-      packageUri = firebaseStorageOrigin + objectPath + "?alt=media";
+      packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
     } catch (err) {
       uploadSpinner.fail();
