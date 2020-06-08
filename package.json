@@ -108,7 +108,6 @@
     "plist": "^3.0.1",
     "portfinder": "^1.0.23",
     "progress": "^2.0.3",
-    "request": "^2.87.0",
     "rimraf": "^3.0.0",
     "semver": "^5.7.1",
     "superstatic": "^6.0.1",
