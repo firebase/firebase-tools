@@ -202,7 +202,7 @@ client
 
 Another example of using Firebase CLI as a Node Module can be using use() for getting the current firebase projectId.
 
-Difference between `list()` and `use()` is that list is used to list all the projects associated with the logged in account whereas 
+Difference between `list()` and `use()` is that list is used to list all the projects associated with the logged in account whereas
 use is called to set an active Firebase Project.
 
 `use()` uses two parameters, namely, projectId and options. ProjectId is the id of project which is to be set and options are optional.
@@ -211,7 +211,7 @@ However, when no options are to be send, use `{}`, like in the example below:
 ```js
 var client = require("firebase-tools");
 client
-  .use('projectId', {options})
+  .use("projectId", { options })
   .then(function(data) {
     console.log(data);
   })
@@ -232,7 +232,7 @@ client
   .catch(function(err) {
     // handle error
   });
-```  
+```
 
 Tip: `list()` and `use()` can be used in combination also, if you are not sure of the projectId but sure of displayName.
 
