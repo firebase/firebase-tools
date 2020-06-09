@@ -200,41 +200,23 @@ client
   });
 ```
 
-Another example of using Firebase CLI as a Node Module can be using `use()` for setting the firebase projectId.
-
-Difference between `list()` and `use()` is that list is used to list all the projects associated with the logged in account whereas
-use is called to set an active Firebase Project.
-
-`use()` uses two parameters, namely, projectId and options. ProjectId is the id of project which is to be set and options are optional.
-However, when no options are to be send, use `{}`, like in the example below:
+Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
+provide any positional arguments as strings followed by an object containing the options:
 
 ```js
 var client = require("firebase-tools");
 client
-  .use("projectId", { options })
+  .use("projectId", {
+    // Equivalent to --add when using the CLI
+    add: true,
+  })
   .then(function(data) {
     console.log(data);
   })
   .catch(function(err) {
     // handle error
   });
-
-client
-  .deploy({
-    project: "myfirebase",
-    token: process.env.FIREBASE_TOKEN,
-    force: true,
-    cwd: "/path/to/project/folder",
-  })
-  .then(function() {
-    console.log("Rules have been deployed!");
-  })
-  .catch(function(err) {
-    // handle error
-  });
 ```
-
-Tip: `list()` and `use()` can be used in combination also, if you are not sure of the projectId but sure of displayName.
 
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically
 because they require access to a local filesystem.
