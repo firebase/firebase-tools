@@ -1,0 +1,1 @@
+- Makes `functions:shell` terminate the server together with the shell
