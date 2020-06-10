@@ -200,6 +200,24 @@ client
   });
 ```
 
+Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
+provide any positional arguments as strings followed by an object containing the options:
+
+```js
+var client = require("firebase-tools");
+client
+  .use("projectId", {
+    // Equivalent to --add when using the CLI
+    add: true,
+  })
+  .then(function(data) {
+    console.log(data);
+  })
+  .catch(function(err) {
+    // handle error
+  });
+```
+
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically
 because they require access to a local filesystem.
 
