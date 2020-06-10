@@ -63,7 +63,7 @@ module.exports = async function(options) {
         _.forEach(emulator.triggers, function(trigger) {
           if (_.includes(emulator.emulatedFunctions, trigger.name)) {
             var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
-            var triggerNameDotNotation = trigger.name.replace(/\-/g, ".");
+            var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
             _.set(context, triggerNameDotNotation, localFunction.call);
           }
         });
