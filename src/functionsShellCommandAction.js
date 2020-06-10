@@ -100,10 +100,9 @@ module.exports = async function(options) {
       replServer.context.help =
         "Instructions for the Functions Shell can be found at: " +
         "https://firebase.google.com/docs/functions/local-emulator";
-    })
-    .then(function() {
+
       return new Promise(function(resolve) {
-        process.on("SIGINT", function() {
+        replServer.on("exit", function() {
           return serveFunctions
             .stop()
             .then(resolve)
