@@ -1,15 +1,17 @@
+import { last, sortBy } from "lodash";
 import { bold } from "cli-color";
 import * as open from "open";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel } from "../hosting/api";
+import { getChannel, listChannels } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getInstanceId from "../getInstanceId";
 import { logLabeledBullet } from "../utils";
+import { promptOnce } from "../prompt";
 
 export default new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -26,7 +28,20 @@ export default new Command("hosting:channel:open [channelId]")
       const projectId = getProjectId(options);
       const siteId = options.site || (await getInstanceId(options));
 
-      // TODO: prompt for channelId if none was provided.
+      if (!channelId) {
+        if (options.nonInteractive) {
+          throw new FirebaseError(`Please provide a channelId.`);
+        }
+
+        const channels = await listChannels(projectId, siteId);
+        sortBy(channels, ["name"]);
+
+        channelId = await promptOnce({
+          type: "list",
+          message: "Which channel would you like to open?",
+          choices: channels.map((c) => last(c.name.split("/")) || c.name),
+        });
+      }
 
       const channel = await getChannel(projectId, siteId, channelId);
       if (!channel) {
