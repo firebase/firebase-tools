@@ -51,7 +51,13 @@ function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<a
 }
 
 function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Promise<string> {
-  return Promise.resolve(require.resolve(moduleName, opts));
+  return new Promise((res, rej) => {
+    try {
+      res(require.resolve(moduleName, opts));
+    } catch (e) {
+      rej(e);
+    }
+  });
 }
 
 interface PackageJSON {
