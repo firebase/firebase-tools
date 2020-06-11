@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
@@ -628,6 +629,23 @@ export class FunctionsEmulator implements EmulatorInstance {
       args.unshift(`--inspect=${host}:${this.args.debugPort}`);
     }
 
+    const pnpPath = path.join(frb.cwd, ".pnp.js");
+    if (fs.existsSync(pnpPath)) {
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN_ONCE",
+        "functions",
+        "Detected yarn@2 with pnp. Note that yarn suport is experimental and some things may break."
+      );
+      args.unshift(`--require=${pnpPath}`);
+
+      frb.disabled_features = {
+        ...frb.disabled_features,
+        stubs: true,
+      };
+    }
+
+    logger.debug(`Spawning "${opts.nodeBinary} ${args.join(" ")}`);
+    logger.debug(`CWD: ${frb.cwd}`);
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,

@@ -57,8 +57,8 @@ export class RuntimeWorker {
       }
     });
 
-    this.runtime.exit.then(() => {
-      this.log("exited");
+    this.runtime.exit.then((code) => {
+      this.log(`exited[${code}]`);
       this.state = RuntimeWorkerState.FINISHED;
     });
   }

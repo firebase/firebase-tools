@@ -73,6 +73,7 @@ export interface FunctionsRuntimeBundle {
 
 export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
+  stubs?: boolean;
 }
 
 const memoryLookup = {

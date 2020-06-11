@@ -222,7 +222,8 @@ async function resolveDeveloperNodeModule(
     return { declared: true, installed: false };
   }
 
-  const modPackageJSON = require(path.join(findModuleRoot(name, resolveResult), "package.json"));
+  const modPath = path.join(findModuleRoot(name, resolveResult), "package.json");
+  const modPackageJSON = JSON.parse(fs.readFileSync(modPath).toString());
 
   const moduleResolution: ModuleResolution = {
     declared: true,
@@ -974,10 +975,12 @@ async function initializeRuntime(
     ).log();
   }
 
-  initializeNetworkFiltering(frb);
-  await initializeFunctionsConfigHelper(frb);
-  await initializeFirebaseFunctionsStubs(frb);
-  await initializeFirebaseAdminStubs(frb);
+  if (isFeatureEnabled(frb, "stubs")) {
+    initializeNetworkFiltering(frb);
+    await initializeFunctionsConfigHelper(frb);
+    await initializeFirebaseFunctionsStubs(frb);
+    await initializeFirebaseAdminStubs(frb);
+  }
 
   let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];
