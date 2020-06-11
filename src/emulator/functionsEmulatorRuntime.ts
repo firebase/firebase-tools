@@ -41,7 +41,13 @@ function noOp(): false {
 }
 
 function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
-  return Promise.resolve(require(require.resolve(moduleName, opts)));
+  return new Promise((res, rej) => {
+    try {
+      res(require(require.resolve(moduleName, opts)));
+    } catch (e) {
+      rej(e);
+    }
+  });
 }
 
 function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Promise<string> {
