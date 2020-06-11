@@ -638,10 +638,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
       args.unshift(`--require=${pnpPath}`);
 
-      frb.disabled_features = {
-        ...frb.disabled_features,
-        stubs: true,
-      };
+      opts.env = opts.env || {};
+      opts.env.USE_YARN_TWO = "true";
     }
 
     logger.debug(`Spawning "${opts.nodeBinary} ${args.join(" ")}`);
