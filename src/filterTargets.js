@@ -29,7 +29,7 @@ module.exports = function(options, validTargets) {
 
     if (process.platform === "win32") {
       msg +=
-        'If you are using PowerShell make sure you place quotes around any comma-separated lists (ex: --only "functions,firestore").';
+        ' If you are using PowerShell make sure you place quotes around any comma-separated lists (ex: --only "functions,firestore").';
     }
 
     throw new FirebaseError(msg, { exit: 1 });
