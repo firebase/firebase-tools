@@ -1,2 +1,3 @@
 - Makes `functions:shell` terminate the server together with the shell
 - Fixes issue where functions emulator would fail while looking for `tsconfig.json` (#2353)
+- Improve error message for `deploy` and `serve` when invalid targets are specified (#2363)
