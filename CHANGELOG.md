@@ -1,6 +1,0 @@
-- Makes `functions:shell` terminate the server together with the shell
-- Makes `functions:shell` respect the `.clear` command
-- Fixes issue where functions emulator would fail while looking for `tsconfig.json` (#2353)
-- Improves error messages for `deploy` and `serve` when invalid targets are specified (#2363)
-- Fixes #1774 by removing "]0;Firebase CLI" from stdout (#2330)
-- Supports cloning from a filtered dataset in RTDB Viewer in Emulator Suite UI.
