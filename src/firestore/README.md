@@ -1,5 +1,4 @@
-
-Cloud Firestore automatically creates indexes to support the most common types of queries, but allows you to define custom indexes and index overrides as described in the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview). 
+Cloud Firestore automatically creates indexes to support the most common types of queries, but allows you to define custom indexes and index overrides as described in the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview).
 
 You can create, modify and deploy custom indexes in the Firebase console, or using the CLI. From the CLI, edit your index configuration file, with default filename`firestore.indexes.json`, and deploy using the <code>firebase deploy</code> command.
 
@@ -9,7 +8,7 @@ An index configuration file defines one object containing an <code>indexes</code
 {
   // Required, specify compound indexes
   indexes: [
-    { 
+    {
       collectionGroup: "posts",
       queryScope: "COLLECTION",
       fields: [
@@ -33,7 +32,7 @@ An index configuration file defines one object containing an <code>indexes</code
 
 ## Deploy an index configuration
 
-Deploy your index configuration with the `firebase deploy` command. By default, `firebase deploy` pushes all code and assets related to a Firebase project. If you only want to deploy indexes, add the `--only firestore:indexes` flag. 
+Deploy your index configuration with the `firebase deploy` command. By default, `firebase deploy` pushes all code and assets related to a Firebase project. If you only want to deploy indexes, add the `--only firestore:indexes` flag.
 
 If you make edits to the indexes using the Firebase console, make sure you also update your local indexes file.
 
@@ -50,11 +49,12 @@ Note that Cloud Firestore document fields can only be indexed in one [mode](http
 ```javascript
   collectionGroup: string  // Labeled "Collection ID" in the Firebase console
   queryScope: string       // One of "COLLECTION", "COLLECTION_GROUP"
-  fields: array               
+  fields: array
     fieldPath: string
     order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
     arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order property
 ```
+
 ### FieldOverrides
 
 The schema for one object in the `fieldOverrides` array is as follows. Optional properties are identified with the `?` character.
