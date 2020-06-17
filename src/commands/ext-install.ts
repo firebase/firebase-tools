@@ -31,7 +31,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
-import * as previews from "../previews";
+import { previews } from "../previews";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -90,13 +90,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         }
       }
     }
-    const response = await extensionsApi.createInstance(
-      projectId,
-      instanceId,
-      source,
-      params,
-      serviceAccountEmail
-    );
+    await extensionsApi.createInstance(projectId, instanceId, source, params, serviceAccountEmail);
     spinner.stop();
 
     utils.logLabeledSuccess(
@@ -138,10 +132,11 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
  */
 export default new Command("ext:install [extensionName]")
   .description(
-    "install an official extension if [extensionName] or [extensionName@version] is provided;" +
-      previews.extdev
-      ? "install a local extension if [localPathOrUrl] or [url#root] is provided;"
-      : "" + "or run with `-i` to see all available extensions."
+    "install an official extension if [extensionName] or [extensionName@version] is provided; " +
+      (previews.extdev
+        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; "
+        : "") +
+      "or run with `-i` to see all available extensions."
   )
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])

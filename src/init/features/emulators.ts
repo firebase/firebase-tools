@@ -5,7 +5,6 @@ import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
-import previews = require("../../previews");
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -47,7 +46,7 @@ export async function doSetup(setup: any, config: any) {
     } else {
       await prompt(setup.config.emulators[selected], [
         {
-          type: "input",
+          type: "number",
           name: "port",
           message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
           default: Constants.getDefaultPort(selected as Emulators),
@@ -57,37 +56,36 @@ export async function doSetup(setup: any, config: any) {
   }
 
   if (selections.emulators.length) {
-    if (previews.emulatorgui) {
-      if (setup.config.emulators.gui && setup.config.emulators.gui.enabled !== false) {
-        const currentPort = setup.config.emulators.gui.port || "(automatic)";
-        utils.logBullet(`Emulator GUI already enabled with port: ${clc.cyan(currentPort)}`);
-      } else {
-        const gui = setup.config.emulators.gui || {};
-        setup.config.emulators.gui = gui;
+    const uiDesc = Constants.description(Emulators.UI);
+    if (setup.config.emulators.ui && setup.config.emulators.ui.enabled !== false) {
+      const currentPort = setup.config.emulators.ui.port || "(automatic)";
+      utils.logBullet(`${uiDesc} already enabled with port: ${clc.cyan(currentPort)}`);
+    } else {
+      const ui = setup.config.emulators.ui || {};
+      setup.config.emulators.ui = ui;
 
-        await prompt(gui, [
+      await prompt(ui, [
+        {
+          name: "enabled",
+          type: "confirm",
+          message: `Would you like to enable the ${uiDesc}?`,
+          default: true,
+        },
+      ]);
+
+      if (ui.enabled) {
+        await prompt(ui, [
           {
-            name: "enabled",
-            type: "confirm",
-            message: "Would you like to enable the Emulator GUI?",
-            default: true,
+            type: "number",
+            name: "port",
+            message: `Which port do you want to use for the ${clc.underline(
+              uiDesc
+            )} (leave empty to use any available port)?`,
           },
         ]);
-
-        if (gui.enabled) {
-          await prompt(gui, [
-            {
-              type: "input",
-              name: "port",
-              message: `Which port do you want to use for the ${clc.underline(
-                "Emulator GUI"
-              )} (leave empty to use any available port)?`,
-            },
-          ]);
-          if (!gui.port) {
-            // Don't write `port: ""` into the config file.
-            delete gui.port;
-          }
+        if (!ui.port) {
+          // Don't write `port: ""` into the config file.
+          delete ui.port;
         }
       }
     }
@@ -107,6 +105,10 @@ export async function doSetup(setup: any, config: any) {
       if (isDownloadableEmulator(selected)) {
         await downloadIfNecessary(selected);
       }
+    }
+
+    if (_.get(setup, "config.emulators.ui.enabled")) {
+      downloadIfNecessary(Emulators.UI);
     }
   }
 }

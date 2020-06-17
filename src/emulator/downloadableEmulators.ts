@@ -27,44 +27,40 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.4.1.jar"),
-    version: "4.4.1",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.5.0.jar"),
+    version: "4.5.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.4.1.jar",
-      expectedSize: 27926960,
-      expectedChecksum: "ca39f25810a0943caec07fe6b8c1eb3e",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.5.0.jar",
+      expectedSize: 28311004,
+      expectedChecksum: "1723857023077462f4b807922b1342f2",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.3.jar"),
-    version: "1.11.3",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.4.jar"),
+    version: "1.11.4",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.3.jar",
-      expectedSize: 63384036,
-      expectedChecksum: "6ce2af3b5c1b70cb1ff78db5df382b49",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.4.jar",
+      expectedSize: 63915084,
+      expectedChecksum: "53a1e2ee7b8a2b26a46f50167dcf4962",
       namePrefix: "cloud-firestore-emulator",
     },
   },
-  gui: {
-    version: "0.0.0",
-    downloadPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP.zip"),
-    unzipDir: path.join(CACHE_DIR, "gui-v0.0.0-EAP"),
-    binaryPath: path.join(CACHE_DIR, "gui-v0.0.0-EAP", `server.bundle.js`),
+  ui: {
+    version: "1.0.0",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.0.0.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.0.0"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.0.0", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/gui-vEAP.zip?_=" +
-        new Date().getTime(),
-      expectedSize: -1,
-      expectedChecksum: "",
-      namePrefix: "gui",
-      skipChecksumAndSize: true,
-      skipCache: true,
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.0.0.zip",
+      expectedSize: 3176654,
+      expectedChecksum: "5381640c543b2adb53d075ac1ab5cc28",
+      namePrefix: "ui",
     },
   },
   pubsub: {
@@ -103,8 +99,8 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
     instance: null,
     stdout: null,
   },
-  gui: {
-    name: Emulators.GUI,
+  ui: {
+    name: Emulators.UI,
     instance: null,
     stdout: null,
   },
@@ -136,9 +132,9 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
     optionalArgs: ["port", "host"],
     joinArgs: true,
   },
-  gui: {
+  ui: {
     binary: "node",
-    args: [getExecPath(Emulators.GUI)],
+    args: [getExecPath(Emulators.UI)],
     optionalArgs: [],
     joinArgs: false,
   },
@@ -149,7 +145,7 @@ function getExecPath(name: DownloadableEmulators): string {
   return details.binaryPath || details.downloadPath;
 }
 
-function _getLogFileName(name: string): string {
+export function getLogFileName(name: string): string {
   return `${name}-debug.log`;
 }
 
@@ -203,9 +199,6 @@ function _getCommand(
 }
 
 function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
-  if (emulator.instance) {
-    emulator.instance.kill("SIGINT");
-  }
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
@@ -216,7 +209,7 @@ async function _runBinary(
 ): Promise<void> {
   return new Promise((resolve) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
-    emulator.stdout = fs.createWriteStream(_getLogFileName(emulator.name));
+    emulator.stdout = fs.createWriteStream(getLogFileName(emulator.name));
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
@@ -246,7 +239,7 @@ async function _runBinary(
     logger.logLabeled(
       "BULLET",
       emulator.name,
-      `${description} logging to ${clc.bold(_getLogFileName(emulator.name))}`
+      `${description} logging to ${clc.bold(getLogFileName(emulator.name))}`
     );
 
     emulator.instance.stdout.on("data", (data) => {
@@ -256,6 +249,14 @@ async function _runBinary(
     emulator.instance.stderr.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
+
+      if (data.toString().includes("java.lang.UnsupportedClassVersionError")) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          "Unsupported java version, make sure java --version reports 1.8 or higher."
+        );
+      }
     });
 
     emulator.instance.on("error", (err: any) => {

@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorLog, Emulators } from "./types";
 import { tryParse } from "../utils";
-import { LogData, LogDataOrUndefined } from "./loggingEmulator";
+import { LogData } from "./loggingEmulator";
 
 /**
  * DEBUG - lowest level, not needed for most usages.
@@ -175,8 +175,8 @@ export class EmulatorLogger {
         break;
       case "functions-config-missing-value":
         this.log(
-          "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+          "WARN_ONCE",
+          `It looks like you're trying to access functions.config().${systemLog.data.key} but there is no value there. You can learn more about setting up config here: https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":

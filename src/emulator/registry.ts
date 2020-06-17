@@ -1,10 +1,7 @@
-import * as clc from "cli-color";
-
 import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
-import * as controller from "./controller";
+import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
-import { EmulatorLogger } from "./emulatorLogger";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -23,14 +20,8 @@ export class EmulatorRegistry {
     await instance.start();
 
     const info = instance.getInfo();
-    await controller.waitForPortClosed(info.port, info.host);
+    await portUtils.waitForPortClosed(info.port, info.host);
     this.set(instance.getName(), instance);
-
-    EmulatorLogger.forEmulator(instance.getName()).logLabeled(
-      "SUCCESS",
-      instance.getName(),
-      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-    );
   }
 
   static async stop(name: Emulators): Promise<void> {

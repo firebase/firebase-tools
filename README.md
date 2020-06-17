@@ -176,7 +176,7 @@ The Firebase CLI can also be used programmatically as a standard Node module. Ea
 
 ```js
 var client = require("firebase-tools");
-client
+client.projects
   .list()
   .then(function(data) {
     console.log(data);
@@ -194,6 +194,24 @@ client
   })
   .then(function() {
     console.log("Rules have been deployed!");
+  })
+  .catch(function(err) {
+    // handle error
+  });
+```
+
+Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
+provide any positional arguments as strings followed by an object containing the options:
+
+```js
+var client = require("firebase-tools");
+client
+  .use("projectId", {
+    // Equivalent to --add when using the CLI
+    add: true,
+  })
+  .then(function(data) {
+    console.log(data);
   })
   .catch(function(err) {
     // handle error

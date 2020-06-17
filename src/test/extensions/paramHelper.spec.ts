@@ -72,18 +72,14 @@ const SPEC = {
 
 describe("paramHelper", () => {
   describe("getParams", () => {
-    let fsStub: sinon.SinonStub;
     let dotenvStub: sinon.SinonStub;
-    let getFirebaseVariableStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
     let loggerSpy: sinon.SinonSpy;
 
     beforeEach(() => {
-      fsStub = sinon.stub(fs, "readFileSync").returns("");
+      sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
-      getFirebaseVariableStub = sinon
-        .stub(extensionsHelper, "getFirebaseProjectParams")
-        .resolves({ PROJECT_ID });
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
     });
@@ -124,7 +120,7 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "aValue",
       });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(
         FirebaseError,
@@ -140,7 +136,7 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -151,7 +147,7 @@ describe("paramHelper", () => {
     it("should throw FirebaseError if an invalid envFilePath is provided", async () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
@@ -266,12 +262,10 @@ describe("paramHelper", () => {
 
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
-    let getFirebaseVariableStub: sinon.SinonStub;
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      getFirebaseVariableStub = sinon
-        .stub(extensionsHelper, "getFirebaseProjectParams")
-        .resolves({ PROJECT_ID });
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
     });
 
     afterEach(() => {

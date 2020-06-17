@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as ora from "ora";
 
-import { firebaseStorageOrigin } from "../api";
+import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
@@ -15,7 +15,6 @@ import {
   createSource,
   getInstance,
   ExtensionSource,
-  ExtensionSpec,
   getSource,
   Param,
   ParamType,
@@ -37,7 +36,10 @@ export enum SpecParamType {
 }
 
 export const logPrefix = "extensions";
-const urlRegex = /^http[s]?:\/\/.*\.zip$/;
+// Extension archive URLs follow this format: {GITHUB_ARCHIVE_URL}#{EXTENSION_ROOT},
+// e.g. https://github.com/firebase/extensions/archive/next.zip#extensions-next/delete-user-data.
+// EXTENSION_ROOT is optional for single-extension archives and required for multi-extension archives.
+export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)(#.*)?$/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
@@ -94,11 +96,16 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
  */
 export function substituteParams(original: object[], params: { [key: string]: string }): Param[] {
   const startingString = JSON.stringify(original);
-  const reduceFunction = (intermediateResult: string, paramVal: string, paramKey: string) => {
-    const regex = new RegExp("\\$\\{" + paramKey + "\\}", "g");
-    return intermediateResult.replace(regex, paramVal);
+  const applySubstitution = (str: string, paramVal: string, paramKey: string): string => {
+    const exp1 = new RegExp("\\$\\{" + paramKey + "\\}", "g");
+    const exp2 = new RegExp("\\$\\{param:" + paramKey + "\\}", "g");
+    const regexes = [exp1, exp2];
+    const substituteRegexMatches = (unsubstituted: string, regex: RegExp): string => {
+      return unsubstituted.replace(regex, paramVal);
+    };
+    return _.reduce(regexes, substituteRegexMatches, str);
   };
-  return JSON.parse(_.reduce(params, reduceFunction, startingString));
+  return JSON.parse(_.reduce(params, applySubstitution, startingString));
 }
 
 /**
@@ -306,7 +313,10 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
  * @returns the path where the source was uploaded to
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
-  const zippedSource = await archiveDirectory(extPath, { type: "zip", ignore: ["node_modules"] });
+  const zippedSource = await archiveDirectory(extPath, {
+    type: "zip",
+    ignore: ["node_modules", ".git"],
+  });
   return await uploadObject(zippedSource, bucketName);
 }
 
@@ -329,7 +339,7 @@ export async function createSourceFromLocation(
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
       uploadSpinner.succeed(" Uploaded extension source code");
-      packageUri = firebaseStorageOrigin + objectPath + "?alt=media";
+      packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
     } catch (err) {
       uploadSpinner.fail();

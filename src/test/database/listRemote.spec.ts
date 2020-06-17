@@ -3,7 +3,6 @@ import * as nock from "nock";
 
 import * as utils from "../../utils";
 import * as api from "../../api";
-import * as helpers from "../helpers";
 import { RTDBListRemote } from "../../database/listRemote";
 
 describe("ListRemote", () => {

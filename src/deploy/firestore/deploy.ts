@@ -43,7 +43,7 @@ async function deployIndexes(context: any, options: any): Promise<void> {
 
   const fieldOverrides = indexesSrc.fieldOverrides || [];
 
-  await new FirestoreIndexes().deploy(options.project, indexes, fieldOverrides);
+  await new FirestoreIndexes().deploy(options, indexes, fieldOverrides);
   utils.logSuccess(
     `${clc.bold.green("firestore:")} deployed indexes in ${clc.bold(indexesFileName)} successfully`
   );

@@ -59,6 +59,19 @@ module.exports = async function(options) {
         process.exit();
       }
 
+      var initializeContext = function(context) {
+        _.forEach(emulator.triggers, function(trigger) {
+          if (_.includes(emulator.emulatedFunctions, trigger.name)) {
+            var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
+            var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
+            _.set(context, triggerNameDotNotation, localFunction.call);
+          }
+        });
+        context.help =
+          "Instructions for the Functions Shell can be found at: " +
+          "https://firebase.google.com/docs/functions/local-emulator";
+      };
+
       for (const e of runningEmulators) {
         const info = remoteEmulators[e];
         utils.logLabeledBullet(
@@ -90,20 +103,11 @@ module.exports = async function(options) {
         writer: writer,
         useColors: true,
       });
-      _.forEach(emulator.triggers, function(trigger) {
-        if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-          var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
-          var triggerNameDotNotation = trigger.name.replace(/\-/g, ".");
-          _.set(replServer.context, triggerNameDotNotation, localFunction.call);
-        }
-      });
-      replServer.context.help =
-        "Instructions for the Functions Shell can be found at: " +
-        "https://firebase.google.com/docs/functions/local-emulator";
-    })
-    .then(function() {
+      initializeContext(replServer.context);
+      replServer.on("reset", initializeContext);
+
       return new Promise(function(resolve) {
-        process.on("SIGINT", function() {
+        replServer.on("exit", function() {
           return serveFunctions
             .stop()
             .then(resolve)

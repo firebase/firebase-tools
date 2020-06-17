@@ -10,7 +10,7 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
-import { LogData, LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -87,7 +87,7 @@ export function getDatabaseViewDataUrl(
   if (urlObj.hostname.includes("firebaseio.com")) {
     return consoleUrl(namespace, "/database/data" + pathname);
   } else {
-    // TODO(samstern): View in GUI
+    // TODO(samstern): View in Emulator UI
     return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
 }

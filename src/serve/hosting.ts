@@ -50,7 +50,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     cwd: detectProjectRoot(options.cwd),
     stack: "strict",
     before: {
-      middleware: (req: Request, res: Response, next: NextFunction) => {
+      files: (req: Request, res: Response, next: NextFunction) => {
         // We do these in a single method to ensure order of operations
         morganMiddleware(req, res, () => {
           /*
