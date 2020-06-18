@@ -8,7 +8,7 @@ import { FirebaseError } from "../error";
 /**
  *  displayExtInstallInfo prints the extension info displayed when running ext:install.
  */
-export function displayExtInstallInfo(extensionName: string, source: ExtensionSource) : void {
+export function displayExtInstallInfo(extensionName: string, source: ExtensionSource): void {
   const lines = [];
   lines.push(`**Name**: ${source.spec.displayName}`);
   if (source.spec.author && source.spec.author.authorName) {
