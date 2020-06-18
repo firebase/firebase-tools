@@ -20,18 +20,18 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Extension Instance ID", "State", "Extension Version", "Create Time", "Update Time"],
+    head: ["Extension Instance ID", "Author", "State", "Extension Version", "Update Time"],
     style: { head: ["yellow"] },
-  });
 
+  });
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
-  sorted.forEach((instance) => {
+  sorted.forEach((instance) => {    
     table.push([
       _.last(instance.name.split("/")),
+      _.get(instance, "config.source.spec.author.authorName", ""),
       instance.state,
       _.get(instance, "config.source.spec.version", ""),
-      instance.createTime,
       instance.updateTime,
     ]);
   });
