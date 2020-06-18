@@ -178,6 +178,7 @@ export default new Command("ext:install [extensionName]")
       if (previews.extdev) {
         try {
           source = await createSourceFromLocation(projectId, extensionName);
+          displayExtInstallInfo(extensionName, source);
         } catch (err) {
           throw new FirebaseError(
             `Unable to find official extension named ${clc.bold(extensionName)}, ` +
