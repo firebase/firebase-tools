@@ -20,7 +20,7 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Extension Instance ID", "Author", "State", "Extension Version", "Update Time"],
+    head: ["Instance ID", "Author", "State", "Version", "Last update"],
     style: { head: ["yellow"] },
   });
   // Order instances newest to oldest.

@@ -66,6 +66,7 @@ describe("listExtensions", () => {
     const expected = [
       {
         name: "projects/my-test-proj/instances/image-resizer-1",
+        createTime: "2019-06-19T00:20:10.416947Z",
         updateTime: "2019-06-19T00:21:06.722782Z",
         state: "ACTIVE",
         config: {
