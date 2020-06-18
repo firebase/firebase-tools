@@ -5,10 +5,11 @@ import * as logger from "../logger";
 import * as marked from "marked";
 import { FirebaseError } from "../error";
 
-// displayExtInstallInfo prints the truncated extension info.
-// This UI is displayed when the consumer installs extension.
-export function displayExtInstallInfo(extensionName: string, source: ExtensionSource) {
-  let lines = [];
+/**
+ *  displayExtInstallInfo prints the extension info displayed when running ext:install.
+ */
+export function displayExtInstallInfo(extensionName: string, source: ExtensionSource) : void {
+  const lines = [];
   lines.push(`**Name**: ${source.spec.displayName}`);
   if (source.spec.author && source.spec.author.authorName) {
     lines.push(`**Author**: ${source.spec.author.authorName}`);
@@ -18,9 +19,9 @@ export function displayExtInstallInfo(extensionName: string, source: ExtensionSo
   }
   if (lines.length > 0) {
     utils.logLabeledBullet(logPrefix, `information about ${extensionName}:`);
-    let infoStr = lines.join("\n");
+    const infoStr = lines.join("\n");
     // Convert to markdown and convert any trailing newlines to a single newline.
-    let formatted = marked(infoStr).replace(/\n+$/, "\n");
+    const formatted = marked(infoStr).replace(/\n+$/, "\n");
     logger.info(formatted);
   } else {
     throw new FirebaseError(
