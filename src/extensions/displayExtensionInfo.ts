@@ -18,7 +18,10 @@ export function displayExtInstallInfo(extensionName: string, source: ExtensionSo
   }
   if (lines.length > 0) {
     utils.logLabeledBullet(logPrefix, `information about ${extensionName}:`);
-    logger.info(marked(lines.join("\n")));
+    let infoStr = lines.join("\n");
+    // Convert to markdown and convert any trailing newlines to a single newline.
+    let formatted = marked(infoStr).replace(/\n+$/, "\n");
+    logger.info(formatted);
   } else {
     throw new FirebaseError(
       "Error occurred during installation: cannot parse info from source spec",
