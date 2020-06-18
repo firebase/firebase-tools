@@ -47,9 +47,6 @@ export default new Command("ext:info <extensionName>")
     } else {
       lines.push(`**Name**: ${spec.displayName}`);
     }
-    if (spec.author && spec.author.authorName) {
-      lines.push(`**Author**: ${spec.author.authorName}`);
-    }
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);
     }
