@@ -12,7 +12,9 @@ export function displayExtInstallInfo(extensionName: string, source: ExtensionSo
   const lines = [];
   lines.push(`**Name**: ${source.spec.displayName}`);
   if (source.spec.author && source.spec.author.authorName) {
-    lines.push(`**Author**: ${source.spec.author.authorName}`);
+    const url = source.spec.author.url;
+    const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
+    lines.push(`**Author**: ${source.spec.author.authorName} ${urlMarkdown}`);
   }
   if (source.spec.description) {
     lines.push(`**Description**: ${source.spec.description}`);
