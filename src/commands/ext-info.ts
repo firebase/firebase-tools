@@ -48,7 +48,9 @@ export default new Command("ext:info <extensionName>")
       lines.push(`**Name**: ${spec.displayName}`);
     }
     if (spec.author && spec.author.authorName) {
-      lines.push(`**Author**: ${spec.author.authorName}`);
+      const url = spec.author.url;
+      const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
+      lines.push(`**Author**: ${spec.author.authorName} ${urlMarkdown}`);
     }
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);
