@@ -48,8 +48,8 @@ export default new Command("ext:info <extensionName>")
       lines.push(`**Name**: ${spec.displayName}`);
     }
 
-    const authorName = (spec.author && spec.author.authorName) ? spec.author.authorName : undefined
-    const url = (spec.author && spec.author.url) ? spec.author.url : undefined
+    const authorName = spec.author && spec.author.authorName ? spec.author.authorName : undefined;
+    const url = spec.author && spec.author.url ? spec.author.url : undefined;
     const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
     lines.push(`**Author**: ${authorName} ${urlMarkdown}`);
 

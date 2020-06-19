@@ -6,6 +6,7 @@ import { ExtensionInstance, listInstances } from "./extensionsApi";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import * as moment from "moment";
 
 export async function listExtensions(
   projectId: string
@@ -31,7 +32,7 @@ export async function listExtensions(
       _.get(instance, "config.source.spec.author.authorName", ""),
       instance.state,
       _.get(instance, "config.source.spec.version", ""),
-      instance.updateTime,
+      instance.updateTime ? moment(instance.updateTime).format("YYYY-MM-DD [T]HH:mm:ss") : "",
     ]);
   });
 
