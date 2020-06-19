@@ -47,11 +47,12 @@ export default new Command("ext:info <extensionName>")
     } else {
       lines.push(`**Name**: ${spec.displayName}`);
     }
-    if (spec.author && spec.author.authorName) {
-      const url = spec.author.url;
-      const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
-      lines.push(`**Author**: ${spec.author.authorName} ${urlMarkdown}`);
-    }
+
+    const authorName = (spec.author && spec.author.authorName) ? spec.author.authorName : undefined
+    const url = (spec.author && spec.author.url) ? spec.author.url : undefined
+    const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
+    lines.push(`**Author**: ${authorName} ${urlMarkdown}`);
+
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);
     }
