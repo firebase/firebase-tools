@@ -1,3 +1,1 @@
-- Makes `functions:shell` terminate the server together with the shell
-- Fixes issue where functions emulator would fail while looking for `tsconfig.json` (#2353)
 - Add experimental support for yarn@2 (#2198)
