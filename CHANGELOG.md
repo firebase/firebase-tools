@@ -1,0 +1,1 @@
+- Support the Firebase Hosting API's RE2-based header/rewrite feature.
