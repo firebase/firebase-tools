@@ -42,7 +42,7 @@ interface Release {
   type: ReleaseType;
 
   // The time at which the version is set to be public.
-  readonly releaseTime: Date;
+  readonly releaseTime: string;
 
   // Identifies the user who created the release.
   readonly releaseUser: ActingUser;
@@ -65,15 +65,15 @@ export interface Channel {
   readonly release: Release | undefined;
 
   // The time at which the channel was created.
-  readonly createTime: Date;
+  readonly createTime: string;
 
   // The time at which the channel was last updated.
-  readonly updateTime: Date;
+  readonly updateTime: string;
 
   // The time at which the channel will  be automatically deleted. If null,
   // the channel will not be automatically deleted. This field is present
   // in output whether set directly or via the `ttl` field.
-  readonly expireTime: Date;
+  readonly expireTime: string;
 
   // The number of previous releases to retain on the channel for rollback or
   // other purposes. Must be a number between 1-100. Defaults to 10 for new
@@ -89,6 +89,7 @@ export interface Channel {
  * @param project the project ID or number (can be provided `-`),
  * @param site the site for the channel.
  * @param channelId the specific channel ID.
+ * @return the channel, or null if the channel is not found.
  */
 export async function getChannel(
   project: string | number = "-",
