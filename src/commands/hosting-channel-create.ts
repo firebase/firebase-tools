@@ -13,11 +13,47 @@ import { logLabeledSuccess } from "../utils";
 
 const LOG_TAG = "hosting:channel";
 
+const DURATION_REGEX = /^([0-9]+)(h|d|m)$/;
+enum Duration {
+  MINUTE = 60 * 1000,
+  HOUR = 60 * 60 * 1000,
+  DAY = 24 * 60 * 60 * 1000,
+}
+const DURATIONS: { [d: string]: Duration } = {
+  m: Duration.MINUTE,
+  h: Duration.HOUR,
+  d: Duration.DAY,
+};
+const DEFAULT_DURATION = 7 * Duration.DAY;
+const MAX_DURATION = 30 * Duration.DAY;
+
+/*
+ * calculateExpireTTL returns the ms duration of the provided flag.
+ */
+function calculateExpireTTL(flag?: string): number {
+  const match = DURATION_REGEX.exec(flag || "");
+  if (!match) {
+    throw new FirebaseError(
+      `"expires" flag must be a duration string (e.g. 24h or 7d) at most 30d`
+    );
+  }
+  let d = 0;
+  try {
+    d = parseInt(match[1], 10) * DURATIONS[match[2]];
+  } catch (e) {
+    throw new FirebaseError(`Failed to parse provided expire time "${flag}": ${e}`);
+  }
+  if (d > MAX_DURATION) {
+    throw new FirebaseError(`"expires" flag may not be longer than 30d`);
+  }
+  return d;
+}
+
 export default new Command("hosting:channel:create [channelId]")
   .description("create a Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",
-    "duration string (e.g. 12h, 30d) for channel expiration, max 30d"
+    "duration string (e.g. 12h or 30d) for channel expiration, max 30d"
   )
   .option("--site <siteId>", "site for which to create the channel")
   .before(requireConfig)
@@ -31,17 +67,23 @@ export default new Command("hosting:channel:create [channelId]")
       const projectId = getProjectId(options);
       const site = options.site || (await getInstanceId(options));
 
-      // TODO: implement --expires.
+      let expireTTL = DEFAULT_DURATION;
       if (options.expires) {
-        throw new FirebaseError("expires is not yet implemented");
+        expireTTL = calculateExpireTTL(options.expires);
       }
 
-      const channel = await createChannel(projectId, site, channelId);
+      const channel = await createChannel(projectId, site, channelId, expireTTL);
 
       logger.info();
       logLabeledSuccess(
         LOG_TAG,
         `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+      );
+      logLabeledSuccess(
+        LOG_TAG,
+        `Channel ${bold(channelId)} will expire at ${bold(
+          new Date(channel.expireTime).toLocaleString()
+        )}.`
       );
       logLabeledSuccess(LOG_TAG, `Channel URL: ${channel.url}`);
       logger.info();

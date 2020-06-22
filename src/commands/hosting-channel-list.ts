@@ -30,7 +30,7 @@ export default new Command("hosting:channel:list")
       const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
       for (const channel of channels) {
         const channelId = channel.name.split("/").pop();
-        table.push([channelId, channel.updateTime, channel.url]);
+        table.push([channelId, new Date(channel.updateTime).toLocaleString(), channel.url]);
       }
 
       logger.info();
