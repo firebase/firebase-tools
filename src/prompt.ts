@@ -7,7 +7,7 @@ import { FirebaseError } from "./error";
  * Question type for inquirer. See
  * https://www.npmjs.com/package/inquirer#question
  */
-export type Question = inquirer.Question;
+export type DistinctQuestion = inquirer.DistinctQuestion;
 
 /**
  * prompt is used to prompt the user for values. Specifically, any `name` of a
@@ -21,7 +21,7 @@ export type Question = inquirer.Question;
  * @param questions `Question`s to ask the user.
  * @return The answers, keyed by the `name` of the `Question`.
  */
-export async function prompt(options: { [key: string]: any }, questions: Question[]): Promise<any> {
+export async function prompt(options: { [key: string]: any }, questions: DistinctQuestion[]): Promise<any> {
   const prompts = [];
   for (const question of questions) {
     if (question.name && options[question.name] === undefined) {
@@ -53,7 +53,7 @@ export async function prompt(options: { [key: string]: any }, questions: Questio
  * @param question The question (of life, the universe, and everything).
  * @return The value as returned by `inquirer` for that quesiton.
  */
-export async function promptOnce(question: Question): Promise<any> {
+export async function promptOnce(question: DistinctQuestion): Promise<any> {
   question.name = question.name || "question";
   const answers = await prompt({}, [question]);
   return answers[question.name];

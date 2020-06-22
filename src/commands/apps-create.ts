@@ -15,11 +15,11 @@ import {
   IosAppMetadata,
   WebAppMetadata,
 } from "../management/apps";
-import { prompt, promptOnce, Question } from "../prompt";
+import { prompt, promptOnce, DistinctQuestion } from "../prompt";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
-const DISPLAY_NAME_QUESTION: Question = {
+const DISPLAY_NAME_QUESTION: DistinctQuestion = {
   type: "input",
   name: "displayName",
   default: "",

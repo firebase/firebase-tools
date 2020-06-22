@@ -24,7 +24,7 @@ describe("prompt", () => {
   describe("prompt", () => {
     it("should error if questions are asked in nonInteractive environment", async () => {
       const o = { nonInteractive: true };
-      const qs: prompt.Question[] = [{ name: "foo" }];
+      const qs: prompt.DistinctQuestion[] = [{ name: "foo" }];
 
       await expect(prompt.prompt(o, qs)).to.be.rejectedWith(
         FirebaseError,
@@ -33,7 +33,7 @@ describe("prompt", () => {
     });
 
     it("should utilize inquirer to prompt for the questions", async () => {
-      const qs: prompt.Question[] = [
+      const qs: prompt.DistinctQuestion[] = [
         {
           name: "foo",
           message: "this is a test",
@@ -47,7 +47,7 @@ describe("prompt", () => {
 
     it("should add the new values to the options object", async () => {
       const options = { hello: "world" };
-      const qs: prompt.Question[] = [
+      const qs: prompt.DistinctQuestion[] = [
         {
           name: "foo",
           message: "this is a test",

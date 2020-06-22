@@ -15,11 +15,10 @@ module.exports = {
       options.config.get("functions.source")
     );
 
-    args = {
-      projectId,
-      functionsDir,
-      ...args,
-    };
+    // This should always be a no-op but it's necessary because
+    // we have some poorly typed tests.
+    args.projectId = args.projectId || projectId;
+    args.functionsDir = args.functionsDir || functionsDir;
 
     if (options.host) {
       args.host = options.host;

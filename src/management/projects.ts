@@ -6,7 +6,7 @@ import * as _ from "lodash";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import { pollOperation } from "../operation-poller";
-import { Question } from "inquirer";
+import { Question, DistinctQuestion } from "inquirer";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
@@ -51,7 +51,7 @@ export interface ProjectParentResource {
   type: ProjectParentResourceType;
 }
 
-export const PROJECTS_CREATE_QUESTIONS: Question[] = [
+export const PROJECTS_CREATE_QUESTIONS: DistinctQuestion[] = [
   {
     type: "input",
     name: "projectId",
