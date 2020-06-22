@@ -42,9 +42,15 @@ function noOp(): false {
   return false;
 }
 
-// See:
-// https://github.com/nuxt-contrib/create-require/blob/master/create-require.js
-function createRequire(filename: string) {
+/**
+ * When using yarn2, PnP tells us where the package is located but a regular "require()"
+ * call won't work, at least not on Node 8/10/12. This function creates a function
+ * which can be used like "require()" but with support for PnP.
+ *
+ * This hack is stolen from a Nuxt library which was recommended to me by the yarn2 team:
+ * https://github.com/nuxt-contrib/create-require/blob/master/create-require.js
+ */
+function createRequire(filename: string): Function {
   const mod = new nativeModule.Module(filename, null);
   mod.filename = filename;
   mod.paths = nativeModule.Module._nodeModulePaths(path.dirname(filename));
@@ -52,14 +58,23 @@ function createRequire(filename: string) {
   return mod.exports;
 }
 
+/**
+ * Require a node module from a developer's workspace in a way that is yarn2 safe.
+ */
 function safeRequire(frb: FunctionsRuntimeBundle, name: string): any {
   // eslint-disable-next-line
   // @ts-ignore
   if (process.env.USE_YARN_TWO && process.versions.pnp) {
+    // This module is available to use whenever process.versions.pnp is set.
+    // This is one of the only places in this codebase where we can/should use
+    // a native "require()" call.
     const pnpapi = require(require.resolve("pnpapi", {
       paths: [frb.cwd],
     }));
 
+    // PnP tells us where the module is and then we use the "createRequire"
+    // hack to actually load it. Normally this is done automatically by "yarn node"
+    // but we have to do it ourselves.
     const resolved = pnpapi.resolveRequest(name, frb.cwd);
     return createRequire(frb.cwd)(resolved);
   }

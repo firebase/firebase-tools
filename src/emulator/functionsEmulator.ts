@@ -629,6 +629,11 @@ export class FunctionsEmulator implements EmulatorInstance {
       args.unshift(`--inspect=${host}:${this.args.debugPort}`);
     }
 
+    // See: https://classic.yarnpkg.com/en/docs/pnp/
+    // Yarn 2 has a new feature called PnP (Plug N Play) which aims to completely take over
+    // module resolution. Instead of node just searching up the tree for a node_modules
+    // directory with a certain subdirectory, yarn tells node where the modules can be found.
+    // We can look for a ".pnp.js" file at the project root to determine if this is in use.
     const pnpPath = path.join(frb.cwd, ".pnp.js");
     if (fs.existsSync(pnpPath)) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
@@ -636,6 +641,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         "functions",
         "Detected yarn@2 with pnp. Note that yarn suport is experimental and some things may break."
       );
+
+      // See: https://classic.yarnpkg.com/en/docs/pnp/troubleshooting/
+      // Since we don't want to use "yarn node" as our executable, this is how we tell
+      // the Node runtime we want PnP to be available.
       args.unshift(`--require=${pnpPath}`);
 
       opts.env = opts.env || {};
