@@ -979,8 +979,6 @@ function SetWindowTitle(title) {
    */
   if (isWindows) {
     process.title = title;
-  } else {
-    process.stdout.write(String.fromCharCode(27) + "]0;" + title + String.fromCharCode(7));
   }
 }
 
