@@ -84,6 +84,19 @@ var _appendQueryData = function(path, data) {
   return path;
 };
 
+var _realtimeOriginOrEmulatorOrCustomUrl = function(customUrl) {
+  return utils.envOverride(
+    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
+    utils.envOverride("FIREBASE_REALTIME_URL", customUrl),
+    (val) => {
+      if (val.startsWith("http")) {
+        return val;
+      }
+      return `http://${val}`;
+    }
+  );
+};
+
 var api = {
   // "In this context, the client secret is obviously not treated as a secret"
   // https://developers.google.com/identity/protocols/OAuth2InstalledApp
@@ -147,9 +160,12 @@ var api = {
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: this.realtimeOriginOrEmulatorOrCustomUrl("https://firebaseio.com"),
+  realtimeOriginOrEmulator: _realtimeOriginOrEmulatorOrCustomUrl("https://firebaseio.com"),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
-  rtdbManagementOrigin: utils.envOverride("FIREBASE_RTDB_MANAGEMENT_URL", "https://firebasedatabase.googleapis.com"),
+  rtdbManagementOrigin: utils.envOverride(
+    "FIREBASE_RTDB_MANAGEMENT_URL",
+    "https://firebasedatabase.googleapis.com"
+  ),
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
@@ -177,18 +193,6 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
-  realtimeOriginOrEmulatorOrCustomUrl: function(customUrl) {
-    return utils.envOverride(
-      Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-      utils.envOverride("FIREBASE_REALTIME_URL", customUrl),
-      (val) => {
-        if (val.startsWith("http")) {
-          return val;
-        }
-        return `http://${val}`;
-      }
-    )
-  },
   setRefreshToken: function(token) {
     refreshToken = token;
   },
