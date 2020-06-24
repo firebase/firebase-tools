@@ -7,7 +7,7 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 const MGMT_API_VERSION = "v1beta";
-const TIMEOUT_MILLIS = 30000;
+const TIMEOUT_MILLIS = 10000;
 const RTDB_INSTANCE_LIST_PAGE_SIZE = 100;
 
 export enum DatabaseInstanceType {
@@ -56,9 +56,10 @@ export async function getDatabaseInstanceDetails(
   } catch (err) {
     logger.debug(err.message);
     return utils.reject(
-      `Error while getting instance details for instance: ${instanceName} in project: ${projectId}. See firebase-debug.log for more details.`,
+      `Error while getting instance details for instance: ${instanceName}. See firebase-debug.log for more details.`,
       {
         code: 2,
+        original: err,
       }
     );
   }
