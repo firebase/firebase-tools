@@ -1,14 +1,12 @@
 /**
- * Package for interacting with Realtime Database Management APIs.
+ * Functions for interacting with Realtime Database Management APIs.
  */
 
 import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { FirebaseError } from "../error";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
-const RTDB_INSTANCE_LIST_PAGE_SIZE = 100;
 
 export enum DatabaseInstanceType {
   DATABASE_INSTANCE_TYPE_UNSPECIFIED = "unspecified",
@@ -31,12 +29,21 @@ export interface DatabaseInstance {
   state: DatabaseInstanceState;
 }
 
-export async function requireInstanceDetails(options: any): Promise<void> {
+/**
+ * Populate instanceDetails in commandOptions.
+ * @param options command options that will be modified to add instanceDetails.
+ */
+export async function populateInstanceDetails(options: any): Promise<void> {
   return getDatabaseInstanceDetails(options.projectId, options.instance).then((details) => {
     options.instanceDetails = details;
   });
 }
 
+/**
+ * Get details for a Realtime Database instance from the management API.
+ * @param projectId identifier for the user's project.
+ * @param instanceName name of the RTDB instance.
+ */
 export async function getDatabaseInstanceDetails(
   projectId: string,
   instanceName: string

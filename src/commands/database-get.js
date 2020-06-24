@@ -10,7 +10,7 @@ var logger = require("../logger");
 var { FirebaseError } = require("../error");
 var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-var { requireInstanceDetails } = require("../management/database");
+var { populateInstanceDetails } = require("../management/database");
 var utils = require("../utils");
 var _ = require("lodash");
 var fs = require("fs");
@@ -58,7 +58,7 @@ module.exports = new Command("database:get <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
-  .before(requireInstanceDetails)
+  .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
