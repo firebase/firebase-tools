@@ -9,8 +9,8 @@ import {
 } from "../../extensions/askUserForParam";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
-import { ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 
 describe("askUserForParam", () => {
   const testSpec = {
@@ -41,7 +41,7 @@ describe("askUserForParam", () => {
         })
       ).to.equal(false);
       expect(
-        logWarningSpy.calledWith("You are required to enter a value for this question")
+        logWarningSpy.calledWith(`Param param is required, but no value was provided.`)
       ).to.equal(true);
     });
 
@@ -55,8 +55,34 @@ describe("askUserForParam", () => {
           required: true,
         })
       ).to.equal(false);
-      const expectedWarning = `123 is not a valid answer since it does not fit the regular expression "foo"`;
+      const expectedWarning = `123 is not a valid value for param since it does not meet the requirements of the regex validation: "foo"`;
       expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
+    });
+
+    it("should return false if regex validation fails on an optional param that is not empty", () => {
+      expect(
+        checkResponse("123", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.STRING,
+          validationRegex: "foo",
+          required: false,
+        })
+      ).to.equal(false);
+      const expectedWarning = `123 is not a valid value for param since it does not meet the requirements of the regex validation: "foo"`;
+      expect(logWarningSpy.calledWith(expectedWarning)).to.equal(true);
+    });
+
+    it("should return true if no value is passed for an optional param", () => {
+      expect(
+        checkResponse("", {
+          param: "param",
+          label: "fill in the blank!",
+          type: ParamType.STRING,
+          validationRegex: "foo",
+          required: false,
+        })
+      ).to.equal(true);
     });
 
     it("should use custom validation error message if provided", () => {
@@ -139,39 +165,14 @@ describe("askUserForParam", () => {
         })
       ).to.equal(true);
     });
-
-    it("should return false if regex validation fails for one of the choices picked", () => {
-      expect(
-        checkResponse("123,345,abc", {
-          param: "param",
-          label: "pick multiple!",
-          type: ParamType.MULTISELECT,
-          options: [{ value: "123" }, { value: "345" }, { value: "abc" }],
-          validationRegex: `^\\d{3}$`,
-          required: true,
-        })
-      ).to.equal(false);
-      const expectedWarning = `abc is not a valid answer since it does not fit the regular expression "^\\d{3}$"`;
-      expect(logWarningSpy.called).to.equal(true);
-    });
-
-    it("should return true if regex validation passes for all of the choices picked", () => {
-      expect(
-        checkResponse("123,345,567", {
-          param: "param",
-          label: "pick multiple!",
-          type: ParamType.MULTISELECT,
-          options: [{ value: "123" }, { value: "345" }, { value: "567" }],
-          validationRegex: `^\\d{3}$`,
-          required: true,
-        })
-      ).to.equal(true);
-    });
   });
 
   describe("getInquirerDefaults", () => {
     it("should return the label of the option whose value matches the default", () => {
-      const options = [{ label: "lab", value: "val" }, { label: "lab1", value: "val1" }];
+      const options = [
+        { label: "lab", value: "val" },
+        { label: "lab1", value: "val1" },
+      ];
       const def = "val1";
 
       const res = getInquirerDefault(options, def);
@@ -222,7 +223,7 @@ describe("askUserForParam", () => {
     let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
-      subVarSpy = sinon.spy(modsHelper, "substituteParams");
+      subVarSpy = sinon.spy(extensionsHelper, "substituteParams");
       promptStub = sinon.stub(prompt, "promptOnce");
       promptStub.returns("ValidName");
     });

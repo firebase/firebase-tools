@@ -3,20 +3,16 @@ import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functions
 export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;
 
-const cwd = findModuleRoot("firebase-tools", __dirname);
+export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
 export const FunctionRuntimeBundles = {
-  template: {
-    ports: {},
-    cwd,
-    triggerId: "function_id",
-    projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-
   onCreate: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
-    cwd,
+    cwd: MODULE_ROOT,
     proto: {
       data: {
         value: {
@@ -46,10 +42,13 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onWrite: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
-    cwd,
+    cwd: MODULE_ROOT,
     proto: {
       data: {
         value: {
@@ -79,10 +78,13 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onDelete: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
-    cwd,
+    cwd: MODULE_ROOT,
     proto: {
       data: {
         oldValue: {
@@ -112,10 +114,13 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onUpdate: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
-    cwd,
+    cwd: MODULE_ROOT,
     proto: {
       data: {
         oldValue: {
@@ -157,10 +162,13 @@ export const FunctionRuntimeBundles = {
   } as FunctionsRuntimeBundle,
 
   onRequest: {
-    ports: {
-      firestore: 8080,
+    emulators: {
+      firestore: {
+        host: "localhost",
+        port: 8080,
+      },
     },
-    cwd,
+    cwd: MODULE_ROOT,
     triggerId: "function_id",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,

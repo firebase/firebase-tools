@@ -1,14 +1,12 @@
-import * as _ from "lodash";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as request from "request";
 import * as clc from "cli-color";
 import * as path from "path";
-import * as pf from "portfinder";
 
+import * as api from "../api";
 import * as utils from "../utils";
-import * as javaEmulators from "../serve/javaEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
+import * as downloadableEmulators from "./downloadableEmulators";
+import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
@@ -20,11 +18,10 @@ export interface FirestoreEmulatorArgs {
   rules?: string;
   functions_emulator?: string;
   auto_download?: boolean;
-  webchannel_port?: number;
+  seed_from_export?: string;
 }
 
 export class FirestoreEmulator implements EmulatorInstance {
-  static FIRESTORE_EMULATOR_ENV = "FIRESTORE_EMULATOR_HOST";
   static FIRESTORE_EMULATOR_ENV_ALT = "FIREBASE_FIRESTORE_EMULATOR_ADDRESS";
 
   rulesWatcher?: chokidar.FSWatcher;
@@ -32,23 +29,29 @@ export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: FirestoreEmulatorArgs) {}
 
   async start(): Promise<void> {
-    const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
-    if (functionsPort) {
-      this.args.functions_emulator = `localhost:${functionsPort}`;
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator = `${functionsInfo.host}:${functionsInfo.port}`;
     }
 
     if (this.args.rules && this.args.projectId) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
+        // There have been some race conditions reported (on Windows) where reading the
+        // file too quickly after the watcher fires results in an empty file being read.
+        // Adding a small delay prevents that at very little cost.
+        await new Promise((res) => setTimeout(res, 5));
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
         const issues = await this.updateRules(newContent);
-        if (issues && issues.length > 0) {
+        if (issues) {
           for (const issue of issues) {
             utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
           }
+        }
+        if (issues.some((issue) => issue.severity === Severity.ERROR)) {
           utils.logWarning("Failed to update rules");
         } else {
           utils.logLabeledSuccess("firestore", "Rules updated.");
@@ -56,43 +59,19 @@ export class FirestoreEmulator implements EmulatorInstance {
       });
     }
 
-    // Find a port for WebChannel traffic
-    const host = this.getInfo().host;
-    const basePort = this.getInfo().port;
-    const port = basePort + 1;
-    const stopPort = port + 10;
-    try {
-      const webChannelPort = await pf.getPortPromise({
-        port,
-        stopPort,
-      });
-      this.args.webchannel_port = webChannelPort;
-
-      utils.logLabeledBullet(
-        "firestore",
-        `Serving WebChannel traffic on at ${clc.bold(`http://${host}:${webChannelPort}`)}`
-      );
-    } catch (e) {
-      utils.logLabeledWarning(
-        "firestore",
-        `Not serving WebChannel traffic, unable to find an open port in range ${port}:${stopPort}]`
-      );
-    }
-
-    return javaEmulators.start(Emulators.FIRESTORE, this.args);
+    return downloadableEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
-  async connect(): Promise<void> {
-    // The Firestore emulator has no "connect" phase.
+  connect(): Promise<void> {
     return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     if (this.rulesWatcher) {
       this.rulesWatcher.close();
     }
 
-    return javaEmulators.stop(Emulators.FIRESTORE);
+    return downloadableEmulators.stop(Emulators.FIRESTORE);
   }
 
   getInfo(): EmulatorInfo {
@@ -113,7 +92,6 @@ export class FirestoreEmulator implements EmulatorInstance {
     const projectId = this.args.projectId;
 
     const { host, port } = this.getInfo();
-    const url = `http://${host}:${port}/emulator/v1/projects/${projectId}:securityRules`;
     const body = {
       // Invalid rulesets will still result in a 200 response but with more information
       ignore_errors: true,
@@ -127,22 +105,18 @@ export class FirestoreEmulator implements EmulatorInstance {
       },
     };
 
-    return new Promise((resolve, reject) => {
-      request.put(url, { json: body }, (err, res, resBody) => {
-        if (err) {
-          reject(err);
-          return;
+    return api
+      .request("PUT", `/emulator/v1/projects/${projectId}:securityRules`, {
+        origin: `http://${host}:${port}`,
+        data: body,
+      })
+      .then((res) => {
+        if (res.body && res.body.issues) {
+          return res.body.issues as Issue[];
         }
 
-        const rulesValid = res.statusCode === 200 && !resBody.issues;
-        if (!rulesValid) {
-          const issues = resBody.issues as Issue[];
-          resolve(issues);
-        }
-
-        resolve([]);
+        return [];
       });
-    });
   }
 
   /**

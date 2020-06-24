@@ -1,0 +1,35 @@
+{
+  "name": "firepit",
+  "version": "1.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "fmt": "prettier --write *.js",
+    "pkg": "pkg -c package.json firepit.js --out-path dist/ && shx chmod +x dist/firepit-*",
+    "ship": "gsutil -m cp dist/* gs://fir-tools-builds/firepit/ && gsutil iam ch allUsers:objectViewer gs://fir-tools-builds"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^2.4.2",
+    "npm": "^6.10.2",
+    "shelljs": "^0.8.3",
+    "shx": "^0.3.2",
+    "user-home": "^2.0.0"
+  },
+  "pkg": {
+    "scripts": [
+      "node_modules/npm/src/**/*.js"
+    ],
+    "assets": [
+      "node_modules/.bin/**",
+      "node_modules/npm/bin/**/*",
+      "node_modules/npm/node_modules/node-gyp/**/*",
+      "vendor/**"
+    ]
+  },
+  "devDependencies": {
+    "pkg": "^4.4.2",
+    "prettier": "^1.15.3"
+  }
+}

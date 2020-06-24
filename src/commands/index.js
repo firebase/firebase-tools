@@ -1,6 +1,6 @@
 "use strict";
 
-var previews = require("../previews"); //eslint-disable-line
+const previews = require("../previews").previews;
 
 module.exports = function(client) {
   var loadCommand = function(name) {
@@ -13,10 +13,17 @@ module.exports = function(client) {
     return cmd.runner();
   };
 
+  client.appdistribution = {};
+  client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.apps = {};
-  client.apps.list = loadCommand("apps-list");
   client.apps.create = loadCommand("apps-create");
+  client.apps.list = loadCommand("apps-list");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
+  client.apps.android = {};
+  client.apps.android.sha = {};
+  client.apps.android.sha.list = loadCommand("apps-android-sha-list");
+  client.apps.android.sha.create = loadCommand("apps-android-sha-create");
+  client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");
@@ -28,6 +35,14 @@ module.exports = function(client) {
   client.database.profile = loadCommand("database-profile");
   client.database.push = loadCommand("database-push");
   client.database.remove = loadCommand("database-remove");
+  if (previews.rtdbrules) {
+    client.database.rules = {};
+    client.database.rules.get = loadCommand("database-rules-get");
+    client.database.rules.list = loadCommand("database-rules-list");
+    client.database.rules.stage = loadCommand("database-rules-stage");
+    client.database.rules.canary = loadCommand("database-rules-canary");
+    client.database.rules.release = loadCommand("database-rules-release");
+  }
   client.database.set = loadCommand("database-set");
   client.database.settings = {};
   client.database.settings.get = loadCommand("database-settings-get");
@@ -36,10 +51,29 @@ module.exports = function(client) {
   client.deploy = loadCommand("deploy");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
+  client.emulators.export = loadCommand("emulators-export");
   client.emulators.start = loadCommand("emulators-start");
   client.experimental = {};
   client.experimental.functions = {};
   client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.ext = loadCommand("ext");
+  client.ext.configure = loadCommand("ext-configure");
+  client.ext.info = loadCommand("ext-info");
+  client.ext.install = loadCommand("ext-install");
+  client.ext.list = loadCommand("ext-list");
+  client.ext.uninstall = loadCommand("ext-uninstall");
+  client.ext.update = loadCommand("ext-update");
+  if (previews.ext) {
+    client.ext.sources = {};
+    client.ext.sources.create = loadCommand("ext-sources-create");
+  }
+  if (previews.extdev) {
+    client.ext.dev = {};
+    client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.emulators = {};
+    client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
+    client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+  }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
   client.firestore.indexes = loadCommand("firestore-indexes-list");
@@ -56,37 +90,25 @@ module.exports = function(client) {
   client.hosting = {};
   client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
-  client.list = loadCommand("list");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
   client.logout = loadCommand("logout");
   client.open = loadCommand("open");
   client.projects = {};
   client.projects.addfirebase = loadCommand("projects-addfirebase");
-  client.projects.list = loadCommand("projects-list");
   client.projects.create = loadCommand("projects-create");
+  client.projects.list = loadCommand("projects-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
-  client.setup.web = loadCommand("setup-web");
+  client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
-  client.tools = {};
-  client.tools.migrate = loadCommand("tools-migrate");
   client.use = loadCommand("use");
 
-  if (previews.mods || previews.ext) {
-    client.ext = loadCommand("ext");
-    client.ext.configure = loadCommand("ext-configure");
-    client.ext.info = loadCommand("ext-info");
-    client.ext.install = loadCommand("ext-install");
-    client.ext.list = loadCommand("ext-list");
-    client.ext.uninstall = loadCommand("ext-uninstall");
-    client.ext.update = loadCommand("ext-update");
-  }
   return client;
 };

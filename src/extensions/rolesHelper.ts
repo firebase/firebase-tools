@@ -1,9 +1,9 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
-import { Role } from "./modsApi";
+import { Role } from "./extensionsApi";
 import { iam } from "../gcp";
-import { getRandomString } from "./generateInstanceId";
+import { getRandomString } from "./utils";
 
 const API_VERSION = "v1";
 
@@ -28,6 +28,9 @@ export function grantRoles(
   rolesToRemove = rolesToRemove.map((role) => `roles/${role}`);
   return api
     .request("POST", utils.endpoint([API_VERSION, "projects", projectId, ":getIamPolicy"]), {
+      data: {
+        options: { requestedPolicyVersion: 3 },
+      },
       auth: true,
       origin: api.resourceManagerOrigin,
     })
@@ -60,10 +63,10 @@ export function grantRoles(
 }
 
 /**
- * Creates a new service account to use with an instance of ModSpec,
+ * Creates a new service account to use with an instance of ExtensionSpec,
  * then gives it the appropriate IAM policies, and returns the email
  *
- * @param source a ModSpec
+ * @param source a ExtensionSpec
  * @returns the email of the created service account
  */
 export async function createServiceAccountAndSetRoles(
@@ -95,6 +98,10 @@ export async function createServiceAccountAndSetRoles(
     }
     throw err;
   }
-  await grantRoles(projectId, serviceAccount.email, roles.map((role) => role.role));
+  await grantRoles(
+    projectId,
+    serviceAccount.email,
+    roles.map((role) => role.role)
+  );
   return serviceAccount.email;
 }

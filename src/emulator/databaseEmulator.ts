@@ -2,58 +2,82 @@ import * as chokidar from "chokidar";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as request from "request";
 
-import * as utils from "../utils";
-import * as javaEmulators from "../serve/javaEmulators";
+import * as api from "../api";
+import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
+import { EmulatorRegistry } from "./registry";
+import { EmulatorLogger } from "./emulatorLogger";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
   host?: string;
   projectId?: string;
-  rules?: string;
+  rules?: { rules: string; instance: string }[];
   functions_emulator_port?: number;
   functions_emulator_host?: string;
   auto_download?: boolean;
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
-  static DATABASE_EMULATOR_ENV = "FIREBASE_DATABASE_EMULATOR_HOST";
-
-  rulesWatcher?: chokidar.FSWatcher;
+  private rulesWatcher?: chokidar.FSWatcher;
+  private logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
 
   constructor(private args: DatabaseEmulatorArgs) {}
 
   async start(): Promise<void> {
-    if (this.args.rules && this.args.projectId) {
-      const rulesPath = this.args.rules;
-      this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath).toString();
-
-        utils.logLabeledBullet("database", "Change detected, updating rules...");
-        try {
-          await this.updateRules(newContent);
-          utils.logLabeledSuccess("database", "Rules updated.");
-        } catch (e) {
-          utils.logWarning(this.prettyPrintRulesError(rulesPath, e));
-          utils.logWarning("Failed to update rules");
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator_host = functionsInfo.host;
+      this.args.functions_emulator_port = functionsInfo.port;
+    }
+    if (this.args.rules) {
+      for (const c of this.args.rules) {
+        if (!c.instance) {
+          this.logger.log("DEBUG", `args.rules=${JSON.stringify(this.args.rules)}`);
+          this.logger.logLabeled(
+            "WARN_ONCE",
+            "database",
+            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled."
+          );
+          continue;
         }
-      });
+
+        const rulesPath = c.rules;
+        this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+        this.rulesWatcher.on("change", async (event, stats) => {
+          // There have been some race conditions reported (on Windows) where reading the
+          // file too quickly after the watcher fires results in an empty file being read.
+          // Adding a small delay prevents that at very little cost.
+          await new Promise((res) => setTimeout(res, 5));
+
+          this.logger.logLabeled(
+            "BULLET",
+            "database",
+            `Change detected, updating rules for ${c.instance}...`
+          );
+          const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+          try {
+            await this.updateRules(c.instance, newContent);
+            this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
+          } catch (e) {
+            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(rulesPath, e));
+            this.logger.logLabeled("WARN", "database", "Failed to update rules");
+          }
+        });
+      }
     }
 
-    return javaEmulators.start(Emulators.DATABASE, this.args);
+    return downloadableEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  async connect(): Promise<void> {
-    // The Database emulator has no "connect" phase.
+  connect(): Promise<void> {
     return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
-    return javaEmulators.stop(Emulators.DATABASE);
+  stop(): Promise<void> {
+    return downloadableEmulators.stop(Emulators.DATABASE);
   }
 
   getInfo(): EmulatorInfo {
@@ -70,26 +94,22 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
-  private updateRules(content: string): Promise<any> {
+  private async updateRules(instance: string, content: string): Promise<any> {
     const { host, port } = this.getInfo();
-    return new Promise((resolve, reject) => {
-      request.put(
-        {
-          uri: `http://${host}:${[port]}/.settings/rules.json?ns=${this.args.projectId}`,
-          headers: { Authorization: "Bearer owner" },
-          body: content,
-        },
-        (err, resp, body) => {
-          if (err) {
-            reject(err);
-          } else if (resp.statusCode !== 200) {
-            reject(JSON.parse(body).error);
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
+    try {
+      await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
+        origin: `http://${host}:${port}`,
+        headers: { Authorization: "Bearer owner" },
+        data: content,
+        json: false,
+      });
+    } catch (e) {
+      // The body is already parsed as JSON
+      if (e.context && e.context.body) {
+        throw e.context.body.error;
+      }
+      throw e.original;
+    }
   }
 
   private prettyPrintRulesError(filePath: string, error: string): string {

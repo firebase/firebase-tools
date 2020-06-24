@@ -6,8 +6,8 @@ import * as fs from "fs-extra";
 
 import { FirebaseError } from "../../error";
 import * as logger from "../../logger";
-import { ModInstance, ParamType } from "../../extensions/modsApi";
-import * as modsHelper from "../../extensions/modsHelper";
+import { ExtensionInstance, ParamType } from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as paramHelper from "../../extensions/paramHelper";
 import * as prompt from "../../prompt";
 
@@ -37,7 +37,7 @@ const TEST_PARAMS_2 = [
     param: "NEW_PARAMETER",
     label: "New Param",
     type: ParamType.STRING,
-    default: "default",
+    default: "${PROJECT_ID}",
   },
   {
     param: "THIRD_PARAMETER",
@@ -46,9 +46,24 @@ const TEST_PARAMS_2 = [
     default: "default",
   },
 ];
+const TEST_PARAMS_3 = [
+  {
+    param: "A_PARAMETER",
+    label: "Param",
+    type: ParamType.STRING,
+  },
+  {
+    param: "ANOTHER_PARAMETER",
+    label: "Another Param",
+    default: "default",
+    type: ParamType.STRING,
+    description: "Something new",
+  },
+];
 
 const SPEC = {
   name: "test",
+  version: "0.1.0",
   roles: [],
   resources: [],
   sourceUrl: "test.com",
@@ -57,18 +72,14 @@ const SPEC = {
 
 describe("paramHelper", () => {
   describe("getParams", () => {
-    let fsStub: sinon.SinonStub;
     let dotenvStub: sinon.SinonStub;
-    let getFirebaseVariableStub: sinon.SinonStub;
     let promptStub: sinon.SinonStub;
     let loggerSpy: sinon.SinonSpy;
 
     beforeEach(() => {
-      fsStub = sinon.stub(fs, "readFileSync").returns("");
+      sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
-      getFirebaseVariableStub = sinon
-        .stub(modsHelper, "getFirebaseProjectParams")
-        .resolves({ PROJECT_ID });
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
     });
@@ -109,7 +120,7 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "aValue",
       });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(
         FirebaseError,
@@ -125,7 +136,7 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -136,7 +147,7 @@ describe("paramHelper", () => {
     it("should throw FirebaseError if an invalid envFilePath is provided", async () => {
       dotenvStub.throws({ message: "Error during parsing" });
 
-      expect(
+      await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
       ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
     });
@@ -167,17 +178,18 @@ describe("paramHelper", () => {
 
   describe("getParamsWithCurrentValuesAsDefaults", () => {
     let params: { [key: string]: string };
-    let testInstance: ModInstance;
+    let testInstance: ExtensionInstance;
     beforeEach(() => {
       params = { A_PARAMETER: "new default" };
       testInstance = {
-        configuration: {
+        config: {
           source: {
             name: "",
             packageUri: "",
             hash: "",
             spec: {
               name: "",
+              version: "0.1.0",
               roles: [],
               resources: [],
               params: TEST_PARAMS,
@@ -203,26 +215,26 @@ describe("paramHelper", () => {
             param: "A_PARAMETER",
             label: "Param",
             default: "new default",
-            type: "STRING",
+            type: ParamType.STRING,
           },
           {
             param: "ANOTHER_PARAMETER",
             label: "Another",
             default: "default",
-            type: "STRING",
+            type: ParamType.STRING,
           },
         ]);
       });
     });
 
     it("should change existing defaults to the current state and leave other values unchanged", () => {
-      _.get(testInstance, "configuration.source.spec.params", []).push({
+      _.get(testInstance, "config.source.spec.params", []).push({
         param: "THIRD",
         label: "3rd",
         default: "default",
         type: ParamType.STRING,
       });
-      testInstance.configuration.params.THIRD = "New Default";
+      testInstance.config.params.THIRD = "New Default";
       const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
 
       expect(newParams).to.eql([
@@ -230,19 +242,19 @@ describe("paramHelper", () => {
           param: "A_PARAMETER",
           label: "Param",
           default: "new default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
         {
           param: "ANOTHER_PARAMETER",
           label: "Another Param",
           default: "default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
         {
           param: "THIRD",
           label: "3rd",
           default: "New Default",
-          type: "STRING",
+          type: ParamType.STRING,
         },
       ]);
     });
@@ -250,12 +262,14 @@ describe("paramHelper", () => {
 
   describe("promptForNewParams", () => {
     let promptStub: sinon.SinonStub;
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
     });
 
     afterEach(() => {
-      promptStub.restore();
+      sinon.restore();
     });
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
@@ -263,10 +277,15 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -277,7 +296,71 @@ describe("paramHelper", () => {
       expect(promptStub.callCount).to.equal(2);
       expect(promptStub.firstCall.args).to.eql([
         {
+          default: "test-proj",
+          message: "Enter a value for New Param:",
+          name: "NEW_PARAMETER",
+          type: "input",
+        },
+      ]);
+      expect(promptStub.secondCall.args).to.eql([
+        {
           default: "default",
+          message: "Enter a value for 3:",
+          name: "THIRD_PARAMETER",
+          type: "input",
+        },
+      ]);
+    });
+
+    it("should not prompt the user for params that did not change type or param", async () => {
+      promptStub.resolves("Fail");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_3;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        A_PARAMETER: "value",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub).not.to.have.been.called;
+    });
+
+    it("should populate the spec with the default value if it is returned by prompt", async () => {
+      promptStub.onFirstCall().resolves("test-proj");
+      promptStub.onSecondCall().resolves("user input");
+      const newSpec = _.cloneDeep(SPEC);
+      newSpec.params = TEST_PARAMS_2;
+
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
+
+      const expected = {
+        ANOTHER_PARAMETER: "value",
+        NEW_PARAMETER: "test-proj",
+        THIRD_PARAMETER: "user input",
+      };
+      expect(newParams).to.eql(expected);
+      expect(promptStub.callCount).to.equal(2);
+      expect(promptStub.firstCall.args).to.eql([
+        {
+          default: "test-proj",
           message: "Enter a value for New Param:",
           name: "NEW_PARAMETER",
           type: "input",
@@ -297,10 +380,15 @@ describe("paramHelper", () => {
       promptStub.resolves("Fail");
       const newSpec = _.cloneDeep(SPEC);
 
-      const newParams = await paramHelper.promptForNewParams(SPEC, newSpec, {
-        A_PARAMETER: "value",
-        ANOTHER_PARAMETER: "value",
-      });
+      const newParams = await paramHelper.promptForNewParams(
+        SPEC,
+        newSpec,
+        {
+          A_PARAMETER: "value",
+          ANOTHER_PARAMETER: "value",
+        },
+        PROJECT_ID
+      );
 
       const expected = {
         ANOTHER_PARAMETER: "value",
@@ -315,11 +403,16 @@ describe("paramHelper", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
-      expect(
-        paramHelper.promptForNewParams(SPEC, newSpec, {
-          A_PARAMETER: "value",
-          ANOTHER_PARAMETER: "value",
-        })
+      await expect(
+        paramHelper.promptForNewParams(
+          SPEC,
+          newSpec,
+          {
+            A_PARAMETER: "value",
+            ANOTHER_PARAMETER: "value",
+          },
+          PROJECT_ID
+        )
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
       expect(promptStub).to.have.been.calledOnce;

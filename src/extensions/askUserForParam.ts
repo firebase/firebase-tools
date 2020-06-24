@@ -2,21 +2,21 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as marked from "marked";
 
-import { Param, ParamOption, ParamType } from "./modsApi";
-import { FirebaseError } from "../error";
-import { logPrefix, substituteParams } from "./modsHelper";
-import { convertModOptionToLabeledList, modOptionToValue, onceWithJoin } from "./utils";
+import { Param, ParamOption, ParamType } from "./extensionsApi";
+import { logPrefix, substituteParams } from "./extensionsHelper";
+import { convertExtensionOptionToLabeledList, onceWithJoin } from "./utils";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
 export function checkResponse(response: string, spec: Param): boolean {
+  let valid = true;
+  let responses: string[];
+
   if (spec.required && !response) {
-    utils.logWarning("You are required to enter a value for this question");
+    utils.logWarning(`Param ${spec.param} is required, but no value was provided.`);
     return false;
   }
-
-  let responses: string[];
   if (spec.type === ParamType.MULTISELECT) {
     responses = response.split(",");
   } else {
@@ -24,35 +24,33 @@ export function checkResponse(response: string, spec: Param): boolean {
     responses = [response];
   }
 
-  if (spec.validationRegex) {
+  if (spec.validationRegex && !!response) {
+    // !!response to ignore empty optional params
     const re = new RegExp(spec.validationRegex);
-    let valid = true;
     _.forEach(responses, (resp) => {
-      if (!re.test(resp)) {
+      if ((spec.required || resp !== "") && !re.test(resp)) {
         const genericWarn =
-          `${resp} is not a valid answer since it` +
-          ` does not fit the regular expression "${spec.validationRegex}"`;
+          `${resp} is not a valid value for ${spec.param} since it` +
+          ` does not meet the requirements of the regex validation: "${spec.validationRegex}"`;
         utils.logWarning(spec.validationErrorMessage || genericWarn);
         valid = false;
       }
     });
-
-    if (!valid) {
-      return false;
-    }
   }
 
-  // Return false if at least one of the responses is not a valid option
-  if (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT) {
-    return !_.some(responses, (r) => {
-      if (!modOptionToValue(r, spec.options as ParamOption[])) {
+  if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
+    _.forEach(responses, (r) => {
+      // A choice is valid if it matches one of the option values.
+      let validChoice = _.some(spec.options, (option: ParamOption) => {
+        return r === option.value;
+      });
+      if (!validChoice) {
         utils.logWarning(`${r} is not a valid option for ${spec.param}.`);
-        return true;
+        valid = false;
       }
     });
   }
-
-  return true;
+  return valid;
 }
 
 export async function askForParam(paramSpec: Param): Promise<string> {
@@ -60,7 +58,11 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   let response = "";
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
-  logger.info(`\n${clc.bold(label)}: ${marked(description).trim()}`);
+  logger.info(
+    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
+      description
+    ).trim()}`
+  );
 
   while (!valid) {
     switch (paramSpec.type) {
@@ -77,7 +79,7 @@ export async function askForParam(paramSpec: Param): Promise<string> {
             "Which option do you want enabled for this parameter? " +
             "Select an option with the arrow keys, and use Enter to confirm your choice. " +
             "You may only select one option.",
-          choices: convertModOptionToLabeledList(paramSpec.options as ParamOption[]),
+          choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
         break;
       case ParamType.MULTISELECT:
@@ -96,7 +98,7 @@ export async function askForParam(paramSpec: Param): Promise<string> {
             "Which options do you want enabled for this parameter? " +
             "Press Space to select, then Enter to confirm your choices. " +
             "You may select multiple options.",
-          choices: convertModOptionToLabeledList(paramSpec.options as ParamOption[]),
+          choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
         });
         break;
       default:
@@ -111,16 +113,6 @@ export async function askForParam(paramSpec: Param): Promise<string> {
 
     valid = checkResponse(response, paramSpec);
   }
-
-  if (paramSpec.type === ParamType.SELECT) {
-    response = modOptionToValue(response, paramSpec.options as ParamOption[]);
-  }
-
-  if (paramSpec.type === ParamType.MULTISELECT) {
-    response = _.map(response.split(","), (r) =>
-      modOptionToValue(r, paramSpec.options as ParamOption[])
-    ).join(",");
-  }
   return response;
 }
 
@@ -132,8 +124,8 @@ export function getInquirerDefault(options: ParamOption[], def: string): string 
 }
 
 /**
- * Prompt users for params based on paramSpecs defined by the mod developer.
- * @param paramSpecs Array of params to ask the user about, parsed from mod.yaml.
+ * Prompt users for params based on paramSpecs defined by the extension developer.
+ * @param paramSpecs Array of params to ask the user about, parsed from extension.yaml.
  * @param firebaseProjectParams Autopopulated Firebase project-specific params
  * @return Promisified map of env vars to values.
  */
@@ -147,7 +139,7 @@ export async function ask(
   }
 
   utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
-  const substituted = substituteParams(paramSpecs, firebaseProjectParams) as Param[];
+  const substituted = substituteParams(paramSpecs, firebaseProjectParams);
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
     return async () => {

@@ -59,14 +59,15 @@ function logFilters(existingNames, releaseNames, functionFilterGroups) {
   logger.debug("> [functions] filtering triggers to: " + JSON.stringify(releaseNames, null, 2));
   track("Functions Deploy with Filter", "", releaseNames.length);
 
+  let list;
   if (existingNames.length > 0) {
-    var list = _.map(existingNames, function(name) {
+    list = _.map(existingNames, function(name) {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "current functions in project: " + list);
   }
   if (releaseNames.length > 0) {
-    var list = _.map(releaseNames, function(name) {
+    list = _.map(releaseNames, function(name) {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "uploading functions in project: " + list);
@@ -133,24 +134,24 @@ function getFunctionName(fullName) {
 }
 
 /*
-** getScheduleName transforms a full function name (projects/blah/locations/blah/functions/blah)
-** into a job name for cloud scheduler
-** DANGER: We use the pattern defined here to deploy and delete schedules,
-** and to display scheduled functions in the Firebase console
-** If you change this pattern, Firebase console will stop displaying schedule descriptions
-** and schedules created under the old pattern will no longer be cleaned up correctly
-*/
+ ** getScheduleName transforms a full function name (projects/blah/locations/blah/functions/blah)
+ ** into a job name for cloud scheduler
+ ** DANGER: We use the pattern defined here to deploy and delete schedules,
+ ** and to display scheduled functions in the Firebase console
+ ** If you change this pattern, Firebase console will stop displaying schedule descriptions
+ ** and schedules created under the old pattern will no longer be cleaned up correctly
+ */
 function getScheduleName(fullName, appEngineLocation) {
   var [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/${regionsPrefix}/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`;
 }
 
 /*
-** getTopicName transforms a full function name (projects/blah/locations/blah/functions/blah)
-** into a topic name for pubsub
-** DANGER: We use the pattern defined here to deploy and delete topics
-** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
-*/
+ ** getTopicName transforms a full function name (projects/blah/locations/blah/functions/blah)
+ ** into a topic name for pubsub
+ ** DANGER: We use the pattern defined here to deploy and delete topics
+ ** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
+ */
 function getTopicName(fullName) {
   var [projectsPrefix, project, , region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/topics/firebase-schedule-${functionName}-${region}`;
@@ -208,20 +209,6 @@ function pollDeploys(operations, printSuccess, printFail, printTooManyOps, proje
     });
 }
 
-function getDefaultRuntime() {
-  logger.info();
-  utils.logWarning(
-    clc.bold.yellow(
-      "functions: WARNING! NO ENGINES FIELD FOUND IN PACKAGE.JSON. DEFAULTING TO NODE 6 RUNTIME. " +
-        "Starting June 1, 2019 deployments will be blocked if no engines field is specified in package.json. " +
-        "To fix this, add the following lines to your package.json:\n\n" +
-        '"engines": {\n  "node": "6" \n}'
-    )
-  );
-  logger.info();
-  return "nodejs6";
-}
-
 module.exports = {
   getFilterGroups: getFilterGroups,
   getReleaseNames: getReleaseNames,
@@ -235,5 +222,4 @@ module.exports = {
   functionMatchesGroup: functionMatchesGroup,
   getFunctionLabel: getFunctionLabel,
   pollDeploys: pollDeploys,
-  getDefaultRuntime: getDefaultRuntime,
 };

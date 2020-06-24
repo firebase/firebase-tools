@@ -1,7 +1,7 @@
 import * as clc from "cli-color";
 import * as ora from "ora";
 
-import * as Command from "../command";
+import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { FirebaseError } from "../error";
 import {
@@ -16,7 +16,7 @@ import {
   WebAppMetadata,
 } from "../management/apps";
 import { prompt, promptOnce, Question } from "../prompt";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
 const DISPLAY_NAME_QUESTION: Question = {

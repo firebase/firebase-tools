@@ -5,13 +5,13 @@ var fs = require("fs");
 var homeDir = require("os").homedir();
 var path = require("path");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
 var init = require("../init");
 var logger = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
-var requireAuth = require("../requireAuth");
+var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
@@ -93,6 +93,11 @@ module.exports = new Command("init [feature]")
       {
         value: "storage",
         name: "Storage: Deploy Cloud Storage security rules",
+        checked: false,
+      },
+      {
+        value: "emulators",
+        name: "Emulators: Set up local emulators for Firebase features",
         checked: false,
       },
     ];

@@ -5,6 +5,9 @@
   },
   "functions": {},
   "emulators": {
+    "hub": {
+      "port": 4000
+    },
     "database": {
       "port": 9000
     },
@@ -13,6 +16,9 @@
     },
     "functions": {
       "port": 9002
+    },
+    "pubsub": {
+      "port": 8085
     }
   }
 }

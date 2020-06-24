@@ -1,8 +1,10 @@
-import * as Command from "../command";
+import { Command } from "../command";
 import * as clc from "cli-color";
 import * as fsi from "../firestore/indexes";
 import * as logger from "../logger";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 module.exports = new Command("firestore:indexes")
   .description("List indexes in your project's Cloud Firestore database.")
@@ -12,6 +14,7 @@ module.exports = new Command("firestore:indexes")
       "JSON specification format."
   )
   .before(requirePermissions, ["datastore.indexes.list"])
+  .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (options: any) => {
     const indexApi = new fsi.FirestoreIndexes();
 

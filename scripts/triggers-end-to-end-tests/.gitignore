@@ -7,6 +7,10 @@ yarn-error.log*
 firebase-debug.log*
 database-debug.log*
 firestore-debug.log*
+pubsub-debug.log*
+
+# NPM
+package-lock.json
 
 # Firebase cache
 .firebase/

@@ -1,21 +1,16 @@
 import { Response } from "request";
-import * as _ from "lodash";
 import * as request from "request";
 
 import * as responseToError from "../responseToError";
-import * as Command from "../command";
-import * as logger from "../logger";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as api from "../api";
 import * as requireInstance from "../requireInstance";
-import {
-  DATABASE_SETTINGS,
-  DatabaseSetting,
-  HELP_TEXT,
-  INVALID_PATH_ERROR,
-} from "../database/settings";
+import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
 export default new Command("database:settings:get <path>")
   .description("read the realtime database setting at path")
@@ -26,6 +21,7 @@ export default new Command("database:settings:get <path>")
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action((path: string, options: any) => {
     if (!DATABASE_SETTINGS.has(path)) {
       return utils.reject(INVALID_PATH_ERROR, { exit: 1 });

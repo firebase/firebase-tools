@@ -13,10 +13,10 @@ const utils = require("../utils");
  * @param {string} role
  * @return {!Promise<string>}
  */
-function _formatDescription(modName, projectId, roles) {
-  const question = `${clc.bold(modName)} will be granted the following access to project ${clc.bold(
-    projectId
-  )}`;
+function _formatDescription(extensionName, projectId, roles) {
+  const question = `${clc.bold(
+    extensionName
+  )} will be granted the following access to project ${clc.bold(projectId)}`;
   return Promise.all(_.map(roles, (role) => module.exports._retrieveRoleInfo(role))).then(
     (results) => {
       results.unshift(question);
@@ -43,12 +43,12 @@ function _retrieveRoleInfo(role) {
  * @param {Array<string>} roles
  * @return {Promise<?>}
  */
-function _prompt(modName, projectId, roles) {
+function _prompt(extensionName, projectId, roles) {
   if (!roles || !roles.length) {
     return Promise.resolve();
   }
 
-  return _formatDescription(modName, projectId, roles)
+  return _formatDescription(extensionName, projectId, roles)
     .then(function(message) {
       utils.logLabeledBullet("extensions", message);
       const question = {
@@ -62,7 +62,7 @@ function _prompt(modName, projectId, roles) {
     .then((consented) => {
       if (!consented) {
         throw new FirebaseError(
-          "Without explicit consent for the roles listed, we cannot deploy this mod.",
+          "Without explicit consent for the roles listed, we cannot deploy this extension.",
           { exit: 2 }
         );
       }

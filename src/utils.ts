@@ -1,10 +1,16 @@
 import * as _ from "lodash";
+import * as url from "url";
 import * as clc from "cli-color";
+import * as ora from "ora";
 import { Readable } from "stream";
+import * as winston from "winston";
+import { SPLAT } from "triple-beam";
+const ansiStrip = require("cli-color/strip") as (input: string) => string;
 
-import * as configstore from "./configstore";
+import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -60,6 +66,48 @@ export function envOverride(
 }
 
 /**
+ * Get the full URL to a path in the database or database emulator.
+ */
+export function getDatabaseUrl(origin: string, namespace: string, pathname: string): string {
+  const withPath = url.resolve(origin, pathname);
+  return addDatabaseNamespace(withPath, namespace);
+}
+
+/**
+ * Get the URL to view data in the database or database emulator.
+ *  - Prod: Firebase Console URL
+ *  - Emulator: Localhost URL to a `.json` endpoint.
+ */
+export function getDatabaseViewDataUrl(
+  origin: string,
+  namespace: string,
+  pathname: string
+): string {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
+    return consoleUrl(namespace, "/database/data" + pathname);
+  } else {
+    // TODO(samstern): View in Emulator UI
+    return getDatabaseUrl(origin, namespace, pathname + ".json");
+  }
+}
+
+/**
+ * Add the namespace to a database or database emulator URL.
+ *  - Prod: Add a subdomain.
+ *  - Emulator: Add `?ns=` parameter.
+ */
+export function addDatabaseNamespace(origin: string, namespace: string): string {
+  const urlObj = new url.URL(origin);
+  if (urlObj.hostname.includes("firebaseio.com")) {
+    return addSubdomain(origin, namespace);
+  } else {
+    urlObj.searchParams.set("ns", namespace);
+    return urlObj.href;
+  }
+}
+
+/**
  * Add a subdomain to the specified HTTP origin.
  * (e.g. https://example.com -> https://sub.example.com)
  */
@@ -70,49 +118,76 @@ export function addSubdomain(origin: string, subdomain: string): string {
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logSuccess(message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message);
+export function logSuccess(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logLabeledSuccess(label: string, message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message);
+export function logLabeledSuccess(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logBullet(message: string, type = "info"): void {
-  logger[type](clc.cyan.bold("i "), message);
+export function logBullet(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold("i "), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledBullet(label: string, message: string, type = "info"): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message);
+export function logLabeledBullet(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logWarning(message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message);
+export function logWarning(
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledWarning(label: string, message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
+export function logLabeledWarning(
+  label: string,
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
@@ -257,4 +332,78 @@ export async function promiseProps(obj: any): Promise<any> {
     resultObj[key] = r;
   });
   return Promise.all(promises).then(() => resultObj);
+}
+
+/**
+ * Attempts to call JSON.stringify on an object, if it throws return the original value
+ * @param value
+ */
+export function tryStringify(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Attempts to call JSON.parse on an object, if it throws return the original value
+ * @param value
+ */
+export function tryParse(value: any) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+export function setupLoggers() {
+  if (process.env.DEBUG) {
+    logger.add(
+      new winston.transports.Console({
+        level: "debug",
+        format: winston.format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          return `${ansiStrip(segments.join(" "))}`;
+        }),
+      })
+    );
+  } else if (process.env.IS_FIREBASE_CLI) {
+    logger.add(
+      new winston.transports.Console({
+        level: "info",
+        format: winston.format.printf((info) =>
+          [info.message, ...(info[SPLAT] || [])]
+            .filter((chunk) => typeof chunk == "string")
+            .join(" ")
+        ),
+      })
+    );
+  }
+}
+
+/**
+ * Runs a given function inside a spinner with a message
+ */
+export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
+  const spinner = ora(message).start();
+  let data;
+  try {
+    data = await action();
+    spinner.succeed();
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  return data;
 }

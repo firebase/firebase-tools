@@ -4,13 +4,13 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import * as modsApi from "../extensions/modsApi";
-import { logPrefix } from "../extensions/modsHelper";
+import * as extensionsApi from "../extensions/extensionsApi";
+import { logPrefix } from "../extensions/extensionsHelper";
 import * as paramHelper from "../extensions/paramHelper";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
@@ -19,15 +19,14 @@ marked.setOptions({
 });
 
 /**
- * Command for configuring an existing mod instance
+ * Command for configuring an existing extension instance
  */
-export default new Command("ext:configure <instanceId>")
+export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
   .before(requirePermissions, [
-    // this doesn't exist yet, uncomment when it does
-    // "firebasemods.instances.update"
-    // "firebasemods.instances.get"
+    "firebaseextensions.instances.update",
+    "firebaseextensions.instances.get",
   ])
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
@@ -35,9 +34,9 @@ export default new Command("ext:configure <instanceId>")
     );
     try {
       const projectId = getProjectId(options, false);
-      let existingInstance;
+      let existingInstance: extensionsApi.ExtensionInstance;
       try {
-        existingInstance = await modsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
           return utils.reject(
@@ -52,30 +51,50 @@ export default new Command("ext:configure <instanceId>")
       const paramSpecWithNewDefaults = paramHelper.getParamsWithCurrentValuesAsDefaults(
         existingInstance
       );
-      const removedLocations = _.remove(paramSpecWithNewDefaults, (param) => {
-        return param.param === "LOCATION";
+      const immutableParams = _.remove(paramSpecWithNewDefaults, (param) => {
+        return param.immutable || param.param === "LOCATION";
+        // TODO: Stop special casing "LOCATION" once all official extensions make it immutable
       });
-      const currentLocation = _.get(existingInstance, "configuration.params.LOCATION");
+
       const params = await paramHelper.getParams(
         projectId,
         paramSpecWithNewDefaults,
         options.params
       );
-      if (removedLocations.length) {
+      if (immutableParams.length) {
+        const plural = immutableParams.length > 1;
+        logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+        for (const { param } of immutableParams) {
+          logger.info(
+            `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
+          );
+        }
         logger.info(
-          `Location is currently set to ${currentLocation}. This cannot be modified. ` +
-            `Please uninstall and reinstall this extension to change location.`
+          (plural
+            ? "To set different values for these params"
+            : "To set a different value for this param") +
+            ", uninstall the extension, then install a new instance of this extension."
         );
-        params.LOCATION = currentLocation;
       }
 
       spinner.start();
-      const res = await modsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
       spinner.stop();
       utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
+      utils.logLabeledBullet(
+        logPrefix,
+        marked(
+          `You can view your reconfigured instance in the Firebase console: ${utils.consoleUrl(
+            projectId,
+            `/extensions/instances/${instanceId}?tab=config`
+          )}`
+        )
+      );
       return res;
     } catch (err) {
-      spinner.fail();
+      if (spinner.isSpinning) {
+        spinner.fail();
+      }
       if (!(err instanceof FirebaseError)) {
         throw new FirebaseError(`Error occurred while configuring the instance: ${err.message}`, {
           original: err,

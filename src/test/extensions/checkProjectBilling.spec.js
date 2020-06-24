@@ -27,11 +27,11 @@ describe("checkProjectBilling", function() {
 
   it("should resolve if billing enabled.", function() {
     const projectId = "already enabled";
-    const modName = "test mod";
+    const extensionName = "test extension";
 
     cloudbilling.checkBillingEnabled.resolves(true);
 
-    return checkProjectBilling(projectId, modName, true).then(function() {
+    return checkProjectBilling(projectId, extensionName, true).then(function() {
       expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
       expect(cloudbilling.listBillingAccounts.notCalled);
       expect(cloudbilling.setBillingAccount.notCalled);
@@ -41,7 +41,7 @@ describe("checkProjectBilling", function() {
 
   it("should list accounts if no billing account set, but accounts available.", function() {
     const projectId = "not set, but have list";
-    const modName = "test mod 2";
+    const extensionName = "test extension 2";
     const accounts = [
       {
         name: "test-cloud-billing-account-name",
@@ -55,7 +55,7 @@ describe("checkProjectBilling", function() {
     cloudbilling.setBillingAccount.resolves(true);
     prompt.promptOnce.resolves("test-account");
 
-    return checkProjectBilling(projectId, modName, true).then(function() {
+    return checkProjectBilling(projectId, extensionName, true).then(function() {
       expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
       expect(cloudbilling.listBillingAccounts.calledOnce);
       expect(cloudbilling.setBillingAccount.calledOnce);
@@ -67,7 +67,7 @@ describe("checkProjectBilling", function() {
 
   it("should not list accounts if no billing accounts set or available.", function() {
     const projectId = "not set, not available";
-    const modName = "test mod 3";
+    const extensionName = "test extension 3";
     const accounts = [];
 
     cloudbilling.checkBillingEnabled.onCall(0).resolves(false);
@@ -75,7 +75,7 @@ describe("checkProjectBilling", function() {
     cloudbilling.listBillingAccounts.resolves(accounts);
     prompt.promptOnce.resolves();
 
-    return checkProjectBilling(projectId, modName, true).then(function() {
+    return checkProjectBilling(projectId, extensionName, true).then(function() {
       expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
       expect(cloudbilling.listBillingAccounts.calledOnce);
       expect(cloudbilling.setBillingAccount.notCalled);

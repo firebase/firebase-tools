@@ -1,3 +1,5 @@
 coverage
+lib
 node_modules
+standalone
 templates

@@ -1,7 +1,7 @@
 "use strict";
 
-var _ = require("lodash");
-var { FirebaseError } = require("./error");
+const _ = require("lodash");
+const { FirebaseError } = require("./error");
 
 module.exports = function(response, body) {
   if (typeof body === "string" && response.statusCode === 404) {
@@ -25,15 +25,15 @@ module.exports = function(response, body) {
   }
 
   if (!body.error) {
-    var message = response.statusCode === 404 ? "Not Found" : "Unknown Error";
+    const errMessage = response.statusCode === 404 ? "Not Found" : "Unknown Error";
     body.error = {
-      message: message,
+      message: errMessage,
     };
   }
 
-  var message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
+  const message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
 
-  var exitCode;
+  let exitCode;
   if (response.statusCode >= 500) {
     // 5xx errors are unexpected
     exitCode = 2;

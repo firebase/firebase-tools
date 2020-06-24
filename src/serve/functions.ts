@@ -1,26 +1,25 @@
+import * as path from "path";
 import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
+import * as getProjectId from "../getProjectId";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
 module.exports = {
   emulatorServer: undefined,
 
-  async start(options: any, args?: FunctionsEmulatorArgs): Promise<void> {
-    args = args || {};
+  async start(options: any, args: FunctionsEmulatorArgs): Promise<void> {
+    const projectId = getProjectId(options, false);
+    const functionsDir = path.join(
+      options.config.projectDir,
+      options.config.get("functions.source")
+    );
 
-    if (!args.disabledRuntimeFeatures) {
-      // When running the functions emulator through 'firebase serve' we disable some
-      // of the more adventurous features that could be breaking/unexpected behavior
-      // for those used to the legacy emulator.
-      args.disabledRuntimeFeatures = {
-        functions_config_helper: true,
-        network_filtering: true,
-        timeout: true,
-        memory_limiting: true,
-        admin_stubs: true,
-      };
-    }
+    args = {
+      projectId,
+      functionsDir,
+      ...args,
+    };
 
     if (options.host) {
       args.host = options.host;
@@ -38,7 +37,7 @@ module.exports = {
       }
     }
 
-    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(options, args));
+    this.emulatorServer = new EmulatorServer(new FunctionsEmulator(args));
     await this.emulatorServer.start();
   },
 

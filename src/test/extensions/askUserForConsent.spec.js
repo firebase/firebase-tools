@@ -25,10 +25,10 @@ describe("askUserForConsent", function() {
     const partialSpec = { roles: [{ role: "storage.objectAdmin" }, { role: "datastore.viewer" }] };
 
     it("format description correctly", function() {
-      const modName = "mod-for-test";
+      const extensionName = "extension-for-test";
       const projectId = "project-for-test";
       const question = `${clc.bold(
-        modName
+        extensionName
       )} will be granted the following access to project ${clc.bold(projectId)}`;
       const storageDescription = "- Storage Object Admin (Full control of GCS objects.)";
       const datastoreDescription =
@@ -38,7 +38,11 @@ describe("askUserForConsent", function() {
       askUserForConsent._retrieveRoleInfo.onFirstCall().resolves(storageDescription);
       askUserForConsent._retrieveRoleInfo.onSecondCall().resolves(datastoreDescription);
 
-      const actual = askUserForConsent._formatDescription(modName, projectId, partialSpec.roles);
+      const actual = askUserForConsent._formatDescription(
+        extensionName,
+        projectId,
+        partialSpec.roles
+      );
 
       return expect(actual).to.eventually.deep.equal(expected);
     });

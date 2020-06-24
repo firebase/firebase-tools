@@ -48,9 +48,12 @@ module.exports = function(context, options) {
       cwd: options.cwd,
     });
 
-    var progressInterval = setInterval(function() {
-      _updateSpinner(uploader.statusMessage());
-    }, debugging ? 2000 : 200);
+    var progressInterval = setInterval(
+      function() {
+        _updateSpinner(uploader.statusMessage());
+      },
+      debugging ? 2000 : 200
+    );
 
     return uploader
       .start()

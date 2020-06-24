@@ -1,13 +1,11 @@
-import * as _ from "lodash";
-
-import * as Command from "../command";
+import { Command } from "../command";
 import { FirebaseError } from "../error";
 import {
   addFirebaseToCloudProjectAndLog,
   FirebaseProjectMetadata,
   promptAvailableProjectId,
 } from "../management/projects";
-import * as requireAuth from "../requireAuth";
+import { requireAuth } from "../requireAuth";
 
 module.exports = new Command("projects:addfirebase [projectId]")
   .description("add Firebase resources to a Google Cloud Platform project")

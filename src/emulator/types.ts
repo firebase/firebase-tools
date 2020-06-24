@@ -1,19 +1,67 @@
 import { ChildProcess } from "child_process";
+import { EventEmitter } from "events";
 
 export enum Emulators {
+  HUB = "hub",
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
+  PUBSUB = "pubsub",
+  UI = "ui",
+  LOGGING = "logging",
 }
 
-// TODO: Is there a way we can just allow iteration over the enum?
-export const ALL_EMULATORS = [
+export type DownloadableEmulators =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.PUBSUB
+  | Emulators.UI;
+export const DOWNLOADABLE_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.PUBSUB,
+  Emulators.UI,
+];
+
+export type ImportExportEmulators = Emulators.FIRESTORE;
+export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE];
+
+export const ALL_SERVICE_EMULATORS = [
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
+  Emulators.PUBSUB,
 ];
+
+export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.PUBSUB,
+];
+
+export const EMULATORS_SUPPORTED_BY_UI = [
+  Emulators.DATABASE,
+  Emulators.FIRESTORE,
+  Emulators.FUNCTIONS,
+];
+
+// TODO: Is there a way we can just allow iteration over the enum?
+export const ALL_EMULATORS = [
+  Emulators.HUB,
+  Emulators.UI,
+  Emulators.LOGGING,
+  ...ALL_SERVICE_EMULATORS,
+];
+
+export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
+  return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
+}
+
+export function isEmulator(value: string): value is Emulators {
+  return Object.values(Emulators).indexOf(value as Emulators) >= 0;
+}
 
 export interface EmulatorInstance {
   /**
@@ -52,27 +100,59 @@ export interface EmulatorInfo {
   port: number;
 }
 
-export interface JavaEmulatorCommand {
+export interface DownloadableEmulatorCommand {
   binary: string;
   args: string[];
   optionalArgs: string[];
+  joinArgs: boolean;
 }
 
-export interface JavaEmulatorDetails {
-  name: string;
-  instance: ChildProcess | null;
-  stdout: any | null;
+export interface EmulatorDownloadOptions {
   cacheDir: string;
   remoteUrl: string;
   expectedSize: number;
   expectedChecksum: string;
-  localPath: string;
   namePrefix: string;
+  skipChecksumAndSize?: boolean;
+  skipCache?: boolean;
+}
+
+export interface EmulatorDownloadDetails {
+  opts: EmulatorDownloadOptions;
+
+  // Semver version string
+  version: string;
+
+  // The path to download the binary or archive from the remote source
+  downloadPath: string;
+
+  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+  // will be unzipped into 'unzipDir'
+  unzipDir?: string;
+
+  // If specified, a path where the runnable binary can be found after downloading and
+  // unzipping. Otherwise downloadPath will be used.
+  binaryPath?: string;
+}
+
+export interface DownloadableEmulatorDetails {
+  name: Emulators;
+  instance: ChildProcess | null;
+  stdout: any | null;
 }
 
 export interface Address {
   host: string;
   port: number;
+}
+
+export enum FunctionsExecutionMode {
+  // Function workers will be spawned as needed with no particular
+  // guarantees.
+  AUTO = "auto",
+
+  // All function executions will be run sequentially in a single worker.
+  SEQUENTIAL = "sequential",
 }
 
 export class EmulatorLog {
@@ -91,6 +171,29 @@ export class EmulatorLog {
           clearInterval(interval);
         }
       }, 10);
+    });
+  }
+
+  static waitForLog(
+    emitter: EventEmitter,
+    level: string,
+    type: string,
+    filter?: (el: EmulatorLog) => boolean
+  ): Promise<EmulatorLog> {
+    return new Promise((resolve, reject) => {
+      const listener = (el: EmulatorLog) => {
+        const levelTypeMatch = el.level === level && el.type === type;
+        let filterMatch = true;
+        if (filter) {
+          filterMatch = filter(el);
+        }
+
+        if (levelTypeMatch && filterMatch) {
+          emitter.removeListener("log", listener);
+          resolve(el);
+        }
+      };
+      emitter.on("log", listener);
     });
   }
 
@@ -113,6 +216,7 @@ export class EmulatorLog {
     ) {
       parsedLog = {
         level: "USER",
+        type: "function-log",
         text: json,
       };
     }
@@ -130,13 +234,13 @@ export class EmulatorLog {
   private static LOG_BUFFER: string[] = [];
 
   constructor(
-    public level: "DEBUG" | "INFO" | "WARN" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
+    public level: "DEBUG" | "INFO" | "WARN" | "WARN_ONCE" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
     public type: string,
     public text: string,
     public data?: any,
     public timestamp?: string
   ) {
-    this.timestamp = this.timestamp || new Date().toString();
+    this.timestamp = this.timestamp || new Date().toISOString();
     this.data = this.data || {};
   }
 

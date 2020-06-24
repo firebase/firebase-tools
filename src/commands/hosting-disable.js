@@ -1,8 +1,8 @@
 "use strict";
 
-var Command = require("../command");
+var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 var api = require("../api");
 var utils = require("../utils");
 var { prompt } = require("../prompt");
@@ -11,6 +11,7 @@ var clc = require("cli-color");
 module.exports = new Command("hosting:disable")
   .description("stop serving web traffic to your Firebase Hosting site")
   .option("-y, --confirm", "skip confirmation")
+  .option("-s, --site <site_name>", "the site to disable")
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireInstance)
   .action(function(options) {
@@ -28,7 +29,7 @@ module.exports = new Command("hosting:disable")
           return Promise.resolve();
         }
 
-        return api.request("POST", "/v1beta1/sites/" + options.instance + "/releases", {
+        return api.request("POST", `/v1beta1/sites/${options.site || options.instance}/releases`, {
           auth: true,
           data: {
             type: "SITE_DISABLE",

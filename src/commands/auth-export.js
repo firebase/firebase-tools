@@ -4,11 +4,11 @@ var clc = require("cli-color");
 var fs = require("fs");
 var os = require("os");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var accountExporter = require("../accountExporter");
 var getProjectId = require("../getProjectId");
 var logger = require("../logger");
-var requirePermissions = require("../requirePermissions");
+var { requirePermissions } = require("../requirePermissions");
 
 var MAX_BATCH_SIZE = 1000;
 
@@ -41,5 +41,12 @@ module.exports = new Command("auth:export [dataFile]")
         writeStream.write("]}");
       }
       writeStream.end();
+      // Ensure process ends only when all data have been flushed
+      // to the output file
+      return new Promise(function(resolve, reject) {
+        writeStream.on("finish", resolve);
+        writeStream.on("close", resolve);
+        writeStream.on("error", reject);
+      });
     });
   });
