@@ -1,1 +1,1 @@
-- Fixes bug with rules hot reloading in the Database emulator (#2371)
+- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
