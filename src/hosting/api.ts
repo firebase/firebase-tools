@@ -1,5 +1,4 @@
 import { FirebaseError } from "../error";
-import { logWarning } from "../utils";
 import * as api from "../api";
 
 const ONE_WEEK_MS = 86400000; // 24 * 60 * 60 * 1000
@@ -191,12 +190,21 @@ export async function updateChannelTtl(
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS
 ): Promise<Channel> {
-  logWarning(`Cannot yet update the channel TTL: ${ttlMillis}`);
-  const c = await getChannel(project, site, channelId);
-  if (!c) {
-    throw new FirebaseError(`Channel "${channelId}" cannot be found.`);
-  }
-  return c;
+  const res = await api.request(
+    "PATCH",
+    `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
+    {
+      auth: true,
+      origin: api.hostingApiOrigin,
+      query: {
+        updateMask: ["ttl"].join(","),
+      },
+      data: {
+        ttl: `${ttlMillis / 1000}s`,
+      },
+    }
+  );
+  return res.body;
 }
 
 /**
