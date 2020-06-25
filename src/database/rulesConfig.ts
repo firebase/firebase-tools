@@ -24,7 +24,7 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      return [{ rules: dbConfig.rules, instance: options.instance }];
+      return [{ rules: dbConfig.rules, instance: options.instance || options.project }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
       return [];
