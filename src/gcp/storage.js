@@ -56,8 +56,8 @@ async function _uploadObject(source, bucketName) {
   if (path.extname(source.file) !== ".zip") {
     throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
   }
-  const location = `/v0/b/${bucketName}/o/${path.basename(source.file)}`;
-  await api.request("POST", location, {
+  const location = `/${bucketName}/${path.basename(source.file)}`;
+  await api.request("PUT", location, {
     auth: true,
     data: source.stream,
     headers: {
@@ -65,7 +65,7 @@ async function _uploadObject(source, bucketName) {
       "x-goog-content-length-range": "0,123289600",
     },
     json: false,
-    origin: api.firebaseStorageOrigin,
+    origin: api.storageOrigin,
     logOptions: { skipRequestBody: true },
   });
   return location;
@@ -78,7 +78,7 @@ async function _uploadObject(source, bucketName) {
 function _deleteObject(location) {
   return api.request("DELETE", location, {
     auth: true,
-    origin: api.firebaseStorageOrigin,
+    origin: api.storageOrigin,
   });
 }
 

@@ -1,6 +1,2 @@
-- Fixes error message when `firebase init firestore` is used on a project with Cloud Firestore in Datastore mode.
-- Fixes error message when Java version is too low to run the emulators (#2307).
-- Fixes issue where `firebase init storage` incorrectly reports Cloud Storage has not been used.
-- Adds warning message when an emulator starts on a port restricted by Chrome (#2276).
-- Allows deleting Firestore indexes with the `--force` flag (#2002).
-- Fixes issue where massively parallel functions could lock the host machine (#2277).
+- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
+- Changes default functions runtime to Node.js 10 for `firebase init`.

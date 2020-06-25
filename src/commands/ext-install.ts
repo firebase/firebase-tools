@@ -5,6 +5,7 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
+import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -165,17 +166,19 @@ export default new Command("ext:install [extensionName]")
     let source;
     try {
       const registryEntry = await resolveRegistryEntry(name);
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
+      source = await extensionsApi.getSource(sourceUrl);
+      displayExtInstallInfo(extensionName, source);
       const audienceConsent = await promptForAudienceConsent(registryEntry);
       if (!audienceConsent) {
         logger.info("Install cancelled.");
         return;
       }
-      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-      source = await extensionsApi.getSource(sourceUrl);
     } catch (err) {
       if (previews.extdev) {
         try {
           source = await createSourceFromLocation(projectId, extensionName);
+          displayExtInstallInfo(extensionName, source);
         } catch (err) {
           throw new FirebaseError(
             `Unable to find official extension named ${clc.bold(extensionName)}, ` +
