@@ -203,7 +203,6 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         source: newSource,
         rolesToAdd: _.get(newSpec, "roles", []),
         rolesToRemove,
-        serviceAccountEmail: existingInstance.serviceAccountEmail,
         billingRequired: newSpec.billingRequired,
       };
       if (!_.isEqual(newParams, currentParams)) {

@@ -7,7 +7,6 @@ import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { UpdateWarning } from "./resolveSource";
-import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
 
@@ -224,7 +223,6 @@ export interface UpdateOptions {
   params?: { [key: string]: string };
   rolesToAdd: extensionsApi.Role[];
   rolesToRemove: extensionsApi.Role[];
-  serviceAccountEmail: string;
   billingRequired?: boolean;
 }
 
@@ -237,22 +235,7 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const {
-    projectId,
-    instanceId,
-    source,
-    params,
-    rolesToAdd,
-    rolesToRemove,
-    serviceAccountEmail,
-    billingRequired,
-  } = updateOptions;
+  const { projectId, instanceId, source, params, billingRequired } = updateOptions;
   await checkProjectBilling(projectId, instanceId, billingRequired);
-  await rolesHelper.grantRoles(
-    projectId,
-    serviceAccountEmail,
-    rolesToAdd.map((role) => role.role),
-    rolesToRemove.map((role) => role.role)
-  );
   return await extensionsApi.updateInstance(projectId, instanceId, source, params);
 }
