@@ -18,7 +18,9 @@ module.exports = {
     args = {
       projectId,
       functionsDir,
-      ...args,
+      // TODO: args also contain projectId and functionsDir and thus the fields
+      // above will be overwritten. Why do we even need those?
+      ...(args as object),
     };
 
     if (options.host) {
