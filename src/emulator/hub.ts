@@ -1,4 +1,3 @@
-import * as http from "http";
 import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
@@ -116,7 +115,9 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    if (this.destroyServer) await this.destroyServer();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
     await this.deleteLocatorFile();
   }
 

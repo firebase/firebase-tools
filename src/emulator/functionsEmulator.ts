@@ -113,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   nodeBinary = "";
-  private destoryServer?: () => Promise<void>;
+  private destroyServer?: () => Promise<void>;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
@@ -228,7 +228,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const { host, port } = this.getInfo();
     this.workQueue.start();
     const server = this.createHubServer().listen(port, host);
-    this.destoryServer = createDestroyer(server);
+    this.destroyServer = createDestroyer(server);
     return Promise.resolve();
   }
 
@@ -363,7 +363,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   stop(): Promise<void> {
     this.workQueue.stop();
     this.workerPool.exit();
-    return this.destoryServer ? this.destoryServer() : Promise.resolve();
+    return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(

@@ -96,7 +96,9 @@ class WebSocketTransport extends TransportStream {
 
   stop(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.wss) return resolve();
+      if (!this.wss) {
+        return resolve();
+      }
       this.wss.close((err) => {
         if (err) return reject(err);
         resolve();
