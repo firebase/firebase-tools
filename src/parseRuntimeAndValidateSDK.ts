@@ -17,17 +17,21 @@ const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
   nodejs8: "Node.js 8",
   nodejs10: "Node.js 10",
+  nodejs12: "Node.js 12 (Beta)",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
+  12: "nodejs12",
 };
 
 export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}.`
+    `Valid choices are: ${clc.bold('{"node": "8"}')}, ${clc.bold('{"node": "10"}')}, and ${clc.bold(
+      '{"node": "12"}'
+    )}.`
 );
 
 export const DEPRECATION_WARNING_MSG =

@@ -5,6 +5,7 @@ import * as gcp from "../../gcp";
 import { logBullet, logSuccess, logWarning } from "../../utils";
 import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
 import { checkHttpIam } from "./checkIam";
+import { checkRuntimeMigrations } from "./checkRuntimeMigrations";
 
 const GCP_REGION = gcp.cloudfunctions.DEFAULT_REGION;
 
@@ -43,6 +44,7 @@ export async function deploy(context: any, options: any, payload: any): Promise<
     };
 
     await checkHttpIam(context, options, payload);
+    await checkRuntimeMigrations(context, options, payload);
 
     if (!source) {
       return;
