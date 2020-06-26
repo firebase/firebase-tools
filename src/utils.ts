@@ -101,7 +101,7 @@ export function getDatabaseViewDataUrl(
  */
 export function addDatabaseNamespace(origin: string, namespace: string): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebaseio.com")) {
+  if (urlObj.hostname.includes("https://firebaseio.com")) {
     return addSubdomain(origin, namespace);
   } else {
     urlObj.searchParams.set("ns", namespace);

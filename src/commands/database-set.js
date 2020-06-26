@@ -9,7 +9,7 @@ var responseToError = require("../responseToError");
 var { FirebaseError } = require("../error");
 var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-
+var { populateInstanceDetails } = require("../management/database");
 var utils = require("../utils");
 var clc = require("cli-color");
 var logger = require("../logger");
@@ -27,13 +27,14 @@ module.exports = new Command("database:set <path> [infile]")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    const origin = api.realtimeOriginOrEmulator;
+    const origin = api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 

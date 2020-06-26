@@ -68,7 +68,7 @@ describe("Database management", () => {
       }
 
       expect(err.message).to.equal(
-        `Error while getting instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`
+        `Failed to get instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`
       );
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
