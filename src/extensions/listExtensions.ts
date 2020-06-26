@@ -8,6 +8,11 @@ import * as utils from "../utils";
 import * as extensionsUtils from "./utils";
 import * as logger from "../logger";
 
+/**
+ * Lists the extensions installed under a project
+ * @param projectId ID of the project we're querying
+ * @return mapping that contains a list of instances under the "instances" key
+ */
 export async function listExtensions(
   projectId: string
 ): Promise<{ instances: ExtensionInstance[] }> {
@@ -32,7 +37,7 @@ export async function listExtensions(
       _.get(instance, "config.source.spec.author.authorName", ""),
       instance.state,
       _.get(instance, "config.source.spec.version", ""),
-      instance.updateTime ? extensionsUtils.formatTimestamp(instance.updateTime) : "",
+      extensionsUtils.formatTimestamp(instance.updateTime),
     ]);
   });
 

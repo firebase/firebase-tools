@@ -59,9 +59,12 @@ export function getRandomString(length: number): string {
 /**
  * Formats a timestamp from the Extension backend into something more readable
  * @param timestamp with this format: 2020-05-11T03:45:13.583677Z
- * returns a timestamp with this format: 2020-05-11 T03:45:13
+ * @return a timestamp with this format: 2020-05-11 T03:45:13
  */
 export function formatTimestamp(timestamp: string): string {
+  if (!timestamp) {
+    return "";
+  }
   const withoutMs = timestamp.split(".")[0];
   return withoutMs.replace("T", " T");
 }
