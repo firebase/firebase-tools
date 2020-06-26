@@ -102,7 +102,6 @@
     "marked": "^0.7.0",
     "marked-terminal": "^3.3.0",
     "minimatch": "^3.0.4",
-    "moment": "^2.27.0",
     "morgan": "^1.10.0",
     "open": "^6.3.0",
     "ora": "^3.4.0",
