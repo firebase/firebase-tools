@@ -421,11 +421,9 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
 export function createDestroyer(server: http.Server): () => Promise<void> {
   const connections = new Set<Socket>();
 
-  server.on("connection", function(conn) {
+  server.on("connection", (conn) => {
     connections.add(conn);
-    conn.once("close", function() {
-      connections.delete(conn);
-    });
+    conn.once("close", () => connections.delete(conn));
   });
 
   // Make calling destroyer again just noop but return the same promise.
