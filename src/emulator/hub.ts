@@ -64,7 +64,7 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   private hub: express.Express;
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
 
   constructor(private args: EmulatorHubArgs) {
     this.hub = express();
@@ -106,7 +106,8 @@ export class EmulatorHub implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    this.server = this.hub.listen(port, host);
+    const server = this.hub.listen(port, host);
+    this.destroyServer = utils.createDestroyer(server);
     await this.writeLocatorFile();
   }
 
@@ -115,7 +116,7 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    this.server && this.server.close();
+    if (this.destroyServer) await this.destroyServer();
     await this.deleteLocatorFile();
   }
 

@@ -38,6 +38,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
+import { createDestroyer } from "../utils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -112,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   nodeBinary = "";
-  private server?: http.Server;
+  private destoryServer?: () => Promise<void>;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
@@ -226,7 +227,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     );
     const { host, port } = this.getInfo();
     this.workQueue.start();
-    this.server = this.createHubServer().listen(port, host);
+    const server = this.createHubServer().listen(port, host);
+    this.destoryServer = createDestroyer(server);
     return Promise.resolve();
   }
 
@@ -361,8 +363,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   stop(): Promise<void> {
     this.workQueue.stop();
     this.workerPool.exit();
-    this.server?.close();
-    return Promise.resolve();
+    return this.destoryServer ? this.destoryServer() : Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(
