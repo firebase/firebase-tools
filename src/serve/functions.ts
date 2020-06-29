@@ -16,9 +16,13 @@ module.exports = {
     );
 
     args = {
+      // Normally, these two fields are included in args (and typed as such).
+      // However, some poorly-typed tests may not have them and we need to provide
+      // default values for those tests to work properly.
       projectId,
       functionsDir,
-      ...args,
+
+      ...(args as object),
     };
 
     if (options.host) {
