@@ -66,5 +66,5 @@ export function formatTimestamp(timestamp: string): string {
     return "";
   }
   const withoutMs = timestamp.split(".")[0];
-  return withoutMs.replace("T", " T");
+  return withoutMs.replace("T", " ");
 }
