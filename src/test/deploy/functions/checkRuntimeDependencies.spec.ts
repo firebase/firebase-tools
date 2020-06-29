@@ -72,19 +72,7 @@ describe("checkRuntimeDependencies()", () => {
   }
 
   describe("with nodejs8", () => {
-    it("should do nothing before warntime", async () => {
-      stubTimes(Date.now() + 10000, Date.now() + 20000);
-      await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.eq(0);
-    });
-
-    it("should do nothing after warntime before errortime", async () => {
-      stubTimes(Date.now() - 10000, Date.now() + 20000);
-      await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.eq(0);
-    });
-
-    it("should print warning after errortime", async () => {
+    it("should print warning", async () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
       await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
@@ -92,96 +80,62 @@ describe("checkRuntimeDependencies()", () => {
     });
   });
 
-  describe("with nodejs10", () => {
-    it("should do nothing before warntime", async () => {
-      stubTimes(Date.now() + 10000, Date.now() + 20000);
-      await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.eq(0);
-    });
+  ["nodejs10", "nodejs12"].forEach((runtime) => {
+    describe(`with ${runtime}`, () => {
+      describe("with cloudbuild service enabled", () => {
+        beforeEach(() => {
+          mockServiceCheck(true);
+        });
 
-    describe("with cloudbuild service enabled", () => {
-      beforeEach(() => {
-        mockServiceCheck(true);
+        it("should succeed", async () => {
+          stubTimes(Date.now() - 10000, Date.now() - 5000);
+
+          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
+            .fulfilled;
+          expect(logStub?.callCount).to.eq(0);
+        });
       });
 
-      it("should succeed after warntime before errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() + 20000);
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.eq(0);
+      describe("with cloudbuild service disabled, but enabling succeeds", () => {
+        beforeEach(() => {
+          mockServiceCheck(false);
+          mockServiceEnableSuccess();
+          mockServiceCheck(true);
+        });
+
+        it("should succeed", async () => {
+          stubTimes(Date.now() - 10000, Date.now() - 5000);
+
+          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
+            .fulfilled;
+          expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
+        });
       });
 
-      it("should succeed after errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() - 5000);
+      describe("with cloudbuild service disabled, but enabling fails with billing error", () => {
+        beforeEach(() => {
+          mockServiceCheck(false);
+          mockServiceEnableBillingError();
+        });
 
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.eq(0);
-      });
-    });
+        it("should error", async () => {
+          stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-    describe("with cloudbuild service disabled, but enabling succeeds", () => {
-      beforeEach(() => {
-        mockServiceCheck(false);
-        mockServiceEnableSuccess();
-        mockServiceCheck(true);
+          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
+        });
       });
 
-      it("should succeed after warntime before errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() + 20000);
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
-      });
+      describe("with cloudbuild service disabled, but enabling fails with permission error", () => {
+        beforeEach(() => {
+          mockServiceCheck(false);
+          mockServiceEnablePermissionError();
+        });
 
-      it("should succeed after errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() - 5000);
+        it("should error", async () => {
+          stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
-      });
-    });
-
-    describe("with cloudbuild service disabled, but enabling fails with billing error", () => {
-      beforeEach(() => {
-        mockServiceCheck(false);
-        mockServiceEnableBillingError();
-      });
-
-      it("should print warnings after warntime before errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() + 20000);
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.be.gt(1); // enabling an api logs a warning
-      });
-
-      it("should error after errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() - 5000);
-
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .rejected;
-      });
-    });
-
-    describe("with cloudbuild service disabled, but enabling fails with permission error", () => {
-      beforeEach(() => {
-        mockServiceCheck(false);
-        mockServiceEnablePermissionError();
-      });
-
-      it("should print warnings after warntime before errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() + 20000);
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .fulfilled;
-        expect(logStub?.callCount).to.be.gt(1); // enabling an api logs a warning
-      });
-
-      it("should error after errortime", async () => {
-        stubTimes(Date.now() - 10000, Date.now() - 5000);
-
-        await expect(checkRuntimeDependencies("test-project", "nodejs10")).to.eventually.be
-          .rejected;
+          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
+        });
       });
     });
   });
