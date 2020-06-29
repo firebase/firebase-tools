@@ -46,7 +46,6 @@ export const EXTENSIONS_BUCKET_NAME = envOverride(
 );
 
 export const resourceTypeToNiceName: { [key: string]: string } = {
-  "firebaseextensions.v1beta.scheduledFunction": "Scheduled Function",
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 
