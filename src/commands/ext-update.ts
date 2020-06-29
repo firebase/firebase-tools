@@ -191,18 +191,11 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         currentParams,
         projectId
       );
-      const rolesToRemove = _.differenceWith(
-        currentSpec.roles,
-        _.get(newSpec, "roles", []),
-        _.isEqual
-      );
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
         instanceId,
         source: newSource,
-        rolesToAdd: _.get(newSpec, "roles", []),
-        rolesToRemove,
         billingRequired: newSpec.billingRequired,
       };
       if (!_.isEqual(newParams, currentParams)) {

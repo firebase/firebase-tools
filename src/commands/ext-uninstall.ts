@@ -34,6 +34,9 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       throw err;
     }
     if (!options.force) {
+      const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
+          instance.serviceAccountEmail
+      )}\n\n`;
       const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
@@ -54,6 +57,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         `Here's what will happen when you uninstall ${clc.bold(instanceId)} from project ${clc.bold(
           projectId
         )}. Be aware that this cannot be undone.\n\n` +
+        `${serviceAccountMessage}` +
         `${resourcesMessage}` +
         `${artifactsMessage}`;
 
@@ -82,10 +86,6 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-      spinner.text = ` ${clc.green.bold(
-        logPrefix
-      )}: deleting your extension instance's service account.`;
-      spinner.start();
     } catch (err) {
       if (spinner.isSpinning) {
         spinner.fail();

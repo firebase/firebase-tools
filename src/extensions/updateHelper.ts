@@ -210,9 +210,6 @@ export async function retryUpdate(): Promise<boolean> {
  * @param instanceId Id of the instance to update
  * @param source A ExtensionSource to update to
  * @param params A new set of params to set on the instance
- * @param rolesToAdd A list of roles to grant to the associated service account
- * @param rolesToRemove A list of roles to remove from the associated service account
- * @param serviceAccountEmail The service account used by this extension instance
  * @param billingRequired Whether the extension requires billing
  */
 
@@ -221,8 +218,6 @@ export interface UpdateOptions {
   instanceId: string;
   source: extensionsApi.ExtensionSource;
   params?: { [key: string]: string };
-  rolesToAdd: extensionsApi.Role[];
-  rolesToRemove: extensionsApi.Role[];
   billingRequired?: boolean;
 }
 
