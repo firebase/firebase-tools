@@ -312,7 +312,10 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
  * @returns the path where the source was uploaded to
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
-  const zippedSource = await archiveDirectory(extPath, { type: "zip", ignore: ["node_modules"] });
+  const zippedSource = await archiveDirectory(extPath, {
+    type: "zip",
+    ignore: ["node_modules", ".git"],
+  });
   return await uploadObject(zippedSource, bucketName);
 }
 
