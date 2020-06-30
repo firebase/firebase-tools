@@ -116,6 +116,7 @@ var api = {
     "FIREBASE_EXT_REGISTRY_ORIGIN",
     "https://extensions-registry.firebaseapp.com"
   ),
+  firebaseRemoteConfigApiOrigin: utils.envOverride("FIREBASE_RC_API", "https://firebaseremoteconfig.googleapis.com"),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,

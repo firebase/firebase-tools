@@ -110,5 +110,8 @@ module.exports = function(client) {
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
 
+  client.remoteconfig = {};
+  client.remoteconfig.get = loadCommand("remoteconfig-get");
+
   return client;
 };
