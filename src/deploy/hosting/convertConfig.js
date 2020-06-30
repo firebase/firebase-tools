@@ -92,7 +92,7 @@ module.exports = function(config) {
   
   // i18n config
   if (_.has(config, "i18n")) {
-    out.i18N = config.i18n;
+    out.i18n = config.i18n;
   }
 
   return out;
