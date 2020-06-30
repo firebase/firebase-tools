@@ -89,7 +89,7 @@ module.exports = function(config) {
   if (_.has(config, "appAssociation")) {
     out.appAssociation = config.appAssociation;
   }
-  
+
   // i18n config
   if (_.has(config, "i18n")) {
     out.i18n = config.i18n;
