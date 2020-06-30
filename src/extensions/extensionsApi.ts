@@ -4,14 +4,40 @@ import * as operationPoller from "../operation-poller";
 
 const VERSION = "v1beta";
 
+export interface Extension {
+  name: string;
+  ref: string;
+  state: "STATE_UNSPECIFIED" | "UNPUBLISHED" | "PUBLISHED";
+  createTime: string;
+  latestVersion?: string;
+  latestVersionCreateTime?: string;
+}
+
+export interface ExtensionVersion {
+  name: string;
+  ref: string;
+  spec: ExtensionSpec;
+  state: "STATE_UNSPECIFIED" | "UNPUBLISHED" | "PUBLISHED";
+  hash: string;
+  createTime: string;
+}
+
+export interface PublisherProfile {
+  name: string;
+  publisherId: string;
+  registerTime: string;
+}
+
 export interface ExtensionInstance {
   name: string;
   createTime: string;
   updateTime: string;
-  state: string;
+  state: "STATE_UNSPECIFIED" | "DEPLOYING" | "UNINSTALLING" | "ACTIVE" | "ERRORED" | "PAUSED";
   config: ExtensionConfig;
-  lastOperationName?: string;
   serviceAccountEmail: string;
+  errorStatus?: string;
+  lastOperationName?: string;
+  lastOperationType?: string;
 }
 
 export interface ExtensionConfig {
@@ -22,6 +48,8 @@ export interface ExtensionConfig {
     [key: string]: any;
   };
   populatedPostinstallContent?: string;
+  extensionRef?: string;
+  extensionVersion?: string;
 }
 
 export interface ExtensionSource {
@@ -29,12 +57,16 @@ export interface ExtensionSource {
   packageUri: string;
   hash: string;
   spec: ExtensionSpec;
+  extensionRoot?: string;
+  fetchTime?: string;
+  lastOperationName?: string;
 }
 
 export interface ExtensionSpec {
   specVersion?: string;
   name: string;
   version: string;
+  displayName?: string;
   description?: string;
   apis?: Api[];
   roles?: Role[];
@@ -48,7 +80,7 @@ export interface ExtensionSpec {
   params?: Param[];
   preinstallContent?: string;
   postinstallContent?: string;
-  displayName?: string;
+  readmeContent?: string;
 }
 
 export interface Api {
@@ -84,6 +116,7 @@ export interface Param {
   validationRegex?: string;
   validationErrorMessage?: string;
   immutable?: boolean;
+  example?: string;
 }
 
 export enum ParamType {
@@ -235,7 +268,7 @@ export async function configureInstance(
  *
  * @param projectId the project the instance is in
  * @param instanceId the id of the instance to configure
- * @param ExtensionSource the source for the version of the extension to update to
+ * @param extensionSource the source for the version of the extension to update to
  * @param params params to configure the extension instance
  */
 export async function updateInstance(
