@@ -213,6 +213,11 @@ async function _runBinary(
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
+        // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
+        // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
+        // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
+        // related to this issue: https://github.com/grpc/grpc-java/pull/6512
+        detached: true,
         stdio: ["inherit", "pipe", "pipe"],
       });
     } catch (e) {
