@@ -47,6 +47,7 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
+    console.log("CALLED STROP");
     await downloadableEmulators.stop(Emulators.PUBSUB);
   }
 

@@ -11,8 +11,10 @@ module.exports = new Command("ext:dev:emulators:start")
   .option(commandUtils.FLAG_TEST_CONFIG, commandUtils.DESC_TEST_CONFIG)
   .option(commandUtils.FLAG_TEST_PARAMS, commandUtils.DESC_TEST_PARAMS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
+  .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .action(async (options: any) => {
-    const killSignalPromise = commandUtils.shutdownWhenKilled();
+    options = commandUtils.setExportOnExitOptions(options);
+    const killSignalPromise = commandUtils.shutdownWhenKilled(options);
 
     const emulatorOptions = await optionsHelper.buildOptions(options);
     try {

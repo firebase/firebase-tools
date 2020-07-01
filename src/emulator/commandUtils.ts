@@ -5,16 +5,19 @@ import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
 import requireConfig = require("../requireConfig");
-import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
-import { EmulatorRegistry } from "../emulator/registry";
-import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { EmulatorRegistry } from "./registry";
+import { FirestoreEmulator } from "./firestoreEmulator";
 import * as getProjectId from "../getProjectId";
 import { prompt } from "../prompt";
 import { EmulatorHub } from "./hub";
+import { onExit } from "./controller";
+import * as fsutils from "../fsutils";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -29,6 +32,16 @@ export const DESC_INSPECT_FUNCTIONS =
 
 export const FLAG_IMPORT = "--import [dir]";
 export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
+
+export const FLAG_EXPORT_ON_EXIT_NAME = "--export-on-exit";
+export const FLAG_EXPORT_ON_EXIT = `${FLAG_EXPORT_ON_EXIT_NAME} [dir]`;
+export const DESC_EXPORT_ON_EXIT =
+  "automatically export emulator data (emulators:export) " +
+  "when the emulators make a clean exit (SIGINT), " +
+  `when no dir is provided the location of ${FLAG_IMPORT} is used`;
+export const EXPORT_ON_EXIT_USAGE_ERROR =
+  `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
+  ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
 
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
@@ -156,13 +169,59 @@ export function parseInspectionPort(options: any): number {
   return parsed;
 }
 
-export function shutdownWhenKilled(): Promise<void> {
+/**
+ * Sets the correct export options based on --import and --export-on-exit.
+ * Also validates if we have a correct setting we need to export the data on exit.
+ * When used as: `--import ./data --export-on-exit` or `--import ./data --export-on-exit ./data`
+ * we do allow an non-existing --import [dir] and we just export-on-exit. This because else one would always need to
+ * export data the first time they start developing on a clean project.
+ * @param options
+ */
+export function setExportOnExitOptions(options: any): any {
+  if (options.exportOnExit) {
+    if (typeof options.import === "string") {
+      options.exportOnExit =
+        typeof options.exportOnExit === "string" ? options.exportOnExit : options.import;
+
+      const importPath = path.resolve(options.import);
+      if (!fsutils.dirExistsSync(importPath) && options.import === options.exportOnExit) {
+        // --import path does not exist and is tha same as --export-on-exit, let's not import and only --export-on-exit
+        options.exportOnExit = options.import;
+        delete options.import;
+      }
+    }
+
+    if (typeof options.exportOnExit === "string") {
+      return options;
+    }
+    throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
+  }
+  return options;
+}
+
+export function shutdownWhenKilled(options: any): Promise<void> {
   return new Promise((res, rej) => {
-    process.on("SIGINT", () => {
-      controller
-        .cleanShutdown()
-        .then(res)
-        .catch(rej);
+    let receivedSIGINTS = 0;
+    process.on("SIGINT", async () => {
+      try {
+        receivedSIGINTS = receivedSIGINTS + 1;
+        utils.logLabeledWarning("emulators", `Received SIGINT ${receivedSIGINTS}`);
+        if (receivedSIGINTS < 2) {
+          // in case of a double 'Ctrl-c' we do not want to cleanly exit with onExit
+          await onExit(options);
+        } else {
+          logger.debug(`Skipping clean onExit()`);
+        }
+        if (receivedSIGINTS < 3) {
+          // in case of a triple 'Ctrl-c' we do not want to wait for cleanShutdown when things go wrong
+          await controller.cleanShutdown();
+        } else {
+          logger.debug(`Skipping cleanShutdown()`);
+        }
+        res();
+      } catch (e) {
+        rej();
+      }
     });
   })
     .then(() => {
@@ -251,10 +310,11 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 /** The action function for emulators:exec and ext:dev:emulators:exec.
  *  Starts the appropriate emulators, executes the provided script,
  *  and then exits.
- *  @param script: A script to run after starting the emualtors.
+ *  @param script: A script to run after starting the emulators.
  *  @param options: A Commander options object.
  */
 export async function emulatorExec(script: string, options: any) {
+  options = setExportOnExitOptions(options);
   const projectId = getProjectId(options, true);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
@@ -264,6 +324,7 @@ export async function emulatorExec(script: string, options: any) {
   try {
     await controller.startAll(options, /* noUi = */ true);
     exitCode = await runScript(script, extraEnv);
+    await onExit(options);
   } finally {
     await controller.cleanShutdown();
   }

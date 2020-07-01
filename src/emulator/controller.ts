@@ -6,19 +6,19 @@ import * as path from "path";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
-import { EmulatorRegistry } from "../emulator/registry";
+import { EmulatorRegistry } from "./registry";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
-} from "../emulator/types";
-import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "../emulator/constants";
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
-import { HostingEmulator } from "../emulator/hostingEmulator";
+} from "./types";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
+import { FunctionsEmulator } from "./functionsEmulator";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -30,6 +30,10 @@ import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
 import * as portUtils from "./portUtils";
+import { EmulatorHubClient } from "./hubClient";
+import { promptOnce } from "../prompt";
+import * as rimraf from "rimraf";
+import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -46,13 +50,13 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
   }
 
-  const logger = EmulatorLogger.forEmulator(emulator);
+  const loggerForEmulator = EmulatorLogger.forEmulator(emulator);
   const portOpen = await portUtils.checkPortOpen(port, host);
   if (!portOpen) {
     if (findAvailablePort) {
       const newPort = await portUtils.findAvailablePort(host, port);
       if (newPort != port) {
-        logger.logLabeled(
+        loggerForEmulator.logLabeled(
           "WARN",
           emulator,
           `${Constants.description(
@@ -64,12 +68,12 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     } else {
       await cleanShutdown();
       const description = Constants.description(emulator);
-      logger.logLabeled(
+      loggerForEmulator.logLabeled(
         "WARN",
         emulator,
         `Port ${port} is not open on ${host}, could not start ${description}.`
       );
-      logger.logLabeled(
+      loggerForEmulator.logLabeled(
         "WARN",
         emulator,
         `To select a different host/port, specify that host/port in a firebase.json config file:
@@ -89,7 +93,7 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
 
   if (portUtils.isRestricted(port)) {
     const suggested = portUtils.suggestUnrestricted(port);
-    logger.logLabeled(
+    loggerForEmulator.logLabeled(
       "WARN",
       emulator,
       `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
@@ -108,6 +112,39 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   await EmulatorRegistry.start(instance);
 }
 
+/**
+ * Exports emulator data on clean exit (SIGINT or process end)
+ * @param options
+ */
+export async function exportOnExit(options: any) {
+  const exportOnExitDir = options.exportOnExit;
+  if (exportOnExitDir) {
+    try {
+      options.force = true;
+      options.noninteractive = true;
+      utils.logBullet(
+        `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
+          "please wait for the export to finish..."
+      );
+      await exportEmulatorData(exportOnExitDir, options);
+    } catch (e) {
+      utils.logWarning(e);
+      utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
+    }
+  }
+}
+
+/**
+ * Hook to do things when we're exiting cleanly (this does not include errors). Will be skipped on a second SIGINT
+ * @param options
+ */
+export async function onExit(options: any) {
+  await exportOnExit(options);
+}
+
+/**
+ * Hook to clean up on shutdown (includes errors). Will be skipped on a third SIGINT
+ */
 export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
@@ -429,4 +466,90 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       await instance.connect();
     }
   }
+}
+
+/**
+ * Exports data from emulators that support data export. Used with `emulators:export` and with the --export-on-exit flag.
+ * @param exportPath
+ * @param options
+ */
+export async function exportEmulatorData(exportPath: string, options: any) {
+  const projectId = options.project;
+  if (!projectId) {
+    throw new FirebaseError(
+      "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
+      { exit: 1 }
+    );
+  }
+
+  const hubClient = new EmulatorHubClient(projectId);
+  if (!hubClient.foundHub()) {
+    throw new FirebaseError(
+      `Did not find any running emulators for project ${clc.bold(projectId)}.`,
+      { exit: 1 }
+    );
+  }
+
+  try {
+    await hubClient.getStatus();
+  } catch (e) {
+    const filePath = EmulatorHub.getLocatorFilePath(projectId);
+    throw new FirebaseError(
+      `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
+      { exit: 1 }
+    );
+  }
+
+  utils.logBullet(
+    `Found running emulator hub for project ${clc.bold(projectId)} at ${hubClient.origin}`
+  );
+
+  // If the export target directory does not exist, we should attempt to create it
+  const exportAbsPath = path.resolve(exportPath);
+  if (!fs.existsSync(exportAbsPath)) {
+    utils.logBullet(`Creating export directory ${exportAbsPath}`);
+    fs.mkdirSync(exportAbsPath);
+  }
+
+  // Check if there is already an export there and prompt the user about deleting it
+  const existingMetadata = HubExport.readMetadata(exportAbsPath);
+  if (existingMetadata && !options.force) {
+    if (options.noninteractive) {
+      throw new FirebaseError(
+        "Export already exists in the target directory, re-run with --force to overwrite.",
+        { exit: 1 }
+      );
+    }
+
+    const prompt = await promptOnce({
+      type: "confirm",
+      message: `The directory ${exportAbsPath} already contains export data. Exporting again to the same directory will overwrite all data. Do you want to continue?`,
+      default: false,
+    });
+
+    if (!prompt) {
+      throw new FirebaseError("Command aborted", { exit: 1 });
+    }
+  }
+
+  // Remove all existing data (metadata.json will be overwritten automatically)
+  if (existingMetadata) {
+    if (existingMetadata.firestore) {
+      const firestorePath = path.join(exportAbsPath, existingMetadata.firestore.path);
+      utils.logBullet(`Deleting directory ${firestorePath}`);
+      rimraf.sync(firestorePath);
+    }
+  }
+
+  utils.logBullet(`Exporting data to: ${exportAbsPath}`);
+  try {
+    await hubClient.postExport(exportAbsPath);
+  } catch (e) {
+    throw new FirebaseError("Export request failed, see emulator logs for more information.", {
+      exit: 1,
+      original: e,
+    });
+  }
+
+  utils.logSuccess("Export complete");
 }
