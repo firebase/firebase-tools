@@ -4,17 +4,21 @@ import { FirebaseError } from "../../error";
 import { EXPORT_ON_EXIT_USAGE_ERROR } from "../../emulator/commandUtils";
 
 describe("commandUtils", () => {
+  const testSetExportOnExitOptions = (options: any): any => {
+    commandUtils.setExportOnExitOptions(options);
+    return options;
+  };
+
   it("should validate --export-on-exit options", () => {
-    expect(commandUtils.setExportOnExitOptions({ import: "./data" }).exportOnExit).to.be.undefined;
+    expect(testSetExportOnExitOptions({ import: "./data" }).exportOnExit).to.be.undefined;
     expect(
-      commandUtils.setExportOnExitOptions({ import: "./data", exportOnExit: "./data" }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./data" }).exportOnExit
     ).to.eql("./data");
     expect(
-      commandUtils.setExportOnExitOptions({ import: "./data", exportOnExit: "./dataExport" })
-        .exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./dataExport" }).exportOnExit
     ).to.eql("./dataExport");
     expect(
-      commandUtils.setExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit
     ).to.eql("./data");
     expect(() => commandUtils.setExportOnExitOptions({ exportOnExit: true })).to.throw(
       FirebaseError,
@@ -23,12 +27,12 @@ describe("commandUtils", () => {
   });
   it("should delete the --import option when the dir does not exist together with --export-on-exit", () => {
     expect(
-      commandUtils.setExportOnExitOptions({
+      testSetExportOnExitOptions({
         import: "./dataDirThatDoesNotExist",
         exportOnExit: "./dataDirThatDoesNotExist",
       }).import
     ).to.be.undefined;
-    let options = commandUtils.setExportOnExitOptions({
+    let options = testSetExportOnExitOptions({
       import: "./dataDirThatDoesNotExist",
       exportOnExit: true,
     });
@@ -37,14 +41,14 @@ describe("commandUtils", () => {
   });
   it("should not touch the --import option when the dir does not exist but --export-on-exit is not set", () => {
     expect(
-      commandUtils.setExportOnExitOptions({
+      testSetExportOnExitOptions({
         import: "./dataDirThatDoesNotExist",
       }).import
     ).to.eql("./dataDirThatDoesNotExist");
   });
   it("should keep other unrelated options when using setExportOnExitOptions", () => {
     expect(
-      commandUtils.setExportOnExitOptions({
+      testSetExportOnExitOptions({
         someUnrelatedOption: "isHere",
       }).someUnrelatedOption
     ).to.eql("isHere");

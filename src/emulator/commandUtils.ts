@@ -170,14 +170,14 @@ export function parseInspectionPort(options: any): number {
 }
 
 /**
- * Sets the correct export options based on --import and --export-on-exit.
+ * Sets the correct export options based on --import and --export-on-exit. Mutates the options object.
  * Also validates if we have a correct setting we need to export the data on exit.
  * When used as: `--import ./data --export-on-exit` or `--import ./data --export-on-exit ./data`
  * we do allow an non-existing --import [dir] and we just export-on-exit. This because else one would always need to
  * export data the first time they start developing on a clean project.
  * @param options
  */
-export function setExportOnExitOptions(options: any): any {
+export function setExportOnExitOptions(options: any) {
   if (options.exportOnExit) {
     if (typeof options.import === "string") {
       options.exportOnExit =
@@ -192,11 +192,11 @@ export function setExportOnExitOptions(options: any): any {
     }
 
     if (typeof options.exportOnExit === "string") {
-      return options;
+      return;
     }
     throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
   }
-  return options;
+  return;
 }
 
 export function shutdownWhenKilled(options: any): Promise<void> {
@@ -314,7 +314,6 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
  *  @param options: A Commander options object.
  */
 export async function emulatorExec(script: string, options: any) {
-  options = setExportOnExitOptions(options);
   const projectId = getProjectId(options, true);
   const extraEnv: Record<string, string> = {};
   if (projectId) {

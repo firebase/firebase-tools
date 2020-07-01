@@ -2,6 +2,7 @@ import { Command } from "../command";
 import * as commandUtils from "../emulator/commandUtils";
 
 module.exports = new Command("emulators:exec <script>")
+  .before(commandUtils.setExportOnExitOptions)
   .before(commandUtils.beforeEmulatorCommand)
   .description(
     "start the local Firebase emulators, " + "run a test script, then shut down the emulators"
