@@ -120,8 +120,6 @@ export async function exportOnExit(options: any) {
   const exportOnExitDir = options.exportOnExit;
   if (exportOnExitDir) {
     try {
-      options.force = true;
-      options.noninteractive = true;
       utils.logBullet(
         `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
           "please wait for the export to finish..."
@@ -513,7 +511,7 @@ export async function exportEmulatorData(exportPath: string, options: any) {
 
   // Check if there is already an export there and prompt the user about deleting it
   const existingMetadata = HubExport.readMetadata(exportAbsPath);
-  if (existingMetadata && !options.force) {
+  if (existingMetadata && !(options.force || options.exportOnExit)) {
     if (options.noninteractive) {
       throw new FirebaseError(
         "Export already exists in the target directory, re-run with --force to overwrite.",
