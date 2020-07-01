@@ -5,7 +5,9 @@ import { EXPORT_ON_EXIT_USAGE_ERROR } from "../../emulator/commandUtils";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {
+    console.log(options);
     commandUtils.setExportOnExitOptions(options);
+    console.log(options);
     return options;
   };
 
@@ -20,7 +22,15 @@ describe("commandUtils", () => {
     expect(
       testSetExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit
     ).to.eql("./data");
-    expect(() => commandUtils.setExportOnExitOptions({ exportOnExit: true })).to.throw(
+    expect(() => testSetExportOnExitOptions({ exportOnExit: true })).to.throw(
+      FirebaseError,
+      EXPORT_ON_EXIT_USAGE_ERROR
+    );
+    expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: true })).to.throw(
+      FirebaseError,
+      EXPORT_ON_EXIT_USAGE_ERROR
+    );
+    expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: "" })).to.throw(
       FirebaseError,
       EXPORT_ON_EXIT_USAGE_ERROR
     );

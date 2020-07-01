@@ -178,23 +178,27 @@ export function parseInspectionPort(options: any): number {
  * @param options
  */
 export function setExportOnExitOptions(options: any) {
-  if (options.exportOnExit) {
-    if (typeof options.import === "string") {
+  if (options.exportOnExit || typeof options.exportOnExit === "string") {
+    // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
+    // --import ./data --export-on-exit
+    if (options.import) {
       options.exportOnExit =
         typeof options.exportOnExit === "string" ? options.exportOnExit : options.import;
 
       const importPath = path.resolve(options.import);
       if (!fsutils.dirExistsSync(importPath) && options.import === options.exportOnExit) {
-        // --import path does not exist and is tha same as --export-on-exit, let's not import and only --export-on-exit
+        // --import path does not exist and is the same as --export-on-exit, let's not import and only --export-on-exit
         options.exportOnExit = options.import;
         delete options.import;
       }
     }
 
-    if (typeof options.exportOnExit === "string") {
-      return;
+    if (options.exportOnExit === true || !options.exportOnExit) {
+      // might be true when only used as a flag without --import [dir]
+      // options.exportOnExit might be an empty string when used as:
+      // firebase emulators:start --debug --import '' --export-on-exit ''
+      throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
     }
-    throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
   }
   return;
 }
