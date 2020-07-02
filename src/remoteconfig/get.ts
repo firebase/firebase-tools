@@ -83,7 +83,7 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
   
 
 /**Gets Firebase project information based on project ID */
-export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
+export async function getFirebaseProject(projectId: string): Promise<Object> {
     try {
       const response = await api.request("GET", `/v1/projects/${projectId}/remoteConfig`, {
         auth: true,
