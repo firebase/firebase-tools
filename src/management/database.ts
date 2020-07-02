@@ -5,6 +5,7 @@
 import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
+import { previews } from "../previews";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 
@@ -34,9 +35,10 @@ export interface DatabaseInstance {
  * @param options command options that will be modified to add instanceDetails.
  */
 export async function populateInstanceDetails(options: any): Promise<void> {
-  return getDatabaseInstanceDetails(options.project, options.instance).then((details) => {
-    options.instanceDetails = details;
-  });
+  if (previews.rtdbmanagement) {
+    options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
+  }
+  return Promise.resolve();
 }
 
 /**

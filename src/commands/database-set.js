@@ -16,6 +16,7 @@ var logger = require("../logger");
 var fs = require("fs");
 var { prompt } = require("../prompt");
 var _ = require("lodash");
+const { previews } = require("../previews");
 
 module.exports = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
@@ -34,7 +35,9 @@ module.exports = new Command("database:set <path> [infile]")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    const origin = api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
+    const origin = previews.rtdbmanagement
+      ? api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
+      : api.realtimeOriginOrEmulator;
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 

@@ -15,6 +15,7 @@ var utils = require("../utils");
 var _ = require("lodash");
 var fs = require("fs");
 var url = require("url");
+const { previews } = require("../previews");
 
 var _applyStringOpts = function(dest, src, keys, jsonKeys) {
   _.forEach(keys, function(key) {
@@ -64,12 +65,10 @@ module.exports = new Command("database:get <path>")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-
-    let dbUrl = utils.getDatabaseUrl(
-      api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl),
-      options.instance,
-      path + ".json"
-    );
+    let dbHost = previews.rtdbmanagement
+      ? api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
+      : api.realtimeOriginOrEmulator;
+    let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     var query = {};
     if (options.shallow) {
       query.shallow = "true";
