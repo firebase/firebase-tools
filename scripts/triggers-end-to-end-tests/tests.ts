@@ -286,14 +286,20 @@ describe("import/export end to end", () => {
 
     // Write some data to export
     const config = readConfig();
+    const app = admin.initializeApp(
+      {
+        databaseURL: "http://localhost:9000",
+      },
+      "rtdb-export"
+    );
     const aRef = admin
-      .database()
+      .database(app)
       .refFromURL(`http://localhost:${config.emulators!.database.host}/?ns=namespace-a`);
     await aRef.set({
       ns: "namespace-a",
     });
     const bRef = admin
-      .database()
+      .database(app)
       .refFromURL(`http://localhost:${config.emulators!.database.host}/?ns=namespace-b`);
     await bRef.set({
       ns: "namespace-b",
