@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as http from "http";
 
 import * as api from "../api";
+import * as logger from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
@@ -101,20 +102,27 @@ export class HubExport {
       fs.mkdirSync(dbExportPath);
     }
 
-    // TODO: Need to loop through each namespace from firebase.json
-    const ns = this.projectId;
-    const url = `${databaseAddr}/.json?ns=${ns}`;
+    // Get the list of namespaces
+    const inspectURL = `http://${databaseInfo.host}:${databaseInfo.port}/.inspect/databases.json?ns=${this.projectId}`;
+    const inspectRes = await api.request("GET", inspectURL);
 
-    const exportFile = path.join(dbExportPath, `${ns}.json`);
-    const writeStream = fs.createWriteStream(exportFile);
+    for (const instance of inspectRes.body) {
+      logger.debug(`Exporting database instance: ${instance}`);
 
-    return new Promise((resolve, reject) => {
-      http
-        .get(url, (response) => {
-          response.pipe(writeStream).once("close", resolve);
-        })
-        .on("error", reject);
-    });
+      const ns = instance.name;
+      const url = `${databaseAddr}/.json?ns=${ns}`;
+
+      const exportFile = path.join(dbExportPath, `${ns}.json`);
+      const writeStream = fs.createWriteStream(exportFile);
+
+      await new Promise((resolve, reject) => {
+        http
+          .get(url, (response) => {
+            response.pipe(writeStream).once("close", resolve);
+          })
+          .on("error", reject);
+      });
+    }
   }
 
   private shouldExport(e: Emulators): boolean {

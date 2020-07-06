@@ -396,7 +396,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
               port: databaseAddr.port,
               path: `/.json?ns=${ns}&disableTriggers=true`,
               headers: {
-                "Authorization": "Bearer owner",
+                Authorization: "Bearer owner",
                 "Content-Type": "application/json",
               },
             },
