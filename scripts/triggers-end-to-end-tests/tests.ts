@@ -304,11 +304,24 @@ describe("import/export end to end", () => {
       },
       "rtdb-export-b"
     );
+    const cApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-c`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-c"
+    );
 
+    // Write to two namespaces
     const aRef = aApp.database().ref("ns");
     await aRef.set("namespace-a");
     const bRef = bApp.database().ref("ns");
     await bRef.set("namespace-b");
+
+    // Read from a third
+    const cRef = cApp.database().ref("ns");
+    await cRef.once("value");
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
