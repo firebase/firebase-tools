@@ -9,6 +9,16 @@ import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
+const ADMIN_CREDENTIAL = {
+  getAccessToken: () => {
+    return Promise.resolve({
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      expires_in: 1000000,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      access_token: "owner",
+    });
+  },
+};
 
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
@@ -60,16 +70,7 @@ describe("database and firestore emulator function triggers", () => {
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
       databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
-      credential: {
-        getAccessToken: () => {
-          return Promise.resolve({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            expires_in: 1000000,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            access_token: "owner",
-          });
-        },
-      },
+      credential: ADMIN_CREDENTIAL,
     });
 
     database = admin.database();
@@ -286,18 +287,28 @@ describe("import/export end to end", () => {
 
     // Write some data to export
     const config = readConfig();
-    const aRef = admin
-      .database()
-      .refFromURL(`http://localhost:${config.emulators!.database.port}/?ns=namespace-a`);
-    await aRef.set({
-      ns: "namespace-a",
-    });
-    const bRef = admin
-      .database()
-      .refFromURL(`http://localhost:${config.emulators!.database.port}/?ns=namespace-b`);
-    await bRef.set({
-      ns: "namespace-b",
-    });
+    const port = config.emulators!.database.port;
+    const aApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-a`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-a"
+    );
+    const bApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-b`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-b"
+    );
+
+    const aRef = aApp.database().ref("ns");
+    await aRef.set("namespace-a");
+    const bRef = bApp.database().ref("ns");
+    await bRef.set("namespace-b");
 
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
@@ -335,8 +346,8 @@ describe("import/export end to end", () => {
     // Read the data
     const aSnap = await aRef.once("value");
     const bSnap = await bRef.once("value");
-    expect(aSnap.val()).to.eql({ ns: "namespace-a" });
-    expect(bSnap.val()).to.eql({ ns: "namespace-b" });
+    expect(aSnap.val()).to.eql("namespace-a");
+    expect(bSnap.val()).to.eql("namespace-b");
 
     await importCLI.stop();
   });

@@ -394,7 +394,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
           const req = http.request(
             importUrl,
             {
-              method: "POST",
+              method: "PUT",
               headers: {
                 Authorization: "Bearer owner",
                 "Content-Type": "application/json",
