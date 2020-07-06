@@ -14,7 +14,7 @@ export const previews: PreviewFlags = Object.assign(
     rtdbrules: false,
     ext: false,
     extdev: false,
-    rtdbmanagement: true,
+    rtdbmanagement: false,
   },
   configstore.get("previews")
 );
