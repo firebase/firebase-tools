@@ -110,16 +110,20 @@ export class HubExport {
       logger.debug(`Exporting database instance: ${instance}`);
 
       const ns = instance.name;
-      const url = `${databaseAddr}/.json?ns=${ns}`;
+      const url = `${databaseAddr}/.json?ns=${ns}&format=export`;
 
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);
 
       await new Promise((resolve, reject) => {
         http
-          .get(url, (response) => {
-            response.pipe(writeStream).once("close", resolve);
-          })
+          .request(
+            url,
+            { method: "GET", headers: { Authorization: "Bearer owner" } },
+            (response) => {
+              response.pipe(writeStream).once("close", resolve);
+            }
+          )
           .on("error", reject);
       });
     }

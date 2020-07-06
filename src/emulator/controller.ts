@@ -380,21 +380,21 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       const importDirAbsPath = path.resolve(options.import);
       const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
 
-      const files = fs.readdirSync(databaseExportDir);
+      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
-        const ns = f.split(".json")[0];
+        const ns = path.basename(f, ".json");
 
         databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
 
         const readStream = fs.createReadStream(fPath);
+
+        const importUrl = `http://${databaseAddr.host}:${databaseAddr.port}/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`;
         await new Promise((resolve, reject) => {
           const req = http.request(
+            importUrl,
             {
               method: "POST",
-              host: `${databaseAddr.host}`,
-              port: databaseAddr.port,
-              path: `/.json?ns=${ns}&disableTriggers=true`,
               headers: {
                 Authorization: "Bearer owner",
                 "Content-Type": "application/json",
