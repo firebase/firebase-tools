@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as http from "http";
 
 import * as api from "../api";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
@@ -14,6 +15,10 @@ export interface ExportMetadata {
     version: string;
     path: string;
     metadata_file: string;
+  };
+  database?: {
+    version: string;
+    path: string;
   };
 }
 
@@ -53,6 +58,14 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
+    if (this.shouldExport(Emulators.DATABASE)) {
+      metadata.database = {
+        version: getDownloadDetails(Emulators.DATABASE).version,
+        path: "database_export",
+      };
+      await this.exportDatabase(metadata);
+    }
+
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
   }
@@ -71,6 +84,36 @@ export class HubExport {
       origin: firestoreHost,
       json: true,
       data: firestoreExportBody,
+    });
+  }
+
+  private async exportDatabase(metadata: ExportMetadata): Promise<void> {
+    const databaseInfo = EmulatorRegistry.get(Emulators.DATABASE)!.getInfo();
+    const databaseAddr = `http://${databaseInfo.host}:${databaseInfo.port}`;
+
+    // Make sure the export directory exists
+    if (!fs.existsSync(this.exportPath)) {
+      fs.mkdirSync(this.exportPath);
+    }
+
+    const dbExportPath = path.join(this.exportPath, metadata.database!.path);
+    if (!fs.existsSync(dbExportPath)) {
+      fs.mkdirSync(dbExportPath);
+    }
+
+    // TODO: Need to loop through each namespace from firebase.json
+    const ns = this.projectId;
+    const url = `${databaseAddr}/.json?ns=${ns}`;
+
+    const exportFile = path.join(dbExportPath, `${ns}.json`);
+    const writeStream = fs.createWriteStream(exportFile);
+
+    return new Promise((resolve, reject) => {
+      http
+        .get(url, (response) => {
+          response.pipe(writeStream).once("close", resolve);
+        })
+        .on("error", reject);
     });
   }
 
