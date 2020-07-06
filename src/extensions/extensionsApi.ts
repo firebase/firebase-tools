@@ -1,8 +1,10 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
+import { FirebaseError } from "../error";
 
 const VERSION = "v1beta";
+const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 
 export interface Extension {
   name: string;
@@ -359,4 +361,116 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
     .then((res) => {
       return res.body;
     });
+}
+
+/**
+ * @param packageUri public URI of a zip or tarball of the extension source code
+ * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ * @param extensionRoot directory location of extension.yaml in the archived package, defaults to "/".
+ */
+export async function publishExtensionVersion(
+  ref: string,
+  packageUri: string,
+  extensionRoot?: string
+): Promise<ExtensionVersion> {
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (!version) {
+    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+  }
+
+  const publishRes = await api.request(
+    "POST",
+    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions:publish`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+      data: {
+        versionId: version,
+        packageUri,
+        extensionRoot: extensionRoot || "/",
+      },
+    }
+  );
+  const pollRes = await operationPoller.pollOperation<ExtensionVersion>({
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
+    operationResourceName: publishRes.body.name,
+    masterTimeout: 600000,
+  });
+  return pollRes;
+}
+
+/**
+ * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ */
+export async function unpublishExtension(ref: string): Promise<void> {
+  const { publisherId, extensionId } = parseRef(ref);
+  await api.request(
+    "POST",
+    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+    }
+  );
+}
+
+/**
+ * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ */
+export async function unpublishExtensionVersion(ref: string): Promise<void> {
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (!version) {
+    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+  }
+
+  await api.request(
+    "POST",
+    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}:unpublish`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+    }
+  );
+}
+
+/**
+ * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
+ * @return the extension
+ */
+export async function getExtension(ref: string): Promise<Extension> {
+  const { publisherId, extensionId } = parseRef(ref);
+  const res = await api.request(
+    "GET",
+    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+    }
+  );
+  return res.body;
+}
+
+/**
+ * @param ref user-friendly identifier
+ * @return array of ref split into publisher id, extension id, and version id (if applicable)
+ */
+export function parseRef(
+  ref: string
+): {
+  publisherId: string;
+  extensionId: string;
+  version?: string;
+} {
+  const parts = refRegex.exec(ref);
+  // Exec additionally returns original string, index, & input values.
+  if (parts && (parts.length == 5 || parts.length == 7)) {
+    const publisherId = parts[1];
+    const extensionId = parts[2];
+    const version = parts[4];
+    return { publisherId, extensionId, version };
+  }
+  throw new FirebaseError(
+    "Extension reference must be in format `{publisher}/{extension}(@{version})`."
+  );
 }
