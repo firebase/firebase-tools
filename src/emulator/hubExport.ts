@@ -92,6 +92,26 @@ export class HubExport {
     const databaseInfo = EmulatorRegistry.get(Emulators.DATABASE)!.getInfo();
     const databaseAddr = `http://${databaseInfo.host}:${databaseInfo.port}`;
 
+    // Get the list of namespaces
+    const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
+    const inspectRes = await api.request("GET", inspectURL, { origin: databaseAddr, auth: true });
+    const namespaces = inspectRes.body.map((instance: any) => instance.name);
+
+    // Check each one for actual data
+    const nonEmptyNamespaces = [];
+    for (const ns of namespaces) {
+      const checkDataPath = `/.json?ns=${ns}&shallow=true&&limitToFirst=1`;
+      const checkDataRes = await api.request("GET", checkDataPath, {
+        origin: databaseAddr,
+        auth: true,
+      });
+      if (checkDataRes.body !== null) {
+        nonEmptyNamespaces.push(ns);
+      } else {
+        logger.debug(`Namespace ${ns} contained null data, not exporting`);
+      }
+    }
+
     // Make sure the export directory exists
     if (!fs.existsSync(this.exportPath)) {
       fs.mkdirSync(this.exportPath);
@@ -102,28 +122,18 @@ export class HubExport {
       fs.mkdirSync(dbExportPath);
     }
 
-    // Get the list of namespaces
-    const inspectURL = `http://${databaseInfo.host}:${databaseInfo.port}/.inspect/databases.json?ns=${this.projectId}`;
-    const inspectRes = await api.request("GET", inspectURL);
-
-    for (const instance of inspectRes.body) {
-      logger.debug(`Exporting database instance: ${instance}`);
-
-      const ns = instance.name;
+    for (const ns of nonEmptyNamespaces) {
       const url = `${databaseAddr}/.json?ns=${ns}&format=export`;
 
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);
 
+      logger.debug(`Exporting database instance: ${ns} from ${url} to ${exportFile}`);
       await new Promise((resolve, reject) => {
         http
-          .request(
-            url,
-            { method: "GET", headers: { Authorization: "Bearer owner" } },
-            (response) => {
-              response.pipe(writeStream).once("close", resolve);
-            }
-          )
+          .get(url, { headers: { Authorization: "Bearer owner" } }, (response) => {
+            response.pipe(writeStream, { end: true }).once("close", resolve);
+          })
           .on("error", reject);
       });
     }
