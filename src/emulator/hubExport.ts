@@ -123,17 +123,23 @@ export class HubExport {
     }
 
     for (const ns of nonEmptyNamespaces) {
-      const url = `${databaseAddr}/.json?ns=${ns}&format=export`;
-
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);
 
-      logger.debug(`Exporting database instance: ${ns} from ${url} to ${exportFile}`);
+      logger.debug(`Exporting database instance: ${ns} to ${exportFile}`);
       await new Promise((resolve, reject) => {
         http
-          .get(url, { headers: { Authorization: "Bearer owner" } }, (response) => {
-            response.pipe(writeStream, { end: true }).once("close", resolve);
-          })
+          .get(
+            {
+              host: databaseInfo.host,
+              port: databaseInfo.port,
+              path: `.json?ns=${ns}&format=export`,
+              headers: { Authorization: "Bearer owner" },
+            },
+            (response) => {
+              response.pipe(writeStream, { end: true }).once("close", resolve);
+            }
+          )
           .on("error", reject);
       });
     }
