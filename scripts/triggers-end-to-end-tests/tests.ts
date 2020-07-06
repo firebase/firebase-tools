@@ -285,14 +285,16 @@ describe("import/export end to end", () => {
     );
 
     // Write some data to export
-    admin.initializeApp({
-      databaseURL: `https://${FIREBASE_PROJECT}.firebaseio.com`,
-    });
-    const aRef = admin.database().refFromURL(`http://localhost:9000/?ns=namespace-a`);
+    const config = readConfig();
+    const aRef = admin
+      .database()
+      .refFromURL(`http://localhost:${config.emulators!.database.host}/?ns=namespace-a`);
     await aRef.set({
       ns: "namespace-a",
     });
-    const bRef = admin.database().refFromURL(`http://localhost:9000/?ns=namespace-b`);
+    const bRef = admin
+      .database()
+      .refFromURL(`http://localhost:${config.emulators!.database.host}/?ns=namespace-b`);
     await bRef.set({
       ns: "namespace-b",
     });
