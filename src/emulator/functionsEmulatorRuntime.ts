@@ -966,14 +966,6 @@ async function initializeRuntime(
   }
 
   initializeEnvironmentalVariables(frb);
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    new EmulatorLog(
-      "WARN",
-      "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
-    ).log();
-  }
-
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
