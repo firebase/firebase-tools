@@ -279,6 +279,8 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
         credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
       } else {
+        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
+        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
         functionsLogger.logLabeled(
           "WARN",
           "functions",
