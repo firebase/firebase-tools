@@ -100,7 +100,7 @@ export class HubExport {
     // Check each one for actual data
     const nonEmptyNamespaces = [];
     for (const ns of namespaces) {
-      const checkDataPath = `/.json?ns=${ns}&shallow=true&&limitToFirst=1`;
+      const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
       const checkDataRes = await api.request("GET", checkDataPath, {
         origin: databaseAddr,
         auth: true,
@@ -133,7 +133,7 @@ export class HubExport {
             {
               host: databaseInfo.host,
               port: databaseInfo.port,
-              path: `.json?ns=${ns}&format=export`,
+              path: `/.json?ns=${ns}&format=export`,
               headers: { Authorization: "Bearer owner" },
             },
             (response) => {
