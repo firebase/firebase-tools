@@ -14,9 +14,9 @@ const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export interface RemoteConfigTemplateData {
-  parameterGroups: JSON; conditions:JSON; parameters:JSON; version:JSON 
+  parameterGroups: any; conditions:any; parameters: any; version:any
 }
-export interface ParameterGroupsData {name:JSON; expression:JSON}
+export interface ParameterGroupsData {name:any; expression:any}
 
 /**
  * Returns a list of projects to choose from. Gets project information for the selected project.
@@ -88,9 +88,13 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
   
 
 /**Gets Firebase project information based on project ID */
-export async function getFirebaseProject(projectId: string): Promise<RemoteConfigTemplateData> {
+export async function getTemplate(projectId: string, versionNumber = null): Promise<RemoteConfigTemplateData> {
     try {
-      const response = await api.request("GET", `/v1/projects/${projectId}/remoteConfig`, {
+      var request = `/v1/projects/${projectId}/remoteConfig`
+      if (versionNumber) {
+        request = request + '?versionNumber=' + versionNumber
+      }
+      const response = await api.request("GET", request, {
         auth: true,
         origin: api.firebaseRemoteConfigApiOrigin,
         timeout: TIMEOUT,
