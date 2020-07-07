@@ -1,10 +1,13 @@
-import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
-import { EmulatedTriggerDefinition, getFunctionRegion } from "./functionsEmulatorShared";
+import {
+  EmulatedTriggerDefinition,
+  EmulatedTriggerType,
+  getFunctionRegion,
+} from "./functionsEmulatorShared";
 import * as utils from "../utils";
 import * as logger from "../logger";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import { LegacyEvent } from "./events/types";
 
 interface FunctionsShellController {
@@ -18,11 +21,10 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
 
   constructor(private emu: FunctionsEmulator) {
     this.triggers = emu.getTriggers();
-    this.emulatedFunctions = this.triggers.map((trigger) => {
-      return trigger.name;
-    });
+    this.emulatedFunctions = this.triggers.map((t) => t.name);
 
-    utils.logLabeledBullet("functions", `Loaded functions: ${this.emulatedFunctions.join(", ")}`);
+    const entryPoints = this.triggers.map((t) => t.entryPoint);
+    utils.logLabeledBullet("functions", `Loaded functions: ${entryPoints.join(", ")}`);
 
     for (const trigger of this.triggers) {
       const name = trigger.name;
@@ -31,7 +33,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
         this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().host,
           this.emu.getInfo().port,
-          this.emu.projectId,
+          this.emu.getProjectId(),
           name,
           getFunctionRegion(trigger)
         );
@@ -68,12 +70,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       data,
     };
 
-    FunctionsEmulator.startFunctionRuntime(
-      this.emu.bundleTemplate,
-      name,
-      this.emu.nodeBinary,
-      proto
-    );
+    this.emu.startFunctionRuntime(name, EmulatedTriggerType.BACKGROUND, proto);
   }
 
   private getTrigger(name: string): EmulatedTriggerDefinition {

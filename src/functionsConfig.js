@@ -1,33 +1,38 @@
 "use strict";
 
 var _ = require("lodash");
-
 var clc = require("cli-color");
+
 var api = require("./api");
-var FirebaseError = require("./error");
-var runtimeconfig = require("./gcp/runtimeconfig");
-var getProjectId = require("./getProjectId");
-var getProjectNumber = require("./getProjectNumber");
 var ensureApiEnabled = require("./ensureApiEnabled").ensure;
+var { FirebaseError } = require("./error");
+var getProjectId = require("./getProjectId");
+var runtimeconfig = require("./gcp/runtimeconfig");
 
 exports.RESERVED_NAMESPACES = ["firebase"];
 
-var _keyToIds = function(key) {
+function _keyToIds(key) {
   var keyParts = key.split(".");
   var variable = keyParts.slice(1).join("/");
   return {
     config: keyParts[0],
     variable: variable,
   };
-};
+}
 
-var _setVariable = function(projectId, configId, varPath, val) {
+function _setVariable(projectId, configId, varPath, val) {
   if (configId === "" || varPath === "") {
     var msg = "Invalid argument, each config value must have a 2-part key (e.g. foo.bar).";
     throw new FirebaseError(msg);
   }
   return runtimeconfig.variables.set(projectId, configId, varPath, val);
-};
+}
+
+function _isReservedNamespace(id) {
+  return _.some(exports.RESERVED_NAMESPACES, (reserved) => {
+    return id.config.toLowerCase().startsWith(reserved);
+  });
+}
 
 exports.ensureApi = function(options) {
   var projectId = getProjectId(options);
@@ -46,25 +51,22 @@ exports.idsToVarName = function(projectId, configId, varId) {
 };
 
 exports.getAppEngineLocation = function(config) {
-  var appEngineLocation = config.cloudResourceLocation;
+  var appEngineLocation = config.locationId;
   if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
-    // For some regions, such as us-central1, the cloudResourceLocation has the trailing digit cut off
+    // For some regions, such as us-central1, the locationId has the trailing digit cut off
     appEngineLocation = appEngineLocation + "1";
   }
   return appEngineLocation || "us-central1";
 };
 
 exports.getFirebaseConfig = function(options) {
-  return getProjectNumber(options)
-    .then(function(projectNumber) {
-      return api.request("GET", "/v1/projects/" + projectNumber + ":getServerAppConfig", {
-        auth: true,
-        origin: api.firedataOrigin,
-      });
+  const projectId = getProjectId(options, false);
+  return api
+    .request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
+      auth: true,
+      origin: api.firebaseApiOrigin,
     })
-    .then(function(response) {
-      return response.body;
-    });
+    .then((response) => response.body);
 };
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"
@@ -150,7 +152,7 @@ exports.parseSetArgs = function(args) {
     }
 
     var id = _keyToIds(key);
-    if (_.includes(exports.RESERVED_NAMESPACES, id.config.toLowerCase())) {
+    if (_isReservedNamespace(id)) {
       throw new FirebaseError("Cannot set to reserved namespace " + clc.bold(id.config));
     }
 
@@ -173,7 +175,7 @@ exports.parseUnsetArgs = function(args) {
 
   _.forEach(splitArgs, function(key) {
     var id = _keyToIds(key);
-    if (_.includes(exports.RESERVED_NAMESPACES, id.config.toLowerCase())) {
+    if (_isReservedNamespace(id)) {
       throw new FirebaseError("Cannot unset reserved namespace " + clc.bold(id.config));
     }
 

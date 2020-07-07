@@ -1,7 +1,7 @@
 "use strict";
 
 var api = require("./api");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var utils = require("./utils");
 
 exports.updateRules = function(instance, src, options) {

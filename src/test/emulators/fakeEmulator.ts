@@ -1,31 +1,28 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types";
 import * as express from "express";
-import * as http from "http";
+import { createDestroyer } from "../../utils";
 
 /**
  * A thing that acts like an emulator by just occupying a port.
  */
 export class FakeEmulator implements EmulatorInstance {
   private exp: express.Express;
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
 
   constructor(public name: Emulators, public host: string, public port: number) {
     this.exp = express();
   }
 
   start(): Promise<void> {
-    this.server = this.exp.listen(this.port);
+    const server = this.exp.listen(this.port);
+    this.destroyServer = createDestroyer(server);
     return Promise.resolve();
   }
   connect(): Promise<void> {
     return Promise.resolve();
   }
   stop(): Promise<void> {
-    if (this.server) {
-      this.server.close();
-      this.server = undefined;
-    }
-    return Promise.resolve();
+    return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
   getInfo(): EmulatorInfo {
     return {

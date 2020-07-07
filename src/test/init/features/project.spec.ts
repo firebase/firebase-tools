@@ -1,14 +1,16 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
+import { configstore } from "../../../configstore";
 
-import { doSetup, getProjectInfo, ProjectInfo } from "../../../init/features/project";
-import * as firebaseApi from "../../../firebaseApi";
+import { doSetup } from "../../../init/features/project";
+import * as projectManager from "../../../management/projects";
 import * as prompt from "../../../prompt";
+import * as Config from "../../../config";
 
-const TEST_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
+const TEST_FIREBASE_PROJECT: projectManager.FirebaseProjectMetadata = {
   projectId: "my-project-123",
-  projectNumber: 123456789,
+  projectNumber: "123456789",
   displayName: "my-project",
   name: "projects/my-project",
   resources: {
@@ -19,138 +21,192 @@ const TEST_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
   },
 };
 
-const ANOTHER_FIREBASE_PROJECT: firebaseApi.FirebaseProject = {
-  projectId: "another-project",
-  projectNumber: 987654321,
-  displayName: "another-project",
-  name: "projects/another-project",
-  resources: {},
-};
-
-const TEST_PROJECT_INFO: ProjectInfo = {
-  id: "my-project-123",
-  label: "my-project-123 (my-project)",
-  instance: "my-project",
-  location: "us-central",
-};
-
 describe("project", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-  let listProjectsStub: sinon.SinonStub;
   let getProjectStub: sinon.SinonStub;
+  let createFirebaseProjectStub: sinon.SinonStub;
+  let getOrPromptProjectStub: sinon.SinonStub;
+  let addFirebaseProjectStub: sinon.SinonStub;
+  let promptAvailableProjectIdStub: sinon.SinonStub;
+  let promptOnceStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
+  let configstoreSetStub: sinon.SinonStub;
+  let emptyConfig: Config;
 
   beforeEach(() => {
-    listProjectsStub = sandbox.stub(firebaseApi, "listProjects");
-    getProjectStub = sandbox.stub(firebaseApi, "getProject");
-    promptStub = sandbox.stub(prompt, "promptOnce");
+    getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
+    createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
+    getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
+    addFirebaseProjectStub = sandbox.stub(projectManager, "addFirebaseToCloudProjectAndLog");
+    promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
+    promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
+    promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    configstoreSetStub = sandbox.stub(configstore, "set").throws("Unexpected configstore set");
+    emptyConfig = new Config("{}", {});
   });
 
   afterEach(() => {
     sandbox.restore();
   });
 
-  describe("getProjectInfo", () => {
-    it("should get correct project info when no project supplied", async () => {
-      const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("my-project-123");
+  describe("doSetup", () => {
+    describe('with "Use an existing project" option', () => {
+      it("should set up the correct properties in the project", async () => {
+        const options = { project: "my-project" };
+        const setup = { config: {}, rcfile: {} };
+        getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        promptOnceStub.onFirstCall().resolves("Use an existing project");
+        getOrPromptProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
-      const project = await getProjectInfo(options);
+        await doSetup(setup, emptyConfig, options);
 
-      expect(project).to.deep.equal(TEST_PROJECT_INFO);
-    });
-
-    it("should set instance and location to undefined when resources not provided", async () => {
-      const options = {};
-      listProjectsStub.returns([ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("another-project");
-
-      const project = await getProjectInfo(options);
-
-      expect(project).to.deep.equal({
-        id: "another-project",
-        label: "another-project (another-project)",
-        instance: undefined,
-        location: undefined,
+        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
+        expect(_.get(setup, "instance")).to.deep.equal("my-project");
+        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.not.be.called;
+        expect(getOrPromptProjectStub).to.not.be.called;
       });
     });
 
-    it("should get the correct project info when --project is supplied", async () => {
-      const options = { project: "my-project" };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
+    describe('with "Create a new project" option', () => {
+      it("should create a new project and set up the correct properties", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub.onFirstCall().resolves("Create a new project");
+        const fakePromptFn = (promptAnswer: any) => {
+          promptAnswer.projectId = "my-project-123";
+          promptAnswer.displayName = "my-project";
+        };
+        promptStub
+          .withArgs({}, projectManager.PROJECTS_CREATE_QUESTIONS)
+          .onFirstCall()
+          .callsFake(fakePromptFn);
+        createFirebaseProjectStub.resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
-      const project = await getProjectInfo(options);
+        await doSetup(setup, emptyConfig, options);
 
-      expect(project).to.deep.equal(TEST_PROJECT_INFO);
+        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
+        expect(_.get(setup, "instance")).to.deep.equal("my-project");
+        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptStub).to.be.calledOnce;
+        expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
+          displayName: "my-project",
+        });
+      });
+
+      it("should throw if project ID is empty after prompt", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub.onFirstCall().resolves("Create a new project");
+        const fakePromptFn = (promptAnswer: any) => {
+          promptAnswer.projectId = "";
+        };
+        promptStub
+          .withArgs({}, projectManager.PROJECTS_CREATE_QUESTIONS)
+          .onFirstCall()
+          .callsFake(fakePromptFn);
+        configstoreSetStub.onFirstCall().resolves();
+
+        let err;
+        try {
+          await doSetup(setup, emptyConfig, options);
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err.message).to.equal("Project ID cannot be empty");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptStub).to.be.calledOnce;
+        expect(createFirebaseProjectStub).to.be.not.called;
+      });
     });
 
-    it("should return correct project info when choosing new project", async () => {
-      const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+    describe('with "Add Firebase resources to GCP project" option', () => {
+      it("should add firebase resources and set up the correct properties", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Add Firebase to an existing Google Cloud Platform project");
+        promptAvailableProjectIdStub.onFirstCall().resolves("my-project-123");
+        addFirebaseProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+        configstoreSetStub.onFirstCall().resolves();
 
-      const project = await getProjectInfo(options);
+        await doSetup(setup, emptyConfig, options);
 
-      expect(project).to.deep.equal({ id: "[create a new project]" });
+        expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
+        expect(_.get(setup, "instance")).to.deep.equal("my-project");
+        expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptAvailableProjectIdStub).to.be.calledOnce;
+        expect(addFirebaseProjectStub).to.be.calledOnceWith("my-project-123");
+      });
+
+      it("should throw if project ID is empty after prompt", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub
+          .onFirstCall()
+          .resolves("Add Firebase to an existing Google Cloud Platform project");
+        promptAvailableProjectIdStub.onFirstCall().resolves("");
+
+        let err;
+        try {
+          await doSetup(setup, emptyConfig, options);
+        } catch (e) {
+          err = e;
+        }
+
+        expect(err.message).to.equal("Project ID cannot be empty");
+        expect(promptOnceStub).to.be.calledOnce;
+        expect(promptAvailableProjectIdStub).to.be.calledOnce;
+        expect(addFirebaseProjectStub).to.be.not.called;
+      });
     });
 
-    it("should return correct project info when choosing not to set up project", async () => {
-      const options = {};
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
+    describe(`with "Don't set up a default project" option`, () => {
+      it("should set up the correct properties when not choosing a project", async () => {
+        const options = {};
+        const setup = { config: {}, rcfile: {} };
+        promptOnceStub.resolves("Don't set up a default project");
 
-      const project = await getProjectInfo(options);
+        await doSetup(setup, emptyConfig, options);
 
-      expect(project).to.deep.equal({ id: "[don't setup a default project]" });
-    });
-  });
-
-  describe("doSetup", () => {
-    it("should set up the correct properties in the project", async () => {
-      const options = { project: "my-project" };
-      const setup = { config: {}, rcfile: {} };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
-
-      await doSetup(setup, {}, options);
-
-      expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
-      expect(_.get(setup, "instance")).to.deep.equal("my-project");
-      expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
-      expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(setup).to.deep.equal({ config: {}, rcfile: {}, project: {} });
+        expect(promptOnceStub).to.be.calledOnce;
+      });
     });
 
-    it("should set up the correct properties when choosing new project", async () => {
-      const options = {};
-      const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[create a new project]");
+    describe("with defined .firebaserc file", () => {
+      let options: any;
+      let setup: any;
 
-      await doSetup(setup, {}, options);
+      beforeEach(() => {
+        options = {};
+        setup = { config: {}, rcfile: { projects: { default: "my-project-123" } } };
+        getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
+      });
 
-      expect(_.get(setup, "createProject")).to.deep.equal(true);
-    });
+      it("should not prompt", async () => {
+        await doSetup(setup, emptyConfig, options);
 
-    it("should set up the correct properties when not choosing a project", async () => {
-      const options = {};
-      const setup = { config: {}, rcfile: {} };
-      listProjectsStub.returns([TEST_FIREBASE_PROJECT, ANOTHER_FIREBASE_PROJECT]);
-      promptStub.returns("[don't setup a default project]");
+        expect(promptOnceStub).to.be.not.called;
+        expect(promptStub).to.be.not.called;
+      });
 
-      await doSetup(setup, {}, options);
+      it("should set project location even if .firebaserc is already set up", async () => {
+        await doSetup(setup, emptyConfig, options);
 
-      expect(setup).to.deep.equal({ config: {}, rcfile: {}, project: {} });
-    });
-
-    it("should set project location even if .firebaserc is already set up", async () => {
-      const options = {};
-      const setup = { config: {}, rcfile: { projects: { default: "my-project" } } };
-      getProjectStub.returns(TEST_FIREBASE_PROJECT);
-
-      await doSetup(setup, {}, options);
-
-      expect(_.get(setup, "projectId")).to.equal("my-project");
-      expect(_.get(setup, "projectLocation")).to.equal("us-central");
+        expect(_.get(setup, "projectId")).to.equal("my-project-123");
+        expect(_.get(setup, "projectLocation")).to.equal("us-central");
+        expect(getProjectStub).to.be.calledOnceWith("my-project-123");
+      });
     });
   });
 });

@@ -18,7 +18,7 @@ var tmp = require("tmp");
 
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
-var configstore = require("../lib/configstore");
+var { configstore } = require("../lib/configstore");
 
 var projectId = process.argv[2] || "functions-integration-test";
 var localFirebase = __dirname + "/../lib/bin/firebase.js";
@@ -42,25 +42,36 @@ var postTest = function() {
 
 var set = function(expression) {
   return new Promise(function(resolve) {
-    exec(`${localFirebase} functions:config:set ${expression} --project=${projectId}`, { cwd: tmpDir }, function(err) {
-      expect(err).to.be.null;
-      resolve();
-    });
+    exec(
+      `${localFirebase} functions:config:set ${expression} --project=${projectId}`,
+      { cwd: tmpDir },
+      function(err) {
+        expect(err).to.be.null;
+        resolve();
+      }
+    );
   });
 };
 
 var unset = function(key) {
   return new Promise(function(resolve) {
-    exec(`${localFirebase} functions:config:unset ${key} --project=${projectId}`, { cwd: tmpDir }, function(err) {
-      expect(err).to.be.null;
-      resolve();
-    });
+    exec(
+      `${localFirebase} functions:config:unset ${key} --project=${projectId}`,
+      { cwd: tmpDir },
+      function(err) {
+        expect(err).to.be.null;
+        resolve();
+      }
+    );
   });
 };
 
 var getAndCompare = function(expected) {
   return new Promise(function(resolve) {
-    exec(`${localFirebase} functions:config:get --project=${projectId}`, { cwd: tmpDir }, function(err, stdout) {
+    exec(`${localFirebase} functions:config:get --project=${projectId}`, { cwd: tmpDir }, function(
+      err,
+      stdout
+    ) {
       expect(JSON.parse(stdout)).to.deep.equal(expected);
       resolve();
     });

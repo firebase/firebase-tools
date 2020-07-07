@@ -40,7 +40,7 @@ describe("utils", () => {
       process.env.FOO_BAR_BAZ = "set";
 
       expect(utils.envOverride("FOO_BAR_BAZ", "notset")).to.equal("set");
-      expect(utils.envOverrides).to.deep.equal(["FOO_BAR_BAZ"]);
+      expect(utils.envOverrides).to.contain("FOO_BAR_BAZ");
 
       delete process.env.FOO_BAR_BAZ;
     });
@@ -69,6 +69,66 @@ describe("utils", () => {
     });
   });
 
+  describe("getDatabaseUrl", () => {
+    it("should create a url for prod", () => {
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
+        "https://fir-proj.firebaseio.com/"
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar"
+      );
+      expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar.json"
+      );
+    });
+
+    it("should create a url for the emulator", () => {
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/")).to.equal(
+        "http://localhost:9000/?ns=fir-proj"
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj"
+      );
+      expect(utils.getDatabaseUrl("http://localhost:9000", "fir-proj", "/foo/bar.json")).to.equal(
+        "http://localhost:9000/foo/bar.json?ns=fir-proj"
+      );
+    });
+  });
+
+  describe("getDatabaseViewDataUrl", () => {
+    it("should get a view data url for prod", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "/foo/bar")
+      ).to.equal("https://console.firebase.google.com/project/fir-proj/database/data/foo/bar");
+    });
+
+    it("should get a view data url for the emulator", () => {
+      expect(
+        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "/foo/bar")
+      ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-proj");
+    });
+  });
+
+  describe("addDatabaseNamespace", () => {
+    it("should add the namespace for prod", () => {
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/"
+      );
+      expect(utils.addDatabaseNamespace("https://firebaseio.com/foo/bar", "fir-proj")).to.equal(
+        "https://fir-proj.firebaseio.com/foo/bar"
+      );
+    });
+
+    it("should add the namespace for the emulator", () => {
+      expect(utils.addDatabaseNamespace("http://localhost:9000/", "fir-proj")).to.equal(
+        "http://localhost:9000/?ns=fir-proj"
+      );
+      expect(utils.addDatabaseNamespace("http://localhost:9000/foo/bar", "fir-proj")).to.equal(
+        "http://localhost:9000/foo/bar?ns=fir-proj"
+      );
+    });
+  });
+
   describe("addSubdomain", () => {
     it("should add a subdomain", () => {
       expect(utils.addSubdomain("https://example.com", "sub")).to.equal("https://sub.example.com");
@@ -93,6 +153,55 @@ describe("utils", () => {
         { state: "rejected", reason: "bar" },
         { state: "fulfilled", value: "baz" },
       ]);
+    });
+  });
+
+  describe("promiseProps", () => {
+    it("should resolve all promises", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: "2",
+      });
+    });
+
+    it("should pass through objects", async () => {
+      const o = {
+        foo: new Promise((resolve) => {
+          setTimeout(() => {
+            resolve("1");
+          });
+        }),
+        bar: ["bar"],
+      };
+
+      const result = await utils.promiseProps(o);
+      expect(result).to.deep.equal({
+        foo: "1",
+        bar: ["bar"],
+      });
+    });
+
+    it("should reject if a promise rejects", async () => {
+      const o = {
+        foo: new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("1"));
+          });
+        }),
+        bar: Promise.resolve("2"),
+      };
+
+      return expect(utils.promiseProps(o)).to.eventually.be.rejected;
     });
   });
 });

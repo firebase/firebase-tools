@@ -1,0 +1,11 @@
+{
+  "functions": {},
+  "emulators": {
+    "hub": {
+      "port": 4000
+    },
+    "functions": {
+      "port": 9002
+    }
+  }
+}

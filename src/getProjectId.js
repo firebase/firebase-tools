@@ -2,8 +2,9 @@
 
 var _ = require("lodash");
 var clc = require("cli-color");
+var marked = require("marked");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 
 /**
  * Tries to determine the correct app name for commands that
@@ -14,17 +15,27 @@ var FirebaseError = require("./error");
  * is required
  * @returns {String} The firebase name
  */
-module.exports = function(options, allowNull) {
+module.exports = function(options, allowNull = false) {
   if (!options.project && !allowNull) {
     var aliases = _.get(options, "rc.projects", {});
     var aliasCount = _.size(aliases);
 
     if (aliasCount === 0) {
       throw new FirebaseError(
-        "No project active. Run with " +
-          clc.bold("--project <projectId>") +
-          " or define an alias by\nrunning " +
-          clc.bold("firebase use --add"),
+        "No currently active project.\n" +
+          "To run this command, you need to specify a project. You have two options:\n" +
+          "- Run this command with " +
+          clc.bold("--project <alias_or_project_id>") +
+          ".\n" +
+          "- Set an active project by running " +
+          clc.bold("firebase use --add") +
+          ", then rerun this command.\n" +
+          "To list all the Firebase projects to which you have access, run " +
+          clc.bold("firebase projects:list") +
+          ".\n" +
+          marked(
+            "To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases"
+          ),
         {
           exit: 1,
         }

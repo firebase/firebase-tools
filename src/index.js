@@ -4,7 +4,8 @@ var program = require("commander");
 var pkg = require("../package.json");
 var clc = require("cli-color");
 var logger = require("./logger");
-var didYouMean = require("didyoumean");
+var { setupLoggers } = require("./utils");
+var leven = require("leven");
 
 program.version(pkg.version);
 program.option(
@@ -14,17 +15,14 @@ program.option(
 program.option("-j, --json", "output JSON instead of text, also triggers non-interactive mode");
 program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
-program.option("--interactive", "force interactive shell treatment even when not detected");
+program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
 program.option("--config-path <path>", "path to custom config file (default: `firebase.json`)");
-// program.option('-d, --debug', 'display debug information and keep firebase-debug.log');
 
 var client = {};
 client.cli = program;
 client.logger = require("./logger");
-client.errorOut = function(error, status) {
-  require("./errorOut")(client, error, status);
-};
+client.errorOut = require("./errorOut").errorOut;
 client.getCommand = function(name) {
   for (var i = 0; i < client.cli.commands.length; i++) {
     if (client.cli.commands[i]._name === name) {
@@ -44,7 +42,9 @@ require("./commands")(client);
  * @return {string|undefined} Returns the suggested command; undefined if none.
  */
 function suggestCommands(cmd, cmdList) {
-  var suggestion = didYouMean(cmd, cmdList);
+  var suggestion = cmdList.find(function(c) {
+    return leven(c, cmd) < c.length * 0.4;
+  });
   if (suggestion) {
     logger.error();
     logger.error("Did you mean " + clc.bold(suggestion) + "?");
@@ -69,7 +69,11 @@ var RENAMED_COMMANDS = {
   "prefs:token": "login:ci",
 };
 
-program.action(function(cmd, cmd2) {
+// Default handler, this is called when no other command action matches.
+program.action(function(_, args) {
+  setupLoggers();
+
+  var cmd = args[0];
   logger.error(clc.bold.red("Error:"), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {
@@ -84,7 +88,7 @@ program.action(function(cmd, cmd2) {
     if (!suggestCommands(cmd, commandNames)) {
       // Check to see if combining the two arguments comes close to a command.
       // e.g. `firebase hosting disable` may suggest `hosting:disable`.
-      suggestCommands([cmd, cmd2].join(":"), commandNames);
+      suggestCommands(args.join(":"), commandNames);
     }
   }
 

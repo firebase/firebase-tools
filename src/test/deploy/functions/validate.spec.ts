@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as fsutils from "../../../fsutils";
 import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
-import * as FirebaseError from "../../../error";
+import { FirebaseError } from "../../../error";
 import * as sinon from "sinon";
 
 // have to require this because no @types/cjson available

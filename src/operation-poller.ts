@@ -1,6 +1,6 @@
 import { Queue } from "./throttler/queue";
 import * as api from "./api";
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 
 export interface OperationPollerOptions {
   pollerName?: string;

@@ -1,7 +1,7 @@
 import * as inquirer from "inquirer";
 import * as _ from "lodash";
 
-import * as FirebaseError from "./error";
+import { FirebaseError } from "./error";
 
 /**
  * Question type for inquirer. See
@@ -24,7 +24,7 @@ export type Question = inquirer.Question;
 export async function prompt(options: { [key: string]: any }, questions: Question[]): Promise<any> {
   const prompts = [];
   for (const question of questions) {
-    if (question.name && !options[question.name]) {
+    if (question.name && options[question.name] === undefined) {
       prompts.push(question);
     }
   }

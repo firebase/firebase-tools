@@ -2,12 +2,12 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as open from "open";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as api from "../api";
-import * as Command from "../command";
+import { Command } from "../command";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
-import * as requirePermissions from "../requirePermissions";
+import { requirePermissions } from "../requirePermissions";
 import * as requireInstance from "../requireInstance";
 import * as utils from "../utils";
 
@@ -82,9 +82,7 @@ export default new Command("open [link]")
       } else if (link.arg === "hosting:site") {
         url = utils.addSubdomain(api.hostingOrigin, options.instance);
       } else if (link.arg === "functions:log") {
-        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${
-          options.project
-        }`;
+        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
       } else {
         throw new FirebaseError(`Unable to determine URL for link: ${link}`);
       }

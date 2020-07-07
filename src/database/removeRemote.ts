@@ -1,8 +1,7 @@
 import * as request from "request";
 import { Response } from "request";
-import * as responseToError from "../responseToError";
 import * as utils from "../utils";
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as api from "../api";
 
@@ -65,10 +64,12 @@ export class RTDBRemoveRemote implements RemoveRemote {
             }
             const dt = Date.now() - t0;
             if (res.statusCode >= 400) {
-              logger.debug(`[database] Failed to remove ${note} at ${path} time: ${dt}`);
+              logger.debug(
+                `[database] Failed to remove ${note} at ${path} time: ${dt}ms, will try recursively chunked deletes.`
+              );
               return resolve(false);
             }
-            logger.debug(`[database] Sucessfully removed ${note} at ${path} time: ${dt}`);
+            logger.debug(`[database] Sucessfully removed ${note} at ${path} time: ${dt}ms`);
             return resolve(true);
           });
         });

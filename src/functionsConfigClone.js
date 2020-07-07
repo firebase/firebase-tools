@@ -3,7 +3,7 @@
 var _ = require("lodash");
 
 var clc = require("cli-color");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var functionsConfig = require("./functionsConfig");
 var runtimeconfig = require("./gcp/runtimeconfig");
 

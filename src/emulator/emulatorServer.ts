@@ -1,7 +1,7 @@
 import { EmulatorInstance } from "./types";
 import { EmulatorRegistry } from "./registry";
-import * as controller from "./controller";
-import * as FirebaseError from "../error";
+import * as portUtils from "./portUtils";
+import { FirebaseError } from "../error";
 
 /**
  * Wrapper object to expose an EmulatorInstance for "firebase serve" that
@@ -11,12 +11,12 @@ export class EmulatorServer {
   constructor(public instance: EmulatorInstance) {}
 
   async start(): Promise<void> {
-    const port = this.instance.getInfo().port;
-    const portOpen = await controller.checkPortOpen(port);
+    const { port, host } = this.instance.getInfo();
+    const portOpen = await portUtils.checkPortOpen(port, host);
 
     if (!portOpen) {
       throw new FirebaseError(
-        `Port ${port} is not open, could not start ${this.instance.getName()} emulator.`
+        `Port ${port} is not open on ${host}, could not start ${this.instance.getName()} emulator.`
       );
     }
 

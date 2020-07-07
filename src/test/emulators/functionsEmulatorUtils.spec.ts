@@ -3,6 +3,7 @@ import {
   extractParamsFromPath,
   isValidWildcardMatch,
   trimSlashes,
+  compareVersionStrings,
 } from "../../emulator/functionsEmulatorUtils";
 
 describe("FunctionsEmulatorUtils", () => {
@@ -91,6 +92,29 @@ describe("FunctionsEmulatorUtils", () => {
     });
     it("should do both", () => {
       expect(trimSlashes("///a////b//c/")).to.equal("a/b/c");
+    });
+  });
+
+  describe("compareVersonStrings", () => {
+    it("should detect a higher major version", () => {
+      expect(compareVersionStrings("4.0.0", "3.2.1")).to.be.gt(0);
+      expect(compareVersionStrings("3.2.1", "4.0.0")).to.be.lt(0);
+    });
+
+    it("should detect a higher minor version", () => {
+      expect(compareVersionStrings("4.1.0", "4.0.1")).to.be.gt(0);
+      expect(compareVersionStrings("4.0.1", "4.1.0")).to.be.lt(0);
+    });
+
+    it("should detect a higher patch version", () => {
+      expect(compareVersionStrings("4.0.1", "4.0.0")).to.be.gt(0);
+      expect(compareVersionStrings("4.0.0", "4.0.1")).to.be.lt(0);
+    });
+
+    it("should detect the same version", () => {
+      expect(compareVersionStrings("4.0.0", "4.0.0")).to.eql(0);
+      expect(compareVersionStrings("4.0", "4.0.0")).to.eql(0);
+      expect(compareVersionStrings("4", "4.0.0")).to.eql(0);
     });
   });
 });

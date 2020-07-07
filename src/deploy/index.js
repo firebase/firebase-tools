@@ -6,7 +6,7 @@ var clc = require("cli-color");
 var _ = require("lodash");
 var getProjectId = require("../getProjectId");
 var utils = require("../utils");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 var track = require("../track");
 var lifecycleHooks = require("./lifecycleHooks");
 

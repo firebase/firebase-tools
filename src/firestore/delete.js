@@ -5,7 +5,7 @@ var ProgressBar = require("progress");
 
 var api = require("../api");
 var firestore = require("../gcp/firestore");
-var FirebaseError = require("../error");
+var { FirebaseError } = require("../error");
 var logger = require("../logger");
 var utils = require("../utils");
 
@@ -19,28 +19,39 @@ var MIN_ID = "__id-9223372036854775808__";
  *
  * @constructor
  * @param {string} project the Firestore project ID.
- * @param {string} path path to a document or collection.
+ * @param {string | undefined} path path to a document or collection.
  * @param {boolean} options.recursive true if the delete should be recursive.
  * @param {boolean} options.shallow true if the delete should be shallow (non-recursive).
  * @param {boolean} options.allCollections true if the delete should universally remove all collections and docs.
  */
 function FirestoreDelete(project, path, options) {
   this.project = project;
-  this.path = path;
+  this.path = path || "";
   this.recursive = Boolean(options.recursive);
   this.shallow = Boolean(options.shallow);
   this.allCollections = Boolean(options.allCollections);
 
   // Remove any leading or trailing slashes from the path
-  if (this.path) {
-    this.path = this.path.replace(/(^\/+|\/+$)/g, "");
-  }
-
-  this.isDocumentPath = this._isDocumentPath(this.path);
-  this.isCollectionPath = this._isCollectionPath(this.path);
+  this.path = this.path.replace(/(^\/+|\/+$)/g, "");
 
   this.allDescendants = this.recursive;
-  this.parent = "projects/" + project + "/databases/(default)/documents";
+  this.root = "projects/" + project + "/databases/(default)/documents";
+
+  var segments = this.path.split("/");
+  this.isDocumentPath = segments.length % 2 === 0;
+  this.isCollectionPath = !this.isDocumentPath;
+
+  // this.parent is the closest ancestor document to the location we're deleting.
+  // If we are deleting a document, this.parent is the path of that document.
+  // If we are deleting a collection, this.parent is the path of the document
+  // containing that collection (or the database root, if it is a root collection).
+  this.parent = this.root;
+  if (this.isCollectionPath) {
+    segments.pop();
+  }
+  if (segments.length > 0) {
+    this.parent += "/" + segments.join("/");
+  }
 
   // When --all-collections is passed any other flags or arguments are ignored
   if (!options.allCollections) {
@@ -76,37 +87,6 @@ FirestoreDelete.prototype._validateOptions = function() {
 };
 
 /**
- * Determine if a path points to a document.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a document, false
- * if it points to a collection.
- */
-FirestoreDelete.prototype._isDocumentPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  var pieces = path.split("/");
-  return pieces.length % 2 === 0;
-};
-
-/**
- * Determine if a path points to a collection.
- *
- * @param {string} path a path to a Firestore document or collection.
- * @return {boolean} true if the path points to a collection, false
- * if it points to a document.
- */
-FirestoreDelete.prototype._isCollectionPath = function(path) {
-  if (!path) {
-    return false;
-  }
-
-  return !this._isDocumentPath(path);
-};
-
-/**
  * Construct a StructuredQuery to find descendant documents of a collection.
  *
  * See:
@@ -124,8 +104,8 @@ FirestoreDelete.prototype._collectionDescendantsQuery = function(
 ) {
   var nullChar = String.fromCharCode(0);
 
-  var startAt = this.parent + "/" + this.path + "/" + MIN_ID;
-  var endAt = this.parent + "/" + this.path + nullChar + "/" + MIN_ID;
+  var startAt = this.root + "/" + this.path + "/" + MIN_ID;
+  var endAt = this.root + "/" + this.path + nullChar + "/" + MIN_ID;
 
   var where = {
     compositeFilter: {
@@ -234,13 +214,11 @@ FirestoreDelete.prototype._docDescendantsQuery = function(allDescendants, batchS
  * @return {Promise<object[]>} a promise for an array of documents.
  */
 FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSize, startAfter) {
-  var url;
+  var url = this.parent + ":runQuery";
   var body;
   if (this.isDocumentPath) {
-    url = this.parent + "/" + this.path + ":runQuery";
     body = this._docDescendantsQuery(allDescendants, batchSize, startAfter);
   } else {
-    url = this.parent + ":runQuery";
     body = this._collectionDescendantsQuery(allDescendants, batchSize, startAfter);
   }
 
@@ -248,7 +226,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
     .request("POST", "/v1beta1/" + url, {
       auth: true,
       data: body,
-      origin: api.firestoreOrigin,
+      origin: api.firestoreOriginOrEmulator,
     })
     .then(function(res) {
       // Return the 'document' property for each element in the response,
@@ -266,7 +244,7 @@ FirestoreDelete.prototype._getDescendantBatch = function(allDescendants, batchSi
 /**
  * Progress bar shared by the class.
  */
-FirestoreDelete.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)", {
+FirestoreDelete.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
   total: Number.MAX_SAFE_INTEGER,
 });
 
@@ -294,6 +272,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
 
   var failures = [];
   var retried = {};
+  var fetchFailures = 0;
 
   var queueLoop = function() {
     if (queue.length == 0 && numPendingDeletes == 0 && !pagesRemaining) {
@@ -301,7 +280,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
     }
 
     if (failures.length > 0) {
-      logger.debug("Found " + failures.length + " failed deletes, failing.");
+      logger.debug("Found " + failures.length + " failed operations, failing.");
       return true;
     }
 
@@ -311,6 +290,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
       self
         ._getDescendantBatch(self.allDescendants, readBatchSize, lastDocName)
         .then(function(docs) {
+          fetchFailures = 0;
           pageIncoming = false;
 
           if (docs.length == 0) {
@@ -324,6 +304,11 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
         .catch(function(e) {
           logger.debug("Failed to fetch page after " + lastDocName, e);
           pageIncoming = false;
+
+          fetchFailures++;
+          if (fetchFailures === 3) {
+            failures.push(e);
+          }
         });
     }
 
@@ -383,7 +368,7 @@ FirestoreDelete.prototype._recursiveBatchDelete = function() {
         if (failures.length == 0) {
           resolve();
         } else {
-          reject("Failed to delete documents " + failures);
+          reject(new FirebaseError("Failed to delete documents " + failures, { exit: 1 }));
         }
       }
     }, 0);
@@ -401,7 +386,7 @@ FirestoreDelete.prototype._deletePath = function() {
   var self = this;
   var initialDelete;
   if (this.isDocumentPath) {
-    var doc = { name: this.parent + "/" + this.path };
+    var doc = { name: this.root + "/" + this.path };
     initialDelete = firestore.deleteDocument(doc).catch(function(err) {
       logger.debug("deletePath:initialDelete:error", err);
       if (self.allDescendants) {

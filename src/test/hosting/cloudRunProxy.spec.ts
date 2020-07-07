@@ -66,7 +66,7 @@ describe("cloudRunProxy", () => {
       .then(() => {
         expect(spyMw.calledOnce).to.be.true;
       });
-  });
+  }).timeout(2500);
 
   it("should resolve a function returns middleware that proxies to the live version", async () => {
     nock(cloudRunApiOrigin)

@@ -1,4 +1,4 @@
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 
 interface IndexName {
   projectId: string;

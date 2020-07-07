@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 
 function isPlainObject(input: any): boolean {
   return (

@@ -2,30 +2,90 @@ import * as crypto from "crypto";
 import * as request from "request";
 import * as ProgressBar from "progress";
 
-import * as FirebaseError from "../error";
-import * as utils from "../utils";
-import { Emulators } from "./types";
-import * as javaEmulators from "../serve/javaEmulators";
+import { FirebaseError } from "../error";
+import { Emulators, EmulatorDownloadDetails } from "./types";
+import * as downloadableEmulators from "./downloadableEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
+import * as path from "path";
+import * as unzipper from "unzipper";
+import { EmulatorLogger } from "./emulatorLogger";
 
 tmp.setGracefulCleanup();
 
-type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE;
+type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
-module.exports = (name: DownloadableEmulator) => {
-  const emulator = javaEmulators.get(name);
-  utils.logLabeledBullet(name, "downloading emulator...");
-  fs.ensureDirSync(emulator.cacheDir);
-  return downloadToTmp(emulator.remoteUrl).then((tmpfile) =>
-    validateSize(tmpfile, emulator.expectedSize)
-      .then(() => validateChecksum(tmpfile, emulator.expectedChecksum))
-      .then(() => {
-        fs.copySync(tmpfile, emulator.localPath);
-        fs.chmodSync(emulator.localPath, 0o755);
-      })
+module.exports = async (name: DownloadableEmulator) => {
+  const emulator = downloadableEmulators.getDownloadDetails(name);
+  EmulatorLogger.forEmulator(name).logLabeled(
+    "BULLET",
+    name,
+    `downloading ${path.basename(emulator.downloadPath)}...`
   );
+  fs.ensureDirSync(emulator.opts.cacheDir);
+
+  const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
+
+  if (!emulator.opts.skipChecksumAndSize) {
+    await validateSize(tmpfile, emulator.opts.expectedSize);
+    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+  }
+  if (emulator.opts.skipCache) {
+    await removeOldFiles(name, emulator, true);
+  }
+
+  fs.copySync(tmpfile, emulator.downloadPath);
+
+  if (emulator.unzipDir) {
+    await unzip(emulator.downloadPath, emulator.unzipDir);
+  }
+
+  const executablePath = emulator.binaryPath || emulator.downloadPath;
+  fs.chmodSync(executablePath, 0o755);
+
+  await removeOldFiles(name, emulator);
 };
+
+function unzip(zipPath: string, unzipDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
+      .on("error", reject)
+      .on("finish", resolve);
+  });
+}
+
+function removeOldFiles(
+  name: DownloadableEmulator,
+  emulator: EmulatorDownloadDetails,
+  removeAllVersions = false
+): void {
+  const currentLocalPath = emulator.downloadPath;
+  const currentUnzipPath = emulator.unzipDir;
+  const files = fs.readdirSync(emulator.opts.cacheDir);
+
+  for (const file of files) {
+    const fullFilePath = path.join(emulator.opts.cacheDir, file);
+
+    if (file.indexOf(emulator.opts.namePrefix) < 0) {
+      // This file is not related to this emulator, could be a JAR
+      // from a different emulator or just a random file.
+      continue;
+    }
+
+    if (
+      (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
+      removeAllVersions
+    ) {
+      EmulatorLogger.forEmulator(name).logLabeled(
+        "BULLET",
+        name,
+        `Removing outdated emulator files: ${file}`
+      );
+      fs.removeSync(fullFilePath);
+    }
+  }
+}
 
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.
@@ -66,7 +126,7 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-async function validateSize(filepath: string, expectedSize: number): Promise<void> {
+function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -83,7 +143,7 @@ async function validateSize(filepath: string, expectedSize: number): Promise<voi
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-async function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
+function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);

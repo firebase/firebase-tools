@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as inquirer from "inquirer";
 
-import * as FirebaseError from "../error";
+import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 
 describe("prompt", () => {
@@ -26,7 +26,10 @@ describe("prompt", () => {
       const o = { nonInteractive: true };
       const qs: prompt.Question[] = [{ name: "foo" }];
 
-      expect(prompt.prompt(o, qs)).to.be.rejectedWith(FirebaseError, /required.+non\-interactive/);
+      await expect(prompt.prompt(o, qs)).to.be.rejectedWith(
+        FirebaseError,
+        /required.+non-interactive/
+      );
     });
 
     it("should utilize inquirer to prompt for the questions", async () => {

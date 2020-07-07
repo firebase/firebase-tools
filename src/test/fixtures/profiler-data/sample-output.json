@@ -176,14 +176,12 @@
   },
   "connectSpeed": {
     "legend": [
-      "Path",
       "Count",
       "Average Execution Speed",
       "Average Pending Time"
     ],
     "data": [
       [
-        "null",
         1,
         "0 ms",
         "2 ms"
@@ -193,14 +191,12 @@
   },
   "disconnectSpeed": {
     "legend": [
-      "Path",
       "Count",
       "Average Execution Speed",
       "Average Pending Time"
     ],
     "data": [
       [
-        "null",
         1,
         "0 ms",
         "3 ms"

@@ -8,14 +8,13 @@ var fs = require("fs");
 var path = require("path");
 var tmp = require("tmp");
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var functionsConfig = require("./functionsConfig");
 var getProjectId = require("./getProjectId");
 var logger = require("./logger");
 var utils = require("./utils");
 var parseTriggers = require("./parseTriggers");
 var fsAsync = require("./fsAsync");
-var { getRuntimeChoice } = require("./runtimeChoiceSelector");
 
 var CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -64,7 +63,7 @@ var _packageSource = function(options, sourceDir, configValues) {
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  var ignore = options.config.get("functions.ignore", ["node_modules"]);
+  var ignore = options.config.get("functions.ignore", ["node_modules", ".git"]);
   ignore.push("firebase-debug.log", CONFIG_DEST_FILE /* .runtimeconfig.json */);
   return fsAsync
     .readdirRecursive({ path: sourceDir, ignore: ignore })
@@ -113,7 +112,7 @@ var _packageSource = function(options, sourceDir, configValues) {
 module.exports = function(context, options) {
   var configValues;
   var sourceDir = options.config.path(options.config.get("functions.source"));
-  context.runtimeChoice = getRuntimeChoice(sourceDir);
+
   return _getFunctionsConfig(context)
     .then(function(result) {
       configValues = result;

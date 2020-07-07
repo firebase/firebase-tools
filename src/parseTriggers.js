@@ -1,6 +1,6 @@
 "use strict";
 
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var fork = require("child_process").fork;
 var path = require("path");
 

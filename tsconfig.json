@@ -6,8 +6,12 @@
     "strict": true,
     "outDir": "lib",
     "removeComments": true,
+    "target": "es2015",
     "sourceMap": true,
-    "target": "es2015"
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ]
   },
   "include": ["src/**/*"]
 }

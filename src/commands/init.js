@@ -5,13 +5,13 @@ var fs = require("fs");
 var homeDir = require("os").homedir();
 var path = require("path");
 
-var Command = require("../command");
+var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
 var init = require("../init");
 var logger = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
-var requireAuth = require("../requireAuth");
+var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
@@ -95,6 +95,11 @@ module.exports = new Command("init [feature]")
         name: "Storage: Deploy Cloud Storage security rules",
         checked: false,
       },
+      {
+        value: "emulators",
+        name: "Emulators: Set up local emulators for Firebase features",
+        checked: false,
+      },
     ];
 
     var next;
@@ -156,18 +161,5 @@ module.exports = new Command("init [feature]")
         }
         logger.info();
         utils.logSuccess("Firebase initialization complete!");
-
-        if (setup.createProject) {
-          logger.info();
-          logger.info(
-            clc.bold.cyan("Project creation is only available from the Firebase Console")
-          );
-          logger.info(
-            "Please visit",
-            clc.underline("https://console.firebase.google.com"),
-            "to create a new project, then run",
-            clc.bold("firebase use --add")
-          );
-        }
       });
   });
