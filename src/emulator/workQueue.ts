@@ -1,3 +1,6 @@
+import * as utils from "../utils";
+import { FirebaseError } from "../error";
+
 import { EmulatorLogger } from "./emulatorLogger";
 import { Emulators, FunctionsExecutionMode } from "./types";
 
@@ -12,12 +15,31 @@ type Work = () => Promise<any>;
  * callback inside the Work function.
  */
 export class WorkQueue {
+  private static MAX_PARALLEL_ENV = "FUNCTIONS_EMULATOR_PARALLEL";
+  private static DEFAULT_MAX_PARALLEL = Number.parseInt(
+    utils.envOverride(WorkQueue.MAX_PARALLEL_ENV, "50")
+  );
+
+  private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+
   private queue: Array<Work> = [];
   private workRunningCount: number = 0;
   private notifyQueue: () => void = () => {};
+  private notifyWorkFinish: () => void = () => {};
   private stopped: boolean = true;
 
-  constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
+  constructor(
+    private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO,
+    private maxParallelWork: number = WorkQueue.DEFAULT_MAX_PARALLEL
+  ) {
+    if (maxParallelWork < 1) {
+      throw new FirebaseError(
+        `Cannot run Functions emulator with less than 1 parallel worker (${
+          WorkQueue.MAX_PARALLEL_ENV
+        }=${process.env[WorkQueue.MAX_PARALLEL_ENV]})`
+      );
+    }
+  }
 
   /**
    * Submit an entry to the queue and run it according to the WorkMode.
@@ -40,9 +62,22 @@ export class WorkQueue {
 
     this.stopped = false;
     while (!this.stopped) {
+      // If the queue is empty, wait until something is added.
       if (!this.queue.length) {
         await new Promise((res) => {
           this.notifyQueue = res;
+        });
+      }
+
+      // If we have too many jobs out, wait until something finishes.
+      if (this.workRunningCount >= this.maxParallelWork) {
+        this.logger.logLabeled(
+          "DEBUG",
+          "work-queue",
+          `waiting for work to finish (running=${this.workRunningCount})`
+        );
+        await new Promise((res) => {
+          this.notifyWorkFinish = res;
         });
       }
 
@@ -60,6 +95,13 @@ export class WorkQueue {
     this.stopped = true;
   }
 
+  getState() {
+    return {
+      queueLength: this.queue.length,
+      workRunningCount: this.workRunningCount,
+    };
+  }
+
   private async runNext() {
     const next = this.queue.shift();
     if (next) {
@@ -72,19 +114,13 @@ export class WorkQueue {
         EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log("DEBUG", e);
       } finally {
         this.workRunningCount--;
+        this.notifyWorkFinish();
         this.logState();
       }
     }
   }
 
   private logState() {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
-      "DEBUG",
-      "work-queue",
-      JSON.stringify({
-        queueLength: this.queue.length,
-        workRunningCount: this.workRunningCount,
-      })
-    );
+    this.logger.logLabeled("DEBUG", "work-queue", JSON.stringify(this.getState()));
   }
 }

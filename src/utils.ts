@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as url from "url";
+import * as http from "http";
 import * as clc from "cli-color";
 import * as ora from "ora";
 import { Readable } from "stream";
@@ -10,7 +11,8 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
-import { LogData, LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -406,4 +408,36 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   }
 
   return data;
+}
+
+/**
+ * Return a "destroy" function for a Node.js HTTP server. MUST be called on
+ * server creation (e.g. right after `.listen`), BEFORE any connections.
+ *
+ * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
+ *
+ * @returns a function that destroys all connections and closes the server
+ */
+export function createDestroyer(server: http.Server): () => Promise<void> {
+  const connections = new Set<Socket>();
+
+  server.on("connection", (conn) => {
+    connections.add(conn);
+    conn.once("close", () => connections.delete(conn));
+  });
+
+  // Make calling destroyer again just noop but return the same promise.
+  let destroyPromise: Promise<void> | undefined = undefined;
+  return function destroyer() {
+    if (!destroyPromise) {
+      destroyPromise = new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+        connections.forEach((socket) => socket.destroy());
+      });
+    }
+    return destroyPromise;
+  };
 }

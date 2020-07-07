@@ -51,15 +51,15 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   ui: {
-    version: "1.0.0",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.0.0.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.0.0"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.0.0", "server.bundle.js"),
+    version: "1.1.0",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.1.0.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.1.0"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.1.0", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.0.0.zip",
-      expectedSize: 3176654,
-      expectedChecksum: "5381640c543b2adb53d075ac1ab5cc28",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.0.zip",
+      expectedSize: 3241879,
+      expectedChecksum: "491d732e9a5d8c7e2af381fffd2bf62c",
       namePrefix: "ui",
     },
   },
@@ -199,9 +199,6 @@ function _getCommand(
 }
 
 function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
-  if (emulator.instance) {
-    emulator.instance.kill("SIGINT");
-  }
   throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
 }
 
@@ -252,6 +249,14 @@ async function _runBinary(
     emulator.instance.stderr.on("data", (data) => {
       logger.log("DEBUG", data.toString());
       emulator.stdout.write(data);
+
+      if (data.toString().includes("java.lang.UnsupportedClassVersionError")) {
+        logger.logLabeled(
+          "WARN",
+          emulator.name,
+          "Unsupported java version, make sure java --version reports 1.8 or higher."
+        );
+      }
     });
 
     emulator.instance.on("error", (err: any) => {

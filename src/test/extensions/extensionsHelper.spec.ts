@@ -648,8 +648,7 @@ describe("extensionsHelper", () => {
     let uploadStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let deleteStub: sinon.SinonStub;
-    const testUrl =
-      "https://firebasestorage.googleapis.com/v0/b/firebase-ext-eap-uploads/o/object.zip";
+    const testUrl = "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
     const testSource = {
       name: "test",
       packageUri: testUrl,
@@ -665,7 +664,7 @@ describe("extensionsHelper", () => {
       archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
       uploadStub = sinon
         .stub(storage, "uploadObject")
-        .resolves("/v0/b/firebase-ext-eap-uploads/o/object.zip");
+        .resolves("/firebase-ext-eap-uploads/object.zip");
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
@@ -682,7 +681,7 @@ describe("extensionsHelper", () => {
       expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
     });
 
@@ -696,7 +695,7 @@ describe("extensionsHelper", () => {
       expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
     });
 

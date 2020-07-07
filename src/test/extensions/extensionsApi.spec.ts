@@ -337,7 +337,7 @@ describe("extensions", () => {
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(200);
 
-      const res = await extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID);
+      await extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID);
       expect(nock.isDone()).to.be.true;
     });
 

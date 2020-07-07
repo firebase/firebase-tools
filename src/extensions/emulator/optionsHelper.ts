@@ -13,7 +13,7 @@ import * as getProjectId from "../../getProjectId";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = await specHelper.findExtensionYaml(process.cwd());
+  const extensionDir = specHelper.findExtensionYaml(process.cwd());
   options.extensionDir = extensionDir;
   const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(extensionYaml);

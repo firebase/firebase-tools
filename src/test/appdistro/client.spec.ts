@@ -1,5 +1,10 @@
 import { expect } from "chai";
+import { join } from "path";
+import * as nock from "nock";
+import * as rimraf from "rimraf";
 import * as sinon from "sinon";
+import * as tmp from "tmp";
+
 import {
   AppDistributionClient,
   UploadStatus,
@@ -7,12 +12,14 @@ import {
 } from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
-import * as nock from "nock";
 import { Distribution } from "../../appdistribution/distribution";
 
+tmp.setGracefulCleanup();
+
 describe("distribution", () => {
+  const tempdir = tmp.dirSync();
   const appId = "1:12345789:ios:abc123def456";
-  const mockDistribution = new Distribution("./mockdata/mock.apk");
+  const mockDistribution = new Distribution(join(tempdir.name, "app.ipa"));
   const appDistributionClient = new AppDistributionClient(appId);
 
   let sandbox: sinon.SinonSandbox;
@@ -24,6 +31,10 @@ describe("distribution", () => {
 
   afterEach(() => {
     sandbox.restore();
+  });
+
+  after(() => {
+    rimraf.sync(tempdir.name);
   });
 
   describe("getApp", () => {

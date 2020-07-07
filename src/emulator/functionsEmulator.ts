@@ -38,6 +38,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
+import { createDestroyer } from "../utils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -112,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   nodeBinary = "";
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
@@ -219,14 +220,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     return worker;
   }
 
-  async start(): Promise<void> {
-    this.nodeBinary = await this.askInstallNodeVersion(
+  start(): Promise<void> {
+    this.nodeBinary = this.askInstallNodeVersion(
       this.args.functionsDir,
       this.args.nodeMajorVersion
     );
     const { host, port } = this.getInfo();
     this.workQueue.start();
-    this.server = this.createHubServer().listen(port, host);
+    const server = this.createHubServer().listen(port, host);
+    this.destroyServer = createDestroyer(server);
+    return Promise.resolve();
   }
 
   async connect(): Promise<void> {
@@ -357,10 +360,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     this.workQueue.stop();
     this.workerPool.exit();
-    Promise.resolve(this.server && this.server.close());
+    return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(
@@ -551,7 +554,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
    *  are using the default version.
    */
-  async askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): Promise<string> {
+  askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): string {
     const pkg = require(path.join(cwd, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {

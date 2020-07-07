@@ -4,7 +4,7 @@ import * as utils from "../utils";
 import * as logger from "../logger";
 import { EmulatorLog, Emulators } from "./types";
 import { tryParse } from "../utils";
-import { LogData, LogDataOrUndefined } from "./loggingEmulator";
+import { LogData } from "./loggingEmulator";
 
 /**
  * DEBUG - lowest level, not needed for most usages.

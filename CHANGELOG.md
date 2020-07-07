@@ -1,9 +1,5 @@
-- Fixes issue where custom emulator ports were strings not numbers (#2287).
-- Fixes issue where Emulator UI was never downloaded during `firebase init emulators`.
-- Skips app selection in `firebase apps:sdkconfig` if there is a single matching app.
-- Fixes incorrect warning about emulator configuration (#2290).
-- Improves error messages for `firebase init` with new projects (#2266).
-- Improves handling of permission denied errors during API enablement.
-- Removes deep proxying of `functions.config()` inside the Functions emulator.
-- Updates App Distribution upload URL.
+- Adds support for regular expression-based custom headers and rewrites for Firebase Hosting. (#2391)
+- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
+- Changes default functions runtime to Node.js 10 for `firebase init`.
+- Adds import/export support to the Realtime Database emulator.
 - Adds application default credentials inside the Functions emulator (#1940)

@@ -9,17 +9,22 @@ import * as API from "./indexes-api";
 import * as Spec from "./indexes-spec";
 import * as sort from "./indexes-sort";
 import * as util from "./util";
+import { promptOnce } from "../prompt";
 
 export class FirestoreIndexes {
   /**
    * Deploy an index specification to the specified project.
-   * @param project the Firebase project ID.
+   * @param options the CLI options.
    * @param indexes an array of objects, each will be validated and then converted
    * to an {@link Spec.Index}.
    * @param fieldOverrides an array of objects, each will be validated and then
    * converted to an {@link Spec.FieldOverride}.
    */
-  async deploy(project: string, indexes: any[], fieldOverrides: any[]): Promise<void> {
+  async deploy(
+    options: { project: string; nonInteractive: boolean; force: boolean },
+    indexes: any[],
+    fieldOverrides: any[]
+  ): Promise<void> {
     const spec = this.upgradeOldSpec({
       indexes,
       fieldOverrides,
@@ -31,15 +36,59 @@ export class FirestoreIndexes {
     const indexesToDeploy: Spec.Index[] = spec.indexes;
     const fieldOverridesToDeploy: Spec.FieldOverride[] = spec.fieldOverrides;
 
-    const existingIndexes = await this.listIndexes(project);
-    const existingFieldOverrides = await this.listFieldOverrides(project);
+    const existingIndexes: API.Index[] = await this.listIndexes(options.project);
+    const existingFieldOverrides: API.Field[] = await this.listFieldOverrides(options.project);
 
-    if (existingIndexes.length > indexesToDeploy.length) {
-      utils.logBullet(
-        clc.bold.cyan("firestore:") +
-          " there are some indexes defined in your project that are not present in your " +
-          "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
-      );
+    const indexesToDelete = existingIndexes.filter((index) => {
+      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec));
+    });
+
+    // We only want to delete fields where there is nothing in the local file with the same
+    // (collectionGroup, fieldPath) pair. Otherwise any differences will be resolved
+    // as part of the "PATCH" process.
+    const fieldOverridesToDelete = existingFieldOverrides.filter((field) => {
+      return !fieldOverridesToDeploy.some((spec) => {
+        const parsedName = util.parseFieldName(field.name);
+
+        if (parsedName.collectionGroupId !== spec.collectionGroup) {
+          return false;
+        }
+
+        if (parsedName.fieldPath !== spec.fieldPath) {
+          return false;
+        }
+
+        return true;
+      });
+    });
+
+    let shouldDeleteIndexes = options.force;
+    if (indexesToDelete.length > 0) {
+      if (options.nonInteractive && !options.force) {
+        utils.logLabeledBullet(
+          "firestore",
+          `there are ${indexesToDelete.length} indexes defined in your project that are not present in your ` +
+            "firestore indexes file. To delete them, run this command with the --force flag."
+        );
+      } else if (!options.force) {
+        const indexesString = indexesToDelete
+          .map((x) => this.prettyIndexString(x, false))
+          .join("\n\t");
+        utils.logLabeledBullet(
+          "firestore",
+          `The following indexes are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+        );
+      }
+
+      if (!shouldDeleteIndexes) {
+        shouldDeleteIndexes = await promptOnce({
+          type: "confirm",
+          name: "confirm",
+          default: false,
+          message:
+            "Would you like to delete these indexes? Selecting no will continue the rest of the deployment.",
+        });
+      }
     }
 
     for (const index of indexesToDeploy) {
@@ -48,16 +97,44 @@ export class FirestoreIndexes {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
       } else {
         logger.debug(`Creating new index: ${JSON.stringify(index)}`);
-        await this.createIndex(project, index);
+        await this.createIndex(options.project, index);
       }
     }
 
-    if (existingFieldOverrides.length > fieldOverridesToDeploy.length) {
-      utils.logBullet(
-        clc.bold.cyan("firestore:") +
-          " there are some field overrides defined in your project that are not present in your " +
-          "firestore indexes file. Run firebase firestore:indexes and save the result to correct the discrepancy."
-      );
+    if (shouldDeleteIndexes && indexesToDelete.length > 0) {
+      utils.logLabeledBullet("firestore", `Deleting ${indexesToDelete.length} indexes...`);
+      for (const index of indexesToDelete) {
+        await this.deleteIndex(index);
+      }
+    }
+
+    let shouldDeleteFields = options.force;
+    if (fieldOverridesToDelete.length > 0) {
+      if (options.nonInteractive && !options.force) {
+        utils.logLabeledBullet(
+          "firestore",
+          `there are ${fieldOverridesToDelete.length} field overrides defined in your project that are not present in your ` +
+            "firestore indexes file. To delete them, run this command with the --force flag."
+        );
+      } else if (!options.force) {
+        const indexesString = fieldOverridesToDelete
+          .map((x) => this.prettyFieldString(x))
+          .join("\n\t");
+        utils.logLabeledBullet(
+          "firestore",
+          `The following field overrides are defined in your project but are not present in your firestore indexes file:\n\t${indexesString}`
+        );
+      }
+
+      if (!shouldDeleteFields) {
+        shouldDeleteFields = await promptOnce({
+          type: "confirm",
+          name: "confirm",
+          default: false,
+          message:
+            "Would you like to delete these field overrides? Selecting no will continue the rest of the deployment.",
+        });
+      }
     }
 
     for (const field of fieldOverridesToDeploy) {
@@ -66,7 +143,17 @@ export class FirestoreIndexes {
         logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
       } else {
         logger.debug(`Updating field override: ${JSON.stringify(field)}`);
-        await this.patchField(project, field);
+        await this.patchField(options.project, field);
+      }
+    }
+
+    if (shouldDeleteFields && fieldOverridesToDelete.length > 0) {
+      utils.logLabeledBullet(
+        "firestore",
+        `Deleting ${fieldOverridesToDelete.length} field overrides...`
+      );
+      for (const field of fieldOverridesToDelete) {
+        await this.deleteField(field);
       }
     }
   }
@@ -78,7 +165,7 @@ export class FirestoreIndexes {
   async listIndexes(project: string): Promise<API.Index[]> {
     const url = `projects/${project}/databases/(default)/collectionGroups/-/indexes`;
 
-    const res = await api.request("GET", `/v1beta2/${url}`, {
+    const res = await api.request("GET", `/v1/${url}`, {
       auth: true,
       origin: api.firestoreOrigin,
     });
@@ -114,7 +201,7 @@ export class FirestoreIndexes {
     const parent = `projects/${project}/databases/(default)/collectionGroups/-`;
     const url = `${parent}/fields?filter=indexConfig.usesAncestorConfig=false`;
 
-    const res = await api.request("GET", `/v1beta2/${url}`, {
+    const res = await api.request("GET", `/v1/${url}`, {
       auth: true,
       origin: api.firestoreOrigin,
     });
@@ -306,7 +393,21 @@ export class FirestoreIndexes {
       },
     };
 
-    await api.request("PATCH", `/v1beta2/${url}`, {
+    await api.request("PATCH", `/v1/${url}`, {
+      auth: true,
+      origin: api.firestoreOrigin,
+      data,
+    });
+  }
+
+  /**
+   * Delete an existing index on the specified project.
+   */
+  deleteField(field: API.Field): Promise<any> {
+    const url = field.name;
+    const data = {};
+
+    return api.request("PATCH", "/v1/" + url + "?updateMask=indexConfig", {
       auth: true,
       origin: api.firestoreOrigin,
       data,
@@ -318,12 +419,23 @@ export class FirestoreIndexes {
    */
   createIndex(project: string, index: Spec.Index): Promise<any> {
     const url = `projects/${project}/databases/(default)/collectionGroups/${index.collectionGroup}/indexes`;
-    return api.request("POST", "/v1beta2/" + url, {
+    return api.request("POST", "/v1/" + url, {
       auth: true,
       data: {
         fields: index.fields,
         queryScope: index.queryScope,
       },
+      origin: api.firestoreOrigin,
+    });
+  }
+
+  /**
+   * Delete an existing index on the specified project.
+   */
+  deleteIndex(index: API.Index): Promise<any> {
+    const url = index.name!;
+    return api.request("DELETE", "/v1/" + url, {
+      auth: true,
       origin: api.firestoreOrigin,
     });
   }
@@ -409,7 +521,7 @@ export class FirestoreIndexes {
 
   /**
    * Take a object that may represent an old v1beta1 indexes spec
-   * and convert it to the new v1beta2/v1 spec format.
+   * and convert it to the new v1/v1 spec format.
    *
    * This function is meant to be run **before** validation and
    * works on a purely best-effort basis.
@@ -471,10 +583,10 @@ export class FirestoreIndexes {
   /**
    * Get a colored, pretty-printed representation of an index.
    */
-  private prettyIndexString(index: API.Index): string {
+  private prettyIndexString(index: API.Index, includeState: boolean = true): string {
     let result = "";
 
-    if (index.state) {
+    if (index.state && includeState) {
       const stateMsg = `[${index.state}] `;
 
       if (index.state === API.State.READY) {
