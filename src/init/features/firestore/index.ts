@@ -9,7 +9,7 @@ import { FirebaseError } from "../../../error";
 
 import * as clc from "cli-color";
 
-export async function doSetup(setup: any, config: any): Promise<void> {
+async function checkProjectSetup(setup: any) {
   const firestoreUnusedError = new FirebaseError(
     `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold.underline(
       `https://console.firebase.google.com/project/${setup.projectId}/database`
@@ -43,9 +43,16 @@ export async function doSetup(setup: any, config: any): Promise<void> {
     );
   }
 
-  setup.config.firestore = {};
   ensureLocationSet(setup.projectLocation, "Cloud Firestore");
   await requirePermissions({ project: setup.projectId });
+}
+
+export async function doSetup(setup: any, config: any): Promise<void> {
+  if (setup.projectId) {
+    await checkProjectSetup(setup);
+  }
+
+  setup.config.firestore = {};
   await rules.initRules(setup, config);
   await indexes.initIndexes(setup, config);
 }
