@@ -2,3 +2,4 @@
 - Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
 - Changes default functions runtime to Node.js 10 for `firebase init`.
 - Adds a the `--export-on-exit` flag to `emulators:start` and `emulators:exec` to automatically export emulator data on command exit (#2224)
+- Adds import/export support to the Realtime Database emulator.
