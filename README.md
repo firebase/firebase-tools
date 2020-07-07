@@ -35,8 +35,6 @@ To download and install the CLI run the following command:
 curl -sL firebase.tools | bash
 ```
 
-
-
 ## Commands
 
 **The command `firebase --help` lists the available commands and `firebase <command> --help` shows more details for an individual command.**
@@ -151,21 +149,20 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command. |
 
-
 ## Authentication
 
 ### General
 
 The Firebase CLI can use one of three authentication methods listed in descending priority:
 
-  * `GOOGLE_APPLICATION_CREDENTIALS` - if this environment variable points to a service account key file, the Firebase CLI will authenticate as a service account.
-  * `firebase login` - you can log in to the CLI directly as yourself. The CLI will store an authorized user credential.
-    * `FIREBASE_TOKEN` - you can explicitly use this environment variable to pass in a long-lived user token from `firebase login:ci`.
-  * `gcloud auth application-default login` - if your development machine has application default credentials from the Google Cloud CLI, we will use them if none of the above credentials are present.
+- `GOOGLE_APPLICATION_CREDENTIALS` - if this environment variable points to a service account key file, the Firebase CLI will authenticate as a service account.
+- `firebase login` - you can log in to the CLI directly as yourself. The CLI will store an authorized user credential.
+  - `FIREBASE_TOKEN` - you can explicitly use this environment variable to pass in a long-lived user token from `firebase login:ci`.
+- `gcloud auth application-default login` - if your development machine has application default credentials from the Google Cloud CLI, we will use them if none of the above credentials are present.
 
 ### Cloud Functions Emulator
 
-The Cloud Functions emulator is exposed through commands like `emulators:start`, 
+The Cloud Functions emulator is exposed through commands like `emulators:start`,
 `serve` and `functions:shell`. Emulated Cloud Functions run as independent `node` processes
 on your development machine which means they have their own credential discovery mechanism.
 

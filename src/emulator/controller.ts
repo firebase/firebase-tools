@@ -287,6 +287,20 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       }
     }
 
+    // Warn the developer that the Functions emulator can call out to production.
+    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
+      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+    });
+    if (emulatorsNotRunning.length > 0) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+          emulatorsNotRunning.join(", ")
+        )}`
+      );
+    }
+
     const functionsEmulator = new FunctionsEmulator({
       projectId,
       functionsDir,
