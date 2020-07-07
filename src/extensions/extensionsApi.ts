@@ -4,6 +4,7 @@ import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
 
 const VERSION = "v1beta";
+const PAGE_SIZE_MAX = 100;
 const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 
 export interface Extension {
@@ -230,7 +231,7 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
       auth: true,
       origin: api.extensionsOrigin,
       query: {
-        pageSize: 100,
+        pageSize: PAGE_SIZE_MAX,
         pageToken,
       },
     });
@@ -361,6 +362,111 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
     .then((res) => {
       return res.body;
     });
+}
+
+/**
+ * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
+ */
+export async function getExtensionVersion(ref: string): Promise<ExtensionVersion> {
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (!version) {
+    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+  }
+
+  const res = await api.request(
+    "GET",
+    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+    }
+  );
+  return res.body;
+}
+
+/**
+ * @param publisherId the publisher for which we are listing Extensions
+ * @param showUnpublished whether to include unpublished Extensions, default = false
+ */
+export async function listExtensions(
+  publisherId: string,
+  showUnpublished?: boolean
+): Promise<Extension[]> {
+  const extensions: Extension[] = [];
+  const getNextPage = async (pageToken?: string) => {
+    const res = await api.request("GET", `/${VERSION}/publishers/${publisherId}/extensions`, {
+      auth: true,
+      origin: api.extensionsOrigin,
+      query: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+        showUnpublished: showUnpublished || false,
+      },
+    });
+    if (Array.isArray(res.body.extensions)) {
+      extensions.push(...res.body.extensions);
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return extensions;
+}
+
+/**
+ * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
+ * @param showUnpublished whether to include unpublished ExtensionVersions, default = false
+ */
+export async function listExtensionVersions(
+  ref: string,
+  showUnpublished?: boolean
+): Promise<ExtensionVersion[]> {
+  const { publisherId, extensionId } = parseRef(ref);
+  const extensionVersions: ExtensionVersion[] = [];
+  const getNextPage = async (pageToken?: string) => {
+    const res = await api.request(
+      "GET",
+      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+        query: {
+          pageSize: PAGE_SIZE_MAX,
+          pageToken,
+          showUnpublished: showUnpublished || false,
+        },
+      }
+    );
+    if (Array.isArray(res.body.extensionVersions)) {
+      extensionVersions.push(...res.body.extensionVersions);
+    }
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return extensionVersions;
+}
+
+/**
+ * @param projectId the project for which we are registering a PublisherProfile
+ * @param publisherId the desired publisher ID
+ */
+export async function registerPublisherProfile(
+  projectId: string,
+  publisherId: string
+): Promise<PublisherProfile> {
+  const res = await api.request(
+    "POST",
+    `/${VERSION}/projects/${projectId}/publisherProfile:register`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+      data: { publisherId },
+    }
+  );
+  return res.body;
 }
 
 /**
