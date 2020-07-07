@@ -389,12 +389,13 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
         const readStream = fs.createReadStream(fPath);
 
-        const importUrl = `http://${databaseAddr.host}:${databaseAddr.port}/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`;
         await new Promise((resolve, reject) => {
           const req = http.request(
-            importUrl,
             {
               method: "PUT",
+              host: databaseAddr.host,
+              port: databaseAddr.port,
+              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
               headers: {
                 Authorization: "Bearer owner",
                 "Content-Type": "application/json",
