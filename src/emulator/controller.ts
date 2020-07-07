@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
+import * as http from "http";
 
 import * as logger from "../logger";
 import * as track from "../track";
@@ -374,6 +375,53 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    if (exportMetadata.database) {
+      const importDirAbsPath = path.resolve(options.import);
+      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+
+      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      for (const f of files) {
+        const fPath = path.join(databaseExportDir, f);
+        const ns = path.basename(f, ".json");
+
+        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+
+        const readStream = fs.createReadStream(fPath);
+
+        await new Promise((resolve, reject) => {
+          const req = http.request(
+            {
+              method: "PUT",
+              host: databaseAddr.host,
+              port: databaseAddr.port,
+              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
+              headers: {
+                Authorization: "Bearer owner",
+                "Content-Type": "application/json",
+              },
+            },
+            (response) => {
+              if (response.statusCode === 200) {
+                resolve();
+              } else {
+                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
+                response
+                  .on("data", (d) => {
+                    databaseLogger.log("DEBUG", d.toString());
+                  })
+                  .on("end", reject);
+              }
+            }
+          );
+
+          req.on("error", reject);
+          readStream.pipe(req, { end: true });
+        }).catch((e) => {
+          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+        });
+      }
+    }
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {
