@@ -1,13 +1,6 @@
-- Sets the `FIREBASE_CONFIG` environment variable during deploys of Cloud Functions for Firebase to fix "process.env.GCLOUD_PROJECT is not set" issues during deployment or execution.
-- Fixes an issue where `ext:list` would fail when no extensions were installed.
-- Fixes an issue where database emulator could not load rules from target configurations (#2184).
-- Adds new API commands that handle list/create/delete operations on the Android SHA certificate hashes `apps:android:sha:list`, `apps:android:sha:create`, and `apps:android:sha:delete`.
-- Fixes an issue where the CLI did not assume admin privileges when performing Firestore / RTDB emulator operations.
-- Fixes an issue where the functions and hosting emulators would crash when not properly initialized (#2112).
-- Improves logs when running `emulators:start`.
-- Fixes an issue where `use` would allow an invalid project identifier.
-- Fixes an issue where custom options passed to `admin.initializeApp()` in the functions emulator were improperly augmented.
-- Changes `firebasemods.*.*` IAM permission checks to `firebaseextensions.*.*`
+- Adds support for regular expression-based custom headers and rewrites for Firebase Hosting. (#2391)
+- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
+- Changes default functions runtime to Node.js 10 for `firebase init`.
+- Adds import/export support to the Realtime Database emulator.
+- Adds application default credentials inside the Functions emulator (#1940)
 - Fixes an issue where the suggested redeploy command for Firebase Functions was incorrect for names with dashes.
-- Fixes an issue where unicode characters in auth tokens crashed callable auth (#2185).
-- Fixes an issue where emulators could not be cleanly shut down if they had not started properly (#2228).

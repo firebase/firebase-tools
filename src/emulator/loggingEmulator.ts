@@ -34,28 +34,21 @@ export class LoggingEmulator implements EmulatorInstance {
 
   constructor(private args: LoggingEmulatorArgs) {}
 
-  async start(): Promise<void> {
+  start(): Promise<void> {
     this.transport = new WebSocketTransport();
     this.transport.start(this.getInfo());
     logger.add(this.transport);
+    return Promise.resolve();
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     logger.remove(this.transport);
 
-    if (this.transport && this.transport.wss) {
-      const wss = this.transport.wss;
-      return new Promise((resolve, reject) => {
-        wss.close((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-    }
+    return this.transport ? this.transport.stop() : Promise.resolve();
   }
 
   getInfo(): EmulatorInfo {
@@ -82,7 +75,7 @@ type LogEntry = {
 
 class WebSocketTransport extends TransportStream {
   wss?: WebSocket.Server;
-  connections: WebSocket[] = [];
+  connections = new Set<WebSocket>();
   history: LogEntry[] = [];
 
   constructor(options = {}) {
@@ -93,10 +86,24 @@ class WebSocketTransport extends TransportStream {
   start(options: EmulatorInfo) {
     this.wss = new WebSocket.Server(options);
     this.wss.on("connection", (ws) => {
-      this.connections.push(ws);
+      this.connections.add(ws);
+      ws.once("close", () => this.connections.delete(ws));
       this.history.forEach((bundle) => {
         ws.send(JSON.stringify(bundle));
       });
+    });
+  }
+
+  stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.wss) {
+        return resolve();
+      }
+      this.wss.close((err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+      this.connections.forEach((socket) => socket.terminate());
     });
   }
 

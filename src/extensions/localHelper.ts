@@ -14,9 +14,9 @@ const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
  * @param directory the directory to look for extension.yaml and PRESINSTALL.md in
  */
 export async function getLocalExtensionSpec(directory: string): Promise<ExtensionSpec> {
-  const spec = await parseYAML(await readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
+  const spec = await parseYAML(readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
   try {
-    const preinstall = await readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
+    const preinstall = readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
     spec.preinstallContent = preinstall;
   } catch (err) {
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
@@ -29,7 +29,7 @@ export async function getLocalExtensionSpec(directory: string): Promise<Extensio
  * @param directory the directory containing the file
  * @param file the name of the file
  */
-export async function readFile(pathToFile: string): Promise<string> {
+export function readFile(pathToFile: string): string {
   try {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err) {

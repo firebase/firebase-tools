@@ -2,12 +2,12 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as tcpport from "tcp-port-used";
-import * as pf from "portfinder";
+import * as http from "http";
 
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
+import { getCredentialPathAsync } from "../defaultCredentials";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
   Address,
@@ -31,27 +31,7 @@ import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
-import previews = require("../previews");
-
-export async function checkPortOpen(port: number, host: string): Promise<boolean> {
-  try {
-    const inUse = await tcpport.check(port, host);
-    return !inUse;
-  } catch (e) {
-    logger.debug(`port check error: ${e}`);
-    return false;
-  }
-}
-
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
-  const interval = 250;
-  const timeout = 30000;
-  try {
-    await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
-  } catch (e) {
-    throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
-  }
-}
+import * as portUtils from "./portUtils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -69,10 +49,10 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
   }
 
   const logger = EmulatorLogger.forEmulator(emulator);
-  const portOpen = await checkPortOpen(port, host);
+  const portOpen = await portUtils.checkPortOpen(port, host);
   if (!portOpen) {
     if (findAvailablePort) {
-      const newPort = await pf.getPortPromise({ host, port });
+      const newPort = await portUtils.findAvailablePort(host, port);
       if (newPort != port) {
         logger.logLabeled(
           "WARN",
@@ -108,6 +88,16 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
       return utils.reject(`Could not start ${description}, port taken.`, {});
     }
   }
+
+  if (portUtils.isRestricted(port)) {
+    const suggested = portUtils.suggestUnrestricted(port);
+    logger.logLabeled(
+      "WARN",
+      emulator,
+      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
+    );
+  }
+
   return { host, port };
 }
 
@@ -154,6 +144,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return !!options.project;
   }
   const targets = filterEmulatorTargets(options);
+  const emulatorInTargets = targets.indexOf(name) >= 0;
+
   if (name === Emulators.UI) {
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
@@ -163,14 +155,16 @@ export function shouldStart(options: any, name: Emulators): boolean {
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
     return (
-      previews.emulatorgui &&
-      !!options.project &&
-      targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
+      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
     );
   }
 
   // Don't start the functions emulator if we can't find the source directory
-  if (name === Emulators.FUNCTIONS && !options.config.get("functions.source")) {
+  if (
+    name === Emulators.FUNCTIONS &&
+    emulatorInTargets &&
+    !options.config.get("functions.source")
+  ) {
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
       "WARN",
       "functions",
@@ -181,7 +175,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  if (name === Emulators.HOSTING && !options.config.get("hosting")) {
+  if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
     EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
       "WARN",
       "hosting",
@@ -192,7 +186,7 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  return targets.indexOf(name) >= 0;
+  return emulatorInTargets;
 }
 
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
@@ -251,6 +245,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
@@ -263,10 +258,48 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+      functionsLogger.logLabeled(
         "WARN",
         "functions",
         `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
+    // Provide default application credentials when appropriate
+    const credentialEnv: Record<string, string> = {};
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+      );
+    } else {
+      const defaultCredPath = await getCredentialPathAsync();
+      if (defaultCredPath) {
+        functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      } else {
+        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
+        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
+        functionsLogger.logLabeled(
+          "WARN",
+          "functions",
+          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+        );
+      }
+    }
+
+    // Warn the developer that the Functions emulator can call out to production.
+    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
+      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+    });
+    if (emulatorsNotRunning.length > 0) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+          emulatorsNotRunning.join(", ")
+        )}`
       );
     }
 
@@ -276,7 +309,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: options.extensionEnv,
+      env: {
+        ...credentialEnv,
+        ...options.extensionEnv,
+      },
       predefinedTriggers: options.extensionTriggers,
       nodeMajorVersion: options.extensionNodeVersion,
     });
@@ -310,10 +346,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
 
     const rulesLocalPath = options.config.get("firestore.rules");
-    const foundRulesFile = rulesLocalPath && fs.existsSync(rulesLocalPath);
+    let rulesFileFound = false;
     if (rulesLocalPath) {
       const rules: string = path.join(options.projectRoot, rulesLocalPath);
-      if (fs.existsSync(rules)) {
+      rulesFileFound = fs.existsSync(rules);
+      if (rulesFileFound) {
         args.rules = rules;
       } else {
         firestoreLogger.logLabeled(
@@ -330,7 +367,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    if (!foundRulesFile) {
+    if (!rulesFileFound) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
@@ -381,6 +418,53 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    if (exportMetadata.database) {
+      const importDirAbsPath = path.resolve(options.import);
+      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+
+      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      for (const f of files) {
+        const fPath = path.join(databaseExportDir, f);
+        const ns = path.basename(f, ".json");
+
+        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+
+        const readStream = fs.createReadStream(fPath);
+
+        await new Promise((resolve, reject) => {
+          const req = http.request(
+            {
+              method: "PUT",
+              host: databaseAddr.host,
+              port: databaseAddr.port,
+              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
+              headers: {
+                Authorization: "Bearer owner",
+                "Content-Type": "application/json",
+              },
+            },
+            (response) => {
+              if (response.statusCode === 200) {
+                resolve();
+              } else {
+                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
+                response
+                  .on("data", (d) => {
+                    databaseLogger.log("DEBUG", d.toString());
+                  })
+                  .on("end", reject);
+              }
+            }
+          );
+
+          req.on("error", reject);
+          readStream.pipe(req, { end: true });
+        }).catch((e) => {
+          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+        });
+      }
+    }
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {

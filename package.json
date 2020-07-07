@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.2.0",
+  "version": "8.4.3",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -182,6 +182,6 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "ts-node": "^7.0.1",
-    "typescript": "^3.7.5"
+    "typescript": "^3.9.5"
   }
 }

@@ -14,10 +14,11 @@ import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
+import { createDestroyer } from "../utils";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
-let server: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+let destroyServer: undefined | (() => Promise<void>) = undefined;
 
 const logger = EmulatorLogger.forEmulator(Emulators.HOSTING);
 
@@ -42,7 +43,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     stream: morganStream,
   });
 
-  server = superstatic({
+  const server = superstatic({
     debug: false,
     port: port,
     host: options.host,
@@ -50,7 +51,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     cwd: detectProjectRoot(options.cwd),
     stack: "strict",
     before: {
-      middleware: (req: Request, res: Response, next: NextFunction) => {
+      files: (req: Request, res: Response, next: NextFunction) => {
         // We do these in a single method to ensure order of operations
         morganMiddleware(req, res, () => {
           /*
@@ -77,6 +78,8 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
       "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port))
     );
   });
+
+  destroyServer = createDestroyer(server);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server.on("error", (err: any) => {
@@ -105,10 +108,8 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
 /**
  * Stop the Hosting server.
  */
-export async function stop(): Promise<void> {
-  if (server) {
-    await server.close();
-  }
+export function stop(): Promise<void> {
+  return destroyServer ? destroyServer() : Promise.resolve();
 }
 
 /**

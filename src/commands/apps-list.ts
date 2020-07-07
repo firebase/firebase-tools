@@ -5,7 +5,6 @@ import Table = require("cli-table");
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
-import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 

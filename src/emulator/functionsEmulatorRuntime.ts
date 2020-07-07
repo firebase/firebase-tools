@@ -40,15 +40,24 @@ function noOp(): false {
   return false;
 }
 
-async function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
-  return require(require.resolve(moduleName, opts));
+function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
+  return new Promise((res, rej) => {
+    try {
+      res(require(require.resolve(moduleName, opts)));
+    } catch (e) {
+      rej(e);
+    }
+  });
 }
 
-async function requireResolveAsync(
-  moduleName: string,
-  opts?: { paths: string[] }
-): Promise<string> {
-  return require.resolve(moduleName, opts);
+function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Promise<string> {
+  return new Promise((res, rej) => {
+    try {
+      res(require.resolve(moduleName, opts));
+    } catch (e) {
+      rej(e);
+    }
+  });
 }
 
 interface PackageJSON {
@@ -333,7 +342,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
         .map((arg) => {
           if (typeof arg === "string") {
             try {
-              const url = new URL(arg);
+              new URL(arg);
               return arg;
             } catch (err) {
               return;
@@ -365,7 +374,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
       try {
         return original(...args);
       } catch (e) {
-        const newed = new original(...args);
+        const newed = new original(...args); // eslint-disable-line new-cap
         return newed;
       }
     };
@@ -584,6 +593,7 @@ function warnAboutDatabaseProd(): void {
 }
 
 function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+  process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
 
@@ -651,49 +661,42 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
 }
 
 async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
-  const functionsResolution = await requireResolveAsync("firebase-functions", {
-    paths: [frb.cwd],
-  });
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const localFunctionsModule = require(functionsResolution.resolution);
 
-  const ff = require(functionsResolution);
   logDebug("Checked functions.config()", {
-    config: ff.config(),
+    config: localFunctionsModule.config(),
   });
 
-  const originalConfig = ff.config();
+  const originalConfig = localFunctionsModule.config();
   const proxiedConfig = new Proxied(originalConfig)
     .any((parentConfig, parentKey) => {
-      logDebug("config() parent accessed!", {
-        parentKey,
-        parentConfig,
-      });
+      const isInternal = parentKey.startsWith("Symbol(") || parentKey.startsWith("inspect");
+      if (!parentConfig[parentKey] && !isInternal) {
+        new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
+          key: parentKey,
+        }).log();
+      }
 
-      return new Proxied(parentConfig[parentKey] || ({} as { [key: string]: any }))
-        .any((childConfig, childKey) => {
-          const value = childConfig[childKey];
-          if (value) {
-            return value;
-          } else {
-            const valuePath = [parentKey, childKey].join(".");
-
-            // Calling console.log() or util.inspect() on a config value can cause spurious logging
-            // if we don't ignore certain known-bad paths.
-            const ignore =
-              valuePath.endsWith(".inspect") ||
-              valuePath.endsWith(".toJSON") ||
-              valuePath.includes("Symbol(") ||
-              valuePath.includes("Symbol.iterator");
-            if (!ignore) {
-              new EmulatorLog("SYSTEM", "functions-config-missing-value", "", { valuePath }).log();
-            }
-            return undefined;
-          }
-        })
-        .finalize();
+      return parentConfig[parentKey];
     })
     .finalize();
 
-  ff.config = () => proxiedConfig;
+  const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
+  const proxiedFunctionsModule = functionsModuleProxy
+    .when("config", (target) => () => {
+      return proxiedConfig;
+    })
+    .finalize();
+
+  // Stub the functions module in the require cache
+  require.cache[functionsResolution.resolution] = {
+    exports: proxiedFunctionsModule,
+  };
+
+  logDebug("firebase-functions has been stubbed.", {
+    functionsResolution,
+  });
 }
 
 /**
@@ -718,7 +721,7 @@ function rawBodySaver(req: express.Request, res: express.Response, buf: Buffer):
 
 async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigger): Promise<void> {
   const ephemeralServer = express();
-  const functionRouter = express.Router();
+  const functionRouter = express.Router(); // eslint-disable-line new-cap
   const socketPath = frb.socketPath;
 
   if (!socketPath) {
@@ -963,14 +966,6 @@ async function initializeRuntime(
   }
 
   initializeEnvironmentalVariables(frb);
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    new EmulatorLog(
-      "WARN",
-      "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
-    ).log();
-  }
-
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);

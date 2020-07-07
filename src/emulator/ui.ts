@@ -35,8 +35,8 @@ export class EmulatorUI implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
   stop(): Promise<void> {

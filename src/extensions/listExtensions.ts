@@ -5,8 +5,14 @@ import Table = require("cli-table");
 import { ExtensionInstance, listInstances } from "./extensionsApi";
 import { logPrefix } from "./extensionsHelper";
 import * as utils from "../utils";
+import * as extensionsUtils from "./utils";
 import * as logger from "../logger";
 
+/**
+ * Lists the extensions installed under a project
+ * @param projectId ID of the project we're querying
+ * @return mapping that contains a list of instances under the "instances" key
+ */
 export async function listExtensions(
   projectId: string
 ): Promise<{ instances: ExtensionInstance[] }> {
@@ -20,19 +26,18 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Extension Instance ID", "State", "Extension Version", "Create Time", "Update Time"],
+    head: ["Instance ID", "Author", "State", "Version", "Last update"],
     style: { head: ["yellow"] },
   });
-
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
   sorted.forEach((instance) => {
     table.push([
       _.last(instance.name.split("/")),
+      _.get(instance, "config.source.spec.author.authorName", ""),
       instance.state,
       _.get(instance, "config.source.spec.version", ""),
-      instance.createTime,
-      instance.updateTime,
+      extensionsUtils.formatTimestamp(instance.updateTime),
     ]);
   });
 

@@ -11,7 +11,7 @@ import * as prompt from "../../prompt";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
-    it("should should substitute env variables", () => {
+    it("should substitute env variables", () => {
       const testResources = [
         {
           resourceOne: {
@@ -42,6 +42,50 @@ describe("extensionsHelper", () => {
         },
       ]);
     });
+  });
+
+  it("should support both ${PARAM_NAME} AND ${param:PARAM_NAME} syntax", () => {
+    const testResources = [
+      {
+        resourceOne: {
+          name: "${param:VAR_ONE}",
+          source: "path/${param:VAR_ONE}",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "${param:VAR_TWO}",
+          another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "${VAR_TWO}${VAR_TWO}${param:VAR_TWO}",
+          another: "${not:VAR_TWO}",
+        },
+      },
+    ];
+    const testParam = { VAR_ONE: "foo", VAR_TWO: "bar", UNUSED: "faz" };
+    expect(extensionsHelper.substituteParams(testResources, testParam)).to.deep.equal([
+      {
+        resourceOne: {
+          name: "foo",
+          source: "path/foo",
+        },
+      },
+      {
+        resourceTwo: {
+          property: "bar",
+          another: "$NOT_ENV",
+        },
+      },
+      {
+        resourceThree: {
+          property: "barbarbar",
+          another: "${not:VAR_TWO}",
+        },
+      },
+    ]);
   });
 
   describe("getDBInstanceFromURL", () => {
@@ -604,8 +648,7 @@ describe("extensionsHelper", () => {
     let uploadStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let deleteStub: sinon.SinonStub;
-    const testUrl =
-      "https://firebasestorage.googleapis.com/v0/b/firebase-ext-eap-uploads/o/object.zip";
+    const testUrl = "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
     const testSource = {
       name: "test",
       packageUri: testUrl,
@@ -621,7 +664,7 @@ describe("extensionsHelper", () => {
       archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
       uploadStub = sinon
         .stub(storage, "uploadObject")
-        .resolves("/v0/b/firebase-ext-eap-uploads/o/object.zip");
+        .resolves("/firebase-ext-eap-uploads/object.zip");
       createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
@@ -638,7 +681,7 @@ describe("extensionsHelper", () => {
       expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
     });
 
@@ -652,7 +695,7 @@ describe("extensionsHelper", () => {
       expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
       expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
       expect(deleteStub).to.have.been.calledWith(
-        `/v0/b/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/o/object.zip`
+        `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
     });
 

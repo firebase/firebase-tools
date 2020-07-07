@@ -49,7 +49,7 @@ module.exports = async (name: DownloadableEmulator) => {
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir }))
+      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
       .on("error", reject)
       .on("finish", resolve);
   });
@@ -126,7 +126,7 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-async function validateSize(filepath: string, expectedSize: number): Promise<void> {
+function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -143,7 +143,7 @@ async function validateSize(filepath: string, expectedSize: number): Promise<voi
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-async function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
+function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);
