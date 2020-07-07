@@ -227,6 +227,8 @@ export class Command {
       setupLoggers();
     }
 
+    options.configPath = getInheritedOption(options, "configPath");
+
     try {
       options.config = _load(options);
     } catch (e) {
