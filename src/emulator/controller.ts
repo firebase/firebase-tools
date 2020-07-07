@@ -2,10 +2,12 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
+import * as http from "http";
 
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
+import { getCredentialPathAsync } from "../defaultCredentials";
 import { EmulatorRegistry } from "../emulator/registry";
 import {
   Address,
@@ -243,6 +245,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
@@ -255,10 +258,48 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+      functionsLogger.logLabeled(
         "WARN",
         "functions",
         `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
+    // Provide default application credentials when appropriate
+    const credentialEnv: Record<string, string> = {};
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+      );
+    } else {
+      const defaultCredPath = await getCredentialPathAsync();
+      if (defaultCredPath) {
+        functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      } else {
+        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
+        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
+        functionsLogger.logLabeled(
+          "WARN",
+          "functions",
+          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+        );
+      }
+    }
+
+    // Warn the developer that the Functions emulator can call out to production.
+    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
+      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+    });
+    if (emulatorsNotRunning.length > 0) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+          emulatorsNotRunning.join(", ")
+        )}`
       );
     }
 
@@ -268,7 +309,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: options.extensionEnv,
+      env: {
+        ...credentialEnv,
+        ...options.extensionEnv,
+      },
       predefinedTriggers: options.extensionTriggers,
       nodeMajorVersion: options.extensionNodeVersion,
     });
@@ -374,6 +418,53 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    if (exportMetadata.database) {
+      const importDirAbsPath = path.resolve(options.import);
+      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+
+      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      for (const f of files) {
+        const fPath = path.join(databaseExportDir, f);
+        const ns = path.basename(f, ".json");
+
+        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+
+        const readStream = fs.createReadStream(fPath);
+
+        await new Promise((resolve, reject) => {
+          const req = http.request(
+            {
+              method: "PUT",
+              host: databaseAddr.host,
+              port: databaseAddr.port,
+              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
+              headers: {
+                Authorization: "Bearer owner",
+                "Content-Type": "application/json",
+              },
+            },
+            (response) => {
+              if (response.statusCode === 200) {
+                resolve();
+              } else {
+                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
+                response
+                  .on("data", (d) => {
+                    databaseLogger.log("DEBUG", d.toString());
+                  })
+                  .on("end", reject);
+              }
+            }
+          );
+
+          req.on("error", reject);
+          readStream.pipe(req, { end: true });
+        }).catch((e) => {
+          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+        });
+      }
+    }
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {

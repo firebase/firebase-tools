@@ -9,6 +9,7 @@ var utils = require("../utils");
 var api = require("../api");
 var auth = require("../auth");
 var _ = require("lodash");
+var { clearCredentials } = require("../defaultCredentials");
 
 module.exports = new Command("logout")
   .description("log the CLI out of Firebase")
@@ -20,6 +21,7 @@ module.exports = new Command("logout")
     api.setRefreshToken(token);
     var next;
     if (token) {
+      clearCredentials();
       next = auth.logout(token);
     } else {
       next = Promise.resolve();
