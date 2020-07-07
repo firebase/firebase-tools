@@ -37,7 +37,7 @@ export enum SpecParamType {
 
 export const logPrefix = "extensions";
 // Extension archive URLs must be HTTPS.
-export const urlRegex = /https:/;
+export const urlRegex = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
