@@ -1,5 +1,6 @@
 /**
  * Functions for interacting with Realtime Database Management APIs.
+ * Internal documentation: https://source.corp.google.com/piper///depot/google3/google/firebase/database/v1beta/rtdb_service.proto
  */
 
 import * as api from "../api";

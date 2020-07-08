@@ -11,7 +11,7 @@ var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
-
+var databaseUrl = require("./database/url");
 var CLI_VERSION = require("../package.json").version;
 
 var accessToken;
@@ -84,19 +84,6 @@ var _appendQueryData = function(path, data) {
   return path;
 };
 
-var _realtimeOriginOrEmulatorOrCustomUrl = function(customUrl) {
-  return utils.envOverride(
-    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    utils.envOverride("FIREBASE_REALTIME_URL", customUrl),
-    (val) => {
-      if (val.startsWith("http")) {
-        return val;
-      }
-      return `http://${val}`;
-    }
-  );
-};
-
 var api = {
   // "In this context, the client secret is obviously not treated as a secret"
   // https://developers.google.com/identity/protocols/OAuth2InstalledApp
@@ -160,8 +147,9 @@ var api = {
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: _realtimeOriginOrEmulatorOrCustomUrl("https://firebaseio.com"),
-  realtimeOriginOrEmulatorOrCustomUrl: _realtimeOriginOrEmulatorOrCustomUrl,
+  realtimeOriginOrEmulator: databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(
+    "https://firebaseio.com"
+  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   rtdbManagementOrigin: utils.envOverride(
     "FIREBASE_RTDB_MANAGEMENT_URL",

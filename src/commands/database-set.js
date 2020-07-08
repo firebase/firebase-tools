@@ -11,6 +11,7 @@ var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 var { populateInstanceDetails } = require("../management/database");
 var utils = require("../utils");
+var databaseUrl = require("../database/url");
 var clc = require("cli-color");
 var logger = require("../logger");
 var fs = require("fs");
@@ -36,7 +37,7 @@ module.exports = new Command("database:set <path> [infile]")
     }
 
     const origin = previews.rtdbmanagement
-      ? api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
+      ? databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
       : api.realtimeOriginOrEmulator;
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");

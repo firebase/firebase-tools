@@ -12,6 +12,7 @@ var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 var { populateInstanceDetails } = require("../management/database");
 var utils = require("../utils");
+var databaseUrl = require("../database/url");
 var _ = require("lodash");
 var fs = require("fs");
 var url = require("url");
@@ -66,7 +67,7 @@ module.exports = new Command("database:get <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
     let dbHost = previews.rtdbmanagement
-      ? api.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
+      ? databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
       : api.realtimeOriginOrEmulator;
     let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     var query = {};
