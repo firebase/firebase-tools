@@ -23,6 +23,12 @@ export enum DatabaseInstanceState {
   DELETED = "deleted",
 }
 
+export enum DatabaseLocation {
+  US_CENTRAL = "us-central1-c",
+  EUROPE_WEST = "europe-west1-b",
+  ASIA_SOUTHEAST = "asia-southeast1-b",
+}
+
 export interface DatabaseInstance {
   name: string;
   project: string;
@@ -67,6 +73,41 @@ export async function getDatabaseInstanceDetails(
     logger.debug(err.message);
     return utils.reject(
       `Failed to get instance details for instance: ${instanceName}. See firebase-debug.log for more details.`,
+      {
+        code: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+/**
+ * Create a new database instance.
+ * @param projectId identifier for the user's project.
+ * @param instanceName name of the RTDB instance.
+ * @param location location for the project's instance.
+ */
+export async function createInstance(
+  projectId: string,
+  instanceName: string,
+  location: DatabaseLocation
+): Promise<DatabaseInstance> {
+  try {
+    const response = await api.request(
+      "POST",
+      `/${MGMT_API_VERSION}/projects/${projectId}/locations/${location}/instances?databaseId=${instanceName}`,
+      {
+        auth: true,
+        origin: api.rtdbManagementOrigin,
+        timeout: TIMEOUT_MILLIS,
+      }
+    );
+
+    return response.body;
+  } catch (err) {
+    logger.debug(err.message);
+    return utils.reject(
+      `Failed to create instance: ${instanceName}. See firebase-debug.log for more details.`,
       {
         code: 2,
         original: err,
