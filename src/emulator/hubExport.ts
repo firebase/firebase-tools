@@ -54,7 +54,7 @@ export class HubExport {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
-        metadata_file: "firestore_export/firestore_export.overall_export_metadata",
+        metadata_file: path.join("firestore_export", "firestore_export.overall_export_metadata"),
       };
       await this.exportFirestore(metadata);
     }
