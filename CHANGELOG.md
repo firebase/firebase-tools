@@ -3,3 +3,4 @@
 - Changes default functions runtime to Node.js 10 for `firebase init`.
 - Adds import/export support to the Realtime Database emulator.
 - Adds application default credentials inside the Functions emulator (#1940)
+- Fixes `firebase init firestore` when no project is specified (#2399)
