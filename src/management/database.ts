@@ -24,9 +24,9 @@ export enum DatabaseInstanceState {
 }
 
 export enum DatabaseLocation {
-  US_CENTRAL = "us-central1-c",
-  EUROPE_WEST = "europe-west1-b",
-  ASIA_SOUTHEAST = "asia-southeast1-b",
+  US_CENTRAL1 = "us-central1",
+  EUROPE_WEST1 = "europe-west1",
+  ASIA_SOUTHEAST1 = "asia-southeast1",
 }
 
 export interface DatabaseInstance {

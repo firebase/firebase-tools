@@ -96,12 +96,12 @@ describe("Database management", () => {
       const resultDatabaseInstance = await databaseManagement.createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
-        databaseManagement.DatabaseLocation.ASIA_SOUTHEAST
+        databaseManagement.DatabaseLocation.ASIA_SOUTHEAST1
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.ASIA_SOUTHEAST}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
+        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.ASIA_SOUTHEAST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
         {
           auth: true,
           origin: api.rtdbManagementOrigin,
@@ -120,7 +120,7 @@ describe("Database management", () => {
         await databaseManagement.createInstance(
           PROJECT_ID,
           badInstanceName,
-          databaseManagement.DatabaseLocation.US_CENTRAL
+          databaseManagement.DatabaseLocation.US_CENTRAL1
         );
       } catch (e) {
         err = e;
@@ -132,7 +132,7 @@ describe("Database management", () => {
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.US_CENTRAL}/instances?databaseId=${badInstanceName}`,
+        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}`,
         {
           auth: true,
           origin: api.rtdbManagementOrigin,
