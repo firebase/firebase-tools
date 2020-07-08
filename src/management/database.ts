@@ -7,6 +7,7 @@ import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
 import { previews } from "../previews";
+import { FirebaseError } from "../error";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 
@@ -113,5 +114,30 @@ export async function createInstance(
         original: err,
       }
     );
+  }
+}
+
+/**
+ * Returns the `DatabaseLocation` represented by the string.
+ * @param location the location to parse.
+ * @return the `DatabaseLocation`.
+ */
+export function parseDatabaseLocation(location: string): DatabaseLocation {
+  if (!location) {
+    return DatabaseLocation.US_CENTRAL1;
+  }
+  switch (location.toLowerCase()) {
+    case "europe-west1":
+      return DatabaseLocation.EUROPE_WEST1;
+    case "asia-southeast1":
+      return DatabaseLocation.ASIA_SOUTHEAST1;
+    case "us-central1":
+    /* falls through */
+    case "":
+      return DatabaseLocation.US_CENTRAL1;
+    default:
+      throw new FirebaseError(
+        "Unexpected platform. Only us-central1, europe-west1, and asia-southeast1 locations are supported"
+      );
   }
 }
