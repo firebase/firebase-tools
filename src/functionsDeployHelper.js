@@ -33,8 +33,7 @@ function getFilterGroups(options) {
     .map(function(filter) {
       return filter
         .split(":")[1]
-        .replace("-", ".")
-        .split(".");
+        .split(/[.-]/);
     })
     .value();
 }
