@@ -31,7 +31,10 @@ function getFilterGroups(options) {
       return opts[0] === "functions" && opts[1];
     })
     .map(function(filter) {
-      return filter.split(":")[1].replace("-",".").split(".");
+      return filter
+        .split(":")[1]
+        .replace("-", ".")
+        .split(".");
     })
     .value();
 }
