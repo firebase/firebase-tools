@@ -137,7 +137,7 @@ export function parseDatabaseLocation(location: string): DatabaseLocation {
       return DatabaseLocation.US_CENTRAL1;
     default:
       throw new FirebaseError(
-        "Unexpected platform. Only us-central1, europe-west1, and asia-southeast1 locations are supported"
+        "Unexpected location value. Only us-central1, europe-west1, and asia-southeast1 locations are supported"
       );
   }
 }
