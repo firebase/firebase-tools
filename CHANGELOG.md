@@ -1,0 +1,1 @@
+- Fixes an issue where the suggested redeploy command for Firebase Functions was incorrect for names with dashes.
