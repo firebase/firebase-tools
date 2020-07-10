@@ -16,6 +16,7 @@ import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
+import { EmulatorRegistry } from "./registry";
 
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
@@ -198,8 +199,21 @@ function _getCommand(
   };
 }
 
-function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
-  throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
+async function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): Promise<void> {
+  // if we do not issue a stopAll here and _fatal is called during startup, we could leave emulators running
+  // that did start already
+  // for example: JAVA_HOME=/does/not/exist firebase emulators:start
+  try {
+    const logger = EmulatorLogger.forEmulator(emulator.name);
+    logger.logLabeled(
+      "WARN",
+      emulator.name,
+      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`
+    );
+    await EmulatorRegistry.stopAll();
+  } finally {
+    process.exit(1);
+  }
 }
 
 async function _runBinary(
@@ -230,7 +244,6 @@ async function _runBinary(
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
         );
       }
-
       _fatal(emulator, e);
     }
 
@@ -264,21 +277,21 @@ async function _runBinary(
       }
     });
 
-    emulator.instance.on("error", (err: any) => {
+    emulator.instance.on("error", async (err: any) => {
       if (err.path === "java" && err.code === "ENOENT") {
-        _fatal(
+        await _fatal(
           emulator,
           `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
         );
       } else {
-        _fatal(emulator, `${description} has exited: ${err}`);
+        await _fatal(emulator, `${description} has exited: ${err}`);
       }
     });
-    emulator.instance.once("exit", (code, signal) => {
+    emulator.instance.once("exit", async (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        _fatal(emulator, `${description} has exited with code: ${code}`);
+        await _fatal(emulator, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
@@ -300,10 +313,19 @@ export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetail
 }
 
 /**
+ * Returns the PID of the emulator process
+ * @param emulator
+ */
+export function getPID(emulator: DownloadableEmulators): number {
+  const emulatorInstance = get(emulator).instance;
+  return emulatorInstance && emulatorInstance.pid ? emulatorInstance.pid : 0;
+}
+
+/**
  * @param targetName
  */
 export async function stop(targetName: DownloadableEmulators): Promise<void> {
-  const emulator = EmulatorDetails[targetName];
+  const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
     if (emulator.instance) {
@@ -350,7 +372,7 @@ export async function start(
   extraEnv: NodeJS.ProcessEnv = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
-  const emulator = EmulatorDetails[targetName];
+  const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);
   if (!hasEmulator || downloadDetails.opts.skipCache) {

@@ -15,6 +15,7 @@ import {
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
+  isEmulator,
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
@@ -36,6 +37,7 @@ import { EmulatorHubClient } from "./hubClient";
 import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
+import { fileExistsSync } from "../fsutils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -144,6 +146,7 @@ export async function onExit(options: any) {
 
 /**
  * Hook to clean up on shutdown (includes errors). Will be skipped on a third SIGINT
+ * Stops all running emulators in parallel.
  */
 export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
@@ -151,14 +154,7 @@ export async function cleanShutdown(): Promise<void> {
     "emulators",
     "Shutting down emulators."
   );
-  for (const name of EmulatorRegistry.listRunning()) {
-    EmulatorLogger.forEmulator(name).logLabeled(
-      "BULLET",
-      name,
-      `Stopping ${Constants.description(name)}`
-    );
-    await EmulatorRegistry.stop(name);
-  }
+  await EmulatorRegistry.stopAll();
 }
 
 export function filterEmulatorTargets(options: any): Emulators[] {
@@ -252,13 +248,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
-      EmulatorLogger.forEmulator(name as Emulators).logLabeled(
-        "WARN",
-        name,
-        `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
-          "firebase init"
-        )}.`
-      );
+      if (isEmulator(name)) {
+        EmulatorLogger.forEmulator(name as Emulators).logLabeled(
+          "WARN",
+          name,
+          `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
+            "firebase init"
+          )}.`
+        );
+      } else {
+        // this should not work:
+        // firebase emulators:start --only doesnotexit
+        throw new FirebaseError(
+          `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
+            ALL_SERVICE_EMULATORS
+          )}`,
+          { exit: 1 }
+        );
+      }
     }
   }
 
@@ -273,10 +280,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     version: "unknown",
   };
   if (options.import) {
-    const importDir = path.resolve(options.import);
-    exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
-    ) as ExportMetadata;
+    const importFilePath = path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME);
+    if (fileExistsSync(importFilePath)) {
+      exportMetadata = JSON.parse(
+        fs
+          .readFileSync(
+            path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME),
+            "utf8"
+          )
+          .toString()
+      ) as ExportMetadata;
+    } else {
+      // could happen when an export was interrupted...
+    }
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {

@@ -85,8 +85,10 @@ export class DatabaseEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.DATABASE),
     };
   }
 

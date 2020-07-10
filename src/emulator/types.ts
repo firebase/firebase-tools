@@ -96,8 +96,10 @@ export interface EmulatorInstance {
 }
 
 export interface EmulatorInfo {
+  name: Emulators;
   host: string;
   port: number;
+  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {

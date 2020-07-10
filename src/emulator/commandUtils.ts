@@ -18,6 +18,9 @@ import { prompt } from "../prompt";
 import { EmulatorHub } from "./hub";
 import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
+import Signals = NodeJS.Signals;
+import SignalsListener = NodeJS.SignalsListener;
+import Table = require("cli-table");
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -203,29 +206,82 @@ export function setExportOnExitOptions(options: any) {
   return;
 }
 
+function processKillSignal(
+  signal: Signals,
+  res: (value?: unknown) => void,
+  rej: (value?: unknown) => void,
+  options: any
+): SignalsListener {
+  let signalCount = 0;
+  return async () => {
+    try {
+      signalCount = signalCount + 1;
+      const signalDisplay = signal === "SIGINT" ? `SIGINT (Ctrl-C)` : signal;
+      logger.debug(`Received signal ${signalDisplay} ${signalCount}`);
+      logger.info(" "); // to not indent the log with the possible Ctrl-C char
+      if (signalCount === 1) {
+        utils.logLabeledBullet(
+          "emulators",
+          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`
+        );
+        utils.logLabeledBullet(
+          "emulators",
+          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
+        );
+        // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
+        await onExit(options);
+        await controller.cleanShutdown();
+      } else {
+        logger.debug(`Skipping clean onExit() and cleanShutdown()`);
+        const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter((i) =>
+          Boolean(i.pid)
+        );
+
+        utils.logLabeledWarning(
+          "emulators",
+          `Received ${signalDisplay} ${signalCount} times. You have forced the Emulator Suite to exit without waiting for ${
+            runningEmulatorsInfosWithPid.length
+          } subprocess${
+            runningEmulatorsInfosWithPid.length > 1 ? "es" : ""
+          } to finish. These processes ${clc.bold("may")} still be running on your machine: `
+        );
+
+        const pids: number[] = [];
+
+        const emulatorsTable = new Table({
+          head: ["Emulator", "Host:Port", "PID"],
+          style: {
+            head: ["yellow"],
+          },
+        });
+
+        for (const emulatorInfo of runningEmulatorsInfosWithPid) {
+          pids.push(emulatorInfo.pid as number);
+          emulatorsTable.push([
+            Constants.description(emulatorInfo.name),
+            `${emulatorInfo.host}:${emulatorInfo.port}`,
+            emulatorInfo.pid,
+          ]);
+        }
+        logger.info(`\n${emulatorsTable}\n\nTo force them to exit run:\n`);
+        if (process.platform === "win32") {
+          logger.info(clc.bold(`TASKKILL ${pids.map((pid) => "/PID " + pid).join(" ")} /T\n`));
+        } else {
+          logger.info(clc.bold(`kill ${pids.join(" ")}\n`));
+        }
+      }
+      res();
+    } catch (e) {
+      logger.debug(e);
+      rej();
+    }
+  };
+}
+
 export function shutdownWhenKilled(options: any): Promise<void> {
   return new Promise((res, rej) => {
-    let receivedSIGINTS = 0;
-    process.on("SIGINT", async () => {
-      try {
-        receivedSIGINTS = receivedSIGINTS + 1;
-        utils.logLabeledWarning("emulators", `Received SIGINT ${receivedSIGINTS}`);
-        if (receivedSIGINTS < 2) {
-          // in case of a double 'Ctrl-c' we do not want to cleanly exit with onExit
-          await onExit(options);
-        } else {
-          logger.debug(`Skipping clean onExit()`);
-        }
-        if (receivedSIGINTS < 3) {
-          // in case of a triple 'Ctrl-c' we do not want to wait for cleanShutdown when things go wrong
-          await controller.cleanShutdown();
-        } else {
-          logger.debug(`Skipping cleanShutdown()`);
-        }
-        res();
-      } catch (e) {
-        rej();
-      }
+    ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"].forEach((signal: string) => {
+      process.on(signal as Signals, processKillSignal(signal as Signals, res, rej, options));
     });
   })
     .then(() => {

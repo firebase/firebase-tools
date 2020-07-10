@@ -5,9 +5,7 @@ import { EXPORT_ON_EXIT_USAGE_ERROR } from "../../emulator/commandUtils";
 
 describe("commandUtils", () => {
   const testSetExportOnExitOptions = (options: any): any => {
-    console.log(options);
     commandUtils.setExportOnExitOptions(options);
-    console.log(options);
     return options;
   };
 
