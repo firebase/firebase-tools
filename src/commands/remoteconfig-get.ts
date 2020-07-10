@@ -11,10 +11,19 @@ const tableHead = [
   "Entry Name", "Value"
 ];
 
- function getItems(command: any) {
-    var updatedArray = '';
+const limit = 50;
+
+//Function retrieves names for parameter and parameter group
+function getItems(command: any) {
+  var updatedArray = '';
+  let counter = 0;
   for(let item in command){
     updatedArray = updatedArray.concat(item, '\n');
+    counter++
+    if (counter === limit){
+      updatedArray += "+more..." + '\n';
+      break
+    }
   }
   return updatedArray;
   }
@@ -26,19 +35,23 @@ module.exports = new Command("remoteconfig:get")
   .before(requireAuth)
   .action(
     async (options) => {
-    
+      
+    //firebase remoteconfig:get implementation
     const template = await rcGet.getTemplate(getProjectId(options), options.template_version);
     
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
-    //const updatedConditions = [];
     var updatedConditions = '';
+    let counter = 0;
     for(let item in template.conditions){
-      //updatedConditions.push(template.conditions[item].name);
       updatedConditions += template.conditions[item].name + '\n';
+      counter++
+      if (counter === limit){
+        updatedConditions += "+more..." + '\n';
+        break
       }
+    }
     table.push(["conditions", updatedConditions])
-    //table.push(["conditions", util.inspect(updatedConditions, {showHidden: false, depth: null})])
   
     const updatedParameters = getItems(template.parameters);
     table.push(["parameters",updatedParameters])
@@ -48,10 +61,11 @@ module.exports = new Command("remoteconfig:get")
     
     table.push(["version", util.inspect(template.version, {showHidden: false, depth: null})])
 
+    //firebase remoteconfig:get --output implementation
     var fileOut = !!options.output;
     if(fileOut){
       var outStream= fs.createWriteStream(options.output);
-      outStream.write(table.toString());
+      outStream.write(util.inspect(template, {showHidden: false, depth: null}));
     }
     else{
       logger.info(table.toString());
