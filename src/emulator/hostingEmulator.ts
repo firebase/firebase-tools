@@ -31,6 +31,7 @@ export class HostingEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.HOSTING);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
