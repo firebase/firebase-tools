@@ -291,7 +291,14 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
           .toString()
       ) as ExportMetadata;
     } else {
-      // could happen when an export was interrupted...
+      // could happen when an export was interrupted mid-export...
+      EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+        "WARN",
+        "emulators",
+        `Import/Export metadata file does not exist. ${clc.bold(
+          "Skipping data import!"
+        )} Metadata file location: ${importFilePath}`
+      );
     }
   }
 
