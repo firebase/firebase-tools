@@ -1,32 +1,33 @@
 import { bold } from "cli-color";
-
 import { Command } from "../command";
-
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel } from "../hosting/api";
-
-
+import { getChannel, createChannel, cloneVersion, getOperation, createRelease } from "../hosting/api";
+import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getProjectId from "../getProjectId";
+import { logLabeledSuccess } from "../utils";
 
 
+const LOG_TAG = "hosting:clone";
 
-// `export default` is used for consistency in command files.
-export default new Command("hosting:clone <sourceChannel> <targetChannel>")
+export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.read", "firebasehosting.sites.update"])
   .before(requireInstance)
-  // .option("-e, --example <requiredValue>", "describe the option briefly")
-  // .before(requireConfig) // add any necessary filters and require them above
-  // .help(text) // additional help to be visible with --help or the help command
-  .action(async (sourceChannel: string = "", targetChannel : string = "", options : any) => {
-    const [sourceSiteId, sourceChannelId] = sourceChannel.split(":");
+  .action(async (source: string = "", targetChannel: string = "", options: any) => {
+    // sites/{site}/versions/{version}
+    let sourceVersionName, sourceVersion;
+    let [sourceSiteId, sourceChannelId] = source.split(":");
     const [targetSiteId, targetChannelId] = targetChannel.split(":");
     if (!sourceSiteId || !sourceChannelId) {
-      throw new FirebaseError(`Please provide a sourceChannel.`);
+      [sourceSiteId, sourceVersion] = source.split("@");
+      if (!sourceSiteId || !sourceVersion) {
+        throw new FirebaseError(`Please provide a sourceChannel.`);
+      }
+      sourceVersionName = `sites/${sourceSiteId}/versions/${sourceVersion}`
     }
     if (!targetSiteId || !targetChannelId) {
       throw new FirebaseError(`Please provide a targetChannel.`);
@@ -34,41 +35,43 @@ export default new Command("hosting:clone <sourceChannel> <targetChannel>")
 
     const projectId = getProjectId(options);
 
-    const sChannel = await getChannel(projectId, sourceSiteId, sourceChannelId);
-    if (!sChannel) {
-      throw new FirebaseError(
-        `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
-      );
-    }
-
-    let sourceVersion = sChannel.release?.version;
-    if (!sourceVersion) {
-      throw new FirebaseError(
-        `Could not find a version on the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
-      );
+    if (!sourceVersionName) {
+      // verify source channel exists and get source channel
+      const sChannel = await getChannel(projectId, sourceSiteId, sourceChannelId);
+      if (!sChannel) {
+        throw new FirebaseError(
+          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
+        );
+      }
+      sourceVersionName = sChannel.release?.version?.name;
+      if (!sourceVersionName) {
+        throw new FirebaseError(
+          `Could not find a version on the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
+        );
+      }
     }
 
     let tChannel = await getChannel(projectId, targetSiteId, targetChannelId);
     if (!tChannel) {
+      logger.info(`could not find channel ${targetChannel}, creating it...`);
       tChannel = await createChannel(projectId, targetSiteId, targetChannelId);
+      logger.debug("[hosting] created new channnel for site", targetSiteId, targetChannelId);
     }
+    const cloneOperation = await cloneVersion(projectId, targetSiteId, sourceVersionName, true);
+    if (!cloneOperation) {
+      console.log(cloneOperation);
+      throw new FirebaseError(
+        `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
+      );
+    }
+    const targetVersion = await getOperation(cloneOperation.name);
+    await createRelease(projectId, targetSiteId, targetChannelId, targetVersion.name);
 
-      console.log("i am source channel")
-      console.log(sourceChannel)
-      console.log("i am target channel")
-      console.log(targetChannel)
-      console.log("options")
-      console.log(options)
-    // options will be available at e.g. options.example
-    // this should return a Promise that resolves to a reasonable result
-    // 1. call GetChannel on source channel. Error if it does not exist.
-    // 2. call GetChannel on destination channel. Call CreateChannel if GetChannel errors.
-    // 3. reterieve the version being served from the source channel object (sites/*/versions/*). Error if no version is being served on channel.
-    // 4. reterieve the site name from the desitination channel object name. (sites/*)
-    // 5. call cloneversion  from the destintation site with the source version info.
-    // 6. block on the clone version operation until it completes
-    // 7. once operation is complete a version will be returned. make a call to the CreateRelease 
-    // endpoint with that new versionName so we can create a new release with type unknown? 
-    // on the destinition channel.
-    // 8. call UpdateChannel on destiniation channel to update it with the newly created release.
+    logger.info();
+    logLabeledSuccess(
+      LOG_TAG,
+      `Site ${sourceSiteId} ${sourceChannelId ? 'channel' : 'version'} ${sourceChannelId || sourceVersion } has been cloned to site ${targetSiteId} channel ${targetChannelId}.`
+    );
+    logLabeledSuccess(LOG_TAG, `Channel URL (${targetChannelId}): ${tChannel.url}`);
+    logger.info();
   });

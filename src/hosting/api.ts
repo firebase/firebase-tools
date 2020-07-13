@@ -1,6 +1,8 @@
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import * as api from "../api";
+import * as operationPoller from "../operation-poller";
+
 
 const ONE_WEEK_MS = 86400000; // 24 * 60 * 60 * 1000
 
@@ -214,4 +216,62 @@ export async function deleteChannel(
     auth: true,
     origin: api.hostingApiOrigin,
   });
+}
+
+/**
+ * Create a version a clone.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the version.
+ * @param versionName the specific version ID.
+ */
+export async function cloneVersion(
+  project: string | number = "-",
+  site: string,
+  versionName: string,
+  finalize: boolean = false
+): Promise<any> {
+  const res = await api.request("POST", `/v1beta1/projects/${project}/sites/${site}/versions:clone?sourceVersion=${versionName}`, {
+    auth: true,
+    origin: api.hostingApiOrigin,
+    data: {
+      finalize: finalize
+    }
+  });
+  return res.body;
+}
+
+/**
+ * getOperation retrieves information about an operation.
+ * @param resourceName the project scoped name of the operation,
+ * @return the operation resource, or null if the operation is not found.
+ */
+export async function getOperation(
+  resourceName: string
+): Promise<any> {
+  const pollRes = await operationPoller.pollOperation({
+    apiOrigin: api.hostingApiOrigin,
+    apiVersion: "v1beta1",
+    operationResourceName: resourceName,
+    masterTimeout: 600000,
+  });
+  return pollRes;
+}
+
+/**
+ * Create a release of on a channel.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the version.
+ * @param versionName the specific version ID.
+ */
+export async function createRelease(
+  project: string | number = "-",
+  site: string,
+  channel: string,
+  version: string,
+): Promise<any> {
+  const res = await api.request("POST", `/v1beta1/projects/${project}/sites/${site}/channels/${channel}/releases?version_name=${version}`, {
+    auth: true,
+    origin: api.hostingApiOrigin,
+  });
+  return res.body;
 }
