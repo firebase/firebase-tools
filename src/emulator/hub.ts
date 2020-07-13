@@ -126,6 +126,7 @@ export class EmulatorHub implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.HUB);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
