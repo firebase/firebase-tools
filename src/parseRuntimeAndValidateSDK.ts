@@ -15,14 +15,16 @@ const cjson = require("cjson");
 
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
-  nodejs8: "Node.js 8",
+  nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
+  nodejs12: "Node.js 12",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
+  12: "nodejs12",
 };
 
 const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
@@ -100,7 +102,7 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
  * either the `runtime` field of firebase.json or the package.json.
  * @param sourceDir directory where the functions are defined.
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
- * @return The runtime, e.g. `nodejs10`.
+ * @return The runtime, e.g. `nodejs12`.
  */
 export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): string {
   const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
