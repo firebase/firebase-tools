@@ -10,7 +10,7 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 
-const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL"];
+const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
 export default new Command("hosting:channel:list")
   .description("list all Firebase Hosting channels for your project")
@@ -30,7 +30,12 @@ export default new Command("hosting:channel:list")
       const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
       for (const channel of channels) {
         const channelId = channel.name.split("/").pop();
-        table.push([channelId, new Date(channel.updateTime).toLocaleString(), channel.url]);
+        table.push([
+          channelId,
+          new Date(channel.updateTime).toLocaleString(),
+          channel.url,
+          channel.expireTime ? new Date(channel.expireTime).toLocaleString() : "never",
+        ]);
       }
 
       logger.info();
