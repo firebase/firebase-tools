@@ -117,7 +117,7 @@ module.exports = function(client) {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-  client.hosting.clone = loadCommand("hosting-clone")
+  client.hosting.clone = loadCommand("hosting-clone");
 
   return client;
 };

@@ -3,7 +3,6 @@ import { logWarning } from "../utils";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 
-
 const ONE_WEEK_MS = 86400000; // 24 * 60 * 60 * 1000
 
 interface ActingUser {
@@ -230,13 +229,17 @@ export async function cloneVersion(
   versionName: string,
   finalize: boolean = false
 ): Promise<any> {
-  const res = await api.request("POST", `/v1beta1/projects/${project}/sites/${site}/versions:clone?sourceVersion=${versionName}`, {
-    auth: true,
-    origin: api.hostingApiOrigin,
-    data: {
-      finalize: finalize
+  const res = await api.request(
+    "POST",
+    `/v1beta1/projects/${project}/sites/${site}/versions:clone?sourceVersion=${versionName}`,
+    {
+      auth: true,
+      origin: api.hostingApiOrigin,
+      data: {
+        finalize: finalize,
+      },
     }
-  });
+  );
   return res.body;
 }
 
@@ -245,9 +248,7 @@ export async function cloneVersion(
  * @param resourceName the project scoped name of the operation,
  * @return the operation resource, or null if the operation is not found.
  */
-export async function getOperation(
-  resourceName: string
-): Promise<any> {
+export async function getOperation(resourceName: string): Promise<any> {
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: api.hostingApiOrigin,
     apiVersion: "v1beta1",
@@ -267,11 +268,15 @@ export async function createRelease(
   project: string | number = "-",
   site: string,
   channel: string,
-  version: string,
+  version: string
 ): Promise<any> {
-  const res = await api.request("POST", `/v1beta1/projects/${project}/sites/${site}/channels/${channel}/releases?version_name=${version}`, {
-    auth: true,
-    origin: api.hostingApiOrigin,
-  });
+  const res = await api.request(
+    "POST",
+    `/v1beta1/projects/${project}/sites/${site}/channels/${channel}/releases?version_name=${version}`,
+    {
+      auth: true,
+      origin: api.hostingApiOrigin,
+    }
+  );
   return res.body;
 }
