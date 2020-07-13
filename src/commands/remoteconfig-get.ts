@@ -31,7 +31,7 @@ function getItems(command: any) {
 module.exports = new Command("remoteconfig:get")
   .description("Get Firebase projects you have access to")
   .option("--template_version <version_number>", "grabs the specified version of the template")
-  .option("-o, --output <file path>", "save the output to the default file path")
+  .option("-o, --output", "save the output to the default file path")
   .before(requireAuth)
   .action(
     async (options) => {
@@ -64,7 +64,7 @@ module.exports = new Command("remoteconfig:get")
     //firebase remoteconfig:get --output implementation
     var fileOut = !!options.output;
     if(fileOut){
-      var outStream= fs.createWriteStream(options.output);
+      var outStream= fs.createWriteStream(options.config.get("remoteconfig.template"));
       outStream.write(util.inspect(template, {showHidden: false, depth: null}));
     }
     else{
