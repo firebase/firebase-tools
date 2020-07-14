@@ -682,7 +682,7 @@ describe("FunctionsEmulator-Runtime", () => {
         const data = await callHTTPSFunction(worker, frb);
         expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
       }).timeout(TIMEOUT_MED);
-    }).timeout(TIMEOUT_MED);
+    });
 
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
