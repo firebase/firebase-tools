@@ -505,6 +505,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
 
     return {
+      name: this.getName(),
       host,
       port,
     };

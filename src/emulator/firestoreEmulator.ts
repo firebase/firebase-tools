@@ -79,8 +79,10 @@ export class FirestoreEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
     };
   }
 
