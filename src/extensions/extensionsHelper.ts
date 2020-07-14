@@ -11,14 +11,7 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import * as getProjectId from "../getProjectId";
-import {
-  createSource,
-  getInstance,
-  ExtensionSource,
-  getSource,
-  Param,
-  ParamType,
-} from "./extensionsApi";
+import { createSource, getInstance, ExtensionSource, getSource, Param } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
@@ -210,7 +203,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(ParamType).join(", ")}`
+        }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type == SpecParamType.STRING) {
