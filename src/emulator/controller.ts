@@ -372,7 +372,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         ...options.extensionEnv,
       },
       predefinedTriggers: options.extensionTriggers,
-      nodeMajorVersion: options.extensionNodeVersion,
+      nodeMajorVersion: options.extensionNodeVersion || options.config.get("functions.runtime"),
     });
     await startEmulator(functionsEmulator);
   }

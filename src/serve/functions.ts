@@ -21,6 +21,7 @@ module.exports = {
       // default values for those tests to work properly.
       projectId,
       functionsDir,
+      nodeMajorVersion: options.config.get("functions.runtime"),
 
       ...(args as object),
     };
