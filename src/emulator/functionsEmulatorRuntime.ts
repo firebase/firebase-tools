@@ -592,7 +592,7 @@ function warnAboutDatabaseProd(): void {
   hasAccessedDatabase = true;
 }
 
-function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
   process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
@@ -609,8 +609,11 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     // Ignore, config is optional
   }
 
+  // Before firebase-functions version 3.8.0 the Functions SDK would reject non-prod database URLs.
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
   let emulatedDatabaseURL = undefined;
-  if (frb.emulators.database) {
+  if (frb.emulators.database && functionsGt380) {
     emulatedDatabaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${process.env.GCLOUD_PROJECT}`;
   }
 
@@ -973,7 +976,7 @@ async function initializeRuntime(
     return;
   }
 
-  initializeEnvironmentalVariables(frb);
+  await initializeEnvironmentalVariables(frb);
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
