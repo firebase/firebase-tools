@@ -1,5 +1,3 @@
-//var jsFileLocation = $('script[src*=example]').attr('src');  // the js file path
-//jsFileLocation = jsFileLocation.replace('example.js', ''); 
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 export async function doSetup(setup: any, config:any, options:any) :Promise<void> {

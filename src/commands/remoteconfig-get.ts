@@ -4,6 +4,7 @@ import { requireAuth } from "../requireAuth";
 import Table = require("cli-table");
 import * as logger from "../logger";
 import * as fs from "fs";
+
 var getProjectId = require("../getProjectId");
 
 const util = require('util');
@@ -29,7 +30,7 @@ function getItems(command: any) {
   }
 
 module.exports = new Command("remoteconfig:get")
-  .description("Get Firebase projects you have access to")
+  .description("Get Firebase project you have access to")
   .option("--template_version <version_number>", "grabs the specified version of the template")
   .option("-o, --output", "save the output to the default file path")
   .before(requireAuth)

@@ -8,7 +8,6 @@ import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
 const TIMEOUT = 30000;
 
-const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
 const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
