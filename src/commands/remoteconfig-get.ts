@@ -7,18 +7,16 @@ import * as fs from "fs";
 
 var getProjectId = require("../getProjectId");
 
-const util = require('util');
-const tableHead = [
-  "Entry Name", "Value"
-];
+const util = require("util");
+const tableHead = ["Entry Name", "Value"];
 
 const limit = 50;
 
-//Function retrieves names for parameter and parameter group
+// Function retrieves names for parameter and parameter group
 function getItems(command: any) {
-  var updatedArray = '';
+  var updatedArray = "";
   let counter = 0;
-  for(let item in command){
+  for (let item in command) {
     updatedArray = updatedArray.concat(item, '\n');
     counter++
     if (counter === limit){
