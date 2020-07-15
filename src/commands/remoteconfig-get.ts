@@ -31,14 +31,14 @@ function getItems(command: any) {
 
 module.exports = new Command("remoteconfig:get")
   .description("Get Firebase project you have access to")
-  .option("--template_version <version_number>", "grabs the specified version of the template")
+  .option("--v <version_number>", "grabs the specified version of the template")
   .option("-o, --output", "save the output to the default file path")
   .before(requireAuth)
   .action(
     async (options) => {
       
-    //firebase remoteconfig:get implementation
-    const template = await rcGet.getTemplate(getProjectId(options), options.template_version);
+    //Firebase remoteconfig:get implementation
+    const template = await rcGet.getTemplate(getProjectId(options), options.v);
     
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
@@ -62,7 +62,7 @@ module.exports = new Command("remoteconfig:get")
     
     table.push(["version", util.inspect(template.version, {showHidden: false, depth: null})])
 
-    //firebase remoteconfig:get --output implementation
+    //Firebase remoteconfig:get --output implementation
     var fileOut = !!options.output;
     if(fileOut){
       var outStream= fs.createWriteStream(options.config.get("remoteconfig.template"));

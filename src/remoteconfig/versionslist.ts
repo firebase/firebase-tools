@@ -8,6 +8,7 @@ const TIMEOUT = 30000;
 
 export interface RemoteConfigVersionTemplateData {versions: any};
 
+/**Gets all project versions based on Firebase Project ID */
 export async function getVersions(projectId: string): Promise<RemoteConfigVersionTemplateData> {
     try {
         var request = `/v1/projects/${projectId}/remoteConfig:listVersions`
