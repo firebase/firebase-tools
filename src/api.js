@@ -47,7 +47,7 @@ var _request = function(options, logOptions) {
       }
 
       logger.debug("<<< HTTP RESPONSE", response.statusCode, response.headers);
-      
+
       if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
         logger.debug("<<< HTTP RESPONSE BODY", response.body);
         if (!options.resolveOnHTTPError) {

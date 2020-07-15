@@ -35,11 +35,11 @@ export default new Command("database:settings:set <path> <value>")
       return utils.reject(setting.parseInputErrorMessge, { exit: 1 });
     }
     return new Promise((resolve, reject) => {
-      const url =
-        utils.addSubdomain(realtimeOriginOrCustomUrl(options), options.instance) +
-        "/.settings/" +
-        path +
-        ".json";
+      const url = utils.getDatabaseUrl(
+        realtimeOriginOrCustomUrl(options),
+        options.instance,
+        "/.settings/" + path + ".json"
+      );
       const reqOptions = {
         url,
         body: parsedValue,

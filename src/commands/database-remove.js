@@ -4,14 +4,10 @@ var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove").default;
-var api = require("../api");
 var { Emulators } = require("../emulator/types");
 var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
 var { populateInstanceDetails } = require("../management/database");
-var {
-  realtimeOriginOrEmulatorOrCustomUrl,
-  realtimeOriginOrEmulator,
-} = require("../database/api");
+var { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
 var utils = require("../utils");
 var { prompt } = require("../prompt");
 var clc = require("cli-color");
@@ -40,7 +36,7 @@ module.exports = new Command("database:remove <path>")
         default: false,
         message:
           "You are about to remove all data at " +
-          clc.cyan(utils.addSubdomain(realtimeOriginOrEmulator(options), options.instance) + path) +
+          clc.cyan(utils.getDatabaseUrl(origin, options.instance), path) +
           ". Are you sure?",
       },
     ]).then(function() {
@@ -48,7 +44,7 @@ module.exports = new Command("database:remove <path>")
         return utils.reject("Command aborted.", { exit: 1 });
       }
 
-      var removeOps = new DatabaseRemove(origin, path, host);
+      var removeOps = new DatabaseRemove(options.instance, path, origin);
       return removeOps.execute().then(function() {
         utils.logSuccess("Data removed successfully");
       });

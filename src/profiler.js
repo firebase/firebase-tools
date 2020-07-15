@@ -17,7 +17,7 @@ const { realtimeOriginOrEmulatorOrCustomUrl } = require("./database/api");
 
 module.exports = function(options) {
   const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
-  var url = utils.addSubdomain(origin, options.instance) + "/.settings/profile.json?";
+  var url = utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?");
 
   var rl = readline.createInterface({
     input: process.stdin,

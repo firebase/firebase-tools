@@ -47,7 +47,7 @@ export async function populateInstanceDetails(options: any): Promise<void> {
   // console.log("Options123: " + JSON.stringify(options));
   // logger.debug("Options123: " + JSON.stringify(options));
   // logger.debug("Previews: " + JSON.stringify(previews));
-  
+
   if (previews.rtdbmanagement) {
     options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
   }

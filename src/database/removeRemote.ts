@@ -44,10 +44,11 @@ export class RTDBRemoveRemote implements RemoveRemote {
   private patch(path: string, body: any, note: string): Promise<boolean> {
     const t0 = Date.now();
     return new Promise((resolve, reject) => {
-      const url =
-        utils.addSubdomain(this.host, this.instance) +
-        path +
-        ".json?print=silent&writeSizeLimit=tiny";
+      const url = utils.getDatabaseUrl(
+        this.host,
+        this.instance,
+        path + ".json?print=silent&writeSizeLimit=tiny"
+      );
       return api
         .addRequestHeaders({
           url,

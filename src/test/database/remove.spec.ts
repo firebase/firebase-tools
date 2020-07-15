@@ -3,7 +3,7 @@ import { expect } from "chai";
 import DatabaseRemove from "../../database/remove";
 import { FakeRemoveRemote } from "./fakeRemoveRemote.spec";
 import { FakeListRemote } from "./fakeListRemote.spec";
-const HOST = "https://firebaseio.com"
+const HOST = "https://firebaseio.com";
 
 describe("DatabaseRemove", () => {
   it("should remove tiny tree", async () => {
@@ -71,7 +71,6 @@ describe("DatabaseRemove", () => {
         const removeOps = new DatabaseRemove("test-remover", "/", HOST);
         removeOps.remote = fakeDb;
         removeOps.listRemote = fakeList;
-        removeOps.
         await removeOps.execute();
         expect(fakeDb.data).to.eql(null);
       });
