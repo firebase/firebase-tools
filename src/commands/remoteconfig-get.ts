@@ -35,18 +35,17 @@ module.exports = new Command("remoteconfig:get")
   .action(
     async (options) => {
       
-    //Firebase remoteconfig:get implementation
+    // Firebase remoteconfig:get implementation
     const template = await rcGet.getTemplate(getProjectId(options), options.v);
-    
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
-    var updatedConditions = '';
+    let updatedConditions = '';
     let counter = 0;
-    for(let item in template.conditions){
+    for (let item in template.conditions) {
       updatedConditions += template.conditions[item].name + '\n';
       counter++
-      if (counter === limit){
-        updatedConditions += "+more..." + '\n';
+      if (counter === limit) {
+        updatedConditions += "+more..." + "\n";
         break
       }
     }
@@ -60,7 +59,7 @@ module.exports = new Command("remoteconfig:get")
     
     table.push(["version", util.inspect(template.version, {showHidden: false, depth: null})])
 
-    //Firebase remoteconfig:get --output implementation
+    // Firebase remoteconfig:get --output implementation
     var fileOut = !!options.output;
     if(fileOut){
       var outStream= fs.createWriteStream(options.config.get("remoteconfig.template"));
