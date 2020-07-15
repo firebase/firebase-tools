@@ -11,6 +11,8 @@ import * as requireInstance from "../requireInstance";
 import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { realtimeOriginOrCustomUrl } from "../database/api";
+import { populateInstanceDetails } from "../management/database";
 
 export default new Command("database:settings:get <path>")
   .description("read the realtime database setting at path")
@@ -21,6 +23,7 @@ export default new Command("database:settings:get <path>")
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action((path: string, options: any) => {
     if (!DATABASE_SETTINGS.has(path)) {
@@ -29,7 +32,10 @@ export default new Command("database:settings:get <path>")
     return new Promise((resolve, reject) => {
       const reqOptions = {
         url:
-          utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/" + path + ".json",
+          utils.addSubdomain(realtimeOriginOrCustomUrl(options), options.instance) +
+          "/.settings/" +
+          path +
+          ".json",
       };
       return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
         request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {

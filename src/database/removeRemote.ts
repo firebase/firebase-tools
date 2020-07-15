@@ -22,9 +22,11 @@ export interface RemoveRemote {
 
 export class RTDBRemoveRemote implements RemoveRemote {
   private instance: string;
+  private host: string;
 
-  constructor(instance: string) {
+  constructor(instance: string, host: string) {
     this.instance = instance;
+    this.host = host;
   }
 
   deletePath(path: string): Promise<boolean> {
@@ -43,7 +45,7 @@ export class RTDBRemoveRemote implements RemoveRemote {
     const t0 = Date.now();
     return new Promise((resolve, reject) => {
       const url =
-        utils.addSubdomain(api.realtimeOrigin, this.instance) +
+        utils.addSubdomain(this.host, this.instance) +
         path +
         ".json?print=silent&writeSizeLimit=tiny";
       return api

@@ -11,7 +11,6 @@ var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
-var databaseUrl = require("./database/url");
 var CLI_VERSION = require("../package.json").version;
 
 var accessToken;
@@ -48,7 +47,7 @@ var _request = function(options, logOptions) {
       }
 
       logger.debug("<<< HTTP RESPONSE", response.statusCode, response.headers);
-
+      
       if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
         logger.debug("<<< HTTP RESPONSE BODY", response.body);
         if (!options.resolveOnHTTPError) {
@@ -147,9 +146,7 @@ var api = {
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(
-    "https://firebaseio.com"
-  ),
+  realtimeOriginOrEmulator: null,
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   rtdbManagementOrigin: utils.envOverride(
     "FIREBASE_RTDB_MANAGEMENT_URL",

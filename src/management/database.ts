@@ -43,9 +43,16 @@ export interface DatabaseInstance {
  * @param options command options that will be modified to add instanceDetails.
  */
 export async function populateInstanceDetails(options: any): Promise<void> {
+  // console.log("Previews: " + JSON.stringify(previews));
+  // console.log("Options123: " + JSON.stringify(options));
+  // logger.debug("Options123: " + JSON.stringify(options));
+  // logger.debug("Previews: " + JSON.stringify(previews));
+  
   if (previews.rtdbmanagement) {
     options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
   }
+  // console.log("Options456: " + JSON.stringify(options));
+  // logger.debug("Options456: " + JSON.stringify(options));
   return Promise.resolve();
 }
 

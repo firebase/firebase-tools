@@ -11,13 +11,12 @@ var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 var { populateInstanceDetails } = require("../management/database");
 var utils = require("../utils");
-var databaseUrl = require("../database/url");
+var { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
 var clc = require("cli-color");
 var logger = require("../logger");
 var fs = require("fs");
 var { prompt } = require("../prompt");
 var _ = require("lodash");
-const { previews } = require("../previews");
 
 module.exports = new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
@@ -35,10 +34,7 @@ module.exports = new Command("database:set <path> [infile]")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-
-    const origin = previews.rtdbmanagement
-      ? databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
-      : api.realtimeOriginOrEmulator;
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
