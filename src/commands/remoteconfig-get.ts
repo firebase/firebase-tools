@@ -5,7 +5,7 @@ import Table = require("cli-table");
 import * as logger from "../logger";
 import * as fs from "fs";
 
-var getProjectId = require("../getProjectId");
+let getProjectId = require("../getProjectId");
 
 const util = require("util");
 const tableHead = ["Entry Name", "Value"];
@@ -14,18 +14,18 @@ const limit = 50;
 
 // Function retrieves names for parameter and parameter group
 function getItems(command: any) {
-  var updatedArray = "";
+  let updatedArray = "";
   let counter = 0;
   for (let item in command) {
-    updatedArray = updatedArray.concat(item, '\n');
-    counter++
-    if (counter === limit){
-      updatedArray += "+more..." + '\n';
-      break
+    updatedArray = updatedArray.concat(item, "\n");
+    counter++;
+    if (counter === limit) {
+      updatedArray += "+more..." + "\n";
+      break;
     }
   }
   return updatedArray;
-  }
+}
 
 module.exports = new Command("remoteconfig:get")
   .description("Get Firebase project you have access to")
