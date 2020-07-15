@@ -70,6 +70,7 @@ module.exports = function(client) {
   if (previews.extdev) {
     client.ext.dev = {};
     client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.register = loadCommand("ext-dev-register");
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
