@@ -32,25 +32,22 @@ module.exports = new Command("remoteconfig:get")
   .option("--v <version_number>", "grabs the specified version of the template")
   .option("-o, --output", "save the output to the default file path")
   .before(requireAuth)
-  .action(
-    async (options) => {
-      
+  .action(async (options) => {
     // Firebase remoteconfig:get implementation
     const template = await rcGet.getTemplate(getProjectId(options), options.v);
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
-    let updatedConditions = '';
+    let updatedConditions = "";
     let counter = 0;
     for (let item in template.conditions) {
-      updatedConditions += template.conditions[item].name + '\n';
-      counter++
+      updatedConditions += template.conditions[item].name + "\n";
+      counter++;
       if (counter === limit) {
         updatedConditions += "+more..." + "\n";
-        break
+        break;
       }
     }
-    table.push(["conditions", updatedConditions])
-  
+    table.push(["conditions", updatedConditions]);
     const updatedParameters = getItems(template.parameters);
     table.push(["parameters",updatedParameters])
 
