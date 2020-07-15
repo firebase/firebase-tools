@@ -65,7 +65,10 @@ module.exports = new Command("database:get <path>")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
+
+    const dbHost = previews.rtdbmanagement
+      ? databaseUrl.realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl)
+      : api.realtimeOriginOrEmulator;
     let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     var query = {};
     if (options.shallow) {
