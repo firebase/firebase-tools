@@ -6,11 +6,14 @@ const TIMEOUT = 30000;
 
 export interface RemoteConfigTemplateData {
   parameterGroups: any;
-  conditions:any;
+  conditions: any;
   parameters: any;
-  version:any
+  version: any;
 }
-export interface ParameterGroupsData {name:any; expression:any}  
+export interface ParameterGroupsData {
+  name: any;
+  expression: any;
+}
 
 // Gets project information/template based on Firebase project ID
 export async function getTemplate(
@@ -18,7 +21,7 @@ export async function getTemplate(
   versionNumber = null
   ): Promise<RemoteConfigTemplateData> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig`
+    let request = `/v1/projects/${projectId}/remoteConfig`;
     if (versionNumber) {
       request = request + "?versionNumber=" + versionNumber;
     }
@@ -37,4 +40,3 @@ export async function getTemplate(
     );
   }
 }
-

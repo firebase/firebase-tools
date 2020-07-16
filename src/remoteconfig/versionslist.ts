@@ -1,12 +1,11 @@
-import { asyncify } from "async";
-import { FirebaseProjectMetadata, ProjectPage, getFirebaseProjectPage, CloudProjectInfo } from "../management/projects";
 import api = require("../api");
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 
 const TIMEOUT = 30000;
-export interface RemoteConfigVersionTemplateData {versions: any};
-
+export interface RemoteConfigVersionTemplateData {
+  versions: any;
+}
 // Gets all project versions based on Firebase Project ID
 export async function getVersions(projectId: string): Promise<RemoteConfigVersionTemplateData> {
   try {
