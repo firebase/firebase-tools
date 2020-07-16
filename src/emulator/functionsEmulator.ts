@@ -568,7 +568,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion: string = nodeMajorVersion ? `${nodeMajorVersion}` : pkg.engines.node;
+    const requestedMajorVersion: string = nodeMajorVersion
+      ? `${nodeMajorVersion}`
+      : pkg.engines.node;
     let localMajorVersion = "0";
     const localNodePath = path.join(cwd, "node_modules/.bin/node");
 
