@@ -460,7 +460,7 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
           value: authContext,
         });
         context.auth = JSON.parse(decodeURIComponent(authContext));
-        delete context.rawRequest.headers[HttpConstants.CALLABLE_AUTH_HEADER]
+        delete context.rawRequest.headers[HttpConstants.CALLABLE_AUTH_HEADER];
       } else {
         logDebug("No callable functions auth found");
       }
