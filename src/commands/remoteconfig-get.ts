@@ -67,4 +67,5 @@ module.exports = new Command("remoteconfig:get")
     } else {
       logger.info(table.toString());
     }
-  });
+  }
+  );
