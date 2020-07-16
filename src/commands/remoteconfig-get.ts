@@ -13,17 +13,17 @@ const tableHead = ["Entry Name", "Value"];
 const limit = 50;
 
 // Function retrieves names for parameter and parameter group
-function getItems(command: Command) {
+function getItems(command: any) {
   let updatedArray = "";
   let counter = 0;
   for (let item in command) {
     if (command.hasOwnProperty(item)) {
       updatedArray = updatedArray.concat(item, "\n");
-    }
-    counter++;
-    if (counter === limit) {
-      updatedArray += "+more..." + "\n";
-      break;
+      counter++;
+      if (counter === limit) {
+        updatedArray += "+more..." + "\n";
+        break;
+      }
     }
   }
   return updatedArray;
@@ -44,11 +44,11 @@ module.exports = new Command("remoteconfig:get")
     for (let item in template.conditions) {
       if (template.conditions.hasOwnProperty(item)) {
         updatedConditions += template.conditions[item].name + "\n";
-      }
-      counter++;
-      if (counter === limit) {
-        updatedConditions += "+more..." + "\n";
-        break;
+        counter++;
+        if (counter === limit) {
+          updatedConditions += "+more..." + "\n";
+          break;
+        }
       }
     }
     table.push(["conditions", updatedConditions]);

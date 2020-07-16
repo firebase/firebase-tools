@@ -20,29 +20,35 @@ module.exports = new Command("remoteconfig:versions:list")
     if (printLimit) {
       if (options.limit == 0) {
         for (let item in template.versions) {
-          table.push([
-            template.versions[item].updateUser.email,
-            template.versions[item].versionNumber,
-            template.versions[item].updateTime,
-          ]);
-        }
-      } else {
+            if (template.versions.hasOwnProperty(item)) {
+                table.push([
+                    template.versions[item].updateUser.email,
+                    template.versions[item].versionNumber,
+                    template.versions[item].updateTime,
+                  ]);
+                }
+            }
+        } else {
         for (let item in template.versions.slice(0, options.limit)) {
-          table.push([
-            template.versions[item].updateUser.email,
-            template.versions[item].versionNumber,
-            template.versions[item].updateTime,
-          ]);
+            if (template.versions.hasOwnProperty(item)) {
+                table.push([
+                    template.versions[item].updateUser.email,
+                    template.versions[item].versionNumber,
+                    template.versions[item].updateTime,
+                  ]);
+            }
         }
       }
     } else {
       for (let item in template.versions.slice(0, 10)) {
-        table.push([
-          template.versions[item].updateUser.email,
-          template.versions[item].versionNumber,
-          template.versions[item].updateTime,
-        ]);
-}
-}
-logger.info(table.toString());
-});
+          if (template.versions.hasOwnProperty(item)) {
+            table.push([
+                template.versions[item].updateUser.email,
+                template.versions[item].versionNumber,
+                template.versions[item].updateTime,
+              ]);
+          }
+      }
+    }
+    logger.info(table.toString());
+  });
