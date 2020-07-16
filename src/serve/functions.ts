@@ -1,6 +1,7 @@
 import * as path from "path";
 import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
+import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import * as getProjectId from "../getProjectId";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
@@ -21,7 +22,7 @@ module.exports = {
       // default values for those tests to work properly.
       projectId,
       functionsDir,
-      nodeMajorVersion: options.config.get("functions.runtime"),
+      nodeMajorVersion: parseRuntimeVersion(options.config.get("functions.runtime")),
 
       ...(args as object),
     };

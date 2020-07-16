@@ -635,18 +635,22 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
+    let nodeVersion = 0;
+    if (frb.nodeMajorVersion) {
+      // If nodeMajorVersion is set, we ignore pkg.engines.node
+      nodeVersion = frb.nodeMajorVersion;
+    } else {
+      const pkg = requirePackageJson(frb);
+      if (pkg?.engines?.node) {
+        const nodeSemVer = parseVersionString(pkg.engines.node);
+        nodeVersion = nodeSemVer.major;
+      }
+    }
+
     // Setup predefined environment variables for Node.js 10 and subsequent runtimes
     // https://cloud.google.com/functions/docs/env-var
-    const pkg = requirePackageJson(frb);
-    // If nodeMajorVersion is set, we are emulating an extension so we ignore pkg.engines.node
-    // to match backend behavior.
-    if (frb.nodeMajorVersion) {
+    if (nodeVersion >= 10) {
       setNode10EnvVars(target, mode, service);
-    } else if (pkg?.engines?.node) {
-      const nodeVersion = parseVersionString(pkg.engines.node);
-      if (nodeVersion.major >= 10) {
-        setNode10EnvVars(target, mode, service);
-      }
     }
   }
 

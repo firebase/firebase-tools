@@ -1,0 +1,1 @@
+- Improve support for the Node.js 12 (Beta) runtime in the Functions emulator.
