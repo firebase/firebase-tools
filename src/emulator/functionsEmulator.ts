@@ -780,7 +780,11 @@ export class FunctionsEmulator implements EmulatorInstance {
           token: token,
         };
 
+        // Stash the "Authorization" header in a temporary place, we will replace it
+        // when invoking the callable handler
+        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
         delete req.headers["authorization"];
+
         req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
           JSON.stringify(contextAuth)
         );

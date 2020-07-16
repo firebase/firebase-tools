@@ -463,6 +463,13 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
       } else {
         logDebug("No callable functions auth found");
       }
+
+      // Restore the original auth header in case the code relies on parsing it (for
+      // example, the code could forward it to another function or server).
+      const originalAuth = context.rawRequest.header(HttpConstants.ORIGINAL_AUTH_HEADER);
+      if (originalAuth) {
+        context.rawRequest.headers["authorization"] = originalAuth;
+      }
     }
     return handler(data, context);
   };
