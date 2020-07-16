@@ -9,7 +9,7 @@ export interface RemoteConfigVersionTemplateData {
 // Gets all project versions based on Firebase Project ID
 export async function getVersions(projectId: string): Promise<RemoteConfigVersionTemplateData> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`
+    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     const response = await api.request("GET", request, {
       auth: true,
       origin: api.firebaseRemoteConfigApiOrigin,
