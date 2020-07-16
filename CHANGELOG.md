@@ -1,0 +1,1 @@
+- Fixes issue where `Authorization` header was missing from callable functions in the emulator (#2459).
