@@ -19,7 +19,7 @@ export interface ParameterGroupsData {
 export async function getTemplate(
   projectId: string,
   versionNumber = null
-  ): Promise<RemoteConfigTemplateData> {
+): Promise<RemoteConfigTemplateData> {
   try {
     let request = `/v1/projects/${projectId}/remoteConfig`;
     if (versionNumber) {
