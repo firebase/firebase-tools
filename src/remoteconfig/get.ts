@@ -1,11 +1,8 @@
-import { FirebaseProjectMetadata, ProjectPage, getFirebaseProjectPage, CloudProjectInfo } from "../management/projects";
 import * as api from "../api";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import * as _ from "lodash";
-import * as utils from "../utils";
-import { promptOnce } from "../prompt";
-import * as clc from "cli-color";
+
 const TIMEOUT = 30000;
 
 export interface RemoteConfigTemplateData {
