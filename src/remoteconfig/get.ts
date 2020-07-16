@@ -13,26 +13,26 @@ export interface RemoteConfigTemplateData {
 }
 export interface ParameterGroupsData {name:any; expression:any}  
 
-/**Gets project information/template based on Firebase project ID */
+// Gets project information/template based on Firebase project ID
 export async function getTemplate(projectId: string, versionNumber = null): Promise<RemoteConfigTemplateData> {
-    try {
-      var request = `/v1/projects/${projectId}/remoteConfig`
-      if (versionNumber) {
-        request = request + '?versionNumber=' + versionNumber
-      }
-      const response = await api.request("GET", request, {
-        auth: true,
-        origin: api.firebaseRemoteConfigApiOrigin,
-        timeout: TIMEOUT,
-      });
-      return response.body;
-    } catch (err) {
-      logger.debug(err.message);
-      throw new FirebaseError(
-        `Failed to get Firebase project ${projectId}. ` +
-          "Please make sure the project exists and your account has permission to access it.",
-        { exit: 2, original: err }
+  try {
+    var request = `/v1/projects/${projectId}/remoteConfig`
+    if (versionNumber) {
+      request = request + '?versionNumber=' + versionNumber
+    }
+    const response = await api.request("GET", request, {
+      auth: true,
+      origin: api.firebaseRemoteConfigApiOrigin,
+      timeout: TIMEOUT,
+    });
+    return response.body;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to get Firebase project ${projectId}. ` +
+      "Please make sure the project exists and your account has permission to access it.",
+      { exit: 2, original: err }
       );
     }
-}
+  }
 
