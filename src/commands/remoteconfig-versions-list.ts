@@ -20,26 +20,26 @@ module.exports = new Command("remoteconfig:versions:list")
     if (printLimit) {
       if (options.limit == 0) {
         for (let item in template.versions) {
-            if (template.versions.hasOwnProperty(item)) {
-                table.push([
-                    template.versions[item].updateUser.email,
-                    template.versions[item].versionNumber,
-                    template.versions[item].updateTime,
-                  ]);
-                }
-            }
-        } else {
-        for (let item in template.versions.slice(0, options.limit)) {
-            if (template.versions.hasOwnProperty(item)) {
-                table.push([
-                    template.versions[item].updateUser.email,
-                    template.versions[item].versionNumber,
-                    template.versions[item].updateTime,
-                  ]);
-            }
+          if (template.versions.hasOwnProperty(item)) {
+            table.push([
+              template.versions[item].updateUser.email,
+              template.versions[item].versionNumber,
+              template.versions[item].updateTime,
+            ]);
+          }
         }
-      }
-    } else {
+      } else {
+        for (let item in template.versions.slice(0, options.limit)) {
+          if (template.versions.hasOwnProperty(item)) {
+            table.push([
+              template.versions[item].updateUser.email,
+              template.versions[item].versionNumber,
+              template.versions[item].updateTime,
+            ]);
+          }
+        }
+}
+} else {
       for (let item in template.versions.slice(0, 10)) {
           if (template.versions.hasOwnProperty(item)) {
             table.push([
