@@ -1,7 +1,7 @@
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 export async function doSetup(setup: any, config: any, options: any): Promise<void> {
-    setup.config.remoteconfig = {};
+  setup.config.remoteconfig = {};
     logger.info("Firebase requires a default path to store the remote config template json file.");  
     const jsonFilePath = await promptOnce({
         type: "input", 
