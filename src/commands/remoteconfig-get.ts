@@ -53,7 +53,7 @@ module.exports = new Command("remoteconfig:get")
     }
     table.push(["conditions", updatedConditions]);
     const updatedParameters = getItems(template.parameters);
-    table.push(["parameters",updatedParameters]);
+    table.push(["parameters", updatedParameters]);
 
     const updatedParameterGroups = getItems(template.parameterGroups);
     table.push(["parameterGroups", updatedParameterGroups]);
@@ -61,15 +61,13 @@ module.exports = new Command("remoteconfig:get")
 
     // Firebase remoteconfig:get --output implementation
     let fileOut = !!options.output;
-    if( fileOut ){
+    if (fileOut) {
       let outStream = fs.createWriteStream(options.config.get("remoteconfig.template"));
-      outStream.write(util.inspect(template, {showHidden: false, depth: null}));
-    }
-    else{
+      outStream.write(util.inspect(template, { showHidden: false, depth: null }));
+    } else {
       logger.info(table.toString());
     }
-  }
-  )
+  });
 
  
 
