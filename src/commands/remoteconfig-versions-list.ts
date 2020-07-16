@@ -29,20 +29,20 @@ module.exports = new Command("remoteconfig:versions:list")
       } else {
         for (let item in template.versions.slice(0, options.limit)) {
           table.push([
-              template.versions[item].updateUser.email,
-              template.versions[item].versionNumber,
-              template.versions[item].updateTime,
+            template.versions[item].updateUser.email,
+            template.versions[item].versionNumber,
+            template.versions[item].updateTime,
           ]);
         }
-    }
-} else {
-    for (let item in template.versions.slice(0,10)) {
+      }
+    } else {
+      for (let item in template.versions.slice(0, 10)) {
       table.push([
-          template.versions[item].updateUser.email,
-          template.versions[item].versionNumber,
-          template.versions[item].updateTime,
-        ]);
-    }
+        template.versions[item].updateUser.email,
+        template.versions[item].versionNumber,
+        template.versions[item].updateTime,
+    ]);
+}
 }
 logger.info(table.toString());
 });
