@@ -68,4 +68,4 @@ module.exports = new Command("remoteconfig:get")
       logger.info(table.toString());
     }
   }
-  );
+);
