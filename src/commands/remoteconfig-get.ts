@@ -17,7 +17,9 @@ function getItems(command: any) {
   let updatedArray = "";
   let counter = 0;
   for (let item in command) {
-    updatedArray = updatedArray.concat(item, "\n");
+    if (command.hasOwnProperty(item)) {
+      updatedArray = updatedArray.concat(item, "\n");
+    }
     counter++;
     if (counter === limit) {
       updatedArray += "+more..." + "\n";
@@ -40,7 +42,9 @@ module.exports = new Command("remoteconfig:get")
     let updatedConditions = "";
     let counter = 0;
     for (let item in template.conditions) {
-      updatedConditions += template.conditions[item].name + "\n";
+      if (template.conditions.hasOwnProperty(item)) {
+        updatedConditions += template.conditions[item].name + "\n";
+      }
       counter++;
       if (counter === limit) {
         updatedConditions += "+more..." + "\n";
@@ -49,17 +53,16 @@ module.exports = new Command("remoteconfig:get")
     }
     table.push(["conditions", updatedConditions]);
     const updatedParameters = getItems(template.parameters);
-    table.push(["parameters",updatedParameters])
+    table.push(["parameters",updatedParameters]);
 
     const updatedParameterGroups = getItems(template.parameterGroups);
-    table.push(["parameterGroups", updatedParameterGroups])
-    
-    table.push(["version", util.inspect(template.version, {showHidden: false, depth: null})])
+    table.push(["parameterGroups", updatedParameterGroups]);
+    table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
 
     // Firebase remoteconfig:get --output implementation
-    var fileOut = !!options.output;
-    if(fileOut){
-      var outStream= fs.createWriteStream(options.config.get("remoteconfig.template"));
+    let fileOut = !!options.output;
+    if( fileOut ){
+      let outStream = fs.createWriteStream(options.config.get("remoteconfig.template"));
       outStream.write(util.inspect(template, {showHidden: false, depth: null}));
     }
     else{
