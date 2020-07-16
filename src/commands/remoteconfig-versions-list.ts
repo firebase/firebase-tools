@@ -18,19 +18,21 @@ module.exports = new Command("remoteconfig:versions:list")
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     let printLimit = !!options.limit;
     if (printLimit) {
-    if (options.limit == 0) {
+      if (options.limit == 0) {
         for (let item in template.versions) {
-            table.push([
-                template.versions[item].updateUser.email,
-                template.versions[item].versionNumber,
-                template.versions[item].updateTime]);
+          table.push([
+            template.versions[item].updateUser.email,
+            template.versions[item].versionNumber,
+            template.versions[item].updateTime
+        ]);
         }
     } else {
         for (let item in template.versions.slice(0,options.limit)) {
             table.push([
                 template.versions[item].updateUser.email,
                 template.versions[item].versionNumber,
-                template.versions[item].updateTime]);
+                template.versions[item].updateTime
+            ]);
         }
     }
 } else {
@@ -38,7 +40,8 @@ module.exports = new Command("remoteconfig:versions:list")
         table.push([
             template.versions[item].updateUser.email,
             template.versions[item].versionNumber,
-            template.versions[item].updateTime]);
+            template.versions[item].updateTime
+        ]);
     }
 }
 logger.info(table.toString());
