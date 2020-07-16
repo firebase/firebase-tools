@@ -39,7 +39,7 @@ module.exports = new Command("remoteconfig:versions:list")
           }
         }
       }
-} else {
+    } else {
       for (let item in template.versions.slice(0, 10)) {
         if (template.versions.hasOwnProperty(item)) {
           table.push([
