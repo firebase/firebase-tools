@@ -77,7 +77,7 @@ export interface Version {
   isLegacy?: boolean;
 }
 
-// Interface representing Remote Config Template
+// Interface representing Remote Config Template with conditions, parameters, parameterGroups, version
 export interface RemoteConfigTemplate {
   conditions: RemoteConfigCondition[];
   parameters: { [key: string]: RemoteConfigParameter };
