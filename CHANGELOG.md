@@ -1,1 +1,2 @@
+- Fixes issue where `Authorization` header was missing from callable functions in the emulator (#2459).
 - Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
