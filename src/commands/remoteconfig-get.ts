@@ -12,7 +12,7 @@ const tableHead = ["Entry Name", "Value"];
 
 const limit = 50;
 
-// Function retrieves names for parameter and parameter group
+// Function retrieves names for parameters and parameter groups
 function getItems(command: any) {
   let updatedArray = "";
   let counter = 0;
