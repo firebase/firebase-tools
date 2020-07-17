@@ -65,12 +65,12 @@ export interface Version {
     | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
     | "CONSOLE"
     | "REST_API"
-    | "ADMIN_SDK_NOD"
+    | "ADMIN_SDK_NOD";
   updateType?:
     | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
     | "INCREMENTAL_UPDATE"
     | "FORCED_UPDATE"
-    | "ROLLBACK"
+    | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
