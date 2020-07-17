@@ -26,7 +26,7 @@ describe("RC", function() {
     });
 
     it("should load from the right directory when --config is specified", () => {
-      const result = RC.load({ cwd: __dirname, configPath: "./fixtures/conflict/firebase.json" });
+      const result = RC.load({ cwd: __dirname, configPath: "./fixtures/fbrc/firebase.json" });
       expect(result.projects.default).to.eq("top");
     });
   });
