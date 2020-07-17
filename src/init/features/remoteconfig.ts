@@ -7,7 +7,7 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
     type: "input",
     name: "template",
     message: "What is the path file you want to store your template.json?",
-    default: "template.json",
+    default: "remoteconfig.template.json",
   });
   logger.info(jsonFilePath);
   setup.config.remoteconfig.template = jsonFilePath;
