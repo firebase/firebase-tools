@@ -1,0 +1,1 @@
+- Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
