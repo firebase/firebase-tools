@@ -12,7 +12,6 @@ export function resolveProjectPath(
   options: { cwd?: string; configPath?: string },
   filePath: string
 ): string {
-  // TODO(samstern)
   const projectRoot = detectProjectRoot(options);
   if (!projectRoot) {
     throw new FirebaseError("Expected to be in a project directory, but none was found.", {

@@ -97,7 +97,7 @@ Config.prototype._materialize = function(target) {
 };
 
 Config.prototype._parseFile = function(target, filePath) {
-  var fullPath = resolveProjectPath(this.options.cwd, filePath);
+  var fullPath = resolveProjectPath(this.options, filePath);
   var ext = path.extname(filePath);
   if (!fsutils.fileExistsSync(fullPath)) {
     throw new FirebaseError("Parse Error: Imported file " + filePath + " does not exist", {
@@ -212,7 +212,8 @@ Config.load = function(options, allowMissing) {
   const filename = options.configPath || Config.FILENAME;
   if (pd) {
     try {
-      var data = cjson.load(path.resolve(pd, path.basename(filename)));
+      const filePath = path.resolve(pd, path.basename(filename));
+      const data = cjson.load(filePath);
       return new Config(data, options);
     } catch (e) {
       throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {

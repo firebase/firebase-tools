@@ -17,7 +17,7 @@ describe("Config", function() {
         cwd: __dirname,
         configPath: "./fixtures/valid-config/firebase.json",
       });
-      expect(config.get("firebase")).to.eq("myfirebase");
+      expect(config.get("database.rules")).to.eq("config/security-rules.json");
     });
   });
 
