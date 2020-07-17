@@ -41,7 +41,7 @@ module.exports = new Command("remoteconfig:get")
 
     let updatedConditions = "";
     let counter = 0;
-    for (let item in template.conditions) {
+    for (let item = 0; item < template.conditions.length; item++) {
       if (template.conditions.hasOwnProperty(item)) {
         updatedConditions += template.conditions[item].name + "\n";
         counter++;
