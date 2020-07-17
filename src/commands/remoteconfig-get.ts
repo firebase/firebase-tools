@@ -63,7 +63,9 @@ module.exports = new Command("remoteconfig:get")
     let fileOut = !!options.output;
     if (fileOut) {
       const shouldUseDefaultFilename = options.output === true || options.output === "";
-      const filename = shouldUseDefaultFilename ? options.config.get("remoteconfig.template") : options.output;
+      const filename = shouldUseDefaultFilename 
+        ? options.config.get("remoteconfig.template")
+       : options.output;
       let outStream = fs.createWriteStream(filename);
       outStream.write(util.inspect(template, { showHidden: false, depth: null }));
     } else {
