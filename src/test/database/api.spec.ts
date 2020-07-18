@@ -3,14 +3,7 @@ import { expect } from "chai";
 import * as utils from "../../utils";
 import { realtimeOriginOrEmulatorOrCustomUrl, realtimeOriginOrCustomUrl } from "../../database/api";
 
-const OPTIONS_WITH_INSTANCE_DETAILS = { instanceDetails: { databaseUrl: "http://my-custom-url" } };
-describe.only("api", () => {
-  //   beforeEach(() => {
-  //     // The api module resolves env var statically so we need to
-  //     // do lazy imports and clear the import each time.
-  //     delete require.cache[require.resolve("../api")];
-  //   });
-
+describe("api", () => {
   afterEach(() => {
     delete process.env.FIREBASE_DATABASE_EMULATOR_HOST;
     delete process.env.FIREBASE_REALTIME_URL;
@@ -18,10 +11,6 @@ describe.only("api", () => {
     // This is dirty, but utils keeps stateful overrides and we need to clear it
     utils.envOverrides.length = 0;
   });
-
-  //   after(() => {
-  //     delete require.cache[require.resolve("../api")];
-  //   });
 
   it("should add HTTP to emulator URL with no protocol", () => {
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = "localhost:8080";

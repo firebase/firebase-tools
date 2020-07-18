@@ -69,7 +69,7 @@ describe("utils", () => {
     });
   });
 
-  describe("getDatabaseUrl", () => {
+  describe.only("getDatabaseUrl", () => {
     it("should create a url for prod", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
         "https://fir-proj.firebaseio.com/"
@@ -80,6 +80,20 @@ describe("utils", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
         "https://fir-proj.firebaseio.com/foo/bar.json"
       );
+      expect(
+        utils.getDatabaseUrl(
+          "https://some-namespace.europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
+      expect(
+        utils.getDatabaseUrl(
+          "https://europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
     });
 
     it("should create a url for the emulator", () => {

@@ -104,7 +104,10 @@ export function addDatabaseNamespace(origin: string, namespace: string): string 
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
   }
-  if (urlObj.hostname.includes("firebaseio.com")) {
+  if (
+    urlObj.hostname.includes("firebaseio.com") ||
+    urlObj.hostname.includes("firebasedatabase.app")
+  ) {
     return addSubdomain(origin, namespace);
   } else {
     urlObj.searchParams.set("ns", namespace);
