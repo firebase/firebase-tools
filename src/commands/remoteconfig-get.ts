@@ -15,8 +15,9 @@ const limit = 50;
  * Function retrieves names for parameters and parameter groups
  * @param command Input is template.parameters or template.parameterGroups
  * @return {Array} Returns array that concatenates items and limits the number of items outputted
- * eslint-disable-next-line @typescript-eslint/no-explicit-any
  */
+
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getItems(command: any): string {
   let updatedArray = "";
   let counter = 0;
@@ -35,7 +36,7 @@ function getItems(command: any): string {
 
 module.exports = new Command("remoteconfig:get")
   .description("Get Firebase project you have access to")
-  .option("--v <version_number>", "grabs the specified version of the template")
+  .option("-v, --v <version_number>", "grabs the specified version of the template")
   .option("-o, --output [filename]", "save the output to the default file path")
   .before(requireAuth)
   .action(async (options) => {
