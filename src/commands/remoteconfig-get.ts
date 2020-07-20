@@ -13,7 +13,8 @@ const limit = 50;
 
 /**
  * Function retrieves names for parameters and parameter groups
- * @returns {Array} Returns array that concatenates items and limits the number of items outputted
+ * @param command Input is template.parameters or template.parameterGroups
+ * @return {Array} Returns array that concatenates items and limits the number of items outputted
  * eslint-disable-next-line @typescript-eslint/no-explicit-any
  */
 function getItems(command: any): string {
