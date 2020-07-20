@@ -6,15 +6,12 @@ import * as logger from "../logger";
 import * as fs from "fs";
 import getProjectId = require("../getProjectId");
 import util = require("util");
-import requireConfig = require("../requireConfig");
 
-//const getProjectId = require("../getProjectId");
-//const util = require("util");
 const tableHead = ["Entry Name", "Value"];
 
 const limit = 50;
 
-/** 
+/**
  * Function retrieves names for parameters and parameter groups
  * @returns {Array} Returns array that concatenates items and limits the number of items outputted
  * eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,7 +20,7 @@ function getItems(command: any): string {
   let updatedArray = "";
   let counter = 0;
   for (const item in command) {
-    if (Object.prototype.hasOwnProperty.call(command, item)) { //Object.prototype.hasOwnProperty(command, item)
+    if (Object.prototype.hasOwnProperty.call(command, item)) {
       updatedArray = updatedArray.concat(item, "\n");
       counter++;
       if (counter === limit) {
