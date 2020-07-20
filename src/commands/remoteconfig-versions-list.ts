@@ -19,7 +19,7 @@ module.exports = new Command("remoteconfig:versions:list")
     if (printLimit) {
       if (options.limit == 0) {
         for (const item in template.versions) {
-          if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
+           if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
             table.push([
               template.versions[item].updateUser.email,
               template.versions[item].versionNumber,
@@ -28,8 +28,8 @@ module.exports = new Command("remoteconfig:versions:list")
           }
         }
       } else {
-        for (const item in template.versions.slice(0, options.limit)) { 
-          if (Object.prototype.hasOwnProperty.call(template.versions, item)) { //template.versions.hasOwnProperty(item)
+        for (const item in template.versions.slice(0, options.limit)) {
+          if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
             table.push([
               template.versions[item].updateUser.email,
               template.versions[item].versionNumber,
