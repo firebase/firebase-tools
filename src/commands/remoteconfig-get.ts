@@ -16,7 +16,7 @@ const limit = 50;
  * @param command Input is template.parameters or template.parameterGroups
  * @return {Array} Returns array that concatenates items and limits the number of items outputted
  */
- // eslint-disable-next-line@typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getItems(command: any): string {
   let updatedArray = "";
   let counter = 0;
