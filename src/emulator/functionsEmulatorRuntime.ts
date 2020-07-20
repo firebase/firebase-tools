@@ -460,8 +460,17 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
           value: authContext,
         });
         context.auth = JSON.parse(decodeURIComponent(authContext));
+        delete context.rawRequest.headers[HttpConstants.CALLABLE_AUTH_HEADER];
       } else {
         logDebug("No callable functions auth found");
+      }
+
+      // Restore the original auth header in case the code relies on parsing it (for
+      // example, the code could forward it to another function or server).
+      const originalAuth = context.rawRequest.header(HttpConstants.ORIGINAL_AUTH_HEADER);
+      if (originalAuth) {
+        context.rawRequest.headers["authorization"] = originalAuth;
+        delete context.rawRequest.headers[HttpConstants.ORIGINAL_AUTH_HEADER];
       }
     }
     return handler(data, context);
