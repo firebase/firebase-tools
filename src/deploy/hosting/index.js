@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = {
-  prepare: require("./prepare"),
+  prepare: require("./prepare").prepare,
   deploy: require("./deploy"),
   release: require("./release"),
 };
