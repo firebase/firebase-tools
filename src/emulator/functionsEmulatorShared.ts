@@ -67,7 +67,7 @@ export interface FunctionsRuntimeBundle {
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
-  nodeMajorVersion?: string;
+  nodeMajorVersion?: number;
   cwd: string;
 }
 
