@@ -4,20 +4,26 @@ import { requireAuth } from "../requireAuth";
 import Table = require("cli-table");
 import * as logger from "../logger";
 import * as fs from "fs";
+import getProjectId = require("../getProjectId");
+import util = require("util");
+import requireConfig = require("../requireConfig");
 
-let getProjectId = require("../getProjectId");
-
-const util = require("util");
+//const getProjectId = require("../getProjectId");
+//const util = require("util");
 const tableHead = ["Entry Name", "Value"];
 
 const limit = 50;
 
-// Function retrieves names for parameters and parameter groups
-function getItems(command: any) {
+/** 
+ * Function retrieves names for parameters and parameter groups
+ * @returns {Array} Returns array that concatenates items and limits the number of items outputted
+ * eslint-disable-next-line @typescript-eslint/no-explicit-any
+ */
+function getItems(command: any): string {
   let updatedArray = "";
   let counter = 0;
-  for (let item in command) {
-    if (command.hasOwnProperty(item)) {
+  for (const item in command) {
+    if (Object.prototype.hasOwnProperty.call(command, item)) { //Object.prototype.hasOwnProperty(command, item)
       updatedArray = updatedArray.concat(item, "\n");
       counter++;
       if (counter === limit) {
@@ -42,7 +48,7 @@ module.exports = new Command("remoteconfig:get")
     let updatedConditions = "";
     let counter = 0;
     for (let item = 0; item < template.conditions.length; item++) {
-      if (template.conditions.hasOwnProperty(item)) {
+      if (Object.prototype.hasOwnProperty.call(template.conditions, item)) {
         updatedConditions += template.conditions[item].name + "\n";
         counter++;
         if (counter === limit) {
@@ -60,13 +66,13 @@ module.exports = new Command("remoteconfig:get")
     table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
 
     // Firebase remoteconfig:get --output implementation
-    let fileOut = !!options.output;
+    const fileOut = !!options.output;
     if (fileOut) {
       const shouldUseDefaultFilename = options.output === true || options.output === "";
       const filename = shouldUseDefaultFilename
         ? options.config.get("remoteconfig.template")
         : options.output;
-      let outStream = fs.createWriteStream(filename);
+      const outStream = fs.createWriteStream(filename);
       outStream.write(util.inspect(template, { showHidden: false, depth: null }));
     } else {
       logger.info(table.toString());

@@ -69,4 +69,8 @@ for (var name in NAMED_SCHEMAS) {
   }
 }
 
+// Validator.prototype.isArrayT(value: any): value is T[] {
+//   return Array.isArray(value);
+// }
+
 module.exports = Validator;
