@@ -48,7 +48,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     port: port,
     host: options.host,
     config: config,
-    cwd: detectProjectRoot(options.cwd),
+    cwd: detectProjectRoot(options),
     stack: "strict",
     before: {
       files: (req: Request, res: Response, next: NextFunction) => {
