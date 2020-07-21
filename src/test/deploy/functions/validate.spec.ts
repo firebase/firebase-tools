@@ -30,7 +30,7 @@ describe("validate", () => {
       dirExistsStub.returns(true);
 
       expect(() => {
-        validate.functionsDirectoryExists("cwd", "sourceDirName");
+        validate.functionsDirectoryExists({ cwd: "cwd" }, "sourceDirName");
       }).to.not.throw();
     });
 
@@ -39,7 +39,7 @@ describe("validate", () => {
       dirExistsStub.returns(false);
 
       expect(() => {
-        validate.functionsDirectoryExists("cwd", "sourceDirName");
+        validate.functionsDirectoryExists({ cwd: "cwd" }, "sourceDirName");
       }).to.throw(FirebaseError);
     });
   });
