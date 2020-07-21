@@ -129,7 +129,7 @@ export async function createInstance(
  * @param location the location to parse.
  * @return the `DatabaseLocation`.
  */
-export function parseDatabaseLocation(location: string): DatabaseLocation {
+export function parseDatabaseLocation(location?: string): DatabaseLocation {
   if (!location) {
     return DatabaseLocation.US_CENTRAL1;
   }
@@ -144,7 +144,7 @@ export function parseDatabaseLocation(location: string): DatabaseLocation {
       return DatabaseLocation.US_CENTRAL1;
     default:
       throw new FirebaseError(
-        "Unexpected location value. Only us-central1, europe-west1, and asia-southeast1 locations are supported"
+        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
       );
   }
 }
