@@ -17,7 +17,7 @@ program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
-program.option("-c, --config <config>", "path to the firebase.json file to use for configuration");
+program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
 
 var client = {};
 client.cli = program;
