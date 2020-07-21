@@ -8,7 +8,7 @@ import { FirebaseError } from "../error";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cjson = require("cjson");
 
-describe("getRuntimeName", () => {
+describe("getHumanFriendlyRuntimeName", () => {
   it("should properly convert raw runtime to human friendly runtime", () => {
     expect(runtime.getHumanFriendlyRuntimeName("nodejs6")).to.contain("Node.js");
   });
@@ -30,52 +30,99 @@ describe("getRuntimeChoice", () => {
     sandbox.restore();
   });
 
-  it("should error if package.json engines field is set to node 6", () => {
-    cjsonStub.returns({ engines: { node: "6" } });
-    SDKVersionStub.returns("2.0.0");
+  context("when the runtime is set in firebase.json", () => {
+    it("should error if runtime field is set to node 6", () => {
+      SDKVersionStub.returns("2.0.0");
 
-    expect(() => {
-      runtime.getRuntimeChoice("path/to/source");
-    }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_MSG);
-  });
-
-  it("should return node 8 if package.json engines field is set to node 8", () => {
-    cjsonStub.returns({ engines: { node: "8" } });
-    SDKVersionStub.returns("2.0.0");
-
-    expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs8");
-  });
-
-  it("should return node 10 if package.json engines field is set to node 10", () => {
-    cjsonStub.returns({ engines: { node: "10" } });
-    SDKVersionStub.returns("3.4.0");
-
-    expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs10");
-    expect(warningSpy).not.called;
-  });
-
-  it("should print warning when firebase-functions version is below 2.0.0", () => {
-    cjsonStub.returns({ engines: { node: "10" } });
-    SDKVersionStub.returns("0.5.0");
-
-    runtime.getRuntimeChoice("path/to/source");
-    expect(warningSpy).calledWith(runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
-  });
-
-  it("should not throw error if user's SDK version fails to be fetched", () => {
-    cjsonStub.returns({ engines: { node: "10" } });
-    // Intentionally not setting SDKVersionStub so it can fail to be fetched.
-    expect(runtime.getRuntimeChoice("path/to/source")).to.equal("nodejs10");
-    expect(warningSpy).not.called;
-  });
-
-  it("should throw error if unsupported node version set in package.json", () => {
-    cjsonStub.returns({
-      engines: { node: "11" },
+      expect(() => {
+        runtime.getRuntimeChoice("path/to/source", "nodejs6");
+      }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG);
     });
-    expect(() => runtime.getRuntimeChoice("path/to/source")).to.throw(
-      FirebaseError,
-      runtime.UNSUPPORTED_NODE_VERSION_MSG
-    );
+
+    it("should return node 8 if runtime field is set to node 8", () => {
+      SDKVersionStub.returns("2.0.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs8")).to.equal("nodejs8");
+    });
+
+    it("should return node 10 if runtime field is set to node 10", () => {
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs10")).to.equal("nodejs10");
+      expect(warningSpy).not.called;
+    });
+
+    it("should print warning when firebase-functions version is below 2.0.0", () => {
+      SDKVersionStub.returns("0.5.0");
+
+      runtime.getRuntimeChoice("path/to/source", "nodejs10");
+      expect(warningSpy).calledWith(runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+    });
+
+    it("should throw error if unsupported node version set", () => {
+      expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
+        FirebaseError,
+        runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
+      );
+    });
+  });
+
+  context("when the runtime is not set in firebase.json", () => {
+    it("should error if engines field is set to node 6", () => {
+      cjsonStub.returns({ engines: { node: "6" } });
+      SDKVersionStub.returns("2.0.0");
+
+      expect(() => {
+        runtime.getRuntimeChoice("path/to/source", "");
+      }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG);
+    });
+
+    it("should return node 8 if engines field is set to node 8", () => {
+      cjsonStub.returns({ engines: { node: "8" } });
+      SDKVersionStub.returns("2.0.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs8");
+    });
+
+    it("should return node 10 if engines field is set to node 10", () => {
+      cjsonStub.returns({ engines: { node: "10" } });
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs10");
+      expect(warningSpy).not.called;
+    });
+
+    it("should return node 12 if engines field is set to node 12", () => {
+      cjsonStub.returns({ engines: { node: "12" } });
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs12");
+      expect(warningSpy).not.called;
+    });
+
+    it("should print warning when firebase-functions version is below 2.0.0", () => {
+      cjsonStub.returns({ engines: { node: "10" } });
+      SDKVersionStub.returns("0.5.0");
+
+      runtime.getRuntimeChoice("path/to/source", "");
+      expect(warningSpy).calledWith(runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+    });
+
+    it("should not throw error if user's SDK version fails to be fetched", () => {
+      cjsonStub.returns({ engines: { node: "10" } });
+      // Intentionally not setting SDKVersionStub so it can fail to be fetched.
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs10");
+      expect(warningSpy).not.called;
+    });
+
+    it("should throw error if unsupported node version set", () => {
+      cjsonStub.returns({
+        engines: { node: "11" },
+      });
+      expect(() => runtime.getRuntimeChoice("path/to/source", "")).to.throw(
+        FirebaseError,
+        runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG
+      );
+    });
   });
 });

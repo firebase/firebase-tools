@@ -23,7 +23,7 @@ export async function createOrUpdateSchedulesAndTopics(
       ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
     ]);
     schedulerEnabled = true;
-  } else {
+  } else if (existingScheduledFunctions.length) {
     schedulerEnabled = await check(projectId, "cloudscheduler.googleapis.com", "scheduler", false);
   }
   for (const trigger of triggers) {
