@@ -5,7 +5,7 @@ var pkg = require("../package.json");
 var clc = require("cli-color");
 var logger = require("./logger");
 var { setupLoggers } = require("./utils");
-var leven = require("leven");
+var levenshtein = require("fastest-levenshtein");
 
 program.version(pkg.version);
 program.option(
@@ -43,7 +43,7 @@ require("./commands")(client);
  */
 function suggestCommands(cmd, cmdList) {
   var suggestion = cmdList.find(function(c) {
-    return leven(c, cmd) < c.length * 0.4;
+    return levenshtein.distance(c, cmd) < c.length * 0.4;
   });
   if (suggestion) {
     logger.error();
