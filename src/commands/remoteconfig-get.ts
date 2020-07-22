@@ -9,19 +9,19 @@ import util = require("util");
 
 const tableHead = ["Entry Name", "Value"];
 
+// Creates a maximum limit of 50 names for each entry
 const limit = 50;
 
 /**
  * Function retrieves names for parameters and parameter groups
- * @param command Input is template.parameters or template.parameterGroups
- * @return {Array} Returns array that concatenates items and limits the number of items outputted
+ * @param templateItems Input is template.parameters or template.parameterGroups
+ * @return {String} Returns string that concatenates items and limits the number of items outputted
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getItems(command: any): string {
+function getItems(templateItems: Array<Object> | Object): string {
   let updatedArray = "";
   let counter = 0;
-  for (const item in command) {
-    if (Object.prototype.hasOwnProperty.call(command, item)) {
+  for (const item in templateItems) {
+    if (Object.prototype.hasOwnProperty.call(templateItems, item)) {
       updatedArray = updatedArray.concat(item, "\n");
       counter++;
       if (counter === limit) {
@@ -34,7 +34,7 @@ function getItems(command: any): string {
 }
 
 module.exports = new Command("remoteconfig:get")
-  .description("Get Firebase project you have access to")
+  .description("Get a Firebase project's Remote Config template")
   .option("-v, --v <version_number>", "grabs the specified version of the template")
   .option("-o, --output [filename]", "save the output to the default file path")
   .before(requireAuth)
@@ -42,18 +42,10 @@ module.exports = new Command("remoteconfig:get")
     // Firebase remoteconfig:get implementation
     const template = await rcGet.getTemplate(getProjectId(options), options.v);
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-
-    let updatedConditions = "";
-    let counter = 0;
-    for (let item = 0; item < template.conditions.length; item++) {
-      if (Object.prototype.hasOwnProperty.call(template.conditions, item)) {
-        updatedConditions += template.conditions[item].name + "\n";
-        counter++;
-        if (counter === limit) {
-          updatedConditions += "+more..." + "\n";
-          break;
-        }
-      }
+    
+    let updatedConditions = template.conditions.map(condition => condition.name).slice(0, limit).join("\n");
+    if (template.conditions.length > limit) {
+      updatedConditions += "+more... \n";
     }
     table.push(["conditions", updatedConditions]);
     const updatedParameters = getItems(template.parameters);

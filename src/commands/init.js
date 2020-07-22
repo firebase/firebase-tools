@@ -102,7 +102,7 @@ module.exports = new Command("init [feature]")
       },
       {
         value: "remoteconfig",
-        name: "Remote Config: Set up, configure, and deploy for Remote Config",
+        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
         checked: false,
       },
     ];

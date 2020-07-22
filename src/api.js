@@ -32,7 +32,6 @@ var _request = function(options, logOptions) {
   }
 
   logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
-  logger.info(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
 
   options.headers = options.headers || {};
   options.headers["connection"] = "keep-alive";
@@ -118,7 +117,7 @@ var api = {
     "https://extensions-registry.firebaseapp.com"
   ),
   firebaseRemoteConfigApiOrigin: utils.envOverride(
-    "FIREBASE_RC_API",
+    "FIREBASE_REMOTE_CONFIG_URL",
     "https://firebaseremoteconfig.googleapis.com"
   ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
