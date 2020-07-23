@@ -46,6 +46,9 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
   `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
   ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
 
+export const FLAG_UI = "--ui";
+export const DESC_UI = "run the Emulator UI";
+
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
 export const DESC_TEST_CONFIG =
@@ -382,7 +385,8 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    await controller.startAll(options, /* noUi = */ true);
+    const excludeUi = !options.ui;
+    await controller.startAll(options, excludeUi);
     exitCode = await runScript(script, extraEnv);
     await onExit(options);
   } finally {
