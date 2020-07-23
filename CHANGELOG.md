@@ -1,3 +1,4 @@
 - Fixes issue where `Authorization` header was missing from callable functions in the emulator (#2459).
 - Improve support for the Node.js 12 (Beta) runtime in the Functions emulator.
 - Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
+- Fixes issue where database emulator did not properly load initial rules (#2483).
