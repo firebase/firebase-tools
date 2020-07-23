@@ -2,4 +2,5 @@
 - Improve support for the Node.js 12 (Beta) runtime in the Functions emulator.
 - Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
 - Fixes issue where `emulators:exec` could fail to shut down cleanly (#2477).
+- Fixes issue where database emulator did not properly load initial rules (#2483).
 - Allow starting the UI with `emulators:exec` using the `--ui` flag.
