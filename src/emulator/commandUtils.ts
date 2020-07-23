@@ -377,6 +377,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
  *  @param options: A Commander options object.
  */
 export async function emulatorExec(script: string, options: any) {
+  shutdownWhenKilled(options);
   const projectId = getProjectId(options, true);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
