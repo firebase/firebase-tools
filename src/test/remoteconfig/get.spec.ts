@@ -6,6 +6,8 @@ import * as remoteconfig from "../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
+
+// Test template
 const expectedProjectInfo: RemoteConfigTemplate = {
   conditions: [
     {
