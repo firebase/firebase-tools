@@ -16,7 +16,6 @@ import * as getProjectId from "../getProjectId";
 import { logLabeledSuccess, logLabeledBullet } from "../utils";
 import * as ora from "ora";
 
-
 const LOG_TAG = "hosting:clone";
 
 export default new Command("hosting:clone <source> <targetChannel>")
@@ -43,7 +42,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;
     if (equalSiteIds && equalChannelIds) {
-      throw new FirebaseError(`Source and destination cannot be equal. Please pick a different source or desination.`);
+      throw new FirebaseError(
+        `Source and destination cannot be equal. Please pick a different source or desination.`
+      );
     }
 
     const projectId = getProjectId(options);
@@ -69,7 +70,10 @@ export default new Command("hosting:clone <source> <targetChannel>")
     let tChannel = await getChannel(projectId, targetSiteId, targetChannelId);
     if (!tChannel) {
       logger.info(`could not find channel ${targetChannelId}, creating it...`);
-      logLabeledBullet(LOG_TAG, `Could not find channel ${targetChannelId}. Creating one for you...`)
+      logLabeledBullet(
+        LOG_TAG,
+        `Could not find channel ${targetChannelId}. Creating one for you...`
+      );
       tChannel = await createChannel(projectId, targetSiteId, targetChannelId);
       logLabeledSuccess(LOG_TAG, `Created new channel ${targetChannelId}`);
     }
@@ -81,7 +85,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
       );
     }
     const spinner = ora("Copying over your files ...").start();
-    
+
     try {
       const targetVersion = await getOperation(cloneOperation.name);
       await createRelease(projectId, targetSiteId, targetChannelId, targetVersion.name);
@@ -101,5 +105,3 @@ export default new Command("hosting:clone <source> <targetChannel>")
     logLabeledSuccess(LOG_TAG, `Channel URL (${targetChannelId}): ${tChannel.url}`);
     logger.info();
   });
-
-
