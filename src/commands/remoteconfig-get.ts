@@ -42,12 +42,16 @@ module.exports = new Command("remoteconfig:get")
     // Firebase remoteconfig:get implementation
     const template = await rcGet.getTemplate(getProjectId(options), options.v);
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    
-    let updatedConditions = template.conditions.map(condition => condition.name).slice(0, limit).join("\n");
-    if (template.conditions.length > limit) {
-      updatedConditions += "+more... \n";
+    if (template.conditions) {
+      let updatedConditions = template.conditions
+        .map((condition) => condition.name)
+        .slice(0, limit)
+        .join("\n");
+      if (template.conditions.length > limit) {
+        updatedConditions += "+more... \n";
+      }
+      table.push(["conditions", updatedConditions]);
     }
-    table.push(["conditions", updatedConditions]);
     const updatedParameters = getItems(template.parameters);
     table.push(["parameters", updatedParameters]);
 

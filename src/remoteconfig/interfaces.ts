@@ -11,17 +11,17 @@ export enum TagColor {
   PURPLE = "Purple",
   TEAL = "Teal",
 }
-  
+
 /** Interface representing a Remote Config parameter `value` in value options. */
 export interface ExplicitParameterValue {
   value: string;
 }
-  
+
 /** Interface representing a Remote Config parameter `useInAppDefault` in value options. */
 export interface InAppDefaultValue {
   useInAppDefault: boolean;
 }
-  
+
 export type RemoteConfigParameterValue = ExplicitParameterValue | InAppDefaultValue;
 
 /** Interface representing a Remote Config parameter. */
@@ -30,7 +30,7 @@ export interface RemoteConfigParameter {
   conditionalValues?: { [key: string]: RemoteConfigParameterValue };
   description?: string;
 }
-  
+
 /** Interface representing a Remote Config parameter group. */
 export interface RemoteConfigParameterGroup {
   description?: string;
@@ -58,15 +58,15 @@ export interface Version {
   versionNumber?: string; // int64 format
   updateTime?: string; // in UTC
   updateOrigin?:
-  | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
-  | "CONSOLE"
-  | "REST_API"
-  | "ADMIN_SDK_NOD";
+    | "REMOTE_CONFIG_UPDATE_ORIGIN_UNSPECIFIED"
+    | "CONSOLE"
+    | "REST_API"
+    | "ADMIN_SDK_NOD";
   updateType?:
-  | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
-  | "INCREMENTAL_UPDATE"
-  | "FORCED_UPDATE"
-  | "ROLLBACK";
+    | "REMOTE_CONFIG_UPDATE_TYPE_UNSPECIFIED"
+    | "INCREMENTAL_UPDATE"
+    | "FORCED_UPDATE"
+    | "ROLLBACK";
   updateUser?: RemoteConfigUser;
   description?: string;
   rollbackSource?: string;
@@ -87,7 +87,7 @@ export interface ListVersionsOptions {
   startTime?: Date | string;
   endTime?: Date | string;
 }
-  
+
 /** Interface representing a Remote Config user. */
 export interface RemoteConfigUser {
   email: string;

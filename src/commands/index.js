@@ -111,6 +111,5 @@ module.exports = function(client) {
   client.use = loadCommand("use");
   client.remoteconfig = {};
   client.remoteconfig.get = loadCommand("remoteconfig-get");
-
   return client;
 };
