@@ -13,7 +13,9 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getProjectId from "../getProjectId";
-import { logLabeledSuccess } from "../utils";
+import { logLabeledSuccess, logLabeledBullet } from "../utils";
+import * as ora from "ora";
+
 
 const LOG_TAG = "hosting:clone";
 
@@ -38,6 +40,11 @@ export default new Command("hosting:clone <source> <targetChannel>")
     if (!targetSiteId || !targetChannelId) {
       throw new FirebaseError(`Please provide a targetChannel.`);
     }
+    const equalSiteIds = sourceSiteId == targetSiteId;
+    const equalChannelIds = sourceChannelId == targetChannelId;
+    if (equalSiteIds && equalChannelIds) {
+      throw new FirebaseError(`Source and destination cannot be equal. Please pick a different source or desination.`);
+    }
 
     const projectId = getProjectId(options);
 
@@ -61,9 +68,10 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     let tChannel = await getChannel(projectId, targetSiteId, targetChannelId);
     if (!tChannel) {
-      logger.info(`could not find channel ${targetChannel}, creating it...`);
+      logger.info(`could not find channel ${targetChannelId}, creating it...`);
+      logLabeledBullet(LOG_TAG, `Could not find channel ${targetChannelId}. Creating one for you...`)
       tChannel = await createChannel(projectId, targetSiteId, targetChannelId);
-      logger.debug("[hosting] created new channnel for site", targetSiteId, targetChannelId);
+      logLabeledSuccess(LOG_TAG, `Created new channel ${targetChannelId}`);
     }
     const cloneOperation = await cloneVersion(projectId, targetSiteId, sourceVersionName, true);
     if (!cloneOperation) {
@@ -72,8 +80,17 @@ export default new Command("hosting:clone <source> <targetChannel>")
         `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
       );
     }
-    const targetVersion = await getOperation(cloneOperation.name);
-    await createRelease(projectId, targetSiteId, targetChannelId, targetVersion.name);
+    const spinner = ora("Copying over your files ...").start();
+    
+    try {
+      const targetVersion = await getOperation(cloneOperation.name);
+      await createRelease(projectId, targetSiteId, targetChannelId, targetVersion.name);
+    } catch (err) {
+      spinner.fail();
+      throw err;
+    }
+
+    spinner.succeed();
 
     logger.info();
     logLabeledSuccess(
@@ -84,3 +101,5 @@ export default new Command("hosting:clone <source> <targetChannel>")
     logLabeledSuccess(LOG_TAG, `Channel URL (${targetChannelId}): ${tChannel.url}`);
     logger.info();
   });
+
+
