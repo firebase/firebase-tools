@@ -46,7 +46,7 @@ const expectedProjectInfo: RemoteConfigTemplate = {
   etag: "123",
 };
 
-describe("RemoteConig GET Command TESTING", () => {
+describe("RemoteConfig GET Command TESTING", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
   beforeEach(() => {
