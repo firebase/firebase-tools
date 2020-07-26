@@ -4,8 +4,14 @@ import { requireAuth } from "../requireAuth";
 import Table = require("cli-table");
 import * as logger from "../logger";
 import getProjectId = require("../getProjectId");
+import { Version } from "../remoteconfig/interfaces";
 
-const tableHead = ["UpdateUser", "Version Number", "Update Time"];
+const tableHead = ["Update User", "Version Number", "Update Time"];
+
+// Helper method
+function tablePush(table: Table, version: Version) {
+  table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
+}
 
 // Firebase remoteconfig:versions:list implementation
 module.exports = new Command("remoteconfig:versions:list")
@@ -18,34 +24,22 @@ module.exports = new Command("remoteconfig:versions:list")
     const printLimit = !!options.limit;
     if (printLimit) {
       if (options.limit == 0) {
-        for (const item in template.versions) {
+        for (let item = 0; item < template.versions.length; item++) {
           if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-            table.push([
-              template.versions[item].updateUser.email,
-              template.versions[item].versionNumber,
-              template.versions[item].updateTime,
-            ]);
+            tablePush(table, template.versions[item]);
           }
         }
       } else {
-        for (const item in template.versions.slice(0, options.limit)) {
+        for (let item = 0; item < template.versions.slice(0, options.limit).length; item++) {
           if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-            table.push([
-              template.versions[item].updateUser.email,
-              template.versions[item].versionNumber,
-              template.versions[item].updateTime,
-            ]);
+            tablePush(table, template.versions[item]);
           }
         }
       }
     } else {
-      for (const item in template.versions.slice(0, 10)) {
+      for (let item = 0; item < template.versions.slice(0, 10).length; item++) {
         if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-          table.push([
-            template.versions[item].updateUser.email,
-            template.versions[item].versionNumber,
-            template.versions[item].updateTime,
-          ]);
+          tablePush(table, template.versions[item]);
         }
       }
     }
