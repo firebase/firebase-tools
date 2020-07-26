@@ -69,7 +69,7 @@ describe("utils", () => {
     });
   });
 
-  describe.only("getDatabaseUrl", () => {
+  describe("getDatabaseUrl", () => {
     it("should create a url for prod", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/")).to.equal(
         "https://fir-proj.firebaseio.com/"
