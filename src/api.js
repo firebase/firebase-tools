@@ -146,7 +146,6 @@ var api = {
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: null,
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
   rtdbManagementOrigin: utils.envOverride(
     "FIREBASE_RTDB_MANAGEMENT_URL",
