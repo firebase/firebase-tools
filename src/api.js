@@ -31,7 +31,7 @@ var _request = function(options, logOptions) {
     bodyLog = options.body || options.form || "";
   }
 
-  logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
+  logger.info(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
 
   options.headers = options.headers || {};
   options.headers["connection"] = "keep-alive";
