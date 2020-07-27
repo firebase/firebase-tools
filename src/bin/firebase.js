@@ -46,15 +46,18 @@ function findAvailableLogFile() {
   for (const c of candidates) {
     const logFilename = path.join(process.cwd(), c);
 
-    if (!fs.existsSync(logFilename)) {
-      return logFilename;
-    }
-
     try {
-      fs.statSync(logFilename);
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
       return logFilename;
     } catch (e) {
-      // Continue...
+      if (e.code === "ENOENT") {
+        // File does not exist, which is fine
+        return logFilename;
+      }
+
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
     }
   }
 
