@@ -45,6 +45,11 @@ function findAvailableLogFile() {
 
   for (const c of candidates) {
     const logFilename = path.join(process.cwd(), c);
+
+    if (!fs.existsSync(logFilename)) {
+      return logFilename;
+    }
+
     try {
       fs.statSync(logFilename);
       return logFilename;
