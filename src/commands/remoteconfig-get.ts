@@ -6,6 +6,7 @@ import * as logger from "../logger";
 import * as fs from "fs";
 import getProjectId = require("../getProjectId");
 import util = require("util");
+import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
 
 const tableHead = ["Entry Name", "Value"];
 
@@ -15,22 +16,24 @@ const limit = 50;
 /**
  * Function retrieves names for parameters and parameter groups
  * @param templateItems Input is template.parameters or template.parameterGroups
- * @return {String} Returns string that concatenates items and limits the number of items outputted
+ * @return {string} Returns string that concatenates items and limits the number of items outputted
  */
-function getItems(templateItems: Array<Object> | Object): string {
-  let updatedArray = "";
+function getItems(
+  templateItems: RemoteConfigTemplate["parameters"] | RemoteConfigTemplate["parameterGroups"]
+): string {
+  let outputStr = "";
   let counter = 0;
   for (const item in templateItems) {
     if (Object.prototype.hasOwnProperty.call(templateItems, item)) {
-      updatedArray = updatedArray.concat(item, "\n");
+      outputStr = outputStr.concat(item, "\n");
       counter++;
       if (counter === limit) {
-        updatedArray += "+more..." + "\n";
+        outputStr += "+more..." + "\n";
         break;
       }
     }
   }
-  return updatedArray;
+  return outputStr;
 }
 
 module.exports = new Command("remoteconfig:get")
@@ -40,7 +43,10 @@ module.exports = new Command("remoteconfig:get")
   .before(requireAuth)
   .action(async (options) => {
     // Firebase remoteconfig:get implementation
-    const template = await rcGet.getTemplate(getProjectId(options), options.v);
+    const template: RemoteConfigTemplate = await rcGet.getTemplate(
+      getProjectId(options),
+      options.v
+    );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {
       let updatedConditions = template.conditions

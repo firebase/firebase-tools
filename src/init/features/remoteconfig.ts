@@ -1,10 +1,15 @@
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 import clc = require("cli-color");
+import fsutils = require("../../fsutils");
 
-let fsutils = require("../../fsutils");
-
-export async function doSetup(setup: any, config: any, options: any): Promise<void> {
+/**
+ * Function retrieves names for parameters and parameter groups
+ * @param setup Input is of type any
+ * @param config Input is of type any
+ * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
+ */
+export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.remoteconfig = {};
   logger.info("Firebase requires a default path to store the remote config template json file.");
   const jsonFilePath = await promptOnce({
@@ -32,5 +37,6 @@ export async function doSetup(setup: any, config: any, options: any): Promise<vo
       setup.config.remoteconfig.template = jsonFilePath;
     }
   }
+  setup.config.remoteconfig.template = jsonFilePath;
   config.writeProjectFile(setup.config.remoteconfig.template, "");
 }
