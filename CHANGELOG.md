@@ -1,13 +1,7 @@
-- Enables runtime for Cloud Functions to be set in `firebase.json` (#2241, thanks @quentinvernot!), for example:
-
-  ```
-  {
-    "functions": {
-      "runtime": "nodejs10"
-    }
-  }
-  ```
-
-- Fixes an issue where the suggested redeploy command for Firebase Functions was incorrect for names with dashes.
-- Adds a the `--export-on-exit` flag to `emulators:start` and `emulators:exec` to automatically export emulator data on command exit (#2224)
+- Fixes issue where `Authorization` header was missing from callable functions in the emulator (#2459).
+- Improve support for the Node.js 12 (Beta) runtime in the Functions emulator.
+- Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
+- Fixes issue where `emulators:exec` could fail to shut down cleanly (#2477).
+- Fixes issue where database emulator did not properly load initial rules (#2483).
+- Allow starting the UI with `emulators:exec` using the `--ui` flag.
 - `firebase init functions` templates now use Firebase Admin SDK v9.

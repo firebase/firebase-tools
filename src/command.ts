@@ -227,15 +227,21 @@ export class Command {
       setupLoggers();
     }
 
+    if (getInheritedOption(options, "config")) {
+      options.configPath = getInheritedOption(options, "config");
+    }
+
     try {
       options.config = _load(options);
     } catch (e) {
       options.configError = e;
     }
 
-    options.projectRoot = detectProjectRoot(options.cwd);
+    options.projectRoot = detectProjectRoot(options);
     this.applyRC(options);
-    if (options.project) validateProjectId(options.project);
+    if (options.project) {
+      validateProjectId(options.project);
+    }
   }
 
   /**
@@ -244,7 +250,7 @@ export class Command {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private applyRC(options: any): void {
-    const rc = load(options.cwd);
+    const rc = load(options);
     options.rc = rc;
 
     options.project =

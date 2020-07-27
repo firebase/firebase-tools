@@ -19,6 +19,7 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
+import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -178,6 +179,10 @@ export function shouldStart(options: any, name: Emulators): boolean {
   const emulatorInTargets = targets.indexOf(name) >= 0;
 
   if (name === Emulators.UI) {
+    if (options.ui) {
+      return true;
+    }
+
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.
@@ -372,7 +377,9 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         ...options.extensionEnv,
       },
       predefinedTriggers: options.extensionTriggers,
-      nodeMajorVersion: options.extensionNodeVersion || options.config.get("functions.runtime"),
+      nodeMajorVersion: parseRuntimeVersion(
+        options.extensionNodeVersion || options.config.get("functions.runtime")
+      ),
     });
     await startEmulator(functionsEmulator);
   }
