@@ -8,7 +8,6 @@ import {
   getOperation,
   createRelease,
 } from "../hosting/api";
-import * as logger from "../logger";
 import * as utils from "../utils";
 import * as ora from "ora";
 import { requireAuth } from "../requireAuth";
@@ -65,7 +64,11 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     let tChannel = await getChannel("-", targetSiteId, targetChannelId);
     if (!tChannel) {
-      utils.logBullet(`could not find channel ${bold(targetChannelId)} in site ${bold(targetSiteId)}, creating it...`);
+      utils.logBullet(
+        `could not find channel ${bold(targetChannelId)} in site ${bold(
+          targetSiteId
+        )}, creating it...`
+      );
       tChannel = await createChannel("-", targetSiteId, targetChannelId);
       utils.logSuccess(`Created new channel ${targetChannelId}`);
     }
@@ -107,8 +110,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     spinner.succeed();
     utils.logSuccess(
-      `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(sourceChannelId ||
-        sourceVersion)} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
+      `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(
+        sourceChannelId || sourceVersion
+      )} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });

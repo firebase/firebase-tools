@@ -271,11 +271,7 @@ export async function getOperation(resourceName: string): Promise<any> {
  * @param site the site for the version.
  * @param versionName the specific version ID.
  */
-export async function createRelease(
-  site: string,
-  channel: string,
-  version: string
-): Promise<any> {
+export async function createRelease(site: string, channel: string, version: string): Promise<any> {
   const res = await api.request(
     "POST",
     `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
