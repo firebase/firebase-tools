@@ -69,7 +69,11 @@ module.exports = function(context, options) {
     }
     
     if (cfg.i18n) {
-      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public + cfg.i18n.root))) {
+      let i18nPathPrefix = cfg.public;
+      if (!cfg.i18n.root.startsWith("/")) {
+      	i18nPathPrefix += "/";
+      }
+      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPathPrefix + cfg.i18n.root))) {
         utils.logLabeledWarning(
           "hosting",
           `The I18n Rewrites feature is enabled, but the directory ` +
