@@ -217,7 +217,7 @@ describe("RemoteConfig Versions List Command TESTING", () => {
           `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
           {
             auth: true,
-            origin: api.firebaseRemoteConfigApiOrigin,
+            origin: api.remoteConfigApiOrigin,
             timeout: 30000,
           }
         );
@@ -230,7 +230,7 @@ describe("RemoteConfig Versions List Command TESTING", () => {
           `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
           {
             auth: true,
-            origin: api.firebaseRemoteConfigApiOrigin,
+            origin: api.remoteConfigApiOrigin,
             timeout: 30000,
           }
         );
@@ -245,7 +245,7 @@ describe("RemoteConfig Versions List Command TESTING", () => {
         `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
         {
           auth: true,
-          origin: api.firebaseRemoteConfigApiOrigin,
+          origin: api.remoteConfigApiOrigin,
           timeout: 30000,
         }
       );
@@ -269,7 +269,7 @@ describe("RemoteConfig Versions List Command TESTING", () => {
         `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
         {
           auth: true,
-          origin: api.firebaseRemoteConfigApiOrigin,
+          origin: api.remoteConfigApiOrigin,
           timeout: 30000,
         }
       );

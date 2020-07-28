@@ -17,15 +17,14 @@ export async function getTemplate(
     }
     const response = await api.request("GET", request, {
       auth: true,
-      origin: api.firebaseRemoteConfigApiOrigin,
+      origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
     });
     return response.body;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get Firebase Remote Config template for project ${projectId}. ` +
-        "Please make sure the project exists and your account has permission to access it.",
+      `Failed to get Firebase Remote Config template for project ${projectId}. `,
       { exit: 2, original: err }
     );
   }
