@@ -116,10 +116,6 @@ var api = {
     "FIREBASE_EXT_REGISTRY_ORIGIN",
     "https://extensions-registry.firebaseapp.com"
   ),
-  firebaseRemoteConfigApiOrigin: utils.envOverride(
-    "FIREBASE_REMOTE_CONFIG_URL",
-    "https://firebaseremoteconfig.googleapis.com"
-  ),
   firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,
@@ -165,6 +161,10 @@ var api = {
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
+  ),
+  remoteConfigApiOrigin: utils.envOverride(
+    "FIREBASE_REMOTE_CONFIG_URL",
+    "https://firebaseremoteconfig.googleapis.com"
   ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",

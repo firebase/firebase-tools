@@ -1,7 +1,8 @@
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
-import clc = require("cli-color");
 import fsutils = require("../../fsutils");
+
+import clc = require("cli-color");
 
 /**
  * Function retrieves names for parameters and parameter groups
@@ -11,14 +12,12 @@ import fsutils = require("../../fsutils");
  */
 export async function doSetup(setup: any, config: any): Promise<void> {
   setup.config.remoteconfig = {};
-  logger.info("Firebase requires a default path to store the remote config template json file.");
   const jsonFilePath = await promptOnce({
     type: "input",
     name: "template",
     message: "What is the path file you want to store your template.json?",
     default: "remoteconfig.template.json",
   });
-  logger.info(jsonFilePath);
   if (fsutils.fileExistsSync(jsonFilePath)) {
     const msg =
       "File " +

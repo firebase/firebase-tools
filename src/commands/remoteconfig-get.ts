@@ -1,24 +1,26 @@
 import * as rcGet from "../remoteconfig/get";
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
-import Table = require("cli-table");
 import * as logger from "../logger";
-import * as fs from "fs";
-import getProjectId = require("../getProjectId");
-import util = require("util");
 import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
+import getProjectId = require("../getProjectId");
+import { requirePermissions } from "../requirePermissions";
+
+import Table = require("cli-table");
+import * as fs from "fs";
+import util = require("util");
 
 const tableHead = ["Entry Name", "Value"];
 
 // Creates a maximum limit of 50 names for each entry
-const limit = 50;
+const MAX_DISPLAY_ITEMS = 50;
 
 /**
  * Function retrieves names for parameters and parameter groups
  * @param templateItems Input is template.parameters or template.parameterGroups
- * @return {string} Returns string that concatenates items and limits the number of items outputted
+ * @return {string} Parses the template and returns a formatted string that concatenates items and limits the number of items outputted that is used in the table
  */
-function getItems(
+export function parseTemplateForTable(
   templateItems: RemoteConfigTemplate["parameters"] | RemoteConfigTemplate["parameterGroups"]
 ): string {
   let outputStr = "";
@@ -27,7 +29,7 @@ function getItems(
     if (Object.prototype.hasOwnProperty.call(templateItems, item)) {
       outputStr = outputStr.concat(item, "\n");
       counter++;
-      if (counter === limit) {
+      if (counter === MAX_DISPLAY_ITEMS) {
         outputStr += "+more..." + "\n";
         break;
       }
@@ -36,32 +38,42 @@ function getItems(
   return outputStr;
 }
 
+function checkValidNumber(versionNumber: string): string {
+  if (typeof Number(versionNumber) == "number") {
+    return versionNumber;
+  }
+  return "null";
+}
+
 module.exports = new Command("remoteconfig:get")
   .description("Get a Firebase project's Remote Config template")
-  .option("-v, --v <version_number>", "grabs the specified version of the template")
-  .option("-o, --output [filename]", "save the output to the default file path")
+  .option("-v, --v <versionNumber>", "grabs the specified version of the template")
+  .option(
+    "-o, --output [filename]",
+    "write config output to a filename (if omitted, will use the default file path)"
+  )
   .before(requireAuth)
+  .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
-    // Firebase remoteconfig:get implementation
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       getProjectId(options),
-      options.v
+      checkValidNumber(options.v)
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {
       let updatedConditions = template.conditions
         .map((condition) => condition.name)
-        .slice(0, limit)
+        .slice(0, MAX_DISPLAY_ITEMS)
         .join("\n");
-      if (template.conditions.length > limit) {
+      if (template.conditions.length > MAX_DISPLAY_ITEMS) {
         updatedConditions += "+more... \n";
       }
       table.push(["conditions", updatedConditions]);
     }
-    const updatedParameters = getItems(template.parameters);
+    const updatedParameters = parseTemplateForTable(template.parameters);
     table.push(["parameters", updatedParameters]);
 
-    const updatedParameterGroups = getItems(template.parameterGroups);
+    const updatedParameterGroups = parseTemplateForTable(template.parameterGroups);
     table.push(["parameterGroups", updatedParameterGroups]);
     table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
 
@@ -76,4 +88,5 @@ module.exports = new Command("remoteconfig:get")
     } else {
       logger.info(table.toString());
     }
+    return template;
   });
