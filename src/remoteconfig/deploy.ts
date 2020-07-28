@@ -41,10 +41,15 @@ export async function deployTemplate(
       let request = `/v1/projects/${projectId}/remoteConfig`;
       const response = await api.request("PUT", request, {
         auth: true,
-        origin: api.firebaseRemoteConfigApiOrigin,
+        origin: api.remoteConfigApiOrigin,
         timeout: TIMEOUT,
         headers: {"If-Match": "*"},
-        data: myData,
+        data: {
+          conditions: template.conditions,
+          parameters: template.parameters,
+          parameterGroups: template.parameterGroups,
+          version: template.version,
+        }
       });
       return response.body;
     } catch (err) {

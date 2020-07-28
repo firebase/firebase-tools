@@ -13,7 +13,7 @@ export async function getVersions(projectId: string): Promise<ListVersionsResult
     let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     const response = await api.request("GET", request, {
       auth: true,
-      origin: api.firebaseRemoteConfigApiOrigin,
+      origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
     });
     return response.body;
