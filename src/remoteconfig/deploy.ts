@@ -3,7 +3,7 @@ import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import Validator = require("../validator");
 import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
- 
+
 const TIMEOUT = 30000;
 
  
@@ -12,8 +12,9 @@ function validateTemplate(template: RemoteConfigTemplate): Promise<RemoteConfigT
 }
  
 export async function publishTemplate(projectId: string, template: RemoteConfigTemplate, options?: { force: boolean }): Promise<RemoteConfigTemplate> {
-    const validTemplate = validateInputRemoteConfigTemplate(template);
-    return await deployTemplate(projectId, validTemplate);
+    //const validTemplate = validateInputRemoteConfigTemplate(template);
+    console.log(template);
+    return await deployTemplate(projectId, template);
 }
  
 // Deploys project information/template based on Firebase project ID
@@ -21,18 +22,29 @@ export async function deployTemplate(
     projectId: string,
     template: RemoteConfigTemplate,
   ): Promise<RemoteConfigTemplate> {
+    console.log(template);
+    console.log(template["parameters"]);
+    const myData = {
+      conditions: {},
+      parameters: 
+        { enter_number: { defaultValue: { value: '4' } },
+          another_number: { defaultValue: { value: '4' } } },
+      parameterGroups: {},
+      version:   { versionNumber: '3',
+      updateTime: '2020-07-17T17:21:59.275Z',
+      updateUser: { email: 'jackiechu@google.com' },
+      updateOrigin: 'CONSOLE',
+      updateType: 'INCREMENTAL_UPDATE' },
+    }
+    console.log(myData);
     try {
       let request = `/v1/projects/${projectId}/remoteConfig`;
       const response = await api.request("PUT", request, {
         auth: true,
         origin: api.firebaseRemoteConfigApiOrigin,
         timeout: TIMEOUT,
-        data: {
-            conditions: template.conditions,
-            parameters: template.parameters,
-            parameterGroups: template.parameterGroups,
-            version: template.version,
-          }
+        headers: {"If-Match": "*"},
+        data: myData,
       });
       return response.body;
     } catch (err) {
