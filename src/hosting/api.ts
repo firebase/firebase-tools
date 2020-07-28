@@ -247,19 +247,11 @@ export async function cloneVersion(
       },
     }
   );
-  return res.body;
-}
-
-/**
- * getOperation retrieves information about an operation.
- * @param resourceName the project scoped name of the operation,
- * @return the operation resource, or null if the operation is not found.
- */
-export async function getOperation(resourceName: string): Promise<any> {
+  const name = res.body.name;
   const pollRes = await operationPoller.pollOperation({
     apiOrigin: api.hostingApiOrigin,
     apiVersion: "v1beta1",
-    operationResourceName: resourceName,
+    operationResourceName: name,
     masterTimeout: 600000,
   });
   return pollRes;

@@ -1,21 +1,16 @@
 import { bold } from "cli-color";
+import * as ora from "ora";
+
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import {
-  getChannel,
-  createChannel,
-  cloneVersion,
-  getOperation,
-  createRelease,
-} from "../hosting/api";
+import { getChannel, createChannel, cloneVersion, createRelease } from "../hosting/api";
 import * as utils from "../utils";
-import * as ora from "ora";
 import { requireAuth } from "../requireAuth";
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .before(requireAuth)
-  .action(async (source: string = "", targetChannel: string = "", options: any) => {
+  .action(async (source = "", targetChannel = "", _) => {
     // sites/{site}/versions/{version}
     let sourceVersionName;
     let sourceVersion;
@@ -45,7 +40,6 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     if (!sourceVersionName) {
       // verify source channel exists and get source channel
-      console.log("verifying source channel");
       const sChannel = await getChannel("-", sourceSiteId, sourceChannelId);
       if (!sChannel) {
         throw new FirebaseError(
@@ -72,9 +66,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
       tChannel = await createChannel("-", targetSiteId, targetChannelId);
       utils.logSuccess(`Created new channel ${targetChannelId}`);
     }
-    let targetVersionName = tChannel.release?.version?.name;
+    const currentTargetVersionName = tChannel.release?.version?.name;
 
-    if (equalSiteIds && sourceVersionName == targetVersionName) {
+    if (equalSiteIds && sourceVersionName == currentTargetVersionName) {
       utils.logSuccess(
         `Channels ${bold(sourceChannelId)} and ${bold(
           targetChannel
@@ -83,29 +77,29 @@ export default new Command("hosting:clone <source> <targetChannel>")
       return;
     }
 
-    const spinner = ora("Copying over your files ...").start();
-    if (equalSiteIds) {
+    let targetVersionName = sourceVersionName;
+    const spinner = ora("Cloning site content...").start();
+    if (!equalSiteIds) {
       try {
-        await createRelease(targetSiteId, targetChannelId, sourceVersionName);
+        const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, true);
+        if (!targetVersion) {
+          console.log(targetVersion);
+          throw new FirebaseError(
+            `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
+          );
+        }
+        targetVersionName = targetVersion.name;
       } catch (err) {
         spinner.fail();
         throw err;
       }
-    } else {
-      const cloneOperation = await cloneVersion(targetSiteId, sourceVersionName, true);
-      if (!cloneOperation) {
-        console.log(cloneOperation);
-        throw new FirebaseError(
-          `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
-        );
-      }
-      try {
-        const targetVersion = await getOperation(cloneOperation.name);
-        await createRelease(targetSiteId, targetChannelId, targetVersion.name);
-      } catch (err) {
-        spinner.fail();
-        throw err;
-      }
+    }
+
+    try {
+      await createRelease(targetSiteId, targetChannelId, targetVersionName);
+    } catch (err) {
+      spinner.fail();
+      throw err;
     }
 
     spinner.succeed();
