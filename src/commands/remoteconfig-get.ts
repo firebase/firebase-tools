@@ -72,8 +72,7 @@ module.exports = new Command("remoteconfig:get")
       const filename = shouldUseDefaultFilename
         ? options.config.get("remoteconfig.template")
         : options.output;
-      const outStream = fs.createWriteStream(filename);
-      outStream.write(util.inspect(template, { showHidden: false, depth: null }));
+      fs.writeFileSync(filename, JSON.stringify(template, null, 2));
     } else {
       logger.info(table.toString());
     }

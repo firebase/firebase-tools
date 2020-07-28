@@ -3,76 +3,196 @@ import * as sinon from "sinon";
 import * as api from "../../api";
 import { mockAuth } from "../helpers";
 import * as remoteconfig from "../../remoteconfig/versionslist";
-import { RemoteConfigTemplate, Version, ListVersionsResult } from "../../remoteconfig/interfaces";
+import { ListVersionsResult } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
+const expectedProjectInfoLimit: ListVersionsResult = {
+  versions: [
+    {
+      versionNumber: "114",
+      updateTime: "2020-07-16T23:22:23.608Z",
+      updateUser: {
+        email: "jackiechu@google.com",
+      },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "113",
+      updateTime: "2020-06-18T21:10:08.992Z",
+      updateUser: {
+        email: "jackiechu@google.com",
+      },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+  ],
+};
 
+const expectedProjectInfoDefault: ListVersionsResult = {
+  versions: [
+    {
+      versionNumber: "114",
+      updateTime: "2020-07-16T23:22:23.608Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "113",
+      updateTime: "2020-06-18T21:10:08.992Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "112",
+      updateTime: "2020-06-16T22:20:34.549Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "111",
+      updateTime: "2020-06-16T22:14:24.419Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "110",
+      updateTime: "2020-06-16T22:05:03.116Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "109",
+      updateTime: "2020-06-16T21:55:19.415Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "108",
+      updateTime: "2020-06-16T21:54:55.799Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "107",
+      updateTime: "2020-06-16T21:48:37.565Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "106",
+      updateTime: "2020-06-16T21:44:41.043Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "105",
+      updateTime: "2020-06-16T21:44:13.860Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+  ],
+};
 // Test template
-const expectedProjectInfo: ListVersionsResult = {
-     versions:
-        [ { versionNumber: '114',
-            updateTime: '2020-07-16T23:22:23.608Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '113',
-            updateTime: '2020-06-18T21:10:08.992Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '112',
-            updateTime: '2020-06-16T22:20:34.549Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '111',
-            updateTime: '2020-06-16T22:14:24.419Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '110',
-            updateTime: '2020-06-16T22:05:03.116Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '109',
-            updateTime: '2020-06-16T21:55:19.415Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '108',
-            updateTime: '2020-06-16T21:54:55.799Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '107',
-            updateTime: '2020-06-16T21:48:37.565Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '106',
-            updateTime: '2020-06-16T21:44:41.043Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '105',
-            updateTime: '2020-06-16T21:44:13.860Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '104',
-            updateTime: '2020-06-16T21:39:19.422Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' },
-          { versionNumber: '103',
-            updateTime: '2020-06-16T21:37:40.858Z',
-            updateUser: {email: 'jackiechu@google.com'},
-            updateOrigin: 'CONSOLE',
-            updateType: 'INCREMENTAL_UPDATE' } ] 
-          }
-      
+const expectedProjectInfoNoLimit: ListVersionsResult = {
+  versions: [
+    {
+      versionNumber: "114",
+      updateTime: "2020-07-16T23:22:23.608Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "113",
+      updateTime: "2020-06-18T21:10:08.992Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "112",
+      updateTime: "2020-06-16T22:20:34.549Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "111",
+      updateTime: "2020-06-16T22:14:24.419Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "110",
+      updateTime: "2020-06-16T22:05:03.116Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "109",
+      updateTime: "2020-06-16T21:55:19.415Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "108",
+      updateTime: "2020-06-16T21:54:55.799Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "107",
+      updateTime: "2020-06-16T21:48:37.565Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "106",
+      updateTime: "2020-06-16T21:44:41.043Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "105",
+      updateTime: "2020-06-16T21:44:13.860Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "104",
+      updateTime: "2020-06-16T21:39:19.422Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+    {
+      versionNumber: "103",
+      updateTime: "2020-06-16T21:37:40.858Z",
+      updateUser: { email: "jackiechu@google.com" },
+      updateOrigin: "CONSOLE",
+      updateType: "INCREMENTAL_UPDATE",
+    },
+  ],
+};
 
 describe("RemoteConfig Versions List Command TESTING", () => {
   let sandbox: sinon.SinonSandbox;
@@ -86,12 +206,12 @@ describe("RemoteConfig Versions List Command TESTING", () => {
     sandbox.restore();
   });
   describe("getVersionTemplate", () => {
-    it("should resolve with template information if it succeeds", async () => {
+    it("should resolve with template versions limit information if it succeeds", async () => {
       let limit;
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
       if (limit == 0) {
         const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
-        expect(RCtemplate).to.deep.equal(expectedProjectInfo);
+        expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
         expect(apiRequestStub).to.be.calledOnceWith(
           "GET",
           `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
@@ -103,13 +223,23 @@ describe("RemoteConfig Versions List Command TESTING", () => {
         );
       }
       if (limit == 2) {
-
+        const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
+        expect(RCtemplate).to.deep.equal(expectedProjectInfoLimit);
+        expect(apiRequestStub).to.be.calledOnceWith(
+          "GET",
+          `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+          {
+            auth: true,
+            origin: api.firebaseRemoteConfigApiOrigin,
+            timeout: 30000,
+          }
+        );
       }
     });
-    it("should resolve with template version information if it succeeds", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfo });
+    it("should resolve with default 10 versions information if it succeeds", async () => {
+      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
       const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
-      expect(RCtemplateVersion).to.deep.equal(expectedProjectInfo);
+      expect(RCtemplateVersion).to.deep.equal(expectedProjectInfoDefault);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
         `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
