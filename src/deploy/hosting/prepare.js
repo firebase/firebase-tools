@@ -67,11 +67,11 @@ module.exports = function(context, options) {
         { exit: 1 }
       );
     }
-    
+
     if (cfg.i18n) {
       let i18nPathPrefix = cfg.public;
       if (!cfg.i18n.root.startsWith("/")) {
-      	i18nPathPrefix += "/";
+        i18nPathPrefix += "/";
       }
       if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPathPrefix + cfg.i18n.root))) {
         utils.logLabeledWarning(
