@@ -1,6 +1,5 @@
 import { bold } from "cli-color";
 import { Command } from "../command";
-import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import {
   getChannel,
@@ -10,19 +9,17 @@ import {
   createRelease,
 } from "../hosting/api";
 import * as logger from "../logger";
-import * as requireConfig from "../requireConfig";
-import * as requireInstance from "../requireInstance";
-import * as getProjectId from "../getProjectId";
-import { logLabeledSuccess, logLabeledBullet } from "../utils";
+import * as utils from "../utils";
 import * as ora from "ora";
+import { requireAuth } from "../requireAuth";
+
+
 
 const LOG_TAG = "hosting:clone";
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
-  .before(requireConfig)
-  .before(requirePermissions, ["firebasehosting.sites.read", "firebasehosting.sites.update"])
-  .before(requireInstance)
+  .before(requireAuth)
   .action(async (source: string = "", targetChannel: string = "", options: any) => {
     // sites/{site}/versions/{version}
     let sourceVersionName;
@@ -32,12 +29,16 @@ export default new Command("hosting:clone <source> <targetChannel>")
     if (!sourceSiteId || !sourceChannelId) {
       [sourceSiteId, sourceVersion] = source.split("@");
       if (!sourceSiteId || !sourceVersion) {
-        throw new FirebaseError(`Please provide a sourceChannel.`);
+        throw new FirebaseError(
+          `"${source}" is not a valid source. Must be in the form "<site>:<channel>" or "<site>@<version>"`
+        );
       }
       sourceVersionName = `sites/${sourceSiteId}/versions/${sourceVersion}`;
     }
     if (!targetSiteId || !targetChannelId) {
-      throw new FirebaseError(`Please provide a targetChannel.`);
+      throw new FirebaseError(
+        `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`
+      );
     }
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;
@@ -47,11 +48,10 @@ export default new Command("hosting:clone <source> <targetChannel>")
       );
     }
 
-    const projectId = getProjectId(options);
-
     if (!sourceVersionName) {
       // verify source channel exists and get source channel
-      const sChannel = await getChannel(projectId, sourceSiteId, sourceChannelId);
+      console.log("verifying source channel");
+      const sChannel = await getChannel("-", sourceSiteId, sourceChannelId);
       if (!sChannel) {
         throw new FirebaseError(
           `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
@@ -67,41 +67,55 @@ export default new Command("hosting:clone <source> <targetChannel>")
       }
     }
 
-    let tChannel = await getChannel(projectId, targetSiteId, targetChannelId);
+    let tChannel = await getChannel("-", targetSiteId, targetChannelId);
     if (!tChannel) {
-      logger.info(`could not find channel ${targetChannelId}, creating it...`);
-      logLabeledBullet(
-        LOG_TAG,
-        `Could not find channel ${targetChannelId}. Creating one for you...`
-      );
-      tChannel = await createChannel(projectId, targetSiteId, targetChannelId);
-      logLabeledSuccess(LOG_TAG, `Created new channel ${targetChannelId}`);
+      utils.logBullet(`could not find channel ${bold(targetChannelId)} in site ${bold(targetSiteId)}, creating it...`);
+      tChannel = await createChannel("-", targetSiteId, targetChannelId);
+      utils.logSuccess(`Created new channel ${targetChannelId}`);
     }
-    const cloneOperation = await cloneVersion(projectId, targetSiteId, sourceVersionName, true);
-    if (!cloneOperation) {
-      console.log(cloneOperation);
-      throw new FirebaseError(
-        `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
-      );
-    }
-    const spinner = ora("Copying over your files ...").start();
+    let targetVersionName = tChannel.release?.version?.name;
 
-    try {
-      const targetVersion = await getOperation(cloneOperation.name);
-      await createRelease(projectId, targetSiteId, targetChannelId, targetVersion.name);
-    } catch (err) {
-      spinner.fail();
-      throw err;
+    if (equalSiteIds && sourceVersionName == targetVersionName) {
+      utils.logSuccess(
+        `Channels ${bold(sourceChannelId)} and ${bold(
+          targetChannel
+        )} are serving identical versions. No need to clone.`
+      );
+      return;
+    }
+
+    const spinner = ora("Copying over your files ...").start();
+    if (equalSiteIds) {
+      try {
+        await createRelease(targetSiteId, targetChannelId, sourceVersionName);
+      } catch (err) {
+        spinner.fail();
+        throw err;
+      }
+    } else {
+      const cloneOperation = await cloneVersion(targetSiteId, sourceVersionName, true);
+      if (!cloneOperation) {
+        console.log(cloneOperation);
+        throw new FirebaseError(
+          `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
+        );
+      }
+      try {
+        const targetVersion = await getOperation(cloneOperation.name);
+        await createRelease(targetSiteId, targetChannelId, targetVersion.name);
+      } catch (err) {
+        spinner.fail();
+        throw err;
+      }
     }
 
     spinner.succeed();
 
-    logger.info();
-    logLabeledSuccess(
-      LOG_TAG,
-      `Site ${sourceSiteId} ${sourceChannelId ? "channel" : "version"} ${sourceChannelId ||
-        sourceVersion} has been cloned to site ${targetSiteId} channel ${targetChannelId}.`
+    //logger.info();
+    utils.logSuccess(
+      `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(sourceChannelId ||
+        sourceVersion)} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
     );
-    logLabeledSuccess(LOG_TAG, `Channel URL (${targetChannelId}): ${tChannel.url}`);
-    logger.info();
+    utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
+    //logger.info();
   });

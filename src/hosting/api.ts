@@ -232,19 +232,18 @@ export async function deleteChannel(
  * @param versionName the specific version ID.
  */
 export async function cloneVersion(
-  project: string | number = "-",
   site: string,
   versionName: string,
   finalize: boolean = false
 ): Promise<any> {
   const res = await api.request(
     "POST",
-    `/v1beta1/projects/${project}/sites/${site}/versions:clone?sourceVersion=${versionName}`,
+    `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
     {
       auth: true,
       origin: api.hostingApiOrigin,
       data: {
-        finalize: finalize,
+        finalize,
       },
     }
   );
@@ -273,14 +272,13 @@ export async function getOperation(resourceName: string): Promise<any> {
  * @param versionName the specific version ID.
  */
 export async function createRelease(
-  project: string | number = "-",
   site: string,
   channel: string,
   version: string
 ): Promise<any> {
   const res = await api.request(
     "POST",
-    `/v1beta1/projects/${project}/sites/${site}/channels/${channel}/releases?version_name=${version}`,
+    `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
     {
       auth: true,
       origin: api.hostingApiOrigin,
