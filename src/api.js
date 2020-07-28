@@ -278,7 +278,7 @@ var api = {
         reqOptions.form = options.form;
       }
     }
-
+    
     reqOptions.url = options.origin + resource;
     reqOptions.files = options.files;
     reqOptions.resolveOnHTTPError = options.resolveOnHTTPError;
