@@ -10,7 +10,7 @@ import { requireAuth } from "../requireAuth";
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .before(requireAuth)
-  .action(async (source = "", targetChannel = "", _) => {
+  .action(async (source = "", targetChannel = "") => {
     // sites/{site}/versions/{version}
     let sourceVersionName;
     let sourceVersion;
@@ -79,23 +79,17 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     let targetVersionName = sourceVersionName;
     const spinner = ora("Cloning site content...").start();
-    if (!equalSiteIds) {
-      try {
+    try {
+      if (!equalSiteIds) {
         const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, true);
         if (!targetVersion) {
-          console.log(targetVersion);
           throw new FirebaseError(
             `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
           );
         }
         targetVersionName = targetVersion.name;
-      } catch (err) {
         spinner.fail();
-        throw err;
       }
-    }
-
-    try {
       await createRelease(targetSiteId, targetChannelId, targetVersionName);
     } catch (err) {
       spinner.fail();
