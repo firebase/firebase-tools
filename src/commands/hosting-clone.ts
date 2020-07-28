@@ -13,10 +13,6 @@ import * as utils from "../utils";
 import * as ora from "ora";
 import { requireAuth } from "../requireAuth";
 
-
-
-const LOG_TAG = "hosting:clone";
-
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
   .before(requireAuth)
@@ -110,12 +106,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
     }
 
     spinner.succeed();
-
-    //logger.info();
     utils.logSuccess(
       `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(sourceChannelId ||
         sourceVersion)} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
-    //logger.info();
   });
