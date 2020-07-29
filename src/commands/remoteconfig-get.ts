@@ -84,6 +84,7 @@ module.exports = new Command("remoteconfig:get")
       const filename = shouldUseDefaultFilename
         ? options.config.get("remoteconfig.template")
         : options.output;
+      delete template.version;
       fs.writeFileSync(filename, JSON.stringify(template, null, 2));
     } else {
       logger.info(table.toString());
