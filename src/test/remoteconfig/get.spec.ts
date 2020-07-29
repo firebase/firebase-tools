@@ -61,7 +61,7 @@ const projectInfoWithTwoParameters: RemoteConfigTemplate = {
         value: "RCTestValue",
       },
     },
-    enter_number: {
+    enterNumber: {
       defaultValue: {
         value: "6",
       },
@@ -148,7 +148,7 @@ describe("Remote Config GET", () => {
     });
 
     it("should return a correctly parsed entry value with two parameters", () => {
-      const expectRCParameters = "RCTestkey\nenter_number\n";
+      const expectRCParameters = "RCTestkey\nenterNumber\n";
       const RCParameters = remoteconfig.parseTemplateForTable(
         projectInfoWithTwoParameters.parameters
       );
