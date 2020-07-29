@@ -5,8 +5,6 @@ import * as api from "../../api";
 import { mockAuth } from "../helpers";
 import * as remoteconfig from "../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-// import { parseTemplateForTable } from "../../commands/remoteconfig-get";
-// import * as rcTemplate from "../../commands/remoteconfig-get";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
@@ -98,14 +96,12 @@ describe("Remote Config GET", () => {
       );
     });
 
-    // it("test function parseTemplateForTable", () => {
+    it("test function parseTemplateForTable", () => {
+      const expectRCParameters = "RCTestkey\n";
+      const RCParameters = remoteconfig.parseTemplateForTable(expectedProjectInfo.parameters);
 
-    //   const expectRCParameters = "RCTestValue";
-    //   const RCParameters = rcTemplate.parseTemplateForTable(expectedProjectInfo.parameters);
-
-    //   expect(RCParameters).to.deep.equal(expectRCParameters);
-    // }
-    // );
+      expect(RCParameters).to.deep.equal(expectRCParameters);
+    });
 
     it("should reject if the api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
