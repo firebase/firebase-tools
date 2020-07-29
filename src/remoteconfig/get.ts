@@ -31,7 +31,12 @@ export function parseTemplateForTable(
   return outputStr;
 }
 
-// Get a project's Remote Config template and its associated metadata from a Firebase project ID
+/**
+ * Function retrieves the most recent template of the current active project
+ * @param projectId Input is the project ID string
+ * @param versionNumber Input is the version number string of the project
+ * @return {Promise} Returns a promise of a remote config template using the RemoteConfigTemplate interface
+ */
 export async function getTemplate(
   projectId: string,
   versionNumber?: string
