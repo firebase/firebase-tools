@@ -33,7 +33,7 @@ marked.setOptions({
 /**
  * Command for updating an existing extension instance
  */
-export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUrl]")
+export default new Command("ext:update <extensionInstanceId>/<iid> [localDirectoryOrUrl]")
   .description(
     previews.extdev
       ? "update an existing extension instance to the latest version or from a local or URL source"
@@ -45,6 +45,8 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
   ])
   .before(ensureExtensionsApiEnabled)
   .action(async (instanceId: string, directoryOrUrl: string, options: any) => {
+    console.log(instanceId);
+    console.log(directoryOrUrl);
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
     );
