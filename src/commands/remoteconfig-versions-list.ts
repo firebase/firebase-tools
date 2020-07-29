@@ -8,12 +8,12 @@ import { Version } from "../remoteconfig/interfaces";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-// Helper method
-function tablePush(table: Table, version: Version) {
+// Helper method to push the contents of the template into table. Created a helper method to reduce redundancy in line of code
+function tablePushContents(table: Table, version: Version) {
   table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
 }
 
-// Firebase remoteconfig:versions:list implementation
+// Created if statements below to filter through possibilities for --limit. Used helper method above to simplify code
 module.exports = new Command("remoteconfig:versions:list")
   .description("Gets versions list for default active Firebase project")
   .option("--limit <number>", "returns number of versions based on specified number")
@@ -26,20 +26,20 @@ module.exports = new Command("remoteconfig:versions:list")
       if (options.limit == 0) {
         for (let item = 0; item < template.versions.length; item++) {
           if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-            tablePush(table, template.versions[item]);
+            tablePushContents(table, template.versions[item]);
           }
         }
       } else {
         for (let item = 0; item < template.versions.slice(0, options.limit).length; item++) {
           if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-            tablePush(table, template.versions[item]);
+            tablePushContents(table, template.versions[item]);
           }
         }
       }
     } else {
       for (let item = 0; item < template.versions.slice(0, 10).length; item++) {
         if (Object.prototype.hasOwnProperty.call(template.versions, item)) {
-          tablePush(table, template.versions[item]);
+          tablePushContents(table, template.versions[item]);
         }
       }
     }

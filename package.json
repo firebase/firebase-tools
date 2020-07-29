@@ -24,9 +24,7 @@
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
-    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh",
-    "test:remoteconfig:get": "mocha --require ts-node/register 'src/test/remoteconfig/get.spec.ts'",
-    "test:remoteconfig:versionslist": "mocha --require ts-node/register 'src/test/remoteconfig/versionslist.spec.ts'"
+    "test:triggers-end-to-end": "./scripts/triggers-end-to-end-tests/run.sh"
   },
   "files": [
     "lib",
