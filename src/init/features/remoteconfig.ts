@@ -3,6 +3,8 @@ import { promptOnce } from "../../prompt";
 import fsutils = require("../../fsutils");
 
 import clc = require("cli-color");
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import Config = require("../../config");
 
 /**
  * Function retrieves names for parameters and parameter groups
@@ -10,7 +12,17 @@ import clc = require("cli-color");
  * @param config Input is of type any
  * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
  */
-export async function doSetup(setup: any, config: any): Promise<void> {
+
+interface remoteConfig {
+  template?: RemoteConfigTemplate;
+}
+ interface setUpConfig {
+  remoteconfig: remoteConfig;
+}
+interface remoteConfigSetup {
+  config: setUpConfig;
+}
+export async function doSetup(setup: remoteConfigSetup, config: Config): Promise<void> {
   setup.config.remoteconfig = {};
   const jsonFilePath = await promptOnce({
     type: "input",
@@ -23,7 +35,7 @@ export async function doSetup(setup: any, config: any): Promise<void> {
       "File " +
       clc.bold(jsonFilePath) +
       " already exists." +
-      " Do you want to overwrite it with the Remote Config Template from the Firebase Console?";
+      " Do you want to overwrite the default Remote Config Template file path?";
     const overwrite = await promptOnce({
       type: "confirm",
       message: msg,

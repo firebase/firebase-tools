@@ -6,6 +6,7 @@ import { mockAuth } from "../helpers";
 import * as remoteconfig from "../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 // import { parseTemplateForTable } from "../../commands/remoteconfig-get";
+// import * as rcTemplate from "../../commands/remoteconfig-get";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
@@ -100,7 +101,7 @@ describe("Remote Config GET", () => {
     // it("test function parseTemplateForTable", () => {
 
     //   const expectRCParameters = "RCTestValue";
-    //   const RCParameters = parseTemplateForTable(expectedProjectInfo.parameters);
+    //   const RCParameters = rcTemplate.parseTemplateForTable(expectedProjectInfo.parameters);
 
     //   expect(RCParameters).to.deep.equal(expectRCParameters);
     // }
