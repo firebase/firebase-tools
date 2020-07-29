@@ -1,7 +1,6 @@
 import * as logger from "../../logger";
 import { promptOnce } from "../../prompt";
 import fsutils = require("../../fsutils");
-
 import clc = require("cli-color");
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 import Config = require("../../config");
@@ -13,16 +12,16 @@ import Config = require("../../config");
  * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
  */
 
-interface remoteConfig {
+interface RemoteConfig {
   template?: RemoteConfigTemplate;
 }
- interface setUpConfig {
-  remoteconfig: remoteConfig;
+interface SetUpConfig {
+  remoteconfig: RemoteConfig;
 }
-interface remoteConfigSetup {
-  config: setUpConfig;
+interface RemoteConfigSetup {
+  config: SetUpConfig;
 }
-export async function doSetup(setup: remoteConfigSetup, config: Config): Promise<void> {
+export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise<void> {
   setup.config.remoteconfig = {};
   const jsonFilePath = await promptOnce({
     type: "input",
