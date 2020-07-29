@@ -47,6 +47,50 @@ const expectedProjectInfo: RemoteConfigTemplate = {
   etag: "123",
 };
 
+// Test sample template with two parameters
+const projectInfoWithTwoParameters: RemoteConfigTemplate = {
+  conditions: [
+    {
+      name: "RCTestCondition",
+      expression: "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
+    },
+  ],
+  parameters: {
+    RCTestkey: {
+      defaultValue: {
+        value: "RCTestValue",
+      },
+    },
+    enterNumber: {
+      defaultValue: {
+        value: "6",
+      },
+    },
+  },
+  version: {
+    versionNumber: "6",
+    updateTime: "2020-07-23T17:13:11.190Z",
+    updateUser: {
+      email: "abc@gmail.com",
+    },
+    updateOrigin: "CONSOLE",
+    updateType: "INCREMENTAL_UPDATE",
+  },
+  parameterGroups: {
+    RCTestCaseGroup: {
+      parameters: {
+        RCTestKey2: {
+          defaultValue: {
+            value: "RCTestValue2",
+          },
+          description: "This is a test",
+        },
+      },
+    },
+  },
+  etag: "123",
+};
+
 describe("Remote Config GET", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
@@ -96,9 +140,18 @@ describe("Remote Config GET", () => {
       );
     });
 
-    it("test function parseTemplateForTable", () => {
+    it("should return a correctly parsed entry value with one parameter", () => {
       const expectRCParameters = "RCTestkey\n";
       const RCParameters = remoteconfig.parseTemplateForTable(expectedProjectInfo.parameters);
+
+      expect(RCParameters).to.deep.equal(expectRCParameters);
+    });
+
+    it("should return a correctly parsed entry value with two parameters", () => {
+      const expectRCParameters = "RCTestkey\nenterNumber\n";
+      const RCParameters = remoteconfig.parseTemplateForTable(
+        projectInfoWithTwoParameters.parameters
+      );
 
       expect(RCParameters).to.deep.equal(expectRCParameters);
     });

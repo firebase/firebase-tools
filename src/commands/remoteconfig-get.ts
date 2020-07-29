@@ -14,7 +14,7 @@ import util = require("util");
 const tableHead = ["Entry Name", "Value"];
 
 // Creates a maximum limit of 50 names for each entry
-const MAX_DISPLAY_ITEMS = 50;
+const MAX_DISPLAY_ITEMS = 20;
 
 function checkValidNumber(versionNumber: string): string {
   if (typeof Number(versionNumber) == "number") {
@@ -25,7 +25,7 @@ function checkValidNumber(versionNumber: string): string {
 
 module.exports = new Command("remoteconfig:get")
   .description("Get a Firebase project's Remote Config template")
-  .option("-v, --v <versionNumber>", "grabs the specified version of the template")
+  .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
   .option(
     "-o, --output [filename]",
     "write config output to a filename (if omitted, will use the default file path)"
@@ -35,7 +35,7 @@ module.exports = new Command("remoteconfig:get")
   .action(async (options) => {
     const template: RemoteConfigTemplate = await rcGet.getTemplate(
       getProjectId(options),
-      checkValidNumber(options.v)
+      checkValidNumber(options.versionNumber)
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {
@@ -62,8 +62,9 @@ module.exports = new Command("remoteconfig:get")
       const filename = shouldUseDefaultFilename
         ? options.config.get("remoteconfig.template")
         : options.output;
-      delete template.version;
-      fs.writeFileSync(filename, JSON.stringify(template, null, 2));
+      const outTemplate = { ...template };
+      delete outTemplate.version;
+      fs.writeFileSync(filename, JSON.stringify(outTemplate, null, 2));
     } else {
       logger.info(table.toString());
     }
