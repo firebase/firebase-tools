@@ -2,6 +2,7 @@
 
 const _ = require("lodash");
 const clc = require("cli-color");
+const path = require("path");
 
 const api = require("../../api");
 const convertConfig = require("./convertConfig");
@@ -69,11 +70,8 @@ module.exports = function(context, options) {
     }
 
     if (cfg.i18n) {
-      let i18nPathPrefix = cfg.public;
-      if (!cfg.i18n.root.startsWith("/")) {
-        i18nPathPrefix += "/";
-      }
-      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPathPrefix + cfg.i18n.root))) {
+      const i18nPath = path.join(cfg.public, cfg.i18n.root);
+      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPath))) {
         utils.logLabeledWarning(
           "hosting",
           `The I18n Rewrites feature is enabled, but the directory ` +
