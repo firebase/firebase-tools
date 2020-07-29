@@ -2,19 +2,35 @@ import * as api from "../api";
 import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import Validator = require("../validator");
-import { RemoteConfigTemplate } from "../remoteconfig/interfaces";
+import { RemoteConfigTemplate, Version } from "../remoteconfig/interfaces";
+import * as rcGet from "../remoteconfig/get";
 
 const TIMEOUT = 30000;
 
  
-function validateTemplate(template: RemoteConfigTemplate): Promise<RemoteConfigTemplate> {
-    return Promise.resolve(validateInputRemoteConfigTemplate(template));
+// function validateTemplate(template: RemoteConfigTemplate): Promise<RemoteConfigTemplate> {
+//     return Promise.resolve(validateInputRemoteConfigTemplate(template));
+// }
+
+async function createEtag(projectId: string): Promise<string> {
+  console.log(projectId)
+  const template = await rcGet.getTemplate(projectId)
+  console.log(template)
+  const etag = "etag-" + projectId + "-" + template?.version?.versionNumber;
+  console.log(etag)
+  return etag;
 }
  
 export async function publishTemplate(projectId: string, template: RemoteConfigTemplate, options?: { force: boolean }): Promise<RemoteConfigTemplate> {
-    //const validTemplate = validateInputRemoteConfigTemplate(template);
-    console.log(template);
-    return await deployTemplate(projectId, template);
+  let temporaryTemplate = {
+    conditions: template.conditions,
+    parameters: template.parameters,
+    parameterGroups: template.parameterGroups,
+    version: template.version,
+    etag: await createEtag(projectId),
+  }  
+  //const validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
+  return await deployTemplate(projectId, temporaryTemplate);
 }
  
 // Deploys project information/template based on Firebase project ID
@@ -22,23 +38,9 @@ export async function deployTemplate(
     projectId: string,
     template: RemoteConfigTemplate,
   ): Promise<RemoteConfigTemplate> {
-    console.log(template);
-    console.log(template["parameters"]);
-    const myData = {
-      conditions: {},
-      parameters: 
-        { enter_number: { defaultValue: { value: '4' } },
-          another_number: { defaultValue: { value: '4' } } },
-      parameterGroups: {},
-      version:   { versionNumber: '3',
-      updateTime: '2020-07-17T17:21:59.275Z',
-      updateUser: { email: 'jackiechu@google.com' },
-      updateOrigin: 'CONSOLE',
-      updateType: 'INCREMENTAL_UPDATE' },
-    }
-    console.log(myData);
     try {
       let request = `/v1/projects/${projectId}/remoteConfig`;
+      const etag = await createEtag(projectId);
       const response = await api.request("PUT", request, {
         auth: true,
         origin: api.remoteConfigApiOrigin,
@@ -49,6 +51,7 @@ export async function deployTemplate(
           parameters: template.parameters,
           parameterGroups: template.parameterGroups,
           version: template.version,
+          etag: etag,
         }
       });
       return response.body;
@@ -96,7 +99,6 @@ export function validateInputRemoteConfigTemplate(template: RemoteConfigTemplate
    }
    return templateCopy;
  }
- 
  
  
 
