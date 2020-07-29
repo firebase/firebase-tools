@@ -14,7 +14,7 @@ import util = require("util");
 const tableHead = ["Entry Name", "Value"];
 
 // Creates a maximum limit of 50 names for each entry
-const MAX_DISPLAY_ITEMS = 50;
+const MAX_DISPLAY_ITEMS = 20;
 
 function checkValidNumber(versionNumber: string): string {
   if (typeof Number(versionNumber) == "number") {
