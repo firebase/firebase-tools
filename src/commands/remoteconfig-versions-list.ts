@@ -12,9 +12,9 @@ const tableHead = ["Update User", "Version Number", "Update Time"];
  * Function pushes contents of template version to table
  * @param table Input is a Table class
  * @param version Input is Version interface
- * @return {Table} Returns a table with the published contents of the version template icluding user's email, version number, and update time
+ * @return {Table} Returns published contents of the version template including user's email, version number, and update time to the table
  */
-function tablePushContents(table: Table, version: Version): Number {
+function tablePushContents(table: Table, version: Version): number {
   return table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
 }
 
