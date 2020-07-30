@@ -49,13 +49,13 @@ export async function deployTemplate(
         auth: true,
         origin: api.remoteConfigApiOrigin,
         timeout: TIMEOUT,
-        headers: {"If-Match": "*"},
+        headers: {"If-Match": etag},
         data: {
           conditions: template.conditions,
           parameters: template.parameters,
           parameterGroups: template.parameterGroups,
-          version: template.version,
-          etag: etag,
+          // version: template.version,
+          // etag: etag,
         }
       });
       return response.body;
