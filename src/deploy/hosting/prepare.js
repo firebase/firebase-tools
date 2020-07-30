@@ -2,11 +2,13 @@
 
 const _ = require("lodash");
 const clc = require("cli-color");
+const path = require("path");
 
 const api = require("../../api");
 const convertConfig = require("./convertConfig");
 const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
+const utils = require("../../utils");
 const fsutils = require("../../fsutils");
 const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
 const { resolveProjectPath } = require("../../projectPath");
@@ -65,6 +67,17 @@ module.exports = function(context, options) {
           `can't deploy hosting to site ${deploy.site}`,
         { exit: 1 }
       );
+    }
+
+    if (cfg.i18n) {
+      const i18nPath = path.join(cfg.public, cfg.i18n.root);
+      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPath))) {
+        utils.logLabeledWarning(
+          "hosting",
+          `The I18n Rewrites feature is enabled, but the directory ` +
+            `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
+        );
+      }
     }
 
     versionCreates.push(
