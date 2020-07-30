@@ -195,7 +195,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
     hub.all("*", dataMiddleware, (req, res) => {
       logger.debug(`Functions emulator received unknown request at path ${req.path}`);
-      res.sendStatus(501);
+      res.sendStatus(404);
     });
     return hub;
   }
