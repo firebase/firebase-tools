@@ -5,13 +5,6 @@ import clc = require("cli-color");
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 import Config = require("../../config");
 
-/**
- * Function retrieves names for parameters and parameter groups
- * @param setup Input is of type any
- * @param config Input is of type any
- * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
- */
-
 interface RemoteConfig {
   template?: RemoteConfigTemplate;
 }
@@ -21,12 +14,19 @@ interface SetUpConfig {
 interface RemoteConfigSetup {
   config: SetUpConfig;
 }
+
+/**
+ * Function retrieves names for parameters and parameter groups
+ * @param setup Input is of RemoteConfigSetup defined in interfaces above
+ * @param config Input is of type Config
+ * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
+ */
 export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise<void> {
   setup.config.remoteconfig = {};
   const jsonFilePath = await promptOnce({
     type: "input",
     name: "template",
-    message: "What is the path file you want to store your template.json?",
+    message: "What file should be used for your Remote Config template?",
     default: "remoteconfig.template.json",
   });
   if (fsutils.fileExistsSync(jsonFilePath)) {
@@ -34,7 +34,7 @@ export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise
       "File " +
       clc.bold(jsonFilePath) +
       " already exists." +
-      " Do you want to overwrite the default Remote Config Template file path?";
+      " Do you want to overwrite the existing Remote Config template?";
     const overwrite = await promptOnce({
       type: "confirm",
       message: msg,

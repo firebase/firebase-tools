@@ -13,11 +13,11 @@ const TIMEOUT = 30000;
 // }
 
 async function createEtag(projectId: string): Promise<string> {
-  console.log(projectId)
+  //console.log(projectId)
   const template = await rcGet.getTemplate(projectId)
-  console.log(template)
+  //console.log(template)
   const etag = "etag-" + projectId + "-" + template?.version?.versionNumber;
-  console.log(etag)
+  //console.log(etag)
   return etag;
 }
  
@@ -39,8 +39,12 @@ export async function deployTemplate(
     template: RemoteConfigTemplate,
   ): Promise<RemoteConfigTemplate> {
     try {
+      console.log(template.conditions)
+      
       let request = `/v1/projects/${projectId}/remoteConfig`;
       const etag = await createEtag(projectId);
+      console.log(etag)
+
       const response = await api.request("PUT", request, {
         auth: true,
         origin: api.remoteConfigApiOrigin,

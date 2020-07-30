@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+
 import * as api from "../../api";
 import { mockAuth } from "../helpers";
 import * as remoteconfig from "../../remoteconfig/versionslist";
@@ -7,6 +8,7 @@ import { ListVersionsResult } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
+// Test template with limit of 2
 const expectedProjectInfoLimit: ListVersionsResult = {
   versions: [
     {
@@ -30,6 +32,7 @@ const expectedProjectInfoLimit: ListVersionsResult = {
   ],
 };
 
+// Test template with no limit (default template)
 const expectedProjectInfoDefault: ListVersionsResult = {
   versions: [
     {
@@ -104,7 +107,7 @@ const expectedProjectInfoDefault: ListVersionsResult = {
     },
   ],
 };
-// Test template
+// Test template with limit of 0
 const expectedProjectInfoNoLimit: ListVersionsResult = {
   versions: [
     {

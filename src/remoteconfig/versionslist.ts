@@ -4,13 +4,15 @@ import { FirebaseError } from "../error";
 import { ListVersionsResult } from "./interfaces";
 
 const TIMEOUT = 30000;
-// export interface RemoteConfigVersionTemplateData {
-//   versions: any;
-// }
-// Gets all project versions based on Firebase Project ID
+
+/**
+ * Function retrieves the list of versions for a specific project
+ * @param projectId Input is the Project ID string
+ * @return {Promise} Returns a promise of the result when calling listVersions method
+ */
 export async function getVersions(projectId: string): Promise<ListVersionsResult> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    const request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     const response = await api.request("GET", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
