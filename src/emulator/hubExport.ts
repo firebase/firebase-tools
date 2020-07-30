@@ -1,7 +1,9 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as http from "http";
 
 import * as api from "../api";
+import * as logger from "../logger";
 import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
@@ -14,6 +16,10 @@ export interface ExportMetadata {
     version: string;
     path: string;
     metadata_file: string;
+  };
+  database?: {
+    version: string;
+    path: string;
   };
 }
 
@@ -53,6 +59,14 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
+    if (this.shouldExport(Emulators.DATABASE)) {
+      metadata.database = {
+        version: getDownloadDetails(Emulators.DATABASE).version,
+        path: "database_export",
+      };
+      await this.exportDatabase(metadata);
+    }
+
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata));
   }
@@ -72,6 +86,63 @@ export class HubExport {
       json: true,
       data: firestoreExportBody,
     });
+  }
+
+  private async exportDatabase(metadata: ExportMetadata): Promise<void> {
+    const databaseInfo = EmulatorRegistry.get(Emulators.DATABASE)!.getInfo();
+    const databaseAddr = `http://${databaseInfo.host}:${databaseInfo.port}`;
+
+    // Get the list of namespaces
+    const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
+    const inspectRes = await api.request("GET", inspectURL, { origin: databaseAddr, auth: true });
+    const namespaces = inspectRes.body.map((instance: any) => instance.name);
+
+    // Check each one for actual data
+    const nonEmptyNamespaces = [];
+    for (const ns of namespaces) {
+      const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
+      const checkDataRes = await api.request("GET", checkDataPath, {
+        origin: databaseAddr,
+        auth: true,
+      });
+      if (checkDataRes.body !== null) {
+        nonEmptyNamespaces.push(ns);
+      } else {
+        logger.debug(`Namespace ${ns} contained null data, not exporting`);
+      }
+    }
+
+    // Make sure the export directory exists
+    if (!fs.existsSync(this.exportPath)) {
+      fs.mkdirSync(this.exportPath);
+    }
+
+    const dbExportPath = path.join(this.exportPath, metadata.database!.path);
+    if (!fs.existsSync(dbExportPath)) {
+      fs.mkdirSync(dbExportPath);
+    }
+
+    for (const ns of nonEmptyNamespaces) {
+      const exportFile = path.join(dbExportPath, `${ns}.json`);
+      const writeStream = fs.createWriteStream(exportFile);
+
+      logger.debug(`Exporting database instance: ${ns} to ${exportFile}`);
+      await new Promise((resolve, reject) => {
+        http
+          .get(
+            {
+              host: databaseInfo.host,
+              port: databaseInfo.port,
+              path: `/.json?ns=${ns}&format=export`,
+              headers: { Authorization: "Bearer owner" },
+            },
+            (response) => {
+              response.pipe(writeStream, { end: true }).once("close", resolve);
+            }
+          )
+          .on("error", reject);
+      });
+    }
   }
 
   private shouldExport(e: Emulators): boolean {

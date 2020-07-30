@@ -72,8 +72,18 @@ export class DatabaseEmulator implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  connect(): Promise<void> {
-    return Promise.resolve();
+  async connect(): Promise<void> {
+    // The chokidar watcher will handle updating rules but we need to set the initial ruleset for
+    // each namespace here.
+    if (this.args.rules) {
+      for (const c of this.args.rules) {
+        if (!c.instance) {
+          continue;
+        }
+
+        await this.updateRules(c.instance, fs.readFileSync(c.rules, "utf8").toString());
+      }
+    }
   }
 
   stop(): Promise<void> {
@@ -85,8 +95,10 @@ export class DatabaseEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.DATABASE),
     };
   }
 
