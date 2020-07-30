@@ -14,7 +14,7 @@ const tableHead = ["Update User", "Version Number", "Update Time"];
  * @param version Input is Version interface
  * @return {Table} Returns a table with the published contents of the version template icluding user's email, version number, and update time
  */
-function tablePushContents(table: Table, version: Version) {
+function tablePushContents(table: Table, version: Version): Number {
   return table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
 }
 
