@@ -12,7 +12,7 @@ const TIMEOUT = 30000;
  */
 export async function getVersions(projectId: string): Promise<ListVersionsResult> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    const request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     const response = await api.request("GET", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,

@@ -8,7 +8,12 @@ import { Version } from "../remoteconfig/interfaces";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-// Helper method to push the contents of the template into table. Created a helper method to reduce redundancy in line of code
+/**
+ * Function pushes contents of template version to table
+ * @param table Input is a Table class
+ * @param version Input is Version interface
+ * @return {Table} Returns a table with the published contents of the version template icluding user's email, version number, and update time
+ */
 function tablePushContents(table: Table, version: Version) {
   table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
 }
