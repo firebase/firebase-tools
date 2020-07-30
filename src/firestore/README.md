@@ -1,4 +1,4 @@
-Cloud Firestore automatically creates indexes to support the most common types of queries, but allows you to define custom indexes and index overrides as described in the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/index-overview).
+Cloud Firestore automatically creates indexes to support the most common types of queries, but allows you to define custom indexes and index overrides as described in the [Cloud Firestore guides](https://firebase.google.com/docs/firestore/query-data/index-overview).
 
 You can create, modify and deploy custom indexes in the Firebase console, or using the CLI. From the CLI, edit your index configuration file, with default filename`firestore.indexes.json`, and deploy using the <code>firebase deploy</code> command.
 
@@ -36,7 +36,7 @@ Deploy your index configuration with the `firebase deploy` command. By default, 
 
 If you make edits to the indexes using the Firebase console, make sure you also update your local indexes file.
 
-For more on managing indexes, see the [Cloud Firestore guides](https://firebase.devsite.corp.google.com/docs/firestore/query-data/indexing).
+For more on managing indexes, see the [Cloud Firestore guides](https://firebase.google.com/docs/firestore/query-data/indexing).
 
 ## JSON format
 
