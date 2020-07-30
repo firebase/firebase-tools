@@ -47,8 +47,12 @@ const EVENT_INVOKE = "functions:invoke";
  * definition to be relative to the database root. This regex is used to extract
  * that path from the `resource` member in the trigger definition used by the
  * functions emulator.
+ *
+ * Groups:
+ *   1 - instance
+ *   2 - path
  */
-const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs(/.*)$");
 
 export interface FunctionsEmulatorArgs {
   projectId: string;
@@ -189,6 +193,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     // all events.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
+    hub.all('*', dataMiddleware, async (req, res) => {
+      logger.debug(`Functions emulator received unknown request at path ${req.path}`);
+      res.sendStatus(501);
+    });
     return hub;
   }
 
@@ -386,7 +394,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
-    if (result === null || result.length !== 2) {
+    if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
         `Event trigger "${definition.name}" has malformed "resource" member. ` +
@@ -395,18 +403,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       return Promise.reject();
     }
 
+    const instance = result[1];
     const bundle = JSON.stringify({
       name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-      path: result[1], // path stored in the first capture group
+      path: result[2], // path stored in the second capture group
       event: definition.eventTrigger.eventType,
       topic: `projects/${projectId}/topics/${definition.name}`,
     });
 
-    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
+    logger.debug(`addDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
 
     let setTriggersPath = "/.settings/functionTriggers.json";
-    if (projectId !== "") {
-      setTriggersPath += `?ns=${projectId}`;
+    if (instance !== "") {
+      setTriggersPath += `?ns=${instance}`;
     } else {
       this.logger.log(
         "WARN",
