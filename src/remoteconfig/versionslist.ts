@@ -1,14 +1,14 @@
 import api = require("../api");
-import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import { ListVersionsResult } from "./interfaces";
+import * as logger from "../logger";
 
 const TIMEOUT = 30000;
 
 /**
- * Function retrieves the list of versions for a specific project
+ * Get a list of Remote Config template versions that have been published, sorted in reverse chronological order for a specific project
  * @param projectId Input is the Project ID string
- * @return {Promise} Returns a promise of the result when calling listVersions method
+ * @return {Promise<ListVersionsResult>} Returns a Promise of a list of Remote Config template versions that have been published
  */
 export async function getVersions(projectId: string): Promise<ListVersionsResult> {
   try {
