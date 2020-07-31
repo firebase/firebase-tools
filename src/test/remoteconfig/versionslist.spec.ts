@@ -6,7 +6,6 @@ import * as remoteconfig from "../../remoteconfig/versionslist";
 import { mockAuth } from "../helpers";
 import { ListVersionsResult } from "../../remoteconfig/interfaces";
 
-
 const PROJECT_ID = "the-remoteconfig-test-project";
 
 // Test template with limit of 2
