@@ -10,17 +10,6 @@ Learn more about writing a POSTINSTALL.md file in the docs:
 https://firebase.google.com/docs/extensions/alpha/create-user-docs#writing-postinstall
 -->
 
-# Post-installation configuration
-
-Before you can use this extension, follow these steps to make the Cloud Function deployed for this extension publicly accessible:
-
-1. Go to the Cloud Functions dashboard for your project in the [Google Cloud console](https://console.cloud.google.com/functions/list?project=${PROJECT_ID}).
-1. Click the checkbox next to the function called `ext-${EXT_INSTANCE_ID}-greetTheWorld`.
-1. If it's not already expanded, click **Show Info Panel** (in the top-right corner) to show the *Permissions* tab.
-1. Click **Add Member**. Then, in the *New members* field, enter the user `allUsers`.
-1. Select the role `Cloud Functions Invoker` from the role dropdown list. You may need to type in this role's name to pull it into the list.
-1. Click **Save**.
-
 # See it in action
 
 You can test out this extension right away!

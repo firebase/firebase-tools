@@ -17,7 +17,7 @@ var utils = require("./utils");
 
 var Config = function(src, options) {
   this.options = options || {};
-  this.projectDir = options.projectDir || detectProjectRoot(options.cwd);
+  this.projectDir = options.projectDir || detectProjectRoot(options);
 
   this._src = src;
   this.data = {};
@@ -97,7 +97,7 @@ Config.prototype._materialize = function(target) {
 };
 
 Config.prototype._parseFile = function(target, filePath) {
-  var fullPath = resolveProjectPath(this.options.cwd, filePath);
+  var fullPath = resolveProjectPath(this.options, filePath);
   var ext = path.extname(filePath);
   if (!fsutils.fileExistsSync(fullPath)) {
     throw new FirebaseError("Parse Error: Imported file " + filePath + " does not exist", {
@@ -208,13 +208,15 @@ Config.prototype.askWriteProjectFile = function(p, content) {
 };
 
 Config.load = function(options, allowMissing) {
-  var pd = detectProjectRoot(options.cwd);
+  const pd = detectProjectRoot(options);
+  const filename = options.configPath || Config.FILENAME;
   if (pd) {
     try {
-      var data = cjson.load(path.join(pd, Config.FILENAME));
+      const filePath = path.resolve(pd, path.basename(filename));
+      const data = cjson.load(filePath);
       return new Config(data, options);
     } catch (e) {
-      throw new FirebaseError("There was an error loading firebase.json:\n\n" + e.message, {
+      throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
         exit: 1,
       });
     }
