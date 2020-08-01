@@ -11,11 +11,11 @@ import  { RemoteConfigTemplate } from "../remoteconfig/interfaces";
  
 module.exports = new Command("remoteconfig:deploy")
  .description("Deploys Firebase project you have access to")
- .option("--force", "forces deployment of project, ignores template validation")
+ .option("--force", "forces deployment of project and ignores template validation")
  .before(requireAuth)
  .action(async (options) => {
    var filePath = options.config.get("remoteconfig.template");
    const templateString = fs.readFileSync(filePath, 'utf8');
    const template : RemoteConfigTemplate = JSON.parse(templateString);
-   await rcDeploy.publishTemplate(getProjectId(options), template);
+   await rcDeploy.publishTemplate(getProjectId(options), template, options);
   });

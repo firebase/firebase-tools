@@ -8,9 +8,9 @@ import * as rcGet from "../remoteconfig/get";
 const TIMEOUT = 30000;
 
  
-// function validateTemplate(template: RemoteConfigTemplate): Promise<RemoteConfigTemplate> {
-//     return Promise.resolve(validateInputRemoteConfigTemplate(template));
-// }
+function validateTemplate(template: RemoteConfigTemplate): Promise<RemoteConfigTemplate> {
+    return Promise.resolve(validateInputRemoteConfigTemplate(template));
+}
 
 async function createEtag(projectId: string): Promise<string> {
   //console.log(projectId)
@@ -28,8 +28,11 @@ export async function publishTemplate(projectId: string, template: RemoteConfigT
     parameterGroups: template.parameterGroups,
     version: template.version,
     etag: await createEtag(projectId),
-  }  
-  //const validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
+  }
+  let validTemplate: RemoteConfigTemplate = temporaryTemplate;
+  if (!options || !options.force == true) {
+    validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
+  } 
   return await deployTemplate(projectId, temporaryTemplate);
 }
  
@@ -37,14 +40,17 @@ export async function publishTemplate(projectId: string, template: RemoteConfigT
 export async function deployTemplate(
     projectId: string,
     template: RemoteConfigTemplate,
+    options?: { force: boolean }, 
   ): Promise<RemoteConfigTemplate> {
     try {
       console.log(template.conditions)
       
       let request = `/v1/projects/${projectId}/remoteConfig`;
-      const etag = await createEtag(projectId);
-      console.log(etag)
 
+      let etag = "*";
+      if (!options || !options.force == true) {
+        etag = await createEtag(projectId);
+      }
       const response = await api.request("PUT", request, {
         auth: true,
         origin: api.remoteConfigApiOrigin,
@@ -54,8 +60,6 @@ export async function deployTemplate(
           conditions: template.conditions,
           parameters: template.parameters,
           parameterGroups: template.parameterGroups,
-          // version: template.version,
-          // etag: etag,
         }
       });
       return response.body;
