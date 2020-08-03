@@ -5,3 +5,4 @@
 - Fixes issue where database emulator did not properly load initial rules (#2483).
 - Allow starting the UI with `emulators:exec` using the `--ui` flag.
 - Fixes issue where multiple CLI instances compete for the same log (#2464).
+- Makes it easier to import data from production databases.
