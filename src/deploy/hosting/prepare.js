@@ -70,13 +70,17 @@ module.exports = function(context, options) {
     }
 
     if (cfg.i18n) {
-      const i18nPath = path.join(cfg.public, cfg.i18n.root);
-      if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPath))) {
-        utils.logLabeledWarning(
-          "hosting",
-          `The I18n Rewrites feature is enabled, but the directory ` +
-            `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
-        );
+      if (!cfg.i18n.root) {
+        throw new FirebaseError("The root in the i18n config can't be empty.");
+      } else {
+        const i18nPath = path.join(cfg.public, cfg.i18n.root);
+        if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, i18nPath))) {
+          utils.logLabeledWarning(
+            "hosting",
+            `The I18n Rewrites feature is enabled, but the directory ` +
+              `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
+          );
+        }
       }
     }
 
