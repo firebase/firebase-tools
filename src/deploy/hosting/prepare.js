@@ -81,6 +81,7 @@ module.exports = function(context, options) {
               `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
           );
         }
+      }
     }
 
     versionCreates.push(
