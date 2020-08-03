@@ -61,7 +61,7 @@ module.exports = function(context, options) {
       );
     }
 
-    if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {
+    if (!fsutils.dirExistsSync(resolveProjectPath(options, cfg.public))) {
       throw new FirebaseError(
         `Specified public directory '${cfg.public}' does not exist, ` +
           `can't deploy hosting to site ${deploy.site}`,
@@ -81,7 +81,6 @@ module.exports = function(context, options) {
               `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
           );
         }
-      }
     }
 
     versionCreates.push(

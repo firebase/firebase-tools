@@ -45,8 +45,10 @@ export class EmulatorUI implements EmulatorInstance {
 
   getInfo(): EmulatorInfo {
     return {
+      name: this.getName(),
       host: this.args.host,
       port: this.args.port,
+      pid: downloadableEmulators.getPID(Emulators.UI),
     };
   }
 

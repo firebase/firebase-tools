@@ -2,6 +2,7 @@ import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./type
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
+import { EmulatorLogger } from "./emulatorLogger";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -16,15 +17,22 @@ export class EmulatorRegistry {
       throw new FirebaseError(`${description} is already running!`, {});
     }
 
+    // must be before we start as else on a quick 'Ctrl-C' after starting we could skip this emulator in cleanShutdown
+    this.set(instance.getName(), instance);
+
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
 
     const info = instance.getInfo();
     await portUtils.waitForPortClosed(info.port, info.host);
-    this.set(instance.getName(), instance);
   }
 
   static async stop(name: Emulators): Promise<void> {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "BULLET",
+      name,
+      `Stopping ${Constants.description(name)}`
+    );
     const instance = this.get(name);
     if (!instance) {
       return;
@@ -35,9 +43,19 @@ export class EmulatorRegistry {
   }
 
   static async stopAll(): Promise<void> {
-    for (const name of this.listRunning()) {
-      await this.stop(name);
-    }
+    await Promise.all(
+      this.listRunning().map(async (name) => {
+        try {
+          await this.stop(name);
+        } catch (e) {
+          EmulatorLogger.forEmulator(name).logLabeled(
+            "WARN",
+            name,
+            `Error stopping ${Constants.description(name)}`
+          );
+        }
+      })
+    );
   }
 
   static isRunning(emulator: Emulators): boolean {
@@ -47,6 +65,12 @@ export class EmulatorRegistry {
 
   static listRunning(): Emulators[] {
     return ALL_EMULATORS.filter((name) => this.isRunning(name));
+  }
+
+  static listRunningWithInfo(): EmulatorInfo[] {
+    return this.listRunning()
+      .map((emulator) => this.getInfo(emulator) as EmulatorInfo)
+      .filter((info) => typeof info !== "undefined");
   }
 
   static get(emulator: Emulators): EmulatorInstance | undefined {

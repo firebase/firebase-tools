@@ -16,6 +16,7 @@ import * as clc from "cli-color";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
+import { EmulatorRegistry } from "./registry";
 
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
@@ -39,27 +40,27 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.4.jar"),
-    version: "1.11.4",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.5.jar"),
+    version: "1.11.5",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.4.jar",
-      expectedSize: 63915084,
-      expectedChecksum: "53a1e2ee7b8a2b26a46f50167dcf4962",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.5.jar",
+      expectedSize: 63287761,
+      expectedChecksum: "badd7007623ce51761d7a8ec2be42f8f",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   ui: {
-    version: "1.1.0",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.1.0.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.1.0"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.1.0", "server.bundle.js"),
+    version: "1.1.1",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.1.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.1.1"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.1.1", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.0.zip",
-      expectedSize: 3241879,
-      expectedChecksum: "491d732e9a5d8c7e2af381fffd2bf62c",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.1.zip",
+      expectedSize: 3248195,
+      expectedChecksum: "098821e328ea98c2180d4d71f3a75381",
       namePrefix: "ui",
     },
   },
@@ -198,8 +199,21 @@ function _getCommand(
   };
 }
 
-function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): void {
-  throw new FirebaseError(emulator.name + ": " + errorMsg, { exit: 1 });
+async function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): Promise<void> {
+  // if we do not issue a stopAll here and _fatal is called during startup, we could leave emulators running
+  // that did start already
+  // for example: JAVA_HOME=/does/not/exist firebase emulators:start
+  try {
+    const logger = EmulatorLogger.forEmulator(emulator.name);
+    logger.logLabeled(
+      "WARN",
+      emulator.name,
+      `Fatal error occurred: \n   ${errorMsg}, \n   stopping all running emulators`
+    );
+    await EmulatorRegistry.stopAll();
+  } finally {
+    process.exit(1);
+  }
 }
 
 async function _runBinary(
@@ -213,6 +227,11 @@ async function _runBinary(
     try {
       emulator.instance = childProcess.spawn(command.binary, command.args, {
         env: { ...process.env, ...extraEnv },
+        // `detached` must be true as else a SIGINT (Ctrl-c) will stop the child process before we can handle a
+        // graceful shutdown and call `downloadableEmulators.stop(...)` ourselves.
+        // Note that it seems to be a problem with gRPC processes for which a fix may be found on the Java side
+        // related to this issue: https://github.com/grpc/grpc-java/pull/6512
+        detached: true,
         stdio: ["inherit", "pipe", "pipe"],
       });
     } catch (e) {
@@ -225,7 +244,6 @@ async function _runBinary(
           `Could not spawn child process for emulator, check that java is installed and on your $PATH.`
         );
       }
-
       _fatal(emulator, e);
     }
 
@@ -259,21 +277,21 @@ async function _runBinary(
       }
     });
 
-    emulator.instance.on("error", (err: any) => {
+    emulator.instance.on("error", async (err: any) => {
       if (err.path === "java" && err.code === "ENOENT") {
-        _fatal(
+        await _fatal(
           emulator,
           `${description} has exited because java is not installed, you can install it from https://openjdk.java.net/install/`
         );
       } else {
-        _fatal(emulator, `${description} has exited: ${err}`);
+        await _fatal(emulator, `${description} has exited: ${err}`);
       }
     });
-    emulator.instance.once("exit", (code, signal) => {
+    emulator.instance.once("exit", async (code, signal) => {
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        _fatal(emulator, `${description} has exited with code: ${code}`);
+        await _fatal(emulator, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
@@ -295,10 +313,19 @@ export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetail
 }
 
 /**
+ * Returns the PID of the emulator process
+ * @param emulator
+ */
+export function getPID(emulator: DownloadableEmulators): number {
+  const emulatorInstance = get(emulator).instance;
+  return emulatorInstance && emulatorInstance.pid ? emulatorInstance.pid : 0;
+}
+
+/**
  * @param targetName
  */
 export async function stop(targetName: DownloadableEmulators): Promise<void> {
-  const emulator = EmulatorDetails[targetName];
+  const emulator = get(targetName);
   return new Promise((resolve, reject) => {
     const logger = EmulatorLogger.forEmulator(emulator.name);
     if (emulator.instance) {
@@ -345,7 +372,7 @@ export async function start(
   extraEnv: NodeJS.ProcessEnv = {}
 ): Promise<void> {
   const downloadDetails = DownloadDetails[targetName];
-  const emulator = EmulatorDetails[targetName];
+  const emulator = get(targetName);
   const hasEmulator = fs.existsSync(getExecPath(targetName));
   const logger = EmulatorLogger.forEmulator(targetName);
   if (!hasEmulator || downloadDetails.opts.skipCache) {

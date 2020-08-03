@@ -55,8 +55,10 @@ export class PubsubEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.PUBSUB);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.PUBSUB),
     };
   }
 
