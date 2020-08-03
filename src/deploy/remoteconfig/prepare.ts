@@ -3,7 +3,7 @@ import { requireAuth } from "../../requireAuth";
 import * as fs from "fs";
 import getProjectId = require("../../getProjectId");
 import { requirePermissions } from "../../requirePermissions";
-import * as rcDeploy from "../remoteconfig/deploy";
+import * as rcDeploy from "./deploy";
 import  { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
  
 module.exports = new Command("remoteconfig:deploy")
