@@ -4,7 +4,6 @@ import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import { confirmUpdateWarning } from "./updateHelper";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 
@@ -37,6 +36,25 @@ export interface UpdateWarning {
 }
 
 /**
+ * Displays an update warning as markdown, and prompts the user for confirmation.
+ * @param updateWarning The update warning to display and prompt for.
+ */
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+  logger.info(marked(updateWarning.description));
+  if (updateWarning.action) {
+    logger.info(marked(updateWarning.action));
+  }
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
+  }
+}
+
+/**
  * Gets the sourceUrl for a given extension name and version from a registry entry
  * @param registryEntry the registry entry to look through.
  * @param name the name of the extension.
@@ -63,13 +81,13 @@ export function resolveSourceUrl(
  * @param registryEntry the registry entry to look through.
  * @param sourceUrl the source URL of the extension.
  */
-export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
+export function isPublishedSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
   const versions = _.get(registryEntry, "versions");
   return _.includes(versions, sourceUrl);
 }
 
 /**
- * Looks up and returns a entry from the official extensions registry.
+ * Looks up and returns a entry from the published extensions registry.
  * @param name the name of the extension.
  */
 export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
@@ -114,7 +132,7 @@ export async function promptForUpdateWarnings(
         const updateWarnings = registryEntry.updateWarnings[targetRange];
         for (const updateWarning of updateWarnings) {
           if (semver.satisfies(startVersion, updateWarning.from)) {
-            await confirmUpdateWarning(updateWarning);
+            await module.exports.confirmUpdateWarning(updateWarning);
             break;
           }
         }
@@ -142,7 +160,7 @@ export async function promptForAudienceConsent(registryEntry: RegistryEntry): Pr
 }
 
 /**
- * Fetches the official extensions registry.
+ * Fetches the published extensions registry.
  * @param onlyFeatured If true, only return the featured extensions.
  */
 export async function getExtensionRegistry(

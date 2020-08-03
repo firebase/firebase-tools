@@ -6,10 +6,12 @@ import TerminalRenderer = require("marked-terminal");
 import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
-import { UpdateWarning } from "./resolveSource";
+import * as resolveSource from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
+import { createSourceFromLocation, logPrefix } from "./extensionsHelper";
+import * as utils from "../utils";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -17,6 +19,56 @@ marked.setOptions({
 
 const addition = clc.green;
 const deletion = clc.red;
+
+function invalidSourceErrMsgTemplate(instanceId: string, source: string): string {
+  return `Unable to update from the source \`${clc.bold(
+    source
+  )}\`. To update this instance, you can either:\n
+  - Run \`${clc.bold("firebase ext:update " + instanceId)}\` to update from the published source.\n
+  - Check your directory path or URL, then run \`${clc.bold(
+    "firebase ext:update " + instanceId + " <otherSource>"
+  )}\` to update from a local directory or URL source.`;
+}
+
+function logUpdateVersionInfo(instanceId: string, from: string, to: string, source?: string) {
+  if (source) {
+    source = clc.bold(source);
+  } else {
+    source = "version";
+  }
+  utils.logLabeledBullet(
+    logPrefix,
+    `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`
+  );
+}
+
+export async function warningUpdateToOtherSource(
+  extensionName: string,
+  existingSource: string,
+  msgFromPublished: string,
+  msgFromOther: string
+) {
+  let updateWarning: resolveSource.UpdateWarning;
+  let updatingFromPublished = false;
+  try {
+    const registryEntry = await resolveSource.resolveRegistryEntry(extensionName);
+    updatingFromPublished = resolveSource.isPublishedSource(registryEntry, existingSource);
+    // eslint-disable-next-line
+  } catch {} // If registry entry does not exist, assume existing source was from local directory or URL.
+
+  if (updatingFromPublished) {
+    updateWarning = {
+      from: "",
+      description: `${msgFromPublished}`,
+    };
+  } else {
+    updateWarning = {
+      from: "",
+      description: `${msgFromOther}`,
+    };
+  }
+  await resolveSource.confirmUpdateWarning(updateWarning);
+}
 
 /**
  * Prints out all changes to the spec that don't require explicit approval or input
@@ -157,25 +209,6 @@ async function getConsent(field: string, message: string): Promise<void> {
 }
 
 /**
- * Displays an update warning as markdown, and prompts the user for confirmation.
- * @param updateWarning The update warning to display and prompt for.
- */
-export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
-  logger.info(marked(updateWarning.description));
-  if (updateWarning.action) {
-    logger.info(marked(updateWarning.action));
-  }
-  const continueUpdate = await promptOnce({
-    type: "confirm",
-    message: "Do you wish to continue with this update?",
-    default: false,
-  });
-  if (!continueUpdate) {
-    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
-  }
-}
-
-/**
  * Displays all differences between spec and newSpec.
  * First, displays all changes that do not require explicit confirmation,
  * then prompts the user for each change that requires confirmation.
@@ -255,4 +288,117 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     rolesToRemove.map((role) => role.role)
   );
   return await extensionsApi.updateInstance(projectId, instanceId, source, params);
+}
+
+/**
+ * Preparatory work for updating an extension instance to a local source, including ensuring local source is valid.
+ * @param projectId Id of the project containing the instance to update
+ * @param instanceId Id of the instance to update
+ * @param localSource path to the new local source
+ * @param existingSpec ExtensionSpec of existing instance source
+ * @param existingSource name of existing instance source
+ */
+export async function updateFromLocalSource(
+  projectId: string,
+  instanceId: string,
+  localSource: string,
+  existingSpec: extensionsApi.ExtensionSpec,
+  existingSource: string
+): Promise<string> {
+  let source;
+  try {
+    source = await createSourceFromLocation(projectId, localSource);
+  } catch (err) {
+    throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, localSource));
+  }
+  logUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
+  const msg1 =
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
+  const msg2 =
+    "After updating from a local source, this instance cannot be updated in the future to use an published source.";
+  utils.logLabeledBullet(
+    logPrefix,
+    `${clc.bold("You are updating this extension instance from a local source.")}\n`
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSpec.name,
+    existingSource,
+    `${msg1}\n\n${msg2}`,
+    msg1
+  );
+  return source.name;
+}
+
+/**
+ * Preparatory work for updating an extension instance to a URL source, including ensuring URL source is valid.
+ * @param projectId Id of the project containing the instance to update
+ * @param instanceId Id of the instance to update
+ * @param urlSource URL of the new source
+ * @param existingSpec ExtensionSpec of existing instance source
+ * @param existingSource name of existing instance source
+ */
+export async function updateFromUrlSource(
+  projectId: string,
+  instanceId: string,
+  urlSource: string,
+  existingSpec: extensionsApi.ExtensionSpec,
+  existingSource: string
+): Promise<string> {
+  let source;
+  try {
+    source = await createSourceFromLocation(projectId, urlSource);
+  } catch (err) {
+    throw new FirebaseError(invalidSourceErrMsgTemplate(instanceId, urlSource));
+  }
+  logUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
+  const msg1 =
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
+  const msg2 =
+    "After updating from a URL source, this instance cannot be updated in the future to use an published source.";
+  utils.logLabeledBullet(
+    logPrefix,
+    `${clc.bold("You are updating this extension instance from a URL source.")}\n`
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSpec.name,
+    existingSource,
+    `${msg1}\n\n${msg2}`,
+    msg1
+  );
+  return source.name;
+}
+
+/**
+ * Preparatory work for updating an published extension instance to the latest version.
+ * @param projectId Id of the project containing the instance to update
+ * @param instanceId Id of the instance to update
+ * @param existingSpec ExtensionSpec of the existing instance source
+ */
+export async function updateFromPublishedSource(
+  projectId: string,
+  instanceId: string,
+  existingSpec: extensionsApi.ExtensionSpec
+): Promise<string> {
+  // Updating to a version from an published source
+  let registryEntry;
+  try {
+    registryEntry = await resolveSource.resolveRegistryEntry(existingSpec.name);
+  } catch (err) {
+    // If registry entry does not exist, assume existing source was from local directory or URL.
+    throw new FirebaseError(
+      `Cannot find the latest version of this extension. To update this instance to a local source or URL source, run "firebase ext:update ${instanceId} <localSourceOrURL>".`
+    );
+  }
+  const targetVersion = resolveSource.getTargetVersion(registryEntry, "latest");
+  logUpdateVersionInfo(instanceId, existingSpec.version, targetVersion);
+
+  const publishedSourceMsg = "You are updating this extension instance from an published source.";
+  utils.logLabeledBullet(
+    logPrefix,
+    `${clc.bold(
+      publishedSourceMsg
+    )}\nAll the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.\n`
+  );
+  await resolveSource.promptForUpdateWarnings(registryEntry, existingSpec.version, targetVersion);
+  return resolveSource.resolveSourceUrl(registryEntry, existingSpec.name, targetVersion);
 }

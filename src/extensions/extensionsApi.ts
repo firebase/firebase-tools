@@ -1,3 +1,5 @@
+import * as semver from "semver";
+
 import * as _ from "lodash";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
@@ -574,6 +576,9 @@ export function parseRef(
     const publisherId = parts[1];
     const extensionId = parts[2];
     const version = parts[4];
+    if (version && !semver.valid(version)) {
+      throw new FirebaseError(`Extension reference ${ref} contains an invalid version ${version}.`);
+    }
     return { publisherId, extensionId, version };
   }
   throw new FirebaseError(

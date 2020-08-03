@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as resolveSource from "../../extensions/resolveSource";
-import * as updateHelper from "../../extensions/updateHelper";
 
 const testRegistryEntry = {
   name: "test-stuff",
@@ -46,9 +45,8 @@ const testRegistryEntry = {
 
 describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
-
   beforeEach(() => {
-    confirmUpdateWarningSpy = sinon.stub(updateHelper, "confirmUpdateWarning").resolves();
+    confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves(true);
   });
 
   afterEach(() => {
@@ -66,7 +64,7 @@ describe("checkForUpdateWarnings", () => {
         "After updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
     };
     expect(confirmUpdateWarningSpy).to.have.been.calledWith(expectedUpdateWarning);
-  });
+  }).timeout(5000);
 
   it("should display no warnings if none are applicable", async () => {
     await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.1", "0.1.2");
@@ -74,18 +72,17 @@ describe("checkForUpdateWarnings", () => {
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
   });
 });
-
-describe("isOfficialSource", () => {
-  it("should return true for an official source", () => {
-    const result = resolveSource.isOfficialSource(
+describe("isPublishedSource", () => {
+  it("should return true for an published source", () => {
+    const result = resolveSource.isPublishedSource(
       testRegistryEntry,
       "projects/firebasemods/sources/2kd"
     );
     expect(result).to.be.true;
   });
 
-  it("should return false for an unofficial source", () => {
-    const result = resolveSource.isOfficialSource(
+  it("should return false for an unpublished source", () => {
+    const result = resolveSource.isPublishedSource(
       testRegistryEntry,
       "projects/firebasemods/sources/invalid"
     );

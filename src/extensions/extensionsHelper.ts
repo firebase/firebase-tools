@@ -1,5 +1,7 @@
 import * as _ from "lodash";
 import * as ora from "ora";
+import * as semver from "semver";
+import * as fs from "fs";
 
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
@@ -18,6 +20,7 @@ import {
   getSource,
   Param,
   ParamType,
+  parseRef,
 } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
@@ -33,6 +36,15 @@ export enum SpecParamType {
   SELECT = "select",
   MULTISELECT = "multiselect",
   STRING = "string",
+}
+
+export enum SourceOrigin {
+  "REGISTRY",
+  "LOCAL",
+  "PUBLISHED_EXTENSION",
+  "PUBLISHED_EXTENSION_VERSION",
+  "URL",
+  "VERSION",
 }
 
 export const logPrefix = "extensions";
@@ -432,4 +444,34 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
     });
   }
   return true;
+}
+
+export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
+  if (!sourceOrVersion) {
+    return SourceOrigin.REGISTRY;
+  }
+  if (urlRegex.test(sourceOrVersion)) {
+    return SourceOrigin.URL;
+  }
+  if (semver.valid(sourceOrVersion)) {
+    return SourceOrigin.VERSION;
+  }
+  try {
+    const { publisherId, extensionId, version } = parseRef(sourceOrVersion);
+    if (publisherId && extensionId && !version) {
+      return SourceOrigin.PUBLISHED_EXTENSION;
+    }
+    if (publisherId && extensionId && version) {
+      return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
+    }
+  } catch (err) {
+    // sourceOrVersion can still be a valid local path
+    if (fs.existsSync(sourceOrVersion)) {
+      return SourceOrigin.LOCAL;
+    }
+    throw err;
+  }
+  throw new FirebaseError(
+    `Invalid source ${sourceOrVersion}. Please check to make sure this source exists and try again.`
+  );
 }
