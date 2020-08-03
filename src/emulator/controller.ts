@@ -234,9 +234,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   // If there is an export metadata file, we always prefer that
   const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
   if (fileExistsSync(importFilePath)) {
-    return JSON.parse(
-      fs.readFileSync(importFilePath, "utf8").toString()
-    ) as ExportMetadata;
+    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
   }
 
   const fileList = fs.readdirSync(importPath);
@@ -254,7 +252,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     };
 
     EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
-      "INFO",
+      "BULLET",
       "firestore",
       `Detected non-emulator Firestore export, creating metadata file ${importFilePath}`
     );
@@ -275,7 +273,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     };
 
     EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
-      "INFO",
+      "BULLET",
       "firestore",
       `Detected non-emulator Database export, creating metadata file ${importFilePath}`
     );
