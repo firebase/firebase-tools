@@ -13,7 +13,7 @@ const tableHead = ["Update User", "Version Number", "Update Time"];
 function pushTableContents(table: Table, version: Version): number {
   return table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
 }
-// Call inner body once so that you won't have to lloop three times
+
 module.exports = new Command("remoteconfig:versions:list")
   .description(
     "Get a list of Remote Config template versions that have been published for a Firebase project"
@@ -24,28 +24,19 @@ module.exports = new Command("remoteconfig:versions:list")
   .action(async (options) => {
     const versionsList: ListVersionsResult = await rcVersion.getVersions(getProjectId(options));
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    const printLimit = !!options.limit;
+    const defaultLimit = 10;
 
-    for (let item = 0; item < versionsList.versions.length; item++) {
-      if (Object.prototype.hasOwnProperty.call(versionsList.versions, item)) {
-        if (printLimit) {
-          if (options.limit == 0) {
-            pushTableContents(table, versionsList.versions[item]);
-          } else {
-            if (item < options.limit) {
-              pushTableContents(table, versionsList.versions[item]);
-            } else {
-              break;
-            }
-          }
-        } else {
-          if (item < 10) {
-            pushTableContents(table, versionsList.versions[item]);
-          } else {
-            break;
-          }
+    let size = defaultLimit;
+    if (options.limit) {
+      size = options.limit === 0 ? versionsList.versions.length : options.limit;
+      for (let item = 0; item < versionsList.versions.length; item++) {
+        if (options.limit == 0) {
+          pushTableContents(table, versionsList.versions[item]);
         }
       }
+    }
+    for (let item = 0; item < size; item++) {
+      pushTableContents(table, versionsList.versions[item]);
     }
     logger.info(table.toString());
   });

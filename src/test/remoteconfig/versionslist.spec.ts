@@ -8,141 +8,52 @@ import { ListVersionsResult } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
+function createVersionList(version: string, date: string) {
+  return {
+    versionNumber: version,
+    updateTime: date,
+    updateUser: { email: "jackiechu@google.com" },
+  };
+}
 // Test template with limit of 2
 const expectedProjectInfoLimit: ListVersionsResult = {
   versions: [
-    {
-      versionNumber: "114",
-      updateTime: "2020-07-16T23:22:23.608Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "113",
-      updateTime: "2020-06-18T21:10:08.992Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
+    createVersionList("114", "2020-07-16T23:22:23.608Z"),
+    createVersionList("113", "2020-06-18T21:10:08.992Z"),
   ],
 };
 
 // Test template with no limit (default template)
 const expectedProjectInfoDefault: ListVersionsResult = {
   versions: [
-    {
-      versionNumber: "114",
-      updateTime: "2020-07-16T23:22:23.608Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "113",
-      updateTime: "2020-06-18T21:10:08.992Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "112",
-      updateTime: "2020-06-16T22:20:34.549Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "111",
-      updateTime: "2020-06-16T22:14:24.419Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "110",
-      updateTime: "2020-06-16T22:05:03.116Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "109",
-      updateTime: "2020-06-16T21:55:19.415Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "108",
-      updateTime: "2020-06-16T21:54:55.799Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "107",
-      updateTime: "2020-06-16T21:48:37.565Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "106",
-      updateTime: "2020-06-16T21:44:41.043Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "105",
-      updateTime: "2020-06-16T21:44:13.860Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
+    createVersionList("114", "2020-07-16T23:22:23.608Z"),
+    createVersionList("113", "2020-06-18T21:10:08.992Z"),
+    createVersionList("112", "2020-06-16T22:20:34.549Z"),
+    createVersionList("111", "2020-06-16T22:14:24.419Z"),
+    createVersionList("110", "2020-06-16T22:05:03.116Z"),
+    createVersionList("109", "2020-06-16T21:55:19.415Z"),
+    createVersionList("108", "2020-06-16T21:54:55.799Z"),
+    createVersionList("107", "2020-06-16T21:48:37.565Z"),
+    createVersionList("106", "2020-06-16T21:44:41.043Z"),
+    createVersionList("105", "2020-06-16T21:44:13.860Z"),
   ],
 };
 
 // Test template with limit of 0
 const expectedProjectInfoNoLimit: ListVersionsResult = {
   versions: [
-    {
-      versionNumber: "114",
-      updateTime: "2020-07-16T23:22:23.608Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "113",
-      updateTime: "2020-06-18T21:10:08.992Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "112",
-      updateTime: "2020-06-16T22:20:34.549Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "111",
-      updateTime: "2020-06-16T22:14:24.419Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "110",
-      updateTime: "2020-06-16T22:05:03.116Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "109",
-      updateTime: "2020-06-16T21:55:19.415Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "108",
-      updateTime: "2020-06-16T21:54:55.799Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "107",
-      updateTime: "2020-06-16T21:48:37.565Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "106",
-      updateTime: "2020-06-16T21:44:41.043Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "105",
-      updateTime: "2020-06-16T21:44:13.860Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "104",
-      updateTime: "2020-06-16T21:39:19.422Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
-    {
-      versionNumber: "103",
-      updateTime: "2020-06-16T21:37:40.858Z",
-      updateUser: { email: "jackiechu@google.com" },
-    },
+    createVersionList("114", "2020-07-16T23:22:23.608Z"),
+    createVersionList("113", "2020-06-18T21:10:08.992Z"),
+    createVersionList("112", "2020-06-16T22:20:34.549Z"),
+    createVersionList("111", "2020-06-16T22:14:24.419Z"),
+    createVersionList("110", "2020-06-16T22:05:03.116Z"),
+    createVersionList("109", "2020-06-16T21:55:19.415Z"),
+    createVersionList("108", "2020-06-16T21:54:55.799Z"),
+    createVersionList("107", "2020-06-16T21:48:37.565Z"),
+    createVersionList("106", "2020-06-16T21:44:41.043Z"),
+    createVersionList("105", "2020-06-16T21:44:13.860Z"),
+    createVersionList("104", "2020-06-16T21:39:19.422Z"),
+    createVersionList("103", "2020-06-16T21:37:40.858Z"),
   ],
 };
 
@@ -205,7 +116,9 @@ describe("RemoteConfig ListVersions", () => {
       apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
 
       const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
+      const defaultLimit = 10;
 
+      expect(RCtemplateVersion.versions.length).to.deep.equal(defaultLimit);
       expect(RCtemplateVersion).to.deep.equal(expectedProjectInfoDefault);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
@@ -230,7 +143,7 @@ describe("RemoteConfig ListVersions", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to get versions for Firebase project ${PROJECT_ID}. ` +
+        `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. ` +
           "Please make sure the project exists and your account has permission to access it."
       );
       expect(err.original).to.equal(expectedError);
