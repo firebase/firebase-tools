@@ -22,7 +22,7 @@ export async function getVersions(projectId: string): Promise<ListVersionsResult
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get versions for Firebase project ${projectId}. ` +
+      `Failed to get Remote Config template versions for Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
