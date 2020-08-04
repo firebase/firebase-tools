@@ -8,7 +8,7 @@ import { ListVersionsResult, Version } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
-function createVersionList(version: string, date: string): Version {
+function createVersion(version: string, date: string): Version {
   return {
     versionNumber: version,
     updateTime: date,
@@ -18,8 +18,8 @@ function createVersionList(version: string, date: string): Version {
 // Test template with limit of 2
 const expectedProjectInfoLimit: ListVersionsResult = {
   versions: [
-    createVersionList("114", "2020-07-16T23:22:23.608Z"),
-    createVersionList("113", "2020-06-18T21:10:08.992Z"),
+    createVersion("114", "2020-07-16T23:22:23.608Z"),
+    createVersion("113", "2020-06-18T21:10:08.992Z"),
   ],
 };
 
@@ -27,14 +27,14 @@ const expectedProjectInfoLimit: ListVersionsResult = {
 const expectedProjectInfoDefault: ListVersionsResult = {
   versions: [
     ...expectedProjectInfoLimit.versions,
-    createVersionList("112", "2020-06-16T22:20:34.549Z"),
-    createVersionList("111", "2020-06-16T22:14:24.419Z"),
-    createVersionList("110", "2020-06-16T22:05:03.116Z"),
-    createVersionList("109", "2020-06-16T21:55:19.415Z"),
-    createVersionList("108", "2020-06-16T21:54:55.799Z"),
-    createVersionList("107", "2020-06-16T21:48:37.565Z"),
-    createVersionList("106", "2020-06-16T21:44:41.043Z"),
-    createVersionList("105", "2020-06-16T21:44:13.860Z"),
+    createVersion("112", "2020-06-16T22:20:34.549Z"),
+    createVersion("111", "2020-06-16T22:14:24.419Z"),
+    createVersion("110", "2020-06-16T22:05:03.116Z"),
+    createVersion("109", "2020-06-16T21:55:19.415Z"),
+    createVersion("108", "2020-06-16T21:54:55.799Z"),
+    createVersion("107", "2020-06-16T21:48:37.565Z"),
+    createVersion("106", "2020-06-16T21:44:41.043Z"),
+    createVersion("105", "2020-06-16T21:44:13.860Z"),
   ],
 };
 
@@ -42,8 +42,8 @@ const expectedProjectInfoDefault: ListVersionsResult = {
 const expectedProjectInfoNoLimit: ListVersionsResult = {
   versions: [
     ...expectedProjectInfoDefault.versions,
-    createVersionList("104", "2020-06-16T21:39:19.422Z"),
-    createVersionList("103", "2020-06-16T21:37:40.858Z"),
+    createVersion("104", "2020-06-16T21:39:19.422Z"),
+    createVersion("103", "2020-06-16T21:37:40.858Z"),
   ],
 };
 
