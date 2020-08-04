@@ -8,7 +8,7 @@ import { ListVersionsResult } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
-function createVersionList(version: string, date: string): Record<string, Object> {
+function createVersionList(version: string, date: string): Record<string, any> {
   return {
     versionNumber: version,
     updateTime: date,
