@@ -87,7 +87,7 @@ describe("RemoteConfig ListVersions", () => {
       expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 300,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,
