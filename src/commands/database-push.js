@@ -10,7 +10,7 @@ var { FirebaseError } = require("../error");
 var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
 const { populateInstanceDetails } = require("../management/database");
-const { realtimeOriginOrCustomUrl } = require("../database/api");
+const { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
 var utils = require("../utils");
 var clc = require("cli-color");
 var logger = require("../logger");
@@ -34,13 +34,13 @@ module.exports = new Command("database:push <path> [infile]")
     }
     var inStream =
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
-    const origin = realtimeOriginOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
     var url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
-
+    logger.debug("Database URL:" + url)
     var reqOptions = {
       url: url,
       json: true,
