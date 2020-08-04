@@ -4,11 +4,11 @@ import * as sinon from "sinon";
 import * as api from "../../api";
 import * as remoteconfig from "../../remoteconfig/versionslist";
 import { mockAuth } from "../helpers";
-import { ListVersionsResult } from "../../remoteconfig/interfaces";
+import { ListVersionsResult, Version } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
-function createVersionList(version: string, date: string): Record<string, any> {
+function createVersionList(version: string, date: string): Version {
   return {
     versionNumber: version,
     updateTime: date,
