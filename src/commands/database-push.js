@@ -40,7 +40,7 @@ module.exports = new Command("database:push <path> [infile]")
     if (!infile && !options.data) {
       utils.explainStdin();
     }
-    logger.debug("Database URL:" + url)
+    logger.debug("Database URL:" + url);
     var reqOptions = {
       url: url,
       json: true,

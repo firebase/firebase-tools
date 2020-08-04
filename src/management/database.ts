@@ -8,7 +8,6 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import { previews } from "../previews";
 import { FirebaseError } from "../error";
-import { env } from "process";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 
