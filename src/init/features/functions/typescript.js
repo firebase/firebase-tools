@@ -16,7 +16,7 @@ var PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.nolint.json"),
   "utf8"
 );
-var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, ".eslintrc"), "utf8");
+var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, ".eslintrc.js"), "utf8");
 var TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
@@ -39,7 +39,7 @@ module.exports = function(setup, config) {
         return config
           .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
           .then(function() {
-            return config.askWriteProjectFile("functions/.eslintrc", ESLINT_TEMPLATE);
+            return config.askWriteProjectFile("functions/.eslintrc.js", ESLINT_TEMPLATE);
           });
       }
       _.set(setup, "config.functions.predeploy", 'npm --prefix "$RESOURCE_DIR" run build');
