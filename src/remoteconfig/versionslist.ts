@@ -26,8 +26,7 @@ export async function getVersions(projectId: string, pageSize = 10): Promise<Lis
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get Remote Config template versions for Firebase project ${projectId}. ` +
-        "Please make sure the project exists and your account has permission to access it.",
+      `Failed to get Remote Config template versions for Firebase project ${projectId}. `,
       { exit: 2, original: err }
     );
   }
