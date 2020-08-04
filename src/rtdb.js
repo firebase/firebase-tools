@@ -7,7 +7,7 @@ const { populateInstanceDetails } = require("./management/database");
 const { realtimeOriginOrCustomUrl } = require("./database/api");
 exports.updateRules = function(projectId, instance, src, options) {
   options = options || {};
-  var path = "/.settings/rules.json";
+  var path = ".settings/rules.json";
   if (options.dryRun) {
     path += "?dryRun=true";
   }
