@@ -26,8 +26,7 @@ const expectedProjectInfoLimit: ListVersionsResult = {
 // Test template with no limit (default template)
 const expectedProjectInfoDefault: ListVersionsResult = {
   versions: [
-    createVersionList("114", "2020-07-16T23:22:23.608Z"),
-    createVersionList("113", "2020-06-18T21:10:08.992Z"),
+    ...expectedProjectInfoLimit.versions,
     createVersionList("112", "2020-06-16T22:20:34.549Z"),
     createVersionList("111", "2020-06-16T22:14:24.419Z"),
     createVersionList("110", "2020-06-16T22:05:03.116Z"),
@@ -42,16 +41,7 @@ const expectedProjectInfoDefault: ListVersionsResult = {
 // Test template with limit of 0
 const expectedProjectInfoNoLimit: ListVersionsResult = {
   versions: [
-    createVersionList("114", "2020-07-16T23:22:23.608Z"),
-    createVersionList("113", "2020-06-18T21:10:08.992Z"),
-    createVersionList("112", "2020-06-16T22:20:34.549Z"),
-    createVersionList("111", "2020-06-16T22:14:24.419Z"),
-    createVersionList("110", "2020-06-16T22:05:03.116Z"),
-    createVersionList("109", "2020-06-16T21:55:19.415Z"),
-    createVersionList("108", "2020-06-16T21:54:55.799Z"),
-    createVersionList("107", "2020-06-16T21:48:37.565Z"),
-    createVersionList("106", "2020-06-16T21:44:41.043Z"),
-    createVersionList("105", "2020-06-16T21:44:13.860Z"),
+    ...expectedProjectInfoDefault.versions,
     createVersionList("104", "2020-06-16T21:39:19.422Z"),
     createVersionList("103", "2020-06-16T21:37:40.858Z"),
   ],
@@ -97,7 +87,7 @@ describe("RemoteConfig ListVersions", () => {
       expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=10`,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,
@@ -109,10 +99,9 @@ describe("RemoteConfig ListVersions", () => {
     it("should return with default 10 versions when no limit is set", async () => {
       apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
 
-      const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID, 10);
-      const defaultLimit = 10;
+      const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
 
-      expect(RCtemplateVersion.versions.length).to.deep.equal(defaultLimit);
+      expect(RCtemplateVersion.versions.length).to.deep.equal(10);
       expect(RCtemplateVersion).to.deep.equal(expectedProjectInfoDefault);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
@@ -143,7 +132,7 @@ describe("RemoteConfig ListVersions", () => {
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=10`,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,

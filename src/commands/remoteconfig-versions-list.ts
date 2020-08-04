@@ -18,24 +18,16 @@ module.exports = new Command("remoteconfig:versions:list")
   .description(
     "Get a list of Remote Config template versions that have been published for a Firebase project"
   )
-  .option("--limit <number>", "limit the number of versions being returned")
+  .option("--limit <pageSize>", "limit the number of versions being returned")
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
-    const versionsList: ListVersionsResult = await rcVersion.getVersions(getProjectId(options));
+    const versionsList: ListVersionsResult = await rcVersion.getVersions(
+      getProjectId(options),
+      options.limit
+    );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    const defaultLimit = 10;
-
-    let size = defaultLimit;
-    if (options.limit) {
-      size = options.limit === 0 ? versionsList.versions.length : options.limit;
-      for (let item = 0; item < versionsList.versions.length; item++) {
-        if (options.limit == 0) {
-          pushTableContents(table, versionsList.versions[item]);
-        }
-      }
-    }
-    for (let item = 0; item < size; item++) {
+    for (let item = 0; item < versionsList.versions.length; item++) {
       pushTableContents(table, versionsList.versions[item]);
     }
     logger.info(table.toString());

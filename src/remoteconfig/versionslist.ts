@@ -11,10 +11,7 @@ const TIMEOUT = 30000;
  * @param pageSize The maximum number of items to return per page
  * @return {Promise<ListVersionsResult>} Returns a Promise of a list of Remote Config template versions that have been published
  */
-export async function getVersions(
-  projectId: string,
-  pageSize?: number
-): Promise<ListVersionsResult> {
+export async function getVersions(projectId: string, pageSize = 10): Promise<ListVersionsResult> {
   try {
     let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
     if (pageSize) {
