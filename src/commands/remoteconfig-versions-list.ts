@@ -18,7 +18,10 @@ module.exports = new Command("remoteconfig:versions:list")
   .description(
     "Get a list of Remote Config template versions that have been published for a Firebase project"
   )
-  .option("--limit <pageSize>", "limit the number of versions being returned")
+  .option(
+    "--limit <maxResults>",
+    "limit the number of versions being returned. Pass '0' to fetch all versions."
+  )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
