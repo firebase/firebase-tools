@@ -22,7 +22,7 @@ module.exports = new Command("remoteconfig:versions:list")
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
   .action(async (options) => {
-    const versionsList: ListVersionsResult = await rcVersion.getVersions(getProjectId(options));
+    let versionsList: ListVersionsResult = await rcVersion.getVersions(getProjectId(options));
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     const defaultLimit = 10;
 

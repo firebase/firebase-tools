@@ -73,56 +73,50 @@ describe("RemoteConfig ListVersions", () => {
 
   describe("getVersionTemplate", () => {
     it("should return the list of versions up to the limit", async () => {
-      let limit;
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
+      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoLimit });
 
-      if (limit == 2) {
-        const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
+      const RCtemplate = await remoteconfig.getVersions(PROJECT_ID, 2);
 
-        expect(RCtemplate).to.deep.equal(expectedProjectInfoLimit);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
-          {
-            auth: true,
-            origin: api.remoteConfigApiOrigin,
-            timeout: 30000,
-          }
-        );
-      }
+      expect(RCtemplate).to.deep.equal(expectedProjectInfoLimit);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 2,
+        {
+          auth: true,
+          origin: api.remoteConfigApiOrigin,
+          timeout: 30000,
+        }
+      );
     });
 
     it("should return all the versions when the limit is 0", async () => {
-      let limit;
       apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
 
-      if (limit == 0) {
-        const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
+      const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
 
-        expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
-        expect(apiRequestStub).to.be.calledOnceWith(
-          "GET",
-          `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
-          {
-            auth: true,
-            origin: api.remoteConfigApiOrigin,
-            timeout: 30000,
-          }
-        );
-      }
+      expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "GET",
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+        {
+          auth: true,
+          origin: api.remoteConfigApiOrigin,
+          timeout: 30000,
+        }
+      );
     });
 
     it("should return with default 10 versions when no limit is set", async () => {
       apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
 
-      const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
+      const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID, 10);
       const defaultLimit = 10;
 
       expect(RCtemplateVersion.versions.length).to.deep.equal(defaultLimit);
       expect(RCtemplateVersion).to.deep.equal(expectedProjectInfoDefault);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=` + 10,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,

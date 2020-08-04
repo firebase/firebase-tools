@@ -10,9 +10,15 @@ const TIMEOUT = 30000;
  * @param projectId Input is the Project ID string
  * @return {Promise<ListVersionsResult>} Returns a Promise of a list of Remote Config template versions that have been published
  */
-export async function getVersions(projectId: string): Promise<ListVersionsResult> {
+export async function getVersions(
+  projectId: string,
+  pageSize?: number
+): Promise<ListVersionsResult> {
   try {
-    const request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    if (pageSize) {
+      request = request + "?pageSize=" + pageSize;
+    }
     const response = await api.request("GET", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
