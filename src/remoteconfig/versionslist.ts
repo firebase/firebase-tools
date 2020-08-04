@@ -8,6 +8,7 @@ const TIMEOUT = 30000;
 /**
  * Get a list of Remote Config template versions that have been published, sorted in reverse chronological order for a specific project
  * @param projectId Input is the Project ID string
+ * @param pageSize The maximum number of items to return per page
  * @return {Promise<ListVersionsResult>} Returns a Promise of a list of Remote Config template versions that have been published
  */
 export async function getVersions(
