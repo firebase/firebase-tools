@@ -31,4 +31,5 @@ module.exports = new Command("remoteconfig:versions:list")
       pushTableContents(table, versionsList.versions[item]);
     }
     logger.info(table.toString());
+    return versionsList;
   });

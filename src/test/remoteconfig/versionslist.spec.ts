@@ -126,8 +126,7 @@ describe("RemoteConfig ListVersions", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. ` +
-          "Please make sure the project exists and your account has permission to access it."
+        `Failed to get Remote Config template versions for Firebase project ${PROJECT_ID}. `
       );
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
