@@ -17,3 +17,6 @@ module.exports = new Command("remoteconfig:deploy")
    const template : RemoteConfigTemplate = JSON.parse(templateString);
    await rcDeploy.publishTemplate(getProjectId(options), template, options);
   });
+
+// module.exports = function(context, options) {
+//   var filePath = options.config.get("remoteconfig.template");
