@@ -215,10 +215,22 @@ function processKillSignal(
   rej: (value?: unknown) => void,
   options: any
 ): SignalsListener {
+  let lastSignal = new Date().getTime();
   let signalCount = 0;
   return async () => {
     try {
+      const now = new Date().getTime();
+      const diff = now - lastSignal;
+      if (diff < 100) {
+        // If we got a signal twice in 100ms it likely was not an intentional human action.
+        // It could be a shaky MacBook keyboard or a known issue with "npm" scripts and signals.
+        logger.debug(`Ignoring signal ${signal} due to short delay of ${diff}ms`);
+        return;
+      }
+
       signalCount = signalCount + 1;
+      lastSignal = now;
+
       const signalDisplay = signal === "SIGINT" ? `SIGINT (Ctrl-C)` : signal;
       logger.debug(`Received signal ${signalDisplay} ${signalCount}`);
       logger.info(" "); // to not indent the log with the possible Ctrl-C char
