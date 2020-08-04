@@ -254,9 +254,8 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
       "BULLET",
       "firestore",
-      `Detected non-emulator Firestore export, creating metadata file ${importFilePath}`
+      `Detected non-emulator Firestore export at ${importPath}`
     );
-    fs.writeFileSync(importFilePath, JSON.stringify(metadata, undefined, 2));
 
     return metadata;
   }
@@ -275,10 +274,8 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
     EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
       "BULLET",
       "firestore",
-      `Detected non-emulator Database export, creating metadata file ${importFilePath}`
+      `Detected non-emulator Database export at ${importPath}`
     );
-
-    fs.writeFileSync(importFilePath, JSON.stringify(metadata, undefined, 2));
 
     return metadata;
   }
