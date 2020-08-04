@@ -48,7 +48,7 @@ export class EmulatorUI implements EmulatorInstance {
       name: this.getName(),
       host: this.args.host,
       port: this.args.port,
-      pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
+      pid: downloadableEmulators.getPID(Emulators.UI),
     };
   }
 

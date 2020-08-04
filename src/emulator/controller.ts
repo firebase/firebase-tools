@@ -179,6 +179,10 @@ export function shouldStart(options: any, name: Emulators): boolean {
   const emulatorInTargets = targets.indexOf(name) >= 0;
 
   if (name === Emulators.UI) {
+    if (options.ui) {
+      return true;
+    }
+
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.

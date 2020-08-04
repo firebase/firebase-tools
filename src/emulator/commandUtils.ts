@@ -46,6 +46,9 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
   `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
   ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
 
+export const FLAG_UI = "--ui";
+export const DESC_UI = "run the Emulator UI";
+
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
 export const DESC_TEST_CONFIG =
@@ -212,10 +215,22 @@ function processKillSignal(
   rej: (value?: unknown) => void,
   options: any
 ): SignalsListener {
+  let lastSignal = new Date().getTime();
   let signalCount = 0;
   return async () => {
     try {
+      const now = new Date().getTime();
+      const diff = now - lastSignal;
+      if (diff < 100) {
+        // If we got a signal twice in 100ms it likely was not an intentional human action.
+        // It could be a shaky MacBook keyboard or a known issue with "npm" scripts and signals.
+        logger.debug(`Ignoring signal ${signal} due to short delay of ${diff}ms`);
+        return;
+      }
+
       signalCount = signalCount + 1;
+      lastSignal = now;
+
       const signalDisplay = signal === "SIGINT" ? `SIGINT (Ctrl-C)` : signal;
       logger.debug(`Received signal ${signalDisplay} ${signalCount}`);
       logger.info(" "); // to not indent the log with the possible Ctrl-C char
@@ -374,6 +389,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
  *  @param options: A Commander options object.
  */
 export async function emulatorExec(script: string, options: any) {
+  shutdownWhenKilled(options);
   const projectId = getProjectId(options, true);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
@@ -381,7 +397,8 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    await controller.startAll(options, /* noUi = */ true);
+    const excludeUi = !options.ui;
+    await controller.startAll(options, excludeUi);
     exitCode = await runScript(script, extraEnv);
     await onExit(options);
   } finally {
