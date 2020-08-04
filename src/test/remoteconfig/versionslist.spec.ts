@@ -82,12 +82,12 @@ describe("RemoteConfig ListVersions", () => {
     it("should return all the versions when the limit is 0", async () => {
       apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
 
-      const RCtemplate = await remoteconfig.getVersions(PROJECT_ID);
+      const RCtemplate = await remoteconfig.getVersions(PROJECT_ID, 0);
 
       expect(RCtemplate).to.deep.equal(expectedProjectInfoNoLimit);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions?pageSize=10`,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:listVersions`,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,
