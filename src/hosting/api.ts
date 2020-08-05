@@ -1,7 +1,7 @@
 import { FirebaseError } from "../error";
 import * as api from "../api";
 
-const ONE_WEEK_MS = 86400000; // 24 * 60 * 60 * 1000
+const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
 interface ActingUser {
   // The email address of the user when the user performed the action.
