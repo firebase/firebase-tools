@@ -77,8 +77,9 @@ module.exports = function(context, options) {
         if (!fsutils.dirExistsSync(resolveProjectPath(options, i18nPath))) {
           utils.logLabeledWarning(
             "hosting",
-            `The I18n Rewrites feature is enabled, but the directory ` +
-              `could not be found within '${cfg.public}' at root '${cfg.i18n.root}'.`
+            `Couldn't find specified i18n root directory ${clc.bold(
+              cfg.i18n.root
+            )} in public directory ${clc.bold(cfg.public)}.`
           );
         }
       }
