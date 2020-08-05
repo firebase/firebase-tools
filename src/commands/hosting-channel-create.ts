@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -89,7 +89,20 @@ export default new Command("hosting:channel:create [channelId]")
         throw new FirebaseError(`"channelId" must not be empty`);
       }
 
-      const channel = await createChannel(projectId, site, channelId, expireTTL);
+      let channel: Channel;
+      try {
+        channel = await createChannel(projectId, site, channelId, expireTTL);
+      } catch (e) {
+        if (e.status == 409) {
+          throw new FirebaseError(
+            `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
+              channelId
+            )} with: ${yellow(`firebase hosting:channel:deploy ${channelId}`)}`,
+            { original: e }
+          );
+        }
+        throw e;
+      }
 
       logger.info();
       logLabeledSuccess(
