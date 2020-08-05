@@ -426,6 +426,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     const databaseHost = "localhost";
     const databasePort = "9000";
 
+    console.log("setTriggersPath = " + setTriggersPath);
+    console.log("bundle = " + JSON.stringify(bundle));
+
     return api
       .request("POST", setTriggersPath, {
         origin: `http://${databaseHost}:${databasePort}`,
