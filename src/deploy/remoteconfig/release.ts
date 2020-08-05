@@ -1,8 +1,15 @@
 import * as fs from "fs";
+import logger = require("../../logger");
+import { FirebaseError } from "../../error";
+import api = require("../../api");
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 const getProjectId = require("../../getProjectId");
 const createEtag = require("./prepare");
+import { validateInputRemoteConfigTemplate } from "./prepare";
 
-module.exports = function(context, options) {
+const TIMEOUT = 30000;
+
+module.exports = function(context: any, options: any) {
     // if(!context.remoteconfig || !context.remoteconfig.deploy) {
     //     return Promise.resolve();
     // }
@@ -17,10 +24,11 @@ module.exports = function(context, options) {
 
 // Deploys project information/template based on Firebase project ID
 async function deployTemplate(
-    projectId,
-    template,
-    options, 
-) {
+  projectId: string,
+  template: RemoteConfigTemplate,
+  options?: { force: boolean }, 
+): Promise<RemoteConfigTemplate>
+ {
     try {
       console.log(template.conditions)
       
@@ -52,7 +60,7 @@ async function deployTemplate(
     }
   }
    
-async function publishTemplate(projectId, template, options) {
+   async function publishTemplate(projectId: string, template: RemoteConfigTemplate, options?: { force: boolean }): Promise<RemoteConfigTemplate> {
     let temporaryTemplate = {
       conditions: template.conditions,
       parameters: template.parameters,
@@ -60,7 +68,7 @@ async function publishTemplate(projectId, template, options) {
       version: template.version,
       etag: await createEtag(projectId),
     }
-    let validTemplate = temporaryTemplate;
+    let validTemplate: RemoteConfigTemplate = temporaryTemplate;
     if (!options || !options.force == true) {
       validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
     } 

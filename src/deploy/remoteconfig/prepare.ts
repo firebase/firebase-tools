@@ -1,15 +1,18 @@
+"use strict";
+
 import * as fs from "fs";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 const rcGet  = require ("../../remoteconfig/get");
 const getProjectId = require("../../getProjectId");
 const _load = require("../../config");
 
-module.exports = async function(context, options) {
+module.exports = async function(context: any, options: any): Promise<void> {
   // if (!context.remoteconfig || !context.remoteconfig.deploy) {
   //   return Promise.resolve();
   // }
   console.log("start validation")
   console.log(options)
-  var filePath = options.config.get("remoteconfig.template"); //var filePath = options.config.get("remoteconfig.template");
+  var filePath = options.config.get("remoteconfig.template");
   const templateString = fs.readFileSync(filePath, 'utf8');
   const template = JSON.parse(templateString);
   const projectId = getProjectId(options);
@@ -19,7 +22,7 @@ module.exports = async function(context, options) {
   return Promise.resolve();
 }
 
-async function createEtag(projectId) {
+async function createEtag(projectId: string): Promise<string> {
   //console.log(projectId)
   const template = await rcGet.getTemplate(projectId)
   //console.log(template)
@@ -28,7 +31,7 @@ async function createEtag(projectId) {
   return etag;
 }
 
-function validateInputRemoteConfigTemplate(template) {
+export function validateInputRemoteConfigTemplate(template: RemoteConfigTemplate): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template)); // Deep copy
   console.log(templateCopy)
   if (!templateCopy || templateCopy == 'null' || templateCopy == 'undefined') {   
