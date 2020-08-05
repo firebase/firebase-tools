@@ -7,7 +7,6 @@ module.exports = async function(context, options) {
   // if (!context.remoteconfig || !context.remoteconfig.deploy) {
   //   return Promise.resolve();
   // }
-  options.config = _load(options);
   console.log("start validation")
   console.log(options)
   var filePath = options.config.get("remoteconfig.template"); //var filePath = options.config.get("remoteconfig.template");
