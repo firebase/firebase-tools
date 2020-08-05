@@ -3,9 +3,10 @@ import logger = require("../../logger");
 import { FirebaseError } from "../../error";
 import api = require("../../api");
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+const rcGet  = require ("../../remoteconfig/get");
 const getProjectId = require("../../getProjectId");
-const createEtag = require("./prepare");
-import { validateInputRemoteConfigTemplate } from "./prepare";
+import { validateInputRemoteConfigTemplate } from "./functions";
+import { createEtag } from "./functions";
 
 const TIMEOUT = 30000;
 
@@ -13,12 +14,10 @@ module.exports = function(context: any, options: any) {
     // if(!context.remoteconfig || !context.remoteconfig.deploy) {
     //     return Promise.resolve();
     // }
-    console.log("deploying started")
     var filePath = options.config.get("remoteconfig.template");
     const templateString = fs.readFileSync(filePath, 'utf8');
     const template = JSON.parse(templateString);
     const projectId = getProjectId(options);
-    console.log("deploy finished")
     return publishTemplate(projectId, template, options);
 }
 
@@ -30,10 +29,7 @@ async function deployTemplate(
 ): Promise<RemoteConfigTemplate>
  {
     try {
-      console.log(template.conditions)
-      
       let request = `/v1/projects/${projectId}/remoteConfig`;
-
       let etag = "*";
       if (!options || !options.force == true) {
         etag = await createEtag(projectId);
