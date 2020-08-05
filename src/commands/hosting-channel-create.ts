@@ -10,6 +10,7 @@ import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getInstanceId from "../getInstanceId";
 import { logLabeledSuccess } from "../utils";
+import { promptOnce } from "../prompt";
 
 const LOG_TAG = "hosting:channel";
 
@@ -70,6 +71,22 @@ export default new Command("hosting:channel:create [channelId]")
       let expireTTL = DEFAULT_DURATION;
       if (options.expires) {
         expireTTL = calculateExpireTTL(options.expires);
+      }
+
+      if (!channelId) {
+        if (options.nonInteractive) {
+          throw new FirebaseError(
+            `"channelId" argument must be provided in a non-interactive environment`
+          );
+        }
+        channelId = await promptOnce({
+          type: "input",
+          message: "Please provide a URL-friendly name for the channel:",
+          validate: (s) => s, // Prevents an empty string from being submitted!
+        });
+      }
+      if (!channelId) {
+        throw new FirebaseError(`"channelId" must not be empty`);
       }
 
       const channel = await createChannel(projectId, site, channelId, expireTTL);
