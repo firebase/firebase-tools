@@ -72,6 +72,18 @@ export async function getDatabaseInstanceDetails(
     return response.body;
   } catch (err) {
     logger.debug(err.message);
+    const emulatorHost = process.env["FIREBASE_DATABASE_EMULATOR_HOST"];
+    if (emulatorHost) {
+      // if the call failed due to some reason, and we're talking to the emulator,
+      // return a reasonable default and swallow the error.
+      return Promise.resolve({
+        name: instanceName,
+        project: projectId,
+        databaseUrl: utils.getDatabaseUrl(emulatorHost, instanceName, ""),
+        type: DatabaseInstanceType.DEFAULT_DATABASE,
+        state: DatabaseInstanceState.ACTIVE,
+      });
+    }
     return utils.reject(
       `Failed to get instance details for instance: ${instanceName}. See firebase-debug.log for more details.`,
       {
