@@ -225,6 +225,62 @@ export function shouldStart(options: any, name: Emulators): boolean {
   return emulatorInTargets;
 }
 
+function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
+  if (!pathIsDirectory) {
+    return;
+  }
+
+  // If there is an export metadata file, we always prefer that
+  const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
+  if (fileExistsSync(importFilePath)) {
+    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
+  }
+
+  const fileList = fs.readdirSync(importPath);
+
+  // The user might have passed a Firestore export directly
+  const firestoreMetadataFile = fileList.find((f) => f.endsWith(".overall_export_metadata"));
+  if (firestoreMetadataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      firestore: {
+        version: "prod",
+        path: importPath,
+        metadata_file: `${importPath}/${firestoreMetadataFile}`,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Firestore export at ${importPath}`
+    );
+
+    return metadata;
+  }
+
+  // The user might haved passed a directory containing RTDB json files
+  const rtdbDataFile = fileList.find((f) => f.endsWith(".json"));
+  if (rtdbDataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      database: {
+        version: "prod",
+        path: importPath,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Database export at ${importPath}`
+    );
+
+    return metadata;
+  }
+}
+
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -285,24 +341,15 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     version: "unknown",
   };
   if (options.import) {
-    const importFilePath = path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME);
-    if (fileExistsSync(importFilePath)) {
-      exportMetadata = JSON.parse(
-        fs
-          .readFileSync(
-            path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME),
-            "utf8"
-          )
-          .toString()
-      ) as ExportMetadata;
+    const importDir = path.resolve(options.import);
+    const foundMetadata = await findExportMetadata(importDir);
+    if (foundMetadata) {
+      exportMetadata = foundMetadata;
     } else {
-      // could happen when an export was interrupted mid-export...
       EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
         "WARN",
         "emulators",
-        `Import/Export metadata file does not exist. ${clc.bold(
-          "Skipping data import!"
-        )} Metadata file location: ${importFilePath}`
+        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
       );
     }
   }
@@ -397,7 +444,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const exportMetadataFilePath = path.join(
+      const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
         exportMetadata.firestore.metadata_file
       );
@@ -486,7 +533,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.database) {
       const importDirAbsPath = path.resolve(options.import);
-      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+      const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
 
       const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
       for (const f of files) {

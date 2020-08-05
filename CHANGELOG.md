@@ -6,3 +6,4 @@
 - Allow starting the UI with `emulators:exec` using the `--ui` flag.
 - Fixes issue where multiple CLI instances compete for the same log (#2464).
 - Fixes issue where emulators run from `npm` scripts could not be shut down cleanly (#2507).
+- Makes it easier to import data from production databases.

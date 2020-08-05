@@ -10,17 +10,20 @@ import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
 
+export interface FirestoreExportMetadata {
+  version: string;
+  path: string;
+  metadata_file: string;
+}
+
+export interface DatabaseExportMetadata {
+  version: string;
+  path: string;
+}
 export interface ExportMetadata {
   version: string;
-  firestore?: {
-    version: string;
-    path: string;
-    metadata_file: string;
-  };
-  database?: {
-    version: string;
-    path: string;
-  };
+  firestore?: FirestoreExportMetadata;
+  database?: DatabaseExportMetadata;
 }
 
 export class HubExport {
@@ -68,7 +71,7 @@ export class HubExport {
     }
 
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
