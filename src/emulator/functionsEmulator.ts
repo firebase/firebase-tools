@@ -378,12 +378,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     projectId: string,
     definition: EmulatedTriggerDefinition
   ): Promise<boolean> {
-    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
-    if (!databaseEmu) {
-      return Promise.resolve(false);
-    }
-    const databaseHost = databaseEmu.getInfo().host;
-    const databasePort = databaseEmu.getInfo().port;
+    // const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
+    // if (!databaseEmu) {
+    //   return Promise.resolve(false);
+    // }
+    // const databaseHost = databaseEmu.getInfo().host;
+    // const databasePort = databaseEmu.getInfo().port;
 
     if (!definition.eventTrigger) {
       this.logger.log(
@@ -422,6 +422,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
       );
     }
+
+    const databaseHost = "localhost";
+    const databasePort = "9000";
 
     return api
       .request("POST", setTriggersPath, {
