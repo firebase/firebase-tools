@@ -8,6 +8,7 @@ import * as logger from "../logger";
 import * as utils from "../utils";
 import { previews } from "../previews";
 import { FirebaseError } from "../error";
+import { Constants } from "../emulator/constants";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 
@@ -72,7 +73,7 @@ export async function getDatabaseInstanceDetails(
     return response.body;
   } catch (err) {
     logger.debug(err.message);
-    const emulatorHost = process.env["FIREBASE_DATABASE_EMULATOR_HOST"];
+    const emulatorHost = process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST];
     if (emulatorHost) {
       // if the call failed due to some reason, and we're talking to the emulator,
       // return a reasonable default and swallow the error.
