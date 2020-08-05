@@ -11,6 +11,9 @@ import { FirebaseError } from "../error";
 import { Constants } from "../emulator/constants";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
+const APP_LIST_PAGE_SIZE = 100;
+// projects/$PROJECT_ID/locations/$LOCATION_ID/instances/$INSTANCE_ID
+const INSTANCE_RESOURCE_NAME_REGEX = /projects\/([^\/]+?)\/locations\/([^\/]+?)\/instances\/([^\/]*)/;
 
 export enum DatabaseInstanceType {
   DATABASE_INSTANCE_TYPE_UNSPECIFIED = "unspecified",
@@ -29,12 +32,14 @@ export enum DatabaseLocation {
   US_CENTRAL1 = "us-central1",
   EUROPE_WEST1 = "europe-west1",
   ASIA_SOUTHEAST1 = "asia-southeast1",
+  ANY = "-",
 }
 
 export interface DatabaseInstance {
   name: string;
   project: string;
   databaseUrl: string;
+  location: DatabaseLocation;
   type: DatabaseInstanceType;
   state: DatabaseInstanceState;
 }
@@ -70,7 +75,7 @@ export async function getDatabaseInstanceDetails(
       }
     );
 
-    return response.body;
+    return response.body.map(convertDatabaseInstance);
   } catch (err) {
     logger.debug(err.message);
     const emulatorHost = process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST];
@@ -80,6 +85,7 @@ export async function getDatabaseInstanceDetails(
       return Promise.resolve({
         name: instanceName,
         project: projectId,
+        location: DatabaseLocation.ANY,
         databaseUrl: utils.getDatabaseUrl(emulatorHost, instanceName, ""),
         type: DatabaseInstanceType.DEFAULT_DATABASE,
         state: DatabaseInstanceState.ACTIVE,
@@ -117,7 +123,7 @@ export async function createInstance(
       }
     );
 
-    return response.body;
+    return response.body.map(convertDatabaseInstance);
   } catch (err) {
     logger.debug(err.message);
     return utils.reject(
@@ -131,11 +137,97 @@ export async function createInstance(
 }
 
 /**
- * Returns the `DatabaseLocation` represented by the string.
+ * Returns the `DatabaseLocation` represented by the string, to be used for database instance creation.
  * @param location the location to parse.
  * @return the `DatabaseLocation`.
  */
-export function parseDatabaseLocation(location?: string): DatabaseLocation {
+export function parseDatabaseLocationForCreate(location?: string): DatabaseLocation {
+  if (!location) {
+    return DatabaseLocation.US_CENTRAL1;
+  }
+  return parseDatabaseLocation(DatabaseLocation.US_CENTRAL1, location);
+}
+
+/**
+ * Returns the `DatabaseLocation` represented by the string, to be used for database instance list.
+ * @param location the location to parse.
+ * @return the `DatabaseLocation`.
+ */
+export function parseDatabaseLocationForList(location?: string): DatabaseLocation {
+  if (!location) {
+    return DatabaseLocation.ANY;
+  }
+  return parseDatabaseLocation(DatabaseLocation.ANY, location);
+}
+
+/**
+ * Lists all database instances for the specified project.
+ * Repeatedly calls the paginated API until all pages have been read.
+ * @param projectId the project to list apps for.
+ * @param pageSize the number of results to be returned in a response.
+ * @return list of all DatabaseInstances.
+ */
+export async function listDatabaseInstances(
+  projectId: string,
+  location: DatabaseLocation,
+  pageSize: number = APP_LIST_PAGE_SIZE
+): Promise<DatabaseInstance[]> {
+  const instances: DatabaseInstance[] = [];
+  try {
+    let nextPageToken = "";
+    do {
+      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const response = await api.request(
+        "GET",
+        `/${MGMT_API_VERSION}/projects/${projectId}/locations/${location}/instances?pageSize=${pageSize}${pageTokenQueryString}`,
+        {
+          auth: true,
+          origin: api.firebaseApiOrigin,
+          timeout: TIMEOUT_MILLIS,
+        }
+      );
+      if (response.body.instances) {
+        instances.push(...response.body.instances.map(convertDatabaseInstance));
+      }
+      nextPageToken = response.body.nextPageToken;
+    } while (nextPageToken);
+
+    return instances;
+  } catch (err) {
+    logger.debug(err.message);
+    throw new FirebaseError(
+      `Failed to list Firebase Realtime Database instances${
+        location === DatabaseLocation.ANY ? "" : `for location ${location}`
+      }` + ". See firebase-debug.log for more info.",
+      {
+        exit: 2,
+        original: err,
+      }
+    );
+  }
+}
+
+function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
+  const m = serverInstance.name.match(INSTANCE_RESOURCE_NAME_REGEX);
+  if (!m || m.length != 4) {
+    throw new FirebaseError(
+      `Error parsing instance resource name: ${serverInstance.name}, matches: ${m}`
+    );
+  }
+  return {
+    name: m[3],
+    location: parseDatabaseLocationForList(m[2]),
+    project: serverInstance.project,
+    databaseUrl: serverInstance.databaseUrl,
+    type: serverInstance.type,
+    state: serverInstance.state,
+  };
+}
+
+function parseDatabaseLocation(
+  defaultLocation: DatabaseLocation,
+  location?: string
+): DatabaseLocation {
   if (!location) {
     return DatabaseLocation.US_CENTRAL1;
   }
@@ -145,9 +237,10 @@ export function parseDatabaseLocation(location?: string): DatabaseLocation {
     case "asia-southeast1":
       return DatabaseLocation.ASIA_SOUTHEAST1;
     case "us-central1":
+      return DatabaseLocation.US_CENTRAL1;
     /* falls through */
     case "":
-      return DatabaseLocation.US_CENTRAL1;
+      return defaultLocation;
     default:
       throw new FirebaseError(
         `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
