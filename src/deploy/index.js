@@ -78,7 +78,7 @@ var deploy = function(targetNames, options) {
   logger.info();
 
   utils.logBullet("deploying " + clc.bold(targetNames.join(", ")));
-  
+
   return _chain(predeploys, context, options, payload)
     .then(function() {
       return _chain(prepares, context, options, payload);
