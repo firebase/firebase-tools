@@ -2,6 +2,7 @@ import { RemoteConfigTemplate } from "./interfaces";
 import api = require("../api");
 import logger = require("../logger");
 import { FirebaseError } from "../error";
+import * as rcGet from "../remoteconfig/get";
 
 const TIMEOUT = 30000;
 
@@ -12,12 +13,19 @@ const TIMEOUT = 30000;
  */
 export async function rollbackTemplate(
     projectId: string,
-    versionNumber?: string
-  ): Promise<RemoteConfigTemplate> {
+    versionNumber?: number
+  ): Promise<void> {
     try {
       let request = `/v1/projects/${projectId}/remoteConfig:rollback`;
       if (versionNumber) {
         request = request + "?versionNumber=" + versionNumber;
+      } else {
+        const template = await rcGet.getTemplate(projectId).then();
+        if (template?.version?.versionNumber) {
+          const latestVersion = template.version.versionNumber.toString();
+          const previousVersion = parseInt(latestVersion) - 1;
+          request = request + "?versionNumber=" + previousVersion;
+        }
       }
       const response = await api.request("POST", request, {
         auth: true,
