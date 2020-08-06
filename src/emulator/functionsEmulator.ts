@@ -162,7 +162,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/${this.args.projectId}/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/:project_id/triggers/:trigger_name`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -692,7 +692,36 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
+    const projectId = req.params.project_id;
     const triggerId = req.params.trigger_name;
+
+    const trigger = this.getTriggerById(triggerId);
+    const service = getFunctionService(trigger);
+
+    if (projectId !== this.args.projectId) {
+      // RTDB considers each namespace a "project", but for any other trigger we want to reject
+      // incoming triggers to a different project.
+      if (service !== Constants.SERVICE_REALTIME_DATABASE) {
+        logger.debug(
+          `Received functions trigger for service "${service}" for unknown project "${projectId}".`
+        );
+        res.sendStatus(404);
+        return;
+      }
+
+      // The eventTrigger 'resource' property will look something like this:
+      // "projects/_/instances/<project>/refs/foo/bar"
+      // If the trigger's resource does not match the invoked projet ID, we should 404.
+      if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
+        logger.debug(
+          `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
+            trigger
+          )}.`
+        );
+        res.sendStatus(404);
+        return;
+      }
+    }
 
     this.logger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
@@ -708,10 +737,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     // For analytics, track the invoked service
-    if (triggerId) {
-      const trigger = this.getTriggerById(triggerId);
-      track(EVENT_INVOKE, getFunctionService(trigger));
-    }
+    track(EVENT_INVOKE, service);
 
     await worker.waitForDone();
     return res.json({ status: "acknowledged" });
