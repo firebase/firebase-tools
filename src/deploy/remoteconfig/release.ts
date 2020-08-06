@@ -3,32 +3,34 @@ import logger = require("../../logger");
 import { FirebaseError } from "../../error";
 import api = require("../../api");
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-const getProjectId = require("../../getProjectId");
+import getProjectNumber = require("../../getProjectNumber");
 import { validateInputRemoteConfigTemplate } from "./functions";
 import { createEtag } from "./functions";
 
 const TIMEOUT = 30000;
 
-module.exports = function(context: any, options: any) {
+module.exports = async function(context: any, options: any) {
   const filePath = options.config.get("remoteconfig.template");
   const templateString = fs.readFileSync(filePath, "utf8");
   const template = JSON.parse(templateString);
-  const projectId = getProjectId(options);
-  return publishTemplate(projectId, template, options);
+  const projectNumber = await getProjectNumber(options);
+  return publishTemplate(projectNumber, template, options);
 };
 
 // Deploys project information/template based on Firebase project ID
 async function deployTemplate(
-  projectId: string,
+  projectNumber: string,
   template: RemoteConfigTemplate,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig`;
+    let request = `/v1/projects/${projectNumber}/remoteConfig`;
     let etag = "*";
+    console.log(etag);
     if (!options || !options.force == true) {
-      etag = await createEtag(projectId);
+      etag = await createEtag(projectNumber);
     }
+    console.log(etag);
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
@@ -43,8 +45,9 @@ async function deployTemplate(
     return response.body;
   } catch (err) {
     logger.debug(err.message);
+    console.log(err.message);
     throw new FirebaseError(
-      `Failed to deploy Firebase project ${projectId}. ` +
+      `Failed to deploy Firebase project ${projectNumber}. ` +
         "Please make sure the project exists and your account has permission to access it.",
       { exit: 2, original: err }
     );
@@ -52,7 +55,7 @@ async function deployTemplate(
 }
 
 async function publishTemplate(
-  projectId: string,
+  projectNumber: string,
   template: RemoteConfigTemplate,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
@@ -61,11 +64,9 @@ async function publishTemplate(
     parameters: template.parameters,
     parameterGroups: template.parameterGroups,
     version: template.version,
-    etag: await createEtag(projectId),
+    etag: await createEtag(projectNumber),
   };
   let validTemplate: RemoteConfigTemplate = temporaryTemplate;
-  if (!options || !options.force == true) {
-    validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
-  } 
-  return await deployTemplate(projectId, temporaryTemplate);
+  validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
+  return await deployTemplate(projectNumber, validTemplate, options);
 }

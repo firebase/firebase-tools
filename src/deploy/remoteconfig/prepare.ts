@@ -4,7 +4,7 @@ import * as fs from "fs";
 import { createEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
 
-const getProjectId = require("../../getProjectId");
+const getProjectNumber = require("../../getProjectNumber");
 
 module.exports = async function(context: any, options: any): Promise<void> {
   if (!context.remoteconfig) {
@@ -19,8 +19,8 @@ module.exports = async function(context: any, options: any): Promise<void> {
   const filePath = options.config.get("remoteconfig.template");
   const templateString = fs.readFileSync(filePath, "utf8");
   const template = JSON.parse(templateString);
-  const projectId = getProjectId(options);
-  template.etag = await createEtag(projectId);
+  const projectNumber = getProjectNumber(options);
+  template.etag = await createEtag(projectNumber);
   validateInputRemoteConfigTemplate(template);
   return Promise.resolve();
 };
