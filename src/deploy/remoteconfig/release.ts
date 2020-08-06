@@ -1,23 +1,23 @@
-import * as fs from "fs";
-import logger = require("../../logger");
-import { FirebaseError } from "../../error";
 import api = require("../../api");
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-import getProjectNumber = require("../../getProjectNumber");
-import { validateInputRemoteConfigTemplate } from "./functions";
+import { FirebaseError } from "../../error";
 import { createEtag } from "./functions";
+import { validateInputRemoteConfigTemplate } from "./functions";
+import getProjectNumber = require("../../getProjectNumber");
+import logger = require("../../logger");
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 const TIMEOUT = 30000;
 
 module.exports = async function(context: any, options: any) {
-  const filePath = options.config.get("remoteconfig.template");
-  const templateString = fs.readFileSync(filePath, "utf8");
-  const template = JSON.parse(templateString);
+  if (!context || !context.template) {
+    return Promise.resolve();
+  }
+  const template = context.template;
   const projectNumber = await getProjectNumber(options);
   return publishTemplate(projectNumber, template, options);
 };
 
-// Deploys project information/template based on Firebase project ID
+// Function deploys the project information/template specified based on Firebase project ID
 async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
@@ -45,12 +45,10 @@ async function deployTemplate(
     return response.body;
   } catch (err) {
     logger.debug(err.message);
-    console.log(err.message);
-    throw new FirebaseError(
-      `Failed to deploy Firebase project ${projectNumber}. ` +
-        "Please make sure the project exists and your account has permission to access it.",
-      { exit: 2, original: err }
-    );
+    throw new FirebaseError(`Failed to deploy Firebase project ${projectNumber}. `, {
+      exit: 2,
+      original: err,
+    });
   }
 }
 

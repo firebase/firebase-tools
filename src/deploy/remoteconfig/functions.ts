@@ -1,5 +1,6 @@
-const rcGet = require("../../remoteconfig/get");
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+
+const rcGet = require("../../remoteconfig/get");
 
 export async function createEtag(projectNumber: string): Promise<string> {
   const template = await rcGet.getTemplate(projectNumber);
