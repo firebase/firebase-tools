@@ -9,7 +9,7 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import * as getInstanceId from "../getInstanceId";
-import { logLabeledSuccess } from "../utils";
+import { logLabeledSuccess, datetimeString } from "../utils";
 import { promptOnce } from "../prompt";
 
 const LOG_TAG = "hosting:channel";
@@ -112,7 +112,7 @@ export default new Command("hosting:channel:create [channelId]")
       logLabeledSuccess(
         LOG_TAG,
         `Channel ${bold(channelId)} will expire at ${bold(
-          new Date(channel.expireTime).toLocaleString()
+          datetimeString(new Date(channel.expireTime))
         )}.`
       );
       logLabeledSuccess(LOG_TAG, `Channel URL: ${channel.url}`);

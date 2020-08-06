@@ -10,6 +10,9 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
+import { logLabeledSuccess, datetimeString } from "../utils";
+
+const LOG_TAG = "hosting:channel";
 
 interface ChannelInfo {
   target: string | null;
@@ -82,17 +85,24 @@ export default new Command("hosting:channel:deploy [channelId]")
           }
 
           siteInfo.url = chan.url;
+          siteInfo.expireTime = chan.expireTime;
           return;
         })
       );
 
       await deploy(["hosting"], options, { hostingChannel: channelId });
-      logger.info();
 
+      logger.info();
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;
-        logger.info(`${bold(`Channel URL (${d.target || d.site}):`)} ${d.url}`);
+        logLabeledSuccess(
+          LOG_TAG,
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} [expires ${bold(
+            datetimeString(new Date(d.expireTime))
+          )}]`
+        );
+        // logger.info(`${bold(`Channel URL (${d.target || d.site}):`)} ${d.url}`);
       });
 
       return deploys;
