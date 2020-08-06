@@ -1,4 +1,25 @@
 const _ = require("lodash");
+const { FirebaseError } = require("../../error");
+
+/**
+ * extractPattern contains the logic for extracting exactly one glob/regexp
+ * from a Hosting rewrite/redirect/header specification
+ */
+function extractPattern(type, spec) {
+  const glob = spec.source || spec.glob;
+  const regex = spec.regex;
+
+  if (glob && regex) {
+    throw new FirebaseError("Cannot specify a " + type + " pattern with both a glob and regex.");
+  } else if (glob) {
+    return { glob: glob };
+  } else if (regex) {
+    return { regex: regex };
+  }
+  throw new FirebaseError(
+    "Cannot specify a " + type + " with no pattern (either a glob or regex required)."
+  );
+}
 
 /**
  * convertConfig takes a hosting config object from firebase.json and transforms it into
@@ -14,7 +35,7 @@ module.exports = function(config) {
   // rewrites
   if (_.isArray(config.rewrites)) {
     out.rewrites = config.rewrites.map(function(rewrite) {
-      const vRewrite = { glob: rewrite.source };
+      const vRewrite = extractPattern("rewrite", rewrite);
       if (rewrite.destination) {
         vRewrite.path = rewrite.destination;
       } else if (rewrite.function) {
@@ -31,7 +52,8 @@ module.exports = function(config) {
   // redirects
   if (_.isArray(config.redirects)) {
     out.redirects = config.redirects.map(function(redirect) {
-      const vRedirect = { glob: redirect.source, location: redirect.destination };
+      const vRedirect = extractPattern("redirect", redirect);
+      vRedirect.location = redirect.destination;
       if (redirect.type) {
         vRedirect.statusCode = redirect.type;
       }
@@ -42,7 +64,7 @@ module.exports = function(config) {
   // headers
   if (_.isArray(config.headers)) {
     out.headers = config.headers.map(function(header) {
-      const vHeader = { glob: header.source };
+      const vHeader = extractPattern("header", header);
       vHeader.headers = {};
       (header.headers || []).forEach(function(h) {
         vHeader.headers[h.key] = h.value;
@@ -66,6 +88,11 @@ module.exports = function(config) {
   // App association files
   if (_.has(config, "appAssociation")) {
     out.appAssociation = config.appAssociation;
+  }
+
+  // i18n config
+  if (_.has(config, "i18n")) {
+    out.i18n = config.i18n;
   }
 
   return out;

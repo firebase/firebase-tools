@@ -15,17 +15,31 @@ const cjson = require("cjson");
 
 const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs6: "Node.js 6 (Deprecated)",
-  nodejs8: "Node.js 8",
+  nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
+  nodejs12: "Node.js 12",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
   6: "nodejs6",
   8: "nodejs8",
   10: "nodejs10",
+  12: "nodejs12",
 };
 
-export const UNSUPPORTED_NODE_VERSION_MSG = clc.bold(
+const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
+
+export const RUNTIME_NOT_SET =
+  "`runtime` field is required but was not found in firebase.json.\n" +
+  "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
+  '"runtime": "nodejs10"\n';
+
+export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
+  `functions.runtime value is unsupported. ` +
+    `The only valid choices are: ${clc.bold("nodejs8")} and ${clc.bold("nodejs10")}.`
+);
+
+export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
     `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}.`
 );
@@ -70,40 +84,46 @@ export function getHumanFriendlyRuntimeName(runtime: string): string {
   return _.get(MESSAGE_FRIENDLY_RUNTIMES, runtime, runtime);
 }
 
-/**
- * Returns the Node.js version to be used for the function(s) as defined in the
- * package.json.
- * @param sourceDir directory where the functions are defined.
- * @return The runtime, e.g. `nodejs10`.
- */
-export function getRuntimeChoice(sourceDir: string): string {
+function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
   const packageJsonPath = path.join(sourceDir, "package.json");
   const loaded = cjson.load(packageJsonPath);
   const engines = loaded.engines;
   if (!engines || !engines.node) {
-    // We should really never hit this, since deploy/functions/prepare already checked that package.json has an "engines" field.
-    throw new FirebaseError(
-      `Engines field is required but was not found in package.json.\n` +
-        `To fix this, add the following lines to your package.json: \n
-      "engines": {
-        "node": "10"
-      }\n`
-    );
+    // We should really never hit this, since deploy/functions/prepare already checked that
+    // the runtime is defined in either firebase.json or the "engines" field of the package.json.
+    throw new FirebaseError(RUNTIME_NOT_SET);
   }
-  const runtime = ENGINE_RUNTIMES[engines.node];
-  if (!runtime) {
+
+  return ENGINE_RUNTIMES[engines.node];
+}
+
+/**
+ * Returns the Node.js version to be used for the function(s) as defined in the
+ * either the `runtime` field of firebase.json or the package.json.
+ * @param sourceDir directory where the functions are defined.
+ * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
+ * @return The runtime, e.g. `nodejs12`.
+ */
+export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): string {
+  const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
+  const errorMessage = runtimeFromConfig
+    ? UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
+    : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG;
+
+  if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
     track("functions_runtime_notices", "package_missing_runtime");
-    throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
+    throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
   if (runtime === "nodejs6") {
     track("functions_runtime_notices", "nodejs6_deploy_prohibited");
-    throw new FirebaseError(UNSUPPORTED_NODE_VERSION_MSG, { exit: 1 });
-  } else {
-    if (functionsSDKTooOld(sourceDir, ">=2")) {
-      track("functions_runtime_notices", "functions_sdk_too_old");
-      utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
-    }
+    throw new FirebaseError(errorMessage, { exit: 1 });
   }
+
+  if (functionsSDKTooOld(sourceDir, ">=2")) {
+    track("functions_runtime_notices", "functions_sdk_too_old");
+    utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+  }
+
   return runtime;
 }

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.4.3",
+  "version": "8.6.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -98,11 +98,10 @@
     "jsonschema": "^1.0.2",
     "jsonwebtoken": "^8.2.1",
     "leven": "^3.1.0",
-    "lodash": "^4.17.14",
+    "lodash": "^4.17.19",
     "marked": "^0.7.0",
     "marked-terminal": "^3.3.0",
     "minimatch": "^3.0.4",
-    "moment": "^2.27.0",
     "morgan": "^1.10.0",
     "open": "^6.3.0",
     "ora": "^3.4.0",
@@ -119,7 +118,7 @@
     "triple-beam": "^1.3.0",
     "universal-analytics": "^0.4.16",
     "unzipper": "^0.10.10",
-    "update-notifier": "^2.5.0",
+    "update-notifier": "^4.1.0",
     "uuid": "^3.0.0",
     "winston": "^3.0.0",
     "ws": "^7.2.3"
@@ -134,7 +133,8 @@
     "@types/configstore": "^4.0.0",
     "@types/cross-spawn": "^6.0.1",
     "@types/dotenv": "^6.1.0",
-    "@types/express": "^4.16.0",
+    "@types/express": "^4.17.0",
+    "@types/express-serve-static-core": "^4.17.8",
     "@types/fs-extra": "^5.0.5",
     "@types/glob": "^7.1.1",
     "@types/inquirer": "^6.0.3",
@@ -162,7 +162,7 @@
     "@types/winston": "^2.4.4",
     "@types/ws": "^7.2.3",
     "@typescript-eslint/eslint-plugin": "^2.3.0",
-    "@typescript-eslint/parser": "^2.3.0",
+    "@typescript-eslint/parser": "^2.34.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.0.1",
@@ -173,7 +173,7 @@
     "eslint-plugin-prettier": "^3.1.0",
     "firebase": "^7.14.0",
     "firebase-admin": "^8.9.0",
-    "firebase-functions": "^3.3.0",
+    "firebase-functions": "^3.8.0",
     "mocha": "^7.1.1",
     "nock": "^9.3.3",
     "nyc": "^15.0.1",
@@ -183,6 +183,6 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "ts-node": "^7.0.1",
-    "typescript": "^3.7.5"
+    "typescript": "^3.9.5"
   }
 }

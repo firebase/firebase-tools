@@ -26,6 +26,7 @@ export class FakeEmulator implements EmulatorInstance {
   }
   getInfo(): EmulatorInfo {
     return {
+      name: this.getName(),
       host: this.host,
       port: this.port,
     };

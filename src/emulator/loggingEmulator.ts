@@ -56,6 +56,7 @@ export class LoggingEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.LOGGING);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
