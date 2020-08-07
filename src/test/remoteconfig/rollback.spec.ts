@@ -29,7 +29,8 @@
 //       description: "Rollback to version 115", 
 //       updateType: "ROLLBACK", 
 //       updateOrigin: "REST_API", 
-//       versionNumber: "115",
+//       versionNumber: versionNumber,
+//       rollbackSource: rollbackSource
 //     }, 
 //     conditions: [
 //       {
@@ -51,9 +52,7 @@
 // const previousTemplate: RemoteConfigTemplate = {
 //   return createTemplate("115", "2020-08-06T23:11:41.629Z");
 // };
-// const currentTemplate: RemoteConfigTemplate = {
-//   return createTemplate("117", "2020-08-07T01:55:16.663Z", "115");
-// };
+
 
 // describe("RemoteConfig Rollback", () => {
 //   let sandbox: sinon.SinonSandbox;
