@@ -1,54 +1,19 @@
 import { bold, yellow } from "cli-color";
 
-import { Command } from "../command";
-import { FirebaseError } from "../error";
 import { Channel, createChannel } from "../hosting/api";
+import { Command } from "../command";
+import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
+import { FirebaseError } from "../error";
+import { logLabeledSuccess, datetimeString } from "../utils";
+import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
+import * as getInstanceId from "../getInstanceId";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
-import * as getInstanceId from "../getInstanceId";
-import { logLabeledSuccess, datetimeString } from "../utils";
-import { promptOnce } from "../prompt";
 
 const LOG_TAG = "hosting:channel";
-
-const DURATION_REGEX = /^([0-9]+)(h|d|m)$/;
-enum Duration {
-  MINUTE = 60 * 1000,
-  HOUR = 60 * 60 * 1000,
-  DAY = 24 * 60 * 60 * 1000,
-}
-const DURATIONS: { [d: string]: Duration } = {
-  m: Duration.MINUTE,
-  h: Duration.HOUR,
-  d: Duration.DAY,
-};
-const DEFAULT_DURATION = 7 * Duration.DAY;
-const MAX_DURATION = 30 * Duration.DAY;
-
-/*
- * calculateExpireTTL returns the ms duration of the provided flag.
- */
-function calculateExpireTTL(flag?: string): number {
-  const match = DURATION_REGEX.exec(flag || "");
-  if (!match) {
-    throw new FirebaseError(
-      `"expires" flag must be a duration string (e.g. 24h or 7d) at most 30d`
-    );
-  }
-  let d = 0;
-  try {
-    d = parseInt(match[1], 10) * DURATIONS[match[2]];
-  } catch (e) {
-    throw new FirebaseError(`Failed to parse provided expire time "${flag}": ${e}`);
-  }
-  if (d > MAX_DURATION) {
-    throw new FirebaseError(`"expires" flag may not be longer than 30d`);
-  }
-  return d;
-}
 
 export default new Command("hosting:channel:create [channelId]")
   .description("create a Firebase Hosting channel")
@@ -70,7 +35,7 @@ export default new Command("hosting:channel:create [channelId]")
 
       let expireTTL = DEFAULT_DURATION;
       if (options.expires) {
-        expireTTL = calculateExpireTTL(options.expires);
+        expireTTL = calculateChannelExpireTTL(options.expires);
       }
 
       if (!channelId) {
