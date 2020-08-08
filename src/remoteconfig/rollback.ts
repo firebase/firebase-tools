@@ -15,6 +15,7 @@ export async function rollbackTemplate(
     projectId: string,
     versionNumber?: number
   ): Promise<void> {
+    console.log(versionNumber);
     try {
       let request = `/v1/projects/${projectId}/remoteConfig:rollback`;
       if (versionNumber) {

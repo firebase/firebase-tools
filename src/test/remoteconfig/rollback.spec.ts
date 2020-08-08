@@ -25,7 +25,7 @@
 //       updateUser: {
 //         email: "jackiechu@google.com"
 //       }, 
-//       updateTime: "2020-08-07T01:55:16.663Z", 
+//       updateTime: date, 
 //       description: "Rollback to version 115", 
 //       updateType: "ROLLBACK", 
 //       updateOrigin: "REST_API", 
@@ -49,9 +49,8 @@
 //   };
 // }
 
-// const previousTemplate: RemoteConfigTemplate = {
-//   return createTemplate("115", "2020-08-06T23:11:41.629Z");
-// };
+
+// const previousTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
 
 
 // describe("RemoteConfig Rollback", () => {
