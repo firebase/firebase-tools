@@ -150,7 +150,7 @@ export default new Command("ext:install [extensionName]")
       if (options.interactive) {
         learnMore = true;
         extensionName = await promptForOfficialExtension(
-          "Which official extension do you want to install?\n" +
+          "Which official extension do you wish to install?\n" +
             "  Select an extension, then press Enter to learn more."
         );
       } else {
@@ -209,7 +209,7 @@ export default new Command("ext:install [extensionName]")
         const confirm = await promptOnce({
           type: "confirm",
           default: true,
-          message: "Do you want to install this extension?",
+          message: "Do you wish to install this extension?",
         });
         if (!confirm) {
           return;
