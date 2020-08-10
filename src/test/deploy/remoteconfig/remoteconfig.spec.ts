@@ -110,7 +110,6 @@ describe("Remote Config Deploy", () => {
             expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
 
             expect(apiRequestStub).to.be.calledOnceWith(
-
                 "PUT",
 
                 `/v1/projects/${PROJECT_NUMBER}/remoteConfig`,
