@@ -1,2 +1,2 @@
 - Fixes an issue where immutable params were not sent during ext:configure.
-- Includes latest features and improvements from production.
+- Includes latest features and improvements from production in the Firestore Emulator.
