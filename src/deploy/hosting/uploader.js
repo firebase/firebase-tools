@@ -28,7 +28,7 @@ class Uploader {
     this.version = options.version;
     this.cwd = options.cwd || process.cwd();
 
-    this.projectRoot = detectProjectRoot(this.cwd);
+    this.projectRoot = detectProjectRoot(options);
 
     this.gzipLevel = options.gzipLevel || 9;
     this.hashQueue = new Queue({
