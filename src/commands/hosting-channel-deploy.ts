@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -59,6 +59,15 @@ export default new Command("hosting:channel:deploy [channelId]")
       // TODO: interactive prompt if channel doesn't exist
       if (!channelId) {
         throw new FirebaseError("channelID is currently required");
+      }
+
+      // Some normalizing to be very sure of this check.
+      if (channelId.toLowerCase().trim() === "live") {
+        throw new FirebaseError(
+          `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
+            yellow("firebase deploy")
+          )} instead.`
+        );
       }
 
       if (options.only) {
