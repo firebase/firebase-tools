@@ -11,6 +11,7 @@ import {
   createSourceFromLocation,
   urlRegex,
 } from "../extensions/extensionsHelper";
+import { displayNodejsChangeNotice } from "../extensions/nodejsMigrationHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
 import {
@@ -185,6 +186,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         }
       }
       await displayChanges(currentSpec, newSpec);
+      await displayNodejsChangeNotice(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(
         currentSpec,
         newSpec,
@@ -204,7 +206,8 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         rolesToAdd: _.get(newSpec, "roles", []),
         rolesToRemove,
         serviceAccountEmail: existingInstance.serviceAccountEmail,
-        billingRequired: newSpec.billingRequired,
+        currentSpec,
+        newSpec,
       };
       if (!_.isEqual(newParams, currentParams)) {
         updateOptions.params = newParams;

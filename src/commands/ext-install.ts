@@ -7,6 +7,7 @@ import TerminalRenderer = require("marked-terminal");
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
+import { displayNodejsBillingNotice } from "../extensions/nodejsMigrationHelper";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
@@ -52,6 +53,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
   );
   try {
     await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
+    await displayNodejsBillingNotice(spec);
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
