@@ -1,11 +1,5 @@
-import api = require("../../api");
-import { FirebaseError } from "../../error";
-import { createEtag } from "./functions";
-import { validateInputRemoteConfigTemplate, publishTemplate} from "./functions";
+import { publishTemplate } from "./functions";
 import getProjectNumber = require("../../getProjectNumber");
-import logger = require("../../logger");
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-
 
 module.exports = async function(context: any, options: any) {
   if (!context || !context.template) {
