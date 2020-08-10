@@ -1,6 +1,11 @@
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import api = require("../../api");
+import { FirebaseError } from "../../error";
+import logger = require("../../logger");
 
 const rcGet = require("../../remoteconfig/get");
+
+const TIMEOUT = 30000;
 
 export async function createEtag(projectNumber: string): Promise<string> {
   const template = await rcGet.getTemplate(projectNumber);
@@ -55,4 +60,57 @@ export function validateInputRemoteConfigTemplate(
     templateCopy.version = { description: templateCopy.version.description };
   }
   return templateCopy;
+}
+
+// Function deploys the project information/template specified based on Firebase project ID
+export async function deployTemplate(
+  projectNumber: string,
+  template: RemoteConfigTemplate,
+  options?: { force: boolean }
+): Promise<RemoteConfigTemplate> {
+  try {
+    let request = `/v1/projects/${projectNumber}/remoteConfig`;
+    let etag = "*";
+    console.log(etag);
+    if (!options || !options.force == true) {
+      etag = await createEtag(projectNumber);
+    }
+    console.log(etag);
+    const response = await api.request("PUT", request, {
+      auth: true,
+      origin: api.remoteConfigApiOrigin,
+      timeout: TIMEOUT,
+      headers: { "If-Match": etag },
+      data: {
+        conditions: template.conditions,
+        parameters: template.parameters,
+        parameterGroups: template.parameterGroups,
+      },
+    });
+    return response.body;
+  } catch (err) {
+    console.log(err.message);
+    logger.debug(err.message);
+    throw new FirebaseError(`Failed to deploy Firebase project ${projectNumber}. `, {
+      exit: 2,
+      original: err,
+    });
+  }
+}
+
+export async function publishTemplate(
+  projectNumber: string,
+  template: RemoteConfigTemplate,
+  options?: { force: boolean }
+): Promise<RemoteConfigTemplate> {
+  let temporaryTemplate = {
+    conditions: template.conditions,
+    parameters: template.parameters,
+    parameterGroups: template.parameterGroups,
+    version: template.version,
+    etag: await createEtag(projectNumber),
+  };
+  let validTemplate: RemoteConfigTemplate = temporaryTemplate;
+  validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
+  return await deployTemplate(projectNumber, validTemplate, options);
 }
