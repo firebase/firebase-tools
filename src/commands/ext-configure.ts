@@ -65,9 +65,9 @@ export default new Command("ext:configure <extensionInstanceId>")
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
         for (const { param } of immutableParams) {
-          logger.info(
-            `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
-          );
+          const value = _.get(existingInstance, `config.params.${param}`);
+          logger.info(`param: ${param}, value: ${value}`);
+          params[param] = value;
         }
         logger.info(
           (plural
