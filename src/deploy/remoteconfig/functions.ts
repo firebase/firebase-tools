@@ -7,6 +7,11 @@ import rcGet = require("../../remoteconfig/get");
 
 const TIMEOUT = 30000;
 
+/**
+ * Creates Etag for Remote Config Project Template
+ * @param projectNumber Input is the Firebase Project's project number
+ * @return {Promise<string>} Returns a Promise of a Etag string
+ */
 export async function createEtag(projectNumber: string): Promise<string> {
   const template = await rcGet.getTemplate(projectNumber);
   const etag = "etag-" + projectNumber + "-" + template?.version?.versionNumber;
