@@ -5,6 +5,7 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
+import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -149,7 +150,7 @@ export default new Command("ext:install [extensionName]")
       if (options.interactive) {
         learnMore = true;
         extensionName = await promptForOfficialExtension(
-          "Which official extension do you want to install?\n" +
+          "Which official extension do you wish to install?\n" +
             "  Select an extension, then press Enter to learn more."
         );
       } else {
@@ -165,17 +166,19 @@ export default new Command("ext:install [extensionName]")
     let source;
     try {
       const registryEntry = await resolveRegistryEntry(name);
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
+      source = await extensionsApi.getSource(sourceUrl);
+      displayExtInstallInfo(extensionName, source);
       const audienceConsent = await promptForAudienceConsent(registryEntry);
       if (!audienceConsent) {
         logger.info("Install cancelled.");
         return;
       }
-      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
-      source = await extensionsApi.getSource(sourceUrl);
     } catch (err) {
       if (previews.extdev) {
         try {
           source = await createSourceFromLocation(projectId, extensionName);
+          displayExtInstallInfo(extensionName, source);
         } catch (err) {
           throw new FirebaseError(
             `Unable to find official extension named ${clc.bold(extensionName)}, ` +
@@ -206,7 +209,7 @@ export default new Command("ext:install [extensionName]")
         const confirm = await promptOnce({
           type: "confirm",
           default: true,
-          message: "Do you want to install this extension?",
+          message: "Do you wish to install this extension?",
         });
         if (!confirm) {
           return;

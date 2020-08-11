@@ -2,11 +2,13 @@
 
 const _ = require("lodash");
 const clc = require("cli-color");
+const path = require("path");
 
 const api = require("../../api");
 const convertConfig = require("./convertConfig");
 const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
+const utils = require("../../utils");
 const fsutils = require("../../fsutils");
 const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
 const { resolveProjectPath } = require("../../projectPath");
@@ -59,12 +61,28 @@ module.exports = function(context, options) {
       );
     }
 
-    if (!fsutils.dirExistsSync(resolveProjectPath(options.cwd, cfg.public))) {
+    if (!fsutils.dirExistsSync(resolveProjectPath(options, cfg.public))) {
       throw new FirebaseError(
         `Specified public directory '${cfg.public}' does not exist, ` +
           `can't deploy hosting to site ${deploy.site}`,
         { exit: 1 }
       );
+    }
+
+    if (cfg.i18n) {
+      if (!cfg.i18n.root) {
+        throw new FirebaseError("The root in the i18n config can't be empty.");
+      } else {
+        const i18nPath = path.join(cfg.public, cfg.i18n.root);
+        if (!fsutils.dirExistsSync(resolveProjectPath(options, i18nPath))) {
+          utils.logLabeledWarning(
+            "hosting",
+            `Couldn't find specified i18n root directory ${clc.bold(
+              cfg.i18n.root
+            )} in public directory ${clc.bold(cfg.public)}.`
+          );
+        }
+      }
     }
 
     versionCreates.push(

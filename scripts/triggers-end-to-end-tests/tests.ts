@@ -9,6 +9,16 @@ import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
+const ADMIN_CREDENTIAL = {
+  getAccessToken: () => {
+    return Promise.resolve({
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      expires_in: 1000000,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      access_token: "owner",
+    });
+  },
+};
 
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
@@ -60,16 +70,7 @@ describe("database and firestore emulator function triggers", () => {
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
       databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
-      credential: {
-        getAccessToken: () => {
-          return Promise.resolve({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            expires_in: 1000000,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            access_token: "owner",
-          });
-        },
-      },
+      credential: ADMIN_CREDENTIAL,
     });
 
     database = admin.database();
@@ -263,5 +264,104 @@ describe("import/export end to end", () => {
     await importCLI.stop();
 
     expect(true).to.be.true;
+  });
+
+  it("should be able to import/export rtdb data", async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "database"],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // Write some data to export
+    const config = readConfig();
+    const port = config.emulators!.database.port;
+    const aApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-a`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-a"
+    );
+    const bApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-b`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-b"
+    );
+    const cApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-c`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-c"
+    );
+
+    // Write to two namespaces
+    const aRef = aApp.database().ref("ns");
+    await aRef.set("namespace-a");
+    const bRef = bApp.database().ref("ns");
+    await bRef.set("namespace-b");
+
+    // Read from a third
+    const cRef = cApp.database().ref("ns");
+    await cRef.once("value");
+
+    // Ask for export
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
+
+    // Check that the right export files are created
+    const dbExportPath = path.join(exportPath, "database_export");
+    const dbExportFiles = fs.readdirSync(dbExportPath);
+    expect(dbExportFiles).to.eql(["namespace-a.json", "namespace-b.json"]);
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "database", "--import", exportPath],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // Read the data
+    const aSnap = await aRef.once("value");
+    const bSnap = await bRef.once("value");
+    expect(aSnap.val()).to.eql("namespace-a");
+    expect(bSnap.val()).to.eql("namespace-b");
+
+    await importCLI.stop();
   });
 });
