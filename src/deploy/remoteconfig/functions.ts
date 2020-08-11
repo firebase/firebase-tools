@@ -18,6 +18,11 @@ export async function createEtag(projectNumber: string): Promise<string> {
   return etag;
 }
 
+/**
+ * Validates Remote Config Template before deploying project template
+ * @param template The Remote Config template to be deployed
+ * @return {Promise<RemoteConfigTemplate>} Returns a Promise of the valid Remote Config template
+ */
 export function validateInputRemoteConfigTemplate(
   template: RemoteConfigTemplate
 ): RemoteConfigTemplate {
@@ -84,7 +89,7 @@ export async function deployTemplate(
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
   try {
-    let request = `/v1/projects/${projectNumber}/remoteConfig`;
+    const request = `/v1/projects/${projectNumber}/remoteConfig`;
     let etag = "*";
     if (!options || !options.force == true) {
       etag = await createEtag(projectNumber);
@@ -126,7 +131,7 @@ export async function publishTemplate(
   template: RemoteConfigTemplate,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
-  let temporaryTemplate = {
+  const temporaryTemplate = {
     conditions: template.conditions,
     parameters: template.parameters,
     parameterGroups: template.parameterGroups,
