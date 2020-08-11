@@ -51,7 +51,7 @@ function createTemplate(versionNumber: string, date: string, rollbackSource?: st
 
 
 const previousTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
-
+const rollbackTemplate: RemoteConfigTemplate = createTemplate("114", "2020-08-07T23:11:41.629Z");
 
 describe("RemoteConfig Rollback", () => {
   let sandbox: sinon.SinonSandbox;
@@ -114,11 +114,12 @@ describe("RemoteConfig Rollback", () => {
 
     it("should return a rollback to the previous version specified", async () => {
       apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
+      apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate});
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID);
 
-      expect(RCtemplate).to.deep.equal(previousTemplate);
-      expect(apiRequestStub).to.be.calledOnceWith(
+      expect(RCtemplate).to.deep.equal(rollbackTemplate);
+      expect(apiRequestStub).to.be.calledWith(
         "POST",
         `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 114,
         {
