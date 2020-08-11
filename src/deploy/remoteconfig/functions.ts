@@ -99,10 +99,13 @@ export async function deployTemplate(
   } catch (err) {
     console.log(err.message);
     logger.debug(err.message);
-    throw new FirebaseError(`Failed to deploy Remote Config template for Firebase project ${projectNumber}. `, {
-      exit: 2,
-      original: err,
-    });
+    throw new FirebaseError(
+      `Failed to deploy Remote Config template for Firebase project ${projectNumber}. `,
+      {
+        exit: 2,
+        original: err,
+      }
+    );
   }
 }
 
