@@ -24,8 +24,8 @@ export const DOWNLOADABLE_EMULATORS = [
   Emulators.UI,
 ];
 
-export type ImportExportEmulators = Emulators.FIRESTORE;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE];
+export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
+export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.FUNCTIONS,
@@ -96,8 +96,10 @@ export interface EmulatorInstance {
 }
 
 export interface EmulatorInfo {
+  name: Emulators;
   host: string;
   port: number;
+  pid?: number;
 }
 
 export interface DownloadableEmulatorCommand {

@@ -9,6 +9,7 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
+import { datetimeString } from "../utils";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
@@ -32,9 +33,9 @@ export default new Command("hosting:channel:list")
         const channelId = channel.name.split("/").pop();
         table.push([
           channelId,
-          new Date(channel.updateTime).toLocaleString(),
+          datetimeString(new Date(channel.updateTime)),
           channel.url,
-          channel.expireTime ? new Date(channel.expireTime).toLocaleString() : "never",
+          channel.expireTime ? datetimeString(new Date(channel.expireTime)) : "never",
         ]);
       }
 

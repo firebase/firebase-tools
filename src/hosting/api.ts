@@ -1,8 +1,9 @@
 import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
+import { DEFAULT_DURATION } from "../hosting/expireUtils";
 
-const ONE_WEEK_MS = 86400000; // 24 * 60 * 60 * 1000
+const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
 interface ActingUser {
   // The email address of the user when the user performed the action.
@@ -130,7 +131,7 @@ export async function listChannels(
       const res = await api.request("GET", `/v1beta1/projects/${project}/sites/${site}/channels`, {
         auth: true,
         origin: api.hostingApiOrigin,
-        query: { pageToken: nextPageToken },
+        query: { pageToken: nextPageToken, pageSize: 100 },
       });
       const c = res.body?.channels;
       if (c) {
@@ -162,7 +163,7 @@ export async function createChannel(
   project: string | number = "-",
   site: string,
   channelId: string,
-  ttlMillis: number = ONE_WEEK_MS
+  ttlMillis: number = DEFAULT_DURATION
 ): Promise<Channel> {
   const res = await api.request(
     "POST",

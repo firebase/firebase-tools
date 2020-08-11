@@ -51,6 +51,10 @@ export function initIndexes(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
+      if (!setup.projectId) {
+        return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
+      }
+
       return getIndexesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.indexes, contents);
       });

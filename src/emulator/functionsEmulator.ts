@@ -38,6 +38,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
+import { createDestroyer } from "../utils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -60,7 +61,7 @@ export interface FunctionsEmulatorArgs {
   env?: { [key: string]: string };
   remoteEmulators?: { [key: string]: EmulatorInfo };
   predefinedTriggers?: EmulatedTriggerDefinition[];
-  nodeMajorVersion?: string; // Lets us specify the node version when emulating extensions.
+  nodeMajorVersion?: number; // Lets us specify the node version when emulating extensions.
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -112,7 +113,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   nodeBinary = "";
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
 
@@ -226,7 +227,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     );
     const { host, port } = this.getInfo();
     this.workQueue.start();
-    this.server = this.createHubServer().listen(port, host);
+    const server = this.createHubServer().listen(port, host);
+    this.destroyServer = createDestroyer(server);
     return Promise.resolve();
   }
 
@@ -361,8 +363,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   stop(): Promise<void> {
     this.workQueue.stop();
     this.workerPool.exit();
-    this.server?.close();
-    return Promise.resolve();
+    return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(
@@ -504,6 +505,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
@@ -553,7 +555,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
    *  are using the default version.
    */
-  askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): string {
+  askInstallNodeVersion(cwd: string, nodeMajorVersion?: number): string {
     const pkg = require(path.join(cwd, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {
@@ -566,7 +568,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion = nodeMajorVersion || pkg.engines.node;
+    const requestedMajorVersion: string = nodeMajorVersion
+      ? `${nodeMajorVersion}`
+      : pkg.engines.node;
     let localMajorVersion = "0";
     const localNodePath = path.join(cwd, "node_modules/.bin/node");
 
@@ -598,10 +602,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return localNodePath;
     }
 
-    /*
-    Otherwise we'll begin the conversational flow to install the correct version locally
-   */
-
+    // Otherwise we'll begin the conversational flow to install the correct version locally
     this.logger.log(
       "WARN",
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
@@ -778,7 +779,11 @@ export class FunctionsEmulator implements EmulatorInstance {
           token: token,
         };
 
+        // Stash the "Authorization" header in a temporary place, we will replace it
+        // when invoking the callable handler
+        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
         delete req.headers["authorization"];
+
         req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
           JSON.stringify(contextAuth)
         );

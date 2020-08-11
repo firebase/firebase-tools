@@ -11,18 +11,23 @@ var fixturesDir = path.resolve(__dirname, "./fixtures");
 describe("RC", function() {
   describe(".load", function() {
     it("should load from nearest project directory", function() {
-      var result = RC.load(path.resolve(fixturesDir, "fbrc/conflict"));
+      var result = RC.load({ cwd: path.resolve(fixturesDir, "fbrc/conflict") });
       expect(result.projects.default).to.eq("top");
     });
 
     it("should be an empty object when not in project dir", function() {
-      var result = RC.load(__dirname);
+      var result = RC.load({ cwd: __dirname });
       return expect(result.data).to.deep.eq({});
     });
 
     it("should not throw up on invalid json", function() {
-      var result = RC.load(path.resolve(fixturesDir, "fbrc/invalid"));
+      var result = RC.load({ cwd: path.resolve(fixturesDir, "fbrc/invalid") });
       return expect(result.data).to.deep.eq({});
+    });
+
+    it("should load from the right directory when --config is specified", () => {
+      const result = RC.load({ cwd: __dirname, configPath: "./fixtures/fbrc/firebase.json" });
+      expect(result.projects.default).to.eq("top");
     });
   });
 

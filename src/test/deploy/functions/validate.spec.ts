@@ -4,6 +4,7 @@ import * as validate from "../../../deploy/functions/validate";
 import * as projectPath from "../../../projectPath";
 import { FirebaseError } from "../../../error";
 import * as sinon from "sinon";
+import { RUNTIME_NOT_SET } from "../../../parseRuntimeAndValidateSDK";
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -29,7 +30,7 @@ describe("validate", () => {
       dirExistsStub.returns(true);
 
       expect(() => {
-        validate.functionsDirectoryExists("cwd", "sourceDirName");
+        validate.functionsDirectoryExists({ cwd: "cwd" }, "sourceDirName");
       }).to.not.throw();
     });
 
@@ -38,7 +39,7 @@ describe("validate", () => {
       dirExistsStub.returns(false);
 
       expect(() => {
-        validate.functionsDirectoryExists("cwd", "sourceDirName");
+        validate.functionsDirectoryExists({ cwd: "cwd" }, "sourceDirName");
       }).to.throw(FirebaseError);
     });
   });
@@ -100,7 +101,7 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/package.json").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
       }).to.throw(FirebaseError, "No npm package found");
     });
 
@@ -110,7 +111,7 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/index.js").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
       }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
@@ -120,38 +121,50 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/src/main.js").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
       }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
-    it("should throw error if engines field is not set", () => {
+    it("should not throw error if runtime is set in the config and the engines field is not set", () => {
       cjsonLoadStub.returns({ name: "my-project" });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
-      }).to.throw(FirebaseError, "Engines field is required but was not found");
-    });
-
-    it("should throw error if engines field is set but node field missing", () => {
-      cjsonLoadStub.returns({ name: "my-project", engines: {} });
-      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
-      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
-
-      expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
-      }).to.throw(FirebaseError, "Engines field is required but was not found");
-    });
-
-    it("should not throw error if package.json, functions file exists and engines present", () => {
-      cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" } });
-      fileExistsStub.withArgs("sourceDir/package.json").returns(true);
-      fileExistsStub.withArgs("sourceDir/index.js").returns(true);
-
-      expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir");
+        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", true);
       }).to.not.throw();
+    });
+
+    context("runtime is not set in the config", () => {
+      it("should throw error if runtime is not set in the config and the engines field is not set", () => {
+        cjsonLoadStub.returns({ name: "my-project" });
+        fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+        fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+        expect(() => {
+          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        }).to.throw(FirebaseError, RUNTIME_NOT_SET);
+      });
+
+      it("should throw error if engines field is set but node field missing", () => {
+        cjsonLoadStub.returns({ name: "my-project", engines: {} });
+        fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+        fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+        expect(() => {
+          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        }).to.throw(FirebaseError, RUNTIME_NOT_SET);
+      });
+
+      it("should not throw error if package.json, functions file exists and engines present", () => {
+        cjsonLoadStub.returns({ name: "my-project", engines: { node: "8" } });
+        fileExistsStub.withArgs("sourceDir/package.json").returns(true);
+        fileExistsStub.withArgs("sourceDir/index.js").returns(true);
+
+        expect(() => {
+          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        }).to.not.throw();
+      });
     });
   });
 });

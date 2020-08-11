@@ -11,6 +11,16 @@ var _fixtureDir = function(name) {
 };
 
 describe("Config", function() {
+  describe("#load", () => {
+    it("should load a cjson file when configPath is specified", () => {
+      const config = Config.load({
+        cwd: __dirname,
+        configPath: "./fixtures/valid-config/firebase.json",
+      });
+      expect(config.get("database.rules")).to.eq("config/security-rules.json");
+    });
+  });
+
   describe("#_parseFile", function() {
     it("should load a cjson file", function() {
       var config = new Config({}, { cwd: _fixtureDir("config-imports") });

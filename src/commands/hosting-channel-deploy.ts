@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -10,6 +10,10 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
+import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
+import { logLabeledSuccess, datetimeString } from "../utils";
+
+const LOG_TAG = "hosting:channel";
 
 interface ChannelInfo {
   target: string | null;
@@ -22,7 +26,7 @@ export default new Command("hosting:channel:deploy [channelId]")
   .description("deploy to a specific Firebase Hosting channel")
   .option(
     "-e, --expires <duration>",
-    "duration string (e.g. 12h, 30d) for channel expiration, max 30d"
+    "duration string (e.g. 12h, 30d) for channel expiration, max 30d; defaults to 7d"
   )
   .option("--only <target1,target2...>", "only create previews for specified targets")
   .option("--open", "open a browser to the channel after deploying")
@@ -41,18 +45,29 @@ export default new Command("hosting:channel:deploy [channelId]")
       if (options.open) {
         throw new FirebaseError("open is not yet implemented");
       }
-      // TODO: implement --expires.
-      if (options.expires) {
-        throw new FirebaseError("expires is not yet implemented");
-      }
       // TODO: implement --no-authorized-domains.
       if (options["no-authorized-domains"]) {
         throw new FirebaseError("no-authorized-domains is not yet implemented");
       }
 
+      let expireTTL = DEFAULT_DURATION;
+      if (options.expires) {
+        expireTTL = calculateChannelExpireTTL(options.expires);
+        logger.debug(`Expires TTL: ${expireTTL}`);
+      }
+
       // TODO: interactive prompt if channel doesn't exist
       if (!channelId) {
         throw new FirebaseError("channelID is currently required");
+      }
+
+      // Some normalizing to be very sure of this check.
+      if (channelId.toLowerCase().trim() === "live") {
+        throw new FirebaseError(
+          `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
+            yellow("firebase deploy")
+          )} instead.`
+        );
       }
 
       if (options.only) {
@@ -74,25 +89,44 @@ export default new Command("hosting:channel:deploy [channelId]")
           logger.debug("[hosting] found existing channel for site", site, chan);
 
           if (chan) {
-            chan = await updateChannelTtl(projectId, site, channelId);
-            logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
+            const channelExpires = Boolean(chan.expireTime);
+            if (!channelExpires && options.expires) {
+              // If the channel doesn't expire, but the user provided a TTL, update the channel.
+              chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
+            } else if (channelExpires) {
+              // If the channel expires, calculate the time remaining to maybe update the channel.
+              const channelTimeRemaining = new Date(chan.expireTime).getTime() - Date.now();
+              // If the user explicitly gave us a time OR the time remaining is less than the new TTL:
+              if (options.expires || channelTimeRemaining < expireTTL) {
+                chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
+                logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
+              }
+            }
           } else {
-            chan = await createChannel(projectId, site, channelId);
+            chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
           }
 
           siteInfo.url = chan.url;
+          siteInfo.expireTime = chan.expireTime;
           return;
         })
       );
 
       await deploy(["hosting"], options, { hostingChannel: channelId });
-      logger.info();
 
+      logger.info();
       const deploys: { [key: string]: ChannelInfo } = {};
       sites.forEach((d) => {
         deploys[d.target || d.site] = d;
-        logger.info(`${bold(`Channel URL (${d.target || d.site}):`)} ${d.url}`);
+        let expires = "";
+        if (d.expireTime) {
+          expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
+        }
+        logLabeledSuccess(
+          LOG_TAG,
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
+        );
       });
 
       return deploys;
