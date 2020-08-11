@@ -400,7 +400,7 @@ export async function promptForRepeatInstance(
 ): Promise<string> {
   const message =
     `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
-    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+    `Do you wish to proceed with installing another instance of ${extensionName} in this project?`;
   return await promptOnce({
     type: "confirm",
     message,
