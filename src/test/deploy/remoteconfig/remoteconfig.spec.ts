@@ -1,9 +1,10 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+
 import * as api from "../../../api";
 import { mockAuth } from "../../helpers";
-import * as remoteconfig from "../../../remoteconfig/get";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
+import * as remoteconfig from "../../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
 const PROJECT_NUMBER = "001";

@@ -1,9 +1,9 @@
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-import api = require("../../api");
 import { FirebaseError } from "../../error";
-import logger = require("../../logger");
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
-const rcGet = require("../../remoteconfig/get");
+import api = require("../../api");
+import logger = require("../../logger");
+import rcGet = require("../../remoteconfig/get");
 
 const TIMEOUT = 30000;
 
@@ -63,6 +63,16 @@ export function validateInputRemoteConfigTemplate(
 }
 
 // Function deploys the project information/template specified based on Firebase project ID
+
+/**
+ * Deploys a Remote Config template information based on the Firebase Project Id
+ * If force option is passed, etag value will be set to *. Otherwise, the etag will be created
+ * @param projectNumber Input is the Project number string
+ * @param template Remote Config template to deploy
+ * @param options Optional options object when publishing a Remote Config template. If the
+ * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
+ * @return {Promise<RemoteConfigTemplate>} Returns a Promise of a Remote Config template
+ */
 export async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
@@ -71,11 +81,9 @@ export async function deployTemplate(
   try {
     let request = `/v1/projects/${projectNumber}/remoteConfig`;
     let etag = "*";
-    console.log(etag);
     if (!options || !options.force == true) {
       etag = await createEtag(projectNumber);
     }
-    console.log(etag);
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
@@ -98,6 +106,13 @@ export async function deployTemplate(
   }
 }
 
+/**
+ * Publishes a valid Remote Config template information based on the Firebase Project Id using the deployTemplate function
+ * @param projectNumber Input is the Project number of the Firebase Project
+ * @param template The Remote Config template to be published
+ * @param options Force boolean option
+ * @return {Promise<RemoteConfigTemplate>} Returns a Promise that fulfills with the published Remote Config template
+ */
 export async function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
