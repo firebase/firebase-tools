@@ -2,10 +2,9 @@
 
 import * as fs from "fs";
 
+import getProjectNumber = require("../../getProjectNumber");
 import { createEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
-
-const getProjectNumber = require("../../getProjectNumber");
 
 module.exports = async function(context: any, options: any): Promise<void> {
   if (!context) {
