@@ -85,6 +85,50 @@ describe("RemoteConfig Rollback", () => {
       );
     });
 
+    it("should return a rollback to the previous version specified", async () => {
+      apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
+
+      const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID, 1000);
+
+      expect(RCtemplate).to.deep.equal(previousTemplate);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 1000,
+        {
+          auth: true,
+          origin: api.remoteConfigApiOrigin,
+          timeout: 30000,
+        }
+      );
+      let err;
+      try {
+        await remoteconfig.rollbackTemplate(PROJECT_ID);
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `,
+      );
+    });
+
+    it("should return a rollback to the previous version specified", async () => {
+      apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
+
+      const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID);
+
+      expect(RCtemplate).to.deep.equal(previousTemplate);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 114,
+        {
+          auth: true,
+          origin: api.remoteConfigApiOrigin,
+          timeout: 30000,
+        }
+      );
+    });
+
     it("should reject if the api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
       apiRequestStub.onFirstCall().rejects(expectedError);
@@ -99,16 +143,7 @@ describe("RemoteConfig Rollback", () => {
       expect(err.message).to.equal(
         `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `,
       );
-      expect(err.original).to.equal(expectedError);
-      expect(apiRequestStub).to.be.calledOnceWith(
-        "POST",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback`,
-        {
-          auth: true,
-          origin: api.remoteConfigApiOrigin,
-          timeout: 30000,
-        }
-      );
+      expect(err.original.original).to.equal(expectedError);
     });
   });
 });

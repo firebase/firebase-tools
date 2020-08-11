@@ -40,7 +40,7 @@ module.exports = new Command("remoteconfig:rollback")
       }
       await rcRollback.rollbackTemplate(
           getProjectId(options),
-          options.versionNumber
+          targetVersion// options.versionNumber
         );
     })
   });

@@ -26,6 +26,7 @@ export async function rollbackTemplate(
           const latestVersion = template.version.versionNumber.toString();
           const previousVersion = parseInt(latestVersion) - 1;
           request = request + "?versionNumber=" + previousVersion;
+          console.log(request);
         }
       }
       const response = await api.request("POST", request, {
@@ -35,6 +36,7 @@ export async function rollbackTemplate(
       });
       return response.body;
     } catch (err) {
+      console.log(err.message)
       logger.debug(err.message);
       throw new FirebaseError(
         `Failed to rollback Firebase Remote Config template for project ${projectId}. `,
