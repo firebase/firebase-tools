@@ -2,20 +2,55 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../../api";
-import * as databaseManagement from "../../management/database";
+
 import { mockAuth } from "../helpers";
+import {
+  DatabaseLocation,
+  DatabaseInstance,
+  DatabaseInstanceType,
+  DatabaseInstanceState,
+  getDatabaseInstanceDetails,
+  createInstance,
+} from "../../management/database";
 
 const PROJECT_ID = "the-best-firebase-project";
 const DATABASE_INSTANCE_NAME = "some_instance";
-const SOME_DATABASE_INSTANCE: databaseManagement.DatabaseInstance = {
+DatabaseLocation.US_CENTRAL1;
+const SOME_DATABASE_INSTANCE: DatabaseInstance = {
   name: DATABASE_INSTANCE_NAME,
+  location: DatabaseLocation.US_CENTRAL1,
   project: PROJECT_ID,
   databaseUrl: "https://my-db-url.firebaseio.com",
-  type: databaseManagement.DatabaseInstanceType.USER_DATABASE,
-  state: databaseManagement.DatabaseInstanceState.ACTIVE,
+  type: DatabaseInstanceType.USER_DATABASE,
+  state: DatabaseInstanceState.ACTIVE,
 };
 
-describe("Database management", () => {
+const SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST: DatabaseInstance = {
+  name: DATABASE_INSTANCE_NAME,
+  location: DatabaseLocation.ASIA_SOUTHEAST1,
+  project: PROJECT_ID,
+  databaseUrl: "https://my-db-url.firebaseio.com",
+  type: DatabaseInstanceType.USER_DATABASE,
+  state: DatabaseInstanceState.ACTIVE,
+};
+
+const INSTANCE_RESPONSE_US_CENTRAL1 = {
+  name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances/${DATABASE_INSTANCE_NAME}`,
+  project: PROJECT_ID,
+  databaseUrl: "https://my-db-url.firebaseio.com",
+  type: DatabaseInstanceType.USER_DATABASE,
+  state: DatabaseInstanceState.ACTIVE,
+};
+
+const INSTANCE_RESPONSE_ASIA_SOUTHEAST1 = {
+  name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.ASIA_SOUTHEAST1}/instances/${DATABASE_INSTANCE_NAME}`,
+  project: PROJECT_ID,
+  databaseUrl: "https://my-db-url.firebaseio.com",
+  type: DatabaseInstanceType.USER_DATABASE,
+  state: DatabaseInstanceState.ACTIVE,
+};
+
+describe.only("Database management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
 
@@ -31,18 +66,14 @@ describe("Database management", () => {
 
   describe("getInstanceDetails", () => {
     it("should resolve with DatabaseInstance if API call succeeds", async () => {
-      const expectedDatabaseInstance = {
-        name: DATABASE_INSTANCE_NAME,
-        project: PROJECT_ID,
-        databaseUrl: "https://my-db-url.firebaseio.com",
-        type: "user",
-        state: "active",
-      };
-      apiRequestStub.onFirstCall().resolves({ body: SOME_DATABASE_INSTANCE });
-      const resultDatabaseInstance = await databaseManagement.getDatabaseInstanceDetails(
+      const expectedDatabaseInstance = SOME_DATABASE_INSTANCE;
+      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_US_CENTRAL1 });
+
+      const resultDatabaseInstance = await getDatabaseInstanceDetails(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME
       );
+
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(apiRequestStub).to.be.calledOnceWith(
         "GET",
@@ -59,14 +90,12 @@ describe("Database management", () => {
       const badInstanceName = "non-existent-instance";
       const expectedError = new Error("HTTP Error 404: Not Found");
       apiRequestStub.onFirstCall().rejects(expectedError);
-
       let err;
       try {
-        await databaseManagement.getDatabaseInstanceDetails(PROJECT_ID, badInstanceName);
+        await getDatabaseInstanceDetails(PROJECT_ID, badInstanceName);
       } catch (e) {
         err = e;
       }
-
       expect(err.message).to.equal(
         `Failed to get instance details for instance: ${badInstanceName}. See firebase-debug.log for more details.`
       );
@@ -85,23 +114,17 @@ describe("Database management", () => {
 
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
-      const expectedDatabaseInstance = {
-        name: DATABASE_INSTANCE_NAME,
-        project: PROJECT_ID,
-        databaseUrl: "https://my-db-url.firebaseio.com",
-        type: "user",
-        state: "active",
-      };
-      apiRequestStub.onFirstCall().resolves({ body: SOME_DATABASE_INSTANCE });
-      const resultDatabaseInstance = await databaseManagement.createInstance(
+      const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST;
+      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_ASIA_SOUTHEAST1 });
+      const resultDatabaseInstance = await createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
-        databaseManagement.DatabaseLocation.ASIA_SOUTHEAST1
+        DatabaseLocation.ASIA_SOUTHEAST1
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.ASIA_SOUTHEAST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.ASIA_SOUTHEAST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
         {
           auth: true,
           origin: api.rtdbManagementOrigin,
@@ -117,11 +140,7 @@ describe("Database management", () => {
 
       let err;
       try {
-        await databaseManagement.createInstance(
-          PROJECT_ID,
-          badInstanceName,
-          databaseManagement.DatabaseLocation.US_CENTRAL1
-        );
+        await createInstance(PROJECT_ID, badInstanceName, DatabaseLocation.US_CENTRAL1);
       } catch (e) {
         err = e;
       }
@@ -132,7 +151,7 @@ describe("Database management", () => {
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${databaseManagement.DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}`,
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}`,
         {
           auth: true,
           origin: api.rtdbManagementOrigin,

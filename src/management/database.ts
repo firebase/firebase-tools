@@ -75,7 +75,7 @@ export async function getDatabaseInstanceDetails(
       }
     );
 
-    return response.body.map(convertDatabaseInstance);
+    return convertDatabaseInstance(response.body);
   } catch (err) {
     logger.debug(err.message);
     const emulatorHost = process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST];
@@ -123,7 +123,7 @@ export async function createInstance(
       }
     );
 
-    return response.body.map(convertDatabaseInstance);
+    return convertDatabaseInstance(response.body);
   } catch (err) {
     logger.debug(err.message);
     return utils.reject(
