@@ -135,7 +135,9 @@ describe("Remote Config Deploy", () => {
         err = e;
       }
 
-      expect(err.message).to.equal(`Failed to deploy Remote Config template for Firebase project ${PROJECT_NUMBER}. `);
+      expect(err.message).to.equal(
+        `Failed to deploy Remote Config template for Firebase project ${PROJECT_NUMBER}. `
+      );
       expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
         "PUT",
