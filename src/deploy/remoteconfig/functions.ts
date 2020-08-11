@@ -120,7 +120,7 @@ export async function deployTemplate(
 }
 
 /**
- * Publishes a valid Remote Config template information based on the Firebase Project Id using the deployTemplate function
+ * Publishes a valid Remote Config template based on the Firebase Project Id using the deployTemplate function
  * @param projectNumber Input is the Project number of the Firebase Project
  * @param template The Remote Config template to be published
  * @param options Force boolean option
