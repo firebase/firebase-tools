@@ -1,5 +1,6 @@
 import { FirebaseError } from "../error";
 import * as api from "../api";
+import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
@@ -223,4 +224,54 @@ export async function deleteChannel(
     auth: true,
     origin: api.hostingApiOrigin,
   });
+}
+
+/**
+ * Create a version a clone.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the version.
+ * @param versionName the specific version ID.
+ */
+export async function cloneVersion(
+  site: string,
+  versionName: string,
+  finalize: boolean = false
+): Promise<any> {
+  const res = await api.request(
+    "POST",
+    `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
+    {
+      auth: true,
+      origin: api.hostingApiOrigin,
+      data: {
+        finalize,
+      },
+    }
+  );
+  const name = res.body.name;
+  const pollRes = await operationPoller.pollOperation({
+    apiOrigin: api.hostingApiOrigin,
+    apiVersion: "v1beta1",
+    operationResourceName: name,
+    masterTimeout: 600000,
+  });
+  return pollRes;
+}
+
+/**
+ * Create a release of on a channel.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the version.
+ * @param versionName the specific version ID.
+ */
+export async function createRelease(site: string, channel: string, version: string): Promise<any> {
+  const res = await api.request(
+    "POST",
+    `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
+    {
+      auth: true,
+      origin: api.hostingApiOrigin,
+    }
+  );
+  return res.body;
 }
