@@ -1,3 +1,4 @@
 - Fixes an issue where immutable params were not sent during ext:configure.
 - Includes latest features and improvements from production in the Firestore Emulator.
 - Fixes issue where all database functions triggered on the default namespace (#2501)
+- Fixes issue where rules paths were not normalized before reading (#2544)

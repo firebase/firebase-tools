@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
+import * as Config from "../config";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
@@ -457,10 +458,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       args.seed_from_export = exportMetadataFilePath;
     }
 
-    const rulesLocalPath = options.config.get("firestore.rules");
+    const config = options.config as Config;
+    const rulesLocalPath = config.get("firestore.rules");
     let rulesFileFound = false;
     if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
       if (rulesFileFound) {
         args.rules = rules;
@@ -502,7 +504,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     };
 
-    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    const rc = dbRulesConfig.normalizeRulesConfig(
+      dbRulesConfig.getRulesConfig(projectId, options),
+      options
+    );
     logger.debug("database rules config: ", JSON.stringify(rc));
 
     args.rules = rc;
@@ -515,7 +520,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     } else {
       for (const c of rc) {
-        const rules: string = path.join(options.projectRoot, c.rules);
+        const rules: string = c.rules;
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
