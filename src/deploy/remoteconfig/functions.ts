@@ -52,6 +52,7 @@ export function validateInputRemoteConfigTemplate(
  * If force option is passed, etag value will be set to *. Otherwise, the etag will be created
  * @param projectNumber Input is the Project number string
  * @param template Remote Config template to deploy
+ * @etag Remote Config Template's etag value
  * @param options Optional object when publishing a Remote Config template. If the
  * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
  * @return {Promise<RemoteConfigTemplate>} Returns a Promise of a Remote Config template
@@ -96,6 +97,7 @@ export async function deployTemplate(
  * Publishes a valid Remote Config template based on the Firebase Project Id using the deployTemplate function
  * @param projectNumber Input is the Project number of the Firebase Project
  * @param template The Remote Config template to be published
+ * @param etag Remote Config Template's etag value
  * @param options Force boolean option
  * @return {Promise<RemoteConfigTemplate>} Returns a Promise that fulfills with the published Remote Config template
  */
