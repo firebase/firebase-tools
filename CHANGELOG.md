@@ -1,9 +1,3 @@
-- Fixes issue where `Authorization` header was missing from callable functions in the emulator (#2459).
-- Improve support for the Node.js 12 (Beta) runtime in the Functions emulator.
-- Allow specifying the config (`firebase.json`) file using the `--config`/`-c` flag.
-- Fixes issue where `emulators:exec` could fail to shut down cleanly (#2477).
-- Fixes issue where database emulator did not properly load initial rules (#2483).
-- Allow starting the UI with `emulators:exec` using the `--ui` flag.
-- Fixes issue where multiple CLI instances compete for the same log (#2464).
-- Fixes issue where emulators run from `npm` scripts could not be shut down cleanly (#2507).
-- Makes it easier to import data from production databases.
+- Fixes an issue where immutable params were not sent during ext:configure.
+- Includes latest features and improvements from production in the Firestore Emulator.
+- Fixes issue where all database functions triggered on the default namespace (#2501)
