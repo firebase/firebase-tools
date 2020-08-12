@@ -202,7 +202,7 @@ export async function displayChanges(
 export async function retryUpdate(): Promise<boolean> {
   return promptOnce({
     type: "confirm",
-    message: "Are you sure you want to continue with updating anyways?",
+    message: "Are you sure you wish to continue with updating anyways?",
     default: false,
   });
 }
