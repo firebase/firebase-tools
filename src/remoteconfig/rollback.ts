@@ -1,14 +1,16 @@
 import api = require("../api");
 import logger = require("../logger");
+
 import { FirebaseError } from "../error";
 import * as rcGet from "../remoteconfig/get";
 
 const TIMEOUT = 30000;
 
 /**
- * Function rollsback project to the one specified by the version number provided
- * @param projectId Input is the project ID string
- * @return {Promise} Returns a promise of a remote config template using the RemoteConfigTemplate interface
+ * Function rollsback project template to the template specified by the version number
+ * @param projectId Firebase Remote Config Template project Id
+ * @param versionNumber Remote Config Template version number
+ * @return {Promise} Returns a promise of a Remote Config template using the RemoteConfigTemplate interface
  */
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
   try {

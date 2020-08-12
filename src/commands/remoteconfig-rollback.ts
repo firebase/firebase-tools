@@ -1,10 +1,10 @@
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
-import { requirePermissions } from "../requirePermissions";
-import getProjectId = require("../getProjectId");
-import * as rcRollback from "../remoteconfig/rollback";
 import * as rcGet from "../remoteconfig/get";
+import * as rcRollback from "../remoteconfig/rollback";
+import { requirePermissions } from "../requirePermissions";
 
+import getProjectId = require("../getProjectId");
 const { prompt } = require("../prompt");
 
 module.exports = new Command("remoteconfig:rollback")

@@ -1,9 +1,11 @@
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
-import sinon = require("sinon");
-import { mockAuth } from "../helpers";
-import api = require("../../api");
-import * as remoteconfig from "../../remoteconfig/rollback";
 import { expect } from "chai";
+
+import api = require("../../api");
+import sinon = require("sinon");
+
+import { mockAuth } from "../helpers";
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
+import * as remoteconfig from "../../remoteconfig/rollback";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
@@ -133,6 +135,7 @@ describe("RemoteConfig Rollback", () => {
 
     it("should reject if the api call fails", async () => {
       const expectedError = new Error("HTTP Error 404: Not Found");
+
       apiRequestStub.onFirstCall().rejects(expectedError);
 
       let err;
