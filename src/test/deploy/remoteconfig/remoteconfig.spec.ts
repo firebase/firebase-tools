@@ -2,8 +2,9 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../../../api";
-import { mockAuth } from "../../helpers";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
+import { FirebaseError } from "../../../error";
+import { mockAuth } from "../../helpers";
 import * as remoteconfig from "../../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
@@ -124,7 +125,7 @@ describe("Remote Config Deploy", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedError = new Error("HTTP Error 404: Not Found");
+      const expectedError = new FirebaseError("HTTP Error 404: Not Found");
 
       apiRequestStub.onFirstCall().rejects(expectedError);
 

@@ -12,10 +12,21 @@ const TIMEOUT = 30000;
  * @param projectNumber Input is the Firebase Project's project number
  * @return {Promise<string>} Returns a Promise of a Etag string
  */
-export async function createEtag(projectNumber: string): Promise<string> {
-  const template = await rcGet.getTemplate(projectNumber);
-  const etag = "etag-" + projectNumber + "-" + template?.version?.versionNumber;
-  return etag;
+export async function createEtag(projectNumber: string, versionNumber?: string): Promise<string> {
+  // const template = await rcGet.getTemplate(projectNumber);
+  // const etag = "etag-" + projectNumber + "-" + template?.version?.versionNumber;
+  // return etag;
+    let request = `/v1/projects/${projectNumber}/remoteConfig`;
+    if (versionNumber) {
+      request = request + "?versionNumber=" + versionNumber;
+    }
+    const response = await api.request("GET", request, {
+      auth: true,
+      origin: api.remoteConfigApiOrigin,
+      timeout: TIMEOUT,
+    });
+    // const template = JSON.parse(JSON.stringify(template));
+    return response.etag;
 }
 
 /**
@@ -37,44 +48,20 @@ export function validateInputRemoteConfigTemplate(
       "ETag must be a non-empty string."
     );
   }
-  if (
-    !templateCopy.parameters ||
-    templateCopy.parameters == "null" ||
-    templateCopy.parameters == "undefined"
-  ) {
-    throw new Error(
-      "Remote Config parameters must be a non-null object"
-    );
-  }
-  if (
-    !templateCopy.parameterGroups ||
-    templateCopy.parameterGroups == "null" ||
-    templateCopy.parameterGroups == "undefined"
-  ) {
-    throw new Error(
-      "Remote Config parameter groups must be a non-null object"
-    );
-  }
-  if (!Array.isArray(templateCopy.conditions)) {
+  if(templateCopy.condtions && !Array.isArray(templateCopy.conditions)) {
     throw new Error(
       "Remote Config conditions must be an array"
     );
   }
-  if (typeof templateCopy.version !== "undefined") {
-    // exclude output only properties and keep the only input property: description
-    templateCopy.version = { description: templateCopy.version.description };
-  }
   return templateCopy;
 }
-
-// Function deploys the project information/template specified based on Firebase project ID
 
 /**
  * Deploys a Remote Config template information based on the Firebase Project Id
  * If force option is passed, etag value will be set to *. Otherwise, the etag will be created
  * @param projectNumber Input is the Project number string
  * @param template Remote Config template to deploy
- * @param options Optional options object when publishing a Remote Config template. If the
+ * @param options Optional object when publishing a Remote Config template. If the
  * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
  * @return {Promise<RemoteConfigTemplate>} Returns a Promise of a Remote Config template
  */
@@ -86,23 +73,24 @@ export async function deployTemplate(
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
     let etag = "*";
+    console.log(etag);
     if (!options || !options.force == true) {
       etag = await createEtag(projectNumber);
     }
+    console.log(etag);
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
       headers: { "If-Match": etag },
       data: {
-        conditions: template.conditions,
-        parameters: template.parameters,
-        parameterGroups: template.parameterGroups,
+        conditions: template?.conditions,
+        parameters: template?.parameters,
+        parameterGroups: template?.parameterGroups,
       },
     });
     return response.body;
   } catch (err) {
-    console.log(err.message);
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to deploy Remote Config template for Firebase project ${projectNumber}. `,
