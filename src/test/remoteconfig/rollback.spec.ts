@@ -115,7 +115,7 @@ describe("RemoteConfig Rollback", () => {
 
     it("should return a rollback to the previous version", async () => {
       apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
-       apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate});
+      apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID);
 

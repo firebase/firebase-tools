@@ -36,7 +36,7 @@ module.exports = new Command("remoteconfig:rollback")
         message: "Proceed to rollback template to " + targetVersion + "?",
         default: false,
       },
-    ]).then(async function() {
+    ]).then(async () => {
       if (!options.confirm) {
         return;
       }
