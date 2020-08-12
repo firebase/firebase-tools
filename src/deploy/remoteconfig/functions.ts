@@ -52,7 +52,7 @@ export function validateInputRemoteConfigTemplate(
  * If force option is passed, etag value will be set to *. Otherwise, the etag will be created
  * @param projectNumber Input is the Project number string
  * @param template Remote Config template to deploy
- * @etag Remote Config Template's etag value
+ * @param etag Remote Config Template's etag value
  * @param options Optional object when publishing a Remote Config template. If the
  * force {boolean} is `true` the Remote Config template is forced to update and circumvent the Etag
  * @return {Promise<RemoteConfigTemplate>} Returns a Promise of a Remote Config template
