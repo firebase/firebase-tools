@@ -1,18 +1,23 @@
 import api = require("../api");
-import * as logger from "../logger";
 import { FirebaseError } from "../error";
 import { ListVersionsResult } from "./interfaces";
+import * as logger from "../logger";
 
 const TIMEOUT = 30000;
 
 /**
- * Function retrieves the list of versions for a specific project
+ * Get a list of Remote Config template versions that have been published, sorted in reverse chronological order for a specific project
  * @param projectId Input is the Project ID string
- * @return {Promise} Returns a promise of the result when calling listVersions method
+ * @param maxResults The maximum number of items to return per page
+ * @return {Promise<ListVersionsResult>} Returns a Promise of a list of Remote Config template versions that have been published
  */
-export async function getVersions(projectId: string): Promise<ListVersionsResult> {
+export async function getVersions(projectId: string, maxResults = 10): Promise<ListVersionsResult> {
+  maxResults = maxResults || 300;
   try {
-    const request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    let request = `/v1/projects/${projectId}/remoteConfig:listVersions`;
+    if (maxResults) {
+      request = request + "?pageSize=" + maxResults;
+    }
     const response = await api.request("GET", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
@@ -22,8 +27,7 @@ export async function getVersions(projectId: string): Promise<ListVersionsResult
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to get versions for Firebase project ${projectId}. ` +
-        "Please make sure the project exists and your account has permission to access it.",
+      `Failed to get Remote Config template versions for Firebase project ${projectId}. `,
       { exit: 2, original: err }
     );
   }
