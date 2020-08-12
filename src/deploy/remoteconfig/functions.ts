@@ -3,30 +3,27 @@ import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 import api = require("../../api");
 import logger = require("../../logger");
-import rcGet = require("../../remoteconfig/get");
 
 const TIMEOUT = 30000;
 
 /**
- * Creates Etag for Remote Config Project Template
+ * Gets Etag for Remote Config Project Template
  * @param projectNumber Input is the Firebase Project's project number
- * @return {Promise<string>} Returns a Promise of a Etag string
+ * @param versionNumber Firebase Remote Config Template version number
+ * @return {Promise<string>} Returns a Promise of the Remote Config Template Etag string
  */
-export async function createEtag(projectNumber: string, versionNumber?: string): Promise<string> {
-  // const template = await rcGet.getTemplate(projectNumber);
-  // const etag = "etag-" + projectNumber + "-" + template?.version?.versionNumber;
-  // return etag;
-    let request = `/v1/projects/${projectNumber}/remoteConfig`;
-    if (versionNumber) {
-      request = request + "?versionNumber=" + versionNumber;
-    }
-    const response = await api.request("GET", request, {
-      auth: true,
-      origin: api.remoteConfigApiOrigin,
-      timeout: TIMEOUT,
-    });
-    // const template = JSON.parse(JSON.stringify(template));
-    return response.etag;
+export async function getEtag(projectNumber: string, versionNumber?: string): Promise<string> {
+  let request = `/v1/projects/${projectNumber}/remoteConfig`;
+  if (versionNumber) {
+    request = request + "?versionNumber=" + versionNumber;
+  }
+  const response = await api.request("GET", request, {
+    auth: true,
+    origin: api.remoteConfigApiOrigin,
+    timeout: TIMEOUT,
+    headers: { "Accept-Encoding": "gzip" },
+  });
+  return response.response.headers.etag;
 }
 
 /**
@@ -39,19 +36,13 @@ export function validateInputRemoteConfigTemplate(
 ): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template));
   if (!templateCopy || templateCopy == "null" || templateCopy == "undefined") {
-    throw new Error(
-      `Invalid Remote Config template: ${JSON.stringify(templateCopy)}`
-    );
+    throw new Error(`'Invalid Remote Config template: ${JSON.stringify(templateCopy)}'`);
   }
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
-    throw new Error(
-      "ETag must be a non-empty string."
-    );
+    throw new Error(`"ETag must be a non-empty string."`);
   }
-  if(templateCopy.condtions && !Array.isArray(templateCopy.conditions)) {
-    throw new Error(
-      "Remote Config conditions must be an array"
-    );
+  if (templateCopy.condtions && !Array.isArray(templateCopy.conditions)) {
+    throw new Error("Remote Config conditions must be an array");
   }
   return templateCopy;
 }
@@ -68,21 +59,20 @@ export function validateInputRemoteConfigTemplate(
 export async function deployTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
+  etag: string,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
-    let etag = "*";
-    console.log(etag);
+    let projectEtag = "*";
     if (!options || !options.force == true) {
-      etag = await createEtag(projectNumber);
+      projectEtag = etag;
     }
-    console.log(etag);
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
-      headers: { "If-Match": etag },
+      headers: { "If-Match": projectEtag },
       data: {
         conditions: template?.conditions,
         parameters: template?.parameters,
@@ -112,16 +102,17 @@ export async function deployTemplate(
 export async function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
+  etag: string,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
   const temporaryTemplate = {
-    conditions: template.conditions,
-    parameters: template.parameters,
-    parameterGroups: template.parameterGroups,
+    conditions: template?.conditions,
+    parameters: template?.parameters,
+    parameterGroups: template?.parameterGroups,
     version: template.version,
-    etag: await createEtag(projectNumber),
+    etag: etag,
   };
   let validTemplate: RemoteConfigTemplate = temporaryTemplate;
-  validTemplate = validateInputRemoteConfigTemplate(temporaryTemplate);
-  return await deployTemplate(projectNumber, validTemplate, options);
+  validTemplate = validateInputRemoteConfigTemplate(template);
+  return await deployTemplate(projectNumber, validTemplate, etag, options);
 }

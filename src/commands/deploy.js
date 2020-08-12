@@ -35,9 +35,7 @@ const TARGET_PERMISSIONS = {
     "firebaserules.rulesets.create",
     "firebaserules.releases.update",
   ],
-  remoteconfig: [
-    "cloudconfig.configs.get",
-    "cloudconfig.configs.update"],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
 };
 
 module.exports = new Command("deploy")

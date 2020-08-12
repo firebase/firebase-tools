@@ -10,6 +10,10 @@ import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
 const PROJECT_NUMBER = "001";
 
+const header = {
+  etag: "etag-344230015214-190",
+};
+
 function createTemplate(versionNumber: string): RemoteConfigTemplate {
   return {
     conditions: [
@@ -60,12 +64,14 @@ describe("Remote Config Deploy", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
   let templateStub: sinon.SinonStub;
+  let etagStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     templateStub = sandbox.stub(remoteconfig, "getTemplate");
+    etagStub = sandbox.stub(rcDeploy, "getEtag");
   });
 
   afterEach(() => {
@@ -76,9 +82,10 @@ describe("Remote Config Deploy", () => {
     it("should publish the latest template", async () => {
       apiRequestStub.onFirstCall().resolves({ body: expectedTemplateInfo });
       templateStub.withArgs(PROJECT_NUMBER).returns(currentTemplate);
+      etagStub.withArgs(PROJECT_NUMBER, "6").returns(header);
 
-      const etag = await rcDeploy.createEtag(PROJECT_NUMBER);
-      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate);
+      const etag = await rcDeploy.getEtag(PROJECT_NUMBER, "6");
+      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -104,7 +111,12 @@ describe("Remote Config Deploy", () => {
 
       const options = { force: true };
       const etag = "*";
-      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, options);
+      const RCtemplate = await rcDeploy.publishTemplate(
+        PROJECT_NUMBER,
+        currentTemplate,
+        etag,
+        options
+      );
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -126,12 +138,14 @@ describe("Remote Config Deploy", () => {
 
     it("should reject if the api call fails", async () => {
       const expectedError = new FirebaseError("HTTP Error 404: Not Found");
+      const etag = await rcDeploy.getEtag(PROJECT_NUMBER);
 
       apiRequestStub.onFirstCall().rejects(expectedError);
+      etagStub.withArgs(PROJECT_NUMBER, "undefined").returns(header);
 
       let err;
       try {
-        await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate);
+        await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
       } catch (e) {
         err = e;
       }
@@ -147,7 +161,7 @@ describe("Remote Config Deploy", () => {
           auth: true,
           origin: api.remoteConfigApiOrigin,
           timeout: 30000,
-          headers: { "If-Match": "etag-001-undefined" },
+          headers: { "If-Match": undefined },
           data: {
             conditions: currentTemplate.conditions,
             parameters: currentTemplate.parameters,
