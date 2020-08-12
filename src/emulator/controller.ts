@@ -520,7 +520,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     } else {
       for (const c of rc) {
-        const rules: string = path.join(options.projectRoot, c.rules);
+        const rules: string = c.rules;
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
