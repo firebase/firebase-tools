@@ -1,4 +1,4 @@
-import { RemoteConfigTemplate } from "../../remoteconfig/interfaces"
+import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 import sinon = require("sinon");
 import { mockAuth } from "../helpers";
 import api = require("../../api");
@@ -7,7 +7,11 @@ import { expect } from "chai";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
 
-function createTemplate(versionNumber: string, date: string, rollbackSource?: string): RemoteConfigTemplate {
+function createTemplate(
+  versionNumber: string,
+  date: string,
+  rollbackSource?: string
+): RemoteConfigTemplate {
   return {
     parameterGroups: {
       crash_when_settings_toggled_ios: {
