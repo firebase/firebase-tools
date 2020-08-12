@@ -76,6 +76,7 @@ export default new Command("database:instances:list")
       spinner.fail();
       throw err;
     }
+    spinner.succeed();
     for (const instance of instances) {
       logger.info(instance.instance);
     }
