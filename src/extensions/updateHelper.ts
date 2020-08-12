@@ -6,7 +6,6 @@ import TerminalRenderer = require("marked-terminal");
 import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
-import { displayNodejsBillingNotice } from "./nodejsMigrationHelper";
 import { UpdateWarning } from "./resolveSource";
 import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
@@ -226,8 +225,7 @@ export interface UpdateOptions {
   rolesToAdd: extensionsApi.Role[];
   rolesToRemove: extensionsApi.Role[];
   serviceAccountEmail: string;
-  currentSpec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
+  billingRequired?: boolean;
 }
 
 /**
@@ -247,11 +245,9 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     rolesToAdd,
     rolesToRemove,
     serviceAccountEmail,
-    currentSpec,
-    newSpec,
+    billingRequired,
   } = updateOptions;
-  await checkProjectBilling(projectId, instanceId, newSpec.billingRequired);
-  displayNodejsBillingNotice(currentSpec, newSpec);
+  await checkProjectBilling(projectId, instanceId, billingRequired);
   await rolesHelper.grantRoles(
     projectId,
     serviceAccountEmail,
