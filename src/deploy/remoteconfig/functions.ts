@@ -26,16 +26,14 @@ export async function createEtag(projectNumber: string): Promise<string> {
 export function validateInputRemoteConfigTemplate(
   template: RemoteConfigTemplate
 ): RemoteConfigTemplate {
-  const templateCopy = JSON.parse(JSON.stringify(template)); // Deep copy
+  const templateCopy = JSON.parse(JSON.stringify(template));
   if (!templateCopy || templateCopy == "null" || templateCopy == "undefined") {
     throw new Error(
-      // "invalid-argument",
       `Invalid Remote Config template: ${JSON.stringify(templateCopy)}`
     );
   }
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
     throw new Error(
-      // "invalid-argument",
       "ETag must be a non-empty string."
     );
   }
@@ -45,7 +43,6 @@ export function validateInputRemoteConfigTemplate(
     templateCopy.parameters == "undefined"
   ) {
     throw new Error(
-      // "invalid-argument",
       "Remote Config parameters must be a non-null object"
     );
   }
@@ -55,13 +52,11 @@ export function validateInputRemoteConfigTemplate(
     templateCopy.parameterGroups == "undefined"
   ) {
     throw new Error(
-      // "invalid-argument",
       "Remote Config parameter groups must be a non-null object"
     );
   }
   if (!Array.isArray(templateCopy.conditions)) {
     throw new Error(
-      // "invalid-argument",
       "Remote Config conditions must be an array"
     );
   }
