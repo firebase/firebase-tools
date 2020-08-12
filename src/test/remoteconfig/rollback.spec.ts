@@ -18,41 +18,38 @@ function createTemplate(
         parameters: {
           crash_when_settings_toggled_verbose_logging_ios: {
             defaultValue: {
-              value: "false"
-            }, 
-            description: "iOS: Enable verbose logging for test crash"
-          }
-        }
-      }
-    }, 
+              value: "false",
+            },
+            description: "iOS: Enable verbose logging for test crash",
+          },
+        },
+      },
+    },
     version: {
       updateUser: {
-        email: "jackiechu@google.com"
-      }, 
-      updateTime: date, 
-      //description: "Rollback to version 115", 
-      //updateType: "ROLLBACK", 
-      updateOrigin: "REST_API", 
+        email: "jackiechu@google.com",
+      },
+      updateTime: date,
+      updateOrigin: "REST_API",
       versionNumber: versionNumber,
-      rollbackSource: rollbackSource
-    }, 
+      rollbackSource: rollbackSource,
+    },
     conditions: [
       {
-        expression: "device.os == 'ios'", 
-        name: "abcd"
-      }
-    ], 
+        expression: "device.os == 'ios'",
+        name: "abcd",
+      },
+    ],
     parameters: {
       another_number: {
         defaultValue: {
-          value: "115"
+          value: "115",
         },
-      }, 
+      },
     },
     etag: "123",
   };
 }
-
 
 const previousTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
 const rollbackTemplate: RemoteConfigTemplate = createTemplate("114", "2020-08-07T23:11:41.629Z");
@@ -72,7 +69,7 @@ describe("RemoteConfig Rollback", () => {
   });
 
   describe("rollbackCurrentVersion", () => {
-    it("should return a rollback to the previous version specified", async () => {
+    it("should return a rollback to the version number specified", async () => {
       apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID, 115);
@@ -89,7 +86,7 @@ describe("RemoteConfig Rollback", () => {
       );
     });
 
-    it("should return a rollback to the previous version specified", async () => {
+    it("should reject invalid rollback version number", async () => {
       apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID, 1000);
@@ -112,13 +109,13 @@ describe("RemoteConfig Rollback", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `,
+        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `
       );
     });
 
-    it("should return a rollback to the previous version specified", async () => {
+    it("should return a rollback to the previous version", async () => {
       apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
-      apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate});
+       apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate});
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID);
 
@@ -146,7 +143,7 @@ describe("RemoteConfig Rollback", () => {
       }
 
       expect(err.message).to.equal(
-        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `,
+        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `
       );
       expect(err.original.original).to.equal(expectedError);
     });
