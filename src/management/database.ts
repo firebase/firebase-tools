@@ -182,7 +182,7 @@ export async function listDatabaseInstances(
         `/${MGMT_API_VERSION}/projects/${projectId}/locations/${location}/instances?pageSize=${pageSize}${pageTokenQueryString}`,
         {
           auth: true,
-          origin: api.firebaseApiOrigin,
+          origin: api.rtdbManagementOrigin,
           timeout: TIMEOUT_MILLIS,
         }
       );
@@ -197,7 +197,7 @@ export async function listDatabaseInstances(
     logger.debug(err.message);
     throw new FirebaseError(
       `Failed to list Firebase Realtime Database instances${
-        location === DatabaseLocation.ANY ? "" : `for location ${location}`
+        location === DatabaseLocation.ANY ? "" : ` for location ${location}`
       }` + ". See firebase-debug.log for more info.",
       {
         exit: 2,
