@@ -41,7 +41,7 @@ export function validateInputRemoteConfigTemplate(
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
     throw new Error(`"ETag must be a non-empty string."`);
   }
-  if (templateCopy.condtions && !Array.isArray(templateCopy.conditions)) {
+  if (templateCopy.conditions && !Array.isArray(templateCopy.conditions)) {
     throw new Error("Remote Config conditions must be an array");
   }
   return templateCopy;
@@ -65,10 +65,12 @@ export async function deployTemplate(
 ): Promise<RemoteConfigTemplate> {
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
-    let projectEtag = "*";
-    if (!options || !options.force == true) {
-      projectEtag = etag;
+    let projectEtag = etag;
+    console.log(projectEtag)
+    if (options && options.force == true) {
+      projectEtag = "*";
     }
+    console.log(projectEtag)
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
