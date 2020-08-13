@@ -86,9 +86,6 @@ function _createFunction(options) {
   }
 
   var dataWithTrigger = _.assign(data, options.trigger);
-  console.log("CREATE", endpoint);
-  console.log("DATA", JSON.stringify(dataWithTrigger, undefined, 2));
-
   return api
     .request("POST", endpoint, {
       auth: true,
@@ -187,10 +184,6 @@ function _updateFunction(options) {
   } else {
     masks = _.concat(masks, "httpsTrigger");
   }
-
-  console.log("PATCH", endpoint);
-  console.log("DATA", JSON.stringify(data, undefined, 2));
-  console.log("MASK", JSON.stringify(masks));
 
   return api
     .request("PATCH", endpoint, {

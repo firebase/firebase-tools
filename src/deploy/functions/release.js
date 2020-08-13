@@ -153,27 +153,29 @@ module.exports = function(context, options, payload) {
   var existingScheduledFunctions;
 
   // Collect all the functions that have a retry policy
-  // TODO: Should we be looking at remote functions that have a retry polcy as well?
-  var failurePolicyFunctions = functionsInfo
-    .filter((fn) => {
-      return !!fn.failurePolicy;
-    });
+  var failurePolicyFunctions = functionsInfo.filter((fn) => {
+    return !!fn.failurePolicy;
+  });
 
   var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
     return helper.getFunctionLabel(_.get(fn, "name"));
   });
-  var retryMessage = "The following functions will be retried in case of failure: " 
-    + clc.bold(failurePolicyFunctionLabels.join(", ")) 
-    + ". "
-    + "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be multiple days. " 
-    + "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+  var retryMessage =
+    "The following functions will be retried in case of failure: " +
+    clc.bold(failurePolicyFunctionLabels.join(", ")) +
+    ". " +
+    "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be multiple days. " +
+    "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
 
   utils.logLabeledWarning("functions", retryMessage);
+
+  let proceedPrompt = Promise.resolve(true);
   if (options.nonInteractive && !options.force) {
-    throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", { exit: 1});
+    throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
+      exit: 1,
+    });
   } else if (!options.nonInteractive) {
-    // TODO: await this!
-    promptOnce({
+    proceedPrompt = promptOnce({
       type: "confirm",
       name: "confirm",
       default: false,
@@ -182,7 +184,15 @@ module.exports = function(context, options, payload) {
   }
 
   delete payload.functions;
-  return Promise.resolve(context.existingFunctions)
+
+  return proceedPrompt
+    .then((proceed) => {
+      if (!proceed) {
+        throw new FirebaseError("Deployment canceled.", { exit: 1 });
+      }
+
+      return Promise.resolve(context.existingFunctions);
+    })
     .then(function(existingFunctions) {
       var pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
