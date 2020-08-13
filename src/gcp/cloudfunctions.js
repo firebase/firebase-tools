@@ -85,11 +85,10 @@ function _createFunction(options) {
     data.environmentVariables = options.environmentVariables;
   }
 
-  var dataWithTrigger = _.assign(data, options.trigger);
   return api
     .request("POST", endpoint, {
       auth: true,
-      data: dataWithTrigger,
+      data: _.assign(data, options.trigger),
       origin: api.functionsOrigin,
     })
     .then(
