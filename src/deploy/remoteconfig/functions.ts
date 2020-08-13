@@ -66,11 +66,9 @@ export async function deployTemplate(
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
     let projectEtag = etag;
-    console.log(projectEtag)
     if (options && options.force == true) {
       projectEtag = "*";
     }
-    console.log(projectEtag)
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
