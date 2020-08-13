@@ -16,7 +16,7 @@ var PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.nolint.json"),
   "utf8"
 );
-var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, ".eslintrc.js"), "utf8");
+var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
 var TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
