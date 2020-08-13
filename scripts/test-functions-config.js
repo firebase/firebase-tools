@@ -18,7 +18,7 @@ var tmp = require("tmp");
 
 var api = require("../lib/api");
 var scopes = require("../lib/scopes");
-var configstore = require("../lib/configstore");
+var { configstore } = require("../lib/configstore");
 
 var projectId = process.argv[2] || "functions-integration-test";
 var localFirebase = __dirname + "/../lib/bin/firebase.js";

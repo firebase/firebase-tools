@@ -12,10 +12,16 @@ const SPEC = {
   description: "descriptive",
   version: "1.0.0",
   license: "MIT",
-  apis: [{ apiName: "api1", reason: "" }, { apiName: "api2", reason: "" }],
-  roles: [{ role: "role1", reason: "" }, { role: "role2", reason: "" }],
+  apis: [
+    { apiName: "api1", reason: "" },
+    { apiName: "api2", reason: "" },
+  ],
+  roles: [
+    { role: "role1", reason: "" },
+    { role: "role2", reason: "" },
+  ],
   resources: [
-    { name: "resource1", type: "function", description: "desc" },
+    { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
     { name: "resource2", type: "other", description: "" },
   ],
   author: { authorName: "Tester" },
@@ -27,16 +33,6 @@ const SPEC = {
 
 describe("updateHelper", () => {
   describe("displayChangesNoInput", () => {
-    it("should display changes to version", () => {
-      const newSpec = _.cloneDeep(SPEC);
-      newSpec.version = "1.1.0";
-
-      const loggedLines = updateHelper.displayChangesNoInput(SPEC, newSpec);
-
-      const expected = ["", "**Version:**", "- 1.0.0", "+ 1.1.0"];
-      expect(loggedLines).to.eql(expected);
-    });
-
     it("should display changes to display name", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.displayName = "new";
@@ -112,7 +108,10 @@ describe("updateHelper", () => {
     it("should prompt for changes to apis and continue if user gives consent", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
-      newSpec.apis = [{ apiName: "api2", reason: "" }, { apiName: "api3", reason: "" }];
+      newSpec.apis = [
+        { apiName: "api2", reason: "" },
+        { apiName: "api3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).not.to.be.rejected;
 
@@ -124,7 +123,10 @@ describe("updateHelper", () => {
     it("should prompt for changes to roles and continue if user gives consent", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
-      newSpec.roles = [{ role: "role2", reason: "" }, { role: "role3", reason: "" }];
+      newSpec.roles = [
+        { role: "role2", reason: "" },
+        { role: "role3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).not.to.be.rejected;
 
@@ -137,7 +139,7 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.resources = [
-        { name: "resource3", type: "function", description: "new desc" },
+        { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
         { name: "resource2", type: "other", description: "" },
       ];
 
@@ -168,7 +170,10 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.license = "New";
-      newSpec.roles = [{ role: "role2", reason: "" }, { role: "role3", reason: "" }];
+      newSpec.roles = [
+        { role: "role2", reason: "" },
+        { role: "role3", reason: "" },
+      ];
 
       expect(updateHelper.displayChangesRequiringConfirmation(SPEC, newSpec)).to.be.rejectedWith(
         FirebaseError,

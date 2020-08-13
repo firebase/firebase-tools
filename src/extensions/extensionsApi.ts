@@ -1,5 +1,7 @@
+import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as api from "../api";
+import * as logger from "../logger";
 import * as operationPoller from "../operation-poller";
 
 const VERSION = "v1beta";
@@ -34,7 +36,7 @@ export interface ExtensionSource {
 export interface ExtensionSpec {
   specVersion?: string;
   name: string;
-  version?: string;
+  version: string;
   description?: string;
   apis?: Api[];
   roles?: Role[];
@@ -65,6 +67,8 @@ export interface Resource {
   name: string;
   type: string;
   description?: string;
+  properties?: { [key: string]: any };
+  propertiesYaml?: string;
 }
 
 export interface Author {
@@ -85,7 +89,7 @@ export interface Param {
   immutable?: boolean;
 }
 
-export const enum ParamType {
+export enum ParamType {
   STRING = "STRING",
   SELECT = "SELECT",
   MULTISELECT = "MULTISELECT",
@@ -198,7 +202,9 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
         pageToken,
       },
     });
-    instances.push(...res.body.instances);
+    if (Array.isArray(res.body.instances)) {
+      instances.push(...res.body.instances);
+    }
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }
@@ -281,6 +287,51 @@ async function patchInstance(
   return pollRes;
 }
 
+function populateResourceProperties(source: ExtensionSource): void {
+  const spec: ExtensionSpec = source.spec;
+  if (spec) {
+    spec.resources.forEach((r) => {
+      try {
+        if (r.propertiesYaml) {
+          r.properties = yaml.safeLoad(r.propertiesYaml);
+        }
+      } catch (err) {
+        logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
+      }
+    });
+  }
+}
+
+/**
+ * Create a new extension source
+ *
+ * @param projectId The project to create the source in
+ * @param packageUri A URI for a zipper archive of a extension source
+ * @param extensionRoot A directory inside the archive to look for extension.yaml
+ */
+export async function createSource(
+  projectId: string,
+  packageUri: string,
+  extensionRoot: string
+): Promise<ExtensionSource> {
+  const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/sources/`, {
+    auth: true,
+    origin: api.extensionsOrigin,
+    data: {
+      packageUri,
+      extensionRoot,
+    },
+  });
+  const pollRes = await operationPoller.pollOperation<ExtensionSource>({
+    apiOrigin: api.extensionsOrigin,
+    apiVersion: VERSION,
+    operationResourceName: createRes.body.name,
+    masterTimeout: 600000,
+  });
+  populateResourceProperties(pollRes);
+  return pollRes;
+}
+
 /** Get a extension source by its fully qualified path
  *
  * @param sourceName the fully qualified path of the extension source (/projects/<projectId>/sources/<sourceId>)
@@ -292,6 +343,7 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
       origin: api.extensionsOrigin,
     })
     .then((res) => {
+      populateResourceProperties(res.body);
       return res.body;
     });
 }

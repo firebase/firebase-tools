@@ -11,7 +11,7 @@ var fsutils = require("../fsutils");
 var init = require("../init");
 var logger = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
-var requireAuth = require("../requireAuth");
+var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");

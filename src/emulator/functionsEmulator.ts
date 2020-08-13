@@ -1,14 +1,21 @@
 import * as _ from "lodash";
 import * as path from "path";
 import * as express from "express";
-import * as request from "request";
 import * as clc from "cli-color";
 import * as http from "http";
+import * as jwt from "jsonwebtoken";
 
+import * as api from "../api";
 import * as logger from "../logger";
 import * as track from "../track";
 import { Constants } from "./constants";
-import { EmulatorInfo, EmulatorInstance, EmulatorLog, Emulators } from "./types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  EmulatorLog,
+  Emulators,
+  FunctionsExecutionMode,
+} from "./types";
 import * as chokidar from "chokidar";
 
 import * as spawn from "cross-spawn";
@@ -16,19 +23,22 @@ import { ChildProcess, spawnSync } from "child_process";
 import {
   EmulatedTriggerDefinition,
   EmulatedTriggerType,
+  FunctionsRuntimeArgs,
   FunctionsRuntimeBundle,
   FunctionsRuntimeFeatures,
   getFunctionRegion,
   getFunctionService,
-  FunctionsRuntimeArgs,
+  HttpConstants,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
 import * as stream from "stream";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
-import { RuntimeWorkerPool, RuntimeWorker } from "./functionsRuntimeWorker";
+import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
+import { WorkQueue } from "./workQueue";
+import { createDestroyer } from "../utils";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -37,8 +47,12 @@ const EVENT_INVOKE = "functions:invoke";
  * definition to be relative to the database root. This regex is used to extract
  * that path from the `resource` member in the trigger definition used by the
  * functions emulator.
+ *
+ * Groups:
+ *   1 - instance
+ *   2 - path
  */
-const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs(/.*)$");
 
 export interface FunctionsEmulatorArgs {
   projectId: string;
@@ -47,6 +61,11 @@ export interface FunctionsEmulatorArgs {
   host?: string;
   quiet?: boolean;
   disabledRuntimeFeatures?: FunctionsRuntimeFeatures;
+  debugPort?: number;
+  env?: { [key: string]: string };
+  remoteEmulators?: { [key: string]: EmulatorInfo };
+  predefinedTriggers?: EmulatedTriggerDefinition[];
+  nodeMajorVersion?: number; // Lets us specify the node version when emulating extensions.
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -69,6 +88,7 @@ export interface FunctionsRuntimeInstance {
 export interface InvokeRuntimeOpts {
   nodeBinary: string;
   serializedTriggers?: string;
+  extensionTriggers?: EmulatedTriggerDefinition[];
   env?: { [key: string]: string };
   ignore_warnings?: boolean;
 }
@@ -80,6 +100,7 @@ interface RequestWithRawBody extends express.Request {
 interface TriggerDescription {
   name: string;
   type: string;
+  labels?: { [key: string]: any };
   details?: string;
   ignored?: boolean;
 }
@@ -95,21 +116,40 @@ export class FunctionsEmulator implements EmulatorInstance {
     return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
-  nodeBinary: string = "";
-  private server?: http.Server;
+  nodeBinary = "";
+  private destroyServer?: () => Promise<void>;
   private triggers: EmulatedTriggerDefinition[] = [];
   private knownTriggerIDs: { [triggerId: string]: boolean } = {};
-  private workerPool: RuntimeWorkerPool = new RuntimeWorkerPool();
+
+  private workerPool: RuntimeWorkerPool;
+  private workQueue: WorkQueue;
+  private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
+    // When debugging is enabled, the "timeout" feature needs to be disabled so that
+    // functions don't timeout while a breakpoint is active.
+    if (this.args.debugPort) {
+      this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
+      this.args.disabledRuntimeFeatures.timeout = true;
+    }
+
+    const mode = this.args.debugPort
+      ? FunctionsExecutionMode.SEQUENTIAL
+      : FunctionsExecutionMode.AUTO;
+    this.workerPool = new RuntimeWorkerPool(mode);
+    this.workQueue = new WorkQueue(mode);
   }
 
   createHubServer(): express.Application {
+    // TODO(samstern): Should not need this here but some tests are directly calling this method
+    // because FunctionsEmulator.start() is not test-safe due to askInstallNodeVersion.
+    this.workQueue.start();
+
     const hub = express();
 
-    hub.use((req, res, next) => {
+    const dataMiddleware: express.RequestHandler = (req, res, next) => {
       const chunks: Buffer[] = [];
       req.on("data", (chunk: Buffer) => {
         chunks.push(chunk);
@@ -118,17 +158,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         (req as RequestWithRawBody).rawBody = Buffer.concat(chunks);
         next();
       });
-    });
-
-    hub.get("/", async (req, res) => {
-      res.json({ status: "alive" });
-    });
+    };
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/${
-      this.args.projectId
-    }/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/:project_id/triggers/:trigger_name`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -140,21 +174,29 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleBackgroundTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleBackgroundTrigger(req, res);
+      });
     };
 
     const httpsHandler: express.RequestHandler = async (
       req: express.Request,
       res: express.Response
     ) => {
-      this.handleHttpsTrigger(req, res);
+      this.workQueue.submit(() => {
+        return this.handleHttpsTrigger(req, res);
+      });
     };
 
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
-    hub.post(backgroundFunctionRoute, backgroundHandler);
-    hub.all(httpsFunctionRoutes, httpsHandler);
+    hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
+    hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
+    hub.all("*", dataMiddleware, (req, res) => {
+      logger.debug(`Functions emulator received unknown request at path ${req.path}`);
+      res.sendStatus(404);
+    });
     return hub;
   }
 
@@ -167,29 +209,39 @@ export class FunctionsEmulator implements EmulatorInstance {
     const bundleTemplate = this.getBaseBundle();
     const runtimeBundle: FunctionsRuntimeBundle = {
       ...bundleTemplate,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
+        database: this.getEmulatorInfo(Emulators.DATABASE),
+        pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
       },
+      nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
       triggerId,
       triggerType,
     };
-
-    const opts = runtimeOpts || { nodeBinary: this.nodeBinary };
+    const opts = runtimeOpts || {
+      nodeBinary: this.nodeBinary,
+      env: this.args.env,
+      extensionTriggers: this.args.predefinedTriggers,
+    };
     const worker = this.invokeRuntime(runtimeBundle, opts);
     return worker;
   }
 
-  async start(): Promise<void> {
-    this.nodeBinary = await this.askInstallNodeVersion(this.args.functionsDir);
+  start(): Promise<void> {
+    this.nodeBinary = this.askInstallNodeVersion(
+      this.args.functionsDir,
+      this.args.nodeMajorVersion
+    );
     const { host, port } = this.getInfo();
-    this.server = this.createHubServer().listen(port, host);
+    this.workQueue.start();
+    const server = this.createHubServer().listen(port, host);
+    this.destroyServer = createDestroyer(server);
+    return Promise.resolve();
   }
 
   async connect(): Promise<void> {
-    EmulatorLogger.logLabeled(
+    this.logger.logLabeled(
       "BULLET",
       "functions",
       `Watching "${this.args.functionsDir}" for Cloud Functions...`
@@ -222,6 +274,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const worker = this.invokeRuntime(this.getBaseBundle(), {
         nodeBinary: this.nodeBinary,
+        env: this.args.env,
+        extensionTriggers: this.args.predefinedTriggers,
       });
 
       const triggerParseEvent = await EmulatorLog.waitForLog(
@@ -257,6 +311,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           triggerResults.push({
             name: definition.name,
             type: "http",
+            labels: definition.labels,
             details: url,
           });
         } else {
@@ -264,6 +319,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           const result: TriggerDescription = {
             name: definition.name,
             type: Constants.getServiceName(service),
+            labels: definition.labels,
           };
 
           let added = false;
@@ -278,7 +334,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             default:
-              EmulatorLogger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+              this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
               break;
           }
           result.ignored = !added;
@@ -293,42 +349,44 @@ export class FunctionsEmulator implements EmulatorInstance {
         const msg = result.details
           ? `${clc.bold(result.type)} function initialized (${result.details}).`
           : `${clc.bold(result.type)} function initialized.`;
-        EmulatorLogger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
+        this.logger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
       }
 
       const ignoreTriggers = triggerResults.filter((r) => r.ignored);
       for (const result of ignoreTriggers) {
-        const msg = `function ignored because the ${
-          result.type
-        } emulator does not exist or is not running.`;
-        EmulatorLogger.logLabeled("BULLET", `functions[${result.name}]`, msg);
+        const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
+        this.logger.logLabeled("BULLET", `functions[${result.name}]`, msg);
       }
     };
 
     const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
     watcher.on("change", (filePath) => {
-      EmulatorLogger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
+      this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
 
     return loadTriggers();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
+    this.workQueue.stop();
     this.workerPool.exit();
-    Promise.resolve(this.server && this.server.close());
+    return this.destroyServer ? this.destroyServer() : Promise.resolve();
   }
 
   addRealtimeDatabaseTrigger(
     projectId: string,
     definition: EmulatedTriggerDefinition
   ): Promise<boolean> {
-    const databasePort = EmulatorRegistry.getPort(Emulators.DATABASE);
-    if (!databasePort) {
+    const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
+    if (!databaseEmu) {
       return Promise.resolve(false);
     }
+    const databaseHost = databaseEmu.getInfo().host;
+    const databasePort = databaseEmu.getInfo().port;
+
     if (!definition.eventTrigger) {
-      EmulatorLogger.log(
+      this.logger.log(
         "WARN",
         `Event trigger "${definition.name}" has undefined "eventTrigger" member`
       );
@@ -336,8 +394,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
-    if (result === null || result.length !== 2) {
-      EmulatorLogger.log(
+    if (result === null || result.length !== 3) {
+      this.logger.log(
         "WARN",
         `Event trigger "${definition.name}" has malformed "resource" member. ` +
           `${definition.eventTrigger.resource}`
@@ -345,75 +403,68 @@ export class FunctionsEmulator implements EmulatorInstance {
       return Promise.reject();
     }
 
+    const instance = result[1];
     const bundle = JSON.stringify({
       name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-      path: result[1], // path stored in the first capture group
+      path: result[2], // path stored in the second capture group
       event: definition.eventTrigger.eventType,
       topic: `projects/${projectId}/topics/${definition.name}`,
     });
 
-    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
-    return new Promise<boolean>((resolve, reject) => {
-      let setTriggersPath = `http://localhost:${databasePort}/.settings/functionTriggers.json`;
-      if (projectId !== "") {
-        setTriggersPath += `?ns=${projectId}`;
-      } else {
-        EmulatorLogger.log(
-          "WARN",
-          `No project in use. Registering function trigger for sentinel namespace '${
-            Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE
-          }'`
-        );
-      }
-      request.post(
-        setTriggersPath,
-        {
-          auth: {
-            bearer: "owner",
-          },
-          body: bundle,
-        },
-        (err, res, body) => {
-          if (err) {
-            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
-            reject();
-            return;
-          }
+    logger.debug(`addDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
 
-          resolve(true);
-        }
+    let setTriggersPath = "/.settings/functionTriggers.json";
+    if (instance !== "") {
+      setTriggersPath += `?ns=${instance}`;
+    } else {
+      this.logger.log(
+        "WARN",
+        `No project in use. Registering function trigger for sentinel namespace '${Constants.DEFAULT_DATABASE_EMULATOR_NAMESPACE}'`
       );
-    });
+    }
+
+    return api
+      .request("POST", setTriggersPath, {
+        origin: `http://${databaseHost}:${databasePort}`,
+        headers: {
+          Authorization: "Bearer owner",
+        },
+        data: bundle,
+        json: false,
+      })
+      .then(() => {
+        return true;
+      })
+      .catch((err) => {
+        this.logger.log("WARN", "Error adding trigger: " + err);
+        throw err;
+      });
   }
 
   addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
-    const firestorePort = EmulatorRegistry.getPort(Emulators.FIRESTORE);
-    if (!firestorePort) {
+    const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
+    if (!firestoreEmu) {
       return Promise.resolve(false);
     }
+    const firestoreHost = firestoreEmu.getInfo().host;
+    const firestorePort = firestoreEmu.getInfo().port;
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
-    return new Promise<boolean>((resolve, reject) => {
-      request.put(
-        `http://localhost:${firestorePort}/emulator/v1/projects/${projectId}/triggers/${
-          definition.name
-        }`,
-        {
-          body: bundle,
-        },
-        (err, res, body) => {
-          if (err) {
-            EmulatorLogger.log("WARN", "Error adding trigger: " + err);
-            reject();
-            return;
-          }
-
-          resolve(true);
-        }
-      );
-    });
+    return api
+      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${definition.name}`, {
+        origin: `http://${firestoreHost}:${firestorePort}`,
+        data: bundle,
+        json: false,
+      })
+      .then(() => {
+        return true;
+      })
+      .catch((err) => {
+        this.logger.log("WARN", "Error adding trigger: " + err);
+        throw err;
+      });
   }
 
   async addPubsubTrigger(
@@ -435,8 +486,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
     const resource = definition.eventTrigger.resource;
-    const resourceParts = resource.split("/");
-    const topic = resourceParts[resourceParts.length - 1];
+    let topic;
+    if (definition.schedule) {
+      // In production this topic looks like
+      // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
+      // the deploy location to match as closely as possible.
+      topic = "firebase-schedule-" + definition.name;
+    } else {
+      const resourceParts = resource.split("/");
+      topic = resourceParts[resourceParts.length - 1];
+    }
 
     try {
       await pubsubEmulator.addTrigger(topic, definition.name);
@@ -455,6 +514,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
@@ -478,29 +538,37 @@ export class FunctionsEmulator implements EmulatorInstance {
     throw new FirebaseError(`No trigger with name ${triggerId}`);
   }
 
+  setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
+    this.triggers = triggers;
+  }
+
   getBaseBundle(): FunctionsRuntimeBundle {
     return {
       cwd: this.args.functionsDir,
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
-      ports: {
-        firestore: EmulatorRegistry.getPort(Emulators.FIRESTORE),
-        database: EmulatorRegistry.getPort(Emulators.DATABASE),
-        pubsub: EmulatorRegistry.getPort(Emulators.PUBSUB),
+      emulators: {
+        firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
+        database: EmulatorRegistry.getInfo(Emulators.DATABASE),
+        pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
   }
   /**
    * Returns the path to a "node" executable to use.
+   * @param cwd the directory to checkout for a package.json file.
+   * @param nodeMajorVersion forces the emulator to choose this version. Used when emulating extensions,
+   *  since in production, extensions ignore the node version provided in package.json and use the version
+   *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
+   *  are using the default version.
    */
-  async askInstallNodeVersion(cwd: string): Promise<string> {
+  askInstallNodeVersion(cwd: string, nodeMajorVersion?: number): string {
     const pkg = require(path.join(cwd, "package.json"));
-
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
-    if (!pkg.engines || !pkg.engines.node) {
-      EmulatorLogger.log(
+    if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {
+      this.logger.log(
         "WARN",
         "Your functions directory does not specify a Node version.\n   " +
           "- Learn more at https://firebase.google.com/docs/functions/manage-functions#set_runtime_options"
@@ -509,7 +577,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion = pkg.engines.node;
+    const requestedMajorVersion: string = nodeMajorVersion
+      ? `${nodeMajorVersion}`
+      : pkg.engines.node;
     let localMajorVersion = "0";
     const localNodePath = path.join(cwd, "node_modules/.bin/node");
 
@@ -523,7 +593,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
-      EmulatorLogger.logLabeled(
+      this.logger.logLabeled(
         "SUCCESS",
         "functions",
         `Using node@${requestedMajorVersion} from host.`
@@ -533,7 +603,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // If the requested version is already locally available, let's use that
     if (localMajorVersion === requestedMajorVersion) {
-      EmulatorLogger.logLabeled(
+      this.logger.logLabeled(
         "SUCCESS",
         "functions",
         `Using node@${requestedMajorVersion} from local cache.`
@@ -541,11 +611,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       return localNodePath;
     }
 
-    /*
-    Otherwise we'll begin the conversational flow to install the correct version locally
-   */
-
-    EmulatorLogger.log(
+    // Otherwise we'll begin the conversational flow to install the correct version locally
+    this.logger.log(
       "WARN",
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
     );
@@ -564,6 +631,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     if (opts.ignore_warnings) {
       args.unshift("--no-warnings");
+    }
+
+    if (this.args.debugPort) {
+      const { host } = this.getInfo();
+      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
@@ -620,9 +692,38 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
+    const projectId = req.params.project_id;
     const triggerId = req.params.trigger_name;
 
-    EmulatorLogger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
+    const trigger = this.getTriggerById(triggerId);
+    const service = getFunctionService(trigger);
+
+    if (projectId !== this.args.projectId) {
+      // RTDB considers each namespace a "project", but for any other trigger we want to reject
+      // incoming triggers to a different project.
+      if (service !== Constants.SERVICE_REALTIME_DATABASE) {
+        logger.debug(
+          `Received functions trigger for service "${service}" for unknown project "${projectId}".`
+        );
+        res.sendStatus(404);
+        return;
+      }
+
+      // The eventTrigger 'resource' property will look something like this:
+      // "projects/_/instances/<project>/refs/foo/bar"
+      // If the trigger's resource does not match the invoked projet ID, we should 404.
+      if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
+        logger.debug(
+          `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
+            trigger
+          )}.`
+        );
+        res.sendStatus(404);
+        return;
+      }
+    }
+
+    this.logger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
     const proto = JSON.parse(reqBody.toString());
@@ -636,24 +737,95 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     // For analytics, track the invoked service
-    if (triggerId) {
-      const trigger = this.getTriggerById(triggerId);
-      track(EVENT_INVOKE, getFunctionService(trigger));
-    }
+    track(EVENT_INVOKE, service);
 
     await worker.waitForDone();
     return res.json({ status: "acknowledged" });
   }
 
+  /**
+   * Gets the address of a running emulator, either from explicit args or by
+   * consulting the emulator registry.
+   *
+   * @param emulator
+   */
+  private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
+    if (this.args.remoteEmulators) {
+      if (this.args.remoteEmulators[emulator]) {
+        return this.args.remoteEmulators[emulator];
+      }
+    }
+
+    return EmulatorRegistry.getInfo(emulator);
+  }
+
+  private tokenFromAuthHeader(authHeader: string) {
+    const match = authHeader.match(/^Bearer (.*)$/);
+    if (!match) {
+      return;
+    }
+
+    let idToken = match[1];
+    logger.debug(`ID Token: ${idToken}`);
+
+    // The @firebase/testing library sometimes produces JWTs with invalid padding, so we
+    // remove that via regex. This is the spec that says trailing = should be removed:
+    // https://tools.ietf.org/html/rfc7515#section-2
+    if (idToken && idToken.includes("=")) {
+      idToken = idToken.replace(/[=]+?\./g, ".");
+      logger.debug(`ID Token contained invalid padding, new value: ${idToken}`);
+    }
+
+    try {
+      const decoded = jwt.decode(idToken, { complete: true });
+      if (!decoded || typeof decoded !== "object") {
+        logger.debug(`Failed to decode ID Token: ${decoded}`);
+        return;
+      }
+
+      // In firebase-functions we manually copy 'sub' to 'uid'
+      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
+      const claims = decoded.payload;
+      claims.uid = claims.sub;
+
+      return claims;
+    } catch (e) {
+      return;
+    }
+  }
+
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
+    const trigger = this.getTriggerById(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
 
-    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS);
+    // For callable functions we want to accept tokens without actually calling verifyIdToken
+    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
+    const authHeader = req.header("Authorization");
+    if (authHeader && isCallable) {
+      const token = this.tokenFromAuthHeader(authHeader);
+      if (token) {
+        const contextAuth = {
+          uid: token.uid,
+          token: token,
+        };
+
+        // Stash the "Authorization" header in a temporary place, we will replace it
+        // when invoking the callable handler
+        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
+        delete req.headers["authorization"];
+
+        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
+          JSON.stringify(contextAuth)
+        );
+      }
+    }
+
+    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
@@ -666,7 +838,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     track(EVENT_INVOKE, "https");
 
-    EmulatorLogger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
+    this.logger.log("DEBUG", `[functions] Runtime ready! Sending request!`);
 
     if (!worker.lastArgs) {
       throw new FirebaseError("Cannot execute on a worker with no arguments");
@@ -730,14 +902,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // Pipe the incoming request over the socket.
-    req
-      .pipe(
-        runtimeReq,
-        { end: true }
-      )
-      .on("error", () => {
-        res.end();
-      });
+    req.pipe(runtimeReq, { end: true }).on("error", () => {
+      res.end();
+    });
 
     await worker.waitForDone();
   }

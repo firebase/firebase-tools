@@ -4,6 +4,7 @@ import {
   isValidWildcardMatch,
   trimSlashes,
   compareVersionStrings,
+  parseRuntimeVersion,
 } from "../../emulator/functionsEmulatorUtils";
 
 describe("FunctionsEmulatorUtils", () => {
@@ -115,6 +116,26 @@ describe("FunctionsEmulatorUtils", () => {
       expect(compareVersionStrings("4.0.0", "4.0.0")).to.eql(0);
       expect(compareVersionStrings("4.0", "4.0.0")).to.eql(0);
       expect(compareVersionStrings("4", "4.0.0")).to.eql(0);
+    });
+  });
+
+  describe("parseRuntimeVerson", () => {
+    it("should parse fully specified runtime strings", () => {
+      expect(parseRuntimeVersion("nodejs6")).to.eql(6);
+      expect(parseRuntimeVersion("nodejs8")).to.eql(8);
+      expect(parseRuntimeVersion("nodejs10")).to.eql(10);
+      expect(parseRuntimeVersion("nodejs12")).to.eql(12);
+    });
+
+    it("should parse plain number strings", () => {
+      expect(parseRuntimeVersion("6")).to.eql(6);
+      expect(parseRuntimeVersion("8")).to.eql(8);
+      expect(parseRuntimeVersion("10")).to.eql(10);
+      expect(parseRuntimeVersion("12")).to.eql(12);
+    });
+
+    it("should ignore unknown", () => {
+      expect(parseRuntimeVersion("banana")).to.eql(undefined);
     });
   });
 });

@@ -13,7 +13,7 @@ var logger = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
-var runtimeSelector = require("../../runtimeChoiceSelector");
+var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFriendlyRuntimeName;
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
@@ -147,6 +147,7 @@ module.exports = function(context, options, payload) {
     return fn;
   });
   var uploadedNames = _.map(functionsInfo, "name");
+  var runtime = context.runtimeChoice;
   var functionFilterGroups = helper.getFilterGroups(options);
   var deleteReleaseNames;
   var existingScheduledFunctions;
@@ -181,8 +182,7 @@ module.exports = function(context, options, payload) {
   }
 
   delete payload.functions;
-  return gcp.cloudfunctions
-    .listAll(projectId)
+  return Promise.resolve(context.existingFunctions)
     .then(function(existingFunctions) {
       var pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
@@ -199,8 +199,11 @@ module.exports = function(context, options, payload) {
       var releaseNames = helper.getReleaseNames(uploadedNames, existingNames, functionFilterGroups);
       // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
       deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
-
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
+
+      const defaultEnvVariables = {
+        FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+      };
 
       // Create functions
       _.chain(uploadedNames)
@@ -211,11 +214,10 @@ module.exports = function(context, options, payload) {
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
           var region = helper.getRegion(name);
-          var runtime = context.runtimeChoice || helper.getDefaultRuntime();
           utils.logBullet(
             clc.bold.cyan("functions: ") +
               "creating " +
-              runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+              friendlyRuntimeName(runtime) +
               " function " +
               clc.bold(helper.getFunctionLabel(name)) +
               "..."
@@ -242,6 +244,8 @@ module.exports = function(context, options, payload) {
                   runtime: runtime,
                   availableMemoryMb: functionInfo.availableMemoryMb,
                   timeout: functionInfo.timeout,
+                  maxInstances: functionInfo.maxInstances,
+                  environmentVariables: defaultEnvVariables,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -315,15 +319,18 @@ module.exports = function(context, options, payload) {
               labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
               availableMemoryMb: functionInfo.availableMemoryMb,
               timeout: functionInfo.timeout,
+              runtime: runtime,
+              maxInstances: functionInfo.maxInstances,
+              environmentVariables: _.assign(
+                {},
+                existingFunction.environmentVariables,
+                defaultEnvVariables
+              ),
             };
-            if (context.runtimeChoice) {
-              options.runtime = context.runtimeChoice;
-            }
-            var runtime = options.runtime || _.get(existingFunction, "runtime", "nodejs6"); // legacy functions are Node 6
             utils.logBullet(
               clc.bold.cyan("functions: ") +
                 "updating " +
-                runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+                friendlyRuntimeName(runtime) +
                 " function " +
                 clc.bold(helper.getFunctionLabel(name)) +
                 "..."
@@ -546,7 +553,13 @@ module.exports = function(context, options, payload) {
             logger.info(
               "    " +
                 clc.bold("firebase deploy --only ") +
-                clc.bold(sortedFailedDeployments.map((name) => `functions:${name}`).join(","))
+                clc.bold('"') +
+                clc.bold(
+                  sortedFailedDeployments
+                    .map((name) => `functions:${name.replace(/-/g, ".")}`)
+                    .join(",")
+                ) +
+                clc.bold('"')
             );
             logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));

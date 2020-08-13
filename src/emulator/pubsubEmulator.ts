@@ -1,14 +1,13 @@
-import * as request from "request";
 import * as uuid from "uuid";
-import { PubSub, Subscription, Message } from "@google-cloud/pubsub";
+import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
-import * as javaEmulators from "../serve/javaEmulators";
+import * as api from "../api";
+import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorLogger } from "./emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
-import { response } from "express";
 
 export interface PubsubEmulatorArgs {
   projectId: string;
@@ -26,6 +25,8 @@ export class PubsubEmulator implements EmulatorInstance {
   // Map of topic name to a PubSub subscription object
   subscriptions: Map<string, Subscription>;
 
+  private logger = EmulatorLogger.forEmulator(Emulators.PUBSUB);
+
   constructor(private args: PubsubEmulatorArgs) {
     const { host, port } = this.getInfo();
     this.pubsub = new PubSub({
@@ -38,15 +39,15 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    return javaEmulators.start(Emulators.PUBSUB, this.args);
+    return downloadableEmulators.start(Emulators.PUBSUB, this.args);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
   async stop(): Promise<void> {
-    await javaEmulators.stop(Emulators.PUBSUB);
+    await downloadableEmulators.stop(Emulators.PUBSUB);
   }
 
   getInfo(): EmulatorInfo {
@@ -54,8 +55,10 @@ export class PubsubEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.PUBSUB);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.PUBSUB),
     };
   }
 
@@ -64,21 +67,21 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async addTrigger(topicName: string, trigger: string) {
-    EmulatorLogger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
+    this.logger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
 
     const topicTriggers = this.triggers.get(topicName) || new Set();
     if (topicTriggers.has(topicName) && this.subscriptions.has(topicName)) {
-      EmulatorLogger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
+      this.logger.logLabeled("DEBUG", "pubsub", "Trigger already exists");
       return;
     }
 
     const topic = this.pubsub.topic(topicName);
     try {
-      EmulatorLogger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
+      this.logger.logLabeled("DEBUG", "pubsub", `Creating topic: ${topicName}`);
       await topic.create();
     } catch (e) {
       if (e && e.code === 6) {
-        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
+        this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
       } else {
         throw new FirebaseError(`Could not create topic ${topicName}`, { original: e });
       }
@@ -87,11 +90,11 @@ export class PubsubEmulator implements EmulatorInstance {
     const subName = `emulator-sub-${topicName}`;
     let sub;
     try {
-      EmulatorLogger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
+      this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
       [sub] = await topic.createSubscription(subName);
     } catch (e) {
       if (e && e.code === 6) {
-        EmulatorLogger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
+        this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
         sub = topic.subscription(`emulator-sub-${topicName}`);
       } else {
         throw new FirebaseError(`Could not create sub ${subName}`, { original: e });
@@ -107,21 +110,23 @@ export class PubsubEmulator implements EmulatorInstance {
     this.subscriptions.set(topicName, sub);
   }
 
-  private onMessage(topicName: string, message: Message) {
-    EmulatorLogger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
+  private async onMessage(topicName: string, message: Message) {
+    this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
     const topicTriggers = this.triggers.get(topicName);
     if (!topicTriggers || topicTriggers.size === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
     }
 
-    const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
-    if (!functionsPort) {
+    const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
+    if (!functionsEmu) {
       throw new FirebaseError(
         `Attempted to execute pubsub trigger for topic ${topicName} but could not find Functions emulator`
       );
     }
+    const functionsPort = functionsEmu.getInfo().port;
+    const functionsHost = functionsEmu.getInfo().host;
 
-    EmulatorLogger.logLabeled(
+    this.logger.logLabeled(
       "DEBUG",
       "pubsub",
       `Executing ${topicTriggers.size} matching triggers (${JSON.stringify(
@@ -149,41 +154,25 @@ export class PubsubEmulator implements EmulatorInstance {
         },
       };
 
-      const functionsUrl = `http://localhost:${functionsPort}/functions/projects/${
-        this.args.projectId
-      }/triggers/${trigger}`;
-
-      request.post(
-        functionsUrl,
-        {
-          body: body,
-          json: true,
-        },
-        (err: any, res: request.Response) => {
-          if (err) {
-            EmulatorLogger.logLabeled(
-              "DEBUG",
-              "pubsub",
-              `Error running functions: ${JSON.stringify(err)}`
-            );
+      try {
+        await api.request(
+          "POST",
+          `/functions/projects/${this.args.projectId}/triggers/${trigger}`,
+          {
+            origin: `http://${functionsHost}:${functionsPort}`,
+            data: body,
           }
+        );
+      } catch (e) {
+        this.logger.logLabeled("DEBUG", "pubsub", e);
+      }
 
-          if (res) {
-            EmulatorLogger.logLabeled(
-              "DEBUG",
-              "pubsub",
-              `Functions emulator response: HTTP ${res.statusCode} ${JSON.stringify(res.body)}`
-            );
-          }
-
-          // If this is the last trigger we need to run, ack the message.
-          remaining--;
-          if (remaining <= 0) {
-            EmulatorLogger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
-            message.ack();
-          }
-        }
-      );
+      // If this is the last trigger we need to run, ack the message.
+      remaining--;
+      if (remaining <= 0) {
+        this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
+        message.ack();
+      }
     }
   }
 }

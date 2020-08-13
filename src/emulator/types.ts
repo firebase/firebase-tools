@@ -1,19 +1,33 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import * as path from "path";
 
 export enum Emulators {
+  HUB = "hub",
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
   DATABASE = "database",
   HOSTING = "hosting",
   PUBSUB = "pubsub",
+  UI = "ui",
+  LOGGING = "logging",
 }
 
-export type JavaEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
+export type DownloadableEmulators =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.PUBSUB
+  | Emulators.UI;
+export const DOWNLOADABLE_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.PUBSUB,
+  Emulators.UI,
+];
 
-// TODO: Is there a way we can just allow iteration over the enum?
-export const ALL_EMULATORS = [
+export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
+export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE];
+
+export const ALL_SERVICE_EMULATORS = [
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -21,14 +35,32 @@ export const ALL_EMULATORS = [
   Emulators.PUBSUB,
 ];
 
-export const JAVA_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE, Emulators.PUBSUB];
+export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+  Emulators.PUBSUB,
+];
 
-export function isJavaEmulator(value: string): value is JavaEmulators {
-  return isEmulator(value) && JAVA_EMULATORS.indexOf(value) >= 0;
+export const EMULATORS_SUPPORTED_BY_UI = [
+  Emulators.DATABASE,
+  Emulators.FIRESTORE,
+  Emulators.FUNCTIONS,
+];
+
+// TODO: Is there a way we can just allow iteration over the enum?
+export const ALL_EMULATORS = [
+  Emulators.HUB,
+  Emulators.UI,
+  Emulators.LOGGING,
+  ...ALL_SERVICE_EMULATORS,
+];
+
+export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
+  return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
 }
 
 export function isEmulator(value: string): value is Emulators {
-  return Object.values(Emulators).indexOf(value) >= 0;
+  return Object.values(Emulators).indexOf(value as Emulators) >= 0;
 }
 
 export interface EmulatorInstance {
@@ -64,11 +96,13 @@ export interface EmulatorInstance {
 }
 
 export interface EmulatorInfo {
+  name: Emulators;
   host: string;
   port: number;
+  pid?: number;
 }
 
-export interface JavaEmulatorCommand {
+export interface DownloadableEmulatorCommand {
   binary: string;
   args: string[];
   optionalArgs: string[];
@@ -81,10 +115,15 @@ export interface EmulatorDownloadOptions {
   expectedSize: number;
   expectedChecksum: string;
   namePrefix: string;
+  skipChecksumAndSize?: boolean;
+  skipCache?: boolean;
 }
 
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
+
+  // Semver version string
+  version: string;
 
   // The path to download the binary or archive from the remote source
   downloadPath: string;
@@ -98,7 +137,7 @@ export interface EmulatorDownloadDetails {
   binaryPath?: string;
 }
 
-export interface JavaEmulatorDetails {
+export interface DownloadableEmulatorDetails {
   name: Emulators;
   instance: ChildProcess | null;
   stdout: any | null;
@@ -107,6 +146,15 @@ export interface JavaEmulatorDetails {
 export interface Address {
   host: string;
   port: number;
+}
+
+export enum FunctionsExecutionMode {
+  // Function workers will be spawned as needed with no particular
+  // guarantees.
+  AUTO = "auto",
+
+  // All function executions will be run sequentially in a single worker.
+  SEQUENTIAL = "sequential",
 }
 
 export class EmulatorLog {

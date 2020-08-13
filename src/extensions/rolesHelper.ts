@@ -3,7 +3,7 @@ import * as api from "../api";
 import * as utils from "../utils";
 import { Role } from "./extensionsApi";
 import { iam } from "../gcp";
-import { getRandomString } from "./generateInstanceId";
+import { getRandomString } from "./utils";
 
 const API_VERSION = "v1";
 
@@ -98,6 +98,10 @@ export async function createServiceAccountAndSetRoles(
     }
     throw err;
   }
-  await grantRoles(projectId, serviceAccount.email, roles.map((role) => role.role));
+  await grantRoles(
+    projectId,
+    serviceAccount.email,
+    roles.map((role) => role.role)
+  );
   return serviceAccount.email;
 }

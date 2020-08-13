@@ -6,12 +6,10 @@ import * as api from "../../api";
 
 import * as helpers from "../helpers";
 import { RTDBRemoveRemote } from "../../database/removeRemote";
-import { RTDBListRemote } from "../../database/listRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
   const remote = new RTDBRemoveRemote(instance);
-  const listRemote = new RTDBListRemote(instance);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
   let sandbox: sinon.SinonSandbox;
 

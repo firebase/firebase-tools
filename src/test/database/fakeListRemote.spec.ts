@@ -1,4 +1,3 @@
-import * as pathLib from "path";
 import * as chai from "chai";
 
 import { ListRemote } from "../../database/listRemote";
@@ -23,14 +22,14 @@ export class FakeListRemote implements ListRemote {
     this.delay = 0;
   }
 
-  async listPath(
+  listPath(
     path: string,
     numChildren: number,
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
     if (timeout === 0) {
-      throw new Error("timeout");
+      return Promise.reject(new Error("timeout"));
     }
     const d = this.dataAtPath(path);
     if (d) {
@@ -44,9 +43,9 @@ export class FakeListRemote implements ListRemote {
         keys = keys.filter((key) => key > startAfter);
       }
       keys = keys.slice(0, numChildren);
-      return keys;
+      return Promise.resolve(keys);
     }
-    return [];
+    return Promise.resolve([]);
   }
 
   private size(data: any): number {

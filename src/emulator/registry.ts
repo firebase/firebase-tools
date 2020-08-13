@@ -1,9 +1,8 @@
-import * as clc from "cli-color";
-
-import { ALL_EMULATORS, EmulatorInstance, Emulators } from "./types";
+import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as controller from "./controller";
+import * as portUtils from "./portUtils";
+import { Constants } from "./constants";
+import { EmulatorLogger } from "./emulatorLogger";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -13,24 +12,27 @@ import * as controller from "./controller";
  */
 export class EmulatorRegistry {
   static async start(instance: EmulatorInstance): Promise<void> {
+    const description = Constants.description(instance.getName());
     if (this.isRunning(instance.getName())) {
-      throw new FirebaseError(`Emulator ${instance.getName()} is already running!`, {});
+      throw new FirebaseError(`${description} is already running!`, {});
     }
+
+    // must be before we start as else on a quick 'Ctrl-C' after starting we could skip this emulator in cleanShutdown
+    this.set(instance.getName(), instance);
 
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
 
     const info = instance.getInfo();
-    await controller.waitForPortClosed(info.port, info.host);
-
-    this.set(instance.getName(), instance);
-    utils.logLabeledSuccess(
-      instance.getName(),
-      `Emulator started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-    );
+    await portUtils.waitForPortClosed(info.port, info.host);
   }
 
   static async stop(name: Emulators): Promise<void> {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "BULLET",
+      name,
+      `Stopping ${Constants.description(name)}`
+    );
     const instance = this.get(name);
     if (!instance) {
       return;
@@ -41,9 +43,19 @@ export class EmulatorRegistry {
   }
 
   static async stopAll(): Promise<void> {
-    for (const name of this.listRunning()) {
-      await this.stop(name);
-    }
+    await Promise.all(
+      this.listRunning().map(async (name) => {
+        try {
+          await this.stop(name);
+        } catch (e) {
+          EmulatorLogger.forEmulator(name).logLabeled(
+            "WARN",
+            name,
+            `Error stopping ${Constants.description(name)}`
+          );
+        }
+      })
+    );
   }
 
   static isRunning(emulator: Emulators): boolean {
@@ -55,8 +67,23 @@ export class EmulatorRegistry {
     return ALL_EMULATORS.filter((name) => this.isRunning(name));
   }
 
+  static listRunningWithInfo(): EmulatorInfo[] {
+    return this.listRunning()
+      .map((emulator) => this.getInfo(emulator) as EmulatorInfo)
+      .filter((info) => typeof info !== "undefined");
+  }
+
   static get(emulator: Emulators): EmulatorInstance | undefined {
     return this.INSTANCES.get(emulator);
+  }
+
+  static getInfo(emulator: Emulators): EmulatorInfo | undefined {
+    const instance = this.INSTANCES.get(emulator);
+    if (!instance) {
+      return undefined;
+    }
+
+    return instance.getInfo();
   }
 
   static getPort(emulator: Emulators): number | undefined {

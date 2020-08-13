@@ -17,11 +17,9 @@ export default async function(context: any, options: any): Promise<void> {
   const toRelease: Array<{ bucket: string; rules: any }> = [];
   for (const ruleConfig of rules) {
     if (ruleConfig.target) {
-      options.rc
-        .target(options.project, "storage", ruleConfig.target)
-        .forEach(function(bucket: string) {
-          toRelease.push({ bucket: bucket, rules: ruleConfig.rules });
-        });
+      options.rc.target(options.project, "storage", ruleConfig.target).forEach((bucket: string) => {
+        toRelease.push({ bucket: bucket, rules: ruleConfig.rules });
+      });
     } else {
       toRelease.push({ bucket: ruleConfig.bucket, rules: ruleConfig.rules });
     }
