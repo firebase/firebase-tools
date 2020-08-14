@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 
+import * as Config from "../config";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
@@ -19,6 +20,7 @@ import {
 } from "./types";
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
+import { parseRuntimeVersion } from "./functionsEmulatorUtils";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -178,6 +180,10 @@ export function shouldStart(options: any, name: Emulators): boolean {
   const emulatorInTargets = targets.indexOf(name) >= 0;
 
   if (name === Emulators.UI) {
+    if (options.ui) {
+      return true;
+    }
+
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.
@@ -218,6 +224,62 @@ export function shouldStart(options: any, name: Emulators): boolean {
   }
 
   return emulatorInTargets;
+}
+
+function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
+  if (!pathIsDirectory) {
+    return;
+  }
+
+  // If there is an export metadata file, we always prefer that
+  const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
+  if (fileExistsSync(importFilePath)) {
+    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
+  }
+
+  const fileList = fs.readdirSync(importPath);
+
+  // The user might have passed a Firestore export directly
+  const firestoreMetadataFile = fileList.find((f) => f.endsWith(".overall_export_metadata"));
+  if (firestoreMetadataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      firestore: {
+        version: "prod",
+        path: importPath,
+        metadata_file: `${importPath}/${firestoreMetadataFile}`,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Firestore export at ${importPath}`
+    );
+
+    return metadata;
+  }
+
+  // The user might haved passed a directory containing RTDB json files
+  const rtdbDataFile = fileList.find((f) => f.endsWith(".json"));
+  if (rtdbDataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      database: {
+        version: "prod",
+        path: importPath,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Database export at ${importPath}`
+    );
+
+    return metadata;
+  }
 }
 
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
@@ -280,24 +342,15 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     version: "unknown",
   };
   if (options.import) {
-    const importFilePath = path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME);
-    if (fileExistsSync(importFilePath)) {
-      exportMetadata = JSON.parse(
-        fs
-          .readFileSync(
-            path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME),
-            "utf8"
-          )
-          .toString()
-      ) as ExportMetadata;
+    const importDir = path.resolve(options.import);
+    const foundMetadata = await findExportMetadata(importDir);
+    if (foundMetadata) {
+      exportMetadata = foundMetadata;
     } else {
-      // could happen when an export was interrupted mid-export...
       EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
         "WARN",
         "emulators",
-        `Import/Export metadata file does not exist. ${clc.bold(
-          "Skipping data import!"
-        )} Metadata file location: ${importFilePath}`
+        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
       );
     }
   }
@@ -372,7 +425,9 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         ...options.extensionEnv,
       },
       predefinedTriggers: options.extensionTriggers,
-      nodeMajorVersion: options.extensionNodeVersion || options.config.get("functions.runtime"),
+      nodeMajorVersion: parseRuntimeVersion(
+        options.extensionNodeVersion || options.config.get("functions.runtime")
+      ),
     });
     await startEmulator(functionsEmulator);
   }
@@ -390,7 +445,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const exportMetadataFilePath = path.join(
+      const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
         exportMetadata.firestore.metadata_file
       );
@@ -403,10 +458,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       args.seed_from_export = exportMetadataFilePath;
     }
 
-    const rulesLocalPath = options.config.get("firestore.rules");
+    const config = options.config as Config;
+    const rulesLocalPath = config.get("firestore.rules");
     let rulesFileFound = false;
     if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
       if (rulesFileFound) {
         args.rules = rules;
@@ -448,7 +504,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     };
 
-    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    const rc = dbRulesConfig.normalizeRulesConfig(
+      dbRulesConfig.getRulesConfig(projectId, options),
+      options
+    );
     logger.debug("database rules config: ", JSON.stringify(rc));
 
     args.rules = rc;
@@ -461,7 +520,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     } else {
       for (const c of rc) {
-        const rules: string = path.join(options.projectRoot, c.rules);
+        const rules: string = c.rules;
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
@@ -479,7 +538,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.database) {
       const importDirAbsPath = path.resolve(options.import);
-      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+      const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
 
       const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
       for (const f of files) {

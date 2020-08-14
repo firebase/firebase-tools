@@ -13,12 +13,12 @@ const cjson = require("cjson");
 
 /**
  * Check that functions directory exists.
- * @param cwd Working directory.
+ * @param options options object.
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(cwd: string, sourceDirName: string): void {
-  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(cwd, sourceDirName))) {
+export function functionsDirectoryExists(options: object, sourceDirName: string): void {
+  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
     const msg =
       `could not deploy functions because the ${clc.bold('"' + sourceDirName + '"')} ` +
       `directory was not found. Please create it or specify a different source directory in firebase.json`;

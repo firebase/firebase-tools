@@ -22,7 +22,7 @@ module.exports = function(context, options, payload) {
   var runtimeFromConfig = options.config.get("functions.runtime");
 
   try {
-    validator.functionsDirectoryExists(options.cwd, sourceDirName);
+    validator.functionsDirectoryExists(options, sourceDirName);
     validator.functionNamesAreValid(functionNames);
     // it's annoying that we have to pass in both sourceDirName and sourceDir
     // but they are two different methods on the config object, so cannot get

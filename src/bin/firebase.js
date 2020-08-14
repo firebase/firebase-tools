@@ -37,7 +37,34 @@ const handlePreviewToggles = require("../handlePreviewToggles");
 const utils = require("../utils");
 let cmd;
 
-const logFilename = path.join(process.cwd(), "/firebase-debug.log");
+function findAvailableLogFile() {
+  const candidates = ["firebase-debug.log"];
+  for (let i = 1; i < 10; i++) {
+    candidates.push(`firebase-debug.${i}.log`);
+  }
+
+  for (const c of candidates) {
+    const logFilename = path.join(process.cwd(), c);
+
+    try {
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
+      return logFilename;
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        // File does not exist, which is fine
+        return logFilename;
+      }
+
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
+    }
+  }
+
+  throw new Error("Unable to obtain permissions for firebase-debug.log");
+}
+
+const logFilename = findAvailableLogFile();
 
 if (!process.env.DEBUG && _.includes(args, "--debug")) {
   process.env.DEBUG = true;
