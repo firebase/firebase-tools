@@ -3,22 +3,20 @@
 import * as fs from "fs";
 
 import getProjectNumber = require("../../getProjectNumber");
+import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
 
 module.exports = async function(context: any, options: any): Promise<void> {
   if (!context) {
-    return Promise.resolve();
-  }
-  if (!options) {
-    console.error(new Error().stack);
+    return;
   }
   const filePath = options.config.get("remoteconfig.template");
-  const templateString = fs.readFileSync(filePath, "utf8");
-  const template = JSON.parse(templateString);
+  if (!filePath) { return; }
+  const template = loadCJSON(filePath);
   const projectNumber = await getProjectNumber(options);
   template.etag = await getEtag(projectNumber);
   validateInputRemoteConfigTemplate(template);
-  context.template = template;
+  context.remoteconfigTemplate = template
   return Promise.resolve();
 };

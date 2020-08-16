@@ -36,13 +36,13 @@ export function validateInputRemoteConfigTemplate(
 ): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template));
   if (!templateCopy || templateCopy == "null" || templateCopy == "undefined") {
-    throw new Error(`'Invalid Remote Config template: ${JSON.stringify(templateCopy)}'`);
+    throw new FirebaseError(`Invalid Remote Config template: ${JSON.stringify(templateCopy)}`);
   }
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
-    throw new Error(`"ETag must be a non-empty string."`);
+    throw new FirebaseError(`ETag must be a non-empty string`);
   }
   if (templateCopy.conditions && !Array.isArray(templateCopy.conditions)) {
-    throw new Error("Remote Config conditions must be an array");
+    throw new FirebaseError("Remote Config conditions must be an array");
   }
   return templateCopy;
 }
@@ -65,19 +65,26 @@ export async function deployTemplate(
 ): Promise<RemoteConfigTemplate> {
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
-    let projectEtag = etag;
-    if (options && options.force == true) {
-      projectEtag = "*";
+    // let projectEtag = etag;
+    // console.log(projectEtag)
+    // if (options && options.force == true) {
+    //   projectEtag = "*";
+    // }
+    // console.log(projectEtag)
+    console.log(etag)
+    if (options?.force) {
+      etag = "*";
     }
+    console.log(etag)
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
-      headers: { "If-Match": projectEtag },
+      headers: { "If-Match": etag },
       data: {
-        conditions: template?.conditions,
-        parameters: template?.parameters,
-        parameterGroups: template?.parameterGroups,
+        conditions: template.conditions,
+        parameters: template.parameters,
+        parameterGroups: template.parameterGroups,
       },
     });
     return response.body;
@@ -108,10 +115,9 @@ export async function publishTemplate(
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
   const temporaryTemplate = {
-    conditions: template?.conditions,
-    parameters: template?.parameters,
-    parameterGroups: template?.parameterGroups,
-    version: template.version,
+    conditions: template.conditions,
+    parameters: template.parameters,
+    parameterGroups: template.parameterGroups,
     etag: etag,
   };
   let validTemplate: RemoteConfigTemplate = temporaryTemplate;
