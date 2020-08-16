@@ -2,7 +2,6 @@ import api = require("../api");
 import logger = require("../logger");
 
 import { FirebaseError } from "../error";
-import * as rcGet from "../remoteconfig/get";
 
 const TIMEOUT = 30000;
 
