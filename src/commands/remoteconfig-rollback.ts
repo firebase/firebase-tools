@@ -32,7 +32,12 @@ module.exports = new Command("remoteconfig:rollback")
       }
     }
     if (targetVersion <= 0) {
-      throw new FirebaseError(`Failed to rollback Firebase Remote Config template for project to ` + targetVersion + `. `+ `Invalid Version Number`);
+      throw new FirebaseError(
+        `Failed to rollback Firebase Remote Config template for project to ` +
+          targetVersion +
+          `. ` +
+          `Invalid Version Number`
+      );
     }
     return prompt(options, [
       {
