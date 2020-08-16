@@ -1,7 +1,5 @@
 "use strict";
 
-import * as fs from "fs";
-
 import getProjectNumber = require("../../getProjectNumber");
 import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
@@ -12,11 +10,13 @@ module.exports = async function(context: any, options: any): Promise<void> {
     return;
   }
   const filePath = options.config.get("remoteconfig.template");
-  if (!filePath) { return; }
+  if (!filePath) {
+    return;
+  }
   const template = loadCJSON(filePath);
   const projectNumber = await getProjectNumber(options);
   template.etag = await getEtag(projectNumber);
   validateInputRemoteConfigTemplate(template);
-  context.remoteconfigTemplate = template
+  context.remoteconfigTemplate = template;
   return Promise.resolve();
 };
