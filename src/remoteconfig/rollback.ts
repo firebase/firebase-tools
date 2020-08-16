@@ -15,16 +15,7 @@ const TIMEOUT = 30000;
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
   try {
     let request = `/v1/projects/${projectId}/remoteConfig:rollback`;
-    if (versionNumber) {
-      request = request + "?versionNumber=" + versionNumber;
-    } else {
-      const template = await rcGet.getTemplate(projectId).then();
-      if (template?.version?.versionNumber) {
-        const latestVersion = template.version.versionNumber.toString();
-        const previousVersion = parseInt(latestVersion) - 1;
-        request = request + "?versionNumber=" + previousVersion;
-      }
-    }
+    request = request + "?versionNumber=" + versionNumber;
     const response = await api.request("POST", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
