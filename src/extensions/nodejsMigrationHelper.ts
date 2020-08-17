@@ -4,8 +4,6 @@ import { logPrefix } from "./extensionsHelper";
 import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
-const changeMsg =
-  "Node.js 8 has been deprecated. It’s recommended to update this extension to ensure it is running on Node.js 10.";
 const billingMsgUpdate =
   "This update includes an upgrade to Node.js 10 from Node.js 8, which is no longer maintained. Your project must be on the Blaze (pay as you go) plan to deploy Node.js 10 functions. Starting with this update, you will be charged a small amount when you deploy this extension, including when you make configuration changes and apply future updates.";
 const billingMsgCreate =
@@ -28,21 +26,6 @@ function shouldDisplayMsg(
   const newResourcesUseNode10 = newResources.some((r) => hasRuntime(r, "nodejs10"));
   const curResourcesUseNode8 = curResources.some((r) => hasRuntime(r, "nodejs8"));
   return newResourcesUseNode10 && (!curSpec || curResourcesUseNode8);
-}
-
-/**
- * Displays nodejs10 migration changelogs if the update contains a change to nodejs10 runtime.
- *
- * @param newSpec A extensionSpec to compare to
- * @param curSpec A current extensionSpec
- */
-export function displayNodejsChangeNotice(
-  newSpec: extensionsApi.ExtensionSpec,
-  curSpec?: extensionsApi.ExtensionSpec
-): void {
-  if (shouldDisplayMsg(newSpec, curSpec)) {
-    utils.logLabeledWarning(logPrefix, changeMsg);
-  }
 }
 
 /**

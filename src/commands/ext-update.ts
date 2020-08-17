@@ -11,10 +11,7 @@ import {
   createSourceFromLocation,
   urlRegex,
 } from "../extensions/extensionsHelper";
-import {
-  displayNodejsChangeNotice,
-  displayNodejsBillingNotice,
-} from "../extensions/nodejsMigrationHelper";
+import { displayNodejsBillingNotice } from "../extensions/nodejsMigrationHelper";
 import * as paramHelper from "../extensions/paramHelper";
 import * as resolveSource from "../extensions/resolveSource";
 import {
@@ -189,7 +186,6 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         }
       }
       await displayChanges(currentSpec, newSpec);
-      displayNodejsChangeNotice(newSpec, currentSpec);
       await displayNodejsBillingNotice(newSpec, currentSpec);
       const newParams = await paramHelper.promptForNewParams(
         currentSpec,
