@@ -6,7 +6,7 @@ const TIMEOUT = 30000;
 
 /**
  * Function rolls back project template to the template specified by the project version number
- * @param projectId Firebase Remote Config Template project Id
+ * @param projectId Remote Config Template project Id
  * @param versionNumber Remote Config Template version number
  * @return {Promise} Returns a promise of a Remote Config template using the RemoteConfigTemplate interface
  */
