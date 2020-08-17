@@ -34,8 +34,8 @@ function shouldDisplayMsg(
 /**
  * Displays nodejs10 migration changelogs if the update contains a change to nodejs10 runtime.
  *
- * @param curSpec A current extensionSpec
  * @param newSpec A extensionSpec to compare to
+ * @param curSpec A current extensionSpec
  */
 export function displayNodejsChangeNotice(
   newSpec: extensionsApi.ExtensionSpec,
@@ -49,8 +49,8 @@ export function displayNodejsChangeNotice(
 /**
  * Displays nodejs10 billing changes if the update contains a change to nodejs10 runtime.
  *
- * @param curSpec A current extensionSpec
  * @param newSpec A extensionSpec to compare to
+ * @param curSpec A current extensionSpec
  * @param update Display update message if true
  * @return Displayed message
  */
