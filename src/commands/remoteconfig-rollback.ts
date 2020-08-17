@@ -19,6 +19,7 @@ module.exports = new Command("remoteconfig:rollback")
     "-v, --version-number <versionNumber>",
     "rollback to the specified version of the template"
   )
+  .option("--force", "excludes prompt before overriding existing version")
   .action(async (options) => {
     const templateVersion = await rcList.getVersions(getProjectId(options), 1);
     let targetVersion = 0;
@@ -39,17 +40,20 @@ module.exports = new Command("remoteconfig:rollback")
           `Invalid Version Number`
       );
     }
-    return prompt(options, [
-      {
-        type: "confirm",
-        name: "confirm",
-        message: "Proceed to rollback template to " + targetVersion + "?",
-        default: false,
-      },
-    ]).then(async () => {
-      if (!options.confirm) {
-        return;
-      }
-      await rcRollback.rollbackTemplate(getProjectId(options), targetVersion);
-    });
+    if (!options.force) {
+      return prompt(options, [
+        {
+          type: "confirm",
+          name: "confirm",
+          message: "Proceed to rollback template to " + targetVersion + "?",
+          default: false,
+        },
+      ]).then(async () => {
+        if (!options.confirm) {
+          return;
+        }
+        await rcRollback.rollbackTemplate(getProjectId(options), targetVersion);
+      });
+    }
+    return await rcRollback.rollbackTemplate(getProjectId(options), targetVersion);
   });
