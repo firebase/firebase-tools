@@ -7,7 +7,7 @@ import * as utils from "../utils";
 const changeMsg =
   "Node.js 8 has been deprecated. It’s recommended to update this extension to ensure it is running on Node.js 10.";
 const billingMsgUpdate =
-  "This update includes an upgrade to Node.js 10 from Node.js 8, which is no longer maintained. Your project must be on the Blaze (pay as you go) plan to deploy Node.js 10 functions. Starting with this update, you will be charged a small amount when you deploy this extension, including when you make configuration changes and apply future updates.";
+  "This update includes an upgrade to Node.js 10 from Node.js 8, which is no longer maintained. Node.js 10 requires your project to be on the Blaze (pay as you go) plan, and starting with this update, you will be charged a small amount (typically around $0.01/month) for each instance of this extension you've installed, in addition to any charges associated with your use of Firebase services.";
 const billingMsgCreate =
   "This extension includes Node.js 10 functions. Your project must be on the Blaze (pay as you go) plan to deploy Node.js 10 functions. You will be charged a small amount when you deploy this extension, including when you make configuration changes and apply future updates.";
 
