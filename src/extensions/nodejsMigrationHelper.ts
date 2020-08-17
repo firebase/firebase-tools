@@ -13,7 +13,7 @@ const billingMsgCreate =
 
 function hasRuntime(resource: extensionsApi.Resource, runtime: string): boolean {
   let resourceRuntime = "nodejs8"; // default to nodejs8 runtime
-  if (resource.properties && resource.properties.runtime) {
+  if (resource.properties?.runtime) {
     resourceRuntime = resource.properties.runtime;
   }
   return resourceRuntime == runtime;
@@ -25,10 +25,9 @@ function shouldDisplayMsg(
 ): boolean {
   const newResources = newSpec.resources;
   const curResources = curSpec?.resources || [];
-  return (
-    newResources.some((r) => hasRuntime(r, "nodejs10")) &&
-    (curSpec == undefined || curResources.some((r) => hasRuntime(r, "nodejs8")))
-  );
+  const newResourcesUseNode10 = newResources.some((r) => hasRuntime(r, "nodejs10"));
+  const curResourcesUseNode8 = curResources.some((r) => hasRuntime(r, "nodejs8"));
+  return newResourcesUseNode10 && (!curSpec || curResourcesUseNode8);
 }
 
 /**

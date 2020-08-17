@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { FirebaseError } from "../../error";
 import * as nodejsMigrationHelper from "../../extensions/nodejsMigrationHelper";
 import * as prompt from "../../prompt";
 
@@ -72,7 +73,6 @@ describe("nodejsMigrationHelper", () => {
   let promptStub: sinon.SinonStub;
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
-    promptStub.resolves(true);
   });
 
   afterEach(() => {
@@ -81,6 +81,7 @@ describe("nodejsMigrationHelper", () => {
 
   describe("displayNodejsBillingNotice", () => {
     it("should notify the user if the runtime is being upgraded to nodejs10", () => {
+      promptStub.resolves(true);
       const curSpec = _.cloneDeep(NODE8_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
@@ -89,6 +90,7 @@ describe("nodejsMigrationHelper", () => {
     });
 
     it("should notify the user if the runtime is being upgraded to nodejs10 implicitly", () => {
+      promptStub.resolves(true);
       const curSpec = _.cloneDeep(NO_RUNTIME_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
@@ -97,6 +99,7 @@ describe("nodejsMigrationHelper", () => {
     });
 
     it("should notify the user if the new spec requires nodejs10 runtime", () => {
+      promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
       expect(nodejsMigrationHelper.displayNodejsBillingNotice(newSpec)).not.to.be.rejected;
@@ -104,6 +107,7 @@ describe("nodejsMigrationHelper", () => {
     });
 
     it("should display nothing if the runtime isn't being upgraded to nodejs10", () => {
+      promptStub.resolves(true);
       const curSpec = _.cloneDeep(NODE8_SPEC);
       const newSpec = _.cloneDeep(NODE8_SPEC);
 
@@ -112,11 +116,22 @@ describe("nodejsMigrationHelper", () => {
     });
 
     it("should display nothing if the runtime was already on nodejs10", () => {
+      promptStub.resolves(true);
       const curSpec = _.cloneDeep(NODE10_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
       expect(nodejsMigrationHelper.displayNodejsBillingNotice(newSpec, curSpec)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(0);
+    });
+
+    it("should error if the user doesn't give consent", () => {
+      promptStub.resolves(false);
+      const newSpec = _.cloneDeep(NODE10_SPEC);
+
+      expect(nodejsMigrationHelper.displayNodejsBillingNotice(newSpec)).to.be.rejectedWith(
+        FirebaseError,
+        "Cancelled"
+      );
     });
   });
 });
