@@ -15,18 +15,7 @@ function createTemplate(
   rollbackSource?: string
 ): RemoteConfigTemplate {
   return {
-    parameterGroups: {
-      crash_when_settings_toggled_ios: {
-        parameters: {
-          crash_when_settings_toggled_verbose_logging_ios: {
-            defaultValue: {
-              value: "false",
-            },
-            description: "iOS: Enable verbose logging for test crash",
-          },
-        },
-      },
-    },
+    parameterGroups: {},
     version: {
       updateUser: {
         email: "jackiechu@google.com",
@@ -36,24 +25,13 @@ function createTemplate(
       versionNumber: versionNumber,
       rollbackSource: rollbackSource,
     },
-    conditions: [
-      {
-        expression: "device.os == 'ios'",
-        name: "abcd",
-      },
-    ],
-    parameters: {
-      another_number: {
-        defaultValue: {
-          value: "115",
-        },
-      },
-    },
+    conditions: [],
+    parameters: {},
     etag: "123",
   };
 }
 
-const previousTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
+const latestTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
 const rollbackTemplate: RemoteConfigTemplate = createTemplate("114", "2020-08-07T23:11:41.629Z");
 
 describe("RemoteConfig Rollback", () => {
@@ -72,11 +50,11 @@ describe("RemoteConfig Rollback", () => {
 
   describe("rollbackCurrentVersion", () => {
     it("should return a rollback to the version number specified", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
+      apiRequestStub.onFirstCall().resolves({ body: latestTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID, 115);
 
-      expect(RCtemplate).to.deep.equal(previousTemplate);
+      expect(RCtemplate).to.deep.equal(latestTemplate);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
         `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 115,
@@ -89,11 +67,11 @@ describe("RemoteConfig Rollback", () => {
     });
 
     it("should reject invalid rollback version number", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
+      apiRequestStub.onFirstCall().resolves({ body: latestTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID, 1000);
 
-      expect(RCtemplate).to.deep.equal(previousTemplate);
+      expect(RCtemplate).to.deep.equal(latestTemplate);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
         `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 1000,
@@ -116,15 +94,14 @@ describe("RemoteConfig Rollback", () => {
     });
 
     it("should return a rollback to the previous version", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: previousTemplate });
-      apiRequestStub.onSecondCall().resolves({ body: rollbackTemplate });
+      apiRequestStub.onFirstCall().resolves({ body: rollbackTemplate });
 
       const RCtemplate = await remoteconfig.rollbackTemplate(PROJECT_ID);
 
       expect(RCtemplate).to.deep.equal(rollbackTemplate);
       expect(apiRequestStub).to.be.calledWith(
         "POST",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 114,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=undefined`,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,
@@ -134,9 +111,9 @@ describe("RemoteConfig Rollback", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedError = new Error("HTTP Error 404: Not Found");
+      const expectedErrorStatus = 500;
 
-      apiRequestStub.onFirstCall().rejects(expectedError);
+      apiRequestStub.onFirstCall().rejects(expectedErrorStatus);
 
       let err;
       try {
@@ -148,7 +125,7 @@ describe("RemoteConfig Rollback", () => {
       expect(err.message).to.equal(
         `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `
       );
-      expect(err.original.original).to.equal(expectedError);
+      expect(err.status).to.equal(expectedErrorStatus);
     });
   });
 });
