@@ -95,7 +95,7 @@ export class WorkQueue {
     this.stopped = true;
   }
 
-  async flush(timeoutMs: number = 30000) {
+  async flush(timeoutMs: number = 60000) {
     if (!this.isWorking()) {
       return;
     }
