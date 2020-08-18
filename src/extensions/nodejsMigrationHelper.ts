@@ -5,7 +5,13 @@ import { promptOnce } from "../prompt";
 import * as utils from "../utils";
 
 const billingMsgUpdate =
-  "This update includes an upgrade to Node.js 10 from Node.js 8, which is no longer maintained. Node.js 10 requires your project to be on the Blaze (pay as you go) plan, and starting with this update, you will be charged a small amount (typically around $0.01/month) for each instance of this extension you've installed, in addition to any charges associated with your use of Firebase services.";
+  "This update includes an upgrade to Node.js 10 from Node.js 8, which is no"
+  + " longer maintained. Starting with this update, you will be charged a"
+  + " small amount (typically around $0.01/month) for each instance of this"
+  + " extension you've installed, in addition to any charges associated with"
+  + " your use of Firebase services.\n\n"
+  + "See pricing examples: https://TBD\n"
+  + "See the FAQ: https://firebase.google.com/support/faq/#extensions-pricing";
 const billingMsgCreate =
   "You will be charged around $0.01/month for each instance of this extension"
   + " you install. Additionally, using this extension will contribute to your"
