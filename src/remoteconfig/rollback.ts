@@ -5,9 +5,9 @@ import { FirebaseError } from "../error";
 const TIMEOUT = 30000;
 
 /**
- * Function rolls back project template to the template specified by the project version number
+ * Rolls back to a specific version of the Remote Config template
  * @param projectId Remote Config Template project Id
- * @param versionNumber Remote Config Template version number
+ * @param versionNumber Remote Config Template version number to roll back to
  * @return {Promise} Returns a promise of a Remote Config template using the RemoteConfigTemplate interface
  */
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
