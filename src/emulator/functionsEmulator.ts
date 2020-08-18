@@ -368,10 +368,20 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    try {
+      await this.workQueue.flush();
+    } catch (e) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Functions emulator work queue did not empty before stopping"
+      );
+    }
+
     this.workQueue.stop();
     this.workerPool.exit();
-    return this.destroyServer ? this.destroyServer() : Promise.resolve();
+    this.destroyServer && this.destroyServer();
   }
 
   addRealtimeDatabaseTrigger(
@@ -641,6 +651,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
+      // By running as detached the child proccesses don't pick up
+      // kill signals to the host. This allows functions to finish
+      // running in workqueue.flush()
+      detached: true,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
