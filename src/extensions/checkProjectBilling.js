@@ -136,7 +136,7 @@ function _setUpBillingAccount(projectId, extensionName) {
  * @returns {Promise<boolean>} True if billing is enabled
  */
 export function isBillingEnabled(projectId) {
-  return cloudbilling.checkBillingEnabled(projectId)
+  return cloudbilling.checkBillingEnabled(projectId);
 }
 
 /**
@@ -146,13 +146,12 @@ export function isBillingEnabled(projectId) {
  * @return {Promise<undefined>}
  */
 export function enableBilling(projectId, extensionName) {
-  return cloudbilling.listBillingAccounts()
-    .then((billingAccounts) => {
-      if (billingAccounts) {
-        const accounts = _.filter(billingAccounts, ["open", true]);
-        return accounts.length > 0
-          ? _chooseBillingAccount(projectId, extensionName, accounts)
-          : _setUpBillingAccount(projectId, extensionName);
-      }
-    });
+  return cloudbilling.listBillingAccounts().then((billingAccounts) => {
+    if (billingAccounts) {
+      const accounts = _.filter(billingAccounts, ["open", true]);
+      return accounts.length > 0
+        ? _chooseBillingAccount(projectId, extensionName, accounts)
+        : _setUpBillingAccount(projectId, extensionName);
+    }
+  });
 }

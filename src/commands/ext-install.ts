@@ -55,10 +55,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     if (spec.billingRequired) {
       const enabled = await isBillingEnabled(projectId);
       if (!enabled) {
-        await displayCreateBillingNotice(spec, false)
-        await enableBilling(projectId, spec.displayName || spec.name)
+        await displayCreateBillingNotice(spec, false);
+        await enableBilling(projectId, spec.displayName || spec.name);
       } else {
-        await displayCreateBillingNotice(spec, true)
+        await displayCreateBillingNotice(spec, true);
       }
     }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];

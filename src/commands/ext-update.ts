@@ -191,7 +191,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         const enabled = await isBillingEnabled(projectId);
         if (!enabled) {
           await displayUpdateBillingNotice(currentSpec, newSpec, false);
-          await enableBilling(projectId, instanceId)
+          await enableBilling(projectId, instanceId);
         } else {
           await displayUpdateBillingNotice(currentSpec, newSpec, true);
         }
@@ -214,7 +214,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         source: newSource,
         rolesToAdd: _.get(newSpec, "roles", []),
         rolesToRemove,
-        serviceAccountEmail: existingInstance.serviceAccountEmail
+        serviceAccountEmail: existingInstance.serviceAccountEmail,
       };
       if (!_.isEqual(newParams, currentParams)) {
         updateOptions.params = newParams;
