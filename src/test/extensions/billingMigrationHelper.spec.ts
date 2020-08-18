@@ -88,7 +88,7 @@ describe("billingMigrationHelper", () => {
       const curSpec = _.cloneDeep(NODE8_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(1);
     });
 
@@ -97,7 +97,7 @@ describe("billingMigrationHelper", () => {
       const curSpec = _.cloneDeep(NO_RUNTIME_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(1);
     });
 
@@ -106,7 +106,7 @@ describe("billingMigrationHelper", () => {
       const curSpec = _.cloneDeep(NODE8_SPEC);
       const newSpec = _.cloneDeep(NODE8_SPEC);
 
-      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
@@ -115,7 +115,7 @@ describe("billingMigrationHelper", () => {
       const curSpec = _.cloneDeep(NODE10_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
@@ -124,7 +124,7 @@ describe("billingMigrationHelper", () => {
       const curSpec = _.cloneDeep(NODE8_SPEC);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec)).to.be.rejectedWith(
+      expect(nodejsMigrationHelper.displayUpdateBillingNotice(curSpec, newSpec, true)).to.be.rejectedWith(
         FirebaseError,
         "Cancelled"
       );
@@ -136,7 +136,7 @@ describe("billingMigrationHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(1);
     });
 
@@ -144,7 +144,7 @@ describe("billingMigrationHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE8_SPEC);
 
-      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
@@ -152,7 +152,7 @@ describe("billingMigrationHelper", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NO_RUNTIME_SPEC);
 
-      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec)).not.to.be.rejected;
+      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec, true)).not.to.be.rejected;
       expect(promptStub.callCount).to.equal(0);
     });
 
@@ -160,7 +160,7 @@ describe("billingMigrationHelper", () => {
       promptStub.resolves(false);
       const newSpec = _.cloneDeep(NODE10_SPEC);
 
-      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec)).to.be.rejectedWith(
+      expect(nodejsMigrationHelper.displayCreateBillingNotice(newSpec, true)).to.be.rejectedWith(
         FirebaseError,
         "Cancelled"
       );

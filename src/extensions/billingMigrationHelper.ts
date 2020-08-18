@@ -38,21 +38,25 @@ function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean
  *
  * @param curSpec A current extensionSpec
  * @param newSpec A extensionSpec to compare to
+ * @param prompt If true, prompts user for confirmation
  */
 export async function displayUpdateBillingNotice(
   curSpec: extensionsApi.ExtensionSpec,
-  newSpec: extensionsApi.ExtensionSpec
+  newSpec: extensionsApi.ExtensionSpec,
+  prompt: boolean
 ): Promise<void> {
   if (hasRuntime(curSpec, "nodejs8") && hasRuntime(newSpec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, billingMsgUpdate);
 
-    const continueUpdate = await promptOnce({
-      type: "confirm",
-      message: "Do you wish to continue?",
-      default: true,
-    });
-    if (!continueUpdate) {
-      throw new FirebaseError(`Cancelled.`, { exit: 2 });
+    if (prompt) {
+      const continueUpdate = await promptOnce({
+        type: "confirm",
+        message: "Do you wish to continue?",
+        default: true,
+      });
+      if (!continueUpdate) {
+        throw new FirebaseError(`Cancelled.`, { exit: 2 });
+      }
     }
   }
 }
@@ -61,18 +65,23 @@ export async function displayUpdateBillingNotice(
  * Displays billing changes if the extension contains new billing requirements.
  *
  * @param spec A currenta extensionSpec
+ * @param prompt If true, prompts user for confirmation
  */
-export async function displayCreateBillingNotice(spec: extensionsApi.ExtensionSpec): Promise<void> {
+export async function displayCreateBillingNotice(
+  spec: extensionsApi.ExtensionSpec,
+  prompt: boolean
+): Promise<void> {
   if (hasRuntime(spec, "nodejs10")) {
     utils.logLabeledWarning(logPrefix, billingMsgCreate);
-
-    const continueUpdate = await promptOnce({
-      type: "confirm",
-      message: "Do you wish to continue?",
-      default: true,
-    });
-    if (!continueUpdate) {
-      throw new FirebaseError(`Cancelled.`, { exit: 2 });
+    if (prompt) {
+      const continueUpdate = await promptOnce({
+        type: "confirm",
+        message: "Do you wish to continue?",
+        default: true,
+      });
+      if (!continueUpdate) {
+        throw new FirebaseError(`Cancelled.`, { exit: 2 });
+      }
     }
   }
 }

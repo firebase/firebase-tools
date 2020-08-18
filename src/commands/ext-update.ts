@@ -186,7 +186,6 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         }
       }
       await displayChanges(currentSpec, newSpec);
-      await displayUpdateBillingNotice(currentSpec, newSpec);
       const newParams = await paramHelper.promptForNewParams(
         currentSpec,
         newSpec,
@@ -206,7 +205,8 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
         rolesToAdd: _.get(newSpec, "roles", []),
         rolesToRemove,
         serviceAccountEmail: existingInstance.serviceAccountEmail,
-        billingRequired: newSpec.billingRequired,
+        currentSpec,
+        newSpec,
       };
       if (!_.isEqual(newParams, currentParams)) {
         updateOptions.params = newParams;

@@ -5,9 +5,9 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
-import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
-import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { displayCreateBillingNotice } from "../extensions/billingMigrationHelper";
+import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
+import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
@@ -52,8 +52,15 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
-    await displayCreateBillingNotice(spec);
-    await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
+    if (spec.billingRequired) {
+      const enabled = await isBillingEnabled(projectId);
+      if (!enabled) {
+        await displayCreateBillingNotice(spec, false)
+        await enableBilling(projectId, spec.displayName || spec.name)
+      } else {
+        await displayCreateBillingNotice(spec, true)
+      }
+    }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 

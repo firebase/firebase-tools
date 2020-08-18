@@ -3,7 +3,8 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
-import * as checkProjectBilling from "./checkProjectBilling";
+import { displayUpdateBillingNotice } from "../extensions/billingMigrationHelper";
+import { enableBilling, isBillingEnabled } from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { UpdateWarning } from "./resolveSource";
@@ -225,7 +226,8 @@ export interface UpdateOptions {
   rolesToAdd: extensionsApi.Role[];
   rolesToRemove: extensionsApi.Role[];
   serviceAccountEmail: string;
-  billingRequired?: boolean;
+  currentSpec: extensionsApi.ExtensionSpec;
+  newSpec: extensionsApi.ExtensionSpec;
 }
 
 /**
@@ -245,9 +247,18 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     rolesToAdd,
     rolesToRemove,
     serviceAccountEmail,
-    billingRequired,
+    currentSpec,
+    newSpec,
   } = updateOptions;
-  await checkProjectBilling(projectId, instanceId, billingRequired);
+  if (newSpec.billingRequired) {
+    const enabled = await isBillingEnabled(projectId);
+    if (!enabled) {
+      await displayUpdateBillingNotice(currentSpec, newSpec, false);
+      await enableBilling(projectId, instanceId)
+    } else {
+      await displayUpdateBillingNotice(currentSpec, newSpec, true);
+    }
+  }
   await rolesHelper.grantRoles(
     projectId,
     serviceAccountEmail,
