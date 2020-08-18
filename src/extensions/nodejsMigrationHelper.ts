@@ -7,7 +7,13 @@ import * as utils from "../utils";
 const billingMsgUpdate =
   "This update includes an upgrade to Node.js 10 from Node.js 8, which is no longer maintained. Node.js 10 requires your project to be on the Blaze (pay as you go) plan, and starting with this update, you will be charged a small amount (typically around $0.01/month) for each instance of this extension you've installed, in addition to any charges associated with your use of Firebase services.";
 const billingMsgCreate =
-  "This extension includes Node.js 10 functions. Node.js 10 requires your project to be on the Blaze (pay as you go) plan, and you will be charged a small amount (typically around $0.01/month) for each instance of this extension you've installed, in addition to any charges associated with your use of Firebase services.";
+  "You will be charged around $0.01/month for each instance of this extension"
+  + " you install. Additionally, using this extension will contribute to your"
+  + " project's overall usage level of Firebase services. However, you'll only"
+  + " be charged for usage that exceeds Firebase's free tier for those"
+  + " services.\n\n"
+  + "See pricing examples: https://TBD\n"
+  + "Learn about Firebase pricing: https://firebase.google.com/pricing";
 
 function hasRuntime(resource: extensionsApi.Resource, runtime: string): boolean {
   let resourceRuntime = "nodejs8"; // default to nodejs8 runtime
