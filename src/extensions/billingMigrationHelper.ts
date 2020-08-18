@@ -10,7 +10,7 @@ const billingMsgUpdate =
   " small amount (typically around $0.01/month) for each instance of this" +
   " extension you've installed, in addition to any charges associated with" +
   " your use of Firebase services.\n\n" +
-  "See pricing examples: https://TBD\n" +
+  "See pricing examples: https://cloud.google.com/functions/pricing#pricing_examples\n" +
   "See the FAQ: https://firebase.google.com/support/faq/#extensions-pricing";
 const billingMsgCreate =
   "You will be charged around $0.01/month for each instance of this extension" +
