@@ -64,7 +64,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
     let instanceId = spec.name;
     const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
     if (anotherInstanceExists) {
@@ -80,6 +79,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       }
       instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
     }
+    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
+
     spinner.start();
     let serviceAccountEmail;
     while (!serviceAccountEmail) {
