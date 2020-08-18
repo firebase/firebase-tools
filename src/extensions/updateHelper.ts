@@ -3,8 +3,6 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
-import { displayUpdateBillingNotice } from "../extensions/billingMigrationHelper";
-import { enableBilling, isBillingEnabled } from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { UpdateWarning } from "./resolveSource";
