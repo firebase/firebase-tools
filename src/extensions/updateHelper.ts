@@ -226,8 +226,6 @@ export interface UpdateOptions {
   rolesToAdd: extensionsApi.Role[];
   rolesToRemove: extensionsApi.Role[];
   serviceAccountEmail: string;
-  currentSpec: extensionsApi.ExtensionSpec;
-  newSpec: extensionsApi.ExtensionSpec;
 }
 
 /**
@@ -247,18 +245,7 @@ export async function update(updateOptions: UpdateOptions): Promise<any> {
     rolesToAdd,
     rolesToRemove,
     serviceAccountEmail,
-    currentSpec,
-    newSpec,
   } = updateOptions;
-  if (newSpec.billingRequired) {
-    const enabled = await isBillingEnabled(projectId);
-    if (!enabled) {
-      await displayUpdateBillingNotice(currentSpec, newSpec, false);
-      await enableBilling(projectId, instanceId)
-    } else {
-      await displayUpdateBillingNotice(currentSpec, newSpec, true);
-    }
-  }
   await rolesHelper.grantRoles(
     projectId,
     serviceAccountEmail,
