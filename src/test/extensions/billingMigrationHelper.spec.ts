@@ -72,7 +72,7 @@ const NODE10_SPEC = {
   params: [],
 };
 
-describe("nodejsMigrationHelper", () => {
+describe("billingMigrationHelper", () => {
   let promptStub: sinon.SinonStub;
   beforeEach(() => {
     promptStub = sinon.stub(prompt, "promptOnce");
@@ -82,7 +82,7 @@ describe("nodejsMigrationHelper", () => {
     promptStub.restore();
   });
 
-  describe("displayNodejsUpdateBillingNotice", () => {
+  describe("displayUpdateBillingNotice", () => {
     it("should notify the user if the runtime is being upgraded to nodejs10", () => {
       promptStub.resolves(true);
       const curSpec = _.cloneDeep(NODE8_SPEC);
@@ -131,7 +131,7 @@ describe("nodejsMigrationHelper", () => {
     });
   });
 
-  describe("displayNodejsCreateBillingNotice", () => {
+  describe("displayCreateBillingNotice", () => {
     it("should notify the user if the runtime requires nodejs10", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(NODE10_SPEC);
