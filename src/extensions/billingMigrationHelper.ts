@@ -18,7 +18,7 @@ const billingMsgCreate =
   " project's overall usage level of Firebase services. However, you'll only" +
   " be charged for usage that exceeds Firebase's free tier for those" +
   " services.\n\n" +
-  "See pricing examples: https://TBD\n" +
+  "See pricing examples: https://cloud.google.com/functions/pricing#pricing_examples\n" +
   "Learn about Firebase pricing: https://firebase.google.com/pricing";
 
 const defaultSpecVersion = "v1beta";
