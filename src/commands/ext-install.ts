@@ -52,8 +52,8 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
-    await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
     await displayCreateBillingNotice(spec);
+    await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
