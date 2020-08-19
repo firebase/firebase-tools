@@ -21,9 +21,9 @@ export async function rollbackTemplate(projectId: string, versionNumber?: number
     return response.body;
   } catch (err) {
     logger.debug(err.message);
-    throw new FirebaseError(
-      `Failed to rollback Firebase Remote Config template for project. `,
-      { exit: 2, original: err }
-    );
+    throw new FirebaseError(err.message, {
+      exit: 2,
+      original: err,
+    });
   }
 }
