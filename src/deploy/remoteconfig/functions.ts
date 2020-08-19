@@ -12,11 +12,11 @@ const TIMEOUT = 30000;
  * @return {Promise<string>} Returns a Promise of the Remote Config Template Etag string
  */
 export async function getEtag(projectNumber: string, versionNumber?: string): Promise<string> {
-  let request = `/v1/projects/${projectNumber}/remoteConfig`;
+  let reqPath = `/v1/projects/${projectNumber}/remoteConfig`;
   if (versionNumber) {
-    request = request + "?versionNumber=" + versionNumber;
+    reqPath = reqPath + "?versionNumber=" + versionNumber;
   }
-  const response = await api.request("GET", request, {
+  const response = await api.request("GET", reqPath, {
     auth: true,
     origin: api.remoteConfigApiOrigin,
     timeout: TIMEOUT,
@@ -38,7 +38,7 @@ export function validateInputRemoteConfigTemplate(
     throw new FirebaseError(`Invalid Remote Config template: ${JSON.stringify(templateCopy)}`);
   }
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
-    throw new FirebaseError(`ETag must be a non-empty string`);
+    throw new FirebaseError("ETag must be a non-empty string");
   }
   if (templateCopy.conditions && !Array.isArray(templateCopy.conditions)) {
     throw new FirebaseError("Remote Config conditions must be an array");
@@ -62,11 +62,11 @@ export async function deployTemplate(
   etag: string,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
-  const request = `/v1/projects/${projectNumber}/remoteConfig`;
+  const reqPath = `/v1/projects/${projectNumber}/remoteConfig`;
   if (options?.force) {
     etag = "*";
   }
-  const response = await api.request("PUT", request, {
+  const response = await api.request("PUT", reqPath, {
     auth: true,
     origin: api.remoteConfigApiOrigin,
     timeout: TIMEOUT,
