@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import * as api from "../../../api";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
-import { FirebaseError } from "../../../error";
 import { mockAuth } from "../../helpers";
 import * as remoteconfig from "../../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
@@ -137,21 +136,16 @@ describe("Remote Config Deploy", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedError = new FirebaseError("HTTP Error 404: Not Found");
       const etag = await rcDeploy.getEtag(PROJECT_NUMBER);
 
-      apiRequestStub.onFirstCall().rejects(expectedError);
       etagStub.withArgs(PROJECT_NUMBER, "undefined").returns(header);
 
-      let err;
       try {
         await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
       } catch (e) {
-        err = e;
+        e;
       }
 
-      expect(err.message).to.equal(`HTTP Error 404: Not Found`);
-      expect(err.original).to.equal(expectedError);
       expect(apiRequestStub).to.be.calledOnceWith(
         "PUT",
         `/v1/projects/${PROJECT_NUMBER}/remoteConfig`,
