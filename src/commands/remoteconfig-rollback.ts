@@ -40,19 +40,17 @@ module.exports = new Command("remoteconfig:rollback")
       );
     }
     if (!options.force) {
-      return prompt(options, [
+      const { confirm } = await prompt(options, [
         {
           type: "confirm",
           name: "confirm",
           message: "Proceed to rollback template to version " + targetVersion + "?",
           default: false,
         },
-      ]).then(async () => {
-        if (!options.confirm) {
-          return;
-        }
-        await rollbackTemplate(getProjectId(options), targetVersion);
-      });
+      ]);
+      if (!confirm) {
+        return;
+      }
     }
-    return await rollbackTemplate(getProjectId(options), targetVersion);
+    return rollbackTemplate(getProjectId(options), targetVersion);
   });
