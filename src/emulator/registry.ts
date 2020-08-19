@@ -43,19 +43,46 @@ export class EmulatorRegistry {
   }
 
   static async stopAll(): Promise<void> {
-    await Promise.all(
-      this.listRunning().map(async (name) => {
-        try {
-          await this.stop(name);
-        } catch (e) {
-          EmulatorLogger.forEmulator(name).logLabeled(
-            "WARN",
-            name,
-            `Error stopping ${Constants.description(name)}`
-          );
-        }
-      })
-    );
+    const stopPriority: Record<Emulators, number> = {
+      // Turn off the UI first, user should not interact
+      // once shutdown starts
+      ui: 0,
+
+      // Functions is next since it has side effects and
+      // dependencies across all the others
+      functions: 1,
+
+      // Hosting is next because it can trigger functions.
+      hosting: 2,
+
+      // All background trigger emulators are equal here, so we choose
+      // an order for consistency.
+      database: 3.0,
+      firestore: 3.1,
+      pubsub: 3.2,
+
+      // Hub shuts down once almost everything else is done
+      hub: 4,
+
+      // Logging is last to catch all errors
+      logging: 5,
+    };
+
+    const emulatorsToStop = this.listRunning().sort((a, b) => {
+      return stopPriority[a] - stopPriority[b];
+    });
+
+    for (const name of emulatorsToStop) {
+      try {
+        await this.stop(name);
+      } catch (e) {
+        EmulatorLogger.forEmulator(name).logLabeled(
+          "WARN",
+          name,
+          `Error stopping ${Constants.description(name)}`
+        );
+      }
+    }
   }
 
   static isRunning(emulator: Emulators): boolean {

@@ -368,10 +368,22 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    try {
+      await this.workQueue.flush();
+    } catch (e) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Functions emulator work queue did not empty before stopping"
+      );
+    }
+
     this.workQueue.stop();
     this.workerPool.exit();
-    return this.destroyServer ? this.destroyServer() : Promise.resolve();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
   }
 
   addRealtimeDatabaseTrigger(
