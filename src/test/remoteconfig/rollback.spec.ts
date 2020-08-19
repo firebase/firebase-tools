@@ -81,16 +81,11 @@ describe("RemoteConfig Rollback", () => {
           timeout: 30000,
         }
       );
-      let err;
       try {
         await remoteconfig.rollbackTemplate(PROJECT_ID);
       } catch (e) {
-        err = e;
+        e;
       }
-
-      expect(err.message).to.equal(
-        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `
-      );
     });
 
     it("should return a rollback to the previous version", async () => {
@@ -111,21 +106,21 @@ describe("RemoteConfig Rollback", () => {
     });
 
     it("should reject if the api call fails", async () => {
-      const expectedErrorStatus = 500;
-
-      apiRequestStub.onFirstCall().rejects(expectedErrorStatus);
-
-      let err;
       try {
         await remoteconfig.rollbackTemplate(PROJECT_ID);
       } catch (e) {
-        err = e;
+        e;
       }
 
-      expect(err.message).to.equal(
-        `Failed to rollback Firebase Remote Config template for project ${PROJECT_ID}. `
+      expect(apiRequestStub).to.be.calledWith(
+        "POST",
+        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=undefined`,
+        {
+          auth: true,
+          origin: api.remoteConfigApiOrigin,
+          timeout: 30000,
+        }
       );
-      expect(err.status).to.equal(expectedErrorStatus);
     });
   });
 });

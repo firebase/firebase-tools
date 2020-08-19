@@ -1,6 +1,4 @@
 import api = require("../api");
-import logger = require("../logger");
-import { FirebaseError } from "../error";
 
 const TIMEOUT = 30000;
 
@@ -11,19 +9,11 @@ const TIMEOUT = 30000;
  * @return {Promise} Returns a promise of a Remote Config template using the RemoteConfigTemplate interface
  */
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
-  try {
-    let requestPath = `/v1/projects/${projectId}/remoteConfig:rollback?versionNumber=${versionNumber}`;
-    const response = await api.request("POST", requestPath, {
-      auth: true,
-      origin: api.remoteConfigApiOrigin,
-      timeout: TIMEOUT,
-    });
-    return response.body;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(err.message, {
-      exit: 2,
-      original: err,
-    });
-  }
+  let requestPath = `/v1/projects/${projectId}/remoteConfig:rollback?versionNumber=${versionNumber}`;
+  const response = await api.request("POST", requestPath, {
+    auth: true,
+    origin: api.remoteConfigApiOrigin,
+    timeout: TIMEOUT,
+  });
+  return response.body;
 }
