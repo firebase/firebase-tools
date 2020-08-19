@@ -2,7 +2,6 @@ import { FirebaseError } from "../../error";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 import api = require("../../api");
-import logger = require("../../logger");
 
 const TIMEOUT = 30000;
 
@@ -63,30 +62,22 @@ export async function deployTemplate(
   etag: string,
   options?: { force: boolean }
 ): Promise<RemoteConfigTemplate> {
-  try {
-    const request = `/v1/projects/${projectNumber}/remoteConfig`;
-    if (options?.force) {
-      etag = "*";
-    }
-    const response = await api.request("PUT", request, {
-      auth: true,
-      origin: api.remoteConfigApiOrigin,
-      timeout: TIMEOUT,
-      headers: { "If-Match": etag },
-      data: {
-        conditions: template.conditions,
-        parameters: template.parameters,
-        parameterGroups: template.parameterGroups,
-      },
-    });
-    return response.body;
-  } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(err.message, {
-      exit: 2,
-      original: err,
-    });
+  const request = `/v1/projects/${projectNumber}/remoteConfig`;
+  if (options?.force) {
+    etag = "*";
   }
+  const response = await api.request("PUT", request, {
+    auth: true,
+    origin: api.remoteConfigApiOrigin,
+    timeout: TIMEOUT,
+    headers: { "If-Match": etag },
+    data: {
+      conditions: template.conditions,
+      parameters: template.parameters,
+      parameterGroups: template.parameterGroups,
+    },
+  });
+  return response.body;
 }
 
 /**
