@@ -1088,6 +1088,25 @@ async function handleMessage(message: string) {
 }
 
 async function main(): Promise<void> {
+  // Since the functions run as attached processes they naturally inherit SIGINT
+  // sent to the functions emulator. We want them to ignore the first signal
+  // to allow for a clean shutdown.
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  process.on("SIGINT", () => {
+    const now = new Date().getTime();
+    if (now - lastSignal < 100) {
+      return;
+    }
+
+    signalCount = signalCount + 1;
+    lastSignal = now;
+
+    if (signalCount >= 2) {
+      process.exit(1);
+    }
+  });
+
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,

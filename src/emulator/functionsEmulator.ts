@@ -651,10 +651,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
-      // By running as detached the child proccesses don't pick up
-      // kill signals to the host. This allows functions to finish
-      // running in workqueue.flush()
-      detached: true,
       stdio: ["pipe", "pipe", "pipe", "ipc"],
     });
 
