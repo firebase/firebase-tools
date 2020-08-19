@@ -18,5 +18,5 @@ module.exports = async function(context: any, options: any): Promise<void> {
   template.etag = await getEtag(projectNumber);
   validateInputRemoteConfigTemplate(template);
   context.remoteconfigTemplate = template;
-  return Promise.resolve();
+  return;
 };
