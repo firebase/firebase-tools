@@ -4,7 +4,7 @@ const TIMEOUT = 30000;
 
 /**
  * Rolls back to a specific version of the Remote Config template
- * @param projectId Remote Config Template project Id
+ * @param projectId Remote Config Template Project Id
  * @param versionNumber Remote Config Template version number to roll back to
  * @return {Promise} Returns a promise of a Remote Config template using the RemoteConfigTemplate interface
  */
