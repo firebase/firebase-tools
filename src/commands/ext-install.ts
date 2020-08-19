@@ -5,7 +5,7 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
-import { displayCreateBillingNotice } from "../extensions/billingMigrationHelper";
+import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
 import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
 import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
 import { Command } from "../command";
@@ -55,10 +55,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     if (spec.billingRequired) {
       const enabled = await isBillingEnabled(projectId);
       if (!enabled) {
-        await displayCreateBillingNotice(spec, false);
+        await displayNode10CreateBillingNotice(spec, false);
         await enableBilling(projectId, spec.displayName || spec.name);
       } else {
-        await displayCreateBillingNotice(spec, true);
+        await displayNode10CreateBillingNotice(spec, true);
       }
     }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];

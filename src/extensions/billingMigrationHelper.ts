@@ -40,7 +40,7 @@ function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean
  * @param newSpec A extensionSpec to compare to
  * @param prompt If true, prompts user for confirmation
  */
-export async function displayUpdateBillingNotice(
+export async function displayNode10UpdateBillingNotice(
   curSpec: extensionsApi.ExtensionSpec,
   newSpec: extensionsApi.ExtensionSpec,
   prompt: boolean
@@ -67,7 +67,7 @@ export async function displayUpdateBillingNotice(
  * @param spec A currenta extensionSpec
  * @param prompt If true, prompts user for confirmation
  */
-export async function displayCreateBillingNotice(
+export async function displayNode10CreateBillingNotice(
   spec: extensionsApi.ExtensionSpec,
   prompt: boolean
 ): Promise<void> {

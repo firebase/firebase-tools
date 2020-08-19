@@ -4,7 +4,7 @@ import * as marked from "marked";
 import * as ora from "ora";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { displayUpdateBillingNotice } from "../extensions/billingMigrationHelper";
+import { displayNode10UpdateBillingNotice } from "../extensions/billingMigrationHelper";
 import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
@@ -190,10 +190,10 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
       if (newSpec.billingRequired) {
         const enabled = await isBillingEnabled(projectId);
         if (!enabled) {
-          await displayUpdateBillingNotice(currentSpec, newSpec, false);
+          await displayNode10UpdateBillingNotice(currentSpec, newSpec, false);
           await enableBilling(projectId, instanceId);
         } else {
-          await displayUpdateBillingNotice(currentSpec, newSpec, true);
+          await displayNode10UpdateBillingNotice(currentSpec, newSpec, true);
         }
       }
       const newParams = await paramHelper.promptForNewParams(
