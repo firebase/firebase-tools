@@ -65,11 +65,9 @@ export async function deployTemplate(
 ): Promise<RemoteConfigTemplate> {
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
-    console.log(etag)
     if (options?.force) {
       etag = "*";
     }
-    console.log(etag)
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
@@ -84,13 +82,10 @@ export async function deployTemplate(
     return response.body;
   } catch (err) {
     logger.debug(err.message);
-    throw new FirebaseError(
-      err.message,
-      {
-        exit: 2,
-        original: err,
-      }
-    );
+    throw new FirebaseError(err.message, {
+      exit: 2,
+      original: err,
+    });
   }
 }
 
