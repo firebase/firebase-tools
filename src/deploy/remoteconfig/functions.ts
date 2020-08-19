@@ -85,7 +85,7 @@ export async function deployTemplate(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to deploy Remote Config template for Firebase project. `,
+      err.message,
       {
         exit: 2,
         original: err,
@@ -102,7 +102,7 @@ export async function deployTemplate(
  * @param options Force boolean option
  * @return {Promise<RemoteConfigTemplate>} Returns a Promise that fulfills with the published Remote Config template
  */
-export async function publishTemplate(
+export function publishTemplate(
   projectNumber: string,
   template: RemoteConfigTemplate,
   etag: string,
@@ -116,5 +116,5 @@ export async function publishTemplate(
   };
   let validTemplate: RemoteConfigTemplate = temporaryTemplate;
   validTemplate = validateInputRemoteConfigTemplate(template);
-  return await deployTemplate(projectNumber, validTemplate, etag, options);
+  return deployTemplate(projectNumber, validTemplate, etag, options);
 }
