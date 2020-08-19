@@ -381,7 +381,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.workQueue.stop();
     this.workerPool.exit();
-    this.destroyServer && this.destroyServer();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
   }
 
   addRealtimeDatabaseTrigger(
