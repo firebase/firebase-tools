@@ -1,13 +1,12 @@
 import { Command } from "../command";
+import { FirebaseError } from "../error";
+import { prompt } from "../prompt";
 import { requireAuth } from "../requireAuth";
-import * as rcRollback from "../remoteconfig/rollback";
+import { rollbackTemplate } from "../remoteconfig/rollback";
 import { requirePermissions } from "../requirePermissions";
-
-import * as rcList from "../remoteconfig/versionslist";
+import { getVersions } from "../remoteconfig/versionslist";
 
 import getProjectId = require("../getProjectId");
-import { prompt } from "../prompt";
-import { FirebaseError } from "../error";
 
 module.exports = new Command("remoteconfig:rollback")
   .description(
@@ -21,7 +20,7 @@ module.exports = new Command("remoteconfig:rollback")
   )
   .option("--force", "rollback template to the specified version without confirmation")
   .action(async (options) => {
-    const templateVersion = await rcList.getVersions(getProjectId(options), 1);
+    const templateVersion = await getVersions(getProjectId(options), 1);
     let targetVersion = 0;
     if (options.versionNumber) {
       targetVersion = options.versionNumber;
@@ -52,8 +51,8 @@ module.exports = new Command("remoteconfig:rollback")
         if (!options.confirm) {
           return;
         }
-        await rcRollback.rollbackTemplate(getProjectId(options), targetVersion);
+        await rollbackTemplate(getProjectId(options), targetVersion);
       });
     }
-    return await rcRollback.rollbackTemplate(getProjectId(options), targetVersion);
+    return await rollbackTemplate(getProjectId(options), targetVersion);
   });

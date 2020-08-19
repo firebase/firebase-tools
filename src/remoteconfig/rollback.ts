@@ -12,9 +12,8 @@ const TIMEOUT = 30000;
  */
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
   try {
-    let request = `/v1/projects/${projectId}/remoteConfig:rollback`;
-    request = request + "?versionNumber=" + versionNumber;
-    const response = await api.request("POST", request, {
+    let requestPath = `/v1/projects/${projectId}/remoteConfig:rollback?versionNumber=${versionNumber}`;
+    const response = await api.request("POST", requestPath, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
       timeout: TIMEOUT,
@@ -23,7 +22,7 @@ export async function rollbackTemplate(projectId: string, versionNumber?: number
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to rollback Firebase Remote Config template for project ${projectId}. `,
+      `Failed to rollback Firebase Remote Config template for project. `,
       { exit: 2, original: err }
     );
   }
