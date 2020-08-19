@@ -65,9 +65,11 @@ export async function deployTemplate(
 ): Promise<RemoteConfigTemplate> {
   try {
     const request = `/v1/projects/${projectNumber}/remoteConfig`;
+    console.log(etag)
     if (options?.force) {
       etag = "*";
     }
+    console.log(etag)
     const response = await api.request("PUT", request, {
       auth: true,
       origin: api.remoteConfigApiOrigin,
@@ -83,7 +85,7 @@ export async function deployTemplate(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to deploy Remote Config template for Firebase project ${projectNumber}. `,
+      `Failed to deploy Remote Config template for Firebase project. `,
       {
         exit: 2,
         original: err,
