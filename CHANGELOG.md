@@ -3,3 +3,4 @@
 - Fixes issue where all database functions triggered on the default namespace (#2501)
 - Fixes issue where rules paths were not normalized before reading (#2544)
 - Functions emulator waits for all functions to finish before exiting (#1813)
+- Adds support for deploying functions with a failure policy.
