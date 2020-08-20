@@ -12,7 +12,7 @@ import * as clc from "cli-color";
 async function checkProjectSetup(setup: any) {
   const firestoreUnusedError = new FirebaseError(
     `It looks like you haven't used Cloud Firestore in this project before. Go to ${clc.bold.underline(
-      `https://console.firebase.google.com/project/${setup.projectId}/database`
+      `https://console.firebase.google.com/project/${setup.projectId}/firestore`
     )} to create your Cloud Firestore database.`,
     { exit: 1 }
   );
