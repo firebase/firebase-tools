@@ -18,7 +18,7 @@ const billingMsgUpdate =
   "This update includes an upgrade to Node.js 10 from Node.js 8, which is no" +
   " longer maintained. Starting with this update, you will be charged a" +
   " small amount (typically around $0.01/month) for the Firebase resources" +
-  " required by this extension even if it is not used in addition to any" +
+  " required by this extension (even if it is not used), in addition to any" +
   " charges associated with its usage.\n\n" +
   `See pricing examples: **[${urlPricingExamples}](${urlPricingExamples})**\n` +
   `See the FAQ: **[${urlFAQ}](${urlFAQ})**\n`;
