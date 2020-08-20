@@ -31,12 +31,19 @@ describe("checkProjectBilling", function() {
 
     cloudbilling.checkBillingEnabled.resolves(true);
 
-    return checkProjectBilling(projectId, extensionName, true).then(function() {
-      expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-      expect(cloudbilling.listBillingAccounts.notCalled);
-      expect(cloudbilling.setBillingAccount.notCalled);
-      expect(prompt.promptOnce.notCalled);
-    });
+    return checkProjectBilling
+      .isBillingEnabled(projectId)
+      .then((enabled) => {
+        if (!enabled) {
+          return checkProjectBilling.enableBilling(projectId, extensionName);
+        }
+      })
+      .then(() => {
+        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
+        expect(cloudbilling.listBillingAccounts.notCalled);
+        expect(cloudbilling.setBillingAccount.notCalled);
+        expect(prompt.promptOnce.notCalled);
+      });
   });
 
   it("should list accounts if no billing account set, but accounts available.", function() {
@@ -55,14 +62,21 @@ describe("checkProjectBilling", function() {
     cloudbilling.setBillingAccount.resolves(true);
     prompt.promptOnce.resolves("test-account");
 
-    return checkProjectBilling(projectId, extensionName, true).then(function() {
-      expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-      expect(cloudbilling.listBillingAccounts.calledOnce);
-      expect(cloudbilling.setBillingAccount.calledOnce);
-      expect(
-        cloudbilling.setBillingAccount.calledWith(projectId, "test-cloud-billing-account-name")
-      );
-    });
+    return checkProjectBilling
+      .isBillingEnabled(projectId)
+      .then((enabled) => {
+        if (!enabled) {
+          return checkProjectBilling.enableBilling(projectId, extensionName);
+        }
+      })
+      .then(() => {
+        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
+        expect(cloudbilling.listBillingAccounts.calledOnce);
+        expect(cloudbilling.setBillingAccount.calledOnce);
+        expect(
+          cloudbilling.setBillingAccount.calledWith(projectId, "test-cloud-billing-account-name")
+        );
+      });
   });
 
   it("should not list accounts if no billing accounts set or available.", function() {
@@ -75,11 +89,18 @@ describe("checkProjectBilling", function() {
     cloudbilling.listBillingAccounts.resolves(accounts);
     prompt.promptOnce.resolves();
 
-    return checkProjectBilling(projectId, extensionName, true).then(function() {
-      expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-      expect(cloudbilling.listBillingAccounts.calledOnce);
-      expect(cloudbilling.setBillingAccount.notCalled);
-      expect(cloudbilling.checkBillingEnabled.callCount).to.equal(2);
-    });
+    return checkProjectBilling
+      .isBillingEnabled(projectId)
+      .then((enabled) => {
+        if (!enabled) {
+          return checkProjectBilling.enableBilling(projectId, extensionName);
+        }
+      })
+      .then(() => {
+        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
+        expect(cloudbilling.listBillingAccounts.calledOnce);
+        expect(cloudbilling.setBillingAccount.notCalled);
+        expect(cloudbilling.checkBillingEnabled.callCount).to.equal(2);
+      });
   });
 });
