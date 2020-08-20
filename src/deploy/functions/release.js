@@ -258,6 +258,8 @@ module.exports = function(context, options, payload) {
                   timeout: functionInfo.timeout,
                   maxInstances: functionInfo.maxInstances,
                   environmentVariables: defaultEnvVariables,
+                  vpcConnector: functionInfo.vpcConnector,
+                  vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -333,6 +335,8 @@ module.exports = function(context, options, payload) {
               timeout: functionInfo.timeout,
               runtime: runtime,
               maxInstances: functionInfo.maxInstances,
+              vpcConnector: functionInfo.vpcConnector,
+              vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
               environmentVariables: _.assign(
                 {},
                 existingFunction.environmentVariables,
