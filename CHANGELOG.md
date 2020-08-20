@@ -1,1 +1,0 @@
-- Fixes a bug where all Cloud Functions for Firebase deploys asked about failure policies.
