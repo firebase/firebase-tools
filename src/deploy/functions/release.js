@@ -157,30 +157,32 @@ module.exports = function(context, options, payload) {
     return !!fn.failurePolicy;
   });
 
-  var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
-    return helper.getFunctionLabel(_.get(fn, "name"));
-  });
-  var retryMessage =
-    "The following functions will be retried in case of failure: " +
-    clc.bold(failurePolicyFunctionLabels.join(", ")) +
-    ". " +
-    "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
-    "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
-
-  utils.logLabeledWarning("functions", retryMessage);
-
   let proceedPrompt = Promise.resolve(true);
-  if (options.nonInteractive && !options.force) {
-    throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
-      exit: 1,
+  if (failurePolicyFunctions.length > 0) {
+    var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
+      return helper.getFunctionLabel(_.get(fn, "name"));
     });
-  } else if (!options.nonInteractive) {
-    proceedPrompt = promptOnce({
-      type: "confirm",
-      name: "confirm",
-      default: false,
-      message: "Would you like to proceed with deployment?",
-    });
+    var retryMessage =
+      "The following functions will be retried in case of failure: " +
+      clc.bold(failurePolicyFunctionLabels.join(", ")) +
+      ". " +
+      "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
+      "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+
+    utils.logLabeledWarning("functions", retryMessage);
+
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
+        exit: 1,
+      });
+    } else if (!options.nonInteractive) {
+      proceedPrompt = promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Would you like to proceed with deployment?",
+      });
+    }
   }
 
   delete payload.functions;

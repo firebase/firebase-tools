@@ -1,0 +1,1 @@
+- Fixes a bug where all deploys asked about failure policies.
