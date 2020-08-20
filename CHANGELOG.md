@@ -1,1 +1,1 @@
-- Display additional info on the impact of running Firebase extensions with nodejs10 runtime. (#2549)
+- Display additional info on the impact of running Firebase extensions with Node.js 10 runtime. (#2549)
