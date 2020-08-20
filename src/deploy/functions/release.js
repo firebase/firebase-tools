@@ -164,7 +164,7 @@ module.exports = function(context, options, payload) {
     "The following functions will be retried in case of failure: " +
     clc.bold(failurePolicyFunctionLabels.join(", ")) +
     ". " +
-    "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be multiple days. " +
+    "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
     "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
 
   utils.logLabeledWarning("functions", retryMessage);
