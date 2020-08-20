@@ -158,7 +158,7 @@ module.exports = function(context, options, payload) {
   });
 
   let proceedPrompt = Promise.resolve(true);
-  if (failurePolicyFunctions.length > 0) {
+  if (failurePolicyFunctions.length) {
     var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
       return helper.getFunctionLabel(_.get(fn, "name"));
     });
