@@ -131,35 +131,27 @@ function _setUpBillingAccount(projectId, extensionName) {
 }
 
 /**
- * Sets up billing if not enabled, otherwise silently continues.
+ * Checks whether billing is enabled on the given project.
+ * @param {projectId} projectId
+ * @returns {Promise<boolean>} True if billing is enabled
+ */
+export function isBillingEnabled(projectId) {
+  return cloudbilling.checkBillingEnabled(projectId);
+}
+
+/**
+ * Sets up billing for the given project.
  * @param {string} projectId
  * @param {string} extensionName
- * @param {boolean | undefined} required Whether billing is required
  * @return {Promise<undefined>}
  */
-module.exports = function(projectId, extensionName, required) {
-  if (!required) {
-    return Promise.resolve();
-  }
-
-  return cloudbilling
-    .checkBillingEnabled(projectId)
-    .then((enabled) => {
-      return enabled ? Promise.reject("billing enabled") : cloudbilling.listBillingAccounts();
-    })
-    .then((billingAccounts) => {
-      if (billingAccounts) {
-        const accounts = _.filter(billingAccounts, ["open", true]);
-
-        return accounts.length > 0
-          ? _chooseBillingAccount(projectId, extensionName, accounts)
-          : _setUpBillingAccount(projectId, extensionName);
-      }
-    })
-    .catch((err) => {
-      if (err === "billing enabled") {
-        return;
-      }
-      throw err;
-    });
-};
+export function enableBilling(projectId, extensionName) {
+  return cloudbilling.listBillingAccounts().then((billingAccounts) => {
+    if (billingAccounts) {
+      const accounts = _.filter(billingAccounts, ["open", true]);
+      return accounts.length > 0
+        ? _chooseBillingAccount(projectId, extensionName, accounts)
+        : _setUpBillingAccount(projectId, extensionName);
+    }
+  });
+}

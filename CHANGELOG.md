@@ -1,0 +1,2 @@
+- Display additional info on the impact of running Firebase extensions with Node.js 10 runtime. (#2549)
+- Add support for vpcConnector and vpcConnectorEgressSettings customization for functions. **Must be used in conjunction with firebase-functions v3.11.0 or higher.** Thanks @pcboy! (#2525)
