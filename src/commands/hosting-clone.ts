@@ -88,7 +88,6 @@ export default new Command("hosting:clone <source> <targetChannel>")
           );
         }
         targetVersionName = targetVersion.name;
-        spinner.fail();
       }
       await createRelease(targetSiteId, targetChannelId, targetVersionName);
     } catch (err) {
