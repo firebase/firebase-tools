@@ -65,7 +65,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const confirmedExtensionDeletion = await promptOnce({
         type: "confirm",
         default: true,
-        message: "Are you sure that you want to uninstall this extension?",
+        message: "Are you sure that you wish to uninstall this extension?",
       });
       if (!confirmedExtensionDeletion) {
         return utils.reject("Command aborted.", { exit: 1 });

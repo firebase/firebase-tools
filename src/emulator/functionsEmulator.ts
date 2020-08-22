@@ -47,8 +47,12 @@ const EVENT_INVOKE = "functions:invoke";
  * definition to be relative to the database root. This regex is used to extract
  * that path from the `resource` member in the trigger definition used by the
  * functions emulator.
+ *
+ * Groups:
+ *   1 - instance
+ *   2 - path
  */
-const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/[^/]+/refs(/.*)$");
+const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs(/.*)$");
 
 export interface FunctionsEmulatorArgs {
   projectId: string;
@@ -61,7 +65,7 @@ export interface FunctionsEmulatorArgs {
   env?: { [key: string]: string };
   remoteEmulators?: { [key: string]: EmulatorInfo };
   predefinedTriggers?: EmulatedTriggerDefinition[];
-  nodeMajorVersion?: string; // Lets us specify the node version when emulating extensions.
+  nodeMajorVersion?: number; // Lets us specify the node version when emulating extensions.
 }
 
 // FunctionsRuntimeInstance is the handler for a running function invocation
@@ -158,7 +162,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // The URL for the function that the other emulators (Firestore, etc) use.
     // TODO(abehaskins): Make the other emulators use the route below and remove this.
-    const backgroundFunctionRoute = `/functions/projects/${this.args.projectId}/triggers/:trigger_name`;
+    const backgroundFunctionRoute = `/functions/projects/:project_id/triggers/:trigger_name`;
 
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
@@ -189,6 +193,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     // all events.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
+    hub.all("*", dataMiddleware, (req, res) => {
+      logger.debug(`Functions emulator received unknown request at path ${req.path}`);
+      res.sendStatus(404);
+    });
     return hub;
   }
 
@@ -360,10 +368,22 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    try {
+      await this.workQueue.flush();
+    } catch (e) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Functions emulator work queue did not empty before stopping"
+      );
+    }
+
     this.workQueue.stop();
     this.workerPool.exit();
-    return this.destroyServer ? this.destroyServer() : Promise.resolve();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
   }
 
   addRealtimeDatabaseTrigger(
@@ -386,7 +406,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
-    if (result === null || result.length !== 2) {
+    if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
         `Event trigger "${definition.name}" has malformed "resource" member. ` +
@@ -395,18 +415,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       return Promise.reject();
     }
 
+    const instance = result[1];
     const bundle = JSON.stringify({
       name: `projects/${projectId}/locations/_/functions/${definition.name}`,
-      path: result[1], // path stored in the first capture group
+      path: result[2], // path stored in the second capture group
       event: definition.eventTrigger.eventType,
       topic: `projects/${projectId}/topics/${definition.name}`,
     });
 
-    logger.debug(`addDatabaseTrigger`, JSON.stringify(bundle));
+    logger.debug(`addDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
 
     let setTriggersPath = "/.settings/functionTriggers.json";
-    if (projectId !== "") {
-      setTriggersPath += `?ns=${projectId}`;
+    if (instance !== "") {
+      setTriggersPath += `?ns=${instance}`;
     } else {
       this.logger.log(
         "WARN",
@@ -505,6 +526,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FUNCTIONS);
 
     return {
+      name: this.getName(),
       host,
       port,
     };
@@ -554,7 +576,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *  specified in extension.yaml. This will ALWAYS be populated when emulating extensions, even if they
    *  are using the default version.
    */
-  askInstallNodeVersion(cwd: string, nodeMajorVersion?: string): string {
+  askInstallNodeVersion(cwd: string, nodeMajorVersion?: number): string {
     const pkg = require(path.join(cwd, "package.json"));
     // If the developer hasn't specified a Node to use, inform them that it's an option and use default
     if ((!pkg.engines || !pkg.engines.node) && !nodeMajorVersion) {
@@ -567,7 +589,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     const hostMajorVersion = process.versions.node.split(".")[0];
-    const requestedMajorVersion = nodeMajorVersion || pkg.engines.node;
+    const requestedMajorVersion: string = nodeMajorVersion
+      ? `${nodeMajorVersion}`
+      : pkg.engines.node;
     let localMajorVersion = "0";
     const localNodePath = path.join(cwd, "node_modules/.bin/node");
 
@@ -599,10 +623,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return localNodePath;
     }
 
-    /*
-    Otherwise we'll begin the conversational flow to install the correct version locally
-   */
-
+    // Otherwise we'll begin the conversational flow to install the correct version locally
     this.logger.log(
       "WARN",
       `Your requested "node" version "${requestedMajorVersion}" doesn't match your global version "${hostMajorVersion}"`
@@ -683,7 +704,36 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
+    const projectId = req.params.project_id;
     const triggerId = req.params.trigger_name;
+
+    const trigger = this.getTriggerById(triggerId);
+    const service = getFunctionService(trigger);
+
+    if (projectId !== this.args.projectId) {
+      // RTDB considers each namespace a "project", but for any other trigger we want to reject
+      // incoming triggers to a different project.
+      if (service !== Constants.SERVICE_REALTIME_DATABASE) {
+        logger.debug(
+          `Received functions trigger for service "${service}" for unknown project "${projectId}".`
+        );
+        res.sendStatus(404);
+        return;
+      }
+
+      // The eventTrigger 'resource' property will look something like this:
+      // "projects/_/instances/<project>/refs/foo/bar"
+      // If the trigger's resource does not match the invoked projet ID, we should 404.
+      if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
+        logger.debug(
+          `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
+            trigger
+          )}.`
+        );
+        res.sendStatus(404);
+        return;
+      }
+    }
 
     this.logger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
 
@@ -699,10 +749,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     // For analytics, track the invoked service
-    if (triggerId) {
-      const trigger = this.getTriggerById(triggerId);
-      track(EVENT_INVOKE, getFunctionService(trigger));
-    }
+    track(EVENT_INVOKE, service);
 
     await worker.waitForDone();
     return res.json({ status: "acknowledged" });
@@ -779,7 +826,11 @@ export class FunctionsEmulator implements EmulatorInstance {
           token: token,
         };
 
+        // Stash the "Authorization" header in a temporary place, we will replace it
+        // when invoking the callable handler
+        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
         delete req.headers["authorization"];
+
         req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
           JSON.stringify(contextAuth)
         );

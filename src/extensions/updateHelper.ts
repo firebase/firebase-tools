@@ -3,7 +3,6 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
-import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { UpdateWarning } from "./resolveSource";
@@ -200,7 +199,7 @@ export async function displayChanges(
 export async function retryUpdate(): Promise<boolean> {
   return promptOnce({
     type: "confirm",
-    message: "Are you sure you want to continue with updating anyways?",
+    message: "Are you sure you wish to continue with updating anyways?",
     default: false,
   });
 }
@@ -218,7 +217,6 @@ export interface UpdateOptions {
   instanceId: string;
   source: extensionsApi.ExtensionSource;
   params?: { [key: string]: string };
-  billingRequired?: boolean;
 }
 
 /**
@@ -230,7 +228,6 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const { projectId, instanceId, source, params, billingRequired } = updateOptions;
-  await checkProjectBilling(projectId, instanceId, billingRequired);
+  const { projectId, instanceId, source, params } = updateOptions;
   return await extensionsApi.updateInstance(projectId, instanceId, source, params);
 }

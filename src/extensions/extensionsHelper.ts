@@ -11,14 +11,7 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import * as getProjectId from "../getProjectId";
-import {
-  createSource,
-  getInstance,
-  ExtensionSource,
-  getSource,
-  Param,
-  ParamType,
-} from "./extensionsApi";
+import { createSource, getInstance, ExtensionSource, getSource, Param } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
@@ -36,10 +29,8 @@ export enum SpecParamType {
 }
 
 export const logPrefix = "extensions";
-// Extension archive URLs follow this format: {GITHUB_ARCHIVE_URL}#{EXTENSION_ROOT},
-// e.g. https://github.com/firebase/extensions/archive/next.zip#extensions-next/delete-user-data.
-// EXTENSION_ROOT is optional for single-extension archives and required for multi-extension archives.
-export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)(#.*)?$/;
+// Extension archive URLs must be HTTPS.
+export const urlRegex = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
@@ -212,7 +203,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(ParamType).join(", ")}`
+        }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type == SpecParamType.STRING) {
@@ -348,6 +339,7 @@ export async function createSourceFromLocation(
     [packageUri, extensionRoot] = sourceUri.split("#");
   }
   const res = await createSource(projectId, packageUri, extensionRoot);
+  logger.debug("Created new Extension Source %s", res.name);
   // if we uploaded an object, delete it
   if (objectPath.length) {
     try {
@@ -408,7 +400,7 @@ export async function promptForRepeatInstance(
 ): Promise<string> {
   const message =
     `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
-    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+    `Do you wish to proceed with installing another instance of ${extensionName} in this project?`;
   return await promptOnce({
     type: "confirm",
     message,
