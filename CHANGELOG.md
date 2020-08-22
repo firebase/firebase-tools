@@ -1,3 +1,3 @@
-- Adds support for regular expression-based custom headers and rewrites for Firebase Hosting. (#2391)
-- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
-- Changes default functions runtime to Node.js 10 for `firebase init`.
+- Display additional info on the impact of running Firebase extensions with Node.js 10 runtime. (#2549)
+- Add support for vpcConnector and vpcConnectorEgressSettings customization for functions. **Must be used in conjunction with firebase-functions v3.11.0 or higher.** Thanks @pcboy! (#2525)
+- Stop creating, updating and deleting service accounts
