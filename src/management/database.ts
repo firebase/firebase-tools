@@ -137,27 +137,32 @@ export async function createInstance(
 }
 
 /**
- * Returns the `DatabaseLocation` represented by the string, to be used for database instance creation.
+ * Parse the `DatabaseLocation` represented by the string
  * @param location the location to parse.
- * @return the `DatabaseLocation`.
+ * @param defaultLocation the default location value to use if unspecified.
+ * @return specified default value if the string is undefined or empty, or parsed value.
  */
-export function parseDatabaseLocationForCreate(location?: string): DatabaseLocation {
+export function parseDatabaseLocation(
+  location: string,
+  defaultLocation: DatabaseLocation
+): DatabaseLocation {
   if (!location) {
-    return DatabaseLocation.US_CENTRAL1;
+    return defaultLocation;
   }
-  return parseDatabaseLocation(DatabaseLocation.US_CENTRAL1, location);
-}
-
-/**
- * Returns the `DatabaseLocation` represented by the string, to be used for database instance list.
- * @param location the location to parse.
- * @return the `DatabaseLocation`.
- */
-export function parseDatabaseLocationForList(location?: string): DatabaseLocation {
-  if (!location) {
-    return DatabaseLocation.ANY;
+  switch (location.toLowerCase()) {
+    case "europe-west1":
+      return DatabaseLocation.EUROPE_WEST1;
+    case "asia-southeast1":
+      return DatabaseLocation.ASIA_SOUTHEAST1;
+    case "us-central1":
+      return DatabaseLocation.US_CENTRAL1;
+    case "":
+      return defaultLocation;
+    default:
+      throw new FirebaseError(
+        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
+      );
   }
-  return parseDatabaseLocation(DatabaseLocation.ANY, location);
 }
 
 /**
@@ -208,6 +213,9 @@ export async function listDatabaseInstances(
 }
 
 function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
+  if (!serverInstance.name) {
+    throw new FirebaseError(`DatabaseInstance response is missing field "name"`);
+  }
   const m = serverInstance.name.match(INSTANCE_RESOURCE_NAME_REGEX);
   if (!m || m.length != 4) {
     throw new FirebaseError(
@@ -216,34 +224,10 @@ function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
   }
   return {
     name: m[3],
-    location: parseDatabaseLocationForList(m[2]),
+    location: parseDatabaseLocation(m[2], DatabaseLocation.ANY),
     project: serverInstance.project,
     databaseUrl: serverInstance.databaseUrl,
     type: serverInstance.type,
     state: serverInstance.state,
   };
-}
-
-function parseDatabaseLocation(
-  defaultLocation: DatabaseLocation,
-  location?: string
-): DatabaseLocation {
-  if (!location) {
-    return DatabaseLocation.US_CENTRAL1;
-  }
-  switch (location.toLowerCase()) {
-    case "europe-west1":
-      return DatabaseLocation.EUROPE_WEST1;
-    case "asia-southeast1":
-      return DatabaseLocation.ASIA_SOUTHEAST1;
-    case "us-central1":
-      return DatabaseLocation.US_CENTRAL1;
-    /* falls through */
-    case "":
-      return defaultLocation;
-    default:
-      throw new FirebaseError(
-        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
-      );
-  }
 }

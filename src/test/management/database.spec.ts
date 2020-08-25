@@ -86,7 +86,7 @@ function generateInstanceListApiResponse(counts: number, location: DatabaseLocat
     };
   });
 }
-describe.only("Database management", () => {
+describe("Database management", () => {
   let sandbox: sinon.SinonSandbox;
   let apiRequestStub: sinon.SinonStub;
 

@@ -12,10 +12,10 @@ import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { previews } from "../previews";
 import getProjectId = require("../getProjectId");
 import {
-  parseDatabaseLocationForList,
   listDatabaseInstances,
   DatabaseInstance,
   DatabaseLocation,
+  parseDatabaseLocation,
 } from "../management/database";
 
 function logInstances(instances: DatabaseInstance[]): void {
@@ -49,7 +49,7 @@ export default new Command("database:instances:list")
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
-    const location = parseDatabaseLocationForList(options.location);
+    const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
         `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`

@@ -6,7 +6,7 @@ import firedata = require("../gcp/firedata");
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { Emulators } from "../emulator/types";
 import { previews } from "../previews";
-import { createInstance, parseDatabaseLocationForCreate } from "../management/database";
+import { createInstance, DatabaseLocation, parseDatabaseLocation } from "../management/database";
 import getProjectId = require("../getProjectId");
 
 export default new Command("database:instances:create <instanceName>")
@@ -20,7 +20,7 @@ export default new Command("database:instances:create <instanceName>")
   .action(async (instanceName: string, options: any) => {
     if (previews.rtdbmanagement) {
       const projectId = getProjectId(options);
-      const location = parseDatabaseLocationForCreate(options.location);
+      const location = parseDatabaseLocation(options.location, DatabaseLocation.US_CENTRAL1);
       const instance = await createInstance(projectId, instanceName, location);
       logger.info(`created database instance ${instance.name}`);
       return instance;
