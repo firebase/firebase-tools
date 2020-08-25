@@ -1,0 +1,1 @@
+- Fixes default credentials inside `functions:shell` (#2561)
