@@ -4,6 +4,10 @@ import { previews } from "../previews";
 
 const DEFAULT_HOST = "https://firebaseio.com";
 
+/**
+ * Get base URL for RealtimeDatabase. Preference order: emulator host env override, realtime URL env override, options.instanceDetails.databaseUrl, and then default host.
+ * @param options command options.
+ */
 export function realtimeOriginOrEmulatorOrCustomUrl(options: any): string {
   const host = previews.rtdbmanagement ? options.instanceDetails.databaseUrl : DEFAULT_HOST;
   return envOverride(
@@ -13,6 +17,10 @@ export function realtimeOriginOrEmulatorOrCustomUrl(options: any): string {
   );
 }
 
+/**
+ * Get base URL for RealtimeDatabase. Preference order: realtime URL env override, options.instanceDetails.databaseUrl, and then default host.
+ * @param options command options.
+ */
 export function realtimeOriginOrCustomUrl(options: any): string {
   const host = previews.rtdbmanagement ? options.instanceDetails.databaseUrl : DEFAULT_HOST;
   return envOverride("FIREBASE_REALTIME_URL", host);

@@ -32,7 +32,7 @@ function logInstances(instances: DatabaseInstance[]): void {
   logger.info(table.toString());
 }
 
-function logInstancesCount(count: number = 0): void {
+function logInstancesCount(count = 0): void {
   if (count === 0) {
     return;
   }
