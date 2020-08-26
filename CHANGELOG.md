@@ -1,0 +1,2 @@
+- Change default runtime for Firebase Extensions template to nodejs10.
+- Modify messages for Firebase Extensions Node.js 10 migration.
