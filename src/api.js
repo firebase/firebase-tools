@@ -11,7 +11,6 @@ var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
-
 var CLI_VERSION = require("../package.json").version;
 
 var accessToken;
@@ -147,17 +146,11 @@ var api = {
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: utils.envOverride(
-    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
-    (val) => {
-      if (val.startsWith("http")) {
-        return val;
-      }
-      return `http://${val}`;
-    }
-  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  rtdbManagementOrigin: utils.envOverride(
+    "FIREBASE_RTDB_MANAGEMENT_URL",
+    "https://firebasedatabase.googleapis.com"
+  ),
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
@@ -185,7 +178,6 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
-
   setRefreshToken: function(token) {
     refreshToken = token;
   },
