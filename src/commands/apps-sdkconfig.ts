@@ -11,6 +11,7 @@ import {
   getAppPlatform,
   listFirebaseApps,
 } from "../management/apps";
+import * as getProjectId from "../getProjectId";
 import { getOrPromptProject } from "../management/projects";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
@@ -18,14 +19,9 @@ import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 
 async function selectAppInteractively(
-  projectId: string,
+  apps: AppMetadata[],
   appPlatform: AppPlatform
 ): Promise<AppMetadata> {
-  if (!projectId) {
-    throw new FirebaseError("Project ID must not be empty.");
-  }
-
-  const apps = await listFirebaseApps(projectId, appPlatform);
   if (apps.length === 0) {
     throw new FirebaseError(
       `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
@@ -66,15 +62,28 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
       let appPlatform = getAppPlatform(platform);
 
       if (!appId) {
-        if (options.nonInteractive) {
-          throw new FirebaseError("App ID must not be empty.");
+        let projectId = getProjectId(options);
+        if (options.nonInteractive && !projectId) {
+          throw new FirebaseError("Must supply app and project ids in non-interactive mode.");
+        } else if (!projectId) {
+          const result = await getOrPromptProject(options);
+          projectId = result.projectId;
         }
 
-        const { projectId } = await getOrPromptProject(options);
-
-        const appMetadata: AppMetadata = await selectAppInteractively(projectId, appPlatform);
-        appId = appMetadata.appId;
-        appPlatform = appMetadata.platform;
+        const apps = await listFirebaseApps(projectId, appPlatform);
+        // if there's only one app, we don't need to prompt interactively
+        if (apps.length === 1) {
+          appId = apps[0].appId;
+          appPlatform = apps[0].platform;
+        } else if (options.nonInteractive) {
+          throw new FirebaseError(
+            `Project ${projectId} has multiple apps, must specify an app id.`
+          );
+        } else {
+          const appMetadata: AppMetadata = await selectAppInteractively(apps, appPlatform);
+          appId = appMetadata.appId;
+          appPlatform = appMetadata.platform;
+        }
       }
 
       let configData;

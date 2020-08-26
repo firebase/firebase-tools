@@ -7,11 +7,14 @@ import { FirebaseError } from "../error";
 
 module.exports = new Command("ext:dev:emulators:start")
   .description("start the local Firebase extension emulator")
+  .before(commandUtils.setExportOnExitOptions)
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_TEST_CONFIG, commandUtils.DESC_TEST_CONFIG)
   .option(commandUtils.FLAG_TEST_PARAMS, commandUtils.DESC_TEST_PARAMS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
+  .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .action(async (options: any) => {
+    const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     const emulatorOptions = await optionsHelper.buildOptions(options);
     try {
       commandUtils.beforeEmulatorCommand(emulatorOptions);
@@ -24,15 +27,8 @@ module.exports = new Command("ext:dev:emulators:start")
       throw e;
     }
 
-    utils.logSuccess("All emulators started, it is now safe to connect.");
+    utils.logSuccess("All emulators ready, it is now safe to connect.");
 
     // Hang until explicitly killed
-    await new Promise((res, rej) => {
-      process.on("SIGINT", () => {
-        controller
-          .cleanShutdown()
-          .then(res)
-          .catch(res);
-      });
-    });
+    await killSignalPromise;
   });

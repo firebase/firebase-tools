@@ -71,10 +71,10 @@ jobs:
         node-version:
           - 8.x
         script:
-          - ./scripts/test-hosting.sh
-          - ./scripts/test-triggers-end-to-end.sh
+          - npm run test:hosting
           - npm run test:client-integration
           - npm run test:extensions-emulator
+          - npm run test:triggers-end-to-end
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1

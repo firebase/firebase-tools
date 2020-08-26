@@ -5,16 +5,22 @@ import * as controller from "../emulator/controller";
 import * as Config from "../config";
 import * as utils from "../utils";
 import * as logger from "../logger";
+import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
 import requireConfig = require("../requireConfig");
-import { Emulators, ALL_SERVICE_EMULATORS } from "../emulator/types";
+import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
-import { EmulatorRegistry } from "../emulator/registry";
-import { FirestoreEmulator } from "../emulator/firestoreEmulator";
+import { EmulatorRegistry } from "./registry";
+import { FirestoreEmulator } from "./firestoreEmulator";
 import * as getProjectId from "../getProjectId";
 import { prompt } from "../prompt";
 import { EmulatorHub } from "./hub";
+import { onExit } from "./controller";
+import * as fsutils from "../fsutils";
+import Signals = NodeJS.Signals;
+import SignalsListener = NodeJS.SignalsListener;
+import Table = require("cli-table");
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -29,6 +35,19 @@ export const DESC_INSPECT_FUNCTIONS =
 
 export const FLAG_IMPORT = "--import [dir]";
 export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
+
+export const FLAG_EXPORT_ON_EXIT_NAME = "--export-on-exit";
+export const FLAG_EXPORT_ON_EXIT = `${FLAG_EXPORT_ON_EXIT_NAME} [dir]`;
+export const DESC_EXPORT_ON_EXIT =
+  "automatically export emulator data (emulators:export) " +
+  "when the emulators make a clean exit (SIGINT), " +
+  `when no dir is provided the location of ${FLAG_IMPORT} is used`;
+export const EXPORT_ON_EXIT_USAGE_ERROR =
+  `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
+  ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
+
+export const FLAG_UI = "--ui";
+export const DESC_UI = "run the Emulator UI";
 
 // Flags for the ext:dev:emulators:* commands
 export const FLAG_TEST_CONFIG = "--test-config <firebase.json file>";
@@ -156,6 +175,143 @@ export function parseInspectionPort(options: any): number {
   return parsed;
 }
 
+/**
+ * Sets the correct export options based on --import and --export-on-exit. Mutates the options object.
+ * Also validates if we have a correct setting we need to export the data on exit.
+ * When used as: `--import ./data --export-on-exit` or `--import ./data --export-on-exit ./data`
+ * we do allow an non-existing --import [dir] and we just export-on-exit. This because else one would always need to
+ * export data the first time they start developing on a clean project.
+ * @param options
+ */
+export function setExportOnExitOptions(options: any) {
+  if (options.exportOnExit || typeof options.exportOnExit === "string") {
+    // note that options.exportOnExit may be a bool when used as a flag without a [dir] argument:
+    // --import ./data --export-on-exit
+    if (options.import) {
+      options.exportOnExit =
+        typeof options.exportOnExit === "string" ? options.exportOnExit : options.import;
+
+      const importPath = path.resolve(options.import);
+      if (!fsutils.dirExistsSync(importPath) && options.import === options.exportOnExit) {
+        // --import path does not exist and is the same as --export-on-exit, let's not import and only --export-on-exit
+        options.exportOnExit = options.import;
+        delete options.import;
+      }
+    }
+
+    if (options.exportOnExit === true || !options.exportOnExit) {
+      // might be true when only used as a flag without --import [dir]
+      // options.exportOnExit might be an empty string when used as:
+      // firebase emulators:start --debug --import '' --export-on-exit ''
+      throw new FirebaseError(EXPORT_ON_EXIT_USAGE_ERROR);
+    }
+  }
+  return;
+}
+
+function processKillSignal(
+  signal: Signals,
+  res: (value?: unknown) => void,
+  rej: (value?: unknown) => void,
+  options: any
+): SignalsListener {
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  return async () => {
+    try {
+      const now = new Date().getTime();
+      const diff = now - lastSignal;
+      if (diff < 100) {
+        // If we got a signal twice in 100ms it likely was not an intentional human action.
+        // It could be a shaky MacBook keyboard or a known issue with "npm" scripts and signals.
+        logger.debug(`Ignoring signal ${signal} due to short delay of ${diff}ms`);
+        return;
+      }
+
+      signalCount = signalCount + 1;
+      lastSignal = now;
+
+      const signalDisplay = signal === "SIGINT" ? `SIGINT (Ctrl-C)` : signal;
+      logger.debug(`Received signal ${signalDisplay} ${signalCount}`);
+      logger.info(" "); // to not indent the log with the possible Ctrl-C char
+      if (signalCount === 1) {
+        utils.logLabeledBullet(
+          "emulators",
+          `Received ${signalDisplay} for the first time. Starting a clean shutdown.`
+        );
+        utils.logLabeledBullet(
+          "emulators",
+          `Please wait for a clean shutdown or send the ${signalDisplay} signal again to stop right now.`
+        );
+        // in case of a double 'Ctrl-C' we do not want to cleanly exit with onExit/cleanShutdown
+        await onExit(options);
+        await controller.cleanShutdown();
+      } else {
+        logger.debug(`Skipping clean onExit() and cleanShutdown()`);
+        const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter((i) =>
+          Boolean(i.pid)
+        );
+
+        utils.logLabeledWarning(
+          "emulators",
+          `Received ${signalDisplay} ${signalCount} times. You have forced the Emulator Suite to exit without waiting for ${
+            runningEmulatorsInfosWithPid.length
+          } subprocess${
+            runningEmulatorsInfosWithPid.length > 1 ? "es" : ""
+          } to finish. These processes ${clc.bold("may")} still be running on your machine: `
+        );
+
+        const pids: number[] = [];
+
+        const emulatorsTable = new Table({
+          head: ["Emulator", "Host:Port", "PID"],
+          style: {
+            head: ["yellow"],
+          },
+        });
+
+        for (const emulatorInfo of runningEmulatorsInfosWithPid) {
+          pids.push(emulatorInfo.pid as number);
+          emulatorsTable.push([
+            Constants.description(emulatorInfo.name),
+            `${emulatorInfo.host}:${emulatorInfo.port}`,
+            emulatorInfo.pid,
+          ]);
+        }
+        logger.info(`\n${emulatorsTable}\n\nTo force them to exit run:\n`);
+        if (process.platform === "win32") {
+          logger.info(clc.bold(`TASKKILL ${pids.map((pid) => "/PID " + pid).join(" ")} /T\n`));
+        } else {
+          logger.info(clc.bold(`kill ${pids.join(" ")}\n`));
+        }
+      }
+      res();
+    } catch (e) {
+      logger.debug(e);
+      rej();
+    }
+  };
+}
+
+export function shutdownWhenKilled(options: any): Promise<void> {
+  return new Promise((res, rej) => {
+    ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"].forEach((signal: string) => {
+      process.on(signal as Signals, processKillSignal(signal as Signals, res, rej, options));
+    });
+  })
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((e) => {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        "emulators failed to shut down cleanly, see firebase-debug.log for details."
+      );
+      process.exit(1);
+    });
+}
+
 async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
@@ -229,10 +385,11 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 /** The action function for emulators:exec and ext:dev:emulators:exec.
  *  Starts the appropriate emulators, executes the provided script,
  *  and then exits.
- *  @param script: A script to run after starting the emualtors.
+ *  @param script: A script to run after starting the emulators.
  *  @param options: A Commander options object.
  */
 export async function emulatorExec(script: string, options: any) {
+  shutdownWhenKilled(options);
   const projectId = getProjectId(options, true);
   const extraEnv: Record<string, string> = {};
   if (projectId) {
@@ -240,8 +397,10 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    await controller.startAll(options, /* noGui = */ true);
+    const excludeUi = !options.ui;
+    await controller.startAll(options, excludeUi);
     exitCode = await runScript(script, extraEnv);
+    await onExit(options);
   } finally {
     await controller.cleanShutdown();
   }

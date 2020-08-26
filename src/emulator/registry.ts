@@ -1,10 +1,8 @@
-import * as clc from "cli-color";
-
 import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import * as controller from "./controller";
+import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
+import { EmulatorLogger } from "./emulatorLogger";
 
 /**
  * Static registry for running emulators to discover each other.
@@ -19,20 +17,22 @@ export class EmulatorRegistry {
       throw new FirebaseError(`${description} is already running!`, {});
     }
 
+    // must be before we start as else on a quick 'Ctrl-C' after starting we could skip this emulator in cleanShutdown
+    this.set(instance.getName(), instance);
+
     // Start the emulator and wait for it to grab its assigned port.
     await instance.start();
 
     const info = instance.getInfo();
-    await controller.waitForPortClosed(info.port, info.host);
-    this.set(instance.getName(), instance);
-
-    utils.logLabeledSuccess(
-      instance.getName(),
-      `${description} started at ${clc.bold.underline(`http://${info.host}:${info.port}`)}`
-    );
+    await portUtils.waitForPortClosed(info.port, info.host);
   }
 
   static async stop(name: Emulators): Promise<void> {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "BULLET",
+      name,
+      `Stopping ${Constants.description(name)}`
+    );
     const instance = this.get(name);
     if (!instance) {
       return;
@@ -43,8 +43,45 @@ export class EmulatorRegistry {
   }
 
   static async stopAll(): Promise<void> {
-    for (const name of this.listRunning()) {
-      await this.stop(name);
+    const stopPriority: Record<Emulators, number> = {
+      // Turn off the UI first, user should not interact
+      // once shutdown starts
+      ui: 0,
+
+      // Functions is next since it has side effects and
+      // dependencies across all the others
+      functions: 1,
+
+      // Hosting is next because it can trigger functions.
+      hosting: 2,
+
+      // All background trigger emulators are equal here, so we choose
+      // an order for consistency.
+      database: 3.0,
+      firestore: 3.1,
+      pubsub: 3.2,
+
+      // Hub shuts down once almost everything else is done
+      hub: 4,
+
+      // Logging is last to catch all errors
+      logging: 5,
+    };
+
+    const emulatorsToStop = this.listRunning().sort((a, b) => {
+      return stopPriority[a] - stopPriority[b];
+    });
+
+    for (const name of emulatorsToStop) {
+      try {
+        await this.stop(name);
+      } catch (e) {
+        EmulatorLogger.forEmulator(name).logLabeled(
+          "WARN",
+          name,
+          `Error stopping ${Constants.description(name)}`
+        );
+      }
     }
   }
 
@@ -55,6 +92,12 @@ export class EmulatorRegistry {
 
   static listRunning(): Emulators[] {
     return ALL_EMULATORS.filter((name) => this.isRunning(name));
+  }
+
+  static listRunningWithInfo(): EmulatorInfo[] {
+    return this.listRunning()
+      .map((emulator) => this.getInfo(emulator) as EmulatorInfo)
+      .filter((info) => typeof info !== "undefined");
   }
 
   static get(emulator: Emulators): EmulatorInstance | undefined {

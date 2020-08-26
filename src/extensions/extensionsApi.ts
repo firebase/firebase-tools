@@ -1,5 +1,7 @@
+import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as api from "../api";
+import * as logger from "../logger";
 import * as operationPoller from "../operation-poller";
 
 const VERSION = "v1beta";
@@ -66,6 +68,7 @@ export interface Resource {
   type: string;
   description?: string;
   properties?: { [key: string]: any };
+  propertiesYaml?: string;
 }
 
 export interface Author {
@@ -199,7 +202,9 @@ export async function listInstances(projectId: string): Promise<ExtensionInstanc
         pageToken,
       },
     });
-    instances.push(...res.body.instances);
+    if (Array.isArray(res.body.instances)) {
+      instances.push(...res.body.instances);
+    }
     if (res.body.nextPageToken) {
       await getNextPage(res.body.nextPageToken);
     }
@@ -282,6 +287,21 @@ async function patchInstance(
   return pollRes;
 }
 
+function populateResourceProperties(source: ExtensionSource): void {
+  const spec: ExtensionSpec = source.spec;
+  if (spec) {
+    spec.resources.forEach((r) => {
+      try {
+        if (r.propertiesYaml) {
+          r.properties = yaml.safeLoad(r.propertiesYaml);
+        }
+      } catch (err) {
+        logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
+      }
+    });
+  }
+}
+
 /**
  * Create a new extension source
  *
@@ -308,6 +328,7 @@ export async function createSource(
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
+  populateResourceProperties(pollRes);
   return pollRes;
 }
 
@@ -322,6 +343,7 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
       origin: api.extensionsOrigin,
     })
     .then((res) => {
+      populateResourceProperties(res.body);
       return res.body;
     });
 }

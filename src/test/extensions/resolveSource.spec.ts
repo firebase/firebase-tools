@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
@@ -73,5 +72,23 @@ describe("checkForUpdateWarnings", () => {
     await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.1", "0.1.2");
 
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
+  });
+});
+
+describe("isOfficialSource", () => {
+  it("should return true for an official source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/2kd"
+    );
+    expect(result).to.be.true;
+  });
+
+  it("should return false for an unofficial source", () => {
+    const result = resolveSource.isOfficialSource(
+      testRegistryEntry,
+      "projects/firebasemods/sources/invalid"
+    );
+    expect(result).to.be.false;
   });
 });

@@ -27,7 +27,7 @@ export default new Command("ext:info <extensionName>")
       }
       spec = await getLocalExtensionSpec(extensionName);
     } else {
-      await requirePermissions(options, ["firebasemods.sources.get"]);
+      await requirePermissions(options, ["firebaseextensions.sources.get"]);
       await ensureExtensionsApiEnabled(options);
 
       const [name, version] = extensionName.split("@");
@@ -47,6 +47,11 @@ export default new Command("ext:info <extensionName>")
     } else {
       lines.push(`**Name**: ${spec.displayName}`);
     }
+
+    const authorName = spec.author?.authorName;
+    const url = spec.author?.url;
+    const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
+    lines.push(`**Author**: ${authorName} ${urlMarkdown}`);
 
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);

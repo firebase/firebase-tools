@@ -2,7 +2,6 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as clc from "cli-color";
 import * as path from "path";
-import * as pf from "portfinder";
 
 import * as api from "../api";
 import * as utils from "../utils";
@@ -30,18 +29,22 @@ export class FirestoreEmulator implements EmulatorInstance {
   constructor(private args: FirestoreEmulatorArgs) {}
 
   async start(): Promise<void> {
-    const functionsPort = EmulatorRegistry.getPort(Emulators.FUNCTIONS);
-    if (functionsPort) {
-      this.args.functions_emulator = `localhost:${functionsPort}`;
+    const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
+    if (functionsInfo) {
+      this.args.functions_emulator = `${functionsInfo.host}:${functionsInfo.port}`;
     }
 
     if (this.args.rules && this.args.projectId) {
       const rulesPath = this.args.rules;
       this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
       this.rulesWatcher.on("change", async (event, stats) => {
-        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+        // There have been some race conditions reported (on Windows) where reading the
+        // file too quickly after the watcher fires results in an empty file being read.
+        // Adding a small delay prevents that at very little cost.
+        await new Promise((res) => setTimeout(res, 5));
 
         utils.logLabeledBullet("firestore", "Change detected, updating rules...");
+        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
         const issues = await this.updateRules(newContent);
         if (issues) {
           for (const issue of issues) {
@@ -59,11 +62,11 @@ export class FirestoreEmulator implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.FIRESTORE, this.args);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
     if (this.rulesWatcher) {
       this.rulesWatcher.close();
     }
@@ -76,8 +79,10 @@ export class FirestoreEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.FIRESTORE),
     };
   }
 

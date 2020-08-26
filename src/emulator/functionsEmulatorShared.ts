@@ -67,6 +67,7 @@ export interface FunctionsRuntimeBundle {
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
+  nodeMajorVersion?: number;
   cwd: string;
 }
 
@@ -84,6 +85,7 @@ const memoryLookup = {
 
 export class HttpConstants {
   static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+  static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
 }
 
 export class EmulatedTrigger {

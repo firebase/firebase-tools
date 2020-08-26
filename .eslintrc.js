@@ -42,20 +42,16 @@ module.exports = {
         "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": "warn", // TODO(bkendall): remove, allow to error.
+        "@typescript-eslint/no-use-before-define": ["warn", { "functions": false, "typedefs": false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-string-starts-ends-with": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/require-await": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/unbound-method": "warn", // TODO(bkendall): remove, allow to error.
         camelcase: "warn", // TODO(bkendall): remove, allow to error.
-        "new-cap": "warn", // TODO(bkendall): remove, allow to error.
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-        "no-unused-vars": "warn", // TODO(bkendall): remove, allow to error.
       },
     },
     {

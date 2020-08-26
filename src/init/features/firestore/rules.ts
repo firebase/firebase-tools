@@ -14,7 +14,7 @@ const RULES_TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
-export async function initRules(setup: any, config: any): Promise<any> {
+export function initRules(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore Security Rules allow you to define how and when to allow");
   logger.info("requests. You can keep these rules in your project directory");
@@ -52,13 +52,17 @@ export async function initRules(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
+      if (!setup.projectId) {
+        return config.writeProjectFile(setup.config.firestore.rules, RULES_TEMPLATE);
+      }
+
       return getRulesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.rules, contents);
       });
     });
 }
 
-async function getRulesFromConsole(projectId: string): Promise<any> {
+function getRulesFromConsole(projectId: string): Promise<any> {
   return gcp.rules
     .getLatestRulesetName(projectId, "cloud.firestore")
     .then((name) => {

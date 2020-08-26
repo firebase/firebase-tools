@@ -45,6 +45,35 @@ TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.nextPageToken = "abc123";
 const PROJECT_ID = "test-project";
 const INSTANCE_ID = "test-extensions-instance";
 
+const PACKAGE_URI = "https://storage.googleapis.com/ABCD.zip";
+const SOURCE_NAME = "projects/firebasemods/sources/abcd";
+const TEST_SOURCE = {
+  name: SOURCE_NAME,
+  packageUri: PACKAGE_URI,
+  hash: "deadbeef",
+  spec: {
+    name: "test",
+    displayName: "Old",
+    description: "descriptive",
+    version: "1.0.0",
+    license: "MIT",
+    resources: [
+      {
+        name: "resource1",
+        type: "firebaseextensions.v1beta.function",
+        description: "desc",
+        propertiesYaml:
+          "eventTrigger:\n  eventType: providers/cloud.firestore/eventTypes/document.write\n  resource: projects/${PROJECT_ID}/databases/(default)/documents/${COLLECTION_PATH}/{documentId}\nlocation: ${LOCATION}",
+      },
+    ],
+    author: { authorName: "Tester" },
+    contributors: [{ authorName: "Tester 2" }],
+    billingRequired: true,
+    sourceUrl: "test.com",
+    params: [],
+  },
+};
+
 describe("extensions", () => {
   beforeEach(() => {
     helpers.mockAuth(sinon);
@@ -337,7 +366,7 @@ describe("extensions", () => {
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(200);
 
-      const res = await extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID);
+      await extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID);
       expect(nock.isDone()).to.be.true;
     });
 
@@ -348,6 +377,79 @@ describe("extensions", () => {
 
       await expect(extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
         FirebaseError
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("getSource", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should make a GET call to the correct endpoint", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/${SOURCE_NAME}`)
+        .reply(200, TEST_SOURCE);
+
+      const source = await extensionsApi.getSource(SOURCE_NAME);
+      expect(nock.isDone()).to.be.true;
+      expect(source.spec.resources).to.have.lengthOf(1);
+      expect(source.spec.resources[0]).to.have.property("properties");
+    });
+
+    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/${SOURCE_NAME}`)
+        .reply(404);
+
+      await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createSource", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true, response: TEST_SOURCE });
+
+      const source = await extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, ",./");
+      expect(nock.isDone()).to.be.true;
+      expect(source.spec.resources).to.have.lengthOf(1);
+      expect(source.spec.resources[0]).to.have.property("properties");
+    });
+
+    it("should throw a FirebaseError if create returns an error response", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
+        .reply(500);
+
+      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
+        FirebaseError,
+        "HTTP Error: 500, Unknown Error"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("stop polling and throw if the operation call throws an unexpected error", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(502);
+
+      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
+        FirebaseError,
+        "HTTP Error: 502, Unknown Error"
       );
       expect(nock.isDone()).to.be.true;
     });

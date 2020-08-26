@@ -1,9 +1,9 @@
 import * as url from "url";
 
-import { Address, Emulators } from "./types";
+import { Emulators } from "./types";
 
 const DEFAULT_PORTS: { [s in Emulators]: number } = {
-  gui: 4000,
+  ui: 4000,
   hub: 4400,
   logging: 4500,
   hosting: 5000,
@@ -11,6 +11,28 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   firestore: 8080,
   database: 9000,
   pubsub: 8085,
+};
+
+export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
+  ui: true,
+  hub: true,
+  logging: true,
+  hosting: false,
+  functions: false,
+  firestore: false,
+  database: false,
+  pubsub: false,
+};
+
+export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
+  ui: "Emulator UI",
+  hub: "emulator hub",
+  logging: "Logging Emulator",
+  hosting: "Hosting Emulator",
+  functions: "Functions Emulator",
+  firestore: "Firestore Emulator",
+  database: "Database Emulator",
+  pubsub: "Pub/Sub Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
@@ -77,27 +99,11 @@ export class Constants {
     return `emulators.${emulator.toString()}.port`;
   }
 
-  static getAddress(emulator: Emulators, options: any): Address {
-    const hostVal = options.config.get(this.getHostKey(emulator), DEFAULT_HOST);
-    const portVal = options.config.get(this.getPortKey(emulator), this.getDefaultPort(emulator));
-
-    const host = this.normalizeHost(hostVal);
-    const port = parseInt(portVal, 10);
-
-    return { host, port };
-  }
-
   static description(name: Emulators): string {
-    if (name === Emulators.HUB) {
-      return "emulator hub";
-    } else if (name === Emulators.GUI) {
-      return "emulator GUI";
-    } else {
-      return `${name} emulator`;
-    }
+    return EMULATOR_DESCRIPTION[name];
   }
 
-  private static normalizeHost(host: string): string {
+  static normalizeHost(host: string): string {
     let normalized = host;
     if (!normalized.startsWith("http")) {
       normalized = `http://${normalized}`;

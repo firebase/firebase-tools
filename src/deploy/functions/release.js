@@ -13,7 +13,7 @@ var logger = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
-var runtimeSelector = require("../../runtimeChoiceSelector");
+var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFriendlyRuntimeName;
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
@@ -147,12 +147,54 @@ module.exports = function(context, options, payload) {
     return fn;
   });
   var uploadedNames = _.map(functionsInfo, "name");
+  var runtime = context.runtimeChoice;
   var functionFilterGroups = helper.getFilterGroups(options);
   var deleteReleaseNames;
   var existingScheduledFunctions;
 
+  // Collect all the functions that have a retry policy
+  var failurePolicyFunctions = functionsInfo.filter((fn) => {
+    return !!fn.failurePolicy;
+  });
+
+  let proceedPrompt = Promise.resolve(true);
+  if (failurePolicyFunctions.length) {
+    var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
+      return helper.getFunctionLabel(_.get(fn, "name"));
+    });
+    var retryMessage =
+      "The following functions will be retried in case of failure: " +
+      clc.bold(failurePolicyFunctionLabels.join(", ")) +
+      ". " +
+      "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
+      "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+
+    utils.logLabeledWarning("functions", retryMessage);
+
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
+        exit: 1,
+      });
+    } else if (!options.nonInteractive) {
+      proceedPrompt = promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Would you like to proceed with deployment?",
+      });
+    }
+  }
+
   delete payload.functions;
-  return Promise.resolve(context.existingFunctions)
+
+  return proceedPrompt
+    .then((proceed) => {
+      if (!proceed) {
+        throw new FirebaseError("Deployment canceled.", { exit: 1 });
+      }
+
+      return Promise.resolve(context.existingFunctions);
+    })
     .then(function(existingFunctions) {
       var pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
@@ -169,8 +211,11 @@ module.exports = function(context, options, payload) {
       var releaseNames = helper.getReleaseNames(uploadedNames, existingNames, functionFilterGroups);
       // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
       deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
-
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
+
+      const defaultEnvVariables = {
+        FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+      };
 
       // Create functions
       _.chain(uploadedNames)
@@ -181,11 +226,10 @@ module.exports = function(context, options, payload) {
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
           var region = helper.getRegion(name);
-          var runtime = context.runtimeChoice || helper.getDefaultRuntime();
           utils.logBullet(
             clc.bold.cyan("functions: ") +
               "creating " +
-              runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+              friendlyRuntimeName(runtime) +
               " function " +
               clc.bold(helper.getFunctionLabel(name)) +
               "..."
@@ -213,6 +257,9 @@ module.exports = function(context, options, payload) {
                   availableMemoryMb: functionInfo.availableMemoryMb,
                   timeout: functionInfo.timeout,
                   maxInstances: functionInfo.maxInstances,
+                  environmentVariables: defaultEnvVariables,
+                  vpcConnector: functionInfo.vpcConnector,
+                  vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -286,16 +333,20 @@ module.exports = function(context, options, payload) {
               labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
               availableMemoryMb: functionInfo.availableMemoryMb,
               timeout: functionInfo.timeout,
+              runtime: runtime,
               maxInstances: functionInfo.maxInstances,
+              vpcConnector: functionInfo.vpcConnector,
+              vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+              environmentVariables: _.assign(
+                {},
+                existingFunction.environmentVariables,
+                defaultEnvVariables
+              ),
             };
-            if (context.runtimeChoice) {
-              options.runtime = context.runtimeChoice;
-            }
-            var runtime = options.runtime || _.get(existingFunction, "runtime", "nodejs6"); // legacy functions are Node 6
             utils.logBullet(
               clc.bold.cyan("functions: ") +
                 "updating " +
-                runtimeSelector.getHumanFriendlyRuntimeName(runtime) +
+                friendlyRuntimeName(runtime) +
                 " function " +
                 clc.bold(helper.getFunctionLabel(name)) +
                 "..."
@@ -518,7 +569,13 @@ module.exports = function(context, options, payload) {
             logger.info(
               "    " +
                 clc.bold("firebase deploy --only ") +
-                clc.bold(sortedFailedDeployments.map((name) => `functions:${name}`).join(","))
+                clc.bold('"') +
+                clc.bold(
+                  sortedFailedDeployments
+                    .map((name) => `functions:${name.replace(/-/g, ".")}`)
+                    .join(",")
+                ) +
+                clc.bold('"')
             );
             logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));

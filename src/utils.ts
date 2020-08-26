@@ -1,6 +1,8 @@
 import * as _ from "lodash";
 import * as url from "url";
+import * as http from "http";
 import * as clc from "cli-color";
+import * as ora from "ora";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -9,6 +11,8 @@ const ansiStrip = require("cli-color/strip") as (input: string) => string;
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
+import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -85,7 +89,7 @@ export function getDatabaseViewDataUrl(
   if (urlObj.hostname.includes("firebaseio.com")) {
     return consoleUrl(namespace, "/database/data" + pathname);
   } else {
-    // TODO(samstern): View in GUI
+    // TODO(samstern): View in Emulator UI
     return getDatabaseUrl(origin, namespace, pathname + ".json");
   }
 }
@@ -116,49 +120,76 @@ export function addSubdomain(origin: string, subdomain: string): string {
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logSuccess(message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message);
+export function logSuccess(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a green checkmark at the start of the line.
  */
-export function logLabeledSuccess(label: string, message: string, type = "info"): void {
-  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message);
+export function logLabeledSuccess(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.green.bold(`${SUCCESS_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logBullet(message: string, type = "info"): void {
-  logger[type](clc.cyan.bold("i "), message);
+export function logBullet(
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold("i "), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledBullet(label: string, message: string, type = "info"): void {
-  logger[type](clc.cyan.bold(`i  ${label}:`), message);
+export function logLabeledBullet(
+  label: string,
+  message: string,
+  type = "info",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.cyan.bold(`i  ${label}:`), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logWarning(message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message);
+export function logWarning(
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR} `), message, data);
 }
 
 /**
  * Log an info statement with a gray bullet at the start of the line.
  */
-export function logLabeledWarning(label: string, message: string, type = "warn"): void {
-  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message);
+export function logLabeledWarning(
+  label: string,
+  message: string,
+  type = "warn",
+  data: LogDataOrUndefined = undefined
+): void {
+  logger[type](clc.yellow.bold(`${WARNING_CHAR}  ${label}:`), message, data);
 }
 
 /**
  * Return a promise that rejects with a FirebaseError.
  */
-export function reject(message: string, options?: any): Promise<void> {
+export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
@@ -360,4 +391,53 @@ export function setupLoggers() {
       })
     );
   }
+}
+
+/**
+ * Runs a given function inside a spinner with a message
+ */
+export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
+  const spinner = ora(message).start();
+  let data;
+  try {
+    data = await action();
+    spinner.succeed();
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  return data;
+}
+
+/**
+ * Return a "destroy" function for a Node.js HTTP server. MUST be called on
+ * server creation (e.g. right after `.listen`), BEFORE any connections.
+ *
+ * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
+ *
+ * @returns a function that destroys all connections and closes the server
+ */
+export function createDestroyer(server: http.Server): () => Promise<void> {
+  const connections = new Set<Socket>();
+
+  server.on("connection", (conn) => {
+    connections.add(conn);
+    conn.once("close", () => connections.delete(conn));
+  });
+
+  // Make calling destroyer again just noop but return the same promise.
+  let destroyPromise: Promise<void> | undefined = undefined;
+  return function destroyer() {
+    if (!destroyPromise) {
+      destroyPromise = new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+        connections.forEach((socket) => socket.destroy());
+      });
+    }
+    return destroyPromise;
+  };
 }

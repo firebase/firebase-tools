@@ -1,9 +1,9 @@
 import * as uuid from "uuid";
 import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
-import { EmulatorLog, FunctionsExecutionMode } from "./types";
+import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
 import {
-  FunctionsRuntimeBundle,
   FunctionsRuntimeArgs,
+  FunctionsRuntimeBundle,
   getTemporarySocketPath,
 } from "./functionsEmulatorShared";
 import { EventEmitter } from "events";
@@ -63,7 +63,7 @@ export class RuntimeWorker {
     });
   }
 
-  async execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts) {
+  execute(frb: FunctionsRuntimeBundle, opts?: InvokeRuntimeOpts): void {
     // Make a copy so we don't edit it
     const execFrb: FunctionsRuntimeBundle = { ...frb };
 
@@ -113,7 +113,7 @@ export class RuntimeWorker {
     this.stateEvents.emit(this._state);
   }
 
-  onLogs(listener: LogListener, forever: boolean = false) {
+  onLogs(listener: LogListener, forever = false) {
     if (!forever) {
       this.logListeners.push(listener);
     }
@@ -147,7 +147,10 @@ export class RuntimeWorker {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-${this.key}-${this.id}]: ${msg}`);
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
+      "DEBUG",
+      `[worker-${this.key}-${this.id}]: ${msg}`
+    );
   }
 }
 
@@ -202,6 +205,8 @@ export class RuntimeWorkerPool {
 
   /**
    * Determine if the pool has idle workers ready to accept work for the given triggerId;
+   *
+   * @param triggerId
    */
   readyForWork(triggerId: string | undefined): boolean {
     const idleWorker = this.getIdleWorker(triggerId);
@@ -212,6 +217,10 @@ export class RuntimeWorkerPool {
    * Submit work to be run by an idle worker for the givenn triggerId.
    * Calls to this function should be guarded by readyForWork() to avoid throwing
    * an exception.
+   *
+   * @param triggerId
+   * @param frb
+   * @param opts
    */
   submitWork(
     triggerId: string | undefined,
@@ -255,8 +264,11 @@ export class RuntimeWorkerPool {
     keyWorkers.push(worker);
     this.setTriggerWorkers(triggerId, keyWorkers);
 
+    const logger = triggerId
+      ? EmulatorLogger.forFunction(triggerId)
+      : EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     worker.onLogs((log: EmulatorLog) => {
-      EmulatorLogger.handleRuntimeLog(log);
+      logger.handleRuntimeLog(log);
     }, true /* listen forever */);
 
     this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);
@@ -288,6 +300,6 @@ export class RuntimeWorkerPool {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.log("DEBUG", `[worker-pool] ${msg}`);
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log("DEBUG", `[worker-pool] ${msg}`);
   }
 }

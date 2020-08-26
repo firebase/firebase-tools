@@ -3,13 +3,13 @@ import * as request from "request";
 import * as ProgressBar from "progress";
 
 import { FirebaseError } from "../error";
-import * as utils from "../utils";
 import { Emulators, EmulatorDownloadDetails } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as unzipper from "unzipper";
+import { EmulatorLogger } from "./emulatorLogger";
 
 tmp.setGracefulCleanup();
 
@@ -17,7 +17,11 @@ type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = downloadableEmulators.getDownloadDetails(name);
-  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
+  EmulatorLogger.forEmulator(name).logLabeled(
+    "BULLET",
+    name,
+    `downloading ${path.basename(emulator.downloadPath)}...`
+  );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
@@ -45,7 +49,7 @@ module.exports = async (name: DownloadableEmulator) => {
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir }))
+      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
       .on("error", reject)
       .on("finish", resolve);
   });
@@ -73,7 +77,11 @@ function removeOldFiles(
       (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
       removeAllVersions
     ) {
-      utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`);
+      EmulatorLogger.forEmulator(name).logLabeled(
+        "BULLET",
+        name,
+        `Removing outdated emulator files: ${file}`
+      );
       fs.removeSync(fullFilePath);
     }
   }
@@ -118,7 +126,7 @@ function downloadToTmp(remoteUrl: string): Promise<string> {
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-async function validateSize(filepath: string, expectedSize: number): Promise<void> {
+function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -135,7 +143,7 @@ async function validateSize(filepath: string, expectedSize: number): Promise<voi
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-async function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
+function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);

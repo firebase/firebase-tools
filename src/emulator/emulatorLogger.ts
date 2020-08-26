@@ -2,8 +2,9 @@ import * as clc from "cli-color";
 
 import * as utils from "../utils";
 import * as logger from "../logger";
-import { EmulatorLog } from "./types";
+import { EmulatorLog, Emulators } from "./types";
 import { tryParse } from "../utils";
+import { LogData } from "./loggingEmulator";
 
 /**
  * DEBUG - lowest level, not needed for most usages.
@@ -33,121 +34,160 @@ export enum Verbosity {
 
 export class EmulatorLogger {
   static verbosity: Verbosity = Verbosity.DEBUG;
-  static warnOnceCache = new Set<String>();
+  static warnOnceCache = new Set<string>();
+
+  constructor(private data: LogData = {}) {}
+
+  static forEmulator(emulator: Emulators) {
+    return new EmulatorLogger({
+      metadata: {
+        emulator: {
+          name: emulator,
+        },
+      },
+    });
+  }
+
+  static forFunction(functionName: string) {
+    return new EmulatorLogger({
+      metadata: {
+        emulator: {
+          name: "functions",
+        },
+        function: {
+          name: functionName,
+        },
+      },
+    });
+  }
 
   /**
    * Within this file, utils.logFoo() or logger.Foo() should not be called directly,
    * so that we can respect the "quiet" flag.
+   *
+   * @param type
+   * @param text
+   * @param data
    */
-  static log(type: LogType, text: string, data?: any): void {
+  log(type: LogType, text: string, data?: LogData): void {
+    if (!data) {
+      data = this.data;
+    }
+
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`${type}: ${text}`);
       return;
     }
 
+    const mergedData = {
+      ...data,
+      metadata: {
+        ...data.metadata,
+        message: text,
+      },
+    };
+
     switch (type) {
       case "DEBUG":
-        logger.debug(text, data);
+        logger.debug(text, mergedData);
         break;
       case "INFO":
-        logger.info(text, data);
+        logger.info(text, mergedData);
         break;
       case "USER":
-        logger.info(text, data);
+        logger.info(text, mergedData);
         break;
       case "BULLET":
-        utils.logBullet(text, data);
+        utils.logBullet(text, "info", mergedData);
         break;
       case "WARN":
-        utils.logWarning(text, data);
+        utils.logWarning(text, "warn", mergedData);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache.has(text)) {
-          utils.logWarning(text, data);
-          this.warnOnceCache.add(text);
+        if (!EmulatorLogger.warnOnceCache.has(text)) {
+          utils.logWarning(text, "warn", mergedData);
+          EmulatorLogger.warnOnceCache.add(text);
         }
         break;
       case "SUCCESS":
-        utils.logSuccess(text, data);
+        utils.logSuccess(text, "info", mergedData);
         break;
     }
   }
 
-  static handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
-    if (ignore.indexOf(log.level) >= 0) {
+  handleRuntimeLog(log: EmulatorLog, ignore: string[] = []): void {
+    if (ignore.includes(log.level)) {
       return;
     }
     switch (log.level) {
       case "SYSTEM":
-        EmulatorLogger.handleSystemLog(log);
+        this.handleSystemLog(log);
         break;
       case "USER":
-        EmulatorLogger.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
+        this.log("USER", `${clc.blackBright("> ")} ${log.text}`, {
           user: tryParse(log.text),
+          ...this.data,
         });
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
-          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
+          this.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
         } else {
-          EmulatorLogger.log("DEBUG", `[${log.type}] ${log.text}`);
+          this.log("DEBUG", `[${log.type}] ${log.text}`);
         }
         break;
       case "INFO":
-        EmulatorLogger.logLabeled("BULLET", "functions", log.text);
+        this.logLabeled("BULLET", "functions", log.text);
         break;
       case "WARN":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text);
+        this.logLabeled("WARN", "functions", log.text);
         break;
       case "WARN_ONCE":
-        EmulatorLogger.logLabeled("WARN_ONCE", "functions", log.text);
+        this.logLabeled("WARN_ONCE", "functions", log.text);
         break;
       case "FATAL":
-        EmulatorLogger.logLabeled("WARN", "functions", log.text);
+        this.logLabeled("WARN", "functions", log.text);
         break;
       default:
-        EmulatorLogger.log("INFO", `${log.level}: ${log.text}`);
+        this.log("INFO", `${log.level}: ${log.text}`);
         break;
     }
   }
 
-  static handleSystemLog(systemLog: EmulatorLog): void {
+  handleSystemLog(systemLog: EmulatorLog): void {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          EmulatorLogger.log(
-            "WARN",
-            `Your function was killed because it raised an unhandled error.`
-          );
+          this.log("WARN", `Your function was killed because it raised an unhandled error.`);
         }
         break;
       case "googleapis-network-access":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `Google API requested!\n   - URL: "${systemLog.data.href}"\n   - Be careful, this may be a production service.`
         );
         break;
       case "unidentified-network-access":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `External network resource requested!\n   - URL: "${systemLog.data.href}"\n - Be careful, this may be a production service.`
         );
         break;
       case "functions-config-missing-value":
-        EmulatorLogger.log(
-          "WARN",
-          `Non-existent functions.config() value requested!\n   - Path: "${systemLog.data.valuePath}"\n   - Learn more at https://firebase.google.com/docs/functions/local-emulator`
+        this.log(
+          "WARN_ONCE",
+          `It looks like you're trying to access functions.config().${systemLog.data.key} but there is no value there. You can learn more about setting up config here: https://firebase.google.com/docs/functions/local-emulator`
         );
         break;
       case "non-default-admin-app-used":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `Non-default "firebase-admin" instance created!\n   ` +
             `- This instance will *not* be mocked and will access production resources.`
         );
         break;
       case "missing-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${
             systemLog.data.name
@@ -159,27 +199,27 @@ export class EmulatorLogger {
         );
         break;
       case "uninstalled-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be installed. This package is in your package.json, but it's not available. \
 You probably need to run "npm install" in your functions directory.`
         );
         break;
       case "out-of-date-module":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions emulator requires the module "${systemLog.data.name}" to be version >${systemLog.data.minVersion} so your version is too old. \
 You can probably fix this by running "npm install ${systemLog.data.name}@latest" in your functions directory.`
         );
         break;
       case "missing-package-json":
-        EmulatorLogger.log(
+        this.log(
           "WARN",
           `The Cloud Functions directory you specified does not have a "package.json" file, so we can't load it.`
         );
         break;
       case "function-code-resolution-failed":
-        EmulatorLogger.log("WARN", systemLog.data.error);
+        this.log("WARN", systemLog.data.error);
         const helper = ["We were unable to load your functions code. (see above)"];
         if (systemLog.data.isPotentially.wrong_directory) {
           helper.push(`   - There is no "package.json" file in your functions directory.`);
@@ -194,7 +234,7 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
             `   - You may be able to run "npm run build" in your functions directory to resolve this.`
           );
         }
-        utils.logWarning(helper.join("\n"));
+        utils.logWarning(helper.join("\n"), "warn", this.data);
       default:
       // Silence
     }
@@ -203,30 +243,43 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
   /**
    * Within this file, utils.logLabeldFoo() should not be called directly,
    * so that we can respect the "quiet" flag.
+   *
+   * @param type
+   * @param label
+   * @param text
+   * @param data
    */
-  static logLabeled(type: LogType, label: string, text: string): void {
+  logLabeled(type: LogType, label: string, text: string): void {
     if (EmulatorLogger.shouldSupress(type)) {
       logger.debug(`[${label}] ${text}`);
       return;
     }
+
+    const mergedData = {
+      ...this.data,
+      metadata: {
+        ...this.data.metadata,
+        message: text,
+      },
+    };
 
     switch (type) {
       case "DEBUG":
         logger.debug(`[${label}] ${text}`);
         break;
       case "BULLET":
-        utils.logLabeledBullet(label, text);
+        utils.logLabeledBullet(label, text, "info", mergedData);
         break;
       case "SUCCESS":
-        utils.logLabeledSuccess(label, text);
+        utils.logLabeledSuccess(label, text, "info", mergedData);
         break;
       case "WARN":
-        utils.logLabeledWarning(label, text);
+        utils.logLabeledWarning(label, text, "warn", mergedData);
         break;
       case "WARN_ONCE":
-        if (!this.warnOnceCache.has(text)) {
-          utils.logLabeledWarning(label, text);
-          this.warnOnceCache.add(text);
+        if (!EmulatorLogger.warnOnceCache.has(text)) {
+          utils.logLabeledWarning(label, text, "warn", mergedData);
+          EmulatorLogger.warnOnceCache.add(text);
         }
         break;
     }

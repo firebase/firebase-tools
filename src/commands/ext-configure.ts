@@ -24,7 +24,10 @@ marked.setOptions({
 export default new Command("ext:configure <extensionInstanceId>")
   .description("configure an existing extension instance")
   .option("--params <paramsFile>", "path of params file with .env format.")
-  .before(requirePermissions, ["firebasemods.instances.update", "firebasemods.instances.get"])
+  .before(requirePermissions, [
+    "firebaseextensions.instances.update",
+    "firebaseextensions.instances.get",
+  ])
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
       `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -62,9 +65,9 @@ export default new Command("ext:configure <extensionInstanceId>")
         const plural = immutableParams.length > 1;
         logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
         for (const { param } of immutableParams) {
-          logger.info(
-            `param: ${param}, value: ${_.get(existingInstance, `config.params.${param}`)}`
-          );
+          const value = _.get(existingInstance, `config.params.${param}`);
+          logger.info(`param: ${param}, value: ${value}`);
+          params[param] = value;
         }
         logger.info(
           (plural

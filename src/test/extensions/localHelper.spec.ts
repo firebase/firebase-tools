@@ -49,7 +49,7 @@ describe("localHelper", () => {
       });
     });
 
-    describe("other YAML errors", async () => {
+    describe("other YAML errors", () => {
       beforeEach(() => {
         sandbox.stub(yaml, "safeLoad").throws(new Error("not the files you are looking for"));
       });

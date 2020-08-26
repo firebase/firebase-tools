@@ -1,4 +1,1 @@
-- Improves error messages for Cloud Functions for Firebase deployment permissions. (#2086)
-- Makes `firestore:delete` respect `FIRESTORE_EMULATOR_HOST`.
-- Makes `database:get`, `database:set`, `database:push`, and `database:update` respect `FIREBASE_DATABASE_EMULATOR_HOST`.
-- Makes `functions:shell` connect to running service emulators when appropriate.
+- Fixes default credentials inside `functions:shell` (#2561)

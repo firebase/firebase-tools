@@ -59,6 +59,16 @@ export function resolveSourceUrl(
 }
 
 /**
+ * Checks if the given source comes from an official extension.
+ * @param registryEntry the registry entry to look through.
+ * @param sourceUrl the source URL of the extension.
+ */
+export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
+  const versions = _.get(registryEntry, "versions");
+  return _.includes(versions, sourceUrl);
+}
+
+/**
  * Looks up and returns a entry from the official extensions registry.
  * @param name the name of the extension.
  */
@@ -133,10 +143,21 @@ export async function promptForAudienceConsent(registryEntry: RegistryEntry): Pr
 
 /**
  * Fetches the official extensions registry.
+ * @param onlyFeatured If true, only return the featured extensions.
  */
-export async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
+export async function getExtensionRegistry(
+  onlyFeatured?: boolean
+): Promise<{ [key: string]: RegistryEntry }> {
   const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
     origin: api.firebaseExtensionsRegistryOrigin,
   });
-  return res.body.mods;
+  const extensions = _.get(res, "body.mods") as { [key: string]: RegistryEntry };
+
+  if (onlyFeatured) {
+    const featuredList = _.get(res, "body.featured.discover");
+    return _.pickBy(extensions, (_entry, extensionName: string) => {
+      return _.includes(featuredList, extensionName);
+    });
+  }
+  return extensions;
 }

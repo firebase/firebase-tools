@@ -118,7 +118,7 @@ export async function promptForNewParams(
     });
   }
   if (paramsDiffAdditions.length) {
-    logger.info("Please configure the following new params:");
+    logger.info("To update this instance, configure the following new parameters:");
     for (const param of paramsDiffAdditions) {
       const chosenValue = await askUserForParam.askForParam(param);
       currentParams[param.param] = chosenValue;

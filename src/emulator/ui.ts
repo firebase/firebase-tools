@@ -5,20 +5,20 @@ import { EmulatorHub } from "./hub";
 import { FirebaseError } from "../error";
 import { Constants } from "./constants";
 
-export interface EmulatorGUIOptions {
+export interface EmulatorUIOptions {
   port: number;
   host: string;
   projectId: string;
   auto_download?: boolean;
 }
 
-export class EmulatorGUI implements EmulatorInstance {
-  constructor(private args: EmulatorGUIOptions) {}
+export class EmulatorUI implements EmulatorInstance {
+  constructor(private args: EmulatorUIOptions) {}
 
   start(): Promise<void> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
       throw new FirebaseError(
-        `Cannot start ${Constants.description(Emulators.GUI)} without ${Constants.description(
+        `Cannot start ${Constants.description(Emulators.UI)} without ${Constants.description(
           Emulators.HUB
         )}!`
       );
@@ -32,25 +32,27 @@ export class EmulatorGUI implements EmulatorInstance {
       [EmulatorHub.EMULATOR_HUB_ENV]: `${hubInfo.host}:${hubInfo.port}`,
     };
 
-    return downloadableEmulators.start(Emulators.GUI, { auto_download }, env);
+    return downloadableEmulators.start(Emulators.UI, { auto_download }, env);
   }
 
-  async connect(): Promise<void> {
-    return;
+  connect(): Promise<void> {
+    return Promise.resolve();
   }
 
   stop(): Promise<void> {
-    return downloadableEmulators.stop(Emulators.GUI);
+    return downloadableEmulators.stop(Emulators.UI);
   }
 
   getInfo(): EmulatorInfo {
     return {
+      name: this.getName(),
       host: this.args.host,
       port: this.args.port,
+      pid: downloadableEmulators.getPID(Emulators.UI),
     };
   }
 
   getName(): Emulators {
-    return Emulators.GUI;
+    return Emulators.UI;
   }
 }

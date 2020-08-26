@@ -1,6 +1,6 @@
 "use strict";
 
-var previews = require("../previews"); //eslint-disable-line
+const previews = require("../previews").previews;
 
 module.exports = function(client) {
   var loadCommand = function(name) {
@@ -19,6 +19,11 @@ module.exports = function(client) {
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
   client.apps.sdkconfig = loadCommand("apps-sdkconfig");
+  client.apps.android = {};
+  client.apps.android.sha = {};
+  client.apps.android.sha.list = loadCommand("apps-android-sha-list");
+  client.apps.android.sha.create = loadCommand("apps-android-sha-create");
+  client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
   client.auth.upload = loadCommand("auth-import");

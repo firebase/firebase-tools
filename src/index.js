@@ -5,7 +5,7 @@ var pkg = require("../package.json");
 var clc = require("cli-color");
 var logger = require("./logger");
 var { setupLoggers } = require("./utils");
-var didYouMean = require("didyoumean");
+var leven = require("leven");
 
 program.version(pkg.version);
 program.option(
@@ -17,6 +17,7 @@ program.option("--token <token>", "supply an auth token for this command");
 program.option("--non-interactive", "error out of the command instead of waiting for prompts");
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
+program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
 
 var client = {};
 client.cli = program;
@@ -41,7 +42,9 @@ require("./commands")(client);
  * @return {string|undefined} Returns the suggested command; undefined if none.
  */
 function suggestCommands(cmd, cmdList) {
-  var suggestion = didYouMean(cmd, cmdList);
+  var suggestion = cmdList.find(function(c) {
+    return leven(c, cmd) < c.length * 0.4;
+  });
   if (suggestion) {
     logger.error();
     logger.error("Did you mean " + clc.bold(suggestion) + "?");

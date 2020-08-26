@@ -149,6 +149,30 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command. |
 
+## Authentication
+
+### General
+
+The Firebase CLI can use one of three authentication methods listed in descending priority:
+
+- `GOOGLE_APPLICATION_CREDENTIALS` - if this environment variable points to a service account key file, the Firebase CLI will authenticate as a service account.
+- `firebase login` - you can log in to the CLI directly as yourself. The CLI will store an authorized user credential.
+  - `FIREBASE_TOKEN` - you can explicitly use this environment variable to pass in a long-lived user token from `firebase login:ci`.
+- `gcloud auth application-default login` - if your development machine has application default credentials from the Google Cloud CLI, we will use them if none of the above credentials are present.
+
+### Cloud Functions Emulator
+
+The Cloud Functions emulator is exposed through commands like `emulators:start`,
+`serve` and `functions:shell`. Emulated Cloud Functions run as independent `node` processes
+on your development machine which means they have their own credential discovery mechanism.
+
+By default these `node` processes are not able to discover credentials from `firebase login`.
+In order to provide a better development experience, when you are logged in to the CLI
+through `firebase login` we take the user credentials and construct a temporary credential
+that we pass into the emulator through `GOOGLE_APPLICATION_CREDENTIALS`. We **only** do this
+if you have not already set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+yourself.
+
 ## Using with CI Systems
 
 The Firebase CLI requires a browser to complete authentication, but is fully
@@ -176,7 +200,7 @@ The Firebase CLI can also be used programmatically as a standard Node module. Ea
 
 ```js
 var client = require("firebase-tools");
-client
+client.projects
   .list()
   .then(function(data) {
     console.log(data);
@@ -194,6 +218,24 @@ client
   })
   .then(function() {
     console.log("Rules have been deployed!");
+  })
+  .catch(function(err) {
+    // handle error
+  });
+```
+
+Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
+provide any positional arguments as strings followed by an object containing the options:
+
+```js
+var client = require("firebase-tools");
+client
+  .use("projectId", {
+    // Equivalent to --add when using the CLI
+    add: true,
+  })
+  .then(function(data) {
+    console.log(data);
   })
   .catch(function(err) {
     // handle error

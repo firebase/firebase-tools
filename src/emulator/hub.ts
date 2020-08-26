@@ -1,4 +1,3 @@
-import * as http from "http";
 import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
@@ -8,7 +7,7 @@ import * as bodyParser from "body-parser";
 import * as utils from "../utils";
 import * as logger from "../logger";
 import { Constants } from "./constants";
-import { Emulators, EmulatorInstance, EmulatorInfo, IMPORT_EXPORT_EMULATORS } from "./types";
+import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
 
@@ -64,17 +63,17 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   private hub: express.Express;
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
 
   constructor(private args: EmulatorHubArgs) {
     this.hub = express();
     this.hub.use(bodyParser.json());
 
-    this.hub.get("/", async (req, res) => {
+    this.hub.get("/", (req, res) => {
       res.json(this.getLocator());
     });
 
-    this.hub.get(EmulatorHub.PATH_EMULATORS, async (req, res) => {
+    this.hub.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
       const body: GetEmulatorsResponse = {};
       EmulatorRegistry.listRunning().forEach((name) => {
         body[name] = EmulatorRegistry.get(name)!.getInfo();
@@ -106,7 +105,8 @@ export class EmulatorHub implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    this.server = this.hub.listen(port, host);
+    const server = this.hub.listen(port, host);
+    this.destroyServer = utils.createDestroyer(server);
     await this.writeLocatorFile();
   }
 
@@ -115,7 +115,9 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    this.server && this.server.close();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
     await this.deleteLocatorFile();
   }
 
@@ -124,6 +126,7 @@ export class EmulatorHub implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.HUB);
 
     return {
+      name: this.getName(),
       host,
       port,
     };

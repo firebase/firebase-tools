@@ -9,16 +9,14 @@ var parseBoltRules = require("../../parseBoltRules");
 var rtdb = require("../../rtdb");
 var utils = require("../../utils");
 
+const dbRulesConfig = require("../../database/rulesConfig");
+
 module.exports = function(context, options) {
-  var rulesConfig = options.config.get("database");
+  var rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
   var next = Promise.resolve();
 
-  if (!rulesConfig) {
+  if (!rulesConfig || rulesConfig.length === 0) {
     return next;
-  }
-
-  if (_.isString(_.get(rulesConfig, "rules"))) {
-    rulesConfig = [_.assign(rulesConfig, { instance: options.instance })];
   }
 
   var ruleFiles = {};
@@ -30,20 +28,7 @@ module.exports = function(context, options) {
     }
 
     ruleFiles[ruleConfig.rules] = null;
-
-    if (ruleConfig.target) {
-      options.rc.requireTarget(context.projectId, "database", ruleConfig.target);
-      var instances = options.rc.target(context.projectId, "database", ruleConfig.target);
-      deploys = deploys.concat(
-        instances.map(function(inst) {
-          return { instance: inst, rules: ruleConfig.rules };
-        })
-      );
-    } else if (!ruleConfig.instance) {
-      throw new FirebaseError('Must supply either "target" or "instance" in database config');
-    } else {
-      deploys.push(ruleConfig);
-    }
+    deploys.push(ruleConfig);
   });
 
   _.forEach(ruleFiles, function(v, file) {

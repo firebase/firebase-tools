@@ -10,9 +10,10 @@ import * as Config from "../../config";
 import { FirebaseError } from "../../error";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import * as getProjectId from "../../getProjectId";
+import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = await specHelper.findExtensionYaml(process.cwd());
+  const extensionDir = specHelper.findExtensionYaml(process.cwd());
   options.extensionDir = extensionDir;
   const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(extensionYaml);
@@ -39,6 +40,7 @@ export async function buildOptions(options: any): Promise<any> {
     triggerHelper.functionResourceToEmulatedTriggerDefintion(r)
   );
   options.extensionTriggers = functionEmuTriggerDefs;
+  options.extensionNodeVersion = specHelper.getNodeVersion(functionResources);
   return options;
 }
 
@@ -47,8 +49,9 @@ export async function buildOptions(options: any): Promise<any> {
  * that are relevant for the extension being emulated.
  */
 function checkTestConfig(testConfig: { [key: string]: any }, functionResources: Resource[]) {
+  const logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   if (!testConfig.functions && functionResources.length) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension uses functions," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'functions' object." +
@@ -57,7 +60,7 @@ function checkTestConfig(testConfig: { [key: string]: any }, functionResources: 
   }
 
   if (!testConfig.firestore && shouldEmulateFirestore(functionResources)) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension interacts with Cloud Firestore," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'firestore' object." +
@@ -66,7 +69,7 @@ function checkTestConfig(testConfig: { [key: string]: any }, functionResources: 
   }
 
   if (!testConfig.database && shouldEmulateDatabase(functionResources)) {
-    EmulatorLogger.log(
+    logger.log(
       "WARN",
       "This extension interacts with Realtime Database," +
         "but 'firebase.json' provided by --test-config is missing a top-level 'database' object." +
@@ -133,7 +136,7 @@ function getFunctionSourceDirectory(functionResources: Resource[]): String {
   for (let r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
     if (!dir) {
-      EmulatorLogger.log(
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
         "INFO",
         `No sourceDirectory was specified for function ${r.name}, defaulting to 'functions'`
       );
