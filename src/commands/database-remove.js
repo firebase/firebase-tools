@@ -4,10 +4,10 @@ var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
 var { requirePermissions } = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove").default;
-var api = require("../api");
 var { Emulators } = require("../emulator/types");
 var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
-
+var { populateInstanceDetails } = require("../management/database");
+var { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
 var utils = require("../utils");
 var { prompt } = require("../prompt");
 var clc = require("cli-color");
@@ -22,12 +22,13 @@ module.exports = new Command("database:remove <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
     return prompt(options, [
       {
         type: "confirm",
@@ -35,14 +36,15 @@ module.exports = new Command("database:remove <path>")
         default: false,
         message:
           "You are about to remove all data at " +
-          clc.cyan(utils.addSubdomain(api.realtimeOrigin, options.instance) + path) +
+          clc.cyan(utils.getDatabaseUrl(origin, options.instance), path) +
           ". Are you sure?",
       },
     ]).then(function() {
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
-      var removeOps = new DatabaseRemove(options.instance, path);
+
+      var removeOps = new DatabaseRemove(options.instance, path, origin);
       return removeOps.execute().then(function() {
         utils.logSuccess("Data removed successfully");
       });
