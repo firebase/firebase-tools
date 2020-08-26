@@ -12,7 +12,7 @@ marked.setOptions({
 });
 
 const urlPricingExamples = "https://cloud.google.com/functions/pricing#pricing_examples";
-const urlFAQ = "https://firebase.google.com/support/faq/#extensions-runtime";
+const urlFAQ = "https://firebase.google.com/support/faq/#extensions-pricing";
 
 const billingMsgUpdate =
   "This update includes an upgrade to Node.js 10 from Node.js 8, which is no" +
@@ -24,7 +24,7 @@ const billingMsgUpdate =
   `See the FAQ: **[${urlFAQ}](${urlFAQ})**\n`;
 const billingMsgCreate =
   "You will be charged around $0.01/month for the Firebase resources" +
-  " required by this extension even if it is not used. Additionally," +
+  " required by this extension (even if it is not used). Additionally," +
   " using this extension will contribute to your project's overall usage" +
   " level of Firebase services. However, you'll only be charged for usage" +
   " that exceeds Firebase's free tier for those services.\n\n" +
