@@ -52,7 +52,7 @@ module.exports = function(context, options) {
   return Promise.all(
     deploys.map(function(deploy) {
       return rtdb
-        .updateRules(deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
+        .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
         .then(function() {
           utils.logSuccess(
             clc.bold.green("database: ") +

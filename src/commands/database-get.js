@@ -10,7 +10,8 @@ var logger = require("../logger");
 var { FirebaseError } = require("../error");
 var { Emulators } = require("../emulator/types");
 var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-
+var { populateInstanceDetails } = require("../management/database");
+const { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
 var utils = require("../utils");
 var _ = require("lodash");
 var fs = require("fs");
@@ -58,17 +59,15 @@ module.exports = new Command("database:get <path>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
   .before(requireInstance)
+  .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    let dbUrl = utils.getDatabaseUrl(
-      api.realtimeOriginOrEmulator,
-      options.instance,
-      path + ".json"
-    );
+    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
+    let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     var query = {};
     if (options.shallow) {
       query.shallow = "true";

@@ -30,15 +30,15 @@ export default class DatabaseRemove {
    * @param instance RTBD instance ID.
    * @param path path to delete.
    */
-  constructor(instance: string, path: string) {
+  constructor(instance: string, path: string, host: string) {
     this.path = path;
-    this.remote = new RTDBRemoveRemote(instance);
+    this.remote = new RTDBRemoveRemote(instance, host);
     this.deleteJobStack = new Stack({
       name: "delete stack",
       concurrency: 1,
       retries: 3,
     });
-    this.listRemote = new RTDBListRemote(instance);
+    this.listRemote = new RTDBListRemote(instance, host);
     this.listStack = new Stack({
       name: "list stack",
       concurrency: 1,
