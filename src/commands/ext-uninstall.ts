@@ -4,7 +4,6 @@ import * as ora from "ora";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { iam } from "../gcp";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -87,32 +86,6 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-      spinner.text = ` ${clc.green.bold(
-        logPrefix
-      )}: deleting your extension instance's service account.`;
-      spinner.start();
-      const saDeletionRes = await iam.deleteServiceAccount(projectId, instance.serviceAccountEmail);
-      if (_.get(saDeletionRes, "body.error")) {
-        if (_.get(saDeletionRes, "body.error.code") === 404) {
-          spinner.succeed(
-            ` ${clc.green.bold(logPrefix)}: service account ${clc.bold(
-              instance.serviceAccountEmail
-            )} was previously deleted.`
-          );
-        } else {
-          throw new FirebaseError("Unable to delete service account", {
-            original: saDeletionRes.body.error,
-          });
-        }
-      } else {
-        spinner.succeed(
-          ` ${clc.green.bold(
-            logPrefix
-          )}: deleted your extension instance's service account ${clc.bold(
-            instance.serviceAccountEmail
-          )}`
-        );
-      }
     } catch (err) {
       if (spinner.isSpinning) {
         spinner.fail();

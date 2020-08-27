@@ -11,7 +11,6 @@ import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilli
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   promptForAudienceConsent,
@@ -82,26 +81,7 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
 
     spinner.start();
-    let serviceAccountEmail;
-    while (!serviceAccountEmail) {
-      try {
-        serviceAccountEmail = await createServiceAccountAndSetRoles(
-          projectId,
-          _.get(spec, "roles", []),
-          instanceId
-        );
-      } catch (err) {
-        if (err.status === 409) {
-          spinner.stop();
-          logger.info(err.message);
-          instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-          spinner.start();
-        } else {
-          throw err;
-        }
-      }
-    }
-    await extensionsApi.createInstance(projectId, instanceId, source, params, serviceAccountEmail);
+    await extensionsApi.createInstance(projectId, instanceId, source, params);
     spinner.stop();
 
     utils.logLabeledSuccess(
