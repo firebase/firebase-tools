@@ -109,6 +109,8 @@ steps:
     entrypoint: "node"
     args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
 
+timeout: 1200s # 20 minutes
+
 options:
   volumes:
     - name: "ssh"
