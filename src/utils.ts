@@ -3,6 +3,7 @@ import * as url from "url";
 import * as http from "http";
 import * as clc from "cli-color";
 import * as ora from "ora";
+import { env } from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -446,4 +447,11 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
     }
     return destroyPromise;
   };
+}
+
+/**
+ * Indicates whether the end-user is running the CLI from a cloud-based environment.
+ */
+export function isCloudEnvironment() {
+  return !!env.CODESPACES;
 }
