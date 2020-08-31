@@ -24,10 +24,9 @@ marked.setOptions({
 
 /**
  * We do not currently support uninstalling extensions that require additional uninstall steps to be taken in the CLI. Direct them to the Console to uninstall the extension.
- * - pubsub-stream-bigquery: requires calling a public HTTP uninstall function
  *
- * @param projectId id of the user's project
- * @param instanceId id of the extension instance
+ * @param projectId ID of the user's project
+ * @param instanceId ID of the extension instance
  * @return a void Promise
  */
 function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
