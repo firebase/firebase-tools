@@ -1,3 +1,4 @@
 - Change default runtime for Firebase Extensions template to nodejs10.
 - Modify messages for Firebase Extensions Node.js 10 migration.
 - Stop creating, updating and deleting service accounts during extension installation, update, and uninstallation.
+- Fixes Hosting deploys when using `--config` flag.

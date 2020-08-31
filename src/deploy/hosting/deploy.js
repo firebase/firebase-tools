@@ -42,6 +42,7 @@ module.exports = function(context, options) {
       "found " + files.length + " files in " + clc.bold(deploy.config.public)
     );
     const uploader = new Uploader({
+      ...options,
       version: deploy.version,
       files: files,
       public: options.config.path(deploy.config.public),
