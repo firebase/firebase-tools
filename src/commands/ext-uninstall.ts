@@ -34,7 +34,8 @@ function consoleUninstallOnly(projectId: string, instanceId: string): Promise<vo
   const consoleUninstall =
     "This extension can only be uninstalled through the Firebase Console. " +
     `Please visit **[${instanceURL}](${instanceURL})** to uninstall this extension.`;
-  return utils.reject(marked(consoleUninstall));
+  utils.logLabeledWarning(logPrefix, marked(consoleUninstall));
+  return Promise.resolve();
 }
 
 export default new Command("ext:uninstall <extensionInstanceId>")
