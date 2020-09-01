@@ -1,6 +1,7 @@
 "use strict";
 
 const Uploader = require("./uploader");
+const { detectProjectRoot } = require("../../detectProjectRoot");
 var { listFiles } = require("../../listFiles");
 var logger = require("../../logger");
 var track = require("../../track");
@@ -42,11 +43,11 @@ module.exports = function(context, options) {
       "found " + files.length + " files in " + clc.bold(deploy.config.public)
     );
     const uploader = new Uploader({
-      ...options,
       version: deploy.version,
       files: files,
       public: options.config.path(deploy.config.public),
       cwd: options.cwd,
+      projectRoot: detectProjectRoot(options),
     });
 
     var progressInterval = setInterval(
