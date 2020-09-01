@@ -2,15 +2,15 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as nock from "nock";
 import * as utils from "../../utils";
-import * as api from "../../api";
 
 import * as helpers from "../helpers";
 import { RTDBRemoveRemote } from "../../database/removeRemote";
 
 describe("RemoveRemote", () => {
   const instance = "fake-db";
-  const remote = new RTDBRemoveRemote(instance);
-  const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
+  const host = "https://firebaseio.com";
+  const remote = new RTDBRemoveRemote(instance, host);
+  const serverUrl = utils.getDatabaseUrl(host, instance, "");
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {

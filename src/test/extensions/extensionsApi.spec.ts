@@ -166,8 +166,7 @@ describe("extensions", () => {
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
-        {},
-        "my-service-account@proj.gserviceaccount.com"
+        {}
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -194,8 +193,7 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {},
-          "my-service-account@proj.gserviceaccount.com"
+          {}
         )
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
@@ -226,8 +224,7 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {},
-          "my-service-account@proj.gserviceaccount.com"
+          {}
         )
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
       expect(nock.isDone()).to.be.true;

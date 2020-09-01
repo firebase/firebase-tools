@@ -36,18 +36,17 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `The only valid choices are: ${clc.bold("nodejs8")} and ${clc.bold("nodejs10")}.`
+    `Valid choices are: ${clc.bold("nodejs8")}, ${clc.bold("nodejs10")}, and ${clc.bold(
+      "nodejs12"
+    )}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `The only valid choices are: ${clc.bold('{"node": "8"}')} and ${clc.bold('{"node": "10"}')}.`
+    `Valid choices are: ${clc.bold('{"node": "8"}')}, ${clc.bold('{"node": "10"}')}, and ${clc.bold(
+      '{"node":"12"}'
+    )}.`
 );
-
-export const DEPRECATION_WARNING_MSG =
-  clc.bold.yellow("functions: ") +
-  "Deploying functions to Node 6 runtime, which is deprecated. Node 8 is available " +
-  "and is the recommended runtime.";
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold.yellow("functions: ") +

@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.7.0",
+  "version": "8.9.2",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -173,7 +173,7 @@
     "eslint-plugin-prettier": "^3.1.0",
     "firebase": "^7.14.0",
     "firebase-admin": "^8.9.0",
-    "firebase-functions": "^3.8.0",
+    "firebase-functions": "^3.10.0",
     "mocha": "^7.1.1",
     "nock": "^9.3.3",
     "nyc": "^15.0.1",

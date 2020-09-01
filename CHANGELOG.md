@@ -1,4 +1,4 @@
-- Fixes an issue where immutable params were not sent during ext:configure.
-- Includes latest features and improvements from production in the Firestore Emulator.
-- Fixes issue where all database functions triggered on the default namespace (#2501).
+- Change default runtime for Firebase Extensions template to nodejs10.
+- Modify messages for Firebase Extensions Node.js 10 migration.
+- Stop creating, updating and deleting service accounts during extension installation, update, and uninstallation.
 - Adds regular expression support for the Firebase Hosting emulator.
