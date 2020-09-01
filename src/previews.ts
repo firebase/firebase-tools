@@ -15,7 +15,7 @@ export const previews: PreviewFlags = Object.assign(
     rtdbrules: false,
     ext: false,
     extdev: false,
-    hostingchannels: true,
+    hostingchannels: false,
     rtdbmanagement: false,
   },
   configstore.get("previews")

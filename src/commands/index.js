@@ -88,7 +88,6 @@ module.exports = function(client) {
   client.functions.shell = loadCommand("functions-shell");
   client.help = loadCommand("help");
   client.hosting = {};
-  client.hosting.disable = loadCommand("hosting-disable");
   if (previews.hostingchannels) {
     client.hosting.channel = {};
     client.hosting.channel.create = loadCommand("hosting-channel-create");
@@ -96,7 +95,9 @@ module.exports = function(client) {
     client.hosting.channel.deploy = loadCommand("hosting-channel-deploy");
     client.hosting.channel.list = loadCommand("hosting-channel-list");
     client.hosting.channel.open = loadCommand("hosting-channel-open");
+    client.hosting.clone = loadCommand("hosting-clone");
   }
+  client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
@@ -117,7 +118,6 @@ module.exports = function(client) {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-  client.hosting.clone = loadCommand("hosting-clone");
 
   return client;
 };
