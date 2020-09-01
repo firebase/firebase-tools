@@ -32,8 +32,9 @@ marked.setOptions({
 function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
   const instanceURL = `https://console.firebase.google.com/project/${projectId}/extensions/instances/${instanceId}`;
   const consoleUninstall =
-    "This extension can only be uninstalled through the Firebase Console. " +
+    "This extension has additional uninstall checks that are not currently supported by the CLI, and can only be uninstalled through the Firebase Console. " +
     `Please visit **[${instanceURL}](${instanceURL})** to uninstall this extension.`;
+  logger.info("\n");
   utils.logLabeledWarning(logPrefix, marked(consoleUninstall));
   return Promise.resolve();
 }
