@@ -8,7 +8,6 @@ import * as Config from "../config";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
 import { EmulatorRegistry } from "./registry";
 import {
   Address,
@@ -376,30 +375,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    // Provide default application credentials when appropriate
-    const credentialEnv: Record<string, string> = {};
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      functionsLogger.logLabeled(
-        "WARN",
-        "functions",
-        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
-      );
-    } else {
-      const defaultCredPath = await getCredentialPathAsync();
-      if (defaultCredPath) {
-        functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
-        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
-      } else {
-        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
-        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
-        functionsLogger.logLabeled(
-          "WARN",
-          "functions",
-          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
-        );
-      }
-    }
-
     // Warn the developer that the Functions emulator can call out to production.
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
@@ -421,7 +396,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       port: functionsAddr.port,
       debugPort: inspectFunctions,
       env: {
-        ...credentialEnv,
         ...options.extensionEnv,
       },
       predefinedTriggers: options.extensionTriggers,

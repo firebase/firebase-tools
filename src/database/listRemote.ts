@@ -24,7 +24,7 @@ export interface ListRemote {
 }
 
 export class RTDBListRemote implements ListRemote {
-  constructor(private instance: string) {}
+  constructor(private instance: string, private host: string) {}
 
   async listPath(
     path: string,
@@ -32,7 +32,7 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const url = `${utils.addSubdomain(api.realtimeOrigin, this.instance)}${path}.json`;
+    const url = `${utils.addSubdomain(this.host, this.instance)}${path}.json`;
 
     const params: any = {
       shallow: true,

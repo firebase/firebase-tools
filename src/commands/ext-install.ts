@@ -5,12 +5,12 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
+import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
 import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
-import * as checkProjectBilling from "../extensions/checkProjectBilling";
+import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   promptForAudienceConsent,
@@ -51,11 +51,18 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
-    await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
+    if (spec.billingRequired) {
+      const enabled = await isBillingEnabled(projectId);
+      if (!enabled) {
+        await displayNode10CreateBillingNotice(spec, false);
+        await enableBilling(projectId, spec.displayName || spec.name);
+      } else {
+        await displayNode10CreateBillingNotice(spec, true);
+      }
+    }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
     let instanceId = spec.name;
     const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
     if (anotherInstanceExists) {
@@ -71,27 +78,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       }
       instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
     }
+    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
+
     spinner.start();
-    let serviceAccountEmail;
-    while (!serviceAccountEmail) {
-      try {
-        serviceAccountEmail = await createServiceAccountAndSetRoles(
-          projectId,
-          _.get(spec, "roles", []),
-          instanceId
-        );
-      } catch (err) {
-        if (err.status === 409) {
-          spinner.stop();
-          logger.info(err.message);
-          instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-          spinner.start();
-        } else {
-          throw err;
-        }
-      }
-    }
-    await extensionsApi.createInstance(projectId, instanceId, source, params, serviceAccountEmail);
+    await extensionsApi.createInstance(projectId, instanceId, source, params);
     spinner.stop();
 
     utils.logLabeledSuccess(

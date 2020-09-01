@@ -13,9 +13,11 @@ var utils = require("./utils");
 var ProfileReport = require("./profileReport");
 var { FirebaseError } = require("./error");
 var responseToError = require("./responseToError");
+const { realtimeOriginOrEmulatorOrCustomUrl } = require("./database/api");
 
 module.exports = function(options) {
-  var url = utils.addSubdomain(api.realtimeOrigin, options.instance) + "/.settings/profile.json?";
+  const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+  var url = utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?");
 
   var rl = readline.createInterface({
     input: process.stdin,

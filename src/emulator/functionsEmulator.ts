@@ -39,6 +39,7 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
 import { createDestroyer } from "../utils";
+import { getCredentialPathAsync } from "../defaultCredentials";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -142,6 +143,34 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workQueue = new WorkQueue(mode);
   }
 
+  private async getCredentialsEnvironment(): Promise<Record<string, string>> {
+    // Provide default application credentials when appropriate
+    const credentialEnv: Record<string, string> = {};
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
+      );
+    } else {
+      const defaultCredPath = await getCredentialPathAsync();
+      if (defaultCredPath) {
+        this.logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
+        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      } else {
+        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
+        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
+        this.logger.logLabeled(
+          "WARN",
+          "functions",
+          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
+        );
+      }
+    }
+
+    return credentialEnv;
+  }
+
   createHubServer(): express.Application {
     // TODO(samstern): Should not need this here but some tests are directly calling this method
     // because FunctionsEmulator.start() is not test-safe due to askInstallNodeVersion.
@@ -228,11 +257,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     return worker;
   }
 
-  start(): Promise<void> {
+  async start(): Promise<void> {
     this.nodeBinary = this.askInstallNodeVersion(
       this.args.functionsDir,
       this.args.nodeMajorVersion
     );
+
+    const credentialEnv = await this.getCredentialsEnvironment();
+    this.args.env = {
+      ...credentialEnv,
+      ...this.args.env,
+    };
+
     const { host, port } = this.getInfo();
     this.workQueue.start();
     const server = this.createHubServer().listen(port, host);
@@ -368,10 +404,22 @@ export class FunctionsEmulator implements EmulatorInstance {
     return loadTriggers();
   }
 
-  stop(): Promise<void> {
+  async stop(): Promise<void> {
+    try {
+      await this.workQueue.flush();
+    } catch (e) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Functions emulator work queue did not empty before stopping"
+      );
+    }
+
     this.workQueue.stop();
     this.workerPool.exit();
-    return this.destroyServer ? this.destroyServer() : Promise.resolve();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
   }
 
   addRealtimeDatabaseTrigger(
