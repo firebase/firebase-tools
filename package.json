@@ -111,7 +111,7 @@
     "request": "^2.87.0",
     "rimraf": "^3.0.0",
     "semver": "^5.7.1",
-    "superstatic": "^6.0.1",
+    "superstatic": "^7.0.0",
     "tar": "^4.3.0",
     "tcp-port-used": "^1.0.1",
     "tmp": "0.0.33",
