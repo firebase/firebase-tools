@@ -4,3 +4,4 @@
 - Adds regular expression support for the Firebase Hosting emulator.
 - Changes update notification to reflect all CLI management options.
 - Defaults `firebase login` to use an authorization code in Codespaces environments.
+- Fixes Firebase Hosting deploys when using `--config` flag.
