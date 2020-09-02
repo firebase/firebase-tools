@@ -4,6 +4,7 @@ import * as ora from "ora";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
@@ -44,6 +45,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
     const projectId = getProjectId(options);
     let instance;
