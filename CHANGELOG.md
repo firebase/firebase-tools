@@ -3,3 +3,4 @@
 - Stop creating, updating and deleting service accounts during extension installation, update, and uninstallation.
 - Adds regular expression support for the Firebase Hosting emulator.
 - Defaults `firebase login` to use an authorization code in Codespaces environments.
+- Fixes Firebase Hosting deploys when using `--config` flag.
