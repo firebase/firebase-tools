@@ -9,6 +9,7 @@ import { FirebaseError } from "../error";
 import { prompt } from "../prompt";
 
 import * as auth from "../auth";
+import { isCloudEnvironment } from "../utils";
 
 module.exports = new Command("login")
   .description("log the CLI into Firebase")
@@ -53,7 +54,13 @@ module.exports = new Command("login")
         );
       }
     }
-    const result = await auth.login(options.localhost, _.get(user, "email"));
+
+    // Default to using the authorization code flow when the end
+    // user is within a cloud-based environment, and therefore,
+    // the authorization callback couldn't redirect to localhost.
+    const useLocalhost = isCloudEnvironment() ? false : options.localhost;
+
+    const result = await auth.login(useLocalhost, _.get(user, "email"));
     configstore.set("user", result.user);
     configstore.set("tokens", result.tokens);
     // store login scopes in case mandatory scopes grow over time
