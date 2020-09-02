@@ -2,3 +2,4 @@
 - Modify messages for Firebase Extensions Node.js 10 migration.
 - Stop creating, updating and deleting service accounts during extension installation, update, and uninstallation.
 - Adds regular expression support for the Firebase Hosting emulator.
+- Changes update notification to reflect all CLI management options.
