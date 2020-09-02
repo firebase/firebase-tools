@@ -24,9 +24,12 @@ const marked = require("marked");
 marked.setOptions({
   renderer: new TerminalRenderer(),
 });
-const updateMessage = `Update available ${clc.xterm(240)('{currentVersion}')} → ${clc.green('{latestVersion}')}\n` +
-`To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
-`For other CLI management options, visit the ${marked("[CLI documentation](https://firebase.google.com/docs/cli#update-cli)")}`
+const updateMessage =
+  `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+  `To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
+  `For other CLI management options, visit the ${marked(
+    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+  )}`;
 updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
 const client = require("..");
