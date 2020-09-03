@@ -33,7 +33,21 @@ const GIT_CONFIG_PATH = path.join(process.cwd(), ".git/config");
 const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v2";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
 
-export async function initGitHub(setup: Setup, config: any, options: any) {
+/**
+ * Assists in setting up a GitHub workflow by doing the following:
+ * - Creates a GCP service account with permission to deploy to Hosting
+ * - Encrypts that service account's JSON key and uploads it to the specified GitHub repository as a Secret
+ *     - https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets
+ * - Writes GitHub workflow yaml configuration files that reference the newly created secret
+ *   to configure the Deploy to Firebase Hosting GitHub Action
+ *     - https://github.com/marketplace/actions/deploy-to-firebase-hosting
+ *     - https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+ *
+ * @param setup A helper object provided by the `firebase init` command.
+ * @param config Configuration for the project.
+ * @param options Command line options.
+ */
+export async function initGitHub(setup: Setup, config: any, options: any): Promise<void> {
   // GitHub Oauth
   logger.info();
   logBullet(
