@@ -1,23 +1,25 @@
 "use strict";
 
-var clc = require("cli-color");
-var fs = require("fs");
+let clc = require("cli-color");
+let fs = require("fs");
 
-var api = require("../../api");
-var logger = require("../../logger");
-var { prompt } = require("../../prompt");
+let api = require("../../../api");
+let logger = require("../../../logger");
+let { prompt } = require("../../../prompt");
+let { initGitHub } = require("./github");
+let { previews } = require("../../../previews");
 
-var INDEX_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../templates/init/hosting/index.html",
+let INDEX_TEMPLATE = fs.readFileSync(
+  __dirname + "/../../../../templates/init/hosting/index.html",
   "utf8"
 );
-var MISSING_TEMPLATE = fs.readFileSync(
-  __dirname + "/../../../templates/init/hosting/404.html",
+let MISSING_TEMPLATE = fs.readFileSync(
+  __dirname + "/../../../../templates/init/hosting/404.html",
   "utf8"
 );
-var DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
+let DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-module.exports = function(setup, config) {
+module.exports = function(setup, config, options) {
   setup.hosting = {};
 
   logger.info();
@@ -32,6 +34,15 @@ module.exports = function(setup, config) {
   logger.info("have a build process for your assets, use your build's output directory.");
   logger.info();
 
+  const channelsPrompt = {
+    name: "github",
+    type: "confirm",
+    default: false,
+    message: "Set up automatic builds and deploys with GitHub?",
+  };
+
+  const configureChannels = previews.hostingchannels ? channelsPrompt : {};
+
   return prompt(setup.hosting, [
     {
       name: "public",
@@ -45,13 +56,14 @@ module.exports = function(setup, config) {
       default: false,
       message: "Configure as a single-page app (rewrite all urls to /index.html)?",
     },
+    configureChannels,
   ]).then(function() {
     setup.config.hosting = {
       public: setup.hosting.public,
       ignore: DEFAULT_IGNORES,
     };
 
-    var next;
+    let next;
     if (setup.hosting.spa) {
       setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
       next = Promise.resolve();
@@ -72,6 +84,11 @@ module.exports = function(setup, config) {
           setup.hosting.public + "/index.html",
           INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version)
         );
+      })
+      .then(function() {
+        if (setup.hosting.github) {
+          return initGitHub(setup, config, options);
+        }
       });
   });
 };
