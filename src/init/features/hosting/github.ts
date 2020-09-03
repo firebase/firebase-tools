@@ -91,7 +91,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   const spinnerSecrets = ora.default(`Uploading service account secrets to repository: ${repo}`);
   spinnerSecrets.start();
 
-  const encryptedServiceAccountJSON = await encryptServiceAccountJSON(serviceAccountJSON, key);
+  const encryptedServiceAccountJSON = encryptServiceAccountJSON(serviceAccountJSON, key);
 
   await uploadSecretToGitHub(
     repo,
@@ -519,6 +519,14 @@ async function createServiceAccountAndKey(
   */
 }
 
+/**
+ * Encrypt service account to prepare to upload as a secret
+ * using the method recommended in the GitHub docs:
+ * https://developer.github.com/v3/actions/secrets/#create-or-update-a-repository-secret
+ *
+ * @param serviceAccountJSON A service account's JSON private key
+ * @param key a GitHub repository's public key
+ */
 function encryptServiceAccountJSON(serviceAccountJSON: string, key: string) {
   const messageBytes = Buffer.from(serviceAccountJSON);
   const keyBytes = Buffer.from(key, "base64");
