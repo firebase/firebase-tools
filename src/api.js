@@ -178,6 +178,13 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
+  githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
+  githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
+  githubClientSecret: utils.envOverride(
+    "GITHUB_CLIENT_SECRET",
+    "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
+  ),
   setRefreshToken: function(token) {
     refreshToken = token;
   },

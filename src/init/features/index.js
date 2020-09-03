@@ -1,4 +1,5 @@
 "use strict";
+const { previews } = require("../../previews");
 
 module.exports = {
   database: require("./database"),
@@ -10,3 +11,7 @@ module.exports = {
   // always runs, sets up .firebaserc
   project: require("./project").doSetup,
 };
+
+if (previews.hostingchannels) {
+  module.exports["hosting:github"] = require("./hosting/github").initGitHub;
+}

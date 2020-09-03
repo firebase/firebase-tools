@@ -98,6 +98,7 @@ module.exports = function(client) {
     client.hosting.clone = loadCommand("hosting-clone");
   }
   client.hosting.disable = loadCommand("hosting-disable");
+  client.hosting.channel = {};
   client.init = loadCommand("init");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");

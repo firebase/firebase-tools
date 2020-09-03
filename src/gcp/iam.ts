@@ -5,6 +5,44 @@ import { debug } from "../logger";
 
 const API_VERSION = "v1";
 
+// IAM Policy
+// https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
+export interface Binding {
+  role: string;
+  members: string[];
+  condition?: { [key: string]: string };
+}
+
+export interface Policy {
+  bindings: Binding[];
+  etag: string;
+  version: number;
+}
+
+export interface ServiceAccount {
+  name: string;
+  projectId: string;
+  uniqueId: string;
+  email: string;
+  displayName: string;
+  etag: string;
+  description: string;
+  oauth2ClientId: string;
+  disabled: boolean;
+}
+
+export interface ServiceAccountKey {
+  name: string;
+  privateKeyType: string;
+  keyAlgorithm: string;
+  privateKeyData: string;
+  publicKeyData: string;
+  validAfterTime: string;
+  validBeforeTime: string;
+  keyOrigin: string;
+  keyType: string;
+}
+
 /**
  * Creates a new the service account with the given parameters.
  *
@@ -32,6 +70,46 @@ export async function createServiceAccount(
           displayName,
           description,
         },
+      },
+    }
+  );
+  return response.body;
+}
+
+/**
+ * Retrieves a service account with the given parameters.
+ *
+ * @param projectId the id of the project where the service account will be created
+ * @param serviceAccountName the name of the service account
+ */
+export async function getServiceAccount(
+  projectId: string,
+  serviceAccountName: string
+): Promise<ServiceAccount> {
+  const response = await api.request(
+    "GET",
+    `/${API_VERSION}/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`,
+    {
+      auth: true,
+      origin: api.iamOrigin,
+    }
+  );
+  return response.body;
+}
+
+export async function createServiceAccountKey(
+  projectId: string,
+  serviceAccountName: string
+): Promise<ServiceAccountKey> {
+  const response = await api.request(
+    "POST",
+    `/${API_VERSION}/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
+    {
+      auth: true,
+      origin: api.iamOrigin,
+      data: {
+        keyAlgorithm: "KEY_ALG_UNSPECIFIED",
+        privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
       },
     }
   );
@@ -82,7 +160,7 @@ export interface TestIamResult {
 /**
  * List permissions not held by an arbitrary resource implementing the IAM APIs.
  *
- * @param origin Resource origin e.g. `https://iam.googleapis.com`.
+ * @param origin Resource origin e.g. `https:// iam.googleapis.com`.
  * @param apiVersion API version e.g. `v1`.
  * @param resourceName Resource name e.g. `projects/my-projct/widgets/abc`
  * @param permissions An array of string permissions, e.g. `["iam.serviceAccounts.actAs"]`
