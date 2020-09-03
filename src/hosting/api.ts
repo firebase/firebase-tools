@@ -275,3 +275,41 @@ export async function createRelease(site: string, channel: string, version: stri
   );
   return res.body;
 }
+
+/**
+ * Adds channel domain to auth.
+ * @param project the project ID.
+ * @param url the url of the cjannel.
+ * @param versionName the specific version ID.
+ */
+export async function addAuthDomain(project: string, url: string): Promise<any> {
+  const res = await api.request(
+    "GET",
+    `/admin/v2/projects/${project}/config`,
+    {
+      auth: true,
+      origin: "https://identitytoolkit.googleapis.com",
+    }
+  );
+
+  const domain = url.replace('https://','');
+  let authDomains = res?.body?.authorizedDomains || [];
+
+  if (authDomains.includes(domain)) {
+    return res.body;
+  }
+
+  const resp = await api.request(
+    "PATCH",
+    `admin/v2/projects/${project}/config?update_mask=authorizedDomains`,
+    {
+      auth: true,
+      origin: "https://identitytoolkit.googleapis.com",
+      data: {
+        authorizedDomains: authDomains.push(domain)
+      }
+    }
+  );
+
+  return resp.body;
+}
