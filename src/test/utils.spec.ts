@@ -80,6 +80,20 @@ describe("utils", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
         "https://fir-proj.firebaseio.com/foo/bar.json"
       );
+      expect(
+        utils.getDatabaseUrl(
+          "https://some-namespace.europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
+      expect(
+        utils.getDatabaseUrl(
+          "https://europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
     });
 
     it("should create a url for the emulator", () => {
@@ -202,6 +216,21 @@ describe("utils", () => {
       };
 
       return expect(utils.promiseProps(o)).to.eventually.be.rejected;
+    });
+  });
+
+  describe.only("datetimeString", () => {
+    it("should output the date in the correct format", () => {
+      // Don't worry about the hour since timezones screw everything up.
+      expect(utils.datetimeString(new Date("February 22, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-22 \d\d:35:45$/
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-07 \d\d:35:45$/
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 8:01:01-07:00"))).to.match(
+        /^2020-02-07 \d\d:01:01$/
+      );
     });
   });
 });
