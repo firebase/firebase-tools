@@ -1,1 +1,1 @@
-- Replace `tslint` with `eslint` as the default linter in new Cloud Functions for Firebase directories. (#1663)
+- Replaces `tslint` with `eslint` as the default linter in new Cloud Functions for Firebase directories. (#1663)
