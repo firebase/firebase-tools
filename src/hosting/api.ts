@@ -2,7 +2,6 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
-import * as logger from "../logger";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
