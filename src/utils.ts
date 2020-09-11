@@ -3,6 +3,7 @@ import * as url from "url";
 import * as http from "http";
 import * as clc from "cli-color";
 import * as ora from "ora";
+import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -469,4 +470,11 @@ export function datetimeString(d: Date): string {
     .toString()
     .padStart(2, "0")}`;
   return `${day} ${time}`;
+}
+
+/**
+ * Indicates whether the end-user is running the CLI from a cloud-based environment.
+ */
+export function isCloudEnvironment() {
+  return !!process.env.CODESPACES;
 }
