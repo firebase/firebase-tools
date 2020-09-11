@@ -73,7 +73,15 @@ export default new Command("hosting:channel:create [channelId]")
       try {
         await addAuthDomain(projectId, channel.url);
       } catch (e) {
-        logLabeledWarning(LOG_TAG, marked(`Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(projectId, "/overview")}`));
+        logLabeledWarning(
+          LOG_TAG,
+          marked(
+            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+              projectId,
+              "/overview"
+            )}`
+          )
+        );
       }
 
       logger.info();

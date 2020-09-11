@@ -337,7 +337,7 @@ export async function syncAuthState(project: string, site: string): Promise<any>
   let authDomains: string[] = [];
 
   domains.forEach((domain: string) => {
-    // include domains that end in *.firebaseapp.com because urls belonging 
+    // include domains that end in *.firebaseapp.com because urls belonging
     // to the live channel should always be included
     let endsWithFirebaseApp = firebaseAppMatch.test(domain);
     if (endsWithFirebaseApp) {
