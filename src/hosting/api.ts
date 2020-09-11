@@ -301,7 +301,7 @@ async function updateAuthDomains(project: string, authDomains: string[]): Promis
 /**
  * Adds channel domain to Firebase Auth list.
  * @param project the project ID.
- * @param url the url of the cjannel.
+ * @param url the url of the channel.
  */
 export async function addAuthDomain(project: string, url: string): Promise<any> {
   const domains = await getAuthDomains(project);
