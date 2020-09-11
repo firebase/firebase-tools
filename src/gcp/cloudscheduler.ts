@@ -108,6 +108,7 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
           )
         );
       }
+      return Promise.reject(err);
     }
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
     return newJob;
