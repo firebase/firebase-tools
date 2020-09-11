@@ -315,11 +315,11 @@ export async function addAuthDomain(project: string, url: string): Promise<any> 
 }
 
 /**
- * Syncs the state of authorized domains with exsiting channels.
+ * Syncs the state of authorized domains with existing channels.
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function syncState(project: string, site: string): Promise<any> {
+export async function syncAuthState(project: string, site: string): Promise<any> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
   let channelMap = channels

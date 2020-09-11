@@ -7,7 +7,7 @@ import {
   createChannel,
   updateChannelTtl,
   addAuthDomain,
-  syncState,
+  syncAuthState,
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
@@ -17,7 +17,8 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString, logLabeledWarning } from "../utils";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import * as marked from "marked";
 
 const LOG_TAG = "hosting:channel";
 
@@ -87,7 +88,6 @@ export default new Command("hosting:channel:deploy [channelId]")
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
       }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
-      logger.debug("the sites are", sites);
 
       await Promise.all(
         sites.map(async (siteInfo) => {
@@ -110,7 +110,7 @@ export default new Command("hosting:channel:deploy [channelId]")
               }
             }
             try {
-              await syncState(projectId, site);
+              await syncAuthState(projectId, site);
             } catch (e) {
               // not sure if we actually want to print a warning when we cant sync?
               logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
@@ -121,7 +121,7 @@ export default new Command("hosting:channel:deploy [channelId]")
             try {
               await addAuthDomain(projectId, chan.url);
             } catch (e) {
-              logLabeledWarning(LOG_TAG, "Unable to add channel domain to Firebase Auth.");
+              logLabeledWarning(LOG_TAG, marked(`Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(projectId, "/overview")}`));
             }
           }
 
