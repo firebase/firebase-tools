@@ -287,7 +287,7 @@ export async function addAuthDomain(project: string, url: string): Promise<Domai
   const domain = url.replace("https://", "");
   let authDomains = domains || [];
   if (authDomains.includes(domain)) {
-    return authDomains;
+    return { authorizedDomains: authDomains };
   }
   authDomains.push(domain);
   return await updateAuthDomains(project, authDomains);
