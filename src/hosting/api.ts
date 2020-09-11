@@ -2,7 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
-import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
+import { getAuthDomains, updateAuthDomains, Domains } from "../gcp/auth";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -282,7 +282,7 @@ export async function createRelease(site: string, channel: string, version: stri
  * @param project the project ID.
  * @param url the url of the channel.
  */
-export async function addAuthDomain(project: string, url: string): Promise<any> {
+export async function addAuthDomain(project: string, url: string): Promise<Domains> {
   const domains = await getAuthDomains(project);
   const domain = url.replace("https://", "");
   let authDomains = domains || [];
@@ -333,7 +333,7 @@ export async function getApprovedDomains(project: string, site: string): Promise
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function syncAuthState(project: string, site: string): Promise<any> {
+export async function syncAuthState(project: string, site: string): Promise<Domains> {
   const authDomains = await getApprovedDomains(project, site);
   return await updateAuthDomains(project, authDomains);
 }

@@ -1,5 +1,4 @@
 import * as api from "../api";
-// import { autoInject } from "async";
 
 export interface Domains {
   authorizedDomains: string[];
