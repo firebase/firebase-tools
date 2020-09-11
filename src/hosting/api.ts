@@ -322,7 +322,7 @@ export async function addAuthDomain(project: string, url: string): Promise<any> 
 export async function syncAuthState(project: string, site: string): Promise<any> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
-  let channelMap = channels
+  const channelMap = channels
     .map((channel: Channel) => channel.url.replace("https://", ""))
     .reduce((acc: { [key: string]: boolean }, current: string) => {
       acc[current] = true;
@@ -339,13 +339,13 @@ export async function syncAuthState(project: string, site: string): Promise<any>
   domains.forEach((domain: string) => {
     // include domains that end in *.firebaseapp.com because urls belonging
     // to the live channel should always be included
-    let endsWithFirebaseApp = firebaseAppMatch.test(domain);
+    const endsWithFirebaseApp = firebaseAppMatch.test(domain);
     if (endsWithFirebaseApp) {
       authDomains.push(domain);
       return;
     }
     // exclude site domains that have no channels
-    let domainWithNoChannel = siteMatch.test(domain) && !channelMap[domain];
+    const domainWithNoChannel = siteMatch.test(domain) && !channelMap[domain];
     if (domainWithNoChannel) {
       return;
     }
