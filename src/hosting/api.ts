@@ -2,6 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
+import * as logger from "../logger";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -276,40 +277,81 @@ export async function createRelease(site: string, channel: string, version: stri
   return res.body;
 }
 
-/**
- * Adds channel domain to auth.
- * @param project the project ID.
- * @param url the url of the cjannel.
- * @param versionName the specific version ID.
- */
-export async function addAuthDomain(project: string, url: string): Promise<any> {
-  const res = await api.request(
-    "GET",
-    `/admin/v2/projects/${project}/config`,
-    {
-      auth: true,
-      origin: "https://identitytoolkit.googleapis.com",
-    }
-  );
+async function getAuthDomains(project: string): Promise<string[]> {
+  const res = await api.request("GET", `/admin/v2/projects/${project}/config`, {
+    auth: true,
+    origin: "https://identitytoolkit.googleapis.com",
+  });
+  return res?.body?.authorizedDomains;
+}
 
-  const domain = url.replace('https://','');
-  let authDomains = res?.body?.authorizedDomains || [];
-
-  if (authDomains.includes(domain)) {
-    return res.body;
-  }
-
+async function updateAuthDomains(project: string, authDomains: string[]): Promise<any> {
   const resp = await api.request(
     "PATCH",
-    `admin/v2/projects/${project}/config?update_mask=authorizedDomains`,
+    `/admin/v2/projects/${project}/config?update_mask=authorizedDomains`,
     {
       auth: true,
       origin: "https://identitytoolkit.googleapis.com",
       data: {
-        authorizedDomains: authDomains.push(domain)
-      }
+        authorizedDomains: authDomains,
+      },
     }
   );
-
   return resp.body;
+}
+/**
+ * Adds channel domain to Firebase Auth list.
+ * @param project the project ID.
+ * @param url the url of the cjannel.
+ */
+export async function addAuthDomain(project: string, url: string): Promise<any> {
+  const domains = await getAuthDomains(project);
+  const domain = url.replace("https://", "");
+  let authDomains = domains || [];
+  if (authDomains.includes(domain)) {
+    return authDomains;
+  }
+  authDomains.push(domain);
+  return await updateAuthDomains(project, authDomains);
+}
+
+/**
+ * Syncs the state of authorized domains with exsiting channels.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function syncState(project: string, site: string): Promise<any> {
+  const channels = await listChannels(project, site);
+  // Create a map of channel domain names
+  let channelMap = channels
+    .map((channel: Channel) => channel.url.replace("https://", ""))
+    .reduce((acc: { [key: string]: boolean }, current: string) => {
+      acc[current] = true;
+      return acc;
+    }, {});
+
+  // match any string that has ${site}--*
+  const siteMatch = new RegExp(site, "i");
+  // match any string that ends in firebaseapp.com
+  const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
+  const domains = await getAuthDomains(project);
+  let authDomains: string[] = [];
+
+  domains.forEach((domain: string) => {
+    // include domains that end in *.firebaseapp.com because urls belonging 
+    // to the live channel should always be included
+    let endsWithFirebaseApp = firebaseAppMatch.test(domain);
+    if (endsWithFirebaseApp) {
+      authDomains.push(domain);
+      return;
+    }
+    // exclude site domains that have no channels
+    let domainWithNoChannel = siteMatch.test(domain) && !channelMap[domain];
+    if (domainWithNoChannel) {
+      return;
+    }
+    // add all other domains (ex: "localhost", etc)
+    authDomains.push(domain);
+  });
+  return await updateAuthDomains(project, authDomains);
 }

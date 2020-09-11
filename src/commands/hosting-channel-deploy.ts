@@ -2,7 +2,13 @@ import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, updateChannelTtl } from "../hosting/api";
+import {
+  getChannel,
+  createChannel,
+  updateChannelTtl,
+  addAuthDomain,
+  syncState,
+} from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
@@ -11,7 +17,7 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString } from "../utils";
+import { logLabeledSuccess, datetimeString, logLabeledWarning } from "../utils";
 
 const LOG_TAG = "hosting:channel";
 
@@ -81,6 +87,7 @@ export default new Command("hosting:channel:deploy [channelId]")
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
       }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
+      logger.debug("the sites are", sites);
 
       await Promise.all(
         sites.map(async (siteInfo) => {
@@ -102,9 +109,20 @@ export default new Command("hosting:channel:deploy [channelId]")
                 logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
               }
             }
+            try {
+              await syncState(projectId, site);
+            } catch (e) {
+              // not sure if we actually want to print a warning when we cant sync?
+              logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+            }
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
+            try {
+              await addAuthDomain(projectId, chan.url);
+            } catch (e) {
+              logLabeledWarning(LOG_TAG, "Unable to add channel domain to Firebase Auth.");
+            }
           }
 
           siteInfo.url = chan.url;
