@@ -1,0 +1,91 @@
+import { bold, yellow } from "cli-color";
+
+import { Channel, createChannel } from "../hosting/api";
+import { Command } from "../command";
+import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
+import { FirebaseError } from "../error";
+import { logLabeledSuccess, datetimeString } from "../utils";
+import { promptOnce } from "../prompt";
+import { requirePermissions } from "../requirePermissions";
+import * as getInstanceId from "../getInstanceId";
+import * as getProjectId from "../getProjectId";
+import * as logger from "../logger";
+import * as requireConfig from "../requireConfig";
+import * as requireInstance from "../requireInstance";
+
+const LOG_TAG = "hosting:channel";
+
+export default new Command("hosting:channel:create [channelId]")
+  .description("create a Firebase Hosting channel")
+  .option(
+    "-e, --expires <duration>",
+    "duration string (e.g. 12h or 30d) for channel expiration, max 30d"
+  )
+  .option("--site <siteId>", "site for which to create the channel")
+  .before(requireConfig)
+  .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before(requireInstance)
+  .action(
+    async (
+      channelId: string,
+      options: any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ): Promise<Channel> => {
+      const projectId = getProjectId(options);
+      const site = options.site || (await getInstanceId(options));
+
+      let expireTTL = DEFAULT_DURATION;
+      if (options.expires) {
+        expireTTL = calculateChannelExpireTTL(options.expires);
+      }
+
+      if (!channelId) {
+        if (options.nonInteractive) {
+          throw new FirebaseError(
+            `"channelId" argument must be provided in a non-interactive environment`
+          );
+        }
+        channelId = await promptOnce({
+          type: "input",
+          message: "Please provide a URL-friendly name for the channel:",
+          validate: (s) => s, // Prevents an empty string from being submitted!
+        });
+      }
+      if (!channelId) {
+        throw new FirebaseError(`"channelId" must not be empty`);
+      }
+
+      let channel: Channel;
+      try {
+        channel = await createChannel(projectId, site, channelId, expireTTL);
+      } catch (e) {
+        if (e.status == 409) {
+          throw new FirebaseError(
+            `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
+              channelId
+            )} with: ${yellow(`firebase hosting:channel:deploy ${channelId}`)}`,
+            { original: e }
+          );
+        }
+        throw e;
+      }
+
+      logger.info();
+      logLabeledSuccess(
+        LOG_TAG,
+        `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+      );
+      logLabeledSuccess(
+        LOG_TAG,
+        `Channel ${bold(channelId)} will expire at ${bold(
+          datetimeString(new Date(channel.expireTime))
+        )}.`
+      );
+      logLabeledSuccess(LOG_TAG, `Channel URL: ${channel.url}`);
+      logger.info();
+      logger.info(
+        `To deploy to this channel, use \`firebase hosting:channel:deploy ${channelId}\`.`
+      );
+
+      return channel;
+    }
+  );

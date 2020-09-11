@@ -107,14 +107,12 @@ export interface ParamOption {
  * @param instanceId the id to set for the instance
  * @param extensionSource the ExtensionSource to create an instance of
  * @param params params to configure the extension instance
- * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
  */
 export async function createInstance(
   projectId: string,
   instanceId: string,
   extensionSource: ExtensionSource,
-  params: { [key: string]: string },
-  serviceAccountEmail: string
+  params: { [key: string]: string }
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
@@ -125,7 +123,6 @@ export async function createInstance(
         source: { name: extensionSource.name },
         params,
       },
-      serviceAccountEmail,
     },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
