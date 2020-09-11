@@ -2,6 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
+import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -276,28 +277,6 @@ export async function createRelease(site: string, channel: string, version: stri
   return res.body;
 }
 
-async function getAuthDomains(project: string): Promise<string[]> {
-  const res = await api.request("GET", `/admin/v2/projects/${project}/config`, {
-    auth: true,
-    origin: "https://identitytoolkit.googleapis.com",
-  });
-  return res?.body?.authorizedDomains;
-}
-
-async function updateAuthDomains(project: string, authDomains: string[]): Promise<any> {
-  const resp = await api.request(
-    "PATCH",
-    `/admin/v2/projects/${project}/config?update_mask=authorizedDomains`,
-    {
-      auth: true,
-      origin: "https://identitytoolkit.googleapis.com",
-      data: {
-        authorizedDomains: authDomains,
-      },
-    }
-  );
-  return resp.body;
-}
 /**
  * Adds channel domain to Firebase Auth list.
  * @param project the project ID.
@@ -314,12 +293,7 @@ export async function addAuthDomain(project: string, url: string): Promise<any> 
   return await updateAuthDomains(project, authDomains);
 }
 
-/**
- * Syncs the state of authorized domains with existing channels.
- * @param project the project ID.
- * @param site the site for the channel.
- */
-export async function syncAuthState(project: string, site: string): Promise<any> {
+export async function getApprovedDomains(project: string, site: string): Promise<string[]> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
   const channelMap = channels
@@ -352,5 +326,14 @@ export async function syncAuthState(project: string, site: string): Promise<any>
     // add all other domains (ex: "localhost", etc)
     authDomains.push(domain);
   });
+  return authDomains;
+}
+/**
+ * Syncs the state of authorized domains with existing channels.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function syncAuthState(project: string, site: string): Promise<any> {
+  const authDomains = await getApprovedDomains(project, site);
   return await updateAuthDomains(project, authDomains);
 }
