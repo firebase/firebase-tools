@@ -126,7 +126,7 @@ describe("cloudscheduler", () => {
 
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
-        "HTTP Error: 400, Unknown Error"
+        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
       );
 
       expect(nock.isDone()).to.be.true;
