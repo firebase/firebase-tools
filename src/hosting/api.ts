@@ -85,6 +85,85 @@ export interface Channel {
   labels: { [key: string]: string };
 }
 
+enum VersionStatus {
+  // The default status; should not be intentionally used.
+  VERSION_STATUS_UNSPECIFIED = "VERSION_STATUS_UNSPECIFIED",
+  // The version has been created, and content is currently being added to the
+  // version.
+  CREATED = "CREATED",
+  // All content has been added to the version, and the version can no longer be
+  // changed.
+  FINALIZED = "FINALIZED",
+  // The version has been deleted.
+  DELETED = "DELETED",
+  // The version was not updated to `FINALIZED` within 12&nbsp;hours and was
+  // automatically deleted.
+  ABANDONED = "ABANDONED",
+  // The version is outside the site-configured limit for the number of
+  // retained versions, so the version's content is scheduled for deletion.
+  EXPIRED = "EXPIRED",
+  // The version is being cloned from another version. All content is still
+  // being copied over.
+  CLONING = "CLONING",
+}
+
+// TODO: define ServingConfig.
+enum ServingConfig {}
+
+export interface Version {
+  // The unique identifier for a version, in the format:
+  // `sites/<site-name>/versions/<versionID>`
+  name: string;
+
+  // The deploy status of a version.
+  status: VersionStatus;
+
+  // The configuration for the behavior of the site.
+  config: ServingConfig;
+
+  // The labels used for extra metadata and/or filtering.
+  labels: Map<string, string>;
+
+  // The time at which the version was created.
+  readonly createTime: string;
+
+  // Identifies the user who created the version.
+  readonly createUser: ActingUser;
+
+  // The time at which the version was `FINALIZED`.
+  readonly finalizeTime: string;
+
+  // Identifies the user who `FINALIZED` the version.
+  readonly finalizeUser: ActingUser;
+
+  // The time at which the version was `DELETED`.
+  readonly deleteTime: string;
+
+  // Identifies the user who `DELETED` the version.
+  readonly deleteUser: ActingUser;
+
+  // The total number of files associated with the version.
+  readonly fileCount: number;
+
+  // The total stored bytesize of the version.
+  readonly versionBytes: number;
+}
+
+/**
+ * normalizeName normalizes a name given to it. Most useful for normalizing
+ * user provided names. This removes any `/` characters and replaces them with
+ * dashes (`-`).
+ * @param s the name to normalize.
+ * @return the normalized name.
+ */
+export function normalizeName(s: string): string {
+  if (s.includes("/")) {
+    // Using a regex replaces *all* slashes.
+    s = s.replace(/\//g, "-");
+  }
+  return s;
+}
+
 /**
  * getChannel retrieves information about a channel.
  * @param project the project ID or number (can be provided `-`),
@@ -228,15 +307,15 @@ export async function deleteChannel(
 
 /**
  * Create a version a clone.
- * @param project the project ID or number (can be provided `-`),
  * @param site the site for the version.
  * @param versionName the specific version ID.
+ * @param finalize whether or not to immediately finalize the version.
  */
 export async function cloneVersion(
   site: string,
   versionName: string,
-  finalize: boolean = false
-): Promise<any> {
+  finalize = false
+): Promise<Version> {
   const res = await api.request(
     "POST",
     `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
@@ -249,7 +328,7 @@ export async function cloneVersion(
     }
   );
   const name = res.body.name;
-  const pollRes = await operationPoller.pollOperation({
+  const pollRes = await operationPoller.pollOperation<Version>({
     apiOrigin: api.hostingApiOrigin,
     apiVersion: "v1beta1",
     operationResourceName: name,
@@ -259,12 +338,16 @@ export async function cloneVersion(
 }
 
 /**
- * Create a release of on a channel.
- * @param project the project ID or number (can be provided `-`),
+ * Create a release on a channel.
  * @param site the site for the version.
- * @param versionName the specific version ID.
+ * @param channel the channel for the release.
+ * @param version the specific version ID.
  */
-export async function createRelease(site: string, channel: string, version: string): Promise<any> {
+export async function createRelease(
+  site: string,
+  channel: string,
+  version: string
+): Promise<Release> {
   const res = await api.request(
     "POST",
     `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,

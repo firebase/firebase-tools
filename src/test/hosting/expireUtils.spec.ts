@@ -1,5 +1,6 @@
-import { calculateChannelExpireTTL } from "../../hosting/expireUtils";
 import { expect } from "chai";
+
+import { calculateChannelExpireTTL } from "../../hosting/expireUtils";
 import { FirebaseError } from "../../error";
 
 describe("calculateChannelExpireTTL", () => {
