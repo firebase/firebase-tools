@@ -190,7 +190,7 @@ describe("extensions", () => {
       nock.cleanAll();
     });
 
-    it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
+    it("should make a POST call to the correct endpoint, and then poll on the returned operation when given a source", async () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .reply(200, { name: "operations/abc123" });
@@ -198,12 +198,35 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
-      await extensionsApi.createInstance(
+      await extensionsApi.createInstanceFromSource(
         PROJECT_ID,
         INSTANCE_ID,
         {
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
+          hash: "abc123",
+          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
+        },
+        {},
+        "my-service-account@proj.gserviceaccount.com"
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a POST call to the correct endpoint, and then poll on the returned operation when given an Extension ref", async () => {
+      nock(api.extensionsOrigin)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true });
+
+      await extensionsApi.createInstanceFromExtensionVersion(
+        PROJECT_ID,
+        INSTANCE_ID,
+        {
+          name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
+          ref: "test-pub/test-ext@0.1.0",
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
@@ -219,7 +242,7 @@ describe("extensions", () => {
         .reply(500);
 
       await expect(
-        extensionsApi.createInstance(
+        extensionsApi.createInstanceFromSource(
           PROJECT_ID,
           INSTANCE_ID,
           {
@@ -251,7 +274,7 @@ describe("extensions", () => {
         .reply(502);
 
       await expect(
-        extensionsApi.createInstance(
+        extensionsApi.createInstanceFromSource(
           PROJECT_ID,
           INSTANCE_ID,
           {

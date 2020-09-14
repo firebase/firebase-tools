@@ -12,7 +12,7 @@ const refRegex = new RegExp(/^([^/@\n]+)\/{1}([^/@\n]+)(@{1}([a-z0-9.-]+)|)$/);
 export interface Extension {
   name: string;
   ref: string;
-  state: "STATE_UNSPECIFIED" | "UNPUBLISHED" | "PUBLISHED";
+  state: "STATE_UNSPECIFIED" | "PUBLISHED";
   createTime: string;
   latestVersion?: string;
   latestVersionCreateTime?: string;
@@ -22,9 +22,9 @@ export interface ExtensionVersion {
   name: string;
   ref: string;
   spec: ExtensionSpec;
-  state: "STATE_UNSPECIFIED" | "UNPUBLISHED" | "PUBLISHED";
+  state?: "STATE_UNSPECIFIED" | "PUBLISHED";
   hash: string;
-  createTime: string;
+  createTime?: string;
 }
 
 export interface PublisherProfile {
@@ -138,19 +138,17 @@ export interface ParamOption {
 }
 
 /**
- * Create a new extension instance, given a extension source path, a set of params, and a service account
+ * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account
  *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance
- * @param extensionSource the ExtensionSource to create an instance of
- * @param params params to configure the extension instance
+ * @param config instance configuration
  * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
  */
 export async function createInstance(
   projectId: string,
   instanceId: string,
-  extensionSource: ExtensionSource,
-  params: { [key: string]: string },
+  config: any,
   serviceAccountEmail: string
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
@@ -158,10 +156,7 @@ export async function createInstance(
     origin: api.extensionsOrigin,
     data: {
       name: `projects/${projectId}/instances/${instanceId}`,
-      config: {
-        source: { name: extensionSource.name },
-        params,
-      },
+      config: config,
       serviceAccountEmail,
     },
   });
@@ -172,6 +167,54 @@ export async function createInstance(
     masterTimeout: 600000,
   });
   return pollRes;
+}
+
+/**
+ * Create a new extension instance, given a extension source path, a set of params, and a service account
+ *
+ * @param projectId the project to create the instance in
+ * @param instanceId the id to set for the instance
+ * @param extensionSource the ExtensionSource to create an instance of
+ * @param params params to configure the extension instance
+ * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
+ */
+export async function createInstanceFromSource(
+  projectId: string,
+  instanceId: string,
+  extensionSource: ExtensionSource,
+  params: { [key: string]: string },
+  serviceAccountEmail: string
+): Promise<ExtensionInstance> {
+  const config = {
+    source: { name: extensionSource.name },
+    params,
+  };
+  return createInstance(projectId, instanceId, config, serviceAccountEmail);
+}
+
+/**
+ * Create a new extension instance, given a extension source path, a set of params, and a service account
+ *
+ * @param projectId the project to create the instance in
+ * @param instanceId the id to set for the instance
+ * @param extensionVersion the ExtensionVersion ref
+ * @param params params to configure the extension instance
+ * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
+ */
+export async function createInstanceFromExtensionVersion(
+  projectId: string,
+  instanceId: string,
+  extensionVersion: ExtensionVersion,
+  params: { [key: string]: string },
+  serviceAccountEmail: string
+): Promise<ExtensionInstance> {
+  const { publisherId, extensionId, version } = parseRef(extensionVersion.ref);
+  const config = {
+    extensionRef: `${publisherId}/${extensionId}`,
+    extensionVersion: version || "",
+    params,
+  };
+  return createInstance(projectId, instanceId, config, serviceAccountEmail);
 }
 
 /**

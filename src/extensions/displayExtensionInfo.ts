@@ -1,4 +1,4 @@
-import { ExtensionSource } from "./extensionsApi";
+import { ExtensionSpec } from "./extensionsApi";
 import * as utils from "../utils";
 import { logPrefix } from "./extensionsHelper";
 import * as logger from "../logger";
@@ -8,14 +8,14 @@ import { FirebaseError } from "../error";
 /**
  *  displayExtInstallInfo prints the extension info displayed when running ext:install.
  */
-export function displayExtInstallInfo(extensionName: string, source: ExtensionSource): void {
+export function displayExtInstallInfo(extensionName: string, spec: ExtensionSpec): void {
   const lines = [];
-  lines.push(`**Name**: ${source.spec.displayName}`);
-  const url = source.spec.author?.url;
+  lines.push(`**Name**: ${spec.displayName}`);
+  const url = spec.author?.url;
   const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
-  lines.push(`**Author**: ${source.spec.author?.authorName} ${urlMarkdown}`);
-  if (source.spec.description) {
-    lines.push(`**Description**: ${source.spec.description}`);
+  lines.push(`**Author**: ${spec.author?.authorName} ${urlMarkdown}`);
+  if (spec.description) {
+    lines.push(`**Description**: ${spec.description}`);
   }
   if (lines.length > 0) {
     utils.logLabeledBullet(logPrefix, `information about ${extensionName}:`);
@@ -28,7 +28,7 @@ export function displayExtInstallInfo(extensionName: string, source: ExtensionSo
       "Error occurred during installation: cannot parse info from source spec",
       {
         context: {
-          source: source,
+          spec: spec,
           extensionName: extensionName,
         },
       }
