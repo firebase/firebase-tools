@@ -151,17 +151,14 @@ export interface Version {
 
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
- * user provided names. This removes any `/` characters and replaces them with
- * dashes (`-`).
+ * user provided names. This removes any `/`, ':', or '_' characters and
+ * replaces them with dashes (`-`).
  * @param s the name to normalize.
  * @return the normalized name.
  */
 export function normalizeName(s: string): string {
-  if (s.includes("/")) {
-    // Using a regex replaces *all* slashes.
-    s = s.replace(/\//g, "-");
-  }
-  return s;
+  // Using a regex replaces *all* bad characters.
+  return s.replace(/[/:_]/g, "-");
 }
 
 /**
