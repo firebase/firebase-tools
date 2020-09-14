@@ -2,6 +2,7 @@ import * as _ from "lodash";
 import * as ora from "ora";
 import * as semver from "semver";
 import * as fs from "fs";
+import * as clc from "cli-color";
 
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
@@ -21,6 +22,8 @@ import {
   Param,
   ParamType,
   parseRef,
+  getExtension,
+  getExtensionVersion,
 } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
@@ -39,12 +42,12 @@ export enum SpecParamType {
 }
 
 export enum SourceOrigin {
-  "REGISTRY",
-  "LOCAL",
-  "PUBLISHED_EXTENSION",
-  "PUBLISHED_EXTENSION_VERSION",
-  "URL",
-  "VERSION",
+  OFFICIAL = "official extension",
+  LOCAL = "unpublished extension (local source)",
+  PUBLISHED_EXTENSION = "published extension",
+  PUBLISHED_EXTENSION_VERSION = "specific version of a published extension",
+  URL = "unpublished extension (URL source)",
+  VERSION = "specific version of an official extension",
 }
 
 export const logPrefix = "extensions";
@@ -122,8 +125,9 @@ export function substituteParams(original: object[], params: { [key: string]: st
 
 /**
  * Sets params equal to defaults given in extension.yaml if not already set in .env file.
+ *
  * @param paramVars JSON object of params to values parsed from .env file
- * @param spec information on params parsed from extension.yaml
+ * @param paramSpec information on params parsed from extension.yaml
  * @return JSON object of params
  */
 export function populateDefaultParams(paramVars: any, paramSpec: any): any {
@@ -159,7 +163,7 @@ export function validateCommandLineParams(
       return param.param;
     });
     const misnamedParams = Object.keys(envVars).filter((key: any) => {
-      return paramList.indexOf(key) === -1;
+      return !paramList.includes(key);
     });
     logger.info(
       "Warning: The following params were specified in your env file but do not exist in the extension spec: " +
@@ -194,7 +198,7 @@ export function validateSpec(spec: any) {
   if (!spec.version) {
     errors.push("extension.yaml; is missing required field: version");
   }
-  for (let resource of spec.resources) {
+  for (const resource of spec.resources) {
     if (!resource.name) {
       errors.push("Resource is missing required field: name");
     }
@@ -204,17 +208,17 @@ export function validateSpec(spec: any) {
       );
     }
   }
-  for (let api of spec.apis || []) {
+  for (const api of spec.apis || []) {
     if (!api.apiName) {
       errors.push("API is missing required field: apiName");
     }
   }
-  for (let role of spec.roles || []) {
+  for (const role of spec.roles || []) {
     if (!role.role) {
       errors.push("Role is missing required field: role");
     }
   }
-  for (let param of spec.params || []) {
+  for (const param of spec.params || []) {
     if (!param.param) {
       errors.push("Param is missing required field: param");
     }
@@ -267,7 +271,7 @@ export function validateSpec(spec: any) {
           }`
         );
       }
-      for (let opt of param.options || []) {
+      for (const opt of param.options || []) {
         if (opt.value == undefined) {
           errors.push(
             `Option for param${
@@ -284,6 +288,9 @@ export function validateSpec(spec: any) {
   }
 }
 
+/**
+ * @param instanceId ID of the extension instance
+ */
 export async function promptForValidInstanceId(instanceId: string): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId;
@@ -322,7 +329,7 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
  * Zips and uploads a local extension to a bucket.
  * @param extPath a local path to archive and upload
  * @param bucketName the bucket to upload to
- * @returns the path where the source was uploaded to
+ * @return the path where the source was uploaded to
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
@@ -377,7 +384,7 @@ export async function createSourceFromLocation(
  * Looks up a ExtensionSource from a extensionName. If no source exists for that extensionName, returns undefined.
  * @param extensionName a official extension source name
  *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
- * @returns an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
+ * @return an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
  */
 export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
   const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
@@ -395,9 +402,9 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
   throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
 }
 
-/* Display list of all official extensions and prompt user to select one.
+/** Display list of all official extensions and prompt user to select one.
  * @param message The prompt message to display
- * @returns Promise that resolves to the extension name (e.g. storage-resize-images)
+ * @return Promise that resolves to the extension name (e.g. storage-resize-images)
  */
 export async function promptForOfficialExtension(message: string): Promise<string> {
   const officialExts = await getExtensionRegistry(true);
@@ -428,6 +435,11 @@ export async function promptForRepeatInstance(
   });
 }
 
+/**
+ * Checks to see if an extension instance exists.
+ * @param projectId ID of the project in use
+ * @param instanceId ID of the extension instance
+ */
 export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
   const instanceRes = await getInstance(projectId, instanceId, {
     resolveOnHTTPError: true,
@@ -446,9 +458,13 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
   return true;
 }
 
-export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
+/**
+ * Given an update source, return where the update source came from.
+ * @param sourceOrVersion path to a source or reference to a source version
+ */
+export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
   if (!sourceOrVersion) {
-    return SourceOrigin.REGISTRY;
+    return SourceOrigin.OFFICIAL;
   }
   if (urlRegex.test(sourceOrVersion)) {
     return SourceOrigin.URL;
@@ -459,9 +475,12 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
   try {
     const { publisherId, extensionId, version } = parseRef(sourceOrVersion);
     if (publisherId && extensionId && !version) {
+      // Ensure valid Extension Ref by trying to get it from the backend.
+      await getExtension(sourceOrVersion);
       return SourceOrigin.PUBLISHED_EXTENSION;
     }
     if (publisherId && extensionId && version) {
+      await getExtensionVersion(sourceOrVersion);
       return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
     }
   } catch (err) {
@@ -469,7 +488,13 @@ export function getSourceOrigin(sourceOrVersion: string): SourceOrigin {
     if (fs.existsSync(sourceOrVersion)) {
       return SourceOrigin.LOCAL;
     }
-    throw err;
+    throw new FirebaseError(
+      `Invalid source ${clc.bold(
+        sourceOrVersion
+      )}. If this is a published extension source, please make sure ` +
+        "it matches the format `{publisher}/{extension}(@{version})`. Otherwise, please make sure the " +
+        "path to the source exists and try again."
+    );
   }
   throw new FirebaseError(
     `Invalid source ${sourceOrVersion}. Please check to make sure this source exists and try again.`

@@ -383,6 +383,24 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should include config.extensionRef and config.extensionVersion for an update to a published extension", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.extensionRef,config.extensionVersion" })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true });
+
+      await extensionsApi.updateInstanceFromRegistry(
+        PROJECT_ID,
+        INSTANCE_ID,
+        "extens-test/firestore-translate-text"
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)

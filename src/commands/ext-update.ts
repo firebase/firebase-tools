@@ -21,7 +21,10 @@ import {
   retryUpdate,
   updateFromLocalSource,
   updateFromUrlSource,
-  updateFromPublishedSource,
+  updateFromRegistry,
+  updateToVersionFromRegistry,
+  updateToVersionFromPublisherSource,
+  updateFromPublisherSource,
 } from "../extensions/updateHelper";
 import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
@@ -74,7 +77,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const existingSource = _.get(existingInstance, "config.source.name");
 
       let newSourceName: string;
-      const origin = getSourceOrigin(updateSource);
+      const origin = await getSourceOrigin(updateSource);
       switch (origin) {
         case SourceOrigin.LOCAL: {
           if (previews.extdev) {
@@ -100,9 +103,66 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             break;
           }
         }
+        case SourceOrigin.VERSION: {
+          if (previews.extdev) {
+            const extRef = _.get(existingInstance, "extensionRef");
+            const extVer = _.get(existingInstance, "extensionVersion", "latest");
+            if (previews.extdev && extRef) {
+              newSourceName = await updateToVersionFromPublisherSource(
+                instanceId,
+                `${extRef}@${extVer}`,
+                existingSpec,
+                existingSource
+              );
+            } else {
+              newSourceName = await updateToVersionFromRegistry(
+                instanceId,
+                existingSpec,
+                existingSource,
+                updateSource
+              );
+            }
+            break;
+          }
+        }
+        case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
+          if (previews.extdev) {
+            newSourceName = await updateToVersionFromPublisherSource(
+              instanceId,
+              updateSource,
+              existingSpec,
+              existingSource
+            );
+            break;
+          }
+        }
+        case SourceOrigin.PUBLISHED_EXTENSION: {
+          if (previews.extdev) {
+            newSourceName = await updateFromPublisherSource(
+              instanceId,
+              updateSource,
+              existingSpec,
+              existingSource
+            );
+            break;
+          }
+        }
+        case SourceOrigin.OFFICIAL: {
+          const extRef = _.get(existingInstance, "extensionRef");
+          if (previews.extdev && extRef) {
+            newSourceName = await updateFromPublisherSource(
+              instanceId,
+              extRef,
+              existingSpec,
+              existingSource
+            );
+          } else {
+            newSourceName = await updateFromRegistry(instanceId, existingSpec, existingSource);
+          }
+          break;
+        }
         default: {
-          // For now we default to published extension updates
-          newSourceName = await updateFromPublishedSource(projectId, instanceId, existingSpec);
+          throw new FirebaseError(`unknown source origin for ${updateSource}`);
         }
       }
 

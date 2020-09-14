@@ -7,6 +7,7 @@ import * as updateHelper from "../../extensions/updateHelper";
 import * as prompt from "../../prompt";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as resolveSource from "../../extensions/resolveSource";
+import * as extensionsApi from "../../extensions/extensionsApi";
 
 const SPEC = {
   name: "test",
@@ -40,10 +41,20 @@ const SOURCE = {
   spec: SPEC,
 };
 
+const EXTENSION_VERSION = {
+  name: "publishers/test-publisher/extensions/test/versions/0.2.0",
+  ref: "test-publisher/test@0.2.0",
+  spec: SPEC,
+  state: "PUBLISHED",
+  hash: "abcdefg",
+  createTime: "2020-06-30T00:21:06.722782Z",
+};
+
 const REGISTRY_ENTRY = {
   name: "test",
   labels: {
     latest: "0.2.0",
+    minRequired: "0.1.1",
   },
   versions: {
     "0.1.0": "projects/firebasemods/sources/2kd",
@@ -293,7 +304,7 @@ describe("updateHelper", () => {
         updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  });
+  }).timeout(2500);
 
   describe("updateFromUrlSource", () => {
     let promptStub: sinon.SinonStub;
@@ -345,9 +356,107 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  });
+  }).timeout(2500);
 
-  describe("updateFromPublishedSource", () => {
+  describe("updateToVersionFromPublisherSource", () => {
+    let promptStub: sinon.SinonStub;
+    let createSourceStub: sinon.SinonStub;
+    beforeEach(() => {
+      promptStub = sinon.stub(prompt, "promptOnce");
+      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
+    });
+
+    afterEach(() => {
+      promptStub.restore();
+      createSourceStub.restore();
+    });
+    it("should return the correct source name for a valid published extension version source", async () => {
+      promptStub.resolves(true);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      const name = await updateHelper.updateToVersionFromPublisherSource(
+        "test-instance",
+        "test-publisher/test@0.2.0",
+        SPEC,
+        SPEC.name
+      );
+      expect(name).to.equal(EXTENSION_VERSION.name);
+    });
+    it("should throw an error for an invalid source", async () => {
+      promptStub.resolves(true);
+      createSourceStub.throws(Error("NOT FOUND"));
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test@1.2.3",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith("NOT FOUND");
+    });
+    it("should not update if the update warning is not confirmed", async () => {
+      promptStub.resolves(false);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test@0.2.0",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
+    });
+  }).timeout(2500);
+
+  describe("updateFromPublisherSource", () => {
+    let promptStub: sinon.SinonStub;
+    let createSourceStub: sinon.SinonStub;
+    beforeEach(() => {
+      promptStub = sinon.stub(prompt, "promptOnce");
+      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
+    });
+
+    afterEach(() => {
+      promptStub.restore();
+      createSourceStub.restore();
+    });
+    it("should return the correct source name for the latest published extension source", async () => {
+      promptStub.resolves(true);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      const name = await updateHelper.updateToVersionFromPublisherSource(
+        "test-instance",
+        "test-publisher/test",
+        SPEC,
+        SPEC.name
+      );
+      expect(name).to.equal(EXTENSION_VERSION.name);
+    });
+    it("should throw an error for an invalid source", async () => {
+      promptStub.resolves(true);
+      createSourceStub.throws(Error("NOT FOUND"));
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith("NOT FOUND");
+    });
+    it("should not update if the update warning is not confirmed", async () => {
+      promptStub.resolves(false);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
+    });
+  }).timeout(2500);
+
+  describe("updateToVersionFromRegistry", () => {
     let promptStub: sinon.SinonStub;
     let registryEntryStub: sinon.SinonStub;
     beforeEach(() => {
@@ -362,26 +471,67 @@ describe("updateHelper", () => {
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       registryEntryStub.resolves(REGISTRY_ENTRY);
-      const name = await updateHelper.updateFromPublishedSource(
-        "test-project",
+      const name = await updateHelper.updateToVersionFromRegistry(
         "test-instance",
-        SPEC
+        SPEC,
+        SPEC.name,
+        "0.1.2"
       );
-      expect(name).to.equal("projects/firebasemods/sources/abc");
+      expect(name).to.equal("projects/firebasemods/sources/123");
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateFromPublishedSource("test-project", "test-instance", SPEC)
+        updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.1")
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromPublishedSource("test-project", "test-instance", SPEC)
+        updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.2")
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  });
+    it("should not update if version given less than min version required", async () => {
+      registryEntryStub.resolves(REGISTRY_ENTRY);
+      await expect(
+        updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.0")
+      ).to.be.rejectedWith(FirebaseError, "is less than the minimum version required");
+    });
+  }).timeout(2500);
+
+  describe("updateFromRegistry", () => {
+    let promptStub: sinon.SinonStub;
+    let registryEntryStub: sinon.SinonStub;
+    beforeEach(() => {
+      promptStub = sinon.stub(prompt, "promptOnce");
+      registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+    });
+
+    afterEach(() => {
+      promptStub.restore();
+      registryEntryStub.restore();
+    });
+    it("should return the correct source name for a valid published source", async () => {
+      promptStub.resolves(true);
+      registryEntryStub.resolves(REGISTRY_ENTRY);
+      const name = await updateHelper.updateFromRegistry("test-instance", SPEC, SPEC.name);
+      expect(name).to.equal("projects/firebasemods/sources/abc");
+    });
+    it("should throw an error for an invalid source", async () => {
+      promptStub.resolves(true);
+      registryEntryStub.throws("Unable to find extension source");
+      await expect(
+        updateHelper.updateFromRegistry("test-instance", SPEC, SPEC.name)
+      ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
+    });
+    it("should not update if the update warning is not confirmed", async () => {
+      promptStub.resolves(false);
+      registryEntryStub.resolves(REGISTRY_ENTRY);
+      await expect(
+        updateHelper.updateFromRegistry("test-instance", SPEC, SPEC.name)
+      ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
+    });
+  }).timeout(2500);
 });

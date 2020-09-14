@@ -81,7 +81,7 @@ export function resolveSourceUrl(
  * @param registryEntry the registry entry to look through.
  * @param sourceUrl the source URL of the extension.
  */
-export function isPublishedSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
+export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
   const versions = _.get(registryEntry, "versions");
   return _.includes(versions, sourceUrl);
 }
@@ -107,11 +107,13 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
 export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
   // The version to search for when a user passes a version x.y.z or no version.
   const seekVersion = versionOrLabel || "latest";
-
   // The version to search for when a user passes a label like 'latest'.
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
-
   return versionFromLabel || seekVersion;
+}
+
+export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
+  return _.get(registryEntry, ["labels", "minRequired"]);
 }
 
 /**

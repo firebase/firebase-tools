@@ -1,6 +1,6 @@
 import * as semver from "semver";
-
 import * as _ from "lodash";
+
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { FirebaseError } from "../error";
@@ -43,6 +43,8 @@ export interface ExtensionInstance {
   errorStatus?: string;
   lastOperationName?: string;
   lastOperationType?: string;
+  extensionRef?: string;
+  extensionVersion?: string;
 }
 
 export interface ExtensionConfig {
@@ -288,6 +290,35 @@ export async function updateInstance(
     },
   };
   let updateMask = "config.source.name";
+  if (params) {
+    body.params = params;
+    updateMask += ",config.params";
+  }
+  return await patchInstance(projectId, instanceId, updateMask, body);
+}
+
+/**
+ * Update the version of a extension instance, given an project id, instance id, and a set of params
+ *
+ * @param projectId the project the instance is in
+ * @param instanceId the id of the instance to configure
+ * @param extRef reference for the extension to update to
+ * @param params params to configure the extension instance
+ */
+export async function updateInstanceFromRegistry(
+  projectId: string,
+  instanceId: string,
+  extRef: string,
+  params?: { [option: string]: string }
+): Promise<any> {
+  const { publisherId, extensionId, version } = parseRef(extRef);
+  const body: any = {
+    config: {
+      extensionRef: `${publisherId}/${extensionId}`,
+      extensionVersion: version || "latest",
+    },
+  };
+  let updateMask = "config.extensionRef,config.extensionVersion";
   if (params) {
     body.params = params;
     updateMask += ",config.params";
@@ -576,7 +607,7 @@ export function parseRef(
     const publisherId = parts[1];
     const extensionId = parts[2];
     const version = parts[4];
-    if (version && !semver.valid(version)) {
+    if (version && !semver.valid(version) && version !== "latest") {
       throw new FirebaseError(`Extension reference ${ref} contains an invalid version ${version}.`);
     }
     return { publisherId, extensionId, version };

@@ -74,7 +74,7 @@ describe("checkForUpdateWarnings", () => {
 });
 describe("isPublishedSource", () => {
   it("should return true for an published source", () => {
-    const result = resolveSource.isPublishedSource(
+    const result = resolveSource.isOfficialSource(
       testRegistryEntry,
       "projects/firebasemods/sources/2kd"
     );
@@ -82,7 +82,7 @@ describe("isPublishedSource", () => {
   });
 
   it("should return false for an unpublished source", () => {
-    const result = resolveSource.isPublishedSource(
+    const result = resolveSource.isOfficialSource(
       testRegistryEntry,
       "projects/firebasemods/sources/invalid"
     );
