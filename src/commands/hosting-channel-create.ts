@@ -78,7 +78,7 @@ export default new Command("hosting:channel:create [channelId]")
           marked(
             `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
               projectId,
-              "/overview"
+              "/authentication/providers"
             )}`
           )
         );
