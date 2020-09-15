@@ -1,7 +1,7 @@
 import { bold, underline } from "cli-color";
 
 import { Command } from "../command";
-import { deleteChannel } from "../hosting/api";
+import { deleteChannel, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
@@ -31,6 +31,8 @@ export default new Command("hosting:channel:delete <channelId>")
     ): Promise<void> => {
       const projectId = getProjectId(options);
       const siteId = options.site || (await getInstanceId(options));
+
+      channelId = normalizeName(channelId);
 
       let confirmed = Boolean(options.force);
       if (!confirmed) {

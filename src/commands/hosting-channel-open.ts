@@ -4,7 +4,7 @@ import * as open from "open";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, listChannels } from "../hosting/api";
+import { getChannel, listChannels, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
@@ -42,6 +42,8 @@ export default new Command("hosting:channel:open [channelId]")
           choices: channels.map((c) => last(c.name.split("/")) || c.name),
         });
       }
+
+      channelId = normalizeName(channelId);
 
       const channel = await getChannel(projectId, siteId, channelId);
       if (!channel) {
