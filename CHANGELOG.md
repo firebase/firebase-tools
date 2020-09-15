@@ -1,1 +1,2 @@
 - Replaces `tslint` with `eslint` as the default linter in new Cloud Functions for Firebase directories. (#1663)
+- Improves the output of `hosting:disable` when dealing with Firebase Hosting multisite setups.
