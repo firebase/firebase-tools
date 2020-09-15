@@ -41,6 +41,7 @@ describe("hosting", () => {
   afterEach(() => {
     sinon.restore();
   });
+
   describe("getApprovedDomains", () => {
     afterEach(() => {
       nock.cleanAll();
@@ -50,9 +51,7 @@ describe("hosting", () => {
       // mock listChannels response
       nock(api.hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
-        .query((queryParams: any) => {
-          return queryParams.pageSize === "100";
-        })
+        .query((p: any) => p.pageSize === "100")
         .reply(200, TEST_CHANNELS_RESPONSE);
       // mock getAuthDomains response
       nock(api.identityOrigin)

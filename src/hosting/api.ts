@@ -2,7 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
-import { getAuthDomains, updateAuthDomains, Domains } from "../gcp/auth";
+import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -282,12 +282,12 @@ export async function createRelease(site: string, channel: string, version: stri
  * @param project the project ID.
  * @param url the url of the channel.
  */
-export async function addAuthDomain(project: string, url: string): Promise<Domains> {
+export async function addAuthDomain(project: string, url: string): Promise<string[]> {
   const domains = await getAuthDomains(project);
   const domain = url.replace("https://", "");
   let authDomains = domains || [];
   if (authDomains.includes(domain)) {
-    return { authorizedDomains: authDomains };
+    return authDomains;
   }
   authDomains.push(domain);
   return await updateAuthDomains(project, authDomains);
@@ -304,7 +304,7 @@ export async function getApprovedDomains(project: string, site: string): Promise
     }, {});
 
   // match any string that has ${site}--*
-  const siteMatch = new RegExp(site, "i");
+  const siteMatch = new RegExp(`${site}--`, "i");
   // match any string that ends in firebaseapp.com
   const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
   const domains = await getAuthDomains(project);
@@ -328,12 +328,13 @@ export async function getApprovedDomains(project: string, site: string): Promise
   });
   return authDomains;
 }
+
 /**
  * Syncs the state of authorized domains with existing channels.
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function syncAuthState(project: string, site: string): Promise<Domains> {
+export async function syncAuthState(project: string, site: string): Promise<string[]> {
   const authDomains = await getApprovedDomains(project, site);
   return await updateAuthDomains(project, authDomains);
 }

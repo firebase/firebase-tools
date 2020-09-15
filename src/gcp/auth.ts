@@ -1,9 +1,5 @@
 import * as api from "../api";
 
-export interface Domains {
-  authorizedDomains: string[];
-}
-
 export async function getAuthDomains(project: string): Promise<string[]> {
   const res = await api.request("GET", `/admin/v2/projects/${project}/config`, {
     auth: true,
@@ -12,7 +8,7 @@ export async function getAuthDomains(project: string): Promise<string[]> {
   return res?.body?.authorizedDomains;
 }
 
-export async function updateAuthDomains(project: string, authDomains: string[]): Promise<Domains> {
+export async function updateAuthDomains(project: string, authDomains: string[]): Promise<string[]> {
   const resp = await api.request(
     "PATCH",
     `/admin/v2/projects/${project}/config?update_mask=authorizedDomains`,
@@ -24,5 +20,5 @@ export async function updateAuthDomains(project: string, authDomains: string[]):
       },
     }
   );
-  return resp.body;
+  return resp?.body?.authorizedDomains;
 }

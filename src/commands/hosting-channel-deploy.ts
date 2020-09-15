@@ -112,8 +112,8 @@ export default new Command("hosting:channel:deploy [channelId]")
             try {
               await syncAuthState(projectId, site);
             } catch (e) {
-              // not sure if we actually want to print a warning when we cant sync?
               logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+              logger.debug("[hosting] unable to sync auth domain", e);
             }
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);

@@ -141,7 +141,10 @@ var api = {
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://web.app"),
-  identityOrigin: "https://identitytoolkit.googleapis.com",
+  identityOrigin: utils.envOverride(
+    "FIREBASE_IDENTITY_URL",
+    "https://identitytoolkit.googleapis.com"
+  ),
   iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",

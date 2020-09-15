@@ -82,6 +82,7 @@ export default new Command("hosting:channel:create [channelId]")
             )}`
           )
         );
+        logger.debug("[hosting] unable to add auth domain", e);
       }
 
       logger.info();
