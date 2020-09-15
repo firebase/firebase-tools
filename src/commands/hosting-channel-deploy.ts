@@ -89,7 +89,7 @@ export default new Command("hosting:channel:deploy [channelId]")
         resolveTargets: true,
       }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
 
-      await Promise.all(
+      await Promise.all([
         sites.map(async (siteInfo) => {
           const site = siteInfo.site;
           let chan = await getChannel(projectId, site, channelId);
@@ -109,12 +109,6 @@ export default new Command("hosting:channel:deploy [channelId]")
                 logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
               }
             }
-            try {
-              await syncAuthState(projectId, site);
-            } catch (e) {
-              logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
-              logger.debug("[hosting] unable to sync auth domain", e);
-            }
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
@@ -132,11 +126,16 @@ export default new Command("hosting:channel:deploy [channelId]")
               );
             }
           }
-
+          try {
+            await syncAuthState(projectId, site);
+          } catch (e) {
+            logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+            logger.debug("[hosting] unable to sync auth domain", e);
+          }
           siteInfo.url = chan.url;
           siteInfo.expireTime = chan.expireTime;
           return;
-        })
+        })]
       );
 
       await deploy(["hosting"], options, { hostingChannel: channelId });
