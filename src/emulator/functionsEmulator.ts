@@ -125,6 +125,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+  private backgroundTriggersEnabled: boolean = true;
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
@@ -203,6 +204,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
+      // When background triggers are disabled just ignore the request and respond
+      // with 204 "No Content"
+      if (!this.backgroundTriggersEnabled) {
+        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
+        res.status(204).send();
+        return;
+      }
+
       this.workQueue.submit(() => {
         return this.handleBackgroundTrigger(req, res);
       });
@@ -736,6 +745,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.workerPool.addWorker(frb.triggerId, runtime);
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
+  }
+
+  setBackgroundTriggersEnabled(enabled: boolean) {
+    this.backgroundTriggersEnabled = enabled;
   }
 
   private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
