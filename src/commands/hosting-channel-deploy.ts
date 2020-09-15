@@ -89,7 +89,7 @@ export default new Command("hosting:channel:deploy [channelId]")
         resolveTargets: true,
       }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
 
-      await Promise.all([
+      await Promise.all(
         sites.map(async (siteInfo) => {
           const site = siteInfo.site;
           let chan = await getChannel(projectId, site, channelId);
@@ -135,7 +135,7 @@ export default new Command("hosting:channel:deploy [channelId]")
           siteInfo.url = chan.url;
           siteInfo.expireTime = chan.expireTime;
           return;
-        })]
+        })
       );
 
       await deploy(["hosting"], options, { hostingChannel: channelId });
