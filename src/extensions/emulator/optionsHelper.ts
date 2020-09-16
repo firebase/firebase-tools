@@ -3,6 +3,7 @@ import * as _ from "lodash";
 import * as path from "path";
 import * as paramHelper from "./paramHelper";
 import * as specHelper from "./specHelper";
+import * as localHelper from "../localHelper";
 import * as triggerHelper from "./triggerHelper";
 import { Resource } from "../extensionsApi";
 import * as extensionsHelper from "../extensionsHelper";
@@ -13,7 +14,7 @@ import * as getProjectId from "../../getProjectId";
 import { Emulators } from "../../emulator/types";
 
 export async function buildOptions(options: any): Promise<any> {
-  const extensionDir = specHelper.findExtensionYaml(process.cwd());
+  const extensionDir = localHelper.findExtensionYaml(process.cwd());
   options.extensionDir = extensionDir;
   const extensionYaml = await specHelper.readExtensionYaml(extensionDir);
   extensionsHelper.validateSpec(extensionYaml);

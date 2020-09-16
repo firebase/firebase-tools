@@ -1,8 +1,8 @@
 import * as _ from "lodash";
+import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
 import * as fs from "fs";
-import * as clc from "cli-color";
 
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
@@ -16,15 +16,18 @@ import { deleteObject, uploadObject } from "../gcp/storage";
 import * as getProjectId from "../getProjectId";
 import {
   createSource,
-  getInstance,
   ExtensionSource,
+  ExtensionVersion,
+  getExtension,
+  getExtensionVersion,
+  getInstance,
   getSource,
   Param,
   ParamType,
   parseRef,
-  getExtension,
-  getExtensionVersion,
+  publishExtensionVersion,
 } from "./extensionsApi";
+import { getLocalExtensionSpec } from "./localHelper";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
@@ -51,6 +54,7 @@ export enum SourceOrigin {
 }
 
 export const logPrefix = "extensions";
+export const validLicenses = ["apache-2.0"];
 // Extension archive URLs follow this format: {GITHUB_ARCHIVE_URL}#{EXTENSION_ROOT},
 // e.g. https://github.com/firebase/extensions/archive/next.zip#extensions-next/delete-user-data.
 // EXTENSION_ROOT is optional for single-extension archives and required for multi-extension archives.
@@ -196,16 +200,30 @@ export function validateSpec(spec: any) {
     errors.push("extension.yaml is missing required field: specVersion");
   }
   if (!spec.version) {
-    errors.push("extension.yaml; is missing required field: version");
+    errors.push("extension.yaml is missing required field: version");
   }
-  for (const resource of spec.resources) {
-    if (!resource.name) {
-      errors.push("Resource is missing required field: name");
-    }
-    if (!resource.type) {
+  if (!spec.license) {
+    errors.push("extension.yaml is missing required field: license");
+  } else {
+    const formattedLicense = String(spec.license).toLocaleLowerCase();
+    if (!validLicenses.includes(formattedLicense)) {
       errors.push(
-        `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`
+        `license field in extension.yaml is invalid. Valid value(s): ${validLicenses.join(", ")}`
       );
+    }
+  }
+  if (!spec.resources) {
+    errors.push("Resources field must contain at least one resource");
+  } else {
+    for (const resource of spec.resources) {
+      if (!resource.name) {
+        errors.push("Resource is missing required field: name");
+      }
+      if (!resource.type) {
+        errors.push(
+          `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`
+        );
+      }
     }
   }
   for (const api of spec.apis || []) {
@@ -283,7 +301,8 @@ export function validateSpec(spec: any) {
     }
   }
   if (errors.length) {
-    const message = `The extension.yaml has the following errors: \n${errors.join("\n")}`;
+    const formatted = errors.map((error) => `  - ${error}`);
+    const message = `The extension.yaml has the following errors: \n${formatted.join("\n")}`;
     throw new FirebaseError(message);
   }
 }
@@ -340,6 +359,62 @@ async function archiveAndUploadSource(extPath: string, bucketName: string): Prom
 }
 
 /**
+ *
+ * @param publisherId the publisher profile to publish this extension under.
+ * @param extensionId the ID of the extension. This must match the `name` field of extension.yaml.
+ * @param rootDirectory the directory containing  extension.yaml
+ */
+export async function publishExtensionVersionFromLocalSource(
+  publisherId: string,
+  extensionId: string,
+  rootDirectory: string
+): Promise<ExtensionVersion | undefined> {
+  const extensionSpec = await getLocalExtensionSpec(rootDirectory);
+  if (extensionSpec.name != extensionId) {
+    throw new FirebaseError(
+      `Extension ID :${extensionId} does not match the name in extension.yaml: ${extensionSpec.name}.`
+    );
+  }
+
+  validateSpec(extensionSpec);
+
+  const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
+  if (!consent) {
+    return;
+  }
+  const ref = `${publisherId}/${extensionId}@${extensionSpec.version}`;
+  let packageUri: string;
+  let objectPath = "";
+  const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  try {
+    uploadSpinner.start();
+    objectPath = await archiveAndUploadSource(rootDirectory, EXTENSIONS_BUCKET_NAME);
+    uploadSpinner.succeed(" Uploaded extension source code");
+    packageUri = storageOrigin + objectPath + "?alt=media";
+  } catch (err) {
+    uploadSpinner.fail();
+    throw err;
+  }
+  const publishSpinner = ora.default(`Publishing '${ref}'`);
+  let res;
+  try {
+    publishSpinner.start();
+    res = await publishExtensionVersion(ref, packageUri);
+    publishSpinner.succeed(` Successfully published ${ref}`);
+  } catch (err) {
+    publishSpinner.fail();
+    if (err.status == 404) {
+      throw new FirebaseError(
+        `Couldn't find publisher ID '${publisherId}'. Please ensure that you have registered this ID.`
+      );
+    }
+    throw err;
+  }
+  await deleteUploadedSource(objectPath);
+  return res;
+}
+
+/**
  * Creates a source from a local path or URL. If a local path is given, it will be zipped
  * and uploaded to EXTENSIONS_BUCKET_NAME, and then deleted after the source is created.
  * @param projectId the project to create the source in
@@ -369,6 +444,15 @@ export async function createSourceFromLocation(
   }
   const res = await createSource(projectId, packageUri, extensionRoot);
   // if we uploaded an object, delete it
+  await deleteUploadedSource(objectPath);
+  return res;
+}
+
+/**
+ * Cleans up uploaded ZIP file after creating an extension source or publishing an extension version.
+ * @param objectPath
+ */
+async function deleteUploadedSource(objectPath: string) {
   if (objectPath.length) {
     try {
       await deleteObject(objectPath);
@@ -377,7 +461,6 @@ export async function createSourceFromLocation(
       logger.debug("Unable to clean up uploaded source archive");
     }
   }
-  return res;
 }
 
 /**
@@ -402,7 +485,32 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
   throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
 }
 
-/** Display list of all official extensions and prompt user to select one.
+/**
+ * Confirm the version number in extension.yaml with the user .
+ * @param extensionName The name of the extension being installed.
+ * @param projectName The name of the project in use.
+ */
+export async function confirmExtensionVersion(
+  publisherId: string,
+  extensionId: string,
+  versionId: string
+): Promise<string> {
+  const message =
+    `You are about to publish version ${clc.green(versionId)} of ${clc.green(
+      `${publisherId}/${extensionId}`
+    )}.\n` +
+    "Once an extension version is published, it cannot be changed, it can only be unpublished.\n" +
+    "If you wish to make changes after publishing, you will need to publish a new version.\n" +
+    "Do you wish to continue?";
+  return await promptOnce({
+    type: "confirm",
+    message,
+    default: false, // Force users to explicitly type 'yes'
+  });
+}
+
+/**
+ * Display list of all official extensions and prompt user to select one.
  * @param message The prompt message to display
  * @return Promise that resolves to the extension name (e.g. storage-resize-images)
  */
