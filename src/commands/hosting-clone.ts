@@ -3,9 +3,12 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, cloneVersion, createRelease } from "../hosting/api";
+import { getChannel, createChannel, cloneVersion, createRelease, addAuthDomain } from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
+import * as marked from "marked";
+import * as logger from "../logger";
+
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -65,6 +68,20 @@ export default new Command("hosting:clone <source> <targetChannel>")
       );
       tChannel = await createChannel("-", targetSiteId, targetChannelId);
       utils.logSuccess(`Created new channel ${targetChannelId}`);
+      try {
+        await addAuthDomain(projectId, tChannel.url);
+      } catch (e) {
+        utils.logLabeledWarning(
+          LOG_TAG,
+          marked(
+            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+              projectId,
+              "/authentication/providers"
+            )}`
+          )
+        );
+        logger.debug("[hosting] unable to add auth domain", e);
+      }
     }
     const currentTargetVersionName = tChannel.release?.version?.name;
 

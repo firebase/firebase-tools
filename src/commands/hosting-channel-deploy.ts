@@ -124,6 +124,7 @@ export default new Command("hosting:channel:deploy [channelId]")
                   )}`
                 )
               );
+              logger.debug("[hosting] unable to add auth domain", e);
             }
           }
           try {

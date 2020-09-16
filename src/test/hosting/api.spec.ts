@@ -47,7 +47,7 @@ describe("hosting", () => {
       nock.cleanAll();
     });
 
-    it("it should return the list of expetecd auth domains after syncing", async () => {
+    it("it should return the list of expected auth domains after syncing", async () => {
       // mock listChannels response
       nock(api.hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
