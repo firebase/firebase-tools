@@ -586,15 +586,15 @@ export async function publishExtensionVersion(
  * @param ref user-friendly identifier for the Extension (publisher-id/extension-id)
  */
 export async function unpublishExtension(ref: string): Promise<void> {
-  const { publisherId, extensionId } = parseRef(ref);
-  await api.request(
-    "POST",
-    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`,
-    {
-      auth: true,
-      origin: api.extensionsOrigin,
-    }
-  );
+  const { publisherId, extensionId, version } = parseRef(ref);
+  if (version) {
+    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+  }
+  let url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`;
+  await api.request("POST", url, {
+    auth: true,
+    origin: api.extensionsOrigin,
+  });
 }
 
 /**
