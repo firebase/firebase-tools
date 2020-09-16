@@ -10,6 +10,8 @@ const TEST_CHANNELS_RESPONSE = {
     // domain exists in TEST_GET_DOMAINS_RESPONSE
     { url: "https://my-site--ch1-4iyrl1uo.web.app" },
     // domain does not exist in TEST_GET_DOMAINS_RESPONSE
+    // we assume this domain was manually removed by
+    // the user from the identity api
     { url: "https://my-site--ch2-ygd8582v.web.app" },
   ],
 };
