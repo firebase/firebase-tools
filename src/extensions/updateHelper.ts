@@ -46,7 +46,7 @@ async function showUpdateVersionInfo(
     logPrefix,
     `Updating ${clc.bold(instanceId)} from version ${clc.bold(from)} to ${source} (${clc.bold(to)})`
   );
-  if (semver.gt(from, to)) {
+  if (semver.lt(to, from)) {
     utils.logLabeledBullet(
       logPrefix,
       "The version you are updating to is less than the current version for this extension. This extension may not be backwards compatible."
@@ -84,11 +84,26 @@ export async function warningUpdateToOtherSource(
     existingSourceOrigin = SourceOrigin.LOCAL;
   }
 
+  // We only allow the following types of updates.
+  if (
+    !(
+      (existingSourceOrigin === SourceOrigin.OFFICIAL && nextSourceOrigin === SourceOrigin.LOCAL) ||
+      (existingSourceOrigin === SourceOrigin.OFFICIAL && nextSourceOrigin === SourceOrigin.URL) ||
+      // When checking existing Extension source origins, we don't differentiate between LOCAL and URL sources (see above).
+      (existingSourceOrigin === SourceOrigin.LOCAL && nextSourceOrigin === SourceOrigin.URL) ||
+      existingSourceOrigin === nextSourceOrigin
+    )
+  ) {
+    throw new FirebaseError(
+      `Cannot update from a(n) ${existingSourceOrigin} to a(n) ${nextSourceOrigin}. Please provide a new source that is a(n) ${existingSourceOrigin} and try again.`
+    );
+  }
+
   let msg = warning;
   if (nextSourceOrigin === SourceOrigin.LOCAL || nextSourceOrigin === SourceOrigin.URL) {
     msg +=
       "\nUpdating this extension instance to an unpublished extension source will upload the unpublished extension source " +
-      "to the Extensions Registry, but it must be published before it can be seen by others.\n";
+      "to the registry of community extensions, but it must be published before it can be seen by others.\n";
   }
 
   if (existingSourceOrigin !== nextSourceOrigin) {

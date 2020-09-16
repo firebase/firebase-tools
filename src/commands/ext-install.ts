@@ -207,7 +207,7 @@ export default new Command("ext:install [extensionName]")
       }
     } catch (err) {
       if (previews.extdev) {
-        const sourceOrigin = getSourceOrigin(extensionName);
+        const sourceOrigin = await getSourceOrigin(extensionName);
         switch (sourceOrigin) {
           case SourceOrigin.LOCAL || SourceOrigin.URL: {
             try {

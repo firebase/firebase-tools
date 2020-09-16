@@ -361,14 +361,22 @@ describe("updateHelper", () => {
   describe("updateToVersionFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
+    let registryStub: sinon.SinonStub;
+    let isOfficialStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
+      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+      registryStub.resolves(REGISTRY_ENTRY);
+      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+      isOfficialStub.returns(false);
     });
 
     afterEach(() => {
       promptStub.restore();
       createSourceStub.restore();
+      registryStub.restore();
+      isOfficialStub.restore();
     });
     it("should return the correct source name for a valid published extension version source", async () => {
       promptStub.resolves(true);
@@ -380,6 +388,19 @@ describe("updateHelper", () => {
         SPEC.name
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
+    });
+    it("should throw an error for mismatched sources", async () => {
+      promptStub.resolves(true);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      isOfficialStub.returns(true);
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test@0.2.0",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith(FirebaseError, "Cannot update");
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
@@ -410,14 +431,22 @@ describe("updateHelper", () => {
   describe("updateFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
+    let registryStub: sinon.SinonStub;
+    let isOfficialStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
+      registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+      registryStub.resolves(REGISTRY_ENTRY);
+      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+      isOfficialStub.returns(false);
     });
 
     afterEach(() => {
       promptStub.restore();
       createSourceStub.restore();
+      registryStub.restore();
+      isOfficialStub.restore();
     });
     it("should return the correct source name for the latest published extension source", async () => {
       promptStub.resolves(true);
@@ -429,6 +458,19 @@ describe("updateHelper", () => {
         SPEC.name
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
+    });
+    it("should throw an error for mismatched sources", async () => {
+      promptStub.resolves(true);
+      createSourceStub.resolves(EXTENSION_VERSION);
+      isOfficialStub.returns(true);
+      await expect(
+        updateHelper.updateToVersionFromPublisherSource(
+          "test-instance",
+          "test-publisher/test",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith(FirebaseError, "Cannot update from");
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
@@ -458,16 +500,25 @@ describe("updateHelper", () => {
 
   describe("updateToVersionFromRegistry", () => {
     let promptStub: sinon.SinonStub;
+    let createSourceStub: sinon.SinonStub;
     let registryEntryStub: sinon.SinonStub;
+    let isOfficialStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+      registryEntryStub.resolves(REGISTRY_ENTRY);
+      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+      isOfficialStub.returns(true);
     });
 
     afterEach(() => {
       promptStub.restore();
+      createSourceStub.restore();
       registryEntryStub.restore();
+      isOfficialStub.restore();
     });
+
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       registryEntryStub.resolves(REGISTRY_ENTRY);
@@ -479,6 +530,13 @@ describe("updateHelper", () => {
       );
       expect(name).to.equal("projects/firebasemods/sources/123");
     });
+    it("should throw an error for mismatched sources", async () => {
+      promptStub.resolves(true);
+      isOfficialStub.returns(false);
+      await expect(
+        updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.2")
+      ).to.be.rejectedWith(FirebaseError, "Cannot update from");
+    });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
@@ -488,13 +546,11 @@ describe("updateHelper", () => {
     });
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
-      registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
         updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.2")
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
     it("should not update if version given less than min version required", async () => {
-      registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
         updateHelper.updateToVersionFromRegistry("test-instance", SPEC, SPEC.name, "0.1.0")
       ).to.be.rejectedWith(FirebaseError, "is less than the minimum version required");
@@ -503,21 +559,35 @@ describe("updateHelper", () => {
 
   describe("updateFromRegistry", () => {
     let promptStub: sinon.SinonStub;
+    let createSourceStub: sinon.SinonStub;
     let registryEntryStub: sinon.SinonStub;
+    let isOfficialStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       registryEntryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
+      registryEntryStub.resolves(REGISTRY_ENTRY);
+      isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
+      isOfficialStub.returns(true);
     });
 
     afterEach(() => {
       promptStub.restore();
+      createSourceStub.restore();
       registryEntryStub.restore();
+      isOfficialStub.restore();
     });
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
-      registryEntryStub.resolves(REGISTRY_ENTRY);
       const name = await updateHelper.updateFromRegistry("test-instance", SPEC, SPEC.name);
       expect(name).to.equal("projects/firebasemods/sources/abc");
+    });
+    it("should throw an error for mismatched sources", async () => {
+      promptStub.resolves(true);
+      isOfficialStub.returns(false);
+      await expect(
+        updateHelper.updateFromRegistry("test-instance", SPEC, SPEC.name)
+      ).to.be.rejectedWith(FirebaseError, "Cannot update from");
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);

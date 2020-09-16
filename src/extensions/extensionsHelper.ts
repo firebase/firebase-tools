@@ -489,11 +489,11 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
       return SourceOrigin.LOCAL;
     }
     throw new FirebaseError(
-      `Invalid source ${clc.bold(
+      `Could not find ${clc.bold(
         sourceOrVersion
-      )}. If this is a published extension source, please make sure ` +
-        "it matches the format `{publisher}/{extension}(@{version})`. Otherwise, please make sure the " +
-        "path to the source exists and try again."
+      )}. If this is a published extension, please make sure ` +
+        "it matches the format `{publisher}/{extension}(@{version})`.\n\nOtherwise, please make sure the " +
+        "local/URL path exists and try again."
     );
   }
   throw new FirebaseError(
