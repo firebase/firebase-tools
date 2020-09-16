@@ -49,7 +49,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 8.6.0"
+    "node": ">= 10"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
