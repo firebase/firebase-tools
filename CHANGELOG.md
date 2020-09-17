@@ -1,2 +1,3 @@
 - Replaces `tslint` with `eslint` as the default linter in new Cloud Functions for Firebase directories. (#1663)
 - Fixes bug where scheduled Cloud Functions for Firebase deploys unexpectedly succeeded with invalid Cloud Scheduler configurations. (#2609)
+- Add support for Firebase Remote Config (see README for list of commands)
