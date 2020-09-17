@@ -3,11 +3,9 @@ import * as clc from "cli-color";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
-import * as checkProjectBilling from "./checkProjectBilling";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import { UpdateWarning } from "./resolveSource";
-import * as rolesHelper from "./rolesHelper";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
 
@@ -211,9 +209,6 @@ export async function retryUpdate(): Promise<boolean> {
  * @param instanceId Id of the instance to update
  * @param source A ExtensionSource to update to
  * @param params A new set of params to set on the instance
- * @param rolesToAdd A list of roles to grant to the associated service account
- * @param rolesToRemove A list of roles to remove from the associated service account
- * @param serviceAccountEmail The service account used by this extension instance
  * @param billingRequired Whether the extension requires billing
  */
 
@@ -222,10 +217,6 @@ export interface UpdateOptions {
   instanceId: string;
   source: extensionsApi.ExtensionSource;
   params?: { [key: string]: string };
-  rolesToAdd: extensionsApi.Role[];
-  rolesToRemove: extensionsApi.Role[];
-  serviceAccountEmail: string;
-  billingRequired?: boolean;
 }
 
 /**
@@ -237,22 +228,6 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const {
-    projectId,
-    instanceId,
-    source,
-    params,
-    rolesToAdd,
-    rolesToRemove,
-    serviceAccountEmail,
-    billingRequired,
-  } = updateOptions;
-  await checkProjectBilling(projectId, instanceId, billingRequired);
-  await rolesHelper.grantRoles(
-    projectId,
-    serviceAccountEmail,
-    rolesToAdd.map((role) => role.role),
-    rolesToRemove.map((role) => role.role)
-  );
+  const { projectId, instanceId, source, params } = updateOptions;
   return await extensionsApi.updateInstance(projectId, instanceId, source, params);
 }
