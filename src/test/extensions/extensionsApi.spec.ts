@@ -687,7 +687,6 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
         .query((queryParams: any) => {
-          queryParams.showUnpublished === "false";
           queryParams.pageSize === "100";
           return queryParams;
         })
@@ -703,12 +702,11 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "true";
           return queryParams;
         })
         .reply(200, ALL_EXTENSIONS);
 
-      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID, true);
+      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
 
       expect(extensions).to.deep.equal(ALL_EXTENSIONS.extensions);
       expect(nock.isDone()).to.be.true;
@@ -718,7 +716,6 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
         .query((queryParams: any) => {
-          queryParams.showUnpublished === "false";
           queryParams.pageSize === "100";
           return queryParams;
         })
@@ -727,13 +724,12 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "false";
           queryParams.pageToken === NEXT_PAGE_TOKEN;
           return queryParams;
         })
         .reply(200, NEXT_PAGE_EXTENSIONS);
 
-      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID, false);
+      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
 
       const expected = PUBLISHED_WITH_TOKEN.extensions.concat(NEXT_PAGE_EXTENSIONS.extensions);
       expect(extensions).to.deep.equal(expected);
@@ -744,15 +740,12 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
         .query((queryParams: any) => {
-          queryParams.showUnpublished === "false";
           queryParams.pageSize === "100";
           return queryParams;
         })
         .reply(503, PUBLISHED_EXTENSIONS);
 
-      await expect(extensionsApi.listExtensions(PUBLISHER_ID, false)).to.be.rejectedWith(
-        FirebaseError
-      );
+      await expect(extensionsApi.listExtensions(PUBLISHER_ID)).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -767,7 +760,6 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "false";
           return queryParams;
         })
         .reply(200, PUBLISHED_EXT_VERSIONS);
@@ -784,14 +776,12 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "true";
           return queryParams;
         })
         .reply(200, ALL_EXT_VERSIONS);
 
       const extensions = await extensionsApi.listExtensionVersions(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`,
-        true
+        `${PUBLISHER_ID}/${EXTENSION_ID}`
       );
 
       expect(extensions).to.deep.equal(ALL_EXT_VERSIONS.extensionVersions);
@@ -803,7 +793,6 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "false";
           return queryParams;
         })
         .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
@@ -812,7 +801,6 @@ describe("extensions", () => {
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
           queryParams.pageToken === NEXT_PAGE_TOKEN;
-          queryParams.showUnpublished === "false";
           return queryParams;
         })
         .reply(200, NEXT_PAGE_VERSIONS);
@@ -833,7 +821,6 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "false";
           return queryParams;
         })
         .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
@@ -841,14 +828,13 @@ describe("extensions", () => {
         .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
         .query((queryParams: any) => {
           queryParams.pageSize === "100";
-          queryParams.showUnpublished === "false";
           queryParams.nextPageToken === NEXT_PAGE_TOKEN;
           return queryParams;
         })
         .reply(500);
 
       await expect(
-        extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`, false)
+        extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
       ).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });

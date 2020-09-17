@@ -20,7 +20,7 @@ export default new Command("ext:dev:list [publisherId]")
   .action(async (publisherId: string, options: any) => {
     let extensions;
     try {
-      extensions = await listExtensions(publisherId, false);
+      extensions = await listExtensions(publisherId);
     } catch (err) {
       throw new FirebaseError(err);
     }
@@ -28,9 +28,9 @@ export default new Command("ext:dev:list [publisherId]")
     if (extensions.length < 1) {
       return utils.logLabeledBullet(
         logPrefix,
-        `there are no published extensions associated with publisher ID ${clc.bold(
+        `There are no published extensions associated with publisher ID ${clc.bold(
           publisherId
-        )}. Please make sure this publisher ID exists.`
+        )}. If you are expecting some, please make sure this publisher ID exists.`
       );
     }
 

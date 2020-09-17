@@ -464,10 +464,7 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
  * @param publisherId the publisher for which we are listing Extensions
  * @param showUnpublished whether to include unpublished Extensions, default = false
  */
-export async function listExtensions(
-  publisherId: string,
-  showUnpublished?: boolean
-): Promise<Extension[]> {
+export async function listExtensions(publisherId: string): Promise<Extension[]> {
   const extensions: Extension[] = [];
   const getNextPage = async (pageToken?: string) => {
     const res = await api.request("GET", `/${VERSION}/publishers/${publisherId}/extensions`, {
@@ -476,7 +473,6 @@ export async function listExtensions(
       query: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,
-        showUnpublished: showUnpublished || false,
       },
     });
     if (Array.isArray(res.body.extensions)) {
@@ -494,10 +490,7 @@ export async function listExtensions(
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  * @param showUnpublished whether to include unpublished ExtensionVersions, default = false
  */
-export async function listExtensionVersions(
-  ref: string,
-  showUnpublished?: boolean
-): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(ref: string): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = parseRef(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken?: string) => {
@@ -510,7 +503,6 @@ export async function listExtensionVersions(
         query: {
           pageSize: PAGE_SIZE_MAX,
           pageToken,
-          showUnpublished: showUnpublished || false,
         },
       }
     );
