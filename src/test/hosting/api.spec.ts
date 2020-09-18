@@ -44,12 +44,12 @@ describe("hosting", () => {
     sinon.restore();
   });
 
-  describe("getApprovedDomains", () => {
+  describe("getCleanDomains", () => {
     afterEach(() => {
       nock.cleanAll();
     });
 
-    it("it should return the list of expected auth domains after syncing", async () => {
+    it("should return the list of expected auth domains after syncing", async () => {
       // mock listChannels response
       nock(api.hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
@@ -60,7 +60,7 @@ describe("hosting", () => {
         .get(`/admin/v2/projects/${PROJECT_ID}/config`)
         .reply(200, TEST_GET_DOMAINS_RESPONSE);
 
-      const res = await hostingApi.getApprovedDomains(PROJECT_ID, SITE);
+      const res = await hostingApi.getCleanDomains(PROJECT_ID, SITE);
 
       expect(res).to.deep.equal(EXPECTED_DOMAINS_RESPONSE);
       expect(nock.isDone()).to.be.true;

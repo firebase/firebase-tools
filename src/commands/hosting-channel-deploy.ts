@@ -7,7 +7,7 @@ import {
   createChannel,
   updateChannelTtl,
   addAuthDomain,
-  syncAuthState,
+  cleanAuthState,
 } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
@@ -128,7 +128,7 @@ export default new Command("hosting:channel:deploy [channelId]")
             }
           }
           try {
-            await syncAuthState(projectId, site);
+            await cleanAuthState(projectId, site);
           } catch (e) {
             logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
             logger.debug("[hosting] unable to sync auth domain", e);

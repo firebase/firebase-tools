@@ -293,7 +293,7 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
   return await updateAuthDomains(project, authDomains);
 }
 
-export async function getApprovedDomains(project: string, site: string): Promise<string[]> {
+export async function getCleanDomains(project: string, site: string): Promise<string[]> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
   const channelMap = channels
@@ -334,7 +334,7 @@ export async function getApprovedDomains(project: string, site: string): Promise
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function syncAuthState(project: string, site: string): Promise<string[]> {
-  const authDomains = await getApprovedDomains(project, site);
+export async function cleanAuthState(project: string, site: string): Promise<string[]> {
+  const authDomains = await getCleanDomains(project, site);
   return await updateAuthDomains(project, authDomains);
 }
