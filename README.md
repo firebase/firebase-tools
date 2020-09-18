@@ -151,14 +151,13 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Remote Config Commands
 
-| Command                        | Description                                                                                                  |
-| -------------------------------| ------------------------------------------------------------------------------------------------------------ |
-| **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                             |
-| **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.             |
-| **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag.   |
+| Command                        | Description                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
+| **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
 
 Use `firebase:deploy --only remoteconfig` to update and publish a project's Firebase Remote Config template.
-
 
 ## Authentication
 
