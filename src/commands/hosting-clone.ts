@@ -3,7 +3,7 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, cloneVersion, createRelease, addAuthDomain } from "../hosting/api";
+import { getChannel, createChannel, cloneVersion, createRelease, addAuthDomain, normalizeName} from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import * as marked from "marked";
@@ -18,7 +18,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
     let sourceVersionName;
     let sourceVersion;
     let [sourceSiteId, sourceChannelId] = source.split(":");
-    const [targetSiteId, targetChannelId] = targetChannel.split(":");
+    let [targetSiteId, targetChannelId] = targetChannel.split(":");
     if (!sourceSiteId || !sourceChannelId) {
       [sourceSiteId, sourceVersion] = source.split("@");
       if (!sourceSiteId || !sourceVersion) {
@@ -33,6 +33,10 @@ export default new Command("hosting:clone <source> <targetChannel>")
         `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`
       );
     }
+
+    targetChannelId = normalizeName(targetChannelId);
+    sourceChannelId = normalizeName(sourceChannelId);
+
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;
     if (equalSiteIds && equalChannelIds) {

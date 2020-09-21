@@ -2,13 +2,16 @@ import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+
 import {
   getChannel,
   createChannel,
   updateChannelTtl,
   addAuthDomain,
   cleanAuthState,
+  normalizeName,
 } from "../hosting/api";
+import { getChannel, createChannel, updateChannelTtl } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
@@ -67,6 +70,8 @@ export default new Command("hosting:channel:deploy [channelId]")
       if (!channelId) {
         throw new FirebaseError("channelID is currently required");
       }
+
+      channelId = normalizeName(channelId);
 
       // Some normalizing to be very sure of this check.
       if (channelId.toLowerCase().trim() === "live") {
