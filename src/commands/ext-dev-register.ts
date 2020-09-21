@@ -5,6 +5,7 @@ import { registerPublisherProfile } from "../extensions/extensionsApi";
 import * as getProjectId from "../getProjectId";
 import { promptOnce } from "../prompt";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import { promptForPublisherTOS } from "../extensions/askUserForConsent";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
@@ -30,6 +31,7 @@ export default new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
+    await promptForPublisherTOS();
     try {
       await registerPublisherProfile(projectId, publisherId);
     } catch (err) {
