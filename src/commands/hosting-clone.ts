@@ -3,12 +3,18 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, cloneVersion, createRelease, addAuthDomain, normalizeName} from "../hosting/api";
+import {
+  getChannel,
+  createChannel,
+  cloneVersion,
+  createRelease,
+  addAuthDomain,
+  normalizeName,
+} from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import * as marked from "marked";
 import * as logger from "../logger";
-
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -71,15 +77,21 @@ export default new Command("hosting:clone <source> <targetChannel>")
         )}, creating it...`
       );
       tChannel = await createChannel("-", targetSiteId, targetChannelId);
+      if (!tChannel) {
+        throw new FirebaseError(
+          `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`
+        );
+      }
       utils.logSuccess(`Created new channel ${targetChannelId}`);
       try {
-        await addAuthDomain(projectId, tChannel.url);
+        const tProjectId = utils.getProjectId(tChannel.name);
+        await addAuthDomain(tProjectId, tChannel.url);
       } catch (e) {
         utils.logLabeledWarning(
-          LOG_TAG,
+          "hosting:clone",
           marked(
-            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
-              projectId,
+            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${utils.consoleUrl(
+              targetSiteId,
               "/authentication/providers"
             )}`
           )

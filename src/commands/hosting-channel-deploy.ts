@@ -11,7 +11,6 @@ import {
   cleanAuthState,
   normalizeName,
 } from "../hosting/api";
-import { getChannel, createChannel, updateChannelTtl } from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
