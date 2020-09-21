@@ -1,5 +1,3 @@
-"use strict";
-
 import getProjectNumber = require("../../getProjectNumber");
 import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";

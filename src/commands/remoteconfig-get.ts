@@ -24,7 +24,7 @@ function checkValidNumber(versionNumber: string): string {
 }
 
 module.exports = new Command("remoteconfig:get")
-  .description("Get a Firebase project's Remote Config template")
+  .description("get a Firebase project's Remote Config template")
   .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
   .option(
     "-o, --output [filename]",

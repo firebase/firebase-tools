@@ -10,7 +10,7 @@ import getProjectId = require("../getProjectId");
 
 module.exports = new Command("remoteconfig:rollback")
   .description(
-    "Roll back a project's published Remote Config template to the one specified by the provided version number"
+    "roll back a project's published Remote Config template to the one specified by the provided version number"
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get", "cloudconfig.configs.update"])
