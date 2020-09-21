@@ -373,6 +373,14 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
   return await updateAuthDomains(project, authDomains);
 }
 
+/**
+ * Constructs a list of "clean domains"
+ * by including all existing auth domains
+ * with the exception of domains that belong to
+ * expired channels.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
 export async function getCleanDomains(project: string, site: string): Promise<string[]> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
@@ -388,7 +396,7 @@ export async function getCleanDomains(project: string, site: string): Promise<st
   // match any string that ends in firebaseapp.com
   const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
   const domains = await getAuthDomains(project);
-  let authDomains: string[] = [];
+  const authDomains: string[] = [];
 
   domains.forEach((domain: string) => {
     // include domains that end in *.firebaseapp.com because urls belonging
@@ -410,7 +418,9 @@ export async function getCleanDomains(project: string, site: string): Promise<st
 }
 
 /**
- * Syncs the state of authorized domains with existing channels.
+ * Retrieves a list of "clean domains" and
+ * updates Firebase Auth Api with aforementioned
+ * list.
  * @param project the project ID.
  * @param site the site for the channel.
  */

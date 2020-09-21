@@ -76,15 +76,17 @@ export default new Command("hosting:clone <source> <targetChannel>")
           targetSiteId
         )}, creating it...`
       );
-      tChannel = await createChannel("-", targetSiteId, targetChannelId);
-      if (!tChannel) {
+      try {
+        tChannel = await createChannel("-", targetSiteId, targetChannelId);
+      } catch (e) {
         throw new FirebaseError(
-          `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`
+          `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`,
+          { original: e }
         );
       }
       utils.logSuccess(`Created new channel ${targetChannelId}`);
       try {
-        const tProjectId = utils.getProjectId(tChannel.name);
+        const tProjectId = getProjectId(tChannel.name);
         await addAuthDomain(tProjectId, tChannel.url);
       } catch (e) {
         utils.logLabeledWarning(
@@ -136,3 +138,14 @@ export default new Command("hosting:clone <source> <targetChannel>")
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });
+
+/**
+ * Returns the projectId from a channel name string.
+ * @param name the project scoped channel name.
+ * projects/${project}/sites/${site{}/channels/${channel}
+ * @return the project id.
+ */
+function getProjectId(name: string): string {
+  const matches = name.match(`^projects/([^/]+)`);
+  return matches ? matches[1] || "" : "";
+}

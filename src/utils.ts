@@ -478,14 +478,3 @@ export function datetimeString(d: Date): string {
 export function isCloudEnvironment() {
   return !!process.env.CODESPACES;
 }
-
-/**
- * Returns the projectId from a channel name string.
- * @param name the project scoped channel name.
- * projects/${project}/sites/${site{}/channels/${channel}
- * @return the project id.
- */
-export function getProjectId(name: string): string {
-  const matches = name.match(`^projects/([^/]+)`);
-  return matches ? matches[1] || "" : "";
-}
