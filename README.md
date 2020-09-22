@@ -149,6 +149,16 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command. |
 
+### Remote Config Commands
+
+| Command                        | Description                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
+| **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
+
+Use `firebase:deploy --only remoteconfig` to update and publish a project's Firebase Remote Config template.
+
 ## Authentication
 
 ### General
