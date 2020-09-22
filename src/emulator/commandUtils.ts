@@ -58,12 +58,10 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-/**
- * We want to be able to run the Firestore and Database emulators even in the absence
- * of firebase.json. For Functions and Hosting we require the JSON file since the
- * config interactions can become fairly complex.
- */
-const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+const DEFAULT_CONFIG = new Config(
+  { database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  {}
+);
 
 export function printNoticeIfEmulated(
   options: any,
@@ -134,6 +132,10 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     config: DEFAULT_CONFIG,
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
+
+  // We want to be able to run most emulators even in the absence of
+  // firebase.json. For Functions and Hosting we require the JSON file since the
+  // config interactions can become fairly complex.
   const canStartWithoutConfig =
     options.only &&
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&

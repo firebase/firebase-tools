@@ -60,6 +60,7 @@ export class EmulatorRegistry {
       database: 3.0,
       firestore: 3.1,
       pubsub: 3.2,
+      auth: 3.3,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
