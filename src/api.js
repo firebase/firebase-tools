@@ -156,6 +156,10 @@ var api = {
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
   ),
+  remoteConfigApiOrigin: utils.envOverride(
+    "FIREBASE_REMOTE_CONFIG_URL",
+    "https://firebaseremoteconfig.googleapis.com"
+  ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
     "https://cloudresourcemanager.googleapis.com"
