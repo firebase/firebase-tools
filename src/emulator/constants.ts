@@ -9,8 +9,9 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
-  database: 9000,
   pubsub: 8085,
+  database: 9000,
+  auth: 9099,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -22,6 +23,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   firestore: false,
   database: false,
   pubsub: false,
+  auth: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -33,6 +35,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   firestore: "Firestore Emulator",
   database: "Database Emulator",
   pubsub: "Pub/Sub Emulator",
+  auth: "Authentication Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
