@@ -2,6 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
+import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -354,4 +355,76 @@ export async function createRelease(
     }
   );
   return res.body;
+}
+
+/**
+ * Adds channel domain to Firebase Auth list.
+ * @param project the project ID.
+ * @param url the url of the channel.
+ */
+export async function addAuthDomain(project: string, url: string): Promise<string[]> {
+  const domains = await getAuthDomains(project);
+  const domain = url.replace("https://", "");
+  const authDomains = domains || [];
+  if (authDomains.includes(domain)) {
+    return authDomains;
+  }
+  authDomains.push(domain);
+  return await updateAuthDomains(project, authDomains);
+}
+
+/**
+ * Constructs a list of "clean domains"
+ * by including all existing auth domains
+ * with the exception of domains that belong to
+ * expired channels.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function getCleanDomains(project: string, site: string): Promise<string[]> {
+  const channels = await listChannels(project, site);
+  // Create a map of channel domain names
+  const channelMap = channels
+    .map((channel: Channel) => channel.url.replace("https://", ""))
+    .reduce((acc: { [key: string]: boolean }, current: string) => {
+      acc[current] = true;
+      return acc;
+    }, {});
+
+  // match any string that has ${site}--*
+  const siteMatch = new RegExp(`${site}--`, "i");
+  // match any string that ends in firebaseapp.com
+  const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
+  const domains = await getAuthDomains(project);
+  const authDomains: string[] = [];
+
+  domains.forEach((domain: string) => {
+    // include domains that end in *.firebaseapp.com because urls belonging
+    // to the live channel should always be included
+    const endsWithFirebaseApp = firebaseAppMatch.test(domain);
+    if (endsWithFirebaseApp) {
+      authDomains.push(domain);
+      return;
+    }
+    // exclude site domains that have no channels
+    const domainWithNoChannel = siteMatch.test(domain) && !channelMap[domain];
+    if (domainWithNoChannel) {
+      return;
+    }
+    // add all other domains (ex: "localhost", etc)
+    authDomains.push(domain);
+  });
+  return authDomains;
+}
+
+/**
+ * Retrieves a list of "clean domains" and
+ * updates Firebase Auth Api with aforementioned
+ * list.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function cleanAuthState(project: string, site: string): Promise<string[]> {
+  const authDomains = await getCleanDomains(project, site);
+  return await updateAuthDomains(project, authDomains);
 }
