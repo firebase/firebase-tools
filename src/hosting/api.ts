@@ -365,7 +365,7 @@ export async function createRelease(
 export async function addAuthDomain(project: string, url: string): Promise<string[]> {
   const domains = await getAuthDomains(project);
   const domain = url.replace("https://", "");
-  let authDomains = domains || [];
+  const authDomains = domains || [];
   if (authDomains.includes(domain)) {
     return authDomains;
   }
