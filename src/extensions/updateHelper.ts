@@ -72,8 +72,16 @@ export async function displayChangesRequiringConfirmation(
     await getConsent("license", marked(message));
   }
 
-  const apisDiffDeletions = _.differenceWith(spec.apis, _.get(newSpec, "apis", []), _.isEqual);
-  const apisDiffAdditions = _.differenceWith(newSpec.apis, _.get(spec, "apis", []), _.isEqual);
+  const apisDiffDeletions = _.differenceWith(
+    spec.apis,
+    _.get(newSpec, "apis", []),
+    _.isEqual.bind(_)
+  );
+  const apisDiffAdditions = _.differenceWith(
+    newSpec.apis,
+    _.get(spec, "apis", []),
+    _.isEqual.bind(_)
+  );
   if (apisDiffDeletions.length || apisDiffAdditions.length) {
     let message = "\n**APIs:**\n";
     apisDiffDeletions.forEach((api) => {
@@ -108,8 +116,16 @@ export async function displayChangesRequiringConfirmation(
     await getConsent("resources", marked(message));
   }
 
-  const rolesDiffDeletions = _.differenceWith(spec.roles, _.get(newSpec, "roles", []), _.isEqual);
-  const rolesDiffAdditions = _.differenceWith(newSpec.roles, _.get(spec, "roles", []), _.isEqual);
+  const rolesDiffDeletions = _.differenceWith(
+    spec.roles,
+    _.get(newSpec, "roles", []),
+    _.isEqual.bind(_)
+  );
+  const rolesDiffAdditions = _.differenceWith(
+    newSpec.roles,
+    _.get(spec, "roles", []),
+    _.isEqual.bind(_)
+  );
   if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
     let message = "\n**Permissions:**\n";
     rolesDiffDeletions.forEach((role) => {
