@@ -1433,11 +1433,14 @@ function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | u
     claims = decoded as IdpJwtPayload;
   }
 
-  if (!claims.sub) {
-    throw new BadRequestError(
-      'INVALID_IDP_RESPONSE : Invalid Idp Response: id_token missing required fields. ((Missing "sub" field. This field is required and must be a unique identifier.))'
-    );
-  }
+  assert(
+    claims.sub,
+    'INVALID_IDP_RESPONSE : Invalid Idp Response: id_token missing required fields. ((Missing "sub" field. This field is required and must be a unique identifier.))'
+  );
+  assert(
+    typeof claims.sub === "string",
+    'INVALID_IDP_RESPONSE : ((The "sub" field must be a string.))'
+  );
   return claims;
 }
 

@@ -2564,6 +2564,34 @@ describe("Auth emulator", () => {
         });
     });
 
+    it("should error when sub is missing or not a string", async () => {
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          // No sub in token.
+          postBody: `providerId=google.com&id_token=${JSON.stringify({})}`,
+          requestUri: "http://localhost",
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.contain("INVALID_IDP_RESPONSE");
+        });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          // sub is not a string
+          postBody: `providerId=google.com&id_token=${JSON.stringify({ sub: 12345 })}`,
+          requestUri: "http://localhost",
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.contain("INVALID_IDP_RESPONSE");
+        });
+    });
+
     it("should link IDP to existing account by idToken", async () => {
       const user = await registerUser(authApp, {
         email: "foo@example.com",
