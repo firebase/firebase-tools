@@ -47,6 +47,7 @@ const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functio
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   functionsEmulator.startFunctionRuntime = (
     triggerId: string,
     triggerType: EmulatedTriggerType,
