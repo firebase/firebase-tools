@@ -692,7 +692,7 @@ export function setAccountInfoImpl(
         updates.disabled = reqBody.disableUser;
         // TODO: Actually enforce this in all sign-in methods.
       }
-      if (reqBody.phoneNumber) {
+      if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
         assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
       }
