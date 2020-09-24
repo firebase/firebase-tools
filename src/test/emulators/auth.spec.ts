@@ -1194,6 +1194,20 @@ describe("Auth emulator", () => {
         });
     });
 
+    it("should noop when setting phoneNumber to the same as before", async () => {
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const { localId, idToken } = await signInWithPhoneNumber(authApp, phoneNumber);
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+        .set("Authorization", "Bearer owner")
+        .send({ localId, phoneNumber })
+        .then((res) => expectStatusCode(200, res));
+
+      const info = await getAccountInfoByIdToken(authApp, idToken);
+      expect(info.phoneNumber).to.equal(phoneNumber);
+    });
+
     it("should disallow setting phone to same as an existing user", async () => {
       const phoneNumber = TEST_PHONE_NUMBER;
       await signInWithPhoneNumber(authApp, phoneNumber);
