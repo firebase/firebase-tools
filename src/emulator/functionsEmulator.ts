@@ -217,7 +217,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
 
         return this.handleBackgroundTrigger(projectId, triggerId, proto)
-          .then(res.json)
+          .then((x) => res.json(x))
           .catch((errorBundle: { code: number; body?: string }) => {
             if (errorBundle.body) {
               res.status(errorBundle.code).send(errorBundle.body);
