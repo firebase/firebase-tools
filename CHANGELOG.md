@@ -1,1 +1,1 @@
-* Fixes issue where background triggers in the Cloud Functions emulator could take up to 30s to execute.
+- Fixes issue where background triggers in the Cloud Functions emulator could take up to 30s to execute.
