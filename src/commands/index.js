@@ -107,6 +107,11 @@ module.exports = function(client) {
   client.projects.addfirebase = loadCommand("projects-addfirebase");
   client.projects.create = loadCommand("projects-create");
   client.projects.list = loadCommand("projects-list");
+  client.remoteconfig = {};
+  client.remoteconfig.get = loadCommand("remoteconfig-get");
+  client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
+  client.remoteconfig.versions = {};
+  client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
@@ -118,6 +123,5 @@ module.exports = function(client) {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-
   return client;
 };

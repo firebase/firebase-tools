@@ -1,7 +1,3 @@
-- Change default runtime for Firebase Extensions template to nodejs10.
-- Modify messages for Firebase Extensions Node.js 10 migration.
-- Stop creating, updating and deleting service accounts during extension installation, update, and uninstallation.
-- Adds regular expression support for the Firebase Hosting emulator.
-- Changes update notification to reflect all CLI management options.
-- Defaults `firebase login` to use an authorization code in Codespaces environments.
-- Fixes Firebase Hosting deploys when using `--config` flag.
+- Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645).
+- Fixes issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
+- Fixes the `npm run lint` (`eslint`) command in newly initalized Cloud Functions for Firebase directories on Windows (#2644).

@@ -3,9 +3,18 @@ import * as ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, cloneVersion, createRelease } from "../hosting/api";
+import {
+  getChannel,
+  createChannel,
+  cloneVersion,
+  createRelease,
+  addAuthDomain,
+  normalizeName,
+} from "../hosting/api";
 import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
+import * as marked from "marked";
+import * as logger from "../logger";
 
 export default new Command("hosting:clone <source> <targetChannel>")
   .description("clone a version from one site to another")
@@ -15,7 +24,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
     let sourceVersionName;
     let sourceVersion;
     let [sourceSiteId, sourceChannelId] = source.split(":");
-    const [targetSiteId, targetChannelId] = targetChannel.split(":");
+    let [targetSiteId, targetChannelId] = targetChannel.split(":");
     if (!sourceSiteId || !sourceChannelId) {
       [sourceSiteId, sourceVersion] = source.split("@");
       if (!sourceSiteId || !sourceVersion) {
@@ -30,6 +39,10 @@ export default new Command("hosting:clone <source> <targetChannel>")
         `"${targetChannel}" is not a valid target channel. Must be in the form "<site>:<channel>" (to clone to the active website, use "live" as the channel).`
       );
     }
+
+    targetChannelId = normalizeName(targetChannelId);
+    sourceChannelId = normalizeName(sourceChannelId);
+
     const equalSiteIds = sourceSiteId == targetSiteId;
     const equalChannelIds = sourceChannelId == targetChannelId;
     if (equalSiteIds && equalChannelIds) {
@@ -63,8 +76,30 @@ export default new Command("hosting:clone <source> <targetChannel>")
           targetSiteId
         )}, creating it...`
       );
-      tChannel = await createChannel("-", targetSiteId, targetChannelId);
+      try {
+        tChannel = await createChannel("-", targetSiteId, targetChannelId);
+      } catch (e) {
+        throw new FirebaseError(
+          `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`,
+          { original: e }
+        );
+      }
       utils.logSuccess(`Created new channel ${targetChannelId}`);
+      try {
+        const tProjectId = getProjectId(tChannel.name);
+        await addAuthDomain(tProjectId, tChannel.url);
+      } catch (e) {
+        utils.logLabeledWarning(
+          "hosting:clone",
+          marked(
+            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${utils.consoleUrl(
+              targetSiteId,
+              "/authentication/providers"
+            )}`
+          )
+        );
+        logger.debug("[hosting] unable to add auth domain", e);
+      }
     }
     const currentTargetVersionName = tChannel.release?.version?.name;
 
@@ -103,3 +138,14 @@ export default new Command("hosting:clone <source> <targetChannel>")
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });
+
+/**
+ * Returns the projectId from a channel name string.
+ * @param name the project scoped channel name.
+ * projects/${project}/sites/${site{}/channels/${channel}
+ * @return the project id.
+ */
+function getProjectId(name: string): string {
+  const matches = name.match(`^projects/([^/]+)`);
+  return matches ? matches[1] || "" : "";
+}

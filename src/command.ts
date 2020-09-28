@@ -175,7 +175,7 @@ export class Command {
             );
           }
           const duration = new Date().getTime() - start;
-          track(this.name, "success", duration).then(process.exit);
+          track(this.name, "success", duration).then(() => process.exit());
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
