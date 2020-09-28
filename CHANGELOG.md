@@ -1,2 +1,3 @@
-- Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645)
-- Fixues issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
+- Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645).
+- Fixes issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
+- Fixes the `npm run lint` (`eslint`) command in newly initalized Cloud Functions for Firebase directories on Windows (#2644).
