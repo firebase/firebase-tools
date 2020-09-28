@@ -90,11 +90,6 @@ export async function doSetup(setup: any, config: any) {
         // Parse the input as a number
         const portNum = Number.parseInt(ui.port);
         ui.port = isNaN(portNum) ? undefined : portNum;
-
-        if (!ui.port) {
-          // Don't write `port: ""` into the config file.
-          delete ui.port;
-        }
       }
     }
 
