@@ -1,1 +1,2 @@
 - Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645)
+- Fixues issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
