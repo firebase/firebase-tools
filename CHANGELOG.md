@@ -1,1 +1,2 @@
 - Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645)
+- Fixes issue where export did not work if all data was deleted (#2634).

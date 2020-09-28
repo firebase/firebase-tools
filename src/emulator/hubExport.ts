@@ -115,6 +115,14 @@ export class HubExport {
       }
     }
 
+    // We should always export at least one namepsace. This also fixes
+    // the common case where the developer clears all data in the default
+    // namespace and expects an empty export.
+    if (nonEmptyNamespaces.length === 0 && namespaces.length === 1) {
+      logger.debug(`All namespaces empty, exporting ${namespaces[0]}`);
+      nonEmptyNamespaces.push(namespaces[0]);
+    }
+
     // Make sure the export directory exists
     if (!fs.existsSync(this.exportPath)) {
       fs.mkdirSync(this.exportPath);
