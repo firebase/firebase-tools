@@ -347,7 +347,7 @@ describe("import/export end to end", () => {
     await importCLI.start(
       "emulators:start",
       FIREBASE_PROJECT,
-      ["--only", "database", "--import", exportPath],
+      ["--only", "database", "--import", exportPath, "--export-on-exit"],
       (data: unknown) => {
         if (typeof data != "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
@@ -362,6 +362,25 @@ describe("import/export end to end", () => {
     expect(aSnap.val()).to.eql("namespace-a");
     expect(bSnap.val()).to.eql("namespace-b");
 
+    // Delete all of the import files
+    for (const f of fs.readdirSync(dbExportPath)) {
+      const fullPath = path.join(dbExportPath, f);
+      await fs.unlinkSync(fullPath);
+    }
+
+    // Delete all the data in one namespace
+    await bRef.set(null);
+
+    // Stop the CLI (which will export on exit)
     await importCLI.stop();
+
+    // Confirm the data exported is as expected
+    const aPath = path.join(dbExportPath, "namespace-a.json");
+    const aData = JSON.parse(fs.readFileSync(aPath).toString());
+    expect(aData).to.equal("namespace-a");
+
+    const bPath = path.join(dbExportPath, "namespace-b.json");
+    const bData = JSON.parse(fs.readFileSync(bPath).toString());
+    expect(bData).to.equal(null);
   });
 });
