@@ -417,18 +417,14 @@ async function promptForBuildScript() {
 }
 
 async function promptToSetupDeploys(defaultBranch: string) {
-  const { setupDeploys } = await prompt(
-    {},
-
-    [
-      {
-        type: "confirm",
-        name: "setupDeploys",
-        default: true,
-        message: "Set up automatic deployment to your site's live channel when a PR is merged?",
-      },
-    ]
-  );
+  const { setupDeploys } = await prompt({}, [
+    {
+      type: "confirm",
+      name: "setupDeploys",
+      default: true,
+      message: "Set up automatic deployment to your site's live channel when a PR is merged?",
+    },
+  ]);
 
   if (!setupDeploys) {
     return { setupDeploys };
