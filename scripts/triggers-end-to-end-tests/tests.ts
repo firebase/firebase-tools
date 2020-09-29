@@ -369,7 +369,10 @@ describe("import/export end to end", () => {
     }
 
     // Delete all the data in one namespace
-    await bApp.database().ref().set(null);
+    await bApp
+      .database()
+      .ref()
+      .set(null);
 
     // Stop the CLI (which will export on exit)
     await importCLI.stop();
