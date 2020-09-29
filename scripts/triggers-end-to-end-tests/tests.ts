@@ -369,7 +369,7 @@ describe("import/export end to end", () => {
     }
 
     // Delete all the data in one namespace
-    await bRef.set(null);
+    await bApp.database().ref().set(null);
 
     // Stop the CLI (which will export on exit)
     await importCLI.stop();
@@ -377,7 +377,7 @@ describe("import/export end to end", () => {
     // Confirm the data exported is as expected
     const aPath = path.join(dbExportPath, "namespace-a.json");
     const aData = JSON.parse(fs.readFileSync(aPath).toString());
-    expect(aData).to.equal("namespace-a");
+    expect(aData).to.deep.equal({ ns: "namespace-a" });
 
     const bPath = path.join(dbExportPath, "namespace-b.json");
     const bData = JSON.parse(fs.readFileSync(bPath).toString());
