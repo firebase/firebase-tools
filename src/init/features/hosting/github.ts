@@ -186,18 +186,31 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
 
+/**
+ * Finds the folder that contains the .git folder
+ *
+ * For example, if the .git folder is /Users/sparky/projects/my-web-app/.git
+ * This function will return /Users/sparky/projects/my-web-app
+ *
+ * Modeled after https://github.com/firebase/firebase-tools/blob/master/src/detectProjectRoot.ts
+ *
+ * @return {string} The folder that contains the .git folder
+ */
 function getGitFolderPath(): string {
   const commandDir = process.cwd();
   let projectRootDir = commandDir;
 
   while (!fs.existsSync(path.resolve(projectRootDir, ".git"))) {
     const parentDir = path.dirname(projectRootDir);
+
+    // Stop searching if we get to the root of the filesystem
     if (parentDir === projectRootDir) {
       logBullet(`Didn't detect a .git folder. Assuming ${commandDir} is the project root.`);
       return commandDir;
     }
     projectRootDir = parentDir;
   }
+
   logBullet(`Detected a .git folder at ${projectRootDir}`);
   return projectRootDir;
 }
@@ -207,7 +220,7 @@ function defaultGithubRepo(): string | undefined {
 
   if (fs.existsSync(gitConfigPath)) {
     const gitConfig = fs.readFileSync(gitConfigPath, "utf8");
-    const match = gitConfig.match(/github\.com:(.+)\.git/);
+    const match = /github\.com:(.+)\.git/.exec(gitConfig);
     if (match) {
       return match[1];
     }
@@ -215,7 +228,7 @@ function defaultGithubRepo(): string | undefined {
   return undefined;
 }
 
-function loadYMLDeploy() {
+function loadYMLDeploy(): { exists: boolean; branch?: string } {
   if (fs.existsSync(YML_FULL_PATH_MERGE)) {
     const { on } = loadYML(YML_FULL_PATH_MERGE);
     const branch = on.push.branches[0];
@@ -229,7 +242,7 @@ function loadYML(ymlPath: string) {
   return safeLoad(fs.readFileSync(ymlPath, "utf8"));
 }
 
-function mkdirNotExists(dir: string) {
+function mkdirNotExists(dir: string): void {
   if (!dirExistsSync(dir)) {
     fs.mkdirSync(dir);
   }
@@ -257,12 +270,12 @@ function writeChannelActionYMLFile(
   secretName: string,
   projectId: string,
   script?: string
-) {
+): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on PR",
     on: "pull_request",
     jobs: {
-      build_and_preview: {
+      ["build_and_preview"]: {
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },
@@ -299,16 +312,16 @@ ${yaml.safeDump(workflowConfig)}`;
 
 function writeDeployToProdActionYMLFile(
   ymlPath: string,
-  branch: string,
+  branch: string | undefined,
   secretName: string,
   projectId: string,
   script?: string
-) {
+): void {
   const workflowConfig: GitHubWorkflowConfig = {
     name: "Deploy to Firebase Hosting on merge",
-    on: { push: { branches: [branch] } },
+    on: { push: { branches: [branch || "master"] } },
     jobs: {
-      build_and_deploy: {
+      ["build_and_deploy"]: {
         "runs-on": "ubuntu-latest",
         steps: [{ uses: CHECKOUT_GITHUB_ACTION_NAME }],
       },
@@ -348,15 +361,15 @@ async function uploadSecretToGitHub(
   repo: string,
   ghAccessToken: string,
   encryptedServiceAccountJSON: string,
-  key_id: any,
+  keyId: string,
   secretName: string
 ): Promise<{ status: any }> {
   return await api.request("PUT", `/repos/${repo}/actions/secrets/${secretName}`, {
     origin: api.githubApiOrigin,
     headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
     data: {
-      encrypted_value: encryptedServiceAccountJSON,
-      key_id,
+      ["encrypted_value"]: encryptedServiceAccountJSON,
+      ["key_id"]: keyId,
     },
   });
 }
@@ -365,8 +378,8 @@ async function promptForRepo(
   options: any,
   ghAccessToken: string
 ): Promise<{ repo: string; key: string; keyId: string }> {
-  let key: string = "";
-  let keyId: string = "";
+  let key = "";
+  let keyId = "";
   const { repo } = await prompt(options, [
     {
       type: "input",
@@ -390,7 +403,7 @@ async function promptForRepo(
   return { repo, key, keyId };
 }
 
-async function promptForBuildScript() {
+async function promptForBuildScript(): Promise<{ script?: string }> {
   const { shouldSetupScript } = await prompt({}, [
     {
       type: "confirm",
@@ -401,7 +414,7 @@ async function promptForBuildScript() {
   ]);
 
   if (!shouldSetupScript) {
-    return { script: null };
+    return { script: undefined };
   }
 
   const { script } = await prompt({}, [
@@ -416,7 +429,9 @@ async function promptForBuildScript() {
   return { script };
 }
 
-async function promptToSetupDeploys(defaultBranch: string) {
+async function promptToSetupDeploys(
+  defaultBranch: string
+): Promise<{ setupDeploys: boolean; branch?: string }> {
   const { setupDeploys } = await prompt({}, [
     {
       type: "confirm",
@@ -452,7 +467,7 @@ async function promptForWriteYMLFile({ message }: { message: string }) {
   ]);
 }
 
-async function getGitHubUserDetails(ghAccessToken: any) {
+async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, any>> {
   const { body: ghUserDetails } = await api.request("GET", `/user`, {
     origin: api.githubApiOrigin,
     headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
@@ -472,7 +487,11 @@ async function signInWithGitHub() {
   return await login(true, null, "GITHUB");
 }
 
-async function createServiceAccountAndKeyWithRetry(options: any, repo: string, accountId: string) {
+async function createServiceAccountAndKeyWithRetry(
+  options: any,
+  repo: string,
+  accountId: string
+): Promise<string> {
   const spinnerServiceAccount = ora.default("Retrieving a service account.");
   spinnerServiceAccount.start();
 
@@ -547,8 +566,10 @@ async function createServiceAccountAndKey(
  *
  * @param serviceAccountJSON A service account's JSON private key
  * @param key a GitHub repository's public key
+ *
+ * @return {string} The encrypted service account key
  */
-function encryptServiceAccountJSON(serviceAccountJSON: string, key: string) {
+function encryptServiceAccountJSON(serviceAccountJSON: string, key: string): string {
   const messageBytes = Buffer.from(serviceAccountJSON);
   const keyBytes = Buffer.from(key, "base64");
 
