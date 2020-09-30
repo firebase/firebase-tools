@@ -29,9 +29,7 @@ module.exports = new Command("database:remove <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
-    // logger.debug("Remove URL: ", typeof(origin));
     const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
-
     return prompt(options, [
       {
         type: "confirm",
