@@ -29,15 +29,13 @@ module.exports = new Command("database:remove <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
     return prompt(options, [
       {
         type: "confirm",
         name: "confirm",
         default: false,
-        message:
-          "You are about to remove all data at " +
-          clc.cyan(utils.getDatabaseUrl(origin, options.instance), path) +
-          ". Are you sure?",
+        message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
       },
     ]).then(function() {
       if (!options.confirm) {
