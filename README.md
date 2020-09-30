@@ -1,5 +1,5 @@
 # Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
-
+clear explanation
 The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line.
 
 - Deploy code and assets to your Firebase projects
