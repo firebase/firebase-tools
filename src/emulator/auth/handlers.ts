@@ -130,28 +130,203 @@ export function registerHandlers(
 
   app.get(`/emulator/auth/handler`, (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
+    // Note: For browser compatibility, please avoid ES6 and newer browser
+    // features as much as possible in the page below.
     res.end(
       `<!DOCTYPE html>
 <meta charset="utf-8">
-<title>Not Implemented</title>
-<h1>Not Implemented in Auth Emulator</h1>
-<p>
-  Sign-in with popup / redirect / web-views with the Auth Emulator
-  is not yet supported.
-</p>
-<p>We're working on it. Please stay tuned.</p>
-<p>In the meantime, try <code>signInWithCredential</code> instead.</p>
+<title>Auth Emulator IDP Login Widget</title>
+<h1>Sign-in with <span class="js-provider-id">Provider</span></h1>
+<p>Please select an existing account in the Auth Emulator or add a new one.</p>
+<p><b>This page is a work in progress and is subject to change.</b></p>
+<div>
+  <ul>
+    <!-- TODO: Generate the list from all existing accounts with providerId. -->
+    <li class="js-reuse-account" data-id-token='{"sub":"12345"}'>
+      <a href="#">Test Account 1</a>
+    </li>
+    <li class="js-reuse-account" data-id-token='{"sub":"67890"}'>
+      <a href="#">Test Account 2</a>
+    </li>
+    <li class="js-new-account"><a href="#">Add Another Account</a></li>
+  </ul>
+</div>
+<script>
+  // TODO: Support older browsers where URLSearchParams is not available.
+  var query = new URLSearchParams(location.search);
+  var apiKey = query.get('apiKey');
+  var appName = query.get('appName');
+  var authType = query.get('authType');
+  var providerId = query.get('providerId');
+
+  var redirectUrl = query.get('redirectUrl');
+  var scopes = query.get('scopes');
+  var eventId = query.get('eventId');
+  if (!apiKey || !appName || !authType || !providerId) {
+    alert('Auth Emulator Internal Error: Missing query params apiKey / appName / authType / providerId.');
+  }
+  var storageKey = apiKey + ':' + appName;
+
+  function saveAuthEvent(authEvent) {
+    if (/popup/i.test(authType)) {
+      sendAuthEventViaIframeRelay(authEvent, function (err) {
+        if (err) {
+          return alert('Auth Emulator Internal Error: ' + err);
+        }
+      });
+    } else {
+      saveAuthEventToStorage(authEvent);
+      if (redirectUrl) {
+        window.location = redirectUrl;
+      } else {
+        // TODO
+        return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
+      }
+    }
+  }
+
+  function saveAuthEventToStorage(authEvent) {
+    sessionStorage['firebase:redirectEvent:' + storageKey] =
+      JSON.stringify(authEvent);
+  }
+
+  function sendAuthEventViaIframeRelay(authEvent, cb) {
+    var sent = false;
+    if (window.opener) {
+      for (var i = 0; i < window.opener.frames.length; i++) {
+        var iframeWin = window.opener.frames[i];
+        var query = new URLSearchParams(iframeWin.location.search);
+        if (query.get('apiKey') === apiKey && query.get('appName') === appName) {
+          iframeWin.postMessage({
+            data: {authEvent: authEvent, storageKey: storageKey},
+            eventId: Math.floor(Math.random() * Math.pow(10, 20)).toString(),
+            eventType: "sendAuthEvent",
+          }, '*');
+          sent = true;
+        }
+      }
+    }
+    if (!sent) {
+      return cb('No matching frame');
+    }
+    return cb();
+  }
+
+  // DOM logic
+
+  document.querySelector('.js-provider-id').textContent = providerId;
+  var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
+  [].forEach.call(reuseAccountEls, function (el) {
+    var idToken = el.dataset.idToken;
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      // Use widget URL, but replace all query parameters (no apiKey etc.).
+      let url = window.location.href.split('?')[0];
+      // Avoid URLSearchParams for browser compatibility.
+      url += '?providerId=' + encodeURIComponent(providerId);
+      url += '&id_token=' + encodeURIComponent(idToken);
+      saveAuthEvent({
+        type: authType,
+        eventId: eventId,
+        urlResponse: url,
+        sessionId: "ValueNotUsedByAuthEmulator",
+        postBody: null,
+        tenantId: null,
+        error: null,
+      });
+    });
+  });
+  document.querySelector('.js-new-account').addEventListener('click', function (e) {
+    e.preventDefault();
+    return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
+  });
+</script>
 `
     );
   });
 
   app.get(`/emulator/auth/iframe`, (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
+    // Note: For browser compatibility, please avoid ES6 and newer browser
+    // features as much as possible in the page below.
     res.end(
       `<!DOCTYPE html>
 <meta charset="utf-8">
-<title>Auth Emulator: iframe stub</title>
-<p>This page does not do anything yet.</p>
+<title>Auth Emulator Helper Iframe</title>
+<script>
+  // TODO: Support older browsers where URLSearchParams is not available.
+  var query = new URLSearchParams(location.search);
+  var apiKey = query.get('apiKey');
+  var appName = query.get('appName');
+  if (!apiKey || !appName) {
+    alert('Auth Emulator Internal Error: Missing query params apiKey or appName for iframe.');
+  }
+  var storageKey = apiKey + ':' + appName;
+
+  var parentContainer = null;
+
+  window.addEventListener('message', function (e) {
+    if (typeof e.data === 'object' && e.data.eventType === 'sendAuthEvent') {
+      if (!e.data.data.storageKey === storageKey) {
+        return alert('Auth Emulator Internal Error: Received request with mismatching storageKey');
+      }
+      var authEvent = e.data.data.authEvent;
+      if (parentContainer) {
+        sendAuthEvent(parentContainer, authEvent);
+      } else {
+        // Store it first, and initFrameMessaging() below will pick it up.
+        sessionStorage['firebase:redirectEvent:' + storageKey] =
+            JSON.stringify(authEvent);
+      }
+    }
+  });
+
+  function initFrameMessaging() {
+    parentContainer = gapi.iframes.getContext().getParentIframe();
+    parentContainer.register('webStorageSupport', function() {
+      // We must reply to this event, or the JS SDK will not continue with the
+      // popup flow. Web storage support is not actually needed though.
+      return { status: 'ACK', webStorageSupport: true };
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+
+    var storedEvent = sessionStorage['firebase:redirectEvent:' + storageKey];
+    if (storedEvent) {
+      var authEvent = null;
+      try {
+        authEvent = JSON.parse(storedEvent);
+      } catch (_) {
+        return alert('Auth Emulator Internal Error: Invalid stored event.');
+      }
+      if (authEvent) {
+        sendAuthEvent(parentContainer, authEvent);
+      }
+      delete sessionStorage['firebase:redirectEvent:' + storageKey];
+    }
+  }
+
+  function sendAuthEvent(parentContainer, authEvent) {
+    parentContainer.send('authEvent', {
+      type: 'authEvent',
+      authEvent: authEvent,
+    }, function(responses) {
+      if (!responses || !responses.length ||
+          !responses[responses.length - 1].status === 'ACK') {
+        return alert("Auth Emulator Internal Error: Sending authEvent failed.");
+      }
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+  }
+
+  window.gapi_onload = function () {
+    gapi.load('gapi.iframes', {
+      callback: initFrameMessaging,
+      timeout: 10000,
+      ontimeout: function () {
+        return alert("Auth Emulator Internal Error: Error loading gapi.iframe! Please check your Internet connection.");
+      },
+    });
+  }
+</script>
+<script src="https://apis.google.com/js/api.js"></script>
 `
     );
   });
