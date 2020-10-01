@@ -260,3 +260,20 @@ because they require access to a local filesystem.
 [gh-actions-badge]: https://github.com/firebase/firebase-tools/workflows/CI%20Tests/badge.svg
 [node-badge]: https://img.shields.io/node/v/firebase-tools.svg
 [npm-badge]: https://img.shields.io/npm/v/firebase-tools.svg
+
+
+
+
+
+Use Custom Commands for PowerShell
+----------------------------------------
+$env:http_proxy = 'http://192.168.40.1:808'
+
+$env:https_proxy = 'http://192.168.40.1:808'
+
+$env:NO_PROXY = 'localhost,127.0.0.1'
+
+Here my Proxy Server is 192.168.40.1 & Port 808
+
+
+
