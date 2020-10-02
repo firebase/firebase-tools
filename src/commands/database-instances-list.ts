@@ -40,12 +40,8 @@ function logInstancesCount(count = 0): void {
   logger.info(`${count} database instance(s) total.`);
 }
 
-export default new Command("database:instances:list")
+let cmd = new Command("database:instances:list")
   .description("list realtime database instances, optionally filtered by a specified location")
-  .option(
-    "-l, --location <location>",
-    "(optional) location for the database instance, defaults to us-central1"
-  )
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
@@ -83,3 +79,11 @@ export default new Command("database:instances:list")
     logger.info(`Project ${options.project} has ${instances.length} database instances`);
     return instances;
   });
+
+if (previews.rtdbmanagement) {
+  cmd = cmd.option(
+    "-l, --location <location>",
+    "(optional) location for the database instance, defaults to us-central1"
+  );
+}
+export default cmd;
