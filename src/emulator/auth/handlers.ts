@@ -1,7 +1,7 @@
 import { URL } from "url";
 import * as express from "express";
-import { resetPassword, setAccountInfoImpl } from "./operations";
-import { ProjectState } from "./state";
+import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations";
+import { ProjectState, ProviderUserInfo } from "./state";
 import { BadRequestError, NotImplementedError } from "./errors";
 
 /**
@@ -130,6 +130,18 @@ export function registerHandlers(
 
   app.get(`/emulator/auth/handler`, (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
+    const apiKey = req.query.apiKey as string | undefined;
+    const providerId = req.query.providerId as string | undefined;
+    if (!apiKey || !providerId) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "missing apiKey or providerId query parameters",
+        },
+      });
+    }
+    const state = getProjectStateByApiKey(apiKey);
+    const providerInfos = state.listProviderInfosByProviderId(providerId);
+
     // Note: For browser compatibility, please avoid ES6 and newer browser
     // features as much as possible in the page below.
     res.end(
@@ -141,13 +153,15 @@ export function registerHandlers(
 <p><b>This page is a work in progress and is subject to change.</b></p>
 <div>
   <ul>
-    <!-- TODO: Generate the list from all existing accounts with providerId. -->
-    <li class="js-reuse-account" data-id-token='{"sub":"12345"}'>
-      <a href="#">Test Account 1</a>
-    </li>
-    <li class="js-reuse-account" data-id-token='{"sub":"67890"}'>
-      <a href="#">Test Account 2</a>
-    </li>
+  ${providerInfos
+    .map(
+      (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
+        createFakeClaims(info)
+      )}">
+      <a href="#">${info.displayName || info.email || info.rawId}</a>
+    </li>`
+    )
+    .join("\n")}
     <li class="js-new-account"><a href="#">Add Another Account</a></li>
   </ul>
 </div>
@@ -217,14 +231,14 @@ export function registerHandlers(
   document.querySelector('.js-provider-id').textContent = providerId;
   var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
   [].forEach.call(reuseAccountEls, function (el) {
-    var idToken = el.dataset.idToken;
+    var urlEncodedIdToken = el.dataset.idToken;
     el.addEventListener('click', function (e) {
       e.preventDefault();
       // Use widget URL, but replace all query parameters (no apiKey etc.).
       let url = window.location.href.split('?')[0];
       // Avoid URLSearchParams for browser compatibility.
       url += '?providerId=' + encodeURIComponent(providerId);
-      url += '&id_token=' + encodeURIComponent(idToken);
+      url += '&id_token=' + urlEncodedIdToken;
       saveAuthEvent({
         type: authType,
         eventId: eventId,
@@ -330,4 +344,22 @@ export function registerHandlers(
 `
     );
   });
+}
+
+function createFakeClaims(info: ProviderUserInfo): string {
+  const claims: IdpJwtPayload = {
+    sub: info.rawId,
+    iss: "",
+    aud: "",
+    exp: 0,
+    iat: 0,
+    name: info.displayName,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    screen_name: info.screenName,
+    email: info.email,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    email_verified: true, // TODO: Shall we allow changing this?
+    picture: info.photoUrl,
+  };
+  return JSON.stringify(claims);
 }
