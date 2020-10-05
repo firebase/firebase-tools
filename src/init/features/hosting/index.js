@@ -34,15 +34,6 @@ module.exports = function(setup, config, options) {
   logger.info("have a build process for your assets, use your build's output directory.");
   logger.info();
 
-  const channelsPrompt = {
-    name: "github",
-    type: "confirm",
-    default: false,
-    message: "Set up automatic builds and deploys with GitHub?",
-  };
-
-  const configureChannels = previews.hostingchannels ? channelsPrompt : {};
-
   return prompt(setup.hosting, [
     {
       name: "public",
@@ -56,7 +47,12 @@ module.exports = function(setup, config, options) {
       default: false,
       message: "Configure as a single-page app (rewrite all urls to /index.html)?",
     },
-    configureChannels,
+    {
+      name: "github",
+      type: "confirm",
+      default: false,
+      message: "Set up automatic builds and deploys with GitHub?",
+    },
   ]).then(function() {
     setup.config.hosting = {
       public: setup.hosting.public,
