@@ -1,3 +1,5 @@
+- Adds the `hosting:channel:*` commands for interacting with Firebase Hosting Preview Channels.
+- Adds the `hosting:clone` command for cloning versions between Hosting Preview Channels or Sites.
 - Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645).
 - Fixes issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
 - Fixes the `npm run lint` (`eslint`) command in newly initalized Cloud Functions for Firebase directories on Windows (#2644).
