@@ -1,10 +1,10 @@
 import { bold, yellow } from "cli-color";
 
-import { Channel, createChannel } from "../hosting/api";
+import { Channel, createChannel, addAuthDomain } from "../hosting/api";
 import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
-import { logLabeledSuccess, datetimeString } from "../utils";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as getInstanceId from "../getInstanceId";
@@ -12,6 +12,7 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
+import * as marked from "marked";
 
 const LOG_TAG = "hosting:channel";
 
@@ -67,6 +68,21 @@ export default new Command("hosting:channel:create [channelId]")
           );
         }
         throw e;
+      }
+
+      try {
+        await addAuthDomain(projectId, channel.url);
+      } catch (e) {
+        logLabeledWarning(
+          LOG_TAG,
+          marked(
+            `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+              projectId,
+              "/authentication/providers"
+            )}`
+          )
+        );
+        logger.debug("[hosting] unable to add auth domain", e);
       }
 
       logger.info();

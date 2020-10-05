@@ -16,6 +16,7 @@ var TARGETS = {
   firestore: require("./firestore"),
   functions: require("./functions"),
   storage: require("./storage"),
+  remoteconfig: require("./remoteconfig"),
 };
 
 var _noop = function() {

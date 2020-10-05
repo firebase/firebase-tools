@@ -131,6 +131,7 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
@@ -141,6 +142,10 @@ var api = {
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://web.app"),
+  identityOrigin: utils.envOverride(
+    "FIREBASE_IDENTITY_URL",
+    "https://identitytoolkit.googleapis.com"
+  ),
   iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",
@@ -154,6 +159,10 @@ var api = {
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
+  ),
+  remoteConfigApiOrigin: utils.envOverride(
+    "FIREBASE_REMOTE_CONFIG_URL",
+    "https://firebaseremoteconfig.googleapis.com"
   ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",

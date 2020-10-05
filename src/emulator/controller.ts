@@ -20,6 +20,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -39,6 +40,7 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
+import { previews } from "../previews";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -167,6 +169,10 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     targets = _.intersection(targets, options.only.split(","));
   }
 
+  if (!previews.authemulator) {
+    targets = targets.filter((e) => e !== Emulators.AUTH);
+  }
+
   return targets;
 }
 
@@ -219,6 +225,10 @@ export function shouldStart(options: any, name: Emulators): boolean {
         "firebase init hosting"
       )}?`
     );
+    return false;
+  }
+
+  if (name === Emulators.AUTH && !previews.authemulator) {
     return false;
   }
 
@@ -567,6 +577,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  if (shouldStart(options, Emulators.AUTH)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        `Cannot start the ${Constants.description(
+          Emulators.AUTH
+        )} without a project: run 'firebase init' or provide the --project flag`
+      );
+    }
+
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authEmulator = new AuthEmulator({
+      host: authAddr.host,
+      port: authAddr.port,
+      projectId,
+    });
+    await startEmulator(authEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {

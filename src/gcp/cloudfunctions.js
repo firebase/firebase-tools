@@ -332,7 +332,6 @@ function _checkOperation(operation) {
 }
 
 module.exports = {
-  DEFAULT_REGION: "us-central1",
   generateUploadUrl: _generateUploadUrl,
   create: _createFunction,
   update: _updateFunction,

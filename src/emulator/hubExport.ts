@@ -41,7 +41,7 @@ export class HubExport {
   }
 
   public async exportAll(): Promise<void> {
-    const toExport = ALL_EMULATORS.filter(this.shouldExport);
+    const toExport = ALL_EMULATORS.filter(shouldExport);
     if (toExport.length === 0) {
       throw new FirebaseError("No running emulators support import/export.");
     }
@@ -53,7 +53,7 @@ export class HubExport {
       version: EmulatorHub.CLI_VERSION,
     };
 
-    if (this.shouldExport(Emulators.FIRESTORE)) {
+    if (shouldExport(Emulators.FIRESTORE)) {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
@@ -62,7 +62,7 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
-    if (this.shouldExport(Emulators.DATABASE)) {
+    if (shouldExport(Emulators.DATABASE)) {
       metadata.database = {
         version: getDownloadDetails(Emulators.DATABASE).version,
         path: "database_export",
@@ -147,8 +147,7 @@ export class HubExport {
       });
     }
   }
-
-  private shouldExport(e: Emulators): boolean {
-    return IMPORT_EXPORT_EMULATORS.indexOf(e) >= 0 && EmulatorRegistry.isRunning(e);
-  }
+}
+function shouldExport(e: Emulators): boolean {
+  return IMPORT_EXPORT_EMULATORS.includes(e) && EmulatorRegistry.isRunning(e);
 }
