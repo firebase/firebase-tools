@@ -7,7 +7,6 @@ let api = require("../../../api");
 let logger = require("../../../logger");
 let { prompt } = require("../../../prompt");
 let { initGitHub } = require("./github");
-let { previews } = require("../../../previews");
 
 let INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
