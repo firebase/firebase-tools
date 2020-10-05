@@ -2,3 +2,4 @@
 - Fixes issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
 - Fixes the `npm run lint` (`eslint`) command in newly initalized Cloud Functions for Firebase directories on Windows (#2644).
 - Fixes `database:remove` command (#2657).
+- Improves the output of `hosting:disable` when dealing with Firebase Hosting multisite setups.
