@@ -126,10 +126,11 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Cloud Firestore Commands
 
-| Command               | Description                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **firestore:delete**  | Delete documents or collections from the current project's database. Supports recursive deletion of subcollections. |
-| **firestore:indexes** | List all deployed indexes from the current project.                                                                 |
+| Command                     | Description                                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **firestore:delete**        | Delete documents or collections from the current project's database. Supports recursive deletion of subcollections. |
+| **firestore:indexes**       | List all deployed indexes from the current project.                                                                 |
+| **firestore:rules:compile** | Check `firestore.rules` for compilation errors.                                                                     |
 
 ### Cloud Functions Commands
 
