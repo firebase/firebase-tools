@@ -240,6 +240,10 @@ export function registerHandlers(
         -ms-flex-pack: center;
       }
 
+      .profile-photo {
+        background-size: contain;
+      }
+
       /*Fallbacks*/
 
       .fallback-secondary-text {
@@ -268,7 +272,12 @@ export function registerHandlers(
             createFakeClaims(info)
           )}">
             <span class="mdc-list-item__ripple"></span>
-            <span class="mdc-list-item__graphic material-icons" aria-hidden="true">person</span>
+            ${info.profile ? `
+              <span class="mdc-list-item__graphic profile-photo" style="background-image: url('${info.profile}')"></span>`
+              :`
+              <span class="mdc-list-item__graphic material-icons" aria-hidden=true>person</span>
+              </div>`
+            }
             <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${info.displayName}</span>
             <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span> 
         </li>`
