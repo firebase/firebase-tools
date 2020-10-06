@@ -143,29 +143,154 @@ export function registerHandlers(
     const providerInfos = state.listProviderInfosByProviderId(providerId);
 
     // Note: For browser compatibility, please avoid ES6 and newer browser
-    // features as much as possible in the page below.
+    //  features as much as possible in the page below.
     res.end(
-      `<!DOCTYPE html>
-<meta charset="utf-8">
-<title>Auth Emulator IDP Login Widget</title>
-<h1>Sign-in with <span class="js-provider-id">Provider</span></h1>
-<p>Please select an existing account in the Auth Emulator or add a new one.</p>
-<p><b>This page is a work in progress and is subject to change.</b></p>
-<div>
-  <ul>
-  ${providerInfos
-    .map(
-      (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
-        createFakeClaims(info)
-      )}">
-      <a href="#">${info.displayName || info.email || info.rawId}</a>
-    </li>`
-    )
-    .join("\n")}
-    <li class="js-new-account"><a href="#">Add Another Account</a></li>
-  </ul>
-</div>
-<script>
+`<!DOCTYPE html>
+  <head>
+    <meta charset="utf-8">
+    <title>Auth Emulator IDP Login Widget</title>
+    <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet"></head>
+    <style>
+      :root {
+        --mdc-theme-text-secondary-on-background: rgba(0,0,0,.56);
+      }
+
+      body {
+        font-family: "Roboto", "Helvetica", sans-serif;
+        margin: 0;
+      }
+
+      .content-wrapper {
+        padding: 0 16px;
+      }
+
+      .title {
+        font-weight: 500;
+        margin-top: 32px;
+      }
+
+      p {
+        margin-block-end: 0em;
+        margin-block-start: 0em;
+      }
+
+      button {
+        letter-spacing: 0 !important;
+        text-transform: none !important;  
+      }
+
+      .subtitle {
+        color: var(--mdc-theme-text-secondary-on-background);
+        font-size: 14px;
+        line-height: 20px;
+      }
+
+      .disclaimer {
+        align-items: center;
+        color: var(--mdc-theme-text-secondary-on-background);
+        display: flex;
+        flex-direction: row;
+      }
+
+      .disclaimer .content {
+        margin: 8px;
+        flex: 1;
+        font-size: 14px;
+        font-style: italic;
+      }
+
+      .add-account {
+        height: 56px !important;
+      }
+
+      .mdc-list--avatar-list .mdc-list-item__graphic {
+        border-radius: 50%;
+        height: 36px;
+        margin-left: 0;
+        margin-right: 16px;
+        width: 36px;
+      }
+
+      .mdc-list .mdc-list-item__graphic {
+        display: -ms-inline-flexbox;
+        display: inline-flex;
+      }
+
+      .mdc-list--avatar-list .mdc-list-item__graphic {
+        background-color: rgba(0,0,0,.3);
+        color: #fff;
+      }
+
+      .mdc-list-item__graphic {
+        align-items: center;
+        color: background-color: rgba(0,0,0,.3);
+        fill: currentColor;
+        flex-shrink: 0;
+        height: 24px;
+        justify-content: center;
+        margin-left: 0;
+        margin-right: 32px;
+        width: 24px;
+        -ms-flex-negative: 0;
+        -ms-flex-align: center;
+        -ms-flex-pack: center;
+      }
+
+      /*Fallbacks*/
+
+      .fallback-secondary-text {
+        color: var(--mdc-theme-text-secondary-on-background);
+      }
+
+      li {
+        padding: 8px 16px;
+        list-style-type: none;
+      }
+
+      ul {
+        padding-inline-start: 0;
+      }
+      </style>
+    </head>
+    <body>
+      <div class="content-wrapper">
+        <h1 class="mdc-typography--headline5 title">Sign-in with <span class="js-provider-id">Provider</span></h1>
+        <p class="subtitle">Please select an existing account in the Auth Emulator or add a new one:</p>
+      </div>
+      <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
+      ${providerInfos
+        .map(
+          (info) => `<li class="js-reuse-account mdc-list-item mdc-ripple-upgraded" tabindex="0" data-id-token="${encodeURIComponent(
+            createFakeClaims(info)
+          )}">
+            <span class="mdc-list-item__ripple"></span>
+            <span class="mdc-list-item__graphic material-icons" aria-hidden="true">person</span>
+            <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${info.displayName}</span>
+            <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span> 
+        </li>`
+        )
+
+        .join("\n")}
+        <li class="js-new-account mdc-list-item add-account">
+          <button class="mdc-button mdc-button--outlined">
+            <div class="mdc-button__ripple"></div>
+            <i class="material-icons mdc-button__icon" aria-hidden="true">add</i>
+            <span class="mdc-button__label">Add new account</span>
+          </button>
+        </li>
+      </ul>
+      <div class="content-wrapper">
+        <div class="disclaimer">
+          <i class="material-icons">info</i>
+          <div class="content">This page is a work in progress and is subject to change.</div>
+        </div>
+      </div>
+    </body>
+  <script>
   // TODO: Support older browsers where URLSearchParams is not available.
   var query = new URLSearchParams(location.search);
   var apiKey = query.get('apiKey');
