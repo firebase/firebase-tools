@@ -8,14 +8,19 @@ var apiKey = query.get('apiKey');
 var appName = query.get('appName');
 var authType = query.get('authType');
 var providerId = query.get('providerId');
-
 var redirectUrl = query.get('redirectUrl');
 var scopes = query.get('scopes');
 var eventId = query.get('eventId');
-if (!apiKey || !appName || !authType || !providerId) {
-  alert('Auth Emulator Internal Error: Missing query params apiKey / appName / authType / providerId.');
-}
 var storageKey = apiKey + ':' + appName;
+
+var clientId = query.get('clientId');
+var firebaseAppId = query.get('appId');
+var apn = query.get('apn');
+var ibi = query.get('ibi');
+var appIdentifier = apn || ibi;
+if (!appName && !clientId && !firebaseAppId && !appIdentifier) {
+  alert('Auth Emulator Internal Error: Missing one of appName / clientId / appId / apn / ibi query params.');
+}
 
 function saveAuthEvent(authEvent) {
   if (/popup/i.test(authType)) {
@@ -25,11 +30,14 @@ function saveAuthEvent(authEvent) {
       }
     });
   } else {
-    saveAuthEventToStorage(authEvent);
-    if (redirectUrl) {
+    if (apn) {
+      redirectToAndroid(authEvent);
+    } else if (ibi) {
+      redirectToIos(authEvent);
+    } else if (redirectUrl) {
+      saveAuthEventToStorage(authEvent);
       window.location = redirectUrl;
     } else {
-      // TODO
       return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
     }
   }
@@ -61,6 +69,45 @@ function sendAuthEventViaIframeRelay(authEvent, cb) {
   }
   return cb();
 }
+
+function redirectToAndroid(authEvent) {
+  var link = 'intent://firebase.auth/#Intent;scheme=genericidp;' +
+      'package=' + apn + ';' +
+      'S.authType=' + authEvent.type + ';';
+  if (authEvent.eventId) {
+    link += 'S.eventId=' + authEvent.eventId + ';';
+  }
+  link += 'S.link=' + encodeURIComponent(authEvent.urlResponse) + ';';
+  link += 'end;';
+
+  window.location.replace(link);
+}
+
+function redirectToIos(authEvent) {
+  // This URL format is based on production widget and known to work with the
+  // iOS SDK. It does not matter that /__/auth/callback is not an actual page
+  // served by the Auth Emulator -- only the format and query params matter.
+  var url = window.location.protocol + '//' + window.location.host +
+      '/__/auth/callback?authType=' + encodeURIComponent(authEvent.type) +
+      '&link=' + encodeURIComponent(authEvent.urlResponse);
+  if (authEvent.eventId) {
+    url += '&eventId=' + authEvent.eventId;
+  }
+  var scheme;
+  if (clientId) {
+    scheme = clientId.split('.').reverse().join('.');
+  } else if (firebaseAppId) {
+    scheme = 'app-' + firebaseAppId.replace(/:/g, '-');
+  } else {
+    scheme = appIdentifier;
+  }
+  var deepLink = scheme + '://' +
+    (clientId || firebaseAppId ? 'firebaseauth' : 'google') + '/link';
+  deepLink += '?deep_link_id=' + encodeURIComponent(url);
+
+  window.location.replace(deepLink);
+}
+
 
 // DOM logic
 
@@ -248,7 +295,7 @@ body {
 }
 
 button {
-  text-transform: none !important; 
+  text-transform: none !important;
 }
 
 .callout {
@@ -352,11 +399,11 @@ export const PROVIDERS_LIST_PLACEHOLDER = "__PROVIDERS__";
 export const WIDGET_UI = `
 <!DOCTYPE html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auth Emulator IDP Login Widget</title>
 <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
-<script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet"></head>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
 <h1>Sign-in with <span class="js-provider-id">Provider</span></h1>
 <p>Please select an existing account in the Auth Emulator or add a new one.</p>
@@ -447,5 +494,6 @@ export const WIDGET_UI = `
     </form>
   </div>
 </div>
+<script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
 <script>${SCRIPT}</script>
 `;
