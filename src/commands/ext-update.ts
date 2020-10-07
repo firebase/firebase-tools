@@ -2,6 +2,7 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 import * as marked from "marked";
 import * as ora from "ora";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { displayNode10UpdateBillingNotice } from "../extensions/billingMigrationHelper";
@@ -46,6 +47,7 @@ export default new Command("ext:update <extensionInstanceId> [localDirectoryOrUr
     "firebaseextensions.instances.get",
   ])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, directoryOrUrl: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
