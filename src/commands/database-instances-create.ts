@@ -9,12 +9,9 @@ import { previews } from "../previews";
 import { createInstance, DatabaseLocation, parseDatabaseLocation } from "../management/database";
 import getProjectId = require("../getProjectId");
 
-export default new Command("database:instances:create <instanceName>")
+let cmd = new Command("database:instances:create <instanceName>")
   .description("create a realtime database instance")
-  .option(
-    "-l, --location <location>",
-    "(optional) location for the database instance, defaults to us-central1"
-  )
+
   .before(requirePermissions, ["firebasedatabase.instances.create"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (instanceName: string, options: any) => {
@@ -30,3 +27,10 @@ export default new Command("database:instances:create <instanceName>")
     logger.info(`created database instance ${instance.instance}`);
     return instance;
   });
+if (previews.rtdbmanagement) {
+  cmd = cmd.option(
+    "-l, --location <location>",
+    "(optional) location for the database instance, defaults to us-central1"
+  );
+}
+export default cmd;
