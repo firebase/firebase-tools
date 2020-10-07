@@ -225,7 +225,7 @@ function validateForm() {
     emailErrorMessage('');
   }
 
-  document.querySelector('#main-action #sign-in').disabled = !valid;
+  document.querySelector('#sign-in').disabled = !valid;
 
   return valid;
 }
