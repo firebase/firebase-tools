@@ -167,16 +167,18 @@ document.getElementById('main-form').addEventListener('submit', function(e) {
   } else {
     // Get rid of this in the actual thing
     e.preventDefault();
-    var emailInput = document.getElementById('email-input');
-    var displayInput = document.getElementById('display-name-input');
-    var screenInput = document.getElementById('screen-name-input');
-    var photoInput = document.getElementById('profile-photo-input');
-    finishWithUser(createFakeClaims({
-      displayName: displayInput.value,
-      screenName: screenInput.value,
-      email: emailInput.value,
-      photoUrl: photoInput.value
-    }));
+    var email = document.getElementById('email-input').value;
+    var displayName = document.getElementById('display-name-input').value;
+    var screenName = document.getElementById('screen-name-input').value;
+    var photoUrl = document.getElementById('profile-photo-input').value;
+    var claims = {};
+
+    if (email) claims.email = email;
+    if (displayName) claims.displayName = displayName;
+    if (screenName) claims.screenName = screenName;
+    if (photoUrl) claims.photoUrl = photoUrl;
+
+    finishWithUser(createFakeClaims(claims));
   }
 });
 
@@ -237,7 +239,7 @@ function runAutogen() {
   var screenInput = document.getElementById('screen-name-input');
 
   var nameOptions = [
-    'racoon',
+    'raccoon',
     'olive',
     'orange',
     'chicken',
@@ -481,7 +483,7 @@ export const WIDGET_UI = `
       <form id="main-form">
         <span class="form-label">Email</span>
         <label class="mdc-text-field mdc-text-field--outlined">
-          <input required id="email-input" type="text"
+          <input id="email-input" type="text"
               class="mdc-text-field__input test" aria-labelledby="my-label-id">
           <span class="mdc-notched-outline">
             <span class="mdc-notched-outline__leading"></span>
