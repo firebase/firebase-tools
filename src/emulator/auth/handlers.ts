@@ -3,6 +3,7 @@ import * as express from "express";
 import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations";
 import { ProjectState, ProviderUserInfo } from "./state";
 import { BadRequestError, NotImplementedError } from "./errors";
+import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
 
 /**
  * Register routes for emulator-only handlers.
@@ -142,121 +143,17 @@ export function registerHandlers(
     const state = getProjectStateByApiKey(apiKey);
     const providerInfos = state.listProviderInfosByProviderId(providerId);
 
-    // Note: For browser compatibility, please avoid ES6 and newer browser
-    // features as much as possible in the page below.
-    res.end(
-      `<!DOCTYPE html>
-<meta charset="utf-8">
-<title>Auth Emulator IDP Login Widget</title>
-<h1>Sign-in with <span class="js-provider-id">Provider</span></h1>
-<p>Please select an existing account in the Auth Emulator or add a new one.</p>
-<p><b>This page is a work in progress and is subject to change.</b></p>
-<div>
-  <ul>
-  ${providerInfos
-    .map(
-      (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
-        createFakeClaims(info)
-      )}">
-      <a href="#">${info.displayName || info.email || info.rawId}</a>
-    </li>`
-    )
-    .join("\n")}
-    <li class="js-new-account"><a href="#">Add Another Account</a></li>
-  </ul>
-</div>
-<script>
-  // TODO: Support older browsers where URLSearchParams is not available.
-  var query = new URLSearchParams(location.search);
-  var apiKey = query.get('apiKey');
-  var appName = query.get('appName');
-  var authType = query.get('authType');
-  var providerId = query.get('providerId');
+    const options = providerInfos
+      .map(
+        (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
+          createFakeClaims(info)
+        )}">
+        <a href="#">${info.displayName || info.email || info.rawId}</a>
+      </li>`
+      )
+      .join("\n");
 
-  var redirectUrl = query.get('redirectUrl');
-  var scopes = query.get('scopes');
-  var eventId = query.get('eventId');
-  if (!apiKey || !appName || !authType || !providerId) {
-    alert('Auth Emulator Internal Error: Missing query params apiKey / appName / authType / providerId.');
-  }
-  var storageKey = apiKey + ':' + appName;
-
-  function saveAuthEvent(authEvent) {
-    if (/popup/i.test(authType)) {
-      sendAuthEventViaIframeRelay(authEvent, function (err) {
-        if (err) {
-          return alert('Auth Emulator Internal Error: ' + err);
-        }
-      });
-    } else {
-      saveAuthEventToStorage(authEvent);
-      if (redirectUrl) {
-        window.location = redirectUrl;
-      } else {
-        // TODO
-        return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
-      }
-    }
-  }
-
-  function saveAuthEventToStorage(authEvent) {
-    sessionStorage['firebase:redirectEvent:' + storageKey] =
-      JSON.stringify(authEvent);
-  }
-
-  function sendAuthEventViaIframeRelay(authEvent, cb) {
-    var sent = false;
-    if (window.opener) {
-      for (var i = 0; i < window.opener.frames.length; i++) {
-        var iframeWin = window.opener.frames[i];
-        var query = new URLSearchParams(iframeWin.location.search);
-        if (query.get('apiKey') === apiKey && query.get('appName') === appName) {
-          iframeWin.postMessage({
-            data: {authEvent: authEvent, storageKey: storageKey},
-            eventId: Math.floor(Math.random() * Math.pow(10, 20)).toString(),
-            eventType: "sendAuthEvent",
-          }, '*');
-          sent = true;
-        }
-      }
-    }
-    if (!sent) {
-      return cb('No matching frame');
-    }
-    return cb();
-  }
-
-  // DOM logic
-
-  document.querySelector('.js-provider-id').textContent = providerId;
-  var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
-  [].forEach.call(reuseAccountEls, function (el) {
-    var urlEncodedIdToken = el.dataset.idToken;
-    el.addEventListener('click', function (e) {
-      e.preventDefault();
-      // Use widget URL, but replace all query parameters (no apiKey etc.).
-      let url = window.location.href.split('?')[0];
-      // Avoid URLSearchParams for browser compatibility.
-      url += '?providerId=' + encodeURIComponent(providerId);
-      url += '&id_token=' + urlEncodedIdToken;
-      saveAuthEvent({
-        type: authType,
-        eventId: eventId,
-        urlResponse: url,
-        sessionId: "ValueNotUsedByAuthEmulator",
-        postBody: null,
-        tenantId: null,
-        error: null,
-      });
-    });
-  });
-  document.querySelector('.js-new-account').addEventListener('click', function (e) {
-    e.preventDefault();
-    return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
-  });
-</script>
-`
-    );
+    res.end(WIDGET_UI.replace(PROVIDERS_LIST_PLACEHOLDER, options));
   });
 
   app.get(`/emulator/auth/iframe`, (req, res) => {
