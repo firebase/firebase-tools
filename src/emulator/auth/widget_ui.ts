@@ -278,12 +278,45 @@ function toggleForm(showForm) {
 `;
 
 const STYLE = `
+
+:root {
+  --mdc-theme-text-secondary-on-background: rgba(0,0,0,.56);
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+p {
+  margin-block-end: 0em;
+  margin-block-start: 0em;
+}
+
+li {
+  padding: 8px 16px;
+  list-style-type: none;
+}
+
+ul {
+  padding-inline-start: 0;
+}
+
+button {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
 #title {
   align-items: center;
   display: flex;
   flex-direction: row;
   font-size: 24px;
+  font-weight: 500;
   margin-bottom: 16px;
+  margin-top: 32px;
 }
 
 #title > span {
@@ -294,21 +327,59 @@ const STYLE = `
   color: #858585;
 }
 
-body {
-  font-family: "Roboto", sans-serif;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-}
-
 #content {
   box-sizing: border-box;
-  padding: 12px;
-  width: 500px;
+  width: 515px;
+  margin: 16px auto;
 }
 
-button {
-  text-transform: none !important;
+.content-wrapper {
+  padding: 0 24px;
+}
+
+#add-account-button {
+  height: 56px !important;
+}
+
+.mdc-list--avatar-list .mdc-list-item {
+  padding: 0 24px;
+}
+
+.mdc-list--avatar-list .mdc-list-item__graphic {
+  border-radius: 50%;
+  height: 36px;
+  margin-left: 0;
+  margin-right: 16px;
+  width: 36px;
+}
+
+.mdc-list .mdc-list-item__graphic {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+}
+
+.mdc-list--avatar-list .mdc-list-item__graphic {
+  background-color: rgba(0,0,0,.3);
+  color: #fff;
+}
+
+.mdc-list-item__graphic {
+  align-items: center;
+  color: background-color: rgba(0,0,0,.3);
+  fill: currentColor;
+  flex-shrink: 0;
+  height: 24px;
+  justify-content: center;
+  margin-left: 0;
+  margin-right: 32px;
+  width: 24px;
+  -ms-flex-negative: 0;
+  -ms-flex-align: center;
+  -ms-flex-pack: center;
+}
+
+.profile-photo {
+  background-size: contain;
 }
 
 .callout {
@@ -334,44 +405,55 @@ button {
 
 .mdc-text-field {
   height: 40px !important;
-  width: 340px;
+  width: 100%;
 }
 
 .form-label {
-  color: #858585;
+  color: rgba(0,0,0,.54);
   display: block;
   font-size: 12px;
   margin: 0 0 4px 1px;
 }
 
 .custom-label {
-  color: rgba(0,0,0,.6);
+  color: rgba(0,0,0,.38);
   display: inline-block;
   margin-left: 4px;
   transform: translateY(50%);
 }
 
+.mdc-text-field--invalid .mdc-text-field__input {
+  caret-color: #C62828;
+}
+
 .error-info {
-  color: darkred;
+  color: #C62828;
   display: block;
   font-size: 12px;
-  padding-left: 1px;
+  padding-top: 4px;
 }
 
 #main-action {
+  justify-content: space-between;
   display: flex;
   flex-direction: row;
   margin-top: 15px;
   width: 100%;
 }
 
-#main-action > button {
-  margin-right: 8px;
+#back-button {
+  position: relative;
+  left: -8px;
 }
 
 #add-user {
   display: none;
 }
+
+.fallback-secondary-text {
+  color: var(--mdc-theme-text-secondary-on-background);
+}
+
 `;
 
 export const PROVIDERS_LIST_PLACEHOLDER = "__PROVIDERS__";
@@ -386,17 +468,25 @@ export const WIDGET_UI = `
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
 <div id="content">
-  <div id="title">
-    <span>Sign-in with <span class="js-provider-id">Provider</span></span>
+  <div class="content-wrapper">
+    <div id="title">
+      <span>Sign-in with <span class="js-provider-id provider-name">Provider</span></span>
+    </div>
   </div>
   <div id="accounts-list">
-    <ul>
-    ${PROVIDERS_LIST_PLACEHOLDER}
-    <li class="js-new-account"><a href="#">Add Another Account</a></li>
+    <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
+      ${PROVIDERS_LIST_PLACEHOLDER}
+      <li id="add-account-button" class="js-new-account mdc-list-item">
+        <button class="mdc-button mdc-button--outlined">
+          <div class="mdc-button__ripple"></div>
+            <i class="material-icons mdc-button__icon" aria-hidden="true">add</i>
+            <span class="mdc-button__label">Add new account</span>
+          </button>
+      </li>
     </ul>
   </div>
   <div id="add-user">
-    <div id="form-content">
+    <div class="content-wrapper" id="form-content">
       <div class="callout vs">
         <i class="material-icons">info</i>
         <div class="content">
@@ -405,7 +495,7 @@ export const WIDGET_UI = `
       </div>
       <button id="autogen-button" class="vs mdc-button mdc-button--outlined" type="button">
         <div class="mdc-button__ripple"></div>
-        <span class="mdc-button__label">Auto Generate User Information</span>
+        <span class="mdc-button__label">Auto-generate user information</span>
       </button>
       <form id="main-form">
         <span class="form-label">Email</span>
@@ -471,7 +561,7 @@ export const WIDGET_UI = `
           </button>
           <button class="mdc-button mdc-button--raised" id="sign-in" type="submit">
             <span class="mdc-button__label">
-              Sign in with <span class="js-provider-id">Provider</span>
+              Sign in with <span class="js-provider-id provider-name">Provider</span>
             </span>
           </button>
         </div>
