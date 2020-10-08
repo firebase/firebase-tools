@@ -1,8 +1,9 @@
 import { URL } from "url";
 import * as express from "express";
-import { resetPassword, setAccountInfoImpl } from "./operations";
-import { ProjectState } from "./state";
+import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations";
+import { ProjectState, ProviderUserInfo } from "./state";
 import { BadRequestError, NotImplementedError } from "./errors";
+import { PROVIDERS_LIST_PLACEHOLDER, WIDGET_UI } from "./widget_ui";
 
 /**
  * Register routes for emulator-only handlers.
@@ -130,29 +131,132 @@ export function registerHandlers(
 
   app.get(`/emulator/auth/handler`, (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
-    res.end(
-      `<!DOCTYPE html>
-<meta charset="utf-8">
-<title>Not Implemented</title>
-<h1>Not Implemented in Auth Emulator</h1>
-<p>
-  Sign-in with popup / redirect / web-views with the Auth Emulator
-  is not yet supported.
-</p>
-<p>We're working on it. Please stay tuned.</p>
-<p>In the meantime, try <code>signInWithCredential</code> instead.</p>
-`
-    );
+    const apiKey = req.query.apiKey as string | undefined;
+    const providerId = req.query.providerId as string | undefined;
+    if (!apiKey || !providerId) {
+      return res.status(400).json({
+        authEmulator: {
+          error: "missing apiKey or providerId query parameters",
+        },
+      });
+    }
+    const state = getProjectStateByApiKey(apiKey);
+    const providerInfos = state.listProviderInfosByProviderId(providerId);
+
+    const options = providerInfos
+      .map(
+        (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
+          createFakeClaims(info)
+        )}">
+        <a href="#">${info.displayName || info.email || info.rawId}</a>
+      </li>`
+      )
+      .join("\n");
+
+    res.end(WIDGET_UI.replace(PROVIDERS_LIST_PLACEHOLDER, options));
   });
 
   app.get(`/emulator/auth/iframe`, (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
+    // Note: For browser compatibility, please avoid ES6 and newer browser
+    // features as much as possible in the page below.
     res.end(
       `<!DOCTYPE html>
 <meta charset="utf-8">
-<title>Auth Emulator: iframe stub</title>
-<p>This page does not do anything yet.</p>
+<title>Auth Emulator Helper Iframe</title>
+<script>
+  // TODO: Support older browsers where URLSearchParams is not available.
+  var query = new URLSearchParams(location.search);
+  var apiKey = query.get('apiKey');
+  var appName = query.get('appName');
+  if (!apiKey || !appName) {
+    alert('Auth Emulator Internal Error: Missing query params apiKey or appName for iframe.');
+  }
+  var storageKey = apiKey + ':' + appName;
+
+  var parentContainer = null;
+
+  window.addEventListener('message', function (e) {
+    if (typeof e.data === 'object' && e.data.eventType === 'sendAuthEvent') {
+      if (!e.data.data.storageKey === storageKey) {
+        return alert('Auth Emulator Internal Error: Received request with mismatching storageKey');
+      }
+      var authEvent = e.data.data.authEvent;
+      if (parentContainer) {
+        sendAuthEvent(parentContainer, authEvent);
+      } else {
+        // Store it first, and initFrameMessaging() below will pick it up.
+        sessionStorage['firebase:redirectEvent:' + storageKey] =
+            JSON.stringify(authEvent);
+      }
+    }
+  });
+
+  function initFrameMessaging() {
+    parentContainer = gapi.iframes.getContext().getParentIframe();
+    parentContainer.register('webStorageSupport', function() {
+      // We must reply to this event, or the JS SDK will not continue with the
+      // popup flow. Web storage support is not actually needed though.
+      return { status: 'ACK', webStorageSupport: true };
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+
+    var storedEvent = sessionStorage['firebase:redirectEvent:' + storageKey];
+    if (storedEvent) {
+      var authEvent = null;
+      try {
+        authEvent = JSON.parse(storedEvent);
+      } catch (_) {
+        return alert('Auth Emulator Internal Error: Invalid stored event.');
+      }
+      if (authEvent) {
+        sendAuthEvent(parentContainer, authEvent);
+      }
+      delete sessionStorage['firebase:redirectEvent:' + storageKey];
+    }
+  }
+
+  function sendAuthEvent(parentContainer, authEvent) {
+    parentContainer.send('authEvent', {
+      type: 'authEvent',
+      authEvent: authEvent,
+    }, function(responses) {
+      if (!responses || !responses.length ||
+          !responses[responses.length - 1].status === 'ACK') {
+        return alert("Auth Emulator Internal Error: Sending authEvent failed.");
+      }
+    }, gapi.iframes.CROSS_ORIGIN_IFRAMES_FILTER);
+  }
+
+  window.gapi_onload = function () {
+    gapi.load('gapi.iframes', {
+      callback: initFrameMessaging,
+      timeout: 10000,
+      ontimeout: function () {
+        return alert("Auth Emulator Internal Error: Error loading gapi.iframe! Please check your Internet connection.");
+      },
+    });
+  }
+</script>
+<script src="https://apis.google.com/js/api.js"></script>
 `
     );
   });
+}
+
+function createFakeClaims(info: ProviderUserInfo): string {
+  const claims: IdpJwtPayload = {
+    sub: info.rawId,
+    iss: "",
+    aud: "",
+    exp: 0,
+    iat: 0,
+    name: info.displayName,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    screen_name: info.screenName,
+    email: info.email,
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    email_verified: true, // TODO: Shall we allow changing this?
+    picture: info.photoUrl,
+  };
+  return JSON.stringify(claims);
 }

@@ -1,4 +1,1 @@
-- Fixes issue where the ESLint config file would not be added to version control for new Typescript Cloud Functions projects (#2645)
-- Fixes issue where the CLI displayed `NaN` when choosing the default port for the Emulator UI.
-- Fixes the `npm run lint` (`eslint`) command in newly initalized Cloud Functions for Firebase directories on Windows (#2644).
-- Fixes issue where export did not work if all data was deleted (#2634).
+- Fixes issue where database export does not work if database is empty (#2634).

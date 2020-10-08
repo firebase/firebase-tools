@@ -1,3 +1,4 @@
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 
 import * as commandUtils from "../emulator/commandUtils";
@@ -12,6 +13,7 @@ module.exports = new Command("ext:dev:emulators:exec <script>")
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_UI, commandUtils.DESC_UI)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (script: string, options: any) => {
     const emulatorOptions = await optionsHelper.buildOptions(options);
     commandUtils.beforeEmulatorCommand(emulatorOptions);

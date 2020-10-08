@@ -271,6 +271,25 @@ export class ProjectState {
     return this.getUserByLocalIdAssertingExists(localId);
   }
 
+  listProviderInfosByProviderId(provider: string): ProviderUserInfo[] {
+    const users = this.userIdForProviderRawId.get(provider);
+    if (!users) {
+      return [];
+    }
+    const infos: ProviderUserInfo[] = [];
+    for (const localId of users.values()) {
+      const user = this.getUserByLocalIdAssertingExists(localId);
+      const info = user.providerUserInfo?.find((info) => info.providerId === provider);
+      if (!info) {
+        throw new Error(
+          `Internal assertion error: User ${localId} does not have providerInfo ${provider}.`
+        );
+      }
+      infos.push(info);
+    }
+    return infos;
+  }
+
   getUserByLocalId(localId: string): UserInfo | undefined {
     return this.users.get(localId);
   }

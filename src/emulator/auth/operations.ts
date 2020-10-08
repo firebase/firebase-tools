@@ -37,6 +37,7 @@ export type Schemas = schema.components["schemas"];
  */
 export const authOperations: AuthOps = {
   identitytoolkit: {
+    getProjects,
     getRecaptchaParams,
 
     accounts: {
@@ -316,6 +317,18 @@ function deleteAccount(
 
   return {
     kind: "identitytoolkit#DeleteAccountResponse",
+  };
+}
+
+function getProjects(
+  state: ProjectState
+): Schemas["GoogleCloudIdentitytoolkitV1GetProjectConfigResponse"] {
+  return {
+    projectId: state.projectNumber,
+    authorizedDomains: [
+      "localhost",
+      // TODO: Shall we allow more domains?
+    ],
   };
 }
 

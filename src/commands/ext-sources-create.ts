@@ -1,3 +1,4 @@
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
@@ -20,6 +21,7 @@ export default new Command("ext:sources:create <sourceLocation>")
   )
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (sourceLocation: string, options: any) => {
     const projectId = getProjectId(options);
     const res = await createSourceFromLocation(projectId, sourceLocation);
