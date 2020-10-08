@@ -141,14 +141,32 @@ export function registerHandlers(
       });
     }
     const state = getProjectStateByApiKey(apiKey);
-    const providerInfos = state.listProviderInfosByProviderId(providerId);
+  //  const providerInfos = state.listProviderInfosByProviderId(providerId);
+  const providerInfos = [
+    {
+      "displayName":"Marissa Christy", 
+      "rawId":"7774535435", 
+      "email":"marissa.christy@gmail.com",
+      "providerId": "Facebook", 
+      "profile": "https://images.unsplash.com/photo-1554080353-a576cf803bda?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=668&q=80"
+    },
+  {"displayName":"Marissa C.", "rawId":"7774535435", "email":"marissac@gmail.com", "providerId": "Facebook"}
+  ]
 
     const options = providerInfos
       .map(
-        (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
+        (info) => `<li class="js-reuse-account mdc-list-item mdc-ripple-upgraded" tabindex="0" data-id-token="${encodeURIComponent(
           createFakeClaims(info)
         )}">
-        <a href="#">${info.displayName || info.email || info.rawId}</a>
+          <span class="mdc-list-item__ripple"></span>
+          ${info.profile ? `
+            <span class="mdc-list-item__graphic profile-photo" style="background-image: url('${info.profile}')"></span>`
+            :`
+            <span class="mdc-list-item__graphic material-icons" aria-hidden=true>person</span>
+            </div>`
+          }
+          <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${info.displayName}</span>
+          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span> 
       </li>`
       )
       .join("\n");
