@@ -9,6 +9,7 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
+import { DatabaseEmulator } from "./databaseEmulator";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -92,8 +93,9 @@ export class HubExport {
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
-    const databaseInfo = EmulatorRegistry.get(Emulators.DATABASE)!.getInfo();
-    const databaseAddr = `http://${databaseInfo.host}:${databaseInfo.port}`;
+    const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
+    const { host, port } = databaseEmulator.getInfo();
+    const databaseAddr = `http://${host}:${port}`;
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
@@ -101,7 +103,7 @@ export class HubExport {
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data
-    const nonEmptyNamespaces = [];
+    const namespacesToExport = [];
     for (const ns of namespaces) {
       const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
       const checkDataRes = await api.request("GET", checkDataPath, {
@@ -109,9 +111,17 @@ export class HubExport {
         auth: true,
       });
       if (checkDataRes.body !== null) {
-        nonEmptyNamespaces.push(ns);
+        namespacesToExport.push(ns);
       } else {
         logger.debug(`Namespace ${ns} contained null data, not exporting`);
+      }
+    }
+
+    // We always need to export every namespace that was imported
+    for (const ns of databaseEmulator.getImportedNamespaces()) {
+      if (!namespacesToExport.includes(ns)) {
+        logger.debug(`Namespace ${ns} was imported, exporting.`);
+        namespacesToExport.push(ns);
       }
     }
 
@@ -125,7 +135,7 @@ export class HubExport {
       fs.mkdirSync(dbExportPath);
     }
 
-    for (const ns of nonEmptyNamespaces) {
+    for (const ns of namespacesToExport) {
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);
 
@@ -134,8 +144,8 @@ export class HubExport {
         http
           .get(
             {
-              host: databaseInfo.host,
-              port: databaseInfo.port,
+              host,
+              port,
               path: `/.json?ns=${ns}&format=export`,
               headers: { Authorization: "Bearer owner" },
             },
