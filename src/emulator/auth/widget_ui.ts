@@ -327,6 +327,14 @@ button {
   color: #858585;
 }
 
+.subtitle {
+ color: var(--mdc-theme-text-secondary-on-background);
+ font-size: 14px;
+ line-height: 20px;
+ margin-block-end: 0em;
+ margin-block-start: 0em;
+}
+
 #content {
   box-sizing: border-box;
   width: 515px;
@@ -335,10 +343,6 @@ button {
 
 .content-wrapper {
   padding: 0 24px;
-}
-
-#add-account-button {
-  height: 56px !important;
 }
 
 .mdc-list--avatar-list .mdc-list-item {
@@ -382,6 +386,10 @@ button {
   background-size: contain;
 }
 
+#add-account-button {
+  height: 56px !important;
+}
+
 .callout {
   align-items: center;
   background: #e5eaf0;
@@ -422,10 +430,6 @@ button {
   transform: translateY(50%);
 }
 
-.mdc-text-field--invalid .mdc-text-field__input {
-  caret-color: #C62828;
-}
-
 .error-info {
   color: #C62828;
   display: block;
@@ -434,16 +438,16 @@ button {
 }
 
 #main-action {
-  justify-content: space-between;
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
   margin-top: 15px;
   width: 100%;
 }
 
 #back-button {
-  position: relative;
   left: -8px;
+  position: relative;
 }
 
 #add-user {
@@ -474,6 +478,9 @@ export const WIDGET_UI = `
     </div>
   </div>
   <div id="accounts-list">
+    <div class="content-wrapper">
+      <p class="subtitle">Please select an existing account in the Auth Emulator or add a new one:</p>
+    </div>
     <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
       ${PROVIDERS_LIST_PLACEHOLDER}
       <li id="add-account-button" class="js-new-account mdc-list-item">
