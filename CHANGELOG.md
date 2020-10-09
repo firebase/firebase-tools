@@ -1,1 +1,2 @@
 - Fixes issue where database export does not work if database is empty (#2634).
+- Fixes an issue where `firebase init hosting:github` did not write yml files to the correct location (#2688).
