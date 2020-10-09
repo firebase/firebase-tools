@@ -2,8 +2,23 @@
 // features as much as possible in the page below.
 
 const SCRIPT = `
+function assert(condition, error) {
+  if (!condition) {
+    if (!(error instanceof Error)) {
+      error = new Error('Auth Emulator Internal Error: ' + error);
+    }
+    // Show error with great visibility AND stops further user interactions.
+    document.body.textContent = error.stack || error.message;
+    document.body.style = 'color:red;white-space:pre';
+    throw error; // Halts current script and prints error to console.
+  }
+}
+
 // TODO: Support older browsers where URLSearchParams is not available.
 var query = new URLSearchParams(location.search);
+var internalError = query.get('error');
+assert(!internalError, internalError);
+
 var apiKey = query.get('apiKey');
 var appName = query.get('appName');
 var authType = query.get('authType');
@@ -18,16 +33,15 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
-if (!appName && !clientId && !firebaseAppId && !appIdentifier) {
-  alert('Auth Emulator Internal Error: Missing one of appName / clientId / appId / apn / ibi query params.');
-}
+assert(
+  appName || clientId || firebaseAppId || appIdentifier,
+  'Missing one of appName / clientId / appId / apn / ibi query params.'
+);
 
 function saveAuthEvent(authEvent) {
   if (/popup/i.test(authType)) {
     sendAuthEventViaIframeRelay(authEvent, function (err) {
-      if (err) {
-        return alert('Auth Emulator Internal Error: ' + err);
-      }
+      assert(!err, err);
     });
   } else {
     if (apn) {
@@ -38,7 +52,7 @@ function saveAuthEvent(authEvent) {
       saveAuthEventToStorage(authEvent);
       window.location = redirectUrl;
     } else {
-      return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
+      assert(false, 'This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
     }
   }
 }
@@ -71,6 +85,9 @@ function sendAuthEventViaIframeRelay(authEvent, cb) {
 }
 
 function redirectToAndroid(authEvent) {
+  // This is shown when no app handles the link and displays an error.
+  var fallbackUrl = window.location.href + '&error=App+not+found+for+intent';
+
   var link = 'intent://firebase.auth/#Intent;scheme=genericidp;' +
       'package=' + apn + ';' +
       'S.authType=' + authEvent.type + ';';
@@ -78,6 +95,9 @@ function redirectToAndroid(authEvent) {
     link += 'S.eventId=' + authEvent.eventId + ';';
   }
   link += 'S.link=' + encodeURIComponent(authEvent.urlResponse) + ';';
+  link += 'B.encryptionEnabled=false;';
+  link += 'S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';';
+
   link += 'end;';
 
   window.location.replace(link);
@@ -161,12 +181,9 @@ document.getElementById('autogen-button').addEventListener('click', function() {
 
 // Handle form validation and submission
 document.getElementById('main-form').addEventListener('submit', function(e) {
+  e.preventDefault();
   var valid = validateForm();
-  if (!valid) {
-    e.preventDefault();
-  } else {
-    // Get rid of this in the actual thing
-    e.preventDefault();
+  if (valid) {
     var email = document.getElementById('email-input').value;
     var displayName = document.getElementById('display-name-input').value;
     var screenName = document.getElementById('screen-name-input').value;

@@ -161,7 +161,7 @@ export function registerHandlers(
           <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
             info.displayName
           }</span>
-          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span> 
+          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span>
       </li>`
       )
       .join("\n");
