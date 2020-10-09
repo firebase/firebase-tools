@@ -341,6 +341,7 @@ button {
   box-sizing: border-box;
   margin: 16px auto;
   max-width: 515px;
+  min-width: 300px;
 }
 
 .content-wrapper, .mdc-list--avatar-list .mdc-list-item {
