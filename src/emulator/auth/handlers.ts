@@ -145,10 +145,23 @@ export function registerHandlers(
 
     const options = providerInfos
       .map(
-        (info) => `<li class="js-reuse-account" data-id-token="${encodeURIComponent(
+        (
+          info
+        ) => `<li class="js-reuse-account mdc-list-item mdc-ripple-upgraded" tabindex="0" data-id-token="${encodeURIComponent(
           createFakeClaims(info)
         )}">
-        <a href="#">${info.displayName || info.email || info.rawId}</a>
+          <span class="mdc-list-item__ripple"></span>
+          ${
+            info.photoUrl
+              ? `
+            <span class="mdc-list-item__graphic profile-photo" style="background-image: url('${info.photoUrl}')"></span>`
+              : `
+            <span class="mdc-list-item__graphic material-icons" aria-hidden=true>person</span>`
+          }
+          <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
+            info.displayName
+          }</span>
+          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span> 
       </li>`
       )
       .join("\n");
