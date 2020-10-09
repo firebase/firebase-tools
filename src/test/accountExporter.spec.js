@@ -133,7 +133,7 @@ describe("accountExporter", function() {
             userList[j].displayName +
             Array(22).join(",") + // A lot of empty fields...
             userList[j].disabled;
-          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + "," + os.EOL);
+          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
         }
       });
     });
@@ -181,7 +181,7 @@ describe("accountExporter", function() {
           '"' +
           Array(22).join(",") + // A lot of empty fields.
           singleUser.disabled;
-        expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + "," + os.EOL);
+        expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
       });
     });
 

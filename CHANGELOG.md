@@ -1,1 +1,2 @@
 - Fixes issue where database export does not work if database is empty (#2634).
+- Add custom claims to auth:export and auth:import
