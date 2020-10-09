@@ -341,49 +341,23 @@ button {
   margin: 16px auto;
 }
 
-.content-wrapper {
+.content-wrapper, .mdc-list--avatar-list .mdc-list-item {
   padding: 0 24px;
-}
-
-.mdc-list--avatar-list .mdc-list-item {
-  padding: 0 24px;
-}
-
-.mdc-list--avatar-list .mdc-list-item__graphic {
-  border-radius: 50%;
-  height: 36px;
-  margin-left: 0;
-  margin-right: 16px;
-  width: 36px;
 }
 
 .mdc-list .mdc-list-item__graphic {
-  display: -ms-inline-flexbox;
-  display: inline-flex;
-}
-
-.mdc-list--avatar-list .mdc-list-item__graphic {
-  background-color: rgba(0,0,0,.3);
-  color: #fff;
-}
-
-.mdc-list-item__graphic {
   align-items: center;
-  color: background-color: rgba(0,0,0,.3);
+  background-color: #c5c5c5;
+  background-size: contain;
+  border-radius: 50%;
+  color: #fff;
   fill: currentColor;
   flex-shrink: 0;
-  height: 24px;
+  height: 36px;
   justify-content: center;
   margin-left: 0;
-  margin-right: 32px;
-  width: 24px;
-  -ms-flex-negative: 0;
-  -ms-flex-align: center;
-  -ms-flex-pack: center;
-}
-
-.profile-photo {
-  background-size: contain;
+  margin-right: 16px;
+  width: 36px;
 }
 
 #add-account-button {
