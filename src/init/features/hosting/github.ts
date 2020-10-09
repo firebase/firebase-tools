@@ -136,7 +136,12 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   }
 
   if (shouldWriteYMLHostingFile) {
-    writeChannelActionYMLFile(YML_PULL_REQUEST_FILENAME, githubSecretName, setup.projectId, script);
+    writeChannelActionYMLFile(
+      YML_FULL_PATH_PULL_REQUEST,
+      githubSecretName,
+      setup.projectId,
+      script
+    );
 
     logger.info();
     logSuccess(`Created workflow file ${bold(YML_FULL_PATH_PULL_REQUEST)}`);
@@ -159,11 +164,13 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
         });
         shouldWriteYMLDeployFile = overwrite;
       }
+    } else {
+      shouldWriteYMLDeployFile = true;
     }
 
     if (shouldWriteYMLDeployFile) {
       writeDeployToProdActionYMLFile(
-        YML_MERGE_FILENAME,
+        YML_FULL_PATH_MERGE,
         branch,
         githubSecretName,
         setup.projectId,
@@ -171,7 +178,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
       );
 
       logger.info();
-      logSuccess(`Created workflow file ${bold(YML_FULL_PATH_MERGE)}...`);
+      logSuccess(`Created workflow file ${bold(YML_FULL_PATH_MERGE)}`);
     }
   }
 
@@ -352,9 +359,9 @@ function writeDeployToProdActionYMLFile(
 
 ${yaml.safeDump(workflowConfig)}`;
 
-  mkdirNotExists(`/${GITHUB_DIR}`);
-  mkdirNotExists(`/${WORKFLOW_DIR}`);
-  fs.writeFileSync(path.join(process.cwd(), ymlPath), ymlContents, "utf8");
+  mkdirNotExists(GITHUB_DIR);
+  mkdirNotExists(WORKFLOW_DIR);
+  fs.writeFileSync(ymlPath, ymlContents, "utf8");
 }
 
 async function uploadSecretToGitHub(
