@@ -38,6 +38,17 @@ assert(
   'Missing one of appName / clientId / appId / apn / ibi query params.'
 );
 
+// Warn the developer of a few flows only available in Auth Emulator.
+if ((providerId === 'facebook.com' && appIdentifier) || (providerId === 'apple.com' && ibi)) {
+  var providerName = (providerId === 'facebook.com') ? 'Facebook' : 'Apple';
+  var productionMethod = providerName + (apn ? ' Android SDK' : ' iOS SDK');
+  var warningEl = document.querySelector('.js-signin-warning');
+  warningEl.querySelector('.content').textContent =
+    'Sign-in with ' + providerName + ' via generic IDP is only supported in the Auth Emulator; ' +
+    'remember to switch to ' + productionMethod + ' for production Firebase projects.';
+  warningEl.style.display = 'flex';
+}
+
 function saveAuthEvent(authEvent) {
   if (/popup/i.test(authType)) {
     sendAuthEventViaIframeRelay(authEvent, function (err) {
@@ -393,6 +404,11 @@ button {
   padding: 12px 24px;
 }
 
+.callout-warning {
+  background: #fff3e0;
+  color: #bf360c;
+}
+
 .callout .content {
   flex: 1;
   font-size: 14px;
@@ -473,6 +489,10 @@ export const WIDGET_UI = `
   </div>
   <div id="accounts-list">
     <div class="content-wrapper">
+      <div class="callout callout-warning vs js-signin-warning" style="display:none">
+        <i class="material-icons">error</i>
+        <div class="content"></div>
+      </div>
       <p class="subtitle">Please select an existing account in the Auth Emulator or add a new one:</p>
     </div>
     <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
