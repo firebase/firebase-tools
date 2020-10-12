@@ -1,1 +1,1 @@
-- Updates the Google Cloud Run proxy API calls to `v1` (from `v1alpha1) (#2695).
+- Updates the Google Cloud Run proxy API calls to `v1` (from `v1alpha1`) (#2695).
