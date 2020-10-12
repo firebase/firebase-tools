@@ -396,7 +396,6 @@ button {
 }
 
 .callout {
-  align-items: center;
   background: #e5eaf0;
   color: #476282;
   display: flex;
@@ -411,6 +410,7 @@ button {
 
 .callout .content {
   flex: 1;
+  align-self: center;
   font-size: 14px;
   font-weight: 500;
   margin-left: 8px;
