@@ -2,8 +2,23 @@
 // features as much as possible in the page below.
 
 const SCRIPT = `
+function assert(condition, error) {
+  if (!condition) {
+    if (!(error instanceof Error)) {
+      error = new Error('Auth Emulator Internal Error: ' + error);
+    }
+    // Show error with great visibility AND stops further user interactions.
+    document.body.textContent = error.stack || error.message;
+    document.body.style = 'color:red;white-space:pre';
+    throw error; // Halts current script and prints error to console.
+  }
+}
+
 // TODO: Support older browsers where URLSearchParams is not available.
 var query = new URLSearchParams(location.search);
+var internalError = query.get('error');
+assert(!internalError, internalError);
+
 var apiKey = query.get('apiKey');
 var appName = query.get('appName');
 var authType = query.get('authType');
@@ -18,16 +33,26 @@ var firebaseAppId = query.get('appId');
 var apn = query.get('apn');
 var ibi = query.get('ibi');
 var appIdentifier = apn || ibi;
-if (!appName && !clientId && !firebaseAppId && !appIdentifier) {
-  alert('Auth Emulator Internal Error: Missing one of appName / clientId / appId / apn / ibi query params.');
+assert(
+  appName || clientId || firebaseAppId || appIdentifier,
+  'Missing one of appName / clientId / appId / apn / ibi query params.'
+);
+
+// Warn the developer of a few flows only available in Auth Emulator.
+if ((providerId === 'facebook.com' && appIdentifier) || (providerId === 'apple.com' && ibi)) {
+  var providerName = (providerId === 'facebook.com') ? 'Facebook' : 'Apple';
+  var productionMethod = providerName + (apn ? ' Android SDK' : ' iOS SDK');
+  var warningEl = document.querySelector('.js-signin-warning');
+  warningEl.querySelector('.content').textContent =
+    'Sign-in with ' + providerName + ' via generic IDP is only supported in the Auth Emulator; ' +
+    'remember to switch to ' + productionMethod + ' for production Firebase projects.';
+  warningEl.style.display = 'flex';
 }
 
 function saveAuthEvent(authEvent) {
   if (/popup/i.test(authType)) {
     sendAuthEventViaIframeRelay(authEvent, function (err) {
-      if (err) {
-        return alert('Auth Emulator Internal Error: ' + err);
-      }
+      assert(!err, err);
     });
   } else {
     if (apn) {
@@ -38,7 +63,7 @@ function saveAuthEvent(authEvent) {
       saveAuthEventToStorage(authEvent);
       window.location = redirectUrl;
     } else {
-      return alert('This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
+      assert(false, 'This feature is not implemented in Auth Emulator yet. Please use signInWithCredential for now.');
     }
   }
 }
@@ -71,6 +96,9 @@ function sendAuthEventViaIframeRelay(authEvent, cb) {
 }
 
 function redirectToAndroid(authEvent) {
+  // This is shown when no app handles the link and displays an error.
+  var fallbackUrl = window.location.href + '&error=App+not+found+for+intent';
+
   var link = 'intent://firebase.auth/#Intent;scheme=genericidp;' +
       'package=' + apn + ';' +
       'S.authType=' + authEvent.type + ';';
@@ -78,6 +106,9 @@ function redirectToAndroid(authEvent) {
     link += 'S.eventId=' + authEvent.eventId + ';';
   }
   link += 'S.link=' + encodeURIComponent(authEvent.urlResponse) + ';';
+  link += 'B.encryptionEnabled=false;';
+  link += 'S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';';
+
   link += 'end;';
 
   window.location.replace(link);
@@ -161,22 +192,21 @@ document.getElementById('autogen-button').addEventListener('click', function() {
 
 // Handle form validation and submission
 document.getElementById('main-form').addEventListener('submit', function(e) {
+  e.preventDefault();
   var valid = validateForm();
-  if (!valid) {
-    e.preventDefault();
-  } else {
-    // Get rid of this in the actual thing
-    e.preventDefault();
-    var emailInput = document.getElementById('email-input');
-    var displayInput = document.getElementById('display-name-input');
-    var screenInput = document.getElementById('screen-name-input');
-    var photoInput = document.getElementById('profile-photo-input');
-    finishWithUser(createFakeClaims({
-      displayName: displayInput.value,
-      screenName: screenInput.value,
-      email: emailInput.value,
-      photoUrl: photoInput.value
-    }));
+  if (valid) {
+    var email = document.getElementById('email-input').value;
+    var displayName = document.getElementById('display-name-input').value;
+    var screenName = document.getElementById('screen-name-input').value;
+    var photoUrl = document.getElementById('profile-photo-input').value;
+    var claims = {};
+
+    if (email) claims.email = email;
+    if (displayName) claims.displayName = displayName;
+    if (screenName) claims.screenName = screenName;
+    if (photoUrl) claims.photoUrl = photoUrl;
+
+    finishWithUser(createFakeClaims(claims));
   }
 });
 
@@ -237,7 +267,7 @@ function runAutogen() {
   var screenInput = document.getElementById('screen-name-input');
 
   var nameOptions = [
-    'racoon',
+    'raccoon',
     'olive',
     'orange',
     'chicken',
@@ -278,12 +308,45 @@ function toggleForm(showForm) {
 `;
 
 const STYLE = `
+
+:root {
+  --mdc-theme-text-secondary-on-background: rgba(0,0,0,.56);
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+p {
+  margin-block-end: 0em;
+  margin-block-start: 0em;
+}
+
+li {
+  padding: 8px 16px;
+  list-style-type: none;
+}
+
+ul {
+  padding-inline-start: 0;
+}
+
+button {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
 #title {
   align-items: center;
   display: flex;
   flex-direction: row;
   font-size: 24px;
+  font-weight: 500;
   margin-bottom: 16px;
+  margin-top: 32px;
 }
 
 #title > span {
@@ -294,25 +357,45 @@ const STYLE = `
   color: #858585;
 }
 
-body {
-  font-family: "Roboto", sans-serif;
-  margin: 0;
-  padding: 0;
-  width: 100%;
+.subtitle {
+ color: var(--mdc-theme-text-secondary-on-background);
+ font-size: 14px;
+ line-height: 20px;
+ margin-block-end: 0em;
+ margin-block-start: 0em;
 }
 
 #content {
   box-sizing: border-box;
-  padding: 12px;
-  width: 500px;
+  margin: 16px auto;
+  max-width: 515px;
+  min-width: 300px;
 }
 
-button {
-  text-transform: none !important;
+.content-wrapper, .mdc-list--avatar-list .mdc-list-item {
+  padding: 0 24px;
+}
+
+.mdc-list .mdc-list-item__graphic {
+  align-items: center;
+  background-color: #c5c5c5;
+  background-size: contain;
+  border-radius: 50%;
+  color: #fff;
+  fill: currentColor;
+  flex-shrink: 0;
+  height: 36px;
+  justify-content: center;
+  margin-left: 0;
+  margin-right: 16px;
+  width: 36px;
+}
+
+#add-account-button {
+  height: 56px !important;
 }
 
 .callout {
-  align-items: center;
   background: #e5eaf0;
   color: #476282;
   display: flex;
@@ -320,8 +403,14 @@ button {
   padding: 12px 24px;
 }
 
+.callout-warning {
+  background: #fff3e0;
+  color: #bf360c;
+}
+
 .callout .content {
   flex: 1;
+  align-self: center;
   font-size: 14px;
   font-weight: 500;
   margin-left: 8px;
@@ -334,44 +423,51 @@ button {
 
 .mdc-text-field {
   height: 40px !important;
-  width: 340px;
+  width: 100%;
 }
 
 .form-label {
-  color: #858585;
+  color: rgba(0,0,0,.54);
   display: block;
   font-size: 12px;
   margin: 0 0 4px 1px;
 }
 
 .custom-label {
-  color: rgba(0,0,0,.6);
+  color: rgba(0,0,0,.38);
   display: inline-block;
   margin-left: 4px;
   transform: translateY(50%);
 }
 
 .error-info {
-  color: darkred;
+  color: #C62828;
   display: block;
   font-size: 12px;
-  padding-left: 1px;
+  padding-top: 4px;
 }
 
 #main-action {
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
   margin-top: 15px;
   width: 100%;
 }
 
-#main-action > button {
-  margin-right: 8px;
+#back-button {
+  left: -8px;
+  position: relative;
 }
 
 #add-user {
   display: none;
 }
+
+.fallback-secondary-text {
+  color: var(--mdc-theme-text-secondary-on-background);
+}
+
 `;
 
 export const PROVIDERS_LIST_PLACEHOLDER = "__PROVIDERS__";
@@ -386,17 +482,32 @@ export const WIDGET_UI = `
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
 <div id="content">
-  <div id="title">
-    <span>Sign-in with <span class="js-provider-id">Provider</span></span>
+  <div class="content-wrapper">
+    <div id="title">
+      <span>Sign-in with <span class="js-provider-id provider-name">Provider</span></span>
+    </div>
   </div>
   <div id="accounts-list">
-    <ul>
-    ${PROVIDERS_LIST_PLACEHOLDER}
-    <li class="js-new-account"><a href="#">Add Another Account</a></li>
+    <div class="content-wrapper">
+      <div class="callout callout-warning vs js-signin-warning" style="display:none">
+        <i class="material-icons">error</i>
+        <div class="content"></div>
+      </div>
+      <p class="subtitle">Please select an existing account in the Auth Emulator or add a new one:</p>
+    </div>
+    <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
+      ${PROVIDERS_LIST_PLACEHOLDER}
+      <li id="add-account-button" class="js-new-account mdc-list-item">
+        <button class="mdc-button mdc-button--outlined">
+          <div class="mdc-button__ripple"></div>
+            <i class="material-icons mdc-button__icon" aria-hidden="true">add</i>
+            <span class="mdc-button__label">Add new account</span>
+          </button>
+      </li>
     </ul>
   </div>
   <div id="add-user">
-    <div id="form-content">
+    <div class="content-wrapper" id="form-content">
       <div class="callout vs">
         <i class="material-icons">info</i>
         <div class="content">
@@ -405,12 +516,12 @@ export const WIDGET_UI = `
       </div>
       <button id="autogen-button" class="vs mdc-button mdc-button--outlined" type="button">
         <div class="mdc-button__ripple"></div>
-        <span class="mdc-button__label">Auto Generate User Information</span>
+        <span class="mdc-button__label">Auto-generate user information</span>
       </button>
       <form id="main-form">
         <span class="form-label">Email</span>
         <label class="mdc-text-field mdc-text-field--outlined">
-          <input required id="email-input" type="text"
+          <input id="email-input" type="text"
               class="mdc-text-field__input test" aria-labelledby="my-label-id">
           <span class="mdc-notched-outline">
             <span class="mdc-notched-outline__leading"></span>
@@ -471,7 +582,7 @@ export const WIDGET_UI = `
           </button>
           <button class="mdc-button mdc-button--raised" id="sign-in" type="submit">
             <span class="mdc-button__label">
-              Sign in with <span class="js-provider-id">Provider</span>
+              Sign in with <span class="js-provider-id provider-name">Provider</span>
             </span>
           </button>
         </div>
