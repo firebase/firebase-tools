@@ -1,1 +1,2 @@
 - Fixes issue where database export does not work if database is empty (#2634).
+- Updates Cloud Functions for Firebase templates to better support function development.
