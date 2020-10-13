@@ -26,7 +26,7 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
 
   // Check to see that all the hosting deploy targets exist in the hosting config
   onlyTargets.forEach((onlyTarget) => {
-    if (!configs.some((config) => config.target == onlyTarget)) {
+    if (!configs.some((config) => config.target === onlyTarget)) {
       throw new FirebaseError(`Hosting target ${bold(onlyTarget)} not detected in firebase.json`);
     }
   });
