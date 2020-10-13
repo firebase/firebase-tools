@@ -1,1 +1,2 @@
-- Replaces `tslint` with `eslint` as the default linter in new Cloud Functions for Firebase directories. (#1663)
+- Updates the Google Cloud Run proxy API calls to `v1` (from `v1alpha1`) (#2695).
+- Release RTDB emulator v4.6.0: Get wire protocol with optional query.

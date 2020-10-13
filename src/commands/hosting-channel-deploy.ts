@@ -2,7 +2,15 @@ import { bold, yellow } from "cli-color";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getChannel, createChannel, updateChannelTtl } from "../hosting/api";
+
+import {
+  getChannel,
+  createChannel,
+  updateChannelTtl,
+  addAuthDomain,
+  cleanAuthState,
+  normalizeName,
+} from "../hosting/api";
 import { normalizedHostingConfigs } from "../hosting/normalizedHostingConfigs";
 import { requirePermissions } from "../requirePermissions";
 import * as deploy from "../deploy";
@@ -11,7 +19,8 @@ import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as requireInstance from "../requireInstance";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString } from "../utils";
+import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import * as marked from "marked";
 
 const LOG_TAG = "hosting:channel";
 
@@ -61,6 +70,8 @@ export default new Command("hosting:channel:deploy [channelId]")
         throw new FirebaseError("channelID is currently required");
       }
 
+      channelId = normalizeName(channelId);
+
       // Some normalizing to be very sure of this check.
       if (channelId.toLowerCase().trim() === "live") {
         throw new FirebaseError(
@@ -105,8 +116,27 @@ export default new Command("hosting:channel:deploy [channelId]")
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
+            try {
+              await addAuthDomain(projectId, chan.url);
+            } catch (e) {
+              logLabeledWarning(
+                LOG_TAG,
+                marked(
+                  `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+                    projectId,
+                    "/authentication/providers"
+                  )}`
+                )
+              );
+              logger.debug("[hosting] unable to add auth domain", e);
+            }
           }
-
+          try {
+            await cleanAuthState(projectId, site);
+          } catch (e) {
+            logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+            logger.debug("[hosting] unable to sync auth domain", e);
+          }
           siteInfo.url = chan.url;
           siteInfo.expireTime = chan.expireTime;
           return;

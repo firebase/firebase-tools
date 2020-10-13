@@ -127,6 +127,12 @@ module.exports = function(context, options, payload) {
 
   var projectId = context.projectId;
   var sourceUrl = context.uploadUrl;
+
+  // Reset module-level variables to prevent duplicate deploys when using firebase-tools as an import.
+  timings = {};
+  deployments = [];
+  failedDeployments = [];
+
   var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
   // Used in CLI releases v3.4.0 to v3.17.6
   var legacySourceUrlTwo =

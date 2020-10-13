@@ -36,7 +36,7 @@ describe("cloudRunProxy", () => {
 
   it("should error when the Cloud Run service doesn't exist", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/empty")
+      .get("/v1/projects/project-foo/locations/us-central1/services/empty")
       .reply(404, { error: "service doesn't exist" });
 
     const mwGenerator = await cloudRunProxy(fakeOptions);
@@ -53,8 +53,8 @@ describe("cloudRunProxy", () => {
 
   it("should error when the Cloud Run service doesn't exist", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/badService")
-      .reply(200, { status: { address: {} } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/badService")
+      .reply(200, { status: {} });
 
     const mwGenerator = await cloudRunProxy(fakeOptions);
     const mw = await mwGenerator({ run: { serviceId: "badService" } });
@@ -70,8 +70,8 @@ describe("cloudRunProxy", () => {
 
   it("should resolve a function returns middleware that proxies to the live version", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/")
       .reply(200, "live version");
@@ -91,8 +91,8 @@ describe("cloudRunProxy", () => {
   it("should resolve to a live version in another region", async () => {
     const cloudRunServiceOriginAsia = "https://helloworld-hash-as.a.run.app";
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/asia-southeast1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOriginAsia } } });
+      .get("/v1/projects/project-foo/locations/asia-southeast1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOriginAsia } });
     nock(cloudRunServiceOriginAsia)
       .get("/")
       .reply(200, "live version");
@@ -112,8 +112,8 @@ describe("cloudRunProxy", () => {
   it("should cache calls to look up Cloud Run service URLs", async () => {
     const multiCallOrigin = "https://multiLookup-hash-uc.a.run.app";
     const multiNock = nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/multiLookup")
-      .reply(200, { status: { address: { hostname: multiCallOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .reply(200, { status: { url: multiCallOrigin } });
     nock(multiCallOrigin)
       .persist() // Gets called multiple times
       .get("/")
@@ -131,7 +131,7 @@ describe("cloudRunProxy", () => {
 
     // New rewrite for the same Cloud Run service
     const failMultiNock = nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .get("/v1/projects/project-foo/locations/us-central1/services/multiLookup")
       .reply(500, "should not happen");
 
     const mw2Generator = await cloudRunProxy(fakeOptions);
@@ -154,8 +154,8 @@ describe("cloudRunProxy", () => {
 
   it("should pass through normal 404 errors", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/404.html")
       .reply(404, "normal 404");
@@ -174,8 +174,8 @@ describe("cloudRunProxy", () => {
 
   it("should do nothing on 404 errors with x-cascade", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/404-cascade.html")
       .reply(404, "normal 404 with cascade", { "x-cascade": "pass" });
@@ -201,8 +201,8 @@ describe("cloudRunProxy", () => {
 
   it("should remove cookies on non-private cached responses", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/cached")
       .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
@@ -222,8 +222,8 @@ describe("cloudRunProxy", () => {
 
   it("should add required Vary headers to the response", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/vary")
       .reply(200, "live vary version", { vary: "Other, Authorization" });
@@ -243,8 +243,8 @@ describe("cloudRunProxy", () => {
 
   it("should respond with a 500 error if an error occurs calling the Cloud Run service", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/500")
       .replyWithError({ message: "normal error" });
@@ -263,8 +263,8 @@ describe("cloudRunProxy", () => {
 
   it("should respond with a 504 error if a timeout error occurs calling the Cloud Run service", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/timeout")
       .replyWithError({ message: "ahh", code: "ETIMEDOUT" });
@@ -283,8 +283,8 @@ describe("cloudRunProxy", () => {
 
   it("should respond with a 504 error if a sockettimeout error occurs calling the Cloud Run service", async () => {
     nock(cloudRunApiOrigin)
-      .get("/v1alpha1/projects/project-foo/locations/us-central1/services/helloworld")
-      .reply(200, { status: { address: { hostname: cloudRunServiceOrigin } } });
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
     nock(cloudRunServiceOrigin)
       .get("/sockettimeout")
       .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });

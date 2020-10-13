@@ -101,13 +101,12 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     } catch (err) {
       // Cloud resource location is not set so we error here and exit.
       if (_.get(err, "context.response.statusCode") === 404) {
-        return Promise.reject(
-          new FirebaseError(
-            `Cloud resource location is not set for this project but scheduled functions requires it. ` +
-              `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
-          )
+        throw new FirebaseError(
+          `Cloud resource location is not set for this project but scheduled functions requires it. ` +
+            `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
         );
       }
+      throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
     }
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
     return newJob;

@@ -2,6 +2,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
+import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -83,6 +84,82 @@ export interface Channel {
 
   // Text labels used for extra metadata and/or filtering.
   labels: { [key: string]: string };
+}
+
+enum VersionStatus {
+  // The default status; should not be intentionally used.
+  VERSION_STATUS_UNSPECIFIED = "VERSION_STATUS_UNSPECIFIED",
+  // The version has been created, and content is currently being added to the
+  // version.
+  CREATED = "CREATED",
+  // All content has been added to the version, and the version can no longer be
+  // changed.
+  FINALIZED = "FINALIZED",
+  // The version has been deleted.
+  DELETED = "DELETED",
+  // The version was not updated to `FINALIZED` within 12&nbsp;hours and was
+  // automatically deleted.
+  ABANDONED = "ABANDONED",
+  // The version is outside the site-configured limit for the number of
+  // retained versions, so the version's content is scheduled for deletion.
+  EXPIRED = "EXPIRED",
+  // The version is being cloned from another version. All content is still
+  // being copied over.
+  CLONING = "CLONING",
+}
+
+// TODO: define ServingConfig.
+enum ServingConfig {}
+
+export interface Version {
+  // The unique identifier for a version, in the format:
+  // `sites/<site-name>/versions/<versionID>`
+  name: string;
+
+  // The deploy status of a version.
+  status: VersionStatus;
+
+  // The configuration for the behavior of the site.
+  config: ServingConfig;
+
+  // The labels used for extra metadata and/or filtering.
+  labels: Map<string, string>;
+
+  // The time at which the version was created.
+  readonly createTime: string;
+
+  // Identifies the user who created the version.
+  readonly createUser: ActingUser;
+
+  // The time at which the version was `FINALIZED`.
+  readonly finalizeTime: string;
+
+  // Identifies the user who `FINALIZED` the version.
+  readonly finalizeUser: ActingUser;
+
+  // The time at which the version was `DELETED`.
+  readonly deleteTime: string;
+
+  // Identifies the user who `DELETED` the version.
+  readonly deleteUser: ActingUser;
+
+  // The total number of files associated with the version.
+  readonly fileCount: number;
+
+  // The total stored bytesize of the version.
+  readonly versionBytes: number;
+}
+
+/**
+ * normalizeName normalizes a name given to it. Most useful for normalizing
+ * user provided names. This removes any `/`, ':', or '_' characters and
+ * replaces them with dashes (`-`).
+ * @param s the name to normalize.
+ * @return the normalized name.
+ */
+export function normalizeName(s: string): string {
+  // Using a regex replaces *all* bad characters.
+  return s.replace(/[/:_]/g, "-");
 }
 
 /**
@@ -228,15 +305,15 @@ export async function deleteChannel(
 
 /**
  * Create a version a clone.
- * @param project the project ID or number (can be provided `-`),
  * @param site the site for the version.
  * @param versionName the specific version ID.
+ * @param finalize whether or not to immediately finalize the version.
  */
 export async function cloneVersion(
   site: string,
   versionName: string,
-  finalize: boolean = false
-): Promise<any> {
+  finalize = false
+): Promise<Version> {
   const res = await api.request(
     "POST",
     `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
@@ -249,7 +326,7 @@ export async function cloneVersion(
     }
   );
   const name = res.body.name;
-  const pollRes = await operationPoller.pollOperation({
+  const pollRes = await operationPoller.pollOperation<Version>({
     apiOrigin: api.hostingApiOrigin,
     apiVersion: "v1beta1",
     operationResourceName: name,
@@ -259,12 +336,16 @@ export async function cloneVersion(
 }
 
 /**
- * Create a release of on a channel.
- * @param project the project ID or number (can be provided `-`),
+ * Create a release on a channel.
  * @param site the site for the version.
- * @param versionName the specific version ID.
+ * @param channel the channel for the release.
+ * @param version the specific version ID.
  */
-export async function createRelease(site: string, channel: string, version: string): Promise<any> {
+export async function createRelease(
+  site: string,
+  channel: string,
+  version: string
+): Promise<Release> {
   const res = await api.request(
     "POST",
     `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
@@ -274,4 +355,76 @@ export async function createRelease(site: string, channel: string, version: stri
     }
   );
   return res.body;
+}
+
+/**
+ * Adds channel domain to Firebase Auth list.
+ * @param project the project ID.
+ * @param url the url of the channel.
+ */
+export async function addAuthDomain(project: string, url: string): Promise<string[]> {
+  const domains = await getAuthDomains(project);
+  const domain = url.replace("https://", "");
+  const authDomains = domains || [];
+  if (authDomains.includes(domain)) {
+    return authDomains;
+  }
+  authDomains.push(domain);
+  return await updateAuthDomains(project, authDomains);
+}
+
+/**
+ * Constructs a list of "clean domains"
+ * by including all existing auth domains
+ * with the exception of domains that belong to
+ * expired channels.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function getCleanDomains(project: string, site: string): Promise<string[]> {
+  const channels = await listChannels(project, site);
+  // Create a map of channel domain names
+  const channelMap = channels
+    .map((channel: Channel) => channel.url.replace("https://", ""))
+    .reduce((acc: { [key: string]: boolean }, current: string) => {
+      acc[current] = true;
+      return acc;
+    }, {});
+
+  // match any string that has ${site}--*
+  const siteMatch = new RegExp(`${site}--`, "i");
+  // match any string that ends in firebaseapp.com
+  const firebaseAppMatch = new RegExp(/firebaseapp.com$/);
+  const domains = await getAuthDomains(project);
+  const authDomains: string[] = [];
+
+  domains.forEach((domain: string) => {
+    // include domains that end in *.firebaseapp.com because urls belonging
+    // to the live channel should always be included
+    const endsWithFirebaseApp = firebaseAppMatch.test(domain);
+    if (endsWithFirebaseApp) {
+      authDomains.push(domain);
+      return;
+    }
+    // exclude site domains that have no channels
+    const domainWithNoChannel = siteMatch.test(domain) && !channelMap[domain];
+    if (domainWithNoChannel) {
+      return;
+    }
+    // add all other domains (ex: "localhost", etc)
+    authDomains.push(domain);
+  });
+  return authDomains;
+}
+
+/**
+ * Retrieves a list of "clean domains" and
+ * updates Firebase Auth Api with aforementioned
+ * list.
+ * @param project the project ID.
+ * @param site the site for the channel.
+ */
+export async function cleanAuthState(project: string, site: string): Promise<string[]> {
+  const authDomains = await getCleanDomains(project, site);
+  return await updateAuthDomains(project, authDomains);
 }

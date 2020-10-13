@@ -127,6 +127,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   private backgroundTriggersEnabled: boolean = true;
 
+  private multicastTriggers: { [s: string]: string[] } = {};
+
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.verbosity = this.args.quiet ? Verbosity.QUIET : Verbosity.DEBUG;
@@ -197,6 +199,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     // The URL that the developer sees, this is the same URL that the legacy emulator used.
     const httpsFunctionRoute = `/${this.args.projectId}/:region/:trigger_name`;
 
+    // The URL for events meant to trigger multiple functions
+    const multicastFunctionRoute = `/functions/projects/:project_id/trigger_multicast`;
+
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
@@ -212,8 +217,23 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
 
+      const triggerId = req.params.trigger_name;
+      const projectId = req.params.project_id;
+      const reqBody = (req as RequestWithRawBody).rawBody;
+      const proto = JSON.parse(reqBody.toString());
+
       this.workQueue.submit(() => {
-        return this.handleBackgroundTrigger(req, res);
+        this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
+
+        return this.handleBackgroundTrigger(projectId, triggerId, proto)
+          .then((x) => res.json(x))
+          .catch((errorBundle: { code: number; body?: string }) => {
+            if (errorBundle.body) {
+              res.status(errorBundle.code).send(errorBundle.body);
+            } else {
+              res.sendStatus(errorBundle.code);
+            }
+          });
       });
     };
 
@@ -226,10 +246,34 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
     };
 
+    const multicastHandler: express.RequestHandler = async (
+      req: express.Request,
+      res: express.Response
+    ) => {
+      const reqBody = (req as RequestWithRawBody).rawBody;
+      const proto = JSON.parse(reqBody.toString());
+      const triggers = this.multicastTriggers[`${this.args.projectId}:${proto.eventType}`] || [];
+      const projectId = req.params.project_id;
+
+      triggers.forEach((triggerId) => {
+        this.workQueue.submit(() => {
+          this.logger.log(
+            "DEBUG",
+            `Accepted multicast request ${req.method} ${req.url} --> ${triggerId}`
+          );
+
+          return this.handleBackgroundTrigger(projectId, triggerId, proto);
+        });
+      });
+
+      res.json({ status: "multicast_acknowledged" });
+    };
+
     // The ordering here is important. The longer routes (background)
     // need to be registered first otherwise the HTTP functions consume
     // all events.
     hub.post(backgroundFunctionRoute, dataMiddleware, backgroundHandler);
+    hub.post(multicastFunctionRoute, dataMiddleware, multicastHandler);
     hub.all(httpsFunctionRoutes, dataMiddleware, httpsHandler);
     hub.all("*", dataMiddleware, (req, res) => {
       logger.debug(`Functions emulator received unknown request at path ${req.path}`);
@@ -377,6 +421,9 @@ export class FunctionsEmulator implements EmulatorInstance {
               break;
             case Constants.SERVICE_PUBSUB:
               added = await this.addPubsubTrigger(this.args.projectId, definition);
+              break;
+            case Constants.SERVICE_AUTH:
+              added = await this.addAuthTrigger(this.args.projectId, definition);
               break;
             default:
               this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -560,6 +607,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     } catch (e) {
       return false;
     }
+  }
+
+  addAuthTrigger(projectId: string, definition: EmulatedTriggerDefinition): boolean {
+    logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+
+    const eventTriggerId = `${projectId}:${definition.eventTrigger?.eventType}`;
+    const triggers = this.multicastTriggers[eventTriggerId] || [];
+    triggers.push(definition.entryPoint);
+    this.multicastTriggers[eventTriggerId] = triggers;
+    return true;
   }
 
   getProjectId(): string {
@@ -747,6 +804,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
+<<<<<<< HEAD
   setBackgroundTriggersEnabled(enabled: boolean) {
     this.backgroundTriggersEnabled = enabled;
   }
@@ -756,52 +814,55 @@ export class FunctionsEmulator implements EmulatorInstance {
     const projectId = req.params.project_id;
     const triggerId = req.params.trigger_name;
 
+=======
+  private async handleBackgroundTrigger(projectId: string, triggerId: string, proto: any) {
+>>>>>>> master
     const trigger = this.getTriggerById(triggerId);
     const service = getFunctionService(trigger);
-
-    if (projectId !== this.args.projectId) {
-      // RTDB considers each namespace a "project", but for any other trigger we want to reject
-      // incoming triggers to a different project.
-      if (service !== Constants.SERVICE_REALTIME_DATABASE) {
-        logger.debug(
-          `Received functions trigger for service "${service}" for unknown project "${projectId}".`
-        );
-        res.sendStatus(404);
-        return;
-      }
-
-      // The eventTrigger 'resource' property will look something like this:
-      // "projects/_/instances/<project>/refs/foo/bar"
-      // If the trigger's resource does not match the invoked projet ID, we should 404.
-      if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
-        logger.debug(
-          `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
-            trigger
-          )}.`
-        );
-        res.sendStatus(404);
-        return;
-      }
-    }
-
-    this.logger.log("DEBUG", `Accepted request ${method} ${req.url} --> ${triggerId}`);
-
-    const reqBody = (req as RequestWithRawBody).rawBody;
-    const proto = JSON.parse(reqBody.toString());
-
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.BACKGROUND, proto);
 
-    worker.onLogs((el: EmulatorLog) => {
-      if (el.level === "FATAL") {
-        res.status(500).send(el.text);
+    return new Promise((resolve, reject) => {
+      if (projectId !== this.args.projectId) {
+        // RTDB considers each namespace a "project", but for any other trigger we want to reject
+        // incoming triggers to a different project.
+        if (service !== Constants.SERVICE_REALTIME_DATABASE) {
+          logger.debug(
+            `Received functions trigger for service "${service}" for unknown project "${projectId}".`
+          );
+          reject({ code: 404 });
+          return;
+        }
+
+        // The eventTrigger 'resource' property will look something like this:
+        // "projects/_/instances/<project>/refs/foo/bar"
+        // If the trigger's resource does not match the invoked projet ID, we should 404.
+        if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
+          logger.debug(
+            `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
+              trigger
+            )}.`
+          );
+          reject({ code: 404 });
+          return;
+        }
       }
+
+      worker.onLogs((el: EmulatorLog) => {
+        if (el.level === "FATAL") {
+          reject({ code: 500, body: el.text });
+        }
+      });
+
+      // For analytics, track the invoked service
+      if (triggerId) {
+        const trigger = this.getTriggerById(triggerId);
+        track(EVENT_INVOKE, getFunctionService(trigger));
+      }
+
+      worker.waitForDone().then(() => {
+        resolve({ status: "acknowledged" });
+      });
     });
-
-    // For analytics, track the invoked service
-    track(EVENT_INVOKE, service);
-
-    await worker.waitForDone();
-    return res.json({ status: "acknowledged" });
   }
 
   /**

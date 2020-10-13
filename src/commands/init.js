@@ -100,6 +100,11 @@ module.exports = new Command("init [feature]")
         name: "Emulators: Set up local emulators for Firebase features",
         checked: false,
       },
+      {
+        value: "remoteconfig",
+        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
+        checked: false,
+      },
     ];
 
     var next;
@@ -125,7 +130,6 @@ module.exports = new Command("init [feature]")
           setup.features = [feature];
           return undefined;
         }
-
         return prompt(setup, [
           {
             type: "checkbox",

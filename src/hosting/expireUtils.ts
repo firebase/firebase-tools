@@ -3,7 +3,7 @@ import { FirebaseError } from "../error";
 /**
  * A regex to test for valid duration strings.
  */
-export const DURATION_REGEX = /^\d+[hdm]$/;
+export const DURATION_REGEX = /^(\d+)([hdm])$/;
 
 /**
  * Basic durations in milliseconds.
