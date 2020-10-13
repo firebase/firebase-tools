@@ -1,1 +1,2 @@
 - Updates the Google Cloud Run proxy API calls to `v1` (from `v1alpha1`) (#2695).
+- Fixes `TypeError` that arises when trying to deploy with hosting targets that don't exist in the project's firebase.json (#1232).

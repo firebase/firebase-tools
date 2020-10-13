@@ -19,9 +19,17 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
     return configs;
   }
 
+  // Strip out Hosting deploy targets from onlyTarget
   onlyTargets = onlyTargets
     .filter((target) => target.startsWith("hosting:"))
     .map((target) => target.replace("hosting:", ""));
+
+  // Check to see that all the hosting deploy targets exist in the hosting config
+  onlyTargets.forEach((onlyTarget) => {
+    if (!configs.some((config) => config.target == onlyTarget)) {
+      throw new FirebaseError(`Hosting target ${bold(onlyTarget)} not detected in firebase.json`);
+    }
+  });
 
   return configs.filter((config: HostingConfig) =>
     onlyTargets.includes(config.target || config.site)
