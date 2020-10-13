@@ -804,19 +804,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
-<<<<<<< HEAD
   setBackgroundTriggersEnabled(enabled: boolean) {
     this.backgroundTriggersEnabled = enabled;
   }
 
-  private async handleBackgroundTrigger(req: express.Request, res: express.Response) {
-    const method = req.method;
-    const projectId = req.params.project_id;
-    const triggerId = req.params.trigger_name;
-
-=======
   private async handleBackgroundTrigger(projectId: string, triggerId: string, proto: any) {
->>>>>>> master
     const trigger = this.getTriggerById(triggerId);
     const service = getFunctionService(trigger);
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.BACKGROUND, proto);
