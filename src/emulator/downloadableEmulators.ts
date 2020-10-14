@@ -41,14 +41,14 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.7.jar"),
-    version: "1.11.7",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.9.jar"),
+    version: "1.11.9",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.7.jar",
-      expectedSize: 63857175,
-      expectedChecksum: "fd8577f82d42ee1c03ae9d12b888049c",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.9.jar",
+      expectedSize: 64448827,
+      expectedChecksum: "0b841d928e1d0877e789010301b265a4",
       namePrefix: "cloud-firestore-emulator",
     },
   },
