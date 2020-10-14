@@ -380,18 +380,12 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
  */
 export async function removeAuthDomain(project: string, url: string): Promise<string[]> {
   const domains = await getAuthDomains(project);
-  if (domains.length < 1) {
+  if (!domains.length) {
     return domains;
   }
   const targetDomain = url.replace("https://", "");
-  const authDomains: string[] = [];
-  domains.forEach((domain: string) => {
-    if (domain == targetDomain) {
-      return;
-    }
-    authDomains.push(domain);
-  });
-  return await updateAuthDomains(project, authDomains);
+  const authDomains = domains.filter((domain: string) => domain != targetDomain)
+  return updateAuthDomains(project, authDomains);
 }
 
 /**
