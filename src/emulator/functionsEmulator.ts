@@ -125,7 +125,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-  private backgroundTriggersEnabled: boolean = true;
+  private backgroundTriggersEnabled = true;
 
   private multicastTriggers: { [s: string]: string[] } = {};
 
