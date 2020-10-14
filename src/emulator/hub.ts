@@ -114,6 +114,7 @@ export class EmulatorHub implements EmulatorInstance {
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
       if (!instance) {
         res.status(400).json({ error: "The Cloud Functions emulator is not running." });
+        return;
       }
 
       const emu = instance as FunctionsEmulator;
@@ -130,6 +131,7 @@ export class EmulatorHub implements EmulatorInstance {
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
       if (!instance) {
         res.status(400).send("The Cloud Functions emulator is not running.");
+        return;
       }
 
       const emu = instance as FunctionsEmulator;
