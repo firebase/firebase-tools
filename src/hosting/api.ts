@@ -384,7 +384,7 @@ export async function removeAuthDomain(project: string, url: string): Promise<st
     return domains;
   }
   const targetDomain = url.replace("https://", "");
-  const authDomains = domains.filter((domain: string) => domain != targetDomain)
+  const authDomains = domains.filter((domain: string) => domain != targetDomain);
   return updateAuthDomains(project, authDomains);
 }
 
