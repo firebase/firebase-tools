@@ -385,12 +385,12 @@ export async function removeAuthDomain(project: string, url: string): Promise<st
   }
   const targetDomain = url.replace("https://", "");
   const authDomains: string[] = [];
-  domains.forEach((domain : string) => {
+  domains.forEach((domain: string) => {
     if (domain == targetDomain) {
       return;
     }
     authDomains.push(domain);
-  }) 
+  });
   return await updateAuthDomains(project, authDomains);
 }
 
