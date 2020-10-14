@@ -78,7 +78,9 @@ export async function promptForPublisherTOS() {
   const termsOfServiceMsg =
     "By registering this publisher ID, you acknowledge the Firebase Extensions publisher " +
     "terms of service and understand the responsibilities you assume when distributing " +
-    `an extension. ${clc.blue("More details here: <Placeholder link to docs>")}`;
+    `an extension. More details here: ${marked(
+      "(https://firebase.google.com/docs/extensions/alpha/terms-of-service)"
+    )}`;
   utils.logLabeledBullet(logPrefix, marked(termsOfServiceMsg));
   const question: Question = {
     name: "consent",

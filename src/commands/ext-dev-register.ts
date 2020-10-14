@@ -1,4 +1,5 @@
 import * as clc from "cli-color";
+import * as marked from "marked";
 
 import { Command } from "../command";
 import { registerPublisherProfile } from "../extensions/extensionsApi";
@@ -19,11 +20,12 @@ export default new Command("ext:dev:register")
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
   .action(async (options: any) => {
+    await promptForPublisherTOS();
     const projectId = getProjectId(options, false);
     const msg =
-      "What would you like to register as your publisher ID?" +
-      " This value identifies you to Extensions Registry users as the author of your extensions." +
-      " Examples: my-company-name, MyGitHubUsername\n\n" +
+      "What would you like to register as your publisher ID? " +
+      "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +
+      "Examples: my-company-name, MyGitHubUsername. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group. \n\n" +
       "You can only do this once for each project.";
     const publisherId = await promptOnce({
       name: "publisherId",
@@ -31,19 +33,20 @@ export default new Command("ext:dev:register")
       message: msg,
       default: projectId,
     });
-    await promptForPublisherTOS();
     try {
       await registerPublisherProfile(projectId, publisherId);
     } catch (err) {
       if (err.status === 409) {
         const error =
-          `Couldn't register the publisher ID ${clc.bold(publisherId)} to the project ${clc.bold(
+          `Couldn't register the publisher ID '${clc.bold(publisherId)}' to the project '${clc.bold(
             projectId
-          )}.` +
+          )}'.` +
           " This can happen for either of two reasons:\n\n" +
-          ` - ${clc.bold(publisherId)} is registered to another project\n` +
-          ` - ${clc.bold(projectId)} already has a publisher ID\n\n` +
-          " Try again with a unique publisher ID or a new project.";
+          ` - Publisher ID '${clc.bold(publisherId)}' is registered to another project\n` +
+          ` - Project '${clc.bold(projectId)}' already has a publisher ID\n\n` +
+          ` Try again with a unique publisher ID or a new project. If your business’s name has been registered to another project, contact Firebase support ${marked(
+            "(https://firebase.google.com/support/troubleshooter/extensions)."
+          )}`;
         throw new FirebaseError(error, { exit: 1 });
       }
       throw new FirebaseError(
@@ -53,8 +56,10 @@ export default new Command("ext:dev:register")
         { exit: 1 }
       );
     }
-    return utils.logLabeledBullet(
+    return utils.logLabeledSuccess(
       logPrefix,
-      `Publisher ID ${clc.bold(publisherId)} has been registered to project ${clc.bold(projectId)}.`
+      `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
+        projectId
+      )}`
     );
   });

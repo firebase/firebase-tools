@@ -395,17 +395,19 @@ export async function publishExtensionVersionFromLocalSource(
     uploadSpinner.fail();
     throw err;
   }
-  const publishSpinner = ora.default(`Publishing '${ref}'`);
+  const publishSpinner = ora.default(`Publishing '${clc.bold(ref)}'`);
   let res;
   try {
     publishSpinner.start();
     res = await publishExtensionVersion(ref, packageUri);
-    publishSpinner.succeed(` Successfully published ${ref}`);
+    publishSpinner.succeed(` Successfully published ${clc.bold(ref)}`);
   } catch (err) {
     publishSpinner.fail();
     if (err.status == 404) {
       throw new FirebaseError(
-        `Couldn't find publisher ID '${publisherId}'. Please ensure that you have registered this ID.`
+        `Couldn't find publisher ID '${clc.bold(
+          publisherId
+        )}'. Please ensure that you have registered this ID.`
       );
     }
     throw err;
@@ -497,10 +499,9 @@ export async function confirmExtensionVersion(
 ): Promise<string> {
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
-      `${publisherId}/${extensionId}`
+      `${publisherId}/${extensionId} to Firebase's registry of extensions.`
     )}.\n` +
-    "Once an extension version is published, it cannot be changed, it can only be unpublished.\n" +
-    "If you wish to make changes after publishing, you will need to publish a new version.\n" +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n" +
     "Do you wish to continue?";
   return await promptOnce({
     type: "confirm",
