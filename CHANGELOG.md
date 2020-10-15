@@ -3,3 +3,4 @@
 - Updates Cloud Functions for Firebase templates to better support function development.
 - Release Firestore emulator v1.11.9: Fixes != and not-in operators.
 - Add endpoints to enable/disable background triggers in the Cloud Functions emulator.
+- Updates `firebase hosting:channel:delete` to remove the channel from the authorized domains list.
