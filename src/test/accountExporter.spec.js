@@ -218,6 +218,35 @@ describe("accountExporter", function() {
       });
     });
 
+    it("should export a user's custom attributes", function() {
+      userList[0].customAttributes =
+        '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
+      userList[1].customAttributes =
+        '{ "customBoolean": true, "customString2": "test2", "customInt": 99 }';
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+          nextPageToken: "3",
+        });
+      return serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: writeStream,
+      }).then(function() {
+        expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+        expect(spyWrite.getCall(1).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        );
+        expect(spyWrite.getCall(2).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        );
+      });
+    });
+
     function mockAllUsersRequests() {
       nock("https://www.googleapis.com")
         .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
