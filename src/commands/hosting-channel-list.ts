@@ -4,12 +4,11 @@ import Table = require("cli-table");
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
-import * as getInstanceId from "../getInstanceId";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
-import * as requireInstance from "../requireInstance";
 import { datetimeString } from "../utils";
+import { getDefaultHostingSite } from "../getDefaultHostingSite";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
@@ -19,13 +18,12 @@ export default new Command("hosting:channel:list")
   .before(requireConfig)
   // TODO: `update` permission is maybe a bit aggressive. Bring down to view-ish?
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before(requireInstance)
   .action(
     async (
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ channels: Channel[] }> => {
       const projectId = getProjectId(options);
-      const siteId = options.site || (await getInstanceId(options));
+      const siteId = options.site || (await getDefaultHostingSite(options));
       const channels = await listChannels(projectId, siteId);
 
       const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });

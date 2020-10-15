@@ -5,10 +5,9 @@ import { deleteChannel, normalizeName } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
-import * as requireInstance from "../requireInstance";
-import * as getInstanceId from "../getInstanceId";
 import { logLabeledSuccess } from "../utils";
 import { promptOnce } from "../prompt";
+import { getDefaultHostingSite } from "../getDefaultHostingSite";
 
 interface ChannelInfo {
   target: string | null;
@@ -23,14 +22,13 @@ export default new Command("hosting:channel:delete <channelId>")
   .option("-f, --force", "delete without confirmation")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before(requireInstance)
   .action(
     async (
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<void> => {
       const projectId = getProjectId(options);
-      const siteId = options.site || (await getInstanceId(options));
+      const siteId = options.site || (await getDefaultHostingSite(options));
 
       channelId = normalizeName(channelId);
 
