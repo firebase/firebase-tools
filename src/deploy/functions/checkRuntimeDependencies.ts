@@ -1,4 +1,4 @@
-import { bold } from "cli-color";
+import { bold, yellow } from "cli-color";
 
 import * as track from "../../track";
 import * as logger from "../../logger";
@@ -14,14 +14,28 @@ function node8DeprecationWarning(): void {
   logger.warn();
   logLabeledWarning(
     "functions",
-    `The Node.js 8 runtime is deprecated and will be decommissioned on ${bold(
-      "2021-03-15"
-    )}. For more information, see: ${FAQ_URL}`
+    `${bold(
+      `${yellow(
+        "Warning:"
+      )} Node.js 8 functions are deprecated and will stop running on 2021-03-15.`
+    )} Please upgrade to Node.js 10 or greater by adding an entry like this to your package.json:
+    
+    {
+      "engines": {
+        "node": "12"
+      }
+    }
+
+The Firebase CLI will stop deploying Node.js 8 functions in new versions beginning ${bold(
+      "2020-12-15"
+    )}, and deploys from all CLI versions will halt on ${bold(
+      "2021-02-15"
+    )}. For additional information, see: ${FAQ_URL}`
   );
   logger.warn();
 }
 
-function node10BillingError(projectId: string): FirebaseError {
+function nodeBillingError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_billing_error");
   return new FirebaseError(
     `Cloud Functions deployment requires the pay-as-you-go (Blaze) billing plan. To upgrade your project, visit the following URL:
@@ -35,7 +49,7 @@ ${FAQ_URL}`,
   );
 }
 
-function node10PermissionError(projectId: string): FirebaseError {
+function nodePermissionError(projectId: string): FirebaseError {
   track("functions_runtime_notices", "nodejs10_permission_error");
   return new FirebaseError(`Cloud Functions deployment requires the Cloud Build API to be enabled. The current credentials do not have permission to enable APIs for project ${bold(
     projectId
@@ -69,6 +83,17 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
 }
 
 /**
+ * Warns users about pending deprecation dates if a node 8 function was deployed.
+ *
+ * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
+ */
+export function checkForNode8(runtime: string): void {
+  if (runtime === "nodejs8") {
+    node8DeprecationWarning();
+    return;
+  }
+}
+/**
  * Checks for various warnings and API enablements needed based on the runtime
  * of the deployed functions.
  *
@@ -76,21 +101,17 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
  */
 export async function checkRuntimeDependencies(projectId: string, runtime: string): Promise<void> {
-  // print deprecation warning for Node 8 functions once Cloud Build enforcement begins
-  if (runtime === "nodejs8") {
-    node8DeprecationWarning();
-    return;
-  }
+  if (runtime !== "nodejs8") {
+    try {
+      await ensure(projectId, CLOUD_BUILD_API, "functions");
+    } catch (e) {
+      if (isBillingError(e)) {
+        throw nodeBillingError(projectId);
+      } else if (isPermissionError(e)) {
+        throw nodePermissionError(projectId);
+      }
 
-  try {
-    await ensure(projectId, CLOUD_BUILD_API, "functions");
-  } catch (e) {
-    if (isBillingError(e)) {
-      throw node10BillingError(projectId);
-    } else if (isPermissionError(e)) {
-      throw node10PermissionError(projectId);
+      throw e;
     }
-
-    throw e;
   }
 }

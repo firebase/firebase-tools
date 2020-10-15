@@ -125,6 +125,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
+  private backgroundTriggersEnabled = true;
 
   private multicastTriggers: { [s: string]: string[] } = {};
 
@@ -208,6 +209,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
+      // When background triggers are disabled just ignore the request and respond
+      // with 204 "No Content"
+      if (!this.backgroundTriggersEnabled) {
+        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
+        res.status(204).send();
+        return;
+      }
+
       const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
       const reqBody = (req as RequestWithRawBody).rawBody;
@@ -793,6 +802,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     this.workerPool.addWorker(frb.triggerId, runtime);
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
+  }
+
+  setBackgroundTriggersEnabled(enabled: boolean) {
+    this.backgroundTriggersEnabled = enabled;
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerId: string, proto: any) {
