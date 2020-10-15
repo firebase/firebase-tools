@@ -76,7 +76,7 @@ describe("checkRuntimeDependencies()", () => {
       stubTimes(Date.now() - 10000, Date.now() - 5000);
 
       await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.be.gt(0);
+      expect(logStub?.callCount).to.eq(0);
     });
   });
 
