@@ -82,6 +82,11 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
   return e.context?.body?.error?.status === "PERMISSION_DENIED";
 }
 
+/**
+ * Warns users about pending deprecation dates if a node 8 function was deployed.
+ *
+ * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
+ */
 export function checkForNode8(runtime: string): void {
   if (runtime === "nodejs8") {
     node8DeprecationWarning();
