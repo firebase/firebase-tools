@@ -142,15 +142,23 @@ function redirectToIos(authEvent) {
 
 // DOM logic
 
-document.querySelectorAll('.js-provider-id').forEach(function(e) {e.textContent = providerId});
-var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
-[].forEach.call(reuseAccountEls, function (el) {
-  var urlEncodedIdToken = el.dataset.idToken;
-  el.addEventListener('click', function (e) {
-    e.preventDefault();
-    finishWithUser(urlEncodedIdToken);
-  });
+var formattedProviderId = providerId[0].toUpperCase() + providerId.substring(1);
+document.querySelectorAll('.js-provider-id').forEach(function(e) {
+  e.textContent = formattedProviderId;
 });
+
+var reuseAccountEls = document.querySelectorAll('.js-reuse-account');
+if (reuseAccountEls.length) {
+  [].forEach.call(reuseAccountEls, function (el) {
+    var urlEncodedIdToken = el.dataset.idToken;
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      finishWithUser(urlEncodedIdToken);
+    });
+  });
+} else {
+  document.querySelector('.js-accounts-help-text').textContent = "No " + formattedProviderId + " accounts exist in the Auth Emulator.";
+}
 
 function finishWithUser(urlEncodedIdToken) {
   // Use widget URL, but replace all query parameters (no apiKey etc.).
@@ -493,7 +501,7 @@ export const WIDGET_UI = `
         <i class="material-icons">error</i>
         <div class="content"></div>
       </div>
-      <p class="subtitle">Please select an existing account in the Auth Emulator or add a new one:</p>
+      <p class="subtitle js-accounts-help-text">Please select an existing account in the Auth Emulator or add a new one:</p>
     </div>
     <ul class="mdc-list list mdc-list--two-line mdc-list--avatar-list">
       ${PROVIDERS_LIST_PLACEHOLDER}
