@@ -1,9 +1,8 @@
 import { Command } from "../command";
 import { logPrefix } from "../extensions/extensionsHelper";
-import { unpublishExtension, parseRef } from "../extensions/extensionsApi";
+import { unpublishExtension, parseRef, getExtension } from "../extensions/extensionsApi";
 import * as utils from "../utils";
 import { promptOnce } from "../prompt";
-import { FirebaseError } from "../error";
 import * as clc from "cli-color";
 import { requireAuth } from "../requireAuth";
 
@@ -17,37 +16,29 @@ module.exports = new Command("ext:dev:unpublish [ref]")
   .action(async (ref: string, options: any) => {
     const { publisherId, extensionId, version } = parseRef(ref);
     let message =
-      "If you unpublish this extension, developers won't be able to install it, and developers who have already installed this extension won't be able to reconfigure it.";
+      "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI.";
     utils.logLabeledWarning(logPrefix, message);
     if (version) {
       return utils.reject(
-        "Unpublishing a specific version is not currently supported. This command will unpublish all versions of this extension. If you would like to proceed, please remove the version from the reference and try the command again.",
+        `Unpublishing a single version is not currently supported. You can only unpublish ${clc.bold(
+          "ALL versions"
+        )} of an extension. To unpublish all versions, please remove the version from the reference.`,
         { exit: 1 }
       );
     }
+    await getExtension(ref);
     const consent = await comfirmUnpublish(publisherId, extensionId);
     if (!consent) {
       return utils.reject("Unpublishing cancelled.", { exit: 1 });
     }
-    try {
-      await unpublishExtension(ref);
-      utils.logLabeledSuccess(
-        logPrefix,
-        "successfully unpublished all versions of this extension!"
-      );
-    } catch (err) {
-      if (err instanceof FirebaseError) {
-        throw err;
-      }
-
-      throw new FirebaseError(`Error occurred unpublishing ${ref}: ${err}`);
-    }
+    await unpublishExtension(ref);
+    utils.logLabeledSuccess(logPrefix, "successfully unpublished all versions of this extension.");
   });
 
 export async function comfirmUnpublish(publisherId: string, extensionId: string): Promise<string> {
   let message = `You are about to unpublish ALL versions of ${clc.green(
     `${publisherId}/${extensionId}`
-  )}.\nDo you wish to continue?\n`;
+  )}.\nDo you wish to continue? `;
   return await promptOnce({
     type: "confirm",
     message,

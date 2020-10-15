@@ -26,11 +26,13 @@ export default new Command("ext:dev:list [publisherId]")
     }
 
     if (extensions.length < 1) {
-      return utils.logLabeledBullet(
-        logPrefix,
+      throw new FirebaseError(
         `There are no published extensions associated with publisher ID ${clc.bold(
           publisherId
-        )}. If you are expecting some, please make sure this publisher ID exists.`
+        )}. This could happen for two reasons:\n` +
+          "  -The publisher ID doesn't exist or could be misspelled\n" +
+          "  -This publisher has not published any extensions\n\n" +
+          "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
       );
     }
 

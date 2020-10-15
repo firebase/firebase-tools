@@ -564,48 +564,6 @@ describe("extensions", () => {
     });
   });
 
-  describe("unpublishExtensionVersion", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should make a POST call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .post(
-          `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}-alpha.2:unpublish`
-        )
-        .reply(200);
-
-      await extensionsApi.unpublishExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}-alpha.2`
-      );
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .post(
-          `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}:unpublish`
-        )
-        .reply(404);
-
-      await expect(
-        extensionsApi.unpublishExtensionVersion(
-          `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
-        )
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(
-        extensionsApi.unpublishExtensionVersion(
-          `${PUBLISHER_ID}/${EXTENSION_ID}/${EXTENSION_VERSION}`
-        )
-      ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
-    });
-  });
-
   describe("getExtension", () => {
     afterEach(() => {
       nock.cleanAll();
