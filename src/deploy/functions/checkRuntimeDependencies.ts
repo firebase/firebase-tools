@@ -96,15 +96,17 @@ export function checkForNode8(runtime: string): void {
  * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
  */
 export async function checkRuntimeDependencies(projectId: string, runtime: string): Promise<void> {
-  try {
-    await ensure(projectId, CLOUD_BUILD_API, "functions");
-  } catch (e) {
-    if (isBillingError(e)) {
-      throw nodeBillingError(projectId);
-    } else if (isPermissionError(e)) {
-      throw nodePermissionError(projectId);
-    }
+  if (runtime !== "nodejs8") {
+    try {
+      await ensure(projectId, CLOUD_BUILD_API, "functions");
+    } catch (e) {
+      if (isBillingError(e)) {
+        throw nodeBillingError(projectId);
+      } else if (isPermissionError(e)) {
+        throw nodePermissionError(projectId);
+      }
 
-    throw e;
+      throw e;
+    }
   }
 }
