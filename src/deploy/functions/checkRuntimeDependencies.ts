@@ -14,7 +14,7 @@ function node8DeprecationWarning(): void {
   logger.warn();
   logLabeledWarning(
     "functions",
-    `Warning: Node.js 8 functions are deprecated and will stop running on 2021-03-15. Please upgrade to Node.js 10 or greater by adding an entry like this to your package.json:
+    `${bold(`${yellow("Warning:")} Node.js 8 functions are deprecated and will stop running on 2021-03-15.`)} Please upgrade to Node.js 10 or greater by adding an entry like this to your package.json:
     
     {
       "engines": {
@@ -22,7 +22,7 @@ function node8DeprecationWarning(): void {
       }
     }
 
-    The Firebase CLI will stop deploying Node.js 8 functions in new versions beginning 2020-12-15, and deploys from all CLI versions will halt on 2021-02-15. For additional information, see: ${FAQ_URL}`
+The Firebase CLI will stop deploying Node.js 8 functions in new versions beginning ${bold("2020-12-15")}, and deploys from all CLI versions will halt on ${bold("2021-02-15")}. For additional information, see: ${FAQ_URL}`
   );
   logger.warn();
 }
