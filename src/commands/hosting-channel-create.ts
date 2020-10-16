@@ -48,8 +48,9 @@ export default new Command("hosting:channel:create [channelId]")
         channelId = await promptOnce({
           type: "input",
           message: "Please provide a URL-friendly name for the channel:",
-          validate: (s) => s, // Prevents an empty string from being submitted!
-        });
+          validate: (s) => (s && s.length > 0),
+          }, // Prevents an empty string from being submitted!
+        );
       }
       if (!channelId) {
         throw new FirebaseError(`"channelId" must not be empty`);
