@@ -48,7 +48,7 @@ export default new Command("hosting:channel:create [channelId]")
         channelId = await promptOnce({
           type: "input",
           message: "Please provide a URL-friendly name for the channel:",
-          validate: (s) => (s && s.length > 0),
+          validate: (s) => (s.length > 0),
           }, // Prevents an empty string from being submitted!
         );
       }
