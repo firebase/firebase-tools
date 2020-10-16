@@ -54,38 +54,40 @@ export class AuthCloudFunction {
 
   private createUserInfoPayload(user: UserInfo): UserInfoPayload {
     return {
+      uid: user.localId,
       email: user.email,
       emailVerified: user.emailVerified,
       displayName: user.displayName,
       photoURL: user.photoUrl,
       phoneNumber: user.phoneNumber,
       disabled: user.disabled,
-      passwordHash: user.passwordHash,
-      tokensValidAfterTime: user.validSince,
       metadata: {
         creationTime: user.createdAt,
         lastSignInTime: user.lastLoginAt,
       },
       customClaims: JSON.parse(user.customAttributes || "{}"),
       providerData: user.providerUserInfo,
+      tenantId: user.tenantId,
     };
   }
 }
 
+// This should have the same fields as go/firebase-auth-event-payload and ONLY
+// those fields, in that order. These fields are a subset of UserRecord in Admin
+// SDKs and notably, passwordHash / passwordSalt / validSince is NOT exposed.
 type UserInfoPayload = {
+  uid: string;
   email?: string;
   emailVerified?: boolean;
   displayName?: string;
   photoURL?: string;
-  phoneNumber?: string;
   disabled?: boolean;
-  passwordHash?: string;
-  passwordSalt?: string;
-  tokensValidAfterTime?: string;
   metadata: {
     creationTime?: string;
     lastSignInTime?: string;
   };
-  customClaims?: object;
   providerData?: object[];
+  phoneNumber?: string;
+  customClaims?: object;
+  tenantId?: string;
 };
