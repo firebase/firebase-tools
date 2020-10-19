@@ -449,16 +449,33 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
   if (!version) {
     throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
   }
-
-  const res = await api.request(
-    "GET",
-    `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}`,
-    {
-      auth: true,
-      origin: api.extensionsOrigin,
+  try {
+    const res = await api.request(
+      "GET",
+      `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}/versions/${version}`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+      }
+    );
+    return res.body;
+  } catch (err) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        `The extension reference '${clc.bold(
+          ref
+        )}' doesn't exist. This could happen for two reasons:\n` +
+          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
+          `  -The name of the extension version '${clc.bold(
+            extensionId
+          )}' doesn't exist or could be misspelled\n` +
+          `Please correct the extension reference and try again.`
+      );
+    } else if (err instanceof FirebaseError) {
+      throw err;
     }
-  );
-  return res.body;
+    throw new FirebaseError(`Failed to query the extension version '${clc.bold(ref)}': ${err}`);
+  }
 }
 
 /**

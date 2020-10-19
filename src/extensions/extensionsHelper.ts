@@ -597,12 +597,11 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
     if (fs.existsSync(sourceOrVersion)) {
       return SourceOrigin.LOCAL;
     }
+    if (err instanceof FirebaseError) {
+      throw err;
+    }
     throw new FirebaseError(
-      `Could not find ${clc.bold(
-        sourceOrVersion
-      )}. If this is a published extension, please make sure ` +
-        "it matches the format `{publisher}/{extension}(@{version})`.\n\nOtherwise, please make sure the " +
-        "local/URL path exists and try again."
+      `Failed to determine the source origin for source '${clc.bold(sourceOrVersion)}': ${err}`
     );
   }
   throw new FirebaseError(

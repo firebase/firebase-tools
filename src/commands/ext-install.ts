@@ -214,8 +214,8 @@ export default new Command("ext:install [extensionName]")
               source = await createSourceFromLocation(projectId, extensionName);
             } catch (err) {
               throw new FirebaseError(
-                `Unable to find published extension named ${clc.bold(extensionName)}, ` +
-                  `and encountered the following error when trying to create an extension from '${clc.bold(
+                `Unable to find published extension '${clc.bold(extensionName)}', ` +
+                  `and encountered the following error when trying to create an instance of extension '${clc.bold(
                     extensionName
                   )}':\n ${err.message}`
               );
@@ -224,38 +224,19 @@ export default new Command("ext:install [extensionName]")
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION: {
-            try {
-              extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
-            } catch (err) {
-              const [publisher, extens] = extensionName.split("/");
-              throw new FirebaseError(
-                `Unable to find published extension named ${clc.bold(extensionName)}. ` +
-                  `Either ${clc.bold(extens)} is not a published extension or ${clc.bold(
-                    publisher
-                  )} is not a registered publisher.`
-              );
-            }
+            await extensionsApi.getExtension(extensionName);
+            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
             displayExtInstallInfo(extensionName, extVersion.spec);
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
-            try {
-              extVersion = await extensionsApi.getExtensionVersion(extensionName);
-            } catch (err) {
-              const [publisher, extens] = extensionName.split("/");
-              throw new FirebaseError(
-                `Unable to find published extension version named ${clc.bold(extensionName)}. ` +
-                  `Either ${clc.bold(extens)} is not a published extension version or ${clc.bold(
-                    publisher
-                  )} is not a registered publisher.`
-              );
-            }
+            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
             displayExtInstallInfo(extensionName, extVersion.spec);
             break;
           }
           default: {
             throw new FirebaseError(
-              `Could not determine source origin for ${extensionName}. If this is a published extension, ` +
+              `Could not determine source origin for extension '${extensionName}'. If this is a published extension, ` +
                 "please make sure the publisher and extension exist before trying again. If trying to create an extension, " +
                 "please ensure the path or URL given is valid."
             );
@@ -263,7 +244,7 @@ export default new Command("ext:install [extensionName]")
         }
       } else {
         throw new FirebaseError(
-          `Unable to find published extension source named ${clc.bold(extensionName)}. ` +
+          `Unable to find published extension '${clc.bold(extensionName)}'. ` +
             `Run ${clc.bold(
               "firebase ext:install -i"
             )} to select from the list of all available published extensions.`,
@@ -275,7 +256,9 @@ export default new Command("ext:install [extensionName]")
     const spec = source?.spec || extVersion?.spec;
     if (!spec) {
       throw new FirebaseError(
-        `Could not find the extension.yaml for ${extensionName}. Please make sure this is a valid extension and try again.`
+        `Could not find the extension.yaml for extension '${clc.bold(
+          extensionName
+        )}'. Please make sure this is a valid extension and try again.`
       );
     }
     try {
