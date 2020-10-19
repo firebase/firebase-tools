@@ -372,7 +372,9 @@ export async function publishExtensionVersionFromLocalSource(
   const extensionSpec = await getLocalExtensionSpec(rootDirectory);
   if (extensionSpec.name != extensionId) {
     throw new FirebaseError(
-      `Extension ID :${extensionId} does not match the name in extension.yaml: ${extensionSpec.name}.`
+      `Extension ID '${clc.bold(
+        extensionId
+      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
     );
   }
 
@@ -395,7 +397,7 @@ export async function publishExtensionVersionFromLocalSource(
     uploadSpinner.fail();
     throw err;
   }
-  const publishSpinner = ora.default(`Publishing '${clc.bold(ref)}'`);
+  const publishSpinner = ora.default(`Publishing ${clc.bold(ref)}`);
   let res;
   try {
     publishSpinner.start();

@@ -1,8 +1,9 @@
 import { Command } from "../command";
-import * as logger from "../logger";
 import { publishExtensionVersionFromLocalSource } from "../extensions/extensionsHelper";
 import { findExtensionYaml } from "../extensions/localHelper";
 import { requireAuth } from "../requireAuth";
+import * as clc from "cli-color";
+import { FirebaseError } from "../error";
 
 /**
  * Command for publishing an extension version.
@@ -18,8 +19,10 @@ export default new Command("ext:dev:publish <publisherId>/<extensionId>")
   .action(async (extensionRef: string, options: any) => {
     const [publisherId, extensionId] = extensionRef.split("/");
     if (!publisherId || !extensionId) {
-      logger.info(
-        `Error parsing publisher ID and extension ID from ${extensionRef}. Please use the format '<publisher-id>/<extension-id>'.`
+      throw new FirebaseError(
+        `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
+          extensionRef
+        )}'. Please use the format '${clc.bold("<publisher-id>/<extension-id>")}'.`
       );
     }
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
