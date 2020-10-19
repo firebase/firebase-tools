@@ -374,6 +374,21 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
 }
 
 /**
+ * Removes channel domain from Firebase Auth list.
+ * @param project the project ID.
+ * @param url the url of the channel.
+ */
+export async function removeAuthDomain(project: string, url: string): Promise<string[]> {
+  const domains = await getAuthDomains(project);
+  if (!domains.length) {
+    return domains;
+  }
+  const targetDomain = url.replace("https://", "");
+  const authDomains = domains.filter((domain: string) => domain != targetDomain);
+  return updateAuthDomains(project, authDomains);
+}
+
+/**
  * Constructs a list of "clean domains"
  * by including all existing auth domains
  * with the exception of domains that belong to
