@@ -11,12 +11,6 @@ Use this extension to send a friendly greeting.
 
 When triggered by an HTTP request, this extension responds with your specified friendly greeting.
 
-# Additional setup
-
-After installing this extension, you'll need to use the Google Cloud console to make the Cloud Function deployed for this extension publicly accessible.
-
-Detailed information for this post-installation task is provided after you install this extension.
-
 <!-- We recommend keeping the following section to explain how billing for Firebase Extensions works -->
 # Billing
 
