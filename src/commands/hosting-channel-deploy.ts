@@ -20,6 +20,7 @@ import * as requireConfig from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
 import * as marked from "marked";
+import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
 
@@ -41,6 +42,7 @@ export default new Command("hosting:channel:deploy [channelId]")
   .option("--no-authorized-domains", "do not sync channel domains with Firebase Auth")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before(requireHostingSite)
   .action(
     async (
       channelId: string,

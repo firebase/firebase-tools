@@ -11,7 +11,7 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import * as marked from "marked";
-import { getDefaultHostingSite } from "../getDefaultHostingSite";
+import { requireHostingSite } from "../requireHostingSite";
 
 const LOG_TAG = "hosting:channel";
 
@@ -24,13 +24,14 @@ export default new Command("hosting:channel:create [channelId]")
   .option("--site <siteId>", "site for which to create the channel")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before(requireHostingSite)
   .action(
     async (
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<Channel> => {
       const projectId = getProjectId(options);
-      const site = options.site || (await getDefaultHostingSite(options));
+      const site = options.site;
 
       let expireTTL = DEFAULT_DURATION;
       if (options.expires) {

@@ -8,7 +8,7 @@ import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
 import { datetimeString } from "../utils";
-import { getDefaultHostingSite } from "../getDefaultHostingSite";
+import { requireHostingSite } from "../requireHostingSite";
 
 const TABLE_HEAD = ["Channel ID", "Last Release Time", "URL", "Expire Time"];
 
@@ -18,12 +18,13 @@ export default new Command("hosting:channel:list")
   .before(requireConfig)
   // TODO: `update` permission is maybe a bit aggressive. Bring down to view-ish?
   .before(requirePermissions, ["firebasehosting.sites.update"])
+  .before(requireHostingSite)
   .action(
     async (
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<{ channels: Channel[] }> => {
       const projectId = getProjectId(options);
-      const siteId = options.site || (await getDefaultHostingSite(options));
+      const siteId = options.site;
       const channels = await listChannels(projectId, siteId);
 
       const table = new Table({ head: TABLE_HEAD, style: { head: ["green"] } });
