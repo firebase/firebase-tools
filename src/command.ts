@@ -284,11 +284,6 @@ export class Command {
   runner(): (...a: any[]) => Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
-      console.log("==============RUNNER=============");
-      console.log("cmd", this.cmd);
-      console.log("positionalArgs", this.positionalArgs);
-      console.log("options", this.options);
-
       // Make sure the last argument is an object for options, add {} if none
       if (typeof last(args) !== "object" || last(args) === null) {
         args.push({});
