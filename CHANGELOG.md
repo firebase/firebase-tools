@@ -5,4 +5,6 @@
 - Add endpoints to enable/disable background triggers in the Cloud Functions emulator.
 - Fixes `TypeError` that arises when trying to deploy with Firebase Hosting targets that don't exist in the project's firebase.json (#1232).
 - Updates `firebase hosting:channel:delete` to remove the channel from the authorized domains list.
-- Add custom claims to auth:export and auth:import
+- Add custom claims to auth:export and auth:import.
+- Fixes input issue when prompting for a Hosting Channel name.
+- Fixes commands that rely on default RTDB instance.
