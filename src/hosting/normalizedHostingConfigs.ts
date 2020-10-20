@@ -52,11 +52,11 @@ export function normalizedHostingConfigs(
   }
   if (!Array.isArray(configs)) {
     if (!configs.target && !configs.site) {
-      // The default Hosting site is the same as the default RTDB instance,
-      // since for projects created since mid-2016 they are both the same
-      // as the project id, and for projects created before the Hosting
-      // site was created along with the RTDB instance.
-      configs.site = cmdOptions.instance;
+      // earlier the default RTDB instance was used as the hosting site
+      // because it used to be created along with the Firebase project.
+      // RTDB instance creation is now deferred and decoupled from project creation.
+      // the fallback hosting site is now filled in through requireHostingSite.
+      configs.site = cmdOptions.site;
     }
     configs = [configs];
   }
