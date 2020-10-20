@@ -5,7 +5,7 @@ import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
-import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
+import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import * as checkProjectBilling from "../extensions/checkProjectBilling";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -28,6 +28,7 @@ import {
   promptForValidInstanceId,
   getSourceOrigin,
   SourceOrigin,
+  confirmInstallInstance,
 } from "../extensions/extensionsHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";
@@ -199,7 +200,8 @@ export default new Command("ext:install [extensionName]")
       const registryEntry = await resolveRegistryEntry(name);
       const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       source = await extensionsApi.getSource(sourceUrl);
-      displayExtInstallInfo(extensionName, source.spec);
+      displayExtInfo(extensionName, source.spec);
+      await confirmInstallInstance();
       const audienceConsent = await promptForAudienceConsent(registryEntry);
       if (!audienceConsent) {
         logger.info("Install cancelled.");
@@ -220,18 +222,19 @@ export default new Command("ext:install [extensionName]")
                   )}':\n ${err.message}`
               );
             }
-            displayExtInstallInfo(extensionName, source.spec);
+            displayExtInfo(extensionName, source.spec);
+            await confirmInstallInstance();
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION: {
             await extensionsApi.getExtension(extensionName);
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
-            displayExtInstallInfo(extensionName, extVersion.spec);
+            displayExtInfo(extensionName, extVersion.spec);
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
-            displayExtInstallInfo(extensionName, extVersion.spec);
+            displayExtInfo(extensionName, extVersion.spec);
             break;
           }
           default: {
@@ -267,7 +270,7 @@ export default new Command("ext:install [extensionName]")
           logPrefix,
           `You selected: ${clc.bold(spec.displayName)}.\n` +
             `${spec.description}\n` +
-            `View details: https://firebase.google.com/products/extensions/${name}\n`
+            `View details: https:// firebase.google.com/products/extensions/${name}\n`
         );
         const confirm = await promptOnce({
           type: "confirm",

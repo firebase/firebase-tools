@@ -454,7 +454,6 @@ export async function createSourceFromLocation(
 
 /**
  * Cleans up uploaded ZIP file after creating an extension source or publishing an extension version.
- * @param objectPath
  */
 async function deleteUploadedSource(objectPath: string) {
   if (objectPath.length) {
@@ -491,8 +490,10 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
 
 /**
  * Confirm the version number in extension.yaml with the user .
- * @param extensionName The name of the extension being installed.
- * @param projectName The name of the project in use.
+ *
+ * @param publisherId the publisher ID of the extension being installed
+ * @param extensionId the extension ID of the extension being installed
+ * @param versionId the version ID of the extension being installed
  */
 export async function confirmExtensionVersion(
   publisherId: string,
@@ -609,4 +610,15 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
   throw new FirebaseError(
     `Invalid source ${sourceOrVersion}. Please check to make sure this source exists and try again.`
   );
+}
+
+/**
+ * Confirm if the user wants to install instance of an extension.
+ */
+export async function confirmInstallInstance(): Promise<string> {
+  const message = `Would you like to continue installing this extension?`;
+  return await promptOnce({
+    type: "confirm",
+    message,
+  });
 }

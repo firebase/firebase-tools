@@ -488,6 +488,7 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
     const res = await api.request("GET", `/${VERSION}/publishers/${publisherId}/extensions`, {
       auth: true,
       origin: api.extensionsOrigin,
+      showUnpublished: false,
       query: {
         pageSize: PAGE_SIZE_MAX,
         pageToken,

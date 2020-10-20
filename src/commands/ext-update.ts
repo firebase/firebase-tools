@@ -30,6 +30,7 @@ import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import { previews } from "../previews";
+import { displayExtInfo } from "../extensions/displayExtensionInfo";
 
 marked.setOptions({
   renderer: new TerminalRenderer(),
@@ -75,9 +76,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       );
       const existingParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
+      displayExtInfo(instanceId, existingSpec, true);
 
       let newSourceName: string;
+      let published = false;
       const origin = await getSourceOrigin(updateSource);
+      // TODO: remove "falls through" once producer and registry experience are released
       switch (origin) {
         case SourceOrigin.LOCAL: {
           if (previews.extdev) {
@@ -90,7 +94,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
             break;
           }
+          // falls through
         }
+        // eslint-disable-next-line no-fallthrough
         case SourceOrigin.URL: {
           if (previews.extdev) {
             newSourceName = await updateFromUrlSource(
@@ -102,7 +108,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
             break;
           }
+          // falls through
         }
+        // eslint-disable-next-line no-fallthrough
         case SourceOrigin.VERSION: {
           if (previews.extdev) {
             const extRef = _.get(existingInstance, "extensionRef");
@@ -124,7 +132,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             }
             break;
           }
+          // falls through
         }
+        // eslint-disable-next-line no-fallthrough
         case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
           if (previews.extdev) {
             newSourceName = await updateToVersionFromPublisherSource(
@@ -133,9 +143,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
               existingSpec,
               existingSource
             );
+            published = true;
             break;
           }
+          // falls through
         }
+        // eslint-disable-next-line no-fallthrough
         case SourceOrigin.PUBLISHED_EXTENSION: {
           if (previews.extdev) {
             newSourceName = await updateFromPublisherSource(
@@ -144,9 +157,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
               existingSpec,
               existingSource
             );
+            published = true;
             break;
           }
+          // falls through
         }
+        // eslint-disable-next-line no-fallthrough
         case SourceOrigin.OFFICIAL: {
           const extRef = _.get(existingInstance, "extensionRef");
           if (previews.extdev && extRef) {
@@ -183,7 +199,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           }
         }
       }
-      await displayChanges(existingSpec, newSpec);
+      await displayChanges(existingSpec, newSpec, published);
       const newParams = await paramHelper.promptForNewParams(
         existingSpec,
         newSpec,
