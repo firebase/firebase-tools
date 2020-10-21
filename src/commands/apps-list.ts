@@ -39,7 +39,7 @@ module.exports = new Command("apps:list [platform]")
   )
   .before(requireAuth)
   .action(
-    async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {  
+    async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
       const projectId = getProjectId(options);
       const appPlatform = getAppPlatform(platform || "");
 
