@@ -1,1 +1,2 @@
 - Fixes incorrect defaults when using commands from Node.js (#2672)
+- Fixes issue where deploys would fail when including both Firebase Hosting and Realtime Database (#2726)
