@@ -526,6 +526,16 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
+
+      // When possible, disable JWT verification
+      const auth = defaultApp.auth();
+      if (typeof (auth as any).setJwtVerificationEnabled === 'function') {
+        logDebug("auth.setJwtVerificationEnabled(false)", {});
+        (auth as any).setJwtVerificationEnabled(false);
+      } else {
+        logDebug("auth.setJwtVerificationEnabled not available", {});
+      }
+
       return defaultApp;
     })
     .when("firestore", (target) => {
