@@ -46,10 +46,10 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 
-  // Environment variable tok override SDK/CLI to point at the Realtime Database emulator.
+  // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
 
-  // Environment variable tok override SDK/CLI to point at the Firebase Auth emulator.
+  // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
