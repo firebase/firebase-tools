@@ -527,13 +527,15 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // point to the right place.
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
 
-      // When possible, disable JWT verification
-      const auth = defaultApp.auth();
-      if (typeof (auth as any).setJwtVerificationEnabled === 'function') {
-        logDebug("auth.setJwtVerificationEnabled(false)", {});
-        (auth as any).setJwtVerificationEnabled(false);
-      } else {
-        logDebug("auth.setJwtVerificationEnabled not available", {});
+      // When the auth emulator is running, try to disable JWT verification.
+      if (frb.emulators.auth) {
+        const auth = defaultApp.auth();
+        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+          logDebug("auth.setJwtVerificationEnabled(false)", {});
+          (auth as any).setJwtVerificationEnabled(false);
+        } else {
+          logDebug("auth.setJwtVerificationEnabled not available", {});
+        }
       }
 
       return defaultApp;
@@ -685,6 +687,13 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
     process.env[
       Constants.FIREBASE_DATABASE_EMULATOR_HOST
     ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+  }
+
+  // Make firebase-admin point at the Auth emulator
+  if (frb.emulators.auth) {
+    process.env[
+      Constants.FIREBASE_AUTH_EMULATOR_HOST
+    ] = `${frb.emulators.auth.host}:${frb.emulators.auth.port}`;
   }
 
   if (frb.emulators.pubsub) {
