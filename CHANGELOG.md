@@ -1,1 +1,0 @@
-- Fixes incorrect defaults when using commands from Node.js (#2672)

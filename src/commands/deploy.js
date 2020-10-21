@@ -68,14 +68,14 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(function(options) {
+  .before(async function(options) {
     // only fetch the default instance for hosting or database deploys
     if (_.includes(options.filteredTargets, "database")) {
-      return requireInstance(options);
+      await requireInstance(options);
     }
 
     if (_.includes(options.filteredTargets, "hosting")) {
-      return requireHostingSite(options);
+      await requireHostingSite(options);
     }
   })
   .before(checkValidTargetFilters)
