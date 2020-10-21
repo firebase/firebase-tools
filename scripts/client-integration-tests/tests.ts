@@ -58,6 +58,11 @@ describe("apps:list", () => {
       project: process.env.FBTOOLS_TARGET_PROJECT,
     });
     expect(undefinedArgsApps).to.have.length.greaterThan(0);
+
+    const nullArgsApps = await client.apps.list(null, {
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+    });
+    expect(nullArgsApps).to.have.length.greaterThan(0);
   });
 
   it("should list apps configuration", async () => {
