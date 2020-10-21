@@ -295,6 +295,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
         database: this.getEmulatorInfo(Emulators.DATABASE),
         pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
+        auth: this.getEmulatorInfo(Emulators.AUTH),
       },
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
