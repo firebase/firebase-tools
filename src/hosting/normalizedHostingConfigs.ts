@@ -50,8 +50,7 @@ function filterOnly(
     }
   }
 
-  const filtered = configs.filter((config) => onlyTargets.includes(config.target));
-  return filtered;
+  return configs.filter((config) => onlyTargets.includes(config.target));
 }
 
 /**
