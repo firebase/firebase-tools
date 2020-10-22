@@ -1285,7 +1285,7 @@ describe("Auth emulator", () => {
         });
     });
 
-    it("should still update user dispite user is disabled when authenticated", async () => {
+    it("should still update user despite user is disabled when authenticated", async () => {
       const { localId } = await registerAnonUser(authApp);
       await updateAccountByLocalId(authApp, localId, { disableUser: true });
 
