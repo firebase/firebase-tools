@@ -703,7 +703,6 @@ export function setAccountInfoImpl(
     if (privileged) {
       if (reqBody.disableUser != null) {
         updates.disabled = reqBody.disableUser;
-        // TODO: Actually enforce this in all sign-in methods.
       }
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
@@ -840,6 +839,7 @@ function signInWithCustomToken(
   };
 
   if (user) {
+    assert(!user.disabled, "USER_DISABLED");
     user = state.updateUserByLocalId(localId, updates);
   } else {
     user = state.createUserWithLocalId(localId, updates);
@@ -887,6 +887,7 @@ function signInWithEmailLink(
       user = state.createUser(updates);
     }
   } else {
+    assert(!user.disabled, "USER_DISABLED");
     assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
     user = state.updateUserByLocalId(user.localId, updates);
   }
@@ -1048,6 +1049,7 @@ function signInWithPassword(
   const email = canonicalizeEmailAddress(reqBody.email);
   const user = state.getUserByEmail(email);
   assert(user, "EMAIL_NOT_FOUND");
+  assert(!user.disabled, "USER_DISABLED");
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
   assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
 
@@ -1090,29 +1092,28 @@ function signInWithPhoneNumber(
     lastLoginAt: Date.now().toString(),
   };
 
-  // By now, the verification has succeeded, but the following user operations
-  // (such as linking) may fail. If a sessionInfo is consumed, these errors
-  // should be swallowed and a temporaryProof should be returned with 200.
-  try {
-    const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
-    if (!user) {
-      if (userFromIdToken) {
-        user = state.updateUserByLocalId(userFromIdToken.localId, updates);
-      } else {
-        isNewUser = true;
-        user = state.createUser(updates);
-      }
+  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  if (!user) {
+    if (userFromIdToken) {
+      user = state.updateUserByLocalId(userFromIdToken.localId, updates);
     } else {
-      assert(!userFromIdToken || userFromIdToken.localId === user.localId, "PHONE_NUMBER_EXISTS");
-      user = state.updateUserByLocalId(user.localId, updates);
+      isNewUser = true;
+      user = state.createUser(updates);
     }
-  } catch (err) {
-    if (reqBody.temporaryProof || !(err instanceof BadRequestError)) {
-      throw err;
+  } else {
+    assert(!user.disabled, "USER_DISABLED");
+    if (userFromIdToken && userFromIdToken.localId !== user.localId) {
+      if (!reqBody.temporaryProof) {
+        // By now, the verification has succeeded, but we cannot proceed since
+        // the phone number is linked to a different account. If a sessionInfo
+        // is consumed, a temporaryProof should be returned with 200.
+        return {
+          ...state.createTemporaryProof(phoneNumber),
+        };
+      }
+      throw new BadRequestError("PHONE_NUMBER_EXISTS");
     }
-    return {
-      ...state.createTemporaryProof(phoneNumber),
-    };
+    user = state.updateUserByLocalId(user.localId, updates);
   }
 
   const tokens = issueTokens(state, user, PROVIDER_PHONE);
@@ -1138,6 +1139,7 @@ function grantToken(
 
   const refreshTokenRecord = state.validateRefreshToken(reqBody.refreshToken);
   assert(refreshTokenRecord, "INVALID_REFRESH_TOKEN");
+  assert(!refreshTokenRecord.user.disabled, "USER_DISABLED");
   const tokens = issueTokens(
     state,
     refreshTokenRecord.user,
@@ -1278,6 +1280,7 @@ function parseIdToken(
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
   assert(!user.validSince || decoded.payload.iat >= parseInt(user.validSince), "TOKEN_EXPIRED");
+  assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
   return { user, signInProvider };
