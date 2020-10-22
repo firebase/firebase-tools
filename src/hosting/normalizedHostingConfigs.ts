@@ -1,18 +1,13 @@
 import { bold } from "cli-color";
 
 import { FirebaseError } from "../error";
-import logger = require("../logger");
 
 interface HostingConfig {
   site: string;
   target: string;
 }
 
-function filterOnly(
-  configs: HostingConfig[],
-  onlyString: string,
-  defaultSite: string
-): HostingConfig[] {
+function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
   if (!onlyString) {
     return configs;
   }
@@ -29,28 +24,35 @@ function filterOnly(
     .filter((target) => target.startsWith("hosting:"))
     .map((target) => target.replace("hosting:", ""));
 
-  // There is a case where users have not set any targets but use --only to
-  // specify the site name. This was working before because we weren't checking
-  // the validity of the target name before doing the final filter below. Since
-  // the case exists where a single (non-array, non-multi-site) config will
-  // have `config.site` set, we are going to short circuit the validity check
-  // of the targets to ensure the site name can be specified in a non-multi-
-  // site setup.
-  const configsHaveTargets = configs.some((c) => c.target);
-  const onlyDefaultSite = onlyTargets.length === 1 && onlyTargets[0] === defaultSite;
-  if (!configsHaveTargets && onlyDefaultSite) {
-    logger.debug("filtering configs down to default site");
-    return configs.filter((c) => c.site === defaultSite);
-  }
-
-  // Check to see that all the hosting deploy targets exist in the hosting config
-  for (const onlyTarget of onlyTargets) {
-    if (!configs.some((config) => config.target === onlyTarget)) {
-      throw new FirebaseError(`Hosting target ${bold(onlyTarget)} not detected in firebase.json`);
+  const configsBySite = new Map<string, HostingConfig>();
+  const configsByTarget = new Map<string, HostingConfig>();
+  for (const c of configs) {
+    if (c.site) {
+      configsBySite.set(c.site, c);
+    }
+    if (c.target) {
+      configsByTarget.set(c.target, c);
     }
   }
 
-  return configs.filter((config) => onlyTargets.includes(config.target));
+  const filteredConfigs: HostingConfig[] = [];
+  // Check to see that all the hosting deploy targets exist in the hosting
+  // config as either `site`s or `target`s.
+  for (const onlyTarget of onlyTargets) {
+    if (configsBySite.has(onlyTarget)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      filteredConfigs.push(configsBySite.get(onlyTarget)!);
+    } else if (configsByTarget.has(onlyTarget)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      filteredConfigs.push(configsByTarget.get(onlyTarget)!);
+    } else {
+      throw new FirebaseError(
+        `Hosting site or target ${bold(onlyTarget)} not detected in firebase.json`
+      );
+    }
+  }
+
+  return filteredConfigs;
 }
 
 /**
@@ -78,7 +80,7 @@ export function normalizedHostingConfigs(
     configs = [configs];
   }
 
-  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only, cmdOptions.site);
+  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
 
   if (options.resolveTargets) {
     for (const cfg of hostingConfigs) {

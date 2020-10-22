@@ -59,6 +59,15 @@ describe("normalizedHostingConfigs", () => {
         want: [Object.assign({}, baseConfig, { site: DEFAULT_SITE })],
       },
       {
+        desc: "a hosting config with multiple sites, no targets, specifying the second site",
+        cfg: [
+          Object.assign({}, baseConfig, { site: DEFAULT_SITE }),
+          Object.assign({}, baseConfig, { site: "different-site" }),
+        ],
+        only: `hosting:different-site`,
+        want: [Object.assign({}, baseConfig, { site: "different-site" })],
+      },
+      {
         desc: "a normal hosting config with a target",
         cfg: Object.assign({}, baseConfig, { target: "main" }),
         only: "hosting:main",
@@ -92,7 +101,7 @@ describe("normalizedHostingConfigs", () => {
           Object.assign({}, baseConfig, { target: "t-two" }),
         ],
         only: "hosting:t-three",
-        wantErr: /Hosting target.+t-three.+not detected/,
+        wantErr: /Hosting site or target.+t-three.+not detected/,
       },
       {
         desc: "a hosting config with multiple targets, with multiple matching targets",
@@ -114,7 +123,7 @@ describe("normalizedHostingConfigs", () => {
         desc: "a hosting config with multiple sites but no targets, only an invalid target",
         cfg: [Object.assign({}, baseConfig), Object.assign({}, baseConfig)],
         only: "hosting:t-one",
-        wantErr: /Hosting target.+t-one.+not detected/,
+        wantErr: /Hosting site or target.+t-one.+not detected/,
       },
     ];
 
