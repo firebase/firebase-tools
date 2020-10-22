@@ -64,6 +64,10 @@ export interface FunctionsRuntimeBundle {
       host: string;
       port: number;
     };
+    auth?: {
+      host: string;
+      port: number;
+    };
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
