@@ -1,0 +1,1 @@
+- Restores the ability to specify the default Hosting site as a deploy `--only` target.
