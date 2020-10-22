@@ -63,7 +63,6 @@ export function normalizedHostingConfigs(
   cmdOptions: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   options: { resolveTargets?: boolean } = {}
 ): HostingConfig[] {
-  let hostingConfigs: HostingConfig[] = [];
   let configs = cmdOptions.config.get("hosting");
   if (!configs) {
     return [];
@@ -79,7 +78,7 @@ export function normalizedHostingConfigs(
     configs = [configs];
   }
 
-  hostingConfigs = filterOnly(configs, cmdOptions.only, cmdOptions.site);
+  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only, cmdOptions.site);
 
   if (options.resolveTargets) {
     for (const cfg of hostingConfigs) {
