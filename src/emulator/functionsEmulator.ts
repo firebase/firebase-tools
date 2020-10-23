@@ -673,6 +673,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
   }
   /**
+   * Returns a node major version ("10", "8") or null
+   * @param frb the current Functions Runtime Bundle
+   */
+  getRequestedNodeRuntimeVersion(frb: FunctionsRuntimeBundle): string | null {
+    const pkg = require(path.join(frb.cwd, "package.json"));
+    if ((!pkg.engines || !pkg.engines.node) && !frb.nodeMajorVersion) {
+      return null;
+    }
+
+    return frb.nodeMajorVersion || pkg.engines.node;
+  }
+  /**
    * Returns the path to a "node" executable to use.
    * @param cwd the directory to checkout for a package.json file.
    * @param nodeMajorVersion forces the emulator to choose this version. Used when emulating extensions,
@@ -750,8 +762,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     if (this.args.debugPort) {
-      const { host } = this.getInfo();
-      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      if (process.env.FIREPIT_VERSION && process.execPath == opts.nodeBinary) {
+        const requestedMajorNodeVersion = this.getRequestedNodeRuntimeVersion(frb);
+        this.logger.log(
+          "WARN",
+          `To enable function inspection, please run "${process.execPath} is:npm i node@${requestedMajorNodeVersion} --save-dev" in your functions directory`
+        );
+      } else {
+        const { host } = this.getInfo();
+        args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      }
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
