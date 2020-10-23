@@ -2,13 +2,15 @@ import * as chokidar from "chokidar";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
+import * as http from "http";
 
 import * as api from "../api";
-import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
+import { EmulatorLogger } from "./emulatorLogger";
+import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,7 +23,9 @@ export interface DatabaseEmulatorArgs {
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
-  rulesWatcher?: chokidar.FSWatcher;
+  private importedNamespaces: string[] = [];
+  private rulesWatcher?: chokidar.FSWatcher;
+  private logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
 
   constructor(private args: DatabaseEmulatorArgs) {}
 
@@ -33,6 +37,16 @@ export class DatabaseEmulator implements EmulatorInstance {
     }
     if (this.args.rules) {
       for (const c of this.args.rules) {
+        if (!c.instance) {
+          this.logger.log("DEBUG", `args.rules=${JSON.stringify(this.args.rules)}`);
+          this.logger.logLabeled(
+            "WARN_ONCE",
+            "database",
+            "Could not determine your Realtime Database instance name, so rules hot reloading is disabled."
+          );
+          continue;
+        }
+
         const rulesPath = c.rules;
         this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
         this.rulesWatcher.on("change", async (event, stats) => {
@@ -41,17 +55,18 @@ export class DatabaseEmulator implements EmulatorInstance {
           // Adding a small delay prevents that at very little cost.
           await new Promise((res) => setTimeout(res, 5));
 
-          utils.logLabeledBullet(
+          this.logger.logLabeled(
+            "BULLET",
             "database",
             `Change detected, updating rules for ${c.instance}...`
           );
           const newContent = fs.readFileSync(rulesPath, "utf8").toString();
           try {
             await this.updateRules(c.instance, newContent);
-            utils.logLabeledSuccess("database", "Rules updated.");
+            this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
           } catch (e) {
-            utils.logWarning(this.prettyPrintRulesError(rulesPath, e));
-            utils.logWarning("Failed to update rules");
+            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(rulesPath, e));
+            this.logger.logLabeled("WARN", "database", "Failed to update rules");
           }
         });
       }
@@ -60,8 +75,18 @@ export class DatabaseEmulator implements EmulatorInstance {
     return downloadableEmulators.start(Emulators.DATABASE, this.args);
   }
 
-  connect(): Promise<void> {
-    return Promise.resolve();
+  async connect(): Promise<void> {
+    // The chokidar watcher will handle updating rules but we need to set the initial ruleset for
+    // each namespace here.
+    if (this.args.rules) {
+      for (const c of this.args.rules) {
+        if (!c.instance) {
+          continue;
+        }
+
+        await this.updateRules(c.instance, fs.readFileSync(c.rules, "utf8").toString());
+      }
+    }
   }
 
   stop(): Promise<void> {
@@ -73,8 +98,10 @@ export class DatabaseEmulator implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.DATABASE);
 
     return {
+      name: this.getName(),
       host,
       port,
+      pid: downloadableEmulators.getPID(Emulators.DATABASE),
     };
   }
 
@@ -82,11 +109,55 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
+  getImportedNamespaces(): string[] {
+    return this.importedNamespaces;
+  }
+
+  async importData(ns: string, fPath: string): Promise<void> {
+    this.logger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+
+    const readStream = fs.createReadStream(fPath);
+    const { host, port } = this.getInfo();
+
+    await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: "PUT",
+          host,
+          port,
+          path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
+          headers: {
+            Authorization: "Bearer owner",
+            "Content-Type": "application/json",
+          },
+        },
+        (response) => {
+          if (response.statusCode === 200) {
+            this.importedNamespaces.push(ns);
+            resolve();
+          } else {
+            this.logger.log("DEBUG", "Database import failed: " + response.statusCode);
+            response
+              .on("data", (d) => {
+                this.logger.log("DEBUG", d.toString());
+              })
+              .on("end", reject);
+          }
+        }
+      );
+
+      req.on("error", reject);
+      readStream.pipe(req, { end: true });
+    }).catch((e) => {
+      throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+    });
+  }
+
   private async updateRules(instance: string, content: string): Promise<any> {
     const { host, port } = this.getInfo();
     try {
       await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${host}:${[port]}`,
+        origin: `http://${host}:${port}`,
         headers: { Authorization: "Bearer owner" },
         data: content,
         json: false,

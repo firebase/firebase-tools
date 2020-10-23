@@ -2,7 +2,8 @@
 
 var _ = require("lodash");
 var { getFirebaseProject } = require("./management/projects");
-var logger = require("./logger");
+var { FirebaseError } = require("./error");
+var clc = require("cli-color");
 
 /**
  * Tries to determine the instance ID for the provided
@@ -13,14 +14,13 @@ var logger = require("./logger");
 module.exports = function(options) {
   return getFirebaseProject(options.project).then(function(project) {
     if (!_.has(project, "resources.realtimeDatabaseInstance")) {
-      logger.debug(
-        "[WARNING] Unable to fetch default resources. Falling back to project id (" +
-          options.project +
-          ")"
+      throw new FirebaseError(
+        `It looks like you haven't created a Realtime Database instance in this project before. Go to ${clc.bold.underline(
+          `https://console.firebase.google.com/project/${options.project}/database`
+        )} to create your default Realtime Database instance.`,
+        { exit: 1 }
       );
-      return options.project;
     }
-
     return _.get(project, "resources.realtimeDatabaseInstance");
   });
 };

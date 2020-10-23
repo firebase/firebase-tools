@@ -1,4 +1,3 @@
-import * as http from "http";
 import * as express from "express";
 import * as os from "os";
 import * as fs from "fs";
@@ -11,6 +10,7 @@ import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
+import { FunctionsEmulator } from "./functionsEmulator";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -33,6 +33,8 @@ export class EmulatorHub implements EmulatorInstance {
   static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
+  static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
+  static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
 
   /**
@@ -64,7 +66,7 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   private hub: express.Express;
-  private server?: http.Server;
+  private destroyServer?: () => Promise<void>;
 
   constructor(private args: EmulatorHubArgs) {
     this.hub = express();
@@ -102,11 +104,46 @@ export class EmulatorHub implements EmulatorInstance {
         });
       }
     });
+
+    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, (req, res) => {
+      utils.logLabeledBullet(
+        "emulators",
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+      );
+
+      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+      if (!instance) {
+        res.status(400).json({ error: "The Cloud Functions emulator is not running." });
+        return;
+      }
+
+      const emu = instance as FunctionsEmulator;
+      emu.setBackgroundTriggersEnabled(false);
+      res.status(200).json({ enabled: false });
+    });
+
+    this.hub.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, (req, res) => {
+      utils.logLabeledBullet(
+        "emulators",
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+      );
+
+      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+      if (!instance) {
+        res.status(400).send("The Cloud Functions emulator is not running.");
+        return;
+      }
+
+      const emu = instance as FunctionsEmulator;
+      emu.setBackgroundTriggersEnabled(true);
+      res.status(200).json({ enabled: true });
+    });
   }
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    this.server = this.hub.listen(port, host);
+    const server = this.hub.listen(port, host);
+    this.destroyServer = utils.createDestroyer(server);
     await this.writeLocatorFile();
   }
 
@@ -115,7 +152,9 @@ export class EmulatorHub implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
-    this.server && this.server.close();
+    if (this.destroyServer) {
+      await this.destroyServer();
+    }
     await this.deleteLocatorFile();
   }
 
@@ -124,6 +163,7 @@ export class EmulatorHub implements EmulatorInstance {
     const port = this.args.port || Constants.getDefaultPort(Emulators.HUB);
 
     return {
+      name: this.getName(),
       host,
       port,
     };

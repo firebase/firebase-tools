@@ -1,5 +1,7 @@
+import * as yaml from "js-yaml";
 import * as _ from "lodash";
 import * as api from "../api";
+import * as logger from "../logger";
 import * as operationPoller from "../operation-poller";
 
 const VERSION = "v1beta";
@@ -66,6 +68,7 @@ export interface Resource {
   type: string;
   description?: string;
   properties?: { [key: string]: any };
+  propertiesYaml?: string;
 }
 
 export interface Author {
@@ -104,14 +107,12 @@ export interface ParamOption {
  * @param instanceId the id to set for the instance
  * @param extensionSource the ExtensionSource to create an instance of
  * @param params params to configure the extension instance
- * @param serviceAccountEmail the email of the service account to use for creating the ExtensionInstance
  */
 export async function createInstance(
   projectId: string,
   instanceId: string,
   extensionSource: ExtensionSource,
-  params: { [key: string]: string },
-  serviceAccountEmail: string
+  params: { [key: string]: string }
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
@@ -122,7 +123,6 @@ export async function createInstance(
         source: { name: extensionSource.name },
         params,
       },
-      serviceAccountEmail,
     },
   });
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
@@ -284,6 +284,21 @@ async function patchInstance(
   return pollRes;
 }
 
+function populateResourceProperties(source: ExtensionSource): void {
+  const spec: ExtensionSpec = source.spec;
+  if (spec) {
+    spec.resources.forEach((r) => {
+      try {
+        if (r.propertiesYaml) {
+          r.properties = yaml.safeLoad(r.propertiesYaml);
+        }
+      } catch (err) {
+        logger.debug(`[ext] failed to parse resource properties yaml: ${err}`);
+      }
+    });
+  }
+}
+
 /**
  * Create a new extension source
  *
@@ -310,6 +325,7 @@ export async function createSource(
     operationResourceName: createRes.body.name,
     masterTimeout: 600000,
   });
+  populateResourceProperties(pollRes);
   return pollRes;
 }
 
@@ -324,6 +340,7 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
       origin: api.extensionsOrigin,
     })
     .then((res) => {
+      populateResourceProperties(res.body);
       return res.body;
     });
 }

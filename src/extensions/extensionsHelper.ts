@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as ora from "ora";
 
-import { firebaseStorageOrigin } from "../api";
+import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
@@ -11,14 +11,7 @@ import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
 import { deleteObject, uploadObject } from "../gcp/storage";
 import * as getProjectId from "../getProjectId";
-import {
-  createSource,
-  getInstance,
-  ExtensionSource,
-  getSource,
-  Param,
-  ParamType,
-} from "./extensionsApi";
+import { createSource, getInstance, ExtensionSource, getSource, Param } from "./extensionsApi";
 import { promptOnce } from "../prompt";
 import * as logger from "../logger";
 import { envOverride } from "../utils";
@@ -36,14 +29,14 @@ export enum SpecParamType {
 }
 
 export const logPrefix = "extensions";
-export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)$/;
+// Extension archive URLs must be HTTPS.
+export const urlRegex = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
 );
 
 export const resourceTypeToNiceName: { [key: string]: string } = {
-  "firebaseextensions.v1beta.scheduledFunction": "Scheduled Function",
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 
@@ -210,7 +203,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(ParamType).join(", ")}`
+        }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type == SpecParamType.STRING) {
@@ -310,7 +303,10 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
  * @returns the path where the source was uploaded to
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
-  const zippedSource = await archiveDirectory(extPath, { type: "zip", ignore: ["node_modules"] });
+  const zippedSource = await archiveDirectory(extPath, {
+    type: "zip",
+    ignore: ["node_modules", ".git"],
+  });
   return await uploadObject(zippedSource, bucketName);
 }
 
@@ -333,7 +329,7 @@ export async function createSourceFromLocation(
       uploadSpinner.start();
       objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
       uploadSpinner.succeed(" Uploaded extension source code");
-      packageUri = firebaseStorageOrigin + objectPath + "?alt=media";
+      packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
     } catch (err) {
       uploadSpinner.fail();
@@ -343,6 +339,7 @@ export async function createSourceFromLocation(
     [packageUri, extensionRoot] = sourceUri.split("#");
   }
   const res = await createSource(projectId, packageUri, extensionRoot);
+  logger.debug("Created new Extension Source %s", res.name);
   // if we uploaded an object, delete it
   if (objectPath.length) {
     try {
@@ -403,7 +400,7 @@ export async function promptForRepeatInstance(
 ): Promise<string> {
   const message =
     `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
-    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+    `Do you wish to proceed with installing another instance of ${extensionName} in this project?`;
   return await promptOnce({
     type: "confirm",
     message,

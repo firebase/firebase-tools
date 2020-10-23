@@ -16,6 +16,7 @@ var TARGETS = {
   firestore: require("./firestore"),
   functions: require("./functions"),
   storage: require("./storage"),
+  remoteconfig: require("./remoteconfig"),
 };
 
 var _noop = function() {
@@ -38,11 +39,11 @@ var _chain = function(fns, context, options, payload) {
  * number of deploy targets. This allows deploys to be done all together or
  * for individual deployable elements to be deployed as such.
  */
-var deploy = function(targetNames, options) {
+var deploy = function(targetNames, options, customContext = {}) {
   var projectId = getProjectId(options);
   var payload = {};
   // a shared context object for deploy targets to decorate as needed
-  var context = { projectId: projectId };
+  var context = Object.assign({ projectId }, customContext);
   var predeploys = [];
   var prepares = [];
   var deploys = [];

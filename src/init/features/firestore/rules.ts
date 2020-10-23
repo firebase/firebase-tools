@@ -52,6 +52,10 @@ export function initRules(setup: any, config: any): Promise<any> {
         return Promise.resolve();
       }
 
+      if (!setup.projectId) {
+        return config.writeProjectFile(setup.config.firestore.rules, RULES_TEMPLATE);
+      }
+
       return getRulesFromConsole(setup.projectId).then((contents: any) => {
         return config.writeProjectFile(setup.config.firestore.rules, contents);
       });

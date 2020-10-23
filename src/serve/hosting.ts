@@ -14,10 +14,11 @@ import { NextFunction, Request, Response } from "express";
 import { Writable } from "stream";
 import { EmulatorLogger } from "../emulator/emulatorLogger";
 import { Emulators } from "../emulator/types";
+import { createDestroyer } from "../utils";
 
 const MAX_PORT_ATTEMPTS = 10;
 let attempts = 0;
-let server: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+let destroyServer: undefined | (() => Promise<void>) = undefined;
 
 const logger = EmulatorLogger.forEmulator(Emulators.HOSTING);
 
@@ -26,6 +27,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const firebaseMiddleware = initMiddleware(init);
 
   const morganStream = new Writable();
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   morganStream._write = (
     chunk: any,
     encoding: string,
@@ -42,12 +44,12 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     stream: morganStream,
   });
 
-  server = superstatic({
+  const server = superstatic({
     debug: false,
     port: port,
     host: options.host,
     config: config,
-    cwd: detectProjectRoot(options.cwd),
+    cwd: detectProjectRoot(options),
     stack: "strict",
     before: {
       files: (req: Request, res: Response, next: NextFunction) => {
@@ -78,6 +80,8 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     );
   });
 
+  destroyServer = createDestroyer(server);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
@@ -105,10 +109,8 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
 /**
  * Stop the Hosting server.
  */
-export async function stop(): Promise<void> {
-  if (server) {
-    await server.close();
-  }
+export function stop(): Promise<void> {
+  return destroyServer ? destroyServer() : Promise.resolve();
 }
 
 /**

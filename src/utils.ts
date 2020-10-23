@@ -1,7 +1,9 @@
 import * as _ from "lodash";
 import * as url from "url";
+import * as http from "http";
 import * as clc from "cli-color";
 import * as ora from "ora";
+import * as process from "process";
 import { Readable } from "stream";
 import * as winston from "winston";
 import { SPLAT } from "triple-beam";
@@ -11,6 +13,7 @@ import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
+import { Socket } from "net";
 
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
@@ -99,7 +102,13 @@ export function getDatabaseViewDataUrl(
  */
 export function addDatabaseNamespace(origin: string, namespace: string): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebaseio.com")) {
+  if (urlObj.hostname.includes(namespace)) {
+    return urlObj.href;
+  }
+  if (
+    urlObj.hostname.includes("firebaseio.com") ||
+    urlObj.hostname.includes("firebasedatabase.app")
+  ) {
     return addSubdomain(origin, namespace);
   } else {
     urlObj.searchParams.set("ns", namespace);
@@ -406,4 +415,66 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   }
 
   return data;
+}
+
+/**
+ * Return a "destroy" function for a Node.js HTTP server. MUST be called on
+ * server creation (e.g. right after `.listen`), BEFORE any connections.
+ *
+ * Inspired by https://github.com/isaacs/server-destroy/blob/master/index.js
+ *
+ * @returns a function that destroys all connections and closes the server
+ */
+export function createDestroyer(server: http.Server): () => Promise<void> {
+  const connections = new Set<Socket>();
+
+  server.on("connection", (conn) => {
+    connections.add(conn);
+    conn.once("close", () => connections.delete(conn));
+  });
+
+  // Make calling destroyer again just noop but return the same promise.
+  let destroyPromise: Promise<void> | undefined = undefined;
+  return function destroyer() {
+    if (!destroyPromise) {
+      destroyPromise = new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+        connections.forEach((socket) => socket.destroy());
+      });
+    }
+    return destroyPromise;
+  };
+}
+
+/**
+ * Returns the given date formatted as `YYYY-mm-dd HH:mm:ss`.
+ * @param d the date to format.
+ * @return the formatted date.
+ */
+export function datetimeString(d: Date): string {
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
+    .getDate()
+    .toString()
+    .padStart(2, "0")}`;
+  const time = `${d
+    .getHours()
+    .toString()
+    .padStart(2, "0")}:${d
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}:${d
+    .getSeconds()
+    .toString()
+    .padStart(2, "0")}`;
+  return `${day} ${time}`;
+}
+
+/**
+ * Indicates whether the end-user is running the CLI from a cloud-based environment.
+ */
+export function isCloudEnvironment() {
+  return !!process.env.CODESPACES;
 }

@@ -1,4 +1,5 @@
 import { FirebaseError } from "../error";
+import * as Config from "../config";
 import * as logger from "../logger";
 
 export interface RulesInstanceConfig {
@@ -10,6 +11,22 @@ interface DatabaseConfig {
   rules: string;
   target?: string;
   instance?: string;
+}
+
+/**
+ * Convert the relative paths in the config into absolute paths ready to be read.
+ */
+export function normalizeRulesConfig(
+  rulesConfig: RulesInstanceConfig[],
+  options: any
+): RulesInstanceConfig[] {
+  const config = options.config as Config;
+  return rulesConfig.map((rc) => {
+    return {
+      instance: rc.instance,
+      rules: config.path(rc.rules),
+    };
+  });
 }
 
 export function getRulesConfig(projectId: string, options: any): RulesInstanceConfig[] {
@@ -24,7 +41,7 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      return [{ rules: dbConfig.rules, instance: options.instance }];
+      return [{ rules: dbConfig.rules, instance: options.instance || options.project }];
     } else {
       logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
       return [];

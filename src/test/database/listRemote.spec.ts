@@ -4,10 +4,11 @@ import * as nock from "nock";
 import * as utils from "../../utils";
 import * as api from "../../api";
 import { RTDBListRemote } from "../../database/listRemote";
+const HOST = "https://firebaseio.com";
 
 describe("ListRemote", () => {
   const instance = "fake-db";
-  const remote = new RTDBListRemote(instance);
+  const remote = new RTDBListRemote(instance, HOST);
   const serverUrl = utils.addSubdomain(api.realtimeOrigin, instance);
 
   afterEach(() => {

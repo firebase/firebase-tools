@@ -2,25 +2,27 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as tcpport from "tcp-port-used";
-import * as pf from "portfinder";
 
+import * as Config from "../config";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
-import { EmulatorRegistry } from "../emulator/registry";
+import { EmulatorRegistry } from "./registry";
 import {
   Address,
   ALL_SERVICE_EMULATORS,
   EmulatorInstance,
   Emulators,
   EMULATORS_SUPPORTED_BY_UI,
-} from "../emulator/types";
-import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "../emulator/constants";
-import { FunctionsEmulator } from "../emulator/functionsEmulator";
-import { DatabaseEmulator, DatabaseEmulatorArgs } from "../emulator/databaseEmulator";
-import { FirestoreEmulator, FirestoreEmulatorArgs } from "../emulator/firestoreEmulator";
-import { HostingEmulator } from "../emulator/hostingEmulator";
+  isEmulator,
+} from "./types";
+import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
+import { FunctionsEmulator } from "./functionsEmulator";
+import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { AuthEmulator } from "./auth";
+import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
+import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
+import { HostingEmulator } from "./hostingEmulator";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
 import { PubsubEmulator } from "./pubsubEmulator";
@@ -31,26 +33,13 @@ import { EmulatorUI } from "./ui";
 import { LoggingEmulator } from "./loggingEmulator";
 import * as dbRulesConfig from "../database/rulesConfig";
 import { EmulatorLogger } from "./emulatorLogger";
-
-export async function checkPortOpen(port: number, host: string): Promise<boolean> {
-  try {
-    const inUse = await tcpport.check(port, host);
-    return !inUse;
-  } catch (e) {
-    logger.debug(`port check error: ${e}`);
-    return false;
-  }
-}
-
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
-  const interval = 250;
-  const timeout = 30000;
-  try {
-    await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
-  } catch (e) {
-    throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
-  }
-}
+import * as portUtils from "./portUtils";
+import { EmulatorHubClient } from "./hubClient";
+import { promptOnce } from "../prompt";
+import * as rimraf from "rimraf";
+import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
+import { fileExistsSync } from "../fsutils";
+import { previews } from "../previews";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -67,13 +56,13 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     findAvailablePort = FIND_AVAILBLE_PORT_BY_DEFAULT[emulator];
   }
 
-  const logger = EmulatorLogger.forEmulator(emulator);
-  const portOpen = await checkPortOpen(port, host);
+  const loggerForEmulator = EmulatorLogger.forEmulator(emulator);
+  const portOpen = await portUtils.checkPortOpen(port, host);
   if (!portOpen) {
     if (findAvailablePort) {
-      const newPort = await pf.getPortPromise({ host, port });
+      const newPort = await portUtils.findAvailablePort(host, port);
       if (newPort != port) {
-        logger.logLabeled(
+        loggerForEmulator.logLabeled(
           "WARN",
           emulator,
           `${Constants.description(
@@ -85,12 +74,12 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
     } else {
       await cleanShutdown();
       const description = Constants.description(emulator);
-      logger.logLabeled(
+      loggerForEmulator.logLabeled(
         "WARN",
         emulator,
         `Port ${port} is not open on ${host}, could not start ${description}.`
       );
-      logger.logLabeled(
+      loggerForEmulator.logLabeled(
         "WARN",
         emulator,
         `To select a different host/port, specify that host/port in a firebase.json config file:
@@ -107,6 +96,16 @@ async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Ad
       return utils.reject(`Could not start ${description}, port taken.`, {});
     }
   }
+
+  if (portUtils.isRestricted(port)) {
+    const suggested = portUtils.suggestUnrestricted(port);
+    loggerForEmulator.logLabeled(
+      "WARN",
+      emulator,
+      `Port ${port} is restricted by some web browsers, including Chrome. You may want to choose a different port such as ${suggested}.`
+    );
+  }
+
   return { host, port };
 }
 
@@ -119,20 +118,45 @@ export async function startEmulator(instance: EmulatorInstance): Promise<void> {
   await EmulatorRegistry.start(instance);
 }
 
+/**
+ * Exports emulator data on clean exit (SIGINT or process end)
+ * @param options
+ */
+export async function exportOnExit(options: any) {
+  const exportOnExitDir = options.exportOnExit;
+  if (exportOnExitDir) {
+    try {
+      utils.logBullet(
+        `Automatically exporting data using ${FLAG_EXPORT_ON_EXIT_NAME} "${exportOnExitDir}" ` +
+          "please wait for the export to finish..."
+      );
+      await exportEmulatorData(exportOnExitDir, options);
+    } catch (e) {
+      utils.logWarning(e);
+      utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
+    }
+  }
+}
+
+/**
+ * Hook to do things when we're exiting cleanly (this does not include errors). Will be skipped on a second SIGINT
+ * @param options
+ */
+export async function onExit(options: any) {
+  await exportOnExit(options);
+}
+
+/**
+ * Hook to clean up on shutdown (includes errors). Will be skipped on a third SIGINT
+ * Stops all running emulators in parallel.
+ */
 export async function cleanShutdown(): Promise<void> {
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
     "emulators",
     "Shutting down emulators."
   );
-  for (const name of EmulatorRegistry.listRunning()) {
-    EmulatorLogger.forEmulator(name).logLabeled(
-      "BULLET",
-      name,
-      `Stopping ${Constants.description(name)}`
-    );
-    await EmulatorRegistry.stop(name);
-  }
+  await EmulatorRegistry.stopAll();
 }
 
 export function filterEmulatorTargets(options: any): Emulators[] {
@@ -142,6 +166,10 @@ export function filterEmulatorTargets(options: any): Emulators[] {
 
   if (options.only) {
     targets = _.intersection(targets, options.only.split(","));
+  }
+
+  if (!previews.authemulator) {
+    targets = targets.filter((e) => e !== Emulators.AUTH);
   }
 
   return targets;
@@ -156,6 +184,10 @@ export function shouldStart(options: any, name: Emulators): boolean {
   const emulatorInTargets = targets.indexOf(name) >= 0;
 
   if (name === Emulators.UI) {
+    if (options.ui) {
+      return true;
+    }
+
     if (options.config.get("emulators.ui.enabled") === false) {
       // Allow disabling UI via `{emulators: {"ui": {"enabled": false}}}`.
       // Emulator UI is by default enabled if that option is not specified.
@@ -195,7 +227,67 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
+  if (name === Emulators.AUTH && !previews.authemulator) {
+    return false;
+  }
+
   return emulatorInTargets;
+}
+
+function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
+  if (!pathIsDirectory) {
+    return;
+  }
+
+  // If there is an export metadata file, we always prefer that
+  const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
+  if (fileExistsSync(importFilePath)) {
+    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
+  }
+
+  const fileList = fs.readdirSync(importPath);
+
+  // The user might have passed a Firestore export directly
+  const firestoreMetadataFile = fileList.find((f) => f.endsWith(".overall_export_metadata"));
+  if (firestoreMetadataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      firestore: {
+        version: "prod",
+        path: importPath,
+        metadata_file: `${importPath}/${firestoreMetadataFile}`,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Firestore export at ${importPath}`
+    );
+
+    return metadata;
+  }
+
+  // The user might haved passed a directory containing RTDB json files
+  const rtdbDataFile = fileList.find((f) => f.endsWith(".json"));
+  if (rtdbDataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      database: {
+        version: "prod",
+        path: importPath,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Database export at ${importPath}`
+    );
+
+    return metadata;
+  }
 }
 
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
@@ -226,13 +318,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     const ignored = _.difference(requested, targets);
 
     for (const name of ignored) {
-      EmulatorLogger.forEmulator(name as Emulators).logLabeled(
-        "WARN",
-        name,
-        `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
-          "firebase init"
-        )}.`
-      );
+      if (isEmulator(name)) {
+        EmulatorLogger.forEmulator(name as Emulators).logLabeled(
+          "WARN",
+          name,
+          `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
+            "firebase init"
+          )}.`
+        );
+      } else {
+        // this should not work:
+        // firebase emulators:start --only doesnotexit
+        throw new FirebaseError(
+          `${name} is not a valid emulator name, valid options are: ${JSON.stringify(
+            ALL_SERVICE_EMULATORS
+          )}`,
+          { exit: 1 }
+        );
+      }
     }
   }
 
@@ -248,12 +351,20 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   };
   if (options.import) {
     const importDir = path.resolve(options.import);
-    exportMetadata = JSON.parse(
-      fs.readFileSync(path.join(importDir, HubExport.METADATA_FILE_NAME), "utf8").toString()
-    ) as ExportMetadata;
+    const foundMetadata = await findExportMetadata(importDir);
+    if (foundMetadata) {
+      exportMetadata = foundMetadata;
+    } else {
+      EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+        "WARN",
+        "emulators",
+        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
+      );
+    }
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
+    const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
     const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
@@ -266,10 +377,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       inspectFunctions = commandUtils.parseInspectionPort(options);
 
       // TODO(samstern): Add a link to documentation
-      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+      functionsLogger.logLabeled(
         "WARN",
         "functions",
         `You are running the functions emulator in debug mode (port=${inspectFunctions}). This means that functions will execute in sequence rather than in parallel.`
+      );
+    }
+
+    // Warn the developer that the Functions emulator can call out to production.
+    const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
+      return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
+    });
+    if (emulatorsNotRunning.length > 0) {
+      functionsLogger.logLabeled(
+        "WARN",
+        "functions",
+        `The following emulators are not running, calls to these services from the Functions emulator will affect production: ${clc.bold(
+          emulatorsNotRunning.join(", ")
+        )}`
       );
     }
 
@@ -279,9 +404,13 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
-      env: options.extensionEnv,
+      env: {
+        ...options.extensionEnv,
+      },
       predefinedTriggers: options.extensionTriggers,
-      nodeMajorVersion: options.extensionNodeVersion,
+      nodeMajorVersion: parseRuntimeVersion(
+        options.extensionNodeVersion || options.config.get("functions.runtime")
+      ),
     });
     await startEmulator(functionsEmulator);
   }
@@ -299,7 +428,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const exportMetadataFilePath = path.join(
+      const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
         exportMetadata.firestore.metadata_file
       );
@@ -312,10 +441,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       args.seed_from_export = exportMetadataFilePath;
     }
 
-    const rulesLocalPath = options.config.get("firestore.rules");
+    const config = options.config as Config;
+    const rulesLocalPath = config.get("firestore.rules");
     let rulesFileFound = false;
     if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
       if (rulesFileFound) {
         args.rules = rules;
@@ -357,7 +487,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     };
 
-    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    const rc = dbRulesConfig.normalizeRulesConfig(
+      dbRulesConfig.getRulesConfig(projectId, options),
+      options
+    );
     logger.debug("database rules config: ", JSON.stringify(rc));
 
     args.rules = rc;
@@ -370,7 +503,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     } else {
       for (const c of rc) {
-        const rules: string = path.join(options.projectRoot, c.rules);
+        const rules: string = c.rules;
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
@@ -385,6 +518,18 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     const databaseEmulator = new DatabaseEmulator(args);
     await startEmulator(databaseEmulator);
+
+    if (exportMetadata.database) {
+      const importDirAbsPath = path.resolve(options.import);
+      const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
+
+      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      for (const f of files) {
+        const fPath = path.join(databaseExportDir, f);
+        const ns = path.basename(f, ".json");
+        await databaseEmulator.importData(ns, fPath);
+      }
+    }
   }
 
   if (shouldStart(options, Emulators.HOSTING)) {
@@ -396,6 +541,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  if (shouldStart(options, Emulators.AUTH)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        `Cannot start the ${Constants.description(
+          Emulators.AUTH
+        )} without a project: run 'firebase init' or provide the --project flag`
+      );
+    }
+
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authEmulator = new AuthEmulator({
+      host: authAddr.host,
+      port: authAddr.port,
+      projectId,
+    });
+    await startEmulator(authEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {
@@ -440,4 +603,90 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       await instance.connect();
     }
   }
+}
+
+/**
+ * Exports data from emulators that support data export. Used with `emulators:export` and with the --export-on-exit flag.
+ * @param exportPath
+ * @param options
+ */
+export async function exportEmulatorData(exportPath: string, options: any) {
+  const projectId = options.project;
+  if (!projectId) {
+    throw new FirebaseError(
+      "Could not determine project ID, make sure you're running in a Firebase project directory or add the --project flag.",
+      { exit: 1 }
+    );
+  }
+
+  const hubClient = new EmulatorHubClient(projectId);
+  if (!hubClient.foundHub()) {
+    throw new FirebaseError(
+      `Did not find any running emulators for project ${clc.bold(projectId)}.`,
+      { exit: 1 }
+    );
+  }
+
+  try {
+    await hubClient.getStatus();
+  } catch (e) {
+    const filePath = EmulatorHub.getLocatorFilePath(projectId);
+    throw new FirebaseError(
+      `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
+      { exit: 1 }
+    );
+  }
+
+  utils.logBullet(
+    `Found running emulator hub for project ${clc.bold(projectId)} at ${hubClient.origin}`
+  );
+
+  // If the export target directory does not exist, we should attempt to create it
+  const exportAbsPath = path.resolve(exportPath);
+  if (!fs.existsSync(exportAbsPath)) {
+    utils.logBullet(`Creating export directory ${exportAbsPath}`);
+    fs.mkdirSync(exportAbsPath);
+  }
+
+  // Check if there is already an export there and prompt the user about deleting it
+  const existingMetadata = HubExport.readMetadata(exportAbsPath);
+  if (existingMetadata && !(options.force || options.exportOnExit)) {
+    if (options.noninteractive) {
+      throw new FirebaseError(
+        "Export already exists in the target directory, re-run with --force to overwrite.",
+        { exit: 1 }
+      );
+    }
+
+    const prompt = await promptOnce({
+      type: "confirm",
+      message: `The directory ${exportAbsPath} already contains export data. Exporting again to the same directory will overwrite all data. Do you want to continue?`,
+      default: false,
+    });
+
+    if (!prompt) {
+      throw new FirebaseError("Command aborted", { exit: 1 });
+    }
+  }
+
+  // Remove all existing data (metadata.json will be overwritten automatically)
+  if (existingMetadata) {
+    if (existingMetadata.firestore) {
+      const firestorePath = path.join(exportAbsPath, existingMetadata.firestore.path);
+      utils.logBullet(`Deleting directory ${firestorePath}`);
+      rimraf.sync(firestorePath);
+    }
+  }
+
+  utils.logBullet(`Exporting data to: ${exportAbsPath}`);
+  try {
+    await hubClient.postExport(exportAbsPath);
+  } catch (e) {
+    throw new FirebaseError("Export request failed, see emulator logs for more information.", {
+      exit: 1,
+      original: e,
+    });
+  }
+
+  utils.logSuccess("Export complete");
 }

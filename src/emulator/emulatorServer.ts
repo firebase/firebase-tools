@@ -1,6 +1,6 @@
 import { EmulatorInstance } from "./types";
 import { EmulatorRegistry } from "./registry";
-import * as controller from "./controller";
+import * as portUtils from "./portUtils";
 import { FirebaseError } from "../error";
 
 /**
@@ -12,7 +12,7 @@ export class EmulatorServer {
 
   async start(): Promise<void> {
     const { port, host } = this.instance.getInfo();
-    const portOpen = await controller.checkPortOpen(port, host);
+    const portOpen = await portUtils.checkPortOpen(port, host);
 
     if (!portOpen) {
       throw new FirebaseError(

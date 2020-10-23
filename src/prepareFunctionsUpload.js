@@ -63,8 +63,12 @@ var _packageSource = function(options, sourceDir, configValues) {
   // you're in the public dir when you deploy.
   // We ignore any CONFIG_DEST_FILE that already exists, and write another one
   // with current config values into the archive in the "end" handler for reader
-  var ignore = options.config.get("functions.ignore", ["node_modules"]);
-  ignore.push("firebase-debug.log", CONFIG_DEST_FILE /* .runtimeconfig.json */);
+  var ignore = options.config.get("functions.ignore", ["node_modules", ".git"]);
+  ignore.push(
+    "firebase-debug.log",
+    "firebase-debug.*.log",
+    CONFIG_DEST_FILE /* .runtimeconfig.json */
+  );
   return fsAsync
     .readdirRecursive({ path: sourceDir, ignore: ignore })
     .then(function(files) {

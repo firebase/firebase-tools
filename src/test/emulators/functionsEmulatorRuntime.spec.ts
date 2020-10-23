@@ -391,49 +391,74 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.url).to.eql("http://localhost:9090/");
       }).timeout(TIMEOUT_MED);
 
-      it("should merge .initializeApp arguments from user", async () => {
-        // This test causes very odd behavior in Travis, for now we'll disable it in CI until we can investigate
-        if (process.env.CI) {
-          return;
-        }
+      it("should return an emulated databaseURL when RTDB emulator is running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        frb.emulators = {
+          database: {
+            host: "localhost",
+            port: 9090,
+          },
+        };
 
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
+        const worker = invokeRuntimeWithFunctions(frb, () => {
           const admin = require("firebase-admin");
-          admin.initializeApp({
-            databaseURL: "fake-app-id.firebaseio.com",
-          });
+          admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async (snap: any, ctx: any) => {
-                await admin
-                  .database()
-                  .ref("write-test")
-                  .set({
-                    date: new Date(),
-                  });
-              }),
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }),
           };
         });
 
-        worker.runtime.events.on("log", (el: EmulatorLog) => {
-          if (el.level !== "USER") {
-            return;
-          }
+        const data = await callHTTPSFunction(worker, frb);
+        const info = JSON.parse(data);
+        expect(info.databaseURL).to.eql(`http://localhost:9090?ns=${frb.projectId}`);
+      }).timeout(TIMEOUT_MED);
 
-          expect(
-            el.text.indexOf(
-              "Please ensure that you spelled the name of your " +
-                "Firebase correctly (https://fake-app-id.firebaseio.com)"
-            )
-          ).to.gte(0);
-          worker.runtime.kill();
+      it("should return a real databaseURL when RTDB emulator is not running", async () => {
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const worker = invokeRuntimeWithFunctions(frb, () => {
+          const admin = require("firebase-admin");
+          admin.initializeApp();
+
+          return {
+            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+            }),
+          };
         });
 
-        await worker.runtime.exit;
+        const data = await callHTTPSFunction(worker, frb);
+        const info = JSON.parse(data);
+        expect(info.databaseURL).to.eql(`https://${frb.projectId}.firebaseio.com`);
       }).timeout(TIMEOUT_MED);
     });
+
+    it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
+      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+      frb.emulators = {
+        auth: {
+          host: "localhost",
+          port: 9099,
+        },
+      };
+
+      const worker = invokeRuntimeWithFunctions(frb, () => {
+        return {
+          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+            res.json({
+              var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+            });
+          }),
+        };
+      });
+
+      const data = await callHTTPSFunction(worker, frb);
+      const res = JSON.parse(data);
+
+      expect(res.var).to.eql("localhost:9099");
+    }).timeout(TIMEOUT_MED);
   });
 
   describe("_InitializeFunctionsConfigHelper()", () => {
@@ -681,8 +706,8 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         expect(JSON.parse(data)).to.deep.equal({ offset: 0 });
-      });
-    }).timeout(TIMEOUT_MED);
+      }).timeout(TIMEOUT_MED);
+    });
 
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {

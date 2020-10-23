@@ -11,7 +11,6 @@ var logger = require("./logger");
 var responseToError = require("./responseToError");
 var scopes = require("./scopes");
 var utils = require("./utils");
-
 var CLI_VERSION = require("../package.json").version;
 
 var accessToken;
@@ -132,6 +131,7 @@ var api = {
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
+  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
@@ -142,25 +142,27 @@ var api = {
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
   ),
   hostingOrigin: utils.envOverride("FIREBASE_HOSTING_URL", "https://web.app"),
+  identityOrigin: utils.envOverride(
+    "FIREBASE_IDENTITY_URL",
+    "https://identitytoolkit.googleapis.com"
+  ),
   iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOriginOrEmulator: utils.envOverride(
-    Constants.FIREBASE_DATABASE_EMULATOR_HOST,
-    utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
-    (val) => {
-      if (val.startsWith("http")) {
-        return val;
-      }
-      return `http://${val}`;
-    }
-  ),
   realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  rtdbManagementOrigin: utils.envOverride(
+    "FIREBASE_RTDB_MANAGEMENT_URL",
+    "https://firebasedatabase.googleapis.com"
+  ),
   rtdbMetadataOrigin: utils.envOverride(
     "FIREBASE_RTDB_METADATA_URL",
     "https://metadata-dot-firebase-prod.appspot.com"
+  ),
+  remoteConfigApiOrigin: utils.envOverride(
+    "FIREBASE_REMOTE_CONFIG_URL",
+    "https://firebaseremoteconfig.googleapis.com"
   ),
   resourceManagerOrigin: utils.envOverride(
     "FIREBASE_RESOURCEMANAGER_URL",
@@ -185,7 +187,13 @@ var api = {
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
-
+  githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
+  githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
+  githubClientSecret: utils.envOverride(
+    "GITHUB_CLIENT_SECRET",
+    "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
+  ),
   setRefreshToken: function(token) {
     refreshToken = token;
   },
