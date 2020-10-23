@@ -80,6 +80,14 @@ export function normalizedHostingConfigs(
     configs = [configs];
   }
 
+  for (const c of configs) {
+    if (c.target && c.site) {
+      throw new FirebaseError(
+        `Hosting configs should only include either "site" or "target", not both.`
+      );
+    }
+  }
+
   const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
 
   if (options.resolveTargets) {

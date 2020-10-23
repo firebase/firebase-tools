@@ -4,6 +4,28 @@ import { FirebaseError } from "../../error";
 import { normalizedHostingConfigs } from "../../hosting/normalizedHostingConfigs";
 
 describe("normalizedHostingConfigs", () => {
+  it("should fail if both site and target are specified", () => {
+    const singleHostingConfig = { site: "site", target: "target" };
+    const cmdConfig = {
+      site: "default-site",
+      config: { get: () => singleHostingConfig },
+    };
+    expect(() => normalizedHostingConfigs(cmdConfig)).to.throw(
+      FirebaseError,
+      /configs should only include either/
+    );
+
+    const hostingConfig = [{ site: "site", target: "target" }];
+    const newCmdConfig = {
+      site: "default-site",
+      config: { get: () => hostingConfig },
+    };
+    expect(() => normalizedHostingConfigs(newCmdConfig)).to.throw(
+      FirebaseError,
+      /configs should only include either/
+    );
+  });
+
   describe("without an only parameter", () => {
     const DEFAULT_SITE = "default-hosting-site";
     const baseConfig = { public: "public", ignore: ["firebase.json"] };
