@@ -707,6 +707,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Will happen if we haven't asked about local version yet
     }
 
+    // If the requested version is already locally available, let's use that
+    if (requestedMajorVersion === localMajorVersion) {
+      this.logger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from local cache.`
+      );
+      return localNodePath;
+    }
+
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
       this.logger.logLabeled(
@@ -715,16 +725,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         `Using node@${requestedMajorVersion} from host.`
       );
       return process.execPath;
-    }
-
-    // If the requested version is already locally available, let's use that
-    if (localMajorVersion === requestedMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
-      );
-      return localNodePath;
     }
 
     // Otherwise we'll begin the conversational flow to install the correct version locally
