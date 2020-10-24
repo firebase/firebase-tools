@@ -41,6 +41,7 @@ module.exports = new Command("serve")
     "--except <targets>",
     "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
   )
+  .option("--inspect [port]", "attach the node.js debugger")
   .before((options) => {
     if (
       options.only &&

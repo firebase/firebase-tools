@@ -23,6 +23,12 @@ module.exports = {
       projectId,
       functionsDir,
       nodeMajorVersion: parseRuntimeVersion(options.config.get("functions.runtime")),
+      debugPort:
+        typeof options.inspect === "string"
+          ? Number(options.inspect)
+          : options.inspect
+          ? 9229
+          : undefined,
 
       ...(args as object),
     };
