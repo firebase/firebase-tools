@@ -17,7 +17,6 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
-import { previews } from "../previews";
 
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
@@ -52,36 +51,19 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
       namePrefix: "cloud-firestore-emulator",
     },
   },
-  ui: previews.authemulator
-    ? {
-        version: "1.2.0-SNAPSHOT",
-        downloadPath: path.join(CACHE_DIR, "ui-1.2.0-SNAPSHOT.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.2.0-SNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.2.0-SNAPSHOT", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.2.0-SNAPSHOT.zip",
-          expectedSize: -1,
-          expectedChecksum: "",
-          namePrefix: "ui",
-          skipChecksumAndSize: true,
-          skipCache: true,
-        },
-      }
-    : {
-        version: "1.1.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.1.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.1.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.1.1", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.1.zip",
-          expectedSize: 3248195,
-          expectedChecksum: "098821e328ea98c2180d4d71f3a75381",
-          namePrefix: "ui",
-        },
-      },
+  ui: {
+    version: "1.2.1",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.2.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.2.1"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.2.1", "server.bundle.js"),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.2.1.zip",
+      expectedSize: 3287435,
+      expectedChecksum: "9aed5bb182a24b695508875fa117a9b2",
+      namePrefix: "ui",
+    },
+  },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
     version: "0.1.0",
