@@ -1,2 +1,0 @@
-- Restores the ability to specify a Hosting `site` (configured in `firebase.json`) as a deploy `--only` target. (#2731)
-- Introduces the Firebase Authentication Emulator.
