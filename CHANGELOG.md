@@ -1,1 +1,0 @@
-- Fixes issue in `hosting:channel` commands where a Firebase Hosting target may cause configuration parsing issues (#2746).
