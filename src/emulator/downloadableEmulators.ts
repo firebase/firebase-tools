@@ -28,39 +28,39 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.5.0.jar"),
-    version: "4.5.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.6.0.jar"),
+    version: "4.6.0",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.5.0.jar",
-      expectedSize: 28311004,
-      expectedChecksum: "1723857023077462f4b807922b1342f2",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.6.0.jar",
+      expectedSize: 28458498,
+      expectedChecksum: "2b061fa9ba9f34d0d534f12caecddf3d",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.5.jar"),
-    version: "1.11.5",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.9.jar"),
+    version: "1.11.9",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.5.jar",
-      expectedSize: 63287761,
-      expectedChecksum: "badd7007623ce51761d7a8ec2be42f8f",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.9.jar",
+      expectedSize: 64448827,
+      expectedChecksum: "0b841d928e1d0877e789010301b265a4",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   ui: {
-    version: "1.1.1",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.1.1.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.1.1"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.1.1", "server.bundle.js"),
+    version: "1.2.2",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.2.2.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.2.2"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.2.2", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.1.zip",
-      expectedSize: 3248195,
-      expectedChecksum: "098821e328ea98c2180d4d71f3a75381",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.2.2.zip",
+      expectedSize: 3287578,
+      expectedChecksum: "44b23f98089ab39b2de06018fc92a1ad",
       namePrefix: "ui",
     },
   },

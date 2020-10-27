@@ -23,10 +23,6 @@ import { URL } from "url";
 import * as _ from "lodash";
 
 let triggers: EmulatedTriggerMap | undefined;
-
-let hasAccessedFirestore = false;
-let hasAccessedDatabase = false;
-
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -526,19 +522,39 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
+
+      // When the auth emulator is running, try to disable JWT verification.
+      if (frb.emulators.auth) {
+        if (compareVersionStrings(adminResolution.version, "9.3.0") < 0) {
+          new EmulatorLog(
+            "WARN_ONCE",
+            "runtime-status",
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+          ).log();
+        }
+
+        const auth = defaultApp.auth();
+        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+          logDebug("auth.setJwtVerificationEnabled(false)", {});
+          (auth as any).setJwtVerificationEnabled(false);
+        } else {
+          logDebug("auth.setJwtVerificationEnabled not available", {});
+        }
+      }
+
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 
@@ -559,36 +575,34 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target: any) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 }
 
-function warnAboutFirestoreProd(): void {
-  if (hasAccessedFirestore) {
+function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.firestore) {
     return;
   }
 
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
-
-  hasAccessedFirestore = true;
 }
 
-function warnAboutDatabaseProd(): void {
-  if (hasAccessedDatabase) {
+function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.database) {
     return;
   }
 
@@ -597,8 +611,18 @@ function warnAboutDatabaseProd(): void {
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
+}
 
-  hasAccessedDatabase = true;
+function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.auth) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN_ONCE",
+    "runtime-status",
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+  ).log();
 }
 
 async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
@@ -675,6 +699,13 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
     process.env[
       Constants.FIREBASE_DATABASE_EMULATOR_HOST
     ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+  }
+
+  // Make firebase-admin point at the Auth emulator
+  if (frb.emulators.auth) {
+    process.env[
+      Constants.FIREBASE_AUTH_EMULATOR_HOST
+    ] = `${frb.emulators.auth.host}:${frb.emulators.auth.port}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -1088,6 +1119,25 @@ async function handleMessage(message: string) {
 }
 
 async function main(): Promise<void> {
+  // Since the functions run as attached processes they naturally inherit SIGINT
+  // sent to the functions emulator. We want them to ignore the first signal
+  // to allow for a clean shutdown.
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  process.on("SIGINT", () => {
+    const now = new Date().getTime();
+    if (now - lastSignal < 100) {
+      return;
+    }
+
+    signalCount = signalCount + 1;
+    lastSignal = now;
+
+    if (signalCount >= 2) {
+      process.exit(1);
+    }
+  });
+
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,

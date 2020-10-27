@@ -2,12 +2,11 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as http from "http";
 
+import * as Config from "../config";
 import * as logger from "../logger";
 import * as track from "../track";
 import * as utils from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
 import { EmulatorRegistry } from "./registry";
 import {
   Address,
@@ -20,6 +19,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -225,6 +225,62 @@ export function shouldStart(options: any, name: Emulators): boolean {
   return emulatorInTargets;
 }
 
+function findExportMetadata(importPath: string): ExportMetadata | undefined {
+  const pathIsDirectory = fs.lstatSync(importPath).isDirectory();
+  if (!pathIsDirectory) {
+    return;
+  }
+
+  // If there is an export metadata file, we always prefer that
+  const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
+  if (fileExistsSync(importFilePath)) {
+    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
+  }
+
+  const fileList = fs.readdirSync(importPath);
+
+  // The user might have passed a Firestore export directly
+  const firestoreMetadataFile = fileList.find((f) => f.endsWith(".overall_export_metadata"));
+  if (firestoreMetadataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      firestore: {
+        version: "prod",
+        path: importPath,
+        metadata_file: `${importPath}/${firestoreMetadataFile}`,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.FIRESTORE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Firestore export at ${importPath}`
+    );
+
+    return metadata;
+  }
+
+  // The user might haved passed a directory containing RTDB json files
+  const rtdbDataFile = fileList.find((f) => f.endsWith(".json"));
+  if (rtdbDataFile) {
+    const metadata: ExportMetadata = {
+      version: EmulatorHub.CLI_VERSION,
+      database: {
+        version: "prod",
+        path: importPath,
+      },
+    };
+
+    EmulatorLogger.forEmulator(Emulators.DATABASE).logLabeled(
+      "BULLET",
+      "firestore",
+      `Detected non-emulator Database export at ${importPath}`
+    );
+
+    return metadata;
+  }
+}
+
 export async function startAll(options: any, noUi: boolean = false): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
@@ -285,24 +341,15 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     version: "unknown",
   };
   if (options.import) {
-    const importFilePath = path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME);
-    if (fileExistsSync(importFilePath)) {
-      exportMetadata = JSON.parse(
-        fs
-          .readFileSync(
-            path.join(path.resolve(options.import), HubExport.METADATA_FILE_NAME),
-            "utf8"
-          )
-          .toString()
-      ) as ExportMetadata;
+    const importDir = path.resolve(options.import);
+    const foundMetadata = await findExportMetadata(importDir);
+    if (foundMetadata) {
+      exportMetadata = foundMetadata;
     } else {
-      // could happen when an export was interrupted mid-export...
       EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
         "WARN",
         "emulators",
-        `Import/Export metadata file does not exist. ${clc.bold(
-          "Skipping data import!"
-        )} Metadata file location: ${importFilePath}`
+        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
       );
     }
   }
@@ -328,30 +375,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     }
 
-    // Provide default application credentials when appropriate
-    const credentialEnv: Record<string, string> = {};
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      functionsLogger.logLabeled(
-        "WARN",
-        "functions",
-        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
-      );
-    } else {
-      const defaultCredPath = await getCredentialPathAsync();
-      if (defaultCredPath) {
-        functionsLogger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
-        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
-      } else {
-        // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
-        //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
-        functionsLogger.logLabeled(
-          "WARN",
-          "functions",
-          "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services."
-        );
-      }
-    }
-
     // Warn the developer that the Functions emulator can call out to production.
     const emulatorsNotRunning = ALL_SERVICE_EMULATORS.filter((e) => {
       return e !== Emulators.FUNCTIONS && !shouldStart(options, e);
@@ -373,7 +396,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       port: functionsAddr.port,
       debugPort: inspectFunctions,
       env: {
-        ...credentialEnv,
         ...options.extensionEnv,
       },
       predefinedTriggers: options.extensionTriggers,
@@ -397,7 +419,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.firestore) {
       const importDirAbsPath = path.resolve(options.import);
-      const exportMetadataFilePath = path.join(
+      const exportMetadataFilePath = path.resolve(
         importDirAbsPath,
         exportMetadata.firestore.metadata_file
       );
@@ -410,10 +432,11 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       args.seed_from_export = exportMetadataFilePath;
     }
 
-    const rulesLocalPath = options.config.get("firestore.rules");
+    const config = options.config as Config;
+    const rulesLocalPath = config.get("firestore.rules");
     let rulesFileFound = false;
     if (rulesLocalPath) {
-      const rules: string = path.join(options.projectRoot, rulesLocalPath);
+      const rules: string = config.path(rulesLocalPath);
       rulesFileFound = fs.existsSync(rules);
       if (rulesFileFound) {
         args.rules = rules;
@@ -455,7 +478,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     };
 
-    const rc = dbRulesConfig.getRulesConfig(projectId, options);
+    const rc = dbRulesConfig.normalizeRulesConfig(
+      dbRulesConfig.getRulesConfig(projectId, options),
+      options
+    );
     logger.debug("database rules config: ", JSON.stringify(rc));
 
     args.rules = rc;
@@ -468,7 +494,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       );
     } else {
       for (const c of rc) {
-        const rules: string = path.join(options.projectRoot, c.rules);
+        const rules: string = c.rules;
         if (!fs.existsSync(rules)) {
           databaseLogger.logLabeled(
             "WARN",
@@ -486,48 +512,13 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.database) {
       const importDirAbsPath = path.resolve(options.import);
-      const databaseExportDir = path.join(importDirAbsPath, exportMetadata.database.path);
+      const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
 
       const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
         const ns = path.basename(f, ".json");
-
-        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
-
-        const readStream = fs.createReadStream(fPath);
-
-        await new Promise((resolve, reject) => {
-          const req = http.request(
-            {
-              method: "PUT",
-              host: databaseAddr.host,
-              port: databaseAddr.port,
-              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
-              headers: {
-                Authorization: "Bearer owner",
-                "Content-Type": "application/json",
-              },
-            },
-            (response) => {
-              if (response.statusCode === 200) {
-                resolve();
-              } else {
-                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
-                response
-                  .on("data", (d) => {
-                    databaseLogger.log("DEBUG", d.toString());
-                  })
-                  .on("end", reject);
-              }
-            }
-          );
-
-          req.on("error", reject);
-          readStream.pipe(req, { end: true });
-        }).catch((e) => {
-          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
-        });
+        await databaseEmulator.importData(ns, fPath);
       }
     }
   }
@@ -541,6 +532,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  if (shouldStart(options, Emulators.AUTH)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        `Cannot start the ${Constants.description(
+          Emulators.AUTH
+        )} without a project: run 'firebase init' or provide the --project flag`
+      );
+    }
+
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authEmulator = new AuthEmulator({
+      host: authAddr.host,
+      port: authAddr.port,
+      projectId,
+    });
+    await startEmulator(authEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {

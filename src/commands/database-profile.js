@@ -4,6 +4,7 @@ var _ = require("lodash");
 
 var { Command } = require("../command");
 var requireInstance = require("../requireInstance");
+var { populateInstanceDetails } = require("../management/database");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
 var profiler = require("../profiler");
@@ -32,6 +33,7 @@ module.exports = new Command("database:profile")
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
   .before(requireInstance)
+  .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(function(options) {
     // Validate options

@@ -9,18 +9,22 @@ import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
 import { getDownloadDetails } from "./downloadableEmulators";
+import { DatabaseEmulator } from "./databaseEmulator";
 
+export interface FirestoreExportMetadata {
+  version: string;
+  path: string;
+  metadata_file: string;
+}
+
+export interface DatabaseExportMetadata {
+  version: string;
+  path: string;
+}
 export interface ExportMetadata {
   version: string;
-  firestore?: {
-    version: string;
-    path: string;
-    metadata_file: string;
-  };
-  database?: {
-    version: string;
-    path: string;
-  };
+  firestore?: FirestoreExportMetadata;
+  database?: DatabaseExportMetadata;
 }
 
 export class HubExport {
@@ -38,7 +42,7 @@ export class HubExport {
   }
 
   public async exportAll(): Promise<void> {
-    const toExport = ALL_EMULATORS.filter(this.shouldExport);
+    const toExport = ALL_EMULATORS.filter(shouldExport);
     if (toExport.length === 0) {
       throw new FirebaseError("No running emulators support import/export.");
     }
@@ -50,7 +54,7 @@ export class HubExport {
       version: EmulatorHub.CLI_VERSION,
     };
 
-    if (this.shouldExport(Emulators.FIRESTORE)) {
+    if (shouldExport(Emulators.FIRESTORE)) {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
@@ -59,7 +63,7 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
-    if (this.shouldExport(Emulators.DATABASE)) {
+    if (shouldExport(Emulators.DATABASE)) {
       metadata.database = {
         version: getDownloadDetails(Emulators.DATABASE).version,
         path: "database_export",
@@ -68,7 +72,7 @@ export class HubExport {
     }
 
     const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
@@ -89,8 +93,9 @@ export class HubExport {
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
-    const databaseInfo = EmulatorRegistry.get(Emulators.DATABASE)!.getInfo();
-    const databaseAddr = `http://${databaseInfo.host}:${databaseInfo.port}`;
+    const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
+    const { host, port } = databaseEmulator.getInfo();
+    const databaseAddr = `http://${host}:${port}`;
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
@@ -98,7 +103,7 @@ export class HubExport {
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data
-    const nonEmptyNamespaces = [];
+    const namespacesToExport = [];
     for (const ns of namespaces) {
       const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
       const checkDataRes = await api.request("GET", checkDataPath, {
@@ -106,9 +111,17 @@ export class HubExport {
         auth: true,
       });
       if (checkDataRes.body !== null) {
-        nonEmptyNamespaces.push(ns);
+        namespacesToExport.push(ns);
       } else {
         logger.debug(`Namespace ${ns} contained null data, not exporting`);
+      }
+    }
+
+    // We always need to export every namespace that was imported
+    for (const ns of databaseEmulator.getImportedNamespaces()) {
+      if (!namespacesToExport.includes(ns)) {
+        logger.debug(`Namespace ${ns} was imported, exporting.`);
+        namespacesToExport.push(ns);
       }
     }
 
@@ -122,7 +135,7 @@ export class HubExport {
       fs.mkdirSync(dbExportPath);
     }
 
-    for (const ns of nonEmptyNamespaces) {
+    for (const ns of namespacesToExport) {
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);
 
@@ -131,8 +144,8 @@ export class HubExport {
         http
           .get(
             {
-              host: databaseInfo.host,
-              port: databaseInfo.port,
+              host,
+              port,
               path: `/.json?ns=${ns}&format=export`,
               headers: { Authorization: "Bearer owner" },
             },
@@ -144,8 +157,7 @@ export class HubExport {
       });
     }
   }
-
-  private shouldExport(e: Emulators): boolean {
-    return IMPORT_EXPORT_EMULATORS.indexOf(e) >= 0 && EmulatorRegistry.isRunning(e);
-  }
+}
+function shouldExport(e: Emulators): boolean {
+  return IMPORT_EXPORT_EMULATORS.includes(e) && EmulatorRegistry.isRunning(e);
 }

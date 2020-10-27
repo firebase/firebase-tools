@@ -434,6 +434,31 @@ describe("FunctionsEmulator-Runtime", () => {
         expect(info.databaseURL).to.eql(`https://${frb.projectId}.firebaseio.com`);
       }).timeout(TIMEOUT_MED);
     });
+
+    it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
+      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+      frb.emulators = {
+        auth: {
+          host: "localhost",
+          port: 9099,
+        },
+      };
+
+      const worker = invokeRuntimeWithFunctions(frb, () => {
+        return {
+          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
+            res.json({
+              var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+            });
+          }),
+        };
+      });
+
+      const data = await callHTTPSFunction(worker, frb);
+      const res = JSON.parse(data);
+
+      expect(res.var).to.eql("localhost:9099");
+    }).timeout(TIMEOUT_MED);
   });
 
   describe("_InitializeFunctionsConfigHelper()", () => {

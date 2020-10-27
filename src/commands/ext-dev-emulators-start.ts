@@ -1,3 +1,4 @@
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as controller from "../emulator/controller";
 import * as commandUtils from "../emulator/commandUtils";
@@ -13,6 +14,7 @@ module.exports = new Command("ext:dev:emulators:start")
   .option(commandUtils.FLAG_TEST_PARAMS, commandUtils.DESC_TEST_PARAMS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     const emulatorOptions = await optionsHelper.buildOptions(options);

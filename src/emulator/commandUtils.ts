@@ -58,12 +58,10 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-/**
- * We want to be able to run the Firestore and Database emulators even in the absence
- * of firebase.json. For Functions and Hosting we require the JSON file since the
- * config interactions can become fairly complex.
- */
-const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+const DEFAULT_CONFIG = new Config(
+  { database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  {}
+);
 
 export function printNoticeIfEmulated(
   options: any,
@@ -134,6 +132,10 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     config: DEFAULT_CONFIG,
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
+
+  // We want to be able to run most emulators even in the absence of
+  // firebase.json. For Functions and Hosting we require the JSON file since the
+  // config interactions can become fairly complex.
   const canStartWithoutConfig =
     options.only &&
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
@@ -215,10 +217,22 @@ function processKillSignal(
   rej: (value?: unknown) => void,
   options: any
 ): SignalsListener {
+  let lastSignal = new Date().getTime();
   let signalCount = 0;
   return async () => {
     try {
+      const now = new Date().getTime();
+      const diff = now - lastSignal;
+      if (diff < 100) {
+        // If we got a signal twice in 100ms it likely was not an intentional human action.
+        // It could be a shaky MacBook keyboard or a known issue with "npm" scripts and signals.
+        logger.debug(`Ignoring signal ${signal} due to short delay of ${diff}ms`);
+        return;
+      }
+
       signalCount = signalCount + 1;
+      lastSignal = now;
+
       const signalDisplay = signal === "SIGINT" ? `SIGINT (Ctrl-C)` : signal;
       logger.debug(`Received signal ${signalDisplay} ${signalCount}`);
       logger.info(" "); // to not indent the log with the possible Ctrl-C char

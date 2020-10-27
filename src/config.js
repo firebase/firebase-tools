@@ -62,6 +62,7 @@ Config.MATERIALIZE_TARGETS = [
   "functions",
   "hosting",
   "storage",
+  "remoteconfig",
 ];
 
 Config.prototype._hasDeepKey = function(obj, key) {
