@@ -8,6 +8,7 @@ import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
 import { displayExtInstallInfo } from "../extensions/displayExtensionInfo";
 import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
@@ -132,6 +133,7 @@ export default new Command("ext:install [extensionName]")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     const projectId = getProjectId(options, false);
     const paramFilePath = options.params;

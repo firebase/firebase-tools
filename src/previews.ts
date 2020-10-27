@@ -5,7 +5,6 @@ interface PreviewFlags {
   rtdbrules: boolean;
   ext: boolean;
   extdev: boolean;
-  hostingchannels: boolean;
   rtdbmanagement: boolean;
 }
 
@@ -15,7 +14,6 @@ export const previews: PreviewFlags = Object.assign(
     rtdbrules: false,
     ext: false,
     extdev: false,
-    hostingchannels: false,
     rtdbmanagement: false,
   },
   configstore.get("previews")

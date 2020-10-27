@@ -2,7 +2,6 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as http from "http";
 
 import * as Config from "../config";
 import * as logger from "../logger";
@@ -20,6 +19,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -518,42 +518,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
         const ns = path.basename(f, ".json");
-
-        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
-
-        const readStream = fs.createReadStream(fPath);
-
-        await new Promise((resolve, reject) => {
-          const req = http.request(
-            {
-              method: "PUT",
-              host: databaseAddr.host,
-              port: databaseAddr.port,
-              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
-              headers: {
-                Authorization: "Bearer owner",
-                "Content-Type": "application/json",
-              },
-            },
-            (response) => {
-              if (response.statusCode === 200) {
-                resolve();
-              } else {
-                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
-                response
-                  .on("data", (d) => {
-                    databaseLogger.log("DEBUG", d.toString());
-                  })
-                  .on("end", reject);
-              }
-            }
-          );
-
-          req.on("error", reject);
-          readStream.pipe(req, { end: true });
-        }).catch((e) => {
-          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
-        });
+        await databaseEmulator.importData(ns, fPath);
       }
     }
   }
@@ -567,6 +532,24 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     });
 
     await startEmulator(hostingEmulator);
+  }
+
+  if (shouldStart(options, Emulators.AUTH)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        `Cannot start the ${Constants.description(
+          Emulators.AUTH
+        )} without a project: run 'firebase init' or provide the --project flag`
+      );
+    }
+
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authEmulator = new AuthEmulator({
+      host: authAddr.host,
+      port: authAddr.port,
+      projectId,
+    });
+    await startEmulator(authEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {

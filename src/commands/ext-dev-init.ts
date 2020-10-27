@@ -3,6 +3,7 @@ import * as path from "path";
 import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import * as Config from "../config";
 import { FirebaseError } from "../error";
@@ -116,6 +117,7 @@ async function javascriptSelected(config: Config): Promise<void> {
  */
 export default new Command("ext:dev:init")
   .description("initialize files for writing an extension in the current directory")
+  .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (options: any) => {
     const cwd = options.cwd || process.cwd();
     const config = new Config({}, { projectDir: cwd, cwd: cwd });

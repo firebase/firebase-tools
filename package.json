@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.10.0",
+  "version": "8.14.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -13,6 +13,7 @@
     "format": "npm run format:ts && npm run format:other",
     "format:other": "npm run lint:other -- --write",
     "format:ts": "npm run lint:ts -- --fix --quiet",
+    "generate:auth-api": "ts-node scripts/gen-auth-api-spec.ts",
     "lint": "npm run lint:ts && npm run lint:other",
     "lint:changed-files": "ts-node ./scripts/lint-changed-files.ts",
     "lint:other": "prettier --check '**/*.{md,yaml,yml}'",
@@ -86,6 +87,7 @@
     "cross-spawn": "^7.0.1",
     "csv-streamify": "^3.0.4",
     "dotenv": "^6.1.0",
+    "exegesis-express": "^2.0.0",
     "exit-code": "^1.0.2",
     "express": "^4.16.4",
     "filesize": "^3.1.3",
@@ -125,6 +127,7 @@
     "ws": "^7.2.3"
   },
   "devDependencies": {
+    "@manifoldco/swagger-to-ts": "^2.0.0",
     "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.2.12",
@@ -144,6 +147,7 @@
     "@types/lodash": "^4.14.149",
     "@types/marked": "^0.6.5",
     "@types/mocha": "^8.0.3",
+    "@types/multer": "^1.4.3",
     "@types/nock": "^9.3.0",
     "@types/node": "^10.12.0",
     "@types/plist": "^3.0.1",
@@ -172,17 +176,20 @@
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-jsdoc": "^22.1.0",
     "eslint-plugin-prettier": "^3.1.0",
-    "firebase": "^7.14.0",
+    "firebase": "^7.24.0",
     "firebase-admin": "^8.9.0",
-    "firebase-functions": "^3.10.0",
+    "firebase-functions": "^3.11.0",
+    "google-discovery-to-swagger": "^2.1.0",
     "mocha": "^8.1.3",
     "nock": "^9.3.3",
     "nyc": "^15.1.0",
+    "openapi-merge": "^1.0.23",
     "prettier": "^1.19.0",
     "sinon": "^6.3.4",
     "sinon-chai": "^3.2.0",
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
+    "swagger2openapi": "^6.0.3",
     "ts-node": "^7.0.1",
     "typescript": "^3.9.5"
   }
