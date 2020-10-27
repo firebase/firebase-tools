@@ -26,6 +26,17 @@ describe("normalizedHostingConfigs", () => {
     );
   });
 
+  it("should not modify the config when resolving targets", () => {
+    const singleHostingConfig = { target: "target" };
+    const cmdConfig = {
+      site: "default-site",
+      config: { get: () => singleHostingConfig },
+      rc: { requireTarget: () => ["default-site"] },
+    };
+    normalizedHostingConfigs(cmdConfig, { resolveTargets: true });
+    expect(singleHostingConfig).to.deep.equal({ target: "target" });
+  });
+
   describe("without an only parameter", () => {
     const DEFAULT_SITE = "default-hosting-site";
     const baseConfig = { public: "public", ignore: ["firebase.json"] };

@@ -1,4 +1,5 @@
 import { bold } from "cli-color";
+import { cloneDeep } from "lodash";
 
 import { FirebaseError } from "../error";
 
@@ -65,7 +66,7 @@ export function normalizedHostingConfigs(
   cmdOptions: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   options: { resolveTargets?: boolean } = {}
 ): HostingConfig[] {
-  let configs = cmdOptions.config.get("hosting");
+  let configs = cloneDeep(cmdOptions.config.get("hosting"));
   if (!configs) {
     return [];
   }
