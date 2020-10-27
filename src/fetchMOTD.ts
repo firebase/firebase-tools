@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as request from "request";
 import * as semver from "semver";
+import got from "got";
 
 import { configstore } from "./configstore";
 import * as api from "./api";
@@ -15,7 +15,7 @@ const ONE_DAY_MS = 1000 * 60 * 60 * 24;
 /**
  * Fetches the message of the day.
  */
-export function fetchMOTD(): void {
+export async function fetchMOTD(): Promise<void> {
   let motd = configstore.get("motd");
   const motdFetched = configstore.get("motd.fetched") || 0;
 
@@ -43,19 +43,19 @@ export function fetchMOTD(): void {
       }
     }
   } else {
-    request(
-      {
-        url: utils.addSubdomain(api.realtimeOrigin, "firebase-public") + "/cli.json",
-        json: true,
-      },
-      (err, res, body) => {
-        if (err) {
-          return;
-        }
-        motd = _.assign({}, body);
-        configstore.set("motd", motd);
-        configstore.set("motd.fetched", Date.now());
-      }
-    );
+    logger.debug("Fetching MOTD...");
+    const url = utils.addSubdomain(api.realtimeOrigin, "firebase-public") + "/cli.json";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let body: any = {};
+    try {
+      body = await got.get(url).json();
+    } catch (err) {
+      logger.debug(`Failed to get MOTD: ${err}`);
+      return;
+    }
+
+    motd = _.assign({}, body);
+    configstore.set("motd", motd);
+    configstore.set("motd.fetched", Date.now());
   }
 }

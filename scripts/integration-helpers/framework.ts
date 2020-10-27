@@ -1,4 +1,4 @@
-import * as request from "request";
+import got, { Response } from "got";
 
 import { CLIProcess } from "./cli";
 
@@ -115,31 +115,31 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<request.Response> {
+  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
     const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
     return new Promise((resolve, reject) => {
-      request.get(url, {}, (err, res) => {
-        if (err) return reject(err);
-        resolve(res);
-      });
+      got
+        .get(url)
+        .then((res) => resolve(res))
+        .catch((err) => reject(err));
     });
   }
 
-  writeToRtdb(): Promise<request.Response> {
+  writeToRtdb(): Promise<Response> {
     return this.invokeHttpFunction("writeToRtdb");
   }
 
-  writeToFirestore(): Promise<request.Response> {
+  writeToFirestore(): Promise<Response> {
     return this.invokeHttpFunction("writeToFirestore");
   }
 
-  writeToPubsub(): Promise<request.Response> {
+  writeToPubsub(): Promise<Response> {
     return this.invokeHttpFunction("writeToPubsub");
   }
 
-  writeToScheduledPubsub(): Promise<request.Response> {
+  writeToScheduledPubsub(): Promise<Response> {
     return this.invokeHttpFunction("writeToScheduledPubsub");
   }
 
