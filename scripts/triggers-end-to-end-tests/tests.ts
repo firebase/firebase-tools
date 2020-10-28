@@ -243,7 +243,6 @@ describe("auth emulator function triggers", () => {
     if (NODE_VERSION < 10) {
       // eslint-disable-next-line no-invalid-this
       this.skip();
-      return;
     }
 
     const response = await test.writeToAuth();
