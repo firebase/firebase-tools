@@ -22,7 +22,11 @@ export async function getEtag(projectNumber: string, versionNumber?: string): Pr
     timeout: TIMEOUT,
     headers: { "Accept-Encoding": "gzip" },
   });
-  return response.response.headers.etag;
+  const etag = response.response.headers["etag"] || "";
+  if (Array.isArray(etag)) {
+    return etag[0];
+  }
+  return etag;
 }
 
 /**

@@ -43,7 +43,7 @@ export async function check(
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
 export async function enable(projectId: string, apiName: string): Promise<void> {
-  return api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
+  await api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
     auth: true,
     origin: api.serviceUsageOrigin,
   });

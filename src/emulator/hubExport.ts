@@ -85,7 +85,7 @@ export class HubExport {
       export_name: metadata.firestore!!.path,
     };
 
-    return api.request("POST", `/emulator/v1/projects/${this.projectId}:export`, {
+    await api.request("POST", `/emulator/v1/projects/${this.projectId}:export`, {
       origin: firestoreHost,
       json: true,
       data: firestoreExportBody,

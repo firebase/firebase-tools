@@ -13,8 +13,8 @@ export class EmulatorHubClient {
     return this.locator !== undefined;
   }
 
-  getStatus(): Promise<void> {
-    return api.request("GET", "/", {
+  async getStatus(): Promise<void> {
+    await api.request("GET", "/", {
       origin: this.origin,
     });
   }
@@ -30,8 +30,8 @@ export class EmulatorHubClient {
       });
   }
 
-  postExport(path: string): Promise<void> {
-    return api.request("POST", EmulatorHub.PATH_EXPORT, {
+  async postExport(path: string): Promise<void> {
+    await api.request("POST", EmulatorHub.PATH_EXPORT, {
       origin: this.origin,
       json: true,
       data: {
