@@ -2,7 +2,7 @@
 
 source scripts/set-default-credentials.sh
 
-npm link
+sudo npm link
 
 echo "NODE_VERSION=$NODE_VERSION"
 (
