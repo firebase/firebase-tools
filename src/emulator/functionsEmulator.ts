@@ -676,13 +676,9 @@ export class FunctionsEmulator implements EmulatorInstance {
    * Returns a node major version ("10", "8") or null
    * @param frb the current Functions Runtime Bundle
    */
-  getRequestedNodeRuntimeVersion(frb: FunctionsRuntimeBundle): string | null {
+  getRequestedNodeRuntimeVersion(frb: FunctionsRuntimeBundle): string | undefined {
     const pkg = require(path.join(frb.cwd, "package.json"));
-    if ((!pkg.engines || !pkg.engines.node) && !frb.nodeMajorVersion) {
-      return null;
-    }
-
-    return frb.nodeMajorVersion || pkg.engines.node;
+    return frb.nodeMajorVersion || (pkg.engines && pkg.engines.node);
   }
   /**
    * Returns the path to a "node" executable to use.
