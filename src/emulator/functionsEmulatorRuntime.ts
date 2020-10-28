@@ -23,10 +23,6 @@ import { URL } from "url";
 import * as _ from "lodash";
 
 let triggers: EmulatedTriggerMap | undefined;
-
-let hasAccessedFirestore = false;
-let hasAccessedDatabase = false;
-
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -529,6 +525,14 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
 
       // When the auth emulator is running, try to disable JWT verification.
       if (frb.emulators.auth) {
+        if (compareVersionStrings(adminResolution.version, "9.3.0") < 0) {
+          new EmulatorLog(
+            "WARN_ONCE",
+            "runtime-status",
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+          ).log();
+        }
+
         const auth = defaultApp.auth();
         if (typeof (auth as any).setJwtVerificationEnabled === "function") {
           logDebug("auth.setJwtVerificationEnabled(false)", {});
@@ -541,16 +545,16 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 
@@ -571,36 +575,34 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target: any) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 }
 
-function warnAboutFirestoreProd(): void {
-  if (hasAccessedFirestore) {
+function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.firestore) {
     return;
   }
 
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
-
-  hasAccessedFirestore = true;
 }
 
-function warnAboutDatabaseProd(): void {
-  if (hasAccessedDatabase) {
+function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.database) {
     return;
   }
 
@@ -609,8 +611,18 @@ function warnAboutDatabaseProd(): void {
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
+}
 
-  hasAccessedDatabase = true;
+function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.auth) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN_ONCE",
+    "runtime-status",
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+  ).log();
 }
 
 async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
