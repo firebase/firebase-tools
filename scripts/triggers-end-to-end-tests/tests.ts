@@ -235,12 +235,13 @@ describe("auth emulator function triggers", () => {
     await test.stopEmulators();
   });
 
-  it("should write to the auth emulator", async function() {    
+  it("should write to the auth emulator", async function() {
     // eslint-disable-next-line no-invalid-this
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     // This test only works on Node 10+
     if (NODE_VERSION < 10) {
+      // eslint-disable-next-line no-invalid-this
       this.skip();
       return;
     }
