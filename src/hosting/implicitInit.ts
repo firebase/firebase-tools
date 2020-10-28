@@ -9,9 +9,14 @@ import { EmulatorRegistry } from "../emulator/registry";
 import { EMULATORS_SUPPORTED_BY_USE_EMULATOR, Address, Emulators } from "../emulator/types";
 
 const INIT_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/hosting/init.js", "utf8");
+const INIT_EMULATORS_TEMPLATE = fs.readFileSync(
+  __dirname + "/../../templates/hosting/initEmulators.js",
+  "utf8"
+);
 
 export interface TemplateServerResponse {
   js: string;
+  emulatorsJs: string;
   json: string;
 }
 
@@ -70,7 +75,8 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   const emulatorsJson = JSON.stringify(emulators, null, 2);
 
   return {
-    js: INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`).replace(
+    js: INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`),
+    emulatorsJs: INIT_EMULATORS_TEMPLATE.replace(
       "/*--EMULATORS--*/",
       `var firebaseEmulators = ${emulatorsJson};`
     ),

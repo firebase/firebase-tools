@@ -38,6 +38,9 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
     } else if (req.url === "/__/firebase/init.js") {
       res.setHeader("Content-Type", "application/javascript");
       res.end(init.js);
+    } else if (req.url === "/__/firebase/initEmulators.js") {
+      res.setHeader("Content-Type", "application/javascript");
+      res.end(init.emulatorsJs);
     } else if (req.url === "/__/firebase/init.json") {
       res.setHeader("Content-Type", "application/json");
       res.end(init.json);
