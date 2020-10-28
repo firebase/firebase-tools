@@ -22,7 +22,7 @@ TEMP_DIR="$(mktemp -d)"
 echo "Created temp directory: ${TEMP_DIR}"
 
 echo "Installing firebase-tools..."
-npm link
+./scripts/npm-link.sh
 echo "Installed firebase-tools: $(which firebase)"
 
 echo "Initializing temp directory..."

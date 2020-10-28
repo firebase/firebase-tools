@@ -100,7 +100,7 @@ jobs:
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
         env:
-          NODE_VERSION: ${{ matrix.node_version }}
+          NODE_VERSION: ${{ matrix.node-version }}
 
       - name: Print debug logs
         if: failure()

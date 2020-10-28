@@ -1,8 +1,7 @@
 #!/bin/bash
 
 source scripts/set-default-credentials.sh
-
-sudo npm link
+./scripts/npm-link.sh
 
 echo "NODE_VERSION=$NODE_VERSION"
 (
