@@ -1,4 +1,5 @@
 import { bold } from "cli-color";
+import { cloneDeep } from "lodash";
 
 import { FirebaseError } from "../error";
 
@@ -24,16 +25,35 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
     .filter((target) => target.startsWith("hosting:"))
     .map((target) => target.replace("hosting:", ""));
 
-  // Check to see that all the hosting deploy targets exist in the hosting config
-  onlyTargets.forEach((onlyTarget) => {
-    if (!configs.some((config) => config.target === onlyTarget)) {
-      throw new FirebaseError(`Hosting target ${bold(onlyTarget)} not detected in firebase.json`);
+  const configsBySite = new Map<string, HostingConfig>();
+  const configsByTarget = new Map<string, HostingConfig>();
+  for (const c of configs) {
+    if (c.site) {
+      configsBySite.set(c.site, c);
     }
-  });
+    if (c.target) {
+      configsByTarget.set(c.target, c);
+    }
+  }
 
-  return configs.filter((config: HostingConfig) =>
-    onlyTargets.includes(config.target || config.site)
-  );
+  const filteredConfigs: HostingConfig[] = [];
+  // Check to see that all the hosting deploy targets exist in the hosting
+  // config as either `site`s or `target`s.
+  for (const onlyTarget of onlyTargets) {
+    if (configsBySite.has(onlyTarget)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      filteredConfigs.push(configsBySite.get(onlyTarget)!);
+    } else if (configsByTarget.has(onlyTarget)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      filteredConfigs.push(configsByTarget.get(onlyTarget)!);
+    } else {
+      throw new FirebaseError(
+        `Hosting site or target ${bold(onlyTarget)} not detected in firebase.json`
+      );
+    }
+  }
+
+  return filteredConfigs;
 }
 
 /**
@@ -46,7 +66,7 @@ export function normalizedHostingConfigs(
   cmdOptions: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   options: { resolveTargets?: boolean } = {}
 ): HostingConfig[] {
-  let configs = cmdOptions.config.get("hosting");
+  let configs = cloneDeep(cmdOptions.config.get("hosting"));
   if (!configs) {
     return [];
   }
@@ -61,10 +81,18 @@ export function normalizedHostingConfigs(
     configs = [configs];
   }
 
-  configs = filterOnly(configs, cmdOptions.only);
+  for (const c of configs) {
+    if (c.target && c.site) {
+      throw new FirebaseError(
+        `Hosting configs should only include either "site" or "target", not both.`
+      );
+    }
+  }
+
+  const hostingConfigs: HostingConfig[] = filterOnly(configs, cmdOptions.only);
 
   if (options.resolveTargets) {
-    configs.forEach((cfg: HostingConfig) => {
+    for (const cfg of hostingConfigs) {
       if (cfg.target) {
         const matchingTargets = cmdOptions.rc.requireTarget(
           cmdOptions.project,
@@ -82,8 +110,8 @@ export function normalizedHostingConfigs(
       } else if (!cfg.site) {
         throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
       }
-    });
+    }
   }
 
-  return configs;
+  return hostingConfigs;
 }
