@@ -8,6 +8,8 @@ import * as path from "path";
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
+const NODE_VERSION = Number.parseInt(process.env.NODE_VERSION || "8");
+
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
   getAccessToken: () => {
@@ -210,6 +212,52 @@ describe("pubsub emulator function triggers", () => {
 
   it("should have have triggered cloud functions", () => {
     expect(test.pubsubTriggerCount).to.equal(2);
+  });
+});
+
+describe("auth emulator function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions,auth"]);
+  });
+
+  after(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should write to the auth emulator", async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    // This test only works on Node 10+
+    if (NODE_VERSION < 10) {
+      // eslint-disable-next-line no-invalid-this
+      this.skip();
+    }
+
+    const response = await test.writeToAuth();
+    expect(response.statusCode).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have have triggered cloud functions", function() {
+    // This test only works on Node 10+
+    if (NODE_VERSION < 10) {
+      // eslint-disable-next-line no-invalid-this
+      this.skip();
+    }
+
+    expect(test.authTriggerCount).to.equal(1);
   });
 });
 
