@@ -213,6 +213,40 @@ describe("pubsub emulator function triggers", () => {
   });
 });
 
+describe("auth emulator function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions,auth"]);
+  });
+
+  after(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should write to the auth emulator", async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    const response = await test.writeToAuth();
+    expect(response.statusCode).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have have triggered cloud functions", () => {
+    expect(test.authTriggerCount).to.equal(1);
+  });
+});
+
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function() {
     // eslint-disable-next-line no-invalid-this
