@@ -1,1 +1,1 @@
-- Fixes Cloud Function inspection when using standalone binary release
+- Fixes Cloud Function inspection when using standalone binary release (#2740)
