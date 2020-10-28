@@ -1,0 +1,1 @@
+- Automatically connect to running emulators from the Hosting emulator.
