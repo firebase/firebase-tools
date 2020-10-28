@@ -250,7 +250,7 @@ describe("auth emulator function triggers", () => {
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered cloud functions", function () {
+  it("should have have triggered cloud functions", function() {
     // This test only works on Node 10+
     if (NODE_VERSION < 10) {
       // eslint-disable-next-line no-invalid-this
