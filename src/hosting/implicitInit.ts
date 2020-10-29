@@ -66,9 +66,12 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   const emulators: { [e in Emulators]?: Address } = {};
   for (const e of EMULATORS_SUPPORTED_BY_USE_EMULATOR) {
     const info = EmulatorRegistry.getInfo(e);
+
     if (info) {
+      // IPv6 hosts need to be quoted using brackets.
+      const host = info.host.includes(":") ? `[${info.host}]` : info.host;
       emulators[e] = {
-        host: info.host,
+        host,
         port: info.port,
       };
     }
