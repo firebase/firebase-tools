@@ -78,8 +78,12 @@ export async function implicitInit(options: any): Promise<TemplateServerResponse
   }
   const emulatorsJson = JSON.stringify(emulators, null, 2);
 
-  const js = INIT_TEMPLATE.replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`);
-  const emulatorsJs = js.replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
+  const js = INIT_TEMPLATE
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", `var firebaseEmulators = undefined;`);
+  const emulatorsJs = INIT_TEMPLATE
+    .replace("/*--CONFIG--*/", `var firebaseConfig = ${configJson};`)
+    .replace("/*--EMULATORS--*/", `var firebaseEmulators = ${emulatorsJson};`);
   return {
     js,
     emulatorsJs,
