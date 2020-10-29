@@ -1,1 +1,2 @@
+- Fixes Cloud Function inspection when using standalone binary release (#2740)
 - Automatically connect to running emulators from the Hosting emulator.
