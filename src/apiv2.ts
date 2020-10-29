@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as https from "https";
 import * as requestModule from "request";
 
