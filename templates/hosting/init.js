@@ -5,9 +5,9 @@ if (firebaseConfig) {
   firebase.initializeApp(firebaseConfig);
 
   if (firebaseEmulators) {
-    console.warn("Automatically connecting Firebase SDKs to running emulators:");
+    console.log("Automatically connecting Firebase SDKs to running emulators:");
     Object.keys(firebaseEmulators).forEach(function(key) {
-      console.warn('\t' + key + ': http://' +  firebaseEmulators[key].host + ':' + firebaseEmulators[key].port );
+      console.log('\t' + key + ': http://' +  firebaseEmulators[key].host + ':' + firebaseEmulators[key].port );
     });
 
     if (firebaseEmulators.database && typeof firebase.database === 'function') {
