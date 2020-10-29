@@ -39,7 +39,6 @@ import { promptOnce } from "../prompt";
 import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
-import { previews } from "../previews";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
   const host = Constants.normalizeHost(
@@ -168,10 +167,6 @@ export function filterEmulatorTargets(options: any): Emulators[] {
     targets = _.intersection(targets, options.only.split(","));
   }
 
-  if (!previews.authemulator) {
-    targets = targets.filter((e) => e !== Emulators.AUTH);
-  }
-
   return targets;
 }
 
@@ -224,10 +219,6 @@ export function shouldStart(options: any, name: Emulators): boolean {
         "firebase init hosting"
       )}?`
     );
-    return false;
-  }
-
-  if (name === Emulators.AUTH && !previews.authemulator) {
     return false;
   }
 

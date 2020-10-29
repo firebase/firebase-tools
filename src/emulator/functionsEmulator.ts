@@ -673,6 +673,14 @@ export class FunctionsEmulator implements EmulatorInstance {
     };
   }
   /**
+   * Returns a node major version ("10", "8") or null
+   * @param frb the current Functions Runtime Bundle
+   */
+  getRequestedNodeRuntimeVersion(frb: FunctionsRuntimeBundle): string | undefined {
+    const pkg = require(path.join(frb.cwd, "package.json"));
+    return frb.nodeMajorVersion || (pkg.engines && pkg.engines.node);
+  }
+  /**
    * Returns the path to a "node" executable to use.
    * @param cwd the directory to checkout for a package.json file.
    * @param nodeMajorVersion forces the emulator to choose this version. Used when emulating extensions,
@@ -707,6 +715,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Will happen if we haven't asked about local version yet
     }
 
+    // If the requested version is already locally available, let's use that
+    if (requestedMajorVersion === localMajorVersion) {
+      this.logger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from local cache.`
+      );
+      return localNodePath;
+    }
+
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
       this.logger.logLabeled(
@@ -715,16 +733,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         `Using node@${requestedMajorVersion} from host.`
       );
       return process.execPath;
-    }
-
-    // If the requested version is already locally available, let's use that
-    if (localMajorVersion === requestedMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
-      );
-      return localNodePath;
     }
 
     // Otherwise we'll begin the conversational flow to install the correct version locally
@@ -750,8 +758,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     if (this.args.debugPort) {
-      const { host } = this.getInfo();
-      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      if (process.env.FIREPIT_VERSION && process.execPath == opts.nodeBinary) {
+        const requestedMajorNodeVersion = this.getRequestedNodeRuntimeVersion(frb);
+        this.logger.log(
+          "WARN",
+          `To enable function inspection, please run "${process.execPath} is:npm i node@${requestedMajorNodeVersion} --save-dev" in your functions directory`
+        );
+      } else {
+        const { host } = this.getInfo();
+        args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      }
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {

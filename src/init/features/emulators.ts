@@ -5,7 +5,6 @@ import { prompt } from "../../prompt";
 import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
-import { previews } from "../../previews";
 
 interface EmulatorsInitSelections {
   emulators?: Emulators[];
@@ -13,9 +12,7 @@ interface EmulatorsInitSelections {
 }
 
 export async function doSetup(setup: any, config: any) {
-  const choices = ALL_SERVICE_EMULATORS.filter(
-    (emulator) => emulator !== Emulators.AUTH || previews.authemulator
-  ).map((e) => {
+  const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
       name: Constants.description(e),

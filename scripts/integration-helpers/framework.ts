@@ -11,6 +11,7 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
+const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -24,6 +25,7 @@ export interface FrameworkOptions {
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
     pubsub: ConnectionInfo;
+    auth: ConnectionInfo;
   };
 }
 
@@ -36,10 +38,13 @@ export class TriggerEndToEndTest {
   functionsEmulatorPort = 0;
   pubsubEmulatorHost = "localhost";
   pubsubEmulatorPort = 0;
+  authEmulatorHost = "localhost";
+  authEmulatorPort = 0;
   allEmulatorsStarted = false;
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
   pubsubTriggerCount = 0;
+  authTriggerCount = 0;
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
   rtdbFromRtdb = false;
@@ -52,6 +57,7 @@ export class TriggerEndToEndTest {
       this.firestoreEmulatorPort = config.emulators.firestore?.port;
       this.functionsEmulatorPort = config.emulators.functions?.port;
       this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+      this.authEmulatorPort = config.emulators.auth?.port;
     }
   }
 
@@ -86,6 +92,9 @@ export class TriggerEndToEndTest {
       }
       if (data.includes(PUBSUB_FUNCTION_LOG)) {
         this.pubsubTriggerCount++;
+      }
+      if (data.includes(AUTH_FUNCTION_LOG)) {
+        this.authTriggerCount++;
       }
     });
 
@@ -137,6 +146,10 @@ export class TriggerEndToEndTest {
 
   writeToPubsub(): Promise<request.Response> {
     return this.invokeHttpFunction("writeToPubsub");
+  }
+
+  writeToAuth(): Promise<request.Response> {
+    return this.invokeHttpFunction("writeToAuth");
   }
 
   writeToScheduledPubsub(): Promise<request.Response> {
