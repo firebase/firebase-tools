@@ -5,6 +5,7 @@ var querystring = require("querystring");
 var request = require("request");
 var url = require("url");
 
+var apiv2 = require("./apiv2");
 var { Constants } = require("./emulator/constants");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
@@ -196,9 +197,11 @@ var api = {
   ),
   setRefreshToken: function(token) {
     refreshToken = token;
+    apiv2.setRefreshToken(token);
   },
   setAccessToken: function(token) {
     accessToken = token;
+    apiv2.setAccessToken(token);
   },
   getScopes: function() {
     return commandScopes;
@@ -215,6 +218,7 @@ var api = {
       )
     );
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
+    apiv2.setScopes(s);
   },
   getAccessToken: function() {
     // Runtime fetch of Auth singleton to prevent circular module dependencies

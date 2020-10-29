@@ -1,5 +1,6 @@
 import { FirebaseError } from "../error";
 import * as api from "../api";
+import * as apiv2 from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
@@ -175,14 +176,10 @@ export async function getChannel(
   channelId: string
 ): Promise<Channel | null> {
   try {
-    const res = await api.request(
-      "GET",
-      `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-      {
-        auth: true,
-        origin: api.hostingApiOrigin,
-      }
-    );
+    const res = await apiv2.request<Channel>({
+      hostname: api.hostingApiOrigin,
+      path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
+    });
     return res.body;
   } catch (e) {
     if (e.status === 404) {
@@ -205,16 +202,16 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await api.request("GET", `/v1beta1/projects/${project}/sites/${site}/channels`, {
-        auth: true,
-        origin: api.hostingApiOrigin,
-        query: { pageToken: nextPageToken, pageSize: 100 },
+      const res = await apiv2.request<{ nextPageToken?: string; channels: Channel[] }>({
+        hostname: api.hostingApiOrigin,
+        path: `/v1beta1/projects/${project}/sites/${site}/channels`,
+        searchParams: { pageToken: nextPageToken, pageSize: 100 },
       });
       const c = res.body?.channels;
       if (c) {
         channels.push(...c);
       }
-      nextPageToken = res.body?.nextPageToken;
+      nextPageToken = res.body?.nextPageToken || "";
       if (!nextPageToken) {
         return channels;
       }
@@ -242,17 +239,12 @@ export async function createChannel(
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION
 ): Promise<Channel> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
-  );
+  const res = await apiv2.request<Channel>({
+    method: "POST",
+    hostname: api.hostingApiOrigin,
+    path: `/v1beta1/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
+    json: { ttl: `${ttlMillis / 1000}s` },
+  });
   return res.body;
 }
 
@@ -269,20 +261,13 @@ export async function updateChannelTtl(
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS
 ): Promise<Channel> {
-  const res = await api.request(
-    "PATCH",
-    `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      query: {
-        updateMask: ["ttl"].join(","),
-      },
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
-  );
+  const res = await apiv2.request<Channel>({
+    method: "PATCH",
+    hostname: api.hostingApiOrigin,
+    path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
+    searchParams: { updateMask: ["ttl"].join(",") },
+    json: { ttl: `${ttlMillis / 1000}s` },
+  });
   return res.body;
 }
 
@@ -297,9 +282,10 @@ export async function deleteChannel(
   site: string,
   channelId: string
 ): Promise<void> {
-  await api.request("DELETE", `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`, {
-    auth: true,
-    origin: api.hostingApiOrigin,
+  await apiv2.request({
+    method: "DELETE",
+    hostname: api.hostingApiOrigin,
+    path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
   });
 }
 
