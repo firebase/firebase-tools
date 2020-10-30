@@ -1,2 +1,3 @@
 - Fixes Cloud Function inspection when using standalone binary release (#2740)
+- Release RTDB emulator v4.6.1: Fix emulator crash on invalid `.validate` rules (#2734)
 - Automatically connect to running emulators from the Hosting emulator.
