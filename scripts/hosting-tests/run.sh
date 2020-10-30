@@ -75,6 +75,15 @@ kill "$PID"
 wait
 echo "Tested local hosting emulator."
 
+# This test can only run on one Node version in the matrix because if it runs twice
+# in parallel the deploys will clobber each other. This is only a temporary
+# workaround, when we update the CLI to stop supporting Node 8 we can remove
+# this hack or find some way to lock.
+if [ "$NODE_VERSION" = "12" ]; then
+  echo "Not running deployment tests on Node 12"
+  exit 0
+fi
+
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
 sleep 5
