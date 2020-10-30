@@ -79,8 +79,8 @@ echo "Tested local hosting emulator."
 # in parallel the deploys will clobber each other. This is only a temporary
 # workaround, when we update the CLI to stop supporting Node 8 we can remove
 # this hack or find some way to lock.
-if [ "$NODE_VERSION" = "12" ]; then
-  echo "Not running deployment tests on Node 12"
+if [ "${NODE_VERSION}" != 8* ]; then
+  echo "Not running deployment tests on Node version ${NODE_VERSION}"
   exit 0
 fi
 
