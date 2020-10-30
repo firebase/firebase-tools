@@ -1,9 +1,9 @@
 if (typeof firebase === 'undefined') throw new Error('hosting/init-error: Firebase SDK not detected. You must include it before /__/firebase/init.js');
 /*--CONFIG--*/
-/*--EMULATORS--*/
 if (firebaseConfig) {
   firebase.initializeApp(firebaseConfig);
 
+  /*--EMULATORS--*/
   if (firebaseEmulators) {
     console.log("Automatically connecting Firebase SDKs to running emulators:");
     Object.keys(firebaseEmulators).forEach(function(key) {
