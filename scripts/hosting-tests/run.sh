@@ -62,6 +62,15 @@ PID="$!"
 sleep 5
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+
+# Test that ?useEmulator has the expected effect on init.js
+INIT_JS_NONE="$(curl localhost:${PORT}/__/firebase/init.js)"
+[[ "${INIT_JS_NONE}" =~ "firebaseEmulators = undefined" ]] || (echo "Expected firebaseEmulators to be undefined" && false)
+INIT_JS_FALSE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=false)"
+[[ "${INIT_JS_FALSE}" =~ "firebaseEmulators = undefined" ]] || (echo "Expected firebaseEmulators to be undefined" && false)
+INIT_JS_TRUE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=true)"
+[[ "${INIT_JS_TRUE}" =~ "firebaseEmulators = {" ]] || (echo "Expected firebaseEmulators to be defined" && false)
+
 kill "$PID"
 wait
 echo "Tested local hosting emulator."
@@ -71,6 +80,12 @@ firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
 sleep 5
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+
+# Test that ?useEmulator has no effect on init.js
+INIT_JS_NONE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js)"
+INIT_JS_TRUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js\?useEmulator=true)"
+test "${INIT_JS_NONE}" = "${INIT_JS_TRUE}" || (echo "Expected ${INIT_JS_NONE} to equal ${INIT_JS_TRUE}." && false)
+
 echo "Tested hosting deployment."
 
 # Test more complex scenarios:
