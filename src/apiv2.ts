@@ -1,5 +1,4 @@
-import * as https from "https";
-import * as requestModule from "request";
+import fetch, { Response, RequestInit } from "node-fetch";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -10,7 +9,11 @@ const CLI_VERSION = require("../package.json").version;
 
 const VALID_METHODS = new Set(["GET", "PUT", "POST", "DELETE", "PATCH"]);
 
-type FirebaseRequestOptions = https.RequestOptions & {
+type FirebaseRequestOptions = {
+  method?: string;
+  baseURL: string;
+  path: string;
+  headers?: { [key: string]: string };
   json?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   responseType?: "json";
   searchParams?: { [key: string]: string | number };
@@ -19,15 +22,16 @@ type FirebaseRequestOptions = https.RequestOptions & {
 interface FirebaseRequestHandlingOptions {
   auth?: boolean;
   log?: {
-    searchParams: boolean;
-    body: boolean;
+    searchParams?: boolean;
+    body?: boolean;
+    resBody?: boolean;
   };
   resolveOnHTTPError?: boolean;
 }
 
 interface FirebaseResponse<T> {
   status: number;
-  response: requestModule.Response;
+  response: Response;
   body: T;
 }
 
@@ -35,63 +39,104 @@ let accessToken = "";
 let refreshToken = "";
 let commandScopes: string[] = [];
 
-function internalRequest<T>(
+async function internalRequest<T>(
   options: FirebaseRequestOptions,
   handlingOptions: FirebaseRequestHandlingOptions
 ): Promise<FirebaseResponse<T>> {
-  let searchParamsLog = "";
-  let bodyLog = "<request body omitted>";
-
-  if (options.searchParams && !handlingOptions.log?.searchParams) {
-    searchParamsLog = JSON.stringify(options.searchParams);
+  if (!options.path.startsWith("/")) {
+    options.path = "/" + options.path;
+  }
+  if (options.baseURL.endsWith("/")) {
+    options.baseURL.substring(0, options.baseURL.length - 1);
   }
 
-  if (!handlingOptions.log?.body) {
-    bodyLog = options.json;
+  let fetchURL = `${options.baseURL}${options.path}`;
+  if (options.searchParams) {
+    const sp = new URLSearchParams();
+    for (const key of Object.keys(options.searchParams)) {
+      const value = options.searchParams[key];
+      if (value) {
+        sp.append(key, `${value}`);
+      }
+    }
+    fetchURL += "?" + sp.toString();
   }
 
-  logger.debug(
-    "[apiv2] HTTP REQUEST:",
-    options.method,
-    options.protocol,
-    options.hostname,
-    options.path,
-    searchParamsLog
-  );
-  logger.debug("[apiv2] HTTP REQUEST BODY:", bodyLog);
-
-  const requestModuleOptions: requestModule.OptionsWithUrl = {
-    url: `${options.protocol}//${options.hostname}${options.path}`,
+  const fetchOptions: RequestInit = {
     headers: options.headers,
     method: options.method,
-    qs: options.searchParams,
   };
 
   if (options.json) {
-    requestModuleOptions.body = JSON.stringify(options.json);
+    fetchOptions.body = JSON.stringify(options.json);
   }
 
-  return new Promise((resolve, reject) => {
-    requestModule(requestModuleOptions, (err, response, body) => {
-      if (err) {
-        return reject(err);
-      }
+  logRequest(options, handlingOptions);
 
-      if (response.statusCode >= 400) {
-        return reject(responseToError(response, body));
-      }
+  let res: Response;
+  try {
+    res = await fetch(fetchURL, fetchOptions);
+  } catch (err) {
+    throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
+  }
 
-      if (options.responseType === "json") {
-        body = JSON.parse(body);
-      }
+  let body: T;
+  if (options.responseType === "json") {
+    body = await res.json();
+  } else {
+    body = (await res.text()) as any;
+  }
 
-      return resolve({
-        status: response.statusCode,
-        response,
-        body,
-      });
-    });
-  });
+  logResponse(res, body, handlingOptions);
+
+  if (res.status >= 400) {
+    throw responseToError({ statusCode: res.status }, body);
+  }
+
+  return {
+    status: res.status,
+    response: res,
+    body,
+  };
+}
+
+function logRequest(
+  fetchOptions: FirebaseRequestOptions,
+  handlingOptions: FirebaseRequestHandlingOptions
+): void {
+  let searchParamLog = "";
+  if (fetchOptions.searchParams) {
+    if (handlingOptions.log?.searchParams) {
+      searchParamLog = JSON.stringify(fetchOptions.searchParams);
+    } else {
+      searchParamLog = "[SEARCH PARAMS OMITTED]";
+    }
+  }
+  logger.debug(
+    "[apiv2] HTTP REQUEST:",
+    fetchOptions.method,
+    `${fetchOptions.baseURL}${fetchOptions.path}`,
+    searchParamLog
+  );
+  if (fetchOptions.json) {
+    if (handlingOptions.log?.body) {
+      logger.debug("[apiv2] HTTP REQUEST BODY:", JSON.stringify(fetchOptions.json));
+    } else {
+      logger.debug("[apiv2] HTTP REQUEST BODY OMITTED");
+    }
+  }
+}
+
+function logResponse<T>(
+  res: Response,
+  body: T,
+  handlingOptions: FirebaseRequestHandlingOptions
+): void {
+  logger.debug("[apiv2] HTTP RESPONSE", res.status, res.headers);
+
+  if (handlingOptions.log?.resBody) {
+    logger.debug("[apiv2] HTTP RESPONSE BODY", body);
+  }
 }
 
 /**
@@ -149,7 +194,7 @@ async function getAccessToken(): Promise<string> {
 
 async function addRequestHeaders(
   reqOptions: FirebaseRequestOptions
-): Promise<https.RequestOptions> {
+): Promise<FirebaseRequestOptions> {
   if (!reqOptions.headers) {
     reqOptions.headers = {};
   }
@@ -171,13 +216,12 @@ async function addRequestHeaders(
  * Makes a request as specified by the options.
  * By default, this will:
  *   - use content-type: application/json
- *   - assume https: protocol
  *   - assume the HTTP GET method
  *
  * @example
  * const res = apiv2.request<ResourceType>({
  *   method: "POST",
- *   hostname: "https://example.com",
+ *   baseURL: "https://example.com",
  *   path: "/some/resource",
  *   searchParams: { updateMask: "key" },
  *   json: { name: "resource-name", key: "updated-value" }
@@ -190,23 +234,23 @@ async function addRequestHeaders(
  */
 export async function request<T>(
   reqOptions: FirebaseRequestOptions,
-  handlingOptions: FirebaseRequestHandlingOptions = { auth: true }
+  handlingOptions?: FirebaseRequestHandlingOptions
 ): Promise<FirebaseResponse<T>> {
+  if (!handlingOptions) {
+    handlingOptions = { auth: true };
+  } else {
+    // If `auth` is undefined (not falsey), default it to true.
+    if (handlingOptions.auth === undefined) {
+      handlingOptions.auth = true;
+    }
+  }
+
   if (!reqOptions.method || !VALID_METHODS.has(reqOptions.method)) {
     reqOptions.method = "GET";
   }
 
-  if (!reqOptions.hostname) {
-    throw new FirebaseError("Cannot make request without a hostname", { exit: 2 });
-  }
-  // For backwards-compatibility with api.js origins, remove and set `protocol`.
-  if (reqOptions.hostname.startsWith("https://")) {
-    reqOptions.hostname = reqOptions.hostname.replace("https://", "");
-    reqOptions.protocol = "https:";
-  }
-
-  if (!reqOptions.protocol) {
-    reqOptions.protocol = "https:";
+  if (!reqOptions.baseURL) {
+    throw new FirebaseError("Cannot make request without a baseURL", { exit: 2 });
   }
 
   if (!reqOptions.path) {
@@ -218,13 +262,8 @@ export async function request<T>(
     reqOptions.responseType = "json";
   }
 
-  const requestFunction = async (): Promise<FirebaseResponse<T>> => {
-    if (handlingOptions.auth) {
-      reqOptions = await addRequestHeaders(reqOptions);
-    }
-    return internalRequest<T>(reqOptions, handlingOptions);
-  };
-
-  // TODO(bkendall): add retry handling.
-  return await requestFunction();
+  if (handlingOptions.auth) {
+    reqOptions = await addRequestHeaders(reqOptions);
+  }
+  return internalRequest<T>(reqOptions, handlingOptions);
 }

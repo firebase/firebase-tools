@@ -177,7 +177,7 @@ export async function getChannel(
 ): Promise<Channel | null> {
   try {
     const res = await apiv2.request<Channel>({
-      hostname: api.hostingApiOrigin,
+      baseURL: api.hostingApiOrigin,
       path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
     });
     return res.body;
@@ -203,7 +203,7 @@ export async function listChannels(
   for (;;) {
     try {
       const res = await apiv2.request<{ nextPageToken?: string; channels: Channel[] }>({
-        hostname: api.hostingApiOrigin,
+        baseURL: api.hostingApiOrigin,
         path: `/v1beta1/projects/${project}/sites/${site}/channels`,
         searchParams: { pageToken: nextPageToken, pageSize: 100 },
       });
@@ -241,7 +241,7 @@ export async function createChannel(
 ): Promise<Channel> {
   const res = await apiv2.request<Channel>({
     method: "POST",
-    hostname: api.hostingApiOrigin,
+    baseURL: api.hostingApiOrigin,
     path: `/v1beta1/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
     json: { ttl: `${ttlMillis / 1000}s` },
   });
@@ -263,7 +263,7 @@ export async function updateChannelTtl(
 ): Promise<Channel> {
   const res = await apiv2.request<Channel>({
     method: "PATCH",
-    hostname: api.hostingApiOrigin,
+    baseURL: api.hostingApiOrigin,
     path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
     searchParams: { updateMask: ["ttl"].join(",") },
     json: { ttl: `${ttlMillis / 1000}s` },
@@ -284,7 +284,7 @@ export async function deleteChannel(
 ): Promise<void> {
   await apiv2.request({
     method: "DELETE",
-    hostname: api.hostingApiOrigin,
+    baseURL: api.hostingApiOrigin,
     path: `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
   });
 }
