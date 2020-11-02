@@ -84,7 +84,8 @@ async function internalRequest<T>(
   if (options.responseType === "json") {
     body = await res.json();
   } else {
-    body = (await res.text()) as any;
+    // This is how the linter wants the casting to T to work.
+    body = ((await res.text()) as unknown) as T;
   }
 
   logResponse(res, body, handlingOptions);
