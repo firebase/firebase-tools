@@ -52,14 +52,16 @@ async function internalRequest<T>(
 
   let fetchURL = `${options.baseURL}${options.path}`;
   if (options.searchParams) {
-    const sp = new URLSearchParams();
+    // TODO(bkendall): replace this half-hearted implementation with
+    // URLSearchParams when on node >= 10.
+    const sp: string[] = [];
     for (const key of Object.keys(options.searchParams)) {
       const value = options.searchParams[key];
-      if (value) {
-        sp.append(key, `${value}`);
-      }
+      sp.push(`${key}=${encodeURIComponent(value)}`);
     }
-    fetchURL += "?" + sp.toString();
+    if (sp.length) {
+      fetchURL += "?" + sp.join("&");
+    }
   }
 
   const fetchOptions: RequestInit = {
