@@ -43,15 +43,15 @@ async function typescriptSelected(config: Config): Promise<void> {
     path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
     "utf8"
   );
-  const tslintTemplate = fs.readFileSync(
-    path.join(FUNCTIONS_ROOT, "typescript", "tslint.json"),
+  const eslintTemplate = fs.readFileSync(
+    path.join(FUNCTIONS_ROOT, "typescript", "_eslintrc"),
     "utf8"
   );
 
   const lint = await promptOnce({
     name: "lint",
     type: "confirm",
-    message: "Do you want to use TSLint to catch probable bugs and enforce style?",
+    message: "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
 
@@ -61,7 +61,7 @@ async function typescriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   if (lint) {
     await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/tslint.json", tslintTemplate);
+    await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
   } else {
     await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
   }
