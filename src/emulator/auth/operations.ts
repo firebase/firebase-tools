@@ -215,10 +215,6 @@ function lookup(
         }
       }
     }
-    return {
-      kind: "identitytoolkit#GetAccountInfoResponse",
-      users,
-    };
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
     const { user } = parseIdToken(state, reqBody.idToken);
@@ -226,7 +222,10 @@ function lookup(
   }
   return {
     kind: "identitytoolkit#GetAccountInfoResponse",
-    users,
+
+    // Drop users property if no users are found. This is needed for Node.js
+    // Admin SDK: https://github.com/firebase/firebase-admin-node/issues/1078
+    users: users.length ? users : undefined,
   };
 }
 
