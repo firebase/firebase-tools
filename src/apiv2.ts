@@ -61,14 +61,17 @@ export function setAccessToken(token = ""): void {
 
 export type ClientOptions = {
   origin: string;
-  apiVersion: string;
-  auth: boolean;
+  apiVersion?: string;
+  auth?: boolean;
 };
 
 export class Client {
   constructor(private opts: ClientOptions) {
     if (this.opts.auth === undefined) {
       this.opts.auth = true;
+    }
+    if (this.opts.origin.endsWith("/")) {
+      this.opts.origin = this.opts.origin.substring(0, this.opts.origin.length - 1);
     }
   }
 
@@ -134,9 +137,7 @@ export class Client {
    *
    * @param reqOptions request options.
    */
-  private async request<ReqT, ResT>(
-    reqOptions: ClientRequestOptions<ReqT>
-  ): Promise<ClientResponse<ResT>> {
+  async request<ReqT, ResT>(reqOptions: ClientRequestOptions<ReqT>): Promise<ClientResponse<ResT>> {
     // All requests default to JSON content types.
     if (!reqOptions.responseType) {
       reqOptions.responseType = "json";
@@ -147,7 +148,14 @@ export class Client {
     if (this.opts.auth) {
       reqOptions = await this.addAuthHeader(reqOptions);
     }
-    return this.doRequest<ReqT, ResT>(reqOptions);
+    try {
+      return this.doRequest<ReqT, ResT>(reqOptions);
+    } catch (err) {
+      if (err instanceof FirebaseError) {
+        throw err;
+      }
+      throw new FirebaseError(`Failed to make request: ${err}`, { original: err });
+    }
   }
 
   private addRequestHeaders<T>(reqOptions: ClientRequestOptions<T>): ClientRequestOptions<T> {
@@ -189,11 +197,9 @@ export class Client {
     if (!options.path.startsWith("/")) {
       options.path = "/" + options.path;
     }
-    if (this.opts.origin.endsWith("/")) {
-      this.opts.origin.substring(0, this.opts.origin.length - 1);
-    }
 
-    let fetchURL = `${this.opts.origin}/${this.opts.apiVersion}${options.path}`;
+    const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
+    let fetchURL = `${this.opts.origin}${versionPath}${options.path}`;
     if (options.queryParams) {
       // TODO(bkendall): replace this half-hearted implementation with
       // URLSearchParams when on node >= 10.
@@ -255,7 +261,8 @@ export class Client {
         searchParamLog = "[SEARCH PARAMS OMITTED]";
       }
     }
-    const urlLog = `${this.opts.origin}/${this.opts.apiVersion}${fetchOptions.path}`;
+    const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
+    const urlLog = `${this.opts.origin}/${versionPath}${fetchOptions.path}`;
     logger.debug("[apiv2] HTTP REQUEST:", fetchOptions.method, urlLog, searchParamLog);
     if (fetchOptions.json) {
       if (!fetchOptions.skipLog?.body) {
