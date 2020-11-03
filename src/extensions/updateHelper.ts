@@ -169,13 +169,7 @@ export interface UpdateOptions {
  * @param updateOptions Info on the instance and associated resources to update
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
-  const {
-    projectId,
-    instanceId,
-    source,
-    extRef,
-    params,
-  } = updateOptions;
+  const { projectId, instanceId, source, extRef, params } = updateOptions;
   if (source) {
     return await extensionsApi.updateInstance(projectId, instanceId, source, params);
   } else if (extRef) {

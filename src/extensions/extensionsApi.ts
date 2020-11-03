@@ -151,7 +151,7 @@ export interface ParamOption {
 export async function createInstance(
   projectId: string,
   instanceId: string,
-  config: any,
+  config: any
 ): Promise<ExtensionInstance> {
   const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
     auth: true,
@@ -182,7 +182,7 @@ export async function createInstanceFromSource(
   projectId: string,
   instanceId: string,
   extensionSource: ExtensionSource,
-  params: { [key: string]: string },
+  params: { [key: string]: string }
 ): Promise<ExtensionInstance> {
   const config = {
     source: { name: extensionSource.name },
@@ -203,7 +203,7 @@ export async function createInstanceFromExtensionVersion(
   projectId: string,
   instanceId: string,
   extensionVersion: ExtensionVersion,
-  params: { [key: string]: string },
+  params: { [key: string]: string }
 ): Promise<ExtensionInstance> {
   const { publisherId, extensionId, version } = parseRef(extensionVersion.ref);
   const config = {
