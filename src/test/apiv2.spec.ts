@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
-import * as scopes from "../scopes";
 import * as helpers from "./helpers";
 
 describe("apiv2", () => {
