@@ -523,17 +523,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
   }
 
-  if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
-    const hostingEmulator = new HostingEmulator({
-      host: hostingAddr.host,
-      port: hostingAddr.port,
-      options,
-    });
-
-    await startEmulator(hostingEmulator);
-  }
-
   if (shouldStart(options, Emulators.AUTH)) {
     if (!projectId) {
       throw new FirebaseError(
@@ -567,6 +556,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  // Hosting emulator needs to start after all of the others so that we can detect
+  // which are running and call useEmulator in __init.js
+  if (shouldStart(options, Emulators.HOSTING)) {
+    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
+    const hostingEmulator = new HostingEmulator({
+      host: hostingAddr.host,
+      port: hostingAddr.port,
+      options,
+    });
+
+    await startEmulator(hostingEmulator);
   }
 
   if (!noUi && shouldStart(options, Emulators.UI)) {

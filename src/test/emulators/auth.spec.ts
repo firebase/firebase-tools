@@ -3334,6 +3334,33 @@ describe("Auth emulator", () => {
     });
   });
 
+  describe("accounts:lookup", () => {
+    it("should return user by localId when privileged", async () => {
+      const { localId } = await registerAnonUser(authApp);
+
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: [localId] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.users).to.have.length(1);
+          expect(res.body.users[0].localId).to.equal(localId);
+        });
+    });
+
+    it("should return empty result when localId is not found", async () => {
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: ["noSuchId"] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).not.to.have.property("users");
+        });
+    });
+  });
+
   describe("accounts:query", () => {
     it("should return count of accounts when returnUserInfo is false", async () => {
       await registerAnonUser(authApp);
