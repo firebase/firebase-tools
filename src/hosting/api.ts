@@ -207,10 +207,10 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>({
-        path: `/projects/${project}/sites/${site}/channels`,
-        queryParams: { pageToken: nextPageToken, pageSize: 10 },
-      });
+      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>(
+        `/projects/${project}/sites/${site}/channels`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
       const c = res.body?.channels;
       if (c) {
         channels.push(...c);
@@ -243,10 +243,10 @@ export async function createChannel(
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION
 ): Promise<Channel> {
-  const res = await apiClient.post<{ ttl: string }, Channel>({
-    path: `/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
-    json: { ttl: `${ttlMillis / 1000}s` },
-  });
+  const res = await apiClient.post<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` }
+  );
   return res.body;
 }
 
@@ -263,11 +263,11 @@ export async function updateChannelTtl(
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS
 ): Promise<Channel> {
-  const res = await apiClient.patch<{ ttl: string }, Channel>({
-    path: `/projects/${project}/sites/${site}/channels/${channelId}`,
-    json: { ttl: `${ttlMillis / 1000}s` },
-    queryParams: { updateMask: ["ttl"].join(",") },
-  });
+  const res = await apiClient.patch<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels/${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` },
+    { queryParams: { updateMask: ["ttl"].join(",") } }
+  );
   return res.body;
 }
 

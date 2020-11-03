@@ -6,23 +6,33 @@ import * as responseToError from "./responseToError";
 
 const CLI_VERSION = require("../package.json").version;
 
-type ClientRequestOptions<T> = {
-  method?: "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+
+interface RequestOptions<T> extends VerbOptions<T> {
+  method: HttpMethod;
   path: string;
-  headers?: { [key: string]: string };
   json?: T;
   responseType?: "json";
-  queryParams?: { [key: string]: string | number };
-};
+}
 
-export type ClientRequestHandlingOptions = {
-  log?: {
+interface VerbOptions<T> {
+  method?: HttpMethod;
+  headers?: { [key: string]: string };
+  queryParams?: { [key: string]: string | number };
+}
+
+interface ClientHandlingOptions {
+  skipLog?: {
     queryParams?: boolean;
     body?: boolean;
     resBody?: boolean;
   };
   resolveOnHTTPError?: boolean;
-};
+}
+
+export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions<T>;
+
+export type ClientVerbOptions<T> = VerbOptions<T> & ClientHandlingOptions;
 
 export type ClientResponse<T> = {
   status: number;
@@ -62,48 +72,49 @@ export class Client {
     }
   }
 
-  get<ResT>(
-    options: ClientRequestOptions<unknown> | string,
-    handlingOptions: ClientRequestHandlingOptions = {}
-  ): Promise<ClientResponse<ResT>> {
-    if (typeof options === "string") {
-      options = { path: options };
-    }
-    options.method = "GET";
-    return this.request<unknown, ResT>(options, handlingOptions);
+  get<ResT>(path: string, options: ClientVerbOptions<unknown> = {}): Promise<ClientResponse<ResT>> {
+    const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
+      method: "GET",
+      path,
+    });
+    return this.request<unknown, ResT>(reqOptions);
   }
 
   post<ReqT, ResT>(
-    options: ClientRequestOptions<ReqT> | string,
-    handlingOptions: ClientRequestHandlingOptions = {}
+    path: string,
+    json?: ReqT,
+    options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    if (typeof options === "string") {
-      options = { path: options };
-    }
-    options.method = "POST";
-    return this.request<ReqT, ResT>(options, handlingOptions);
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+      method: "POST",
+      path,
+      json,
+    });
+    return this.request<ReqT, ResT>(reqOptions);
   }
 
   patch<ReqT, ResT>(
-    options: ClientRequestOptions<ReqT> | string,
-    handlingOptions: ClientRequestHandlingOptions = {}
+    path: string,
+    json?: ReqT,
+    options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    if (typeof options === "string") {
-      options = { path: options };
-    }
-    options.method = "PATCH";
-    return this.request<ReqT, ResT>(options, handlingOptions);
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+      method: "PATCH",
+      path,
+      json,
+    });
+    return this.request<ReqT, ResT>(reqOptions);
   }
 
   delete<ResT>(
-    options: ClientRequestOptions<unknown> | string,
-    handlingOptions: ClientRequestHandlingOptions = {}
+    path: string,
+    options: ClientVerbOptions<unknown> = {}
   ): Promise<ClientResponse<ResT>> {
-    if (typeof options === "string") {
-      options = { path: options };
-    }
-    options.method = "DELETE";
-    return this.request<unknown, ResT>(options, handlingOptions);
+    const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
+      method: "DELETE",
+      path,
+    });
+    return this.request<unknown, ResT>(reqOptions);
   }
 
   /**
@@ -122,21 +133,10 @@ export class Client {
    * // typeof res.body === ResourceType
    *
    * @param reqOptions request options.
-   * @param handlingOptions specific handling options about the request (logging,
-   *   auth, etc).
    */
   private async request<ReqT, ResT>(
-    reqOptions: ClientRequestOptions<ReqT>,
-    handlingOptions: ClientRequestHandlingOptions
+    reqOptions: ClientRequestOptions<ReqT>
   ): Promise<ClientResponse<ResT>> {
-    if (!reqOptions.method) {
-      reqOptions.method = "GET";
-    }
-
-    if (!reqOptions.path) {
-      throw new FirebaseError("Will not make a request to an undefined path.", { exit: 2 });
-    }
-
     // All requests default to JSON content types.
     if (!reqOptions.responseType) {
       reqOptions.responseType = "json";
@@ -147,7 +147,7 @@ export class Client {
     if (this.opts.auth) {
       reqOptions = await this.addAuthHeader(reqOptions);
     }
-    return this.doRequest<ReqT, ResT>(reqOptions, handlingOptions);
+    return this.doRequest<ReqT, ResT>(reqOptions);
   }
 
   private addRequestHeaders<T>(reqOptions: ClientRequestOptions<T>): ClientRequestOptions<T> {
@@ -184,8 +184,7 @@ export class Client {
   }
 
   private async doRequest<ReqT, ResT>(
-    options: ClientRequestOptions<ReqT>,
-    handlingOptions: ClientRequestHandlingOptions
+    options: ClientRequestOptions<ReqT>
   ): Promise<ClientResponse<ResT>> {
     if (!options.path.startsWith("/")) {
       options.path = "/" + options.path;
@@ -217,7 +216,7 @@ export class Client {
       fetchOptions.body = JSON.stringify(options.json);
     }
 
-    this.logRequest(options, handlingOptions);
+    this.logRequest(options);
 
     let res: Response;
     try {
@@ -234,7 +233,7 @@ export class Client {
       body = ((await res.text()) as unknown) as ResT;
     }
 
-    this.logResponse(res, body, handlingOptions);
+    this.logResponse(res, body, options);
 
     if (res.status >= 400) {
       throw responseToError({ statusCode: res.status }, body);
@@ -247,26 +246,19 @@ export class Client {
     };
   }
 
-  private logRequest(
-    fetchOptions: ClientRequestOptions<unknown>,
-    handlingOptions: ClientRequestHandlingOptions
-  ): void {
+  private logRequest(fetchOptions: ClientRequestOptions<unknown>): void {
     let searchParamLog = "";
     if (fetchOptions.queryParams) {
-      if (handlingOptions.log?.queryParams) {
+      if (!fetchOptions.skipLog?.queryParams) {
         searchParamLog = JSON.stringify(fetchOptions.queryParams);
       } else {
         searchParamLog = "[SEARCH PARAMS OMITTED]";
       }
     }
-    logger.debug(
-      "[apiv2] HTTP REQUEST:",
-      fetchOptions.method,
-      `${this.opts.origin}${fetchOptions.path}`,
-      searchParamLog
-    );
+    const urlLog = `${this.opts.origin}/${this.opts.apiVersion}${fetchOptions.path}`;
+    logger.debug("[apiv2] HTTP REQUEST:", fetchOptions.method, urlLog, searchParamLog);
     if (fetchOptions.json) {
-      if (handlingOptions.log?.body) {
+      if (!fetchOptions.skipLog?.body) {
         logger.debug("[apiv2] HTTP REQUEST BODY:", JSON.stringify(fetchOptions.json));
       } else {
         logger.debug("[apiv2] HTTP REQUEST BODY OMITTED");
@@ -274,14 +266,10 @@ export class Client {
     }
   }
 
-  private logResponse(
-    res: Response,
-    body: unknown,
-    handlingOptions: ClientRequestHandlingOptions
-  ): void {
-    logger.debug("[apiv2] HTTP RESPONSE", res.status, res.headers);
+  private logResponse(res: Response, body: unknown, options: ClientRequestOptions<unknown>): void {
+    logger.debug("[apiv2] HTTP RESPONSE", res.status);
 
-    if (handlingOptions.log?.resBody) {
+    if (!options.skipLog?.resBody) {
       logger.debug("[apiv2] HTTP RESPONSE BODY", body);
     }
   }
