@@ -335,7 +335,6 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {}
         )
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
       expect(nock.isDone()).to.be.true;
