@@ -7,6 +7,7 @@ import { Command } from "../command";
 import { logPrefix } from "../extensions/extensionsHelper";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import * as extensionsUtils from "../extensions/utils";
 import { listExtensions } from "../extensions/extensionsApi";
 import * as logger from "../logger";
 import { requireAuth } from "../requireAuth";
@@ -46,7 +47,7 @@ export default new Command("ext:dev:list [publisherId]")
       table.push([
         _.last(extension.ref.split("/")),
         extension.latestVersion,
-        extension.createTime ? moment(extension.createTime).format("YYYY-MM-DD [T]HH:mm:ss") : "",
+        extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : ""
       ]);
     });
 
