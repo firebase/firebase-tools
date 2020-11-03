@@ -1,7 +1,6 @@
 import * as clc from "cli-color";
 import Table = require("cli-table");
 import * as _ from "lodash";
-import moment = require("moment");
 
 import { Command } from "../command";
 import { logPrefix } from "../extensions/extensionsHelper";
