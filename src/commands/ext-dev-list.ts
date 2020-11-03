@@ -46,7 +46,7 @@ export default new Command("ext:dev:list [publisherId]")
       table.push([
         _.last(extension.ref.split("/")),
         extension.latestVersion,
-        extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : ""
+        extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : "",
       ]);
     });
 

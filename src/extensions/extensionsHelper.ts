@@ -380,6 +380,46 @@ export async function publishExtensionVersionFromLocalSource(
   if (!consent) {
     return;
   }
+
+  let extension;
+  try {
+    extension = await getExtension(`${publisherId}/${extensionId}`);
+  } catch (err) {
+    // Silently fail and continue the publish flow if extension not found.
+  }
+
+  if (
+    extension &&
+    extension.latestVersion &&
+    semver.lt(extensionSpec.version, extension.latestVersion)
+  ) {
+    // publisher's version is less than current latest version.
+    throw new FirebaseError(
+      `The version you are trying to publish (${clc.bold(
+        extensionSpec.version
+      )}) is lower than the current version (${clc.bold(
+        extension.latestVersion
+      )}) for the extension '${clc.bold(
+        `${publisherId}/${extensionId}`
+      )}'. Please make sure this version is greater than the current version (${clc.bold(
+        extension.latestVersion
+      )}) inside of extension.yaml.\n`
+    );
+  } else if (
+    extension &&
+    extension.latestVersion &&
+    semver.eq(extensionSpec.version, extension.latestVersion)
+  ) {
+    // publisher's version is equal to the current latest version.
+    throw new FirebaseError(
+      `The version you are trying to publish (${clc.bold(
+        extensionSpec.version
+      )}) already exists for the extension '${clc.bold(
+        `${publisherId}/${extensionId}`
+      )}'. Please increment the version inside of extension.yaml.\n`
+    );
+  }
+
   const ref = `${publisherId}/${extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
@@ -499,9 +539,9 @@ export async function confirmExtensionVersion(
 ): Promise<string> {
   const message =
     `You are about to publish version ${clc.green(versionId)} of ${clc.green(
-      `${publisherId}/${extensionId} to Firebase's registry of extensions.`
-    )}.\n` +
-    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n" +
+      `${publisherId}/${extensionId}`
+    )} to Firebase's registry of extensions.\n\n` +
+    "Once an extension version is published, it cannot be changed. If you wish to make changes after publishing, you will need to publish a new version. If you are a member of the Extensions EAP group, your published extensions will only be accessible to other members of the EAP group.\n\n" +
     "Do you wish to continue?";
   return await promptOnce({
     type: "confirm",

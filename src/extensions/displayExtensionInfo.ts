@@ -142,8 +142,9 @@ export async function displayUpdateChangesRequiringConfirmation(
       "Do you wish to continue?";
     await getConsent("license", marked(message));
   }
-
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   const apisDiffDeletions = _.differenceWith(spec.apis, _.get(newSpec, "apis", []), _.isEqual);
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   const apisDiffAdditions = _.differenceWith(newSpec.apis, _.get(spec, "apis", []), _.isEqual);
   if (apisDiffDeletions.length || apisDiffAdditions.length) {
     let message = "\n**APIs:**\n";
@@ -179,7 +180,9 @@ export async function displayUpdateChangesRequiringConfirmation(
     await getConsent("resources", marked(message));
   }
 
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   const rolesDiffDeletions = _.differenceWith(spec.roles, _.get(newSpec, "roles", []), _.isEqual);
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   const rolesDiffAdditions = _.differenceWith(newSpec.roles, _.get(spec, "roles", []), _.isEqual);
   if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
     let message = "\n**Permissions:**\n";

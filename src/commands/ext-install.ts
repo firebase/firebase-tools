@@ -98,15 +98,10 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         projectId,
         instanceId,
         extVersion,
-        params,
+        params
       );
     } else if (source) {
-      await extensionsApi.createInstanceFromSource(
-        projectId,
-        instanceId,
-        source,
-        params,
-      );
+      await extensionsApi.createInstanceFromSource(projectId, instanceId, source, params);
     } else {
       throw new FirebaseError(
         `Neither a extension source nor an extension version was supplied for ${extensionName}. Please make sure this is a valid extension and try again.`
