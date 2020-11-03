@@ -32,7 +32,7 @@ describe("apiv2", () => {
         .get("/path/to/foo")
         .reply(404, { message: "not found" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -46,7 +46,7 @@ describe("apiv2", () => {
         .get("/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -60,7 +60,7 @@ describe("apiv2", () => {
         .get("/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({
         method: "GET",
         path: "path/to/foo",
@@ -69,12 +69,12 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should make a basic GET request if origin did have a trailing slash", async () => {
+    it("should make a basic GET request if urlPrefix did have a trailing slash", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com/" });
+      const c = new Client({ urlPrefix: "https://example.com/" });
       const r = await c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -88,7 +88,7 @@ describe("apiv2", () => {
         .get("/v1/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com", apiVersion: "v1" });
+      const c = new Client({ urlPrefix: "https://example.com", apiVersion: "v1" });
       const r = await c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -103,7 +103,7 @@ describe("apiv2", () => {
         .query({ key: "value" })
         .reply(200, { success: true });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -119,7 +119,7 @@ describe("apiv2", () => {
         .post("/path/to/foo", POST_DATA)
         .reply(200, { success: true });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({
         method: "POST",
         path: "/path/to/foo",
@@ -146,7 +146,7 @@ describe("apiv2", () => {
         .get("/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.get("/path/to/foo");
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;
@@ -158,7 +158,7 @@ describe("apiv2", () => {
         .post("/path/to/foo", POST_DATA)
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.post("/path/to/foo", POST_DATA);
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;
@@ -170,7 +170,7 @@ describe("apiv2", () => {
         .patch("/path/to/foo", DATA)
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.patch("/path/to/foo", DATA);
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;
@@ -181,7 +181,7 @@ describe("apiv2", () => {
         .delete("/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ origin: "https://example.com" });
+      const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.delete("/path/to/foo");
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;

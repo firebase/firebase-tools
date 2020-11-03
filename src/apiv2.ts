@@ -60,7 +60,7 @@ export function setAccessToken(token = ""): void {
 }
 
 export type ClientOptions = {
-  origin: string;
+  urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
 };
@@ -70,8 +70,8 @@ export class Client {
     if (this.opts.auth === undefined) {
       this.opts.auth = true;
     }
-    if (this.opts.origin.endsWith("/")) {
-      this.opts.origin = this.opts.origin.substring(0, this.opts.origin.length - 1);
+    if (this.opts.urlPrefix.endsWith("/")) {
+      this.opts.urlPrefix = this.opts.urlPrefix.substring(0, this.opts.urlPrefix.length - 1);
     }
   }
 
@@ -199,7 +199,7 @@ export class Client {
     }
 
     const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
-    let fetchURL = `${this.opts.origin}${versionPath}${options.path}`;
+    let fetchURL = `${this.opts.urlPrefix}${versionPath}${options.path}`;
     if (options.queryParams) {
       // TODO(bkendall): replace this half-hearted implementation with
       // URLSearchParams when on node >= 10.
@@ -262,7 +262,7 @@ export class Client {
       }
     }
     const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
-    const urlLog = `${this.opts.origin}/${versionPath}${fetchOptions.path}`;
+    const urlLog = `${this.opts.urlPrefix}/${versionPath}${fetchOptions.path}`;
     logger.debug("[apiv2] HTTP REQUEST:", fetchOptions.method, urlLog, searchParamLog);
     if (fetchOptions.json) {
       if (!fetchOptions.skipLog?.body) {

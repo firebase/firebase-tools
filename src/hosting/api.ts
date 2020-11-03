@@ -164,7 +164,7 @@ export function normalizeName(s: string): string {
 }
 
 const apiClient = new Client({
-  origin: api.hostingApiOrigin,
+  urlPrefix: api.hostingApiOrigin,
   apiVersion: "v1beta1",
   auth: true,
 });
