@@ -1,10 +1,13 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
+import * as marked from "marked";
+import TerminalRenderer = require("marked-terminal");
+
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { iam } from "../gcp";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -16,14 +19,37 @@ import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
 import * as logger from "../logger";
 
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+
+/**
+ * We do not currently support uninstalling extensions that require additional uninstall steps to be taken in the CLI. Direct them to the Console to uninstall the extension.
+ *
+ * @param projectId ID of the user's project
+ * @param instanceId ID of the extension instance
+ * @return a void Promise
+ */
+function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
+  const instanceURL = `https://console.firebase.google.com/project/${projectId}/extensions/instances/${instanceId}`;
+  const consoleUninstall =
+    "This extension has additional uninstall checks that are not currently supported by the CLI, and can only be uninstalled through the Firebase Console. " +
+    `Please visit **[${instanceURL}](${instanceURL})** to uninstall this extension.`;
+  logger.info("\n");
+  utils.logLabeledWarning(logPrefix, marked(consoleUninstall));
+  return Promise.resolve();
+}
+
 export default new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
     const projectId = getProjectId(options);
     let instance;
+
     try {
       instance = await extensionsApi.getInstance(projectId, instanceId);
     } catch (err) {
@@ -34,6 +60,12 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       }
       throw err;
     }
+
+    // Special case for pubsub-stream-bigquery extension
+    if (_.get(instance, "config.source.spec.name") === "pubsub-stream-bigquery") {
+      return consoleUninstallOnly(projectId, instanceId);
+    }
+
     if (!options.force) {
       const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
         instance.serviceAccountEmail
@@ -66,7 +98,7 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const confirmedExtensionDeletion = await promptOnce({
         type: "confirm",
         default: true,
-        message: "Are you sure that you want to uninstall this extension?",
+        message: "Are you sure that you wish to uninstall this extension?",
       });
       if (!confirmedExtensionDeletion) {
         return utils.reject("Command aborted.", { exit: 1 });
@@ -87,32 +119,6 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       spinner.succeed(
         ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
       );
-      spinner.text = ` ${clc.green.bold(
-        logPrefix
-      )}: deleting your extension instance's service account.`;
-      spinner.start();
-      const saDeletionRes = await iam.deleteServiceAccount(projectId, instance.serviceAccountEmail);
-      if (_.get(saDeletionRes, "body.error")) {
-        if (_.get(saDeletionRes, "body.error.code") === 404) {
-          spinner.succeed(
-            ` ${clc.green.bold(logPrefix)}: service account ${clc.bold(
-              instance.serviceAccountEmail
-            )} was previously deleted.`
-          );
-        } else {
-          throw new FirebaseError("Unable to delete service account", {
-            original: saDeletionRes.body.error,
-          });
-        }
-      } else {
-        spinner.succeed(
-          ` ${clc.green.bold(
-            logPrefix
-          )}: deleted your extension instance's service account ${clc.bold(
-            instance.serviceAccountEmail
-          )}`
-        );
-      }
     } catch (err) {
       if (spinner.isSpinning) {
         spinner.fail();

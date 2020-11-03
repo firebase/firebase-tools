@@ -9,7 +9,6 @@ const zlib = require("zlib");
 const crypto = require("crypto");
 
 const hashcache = require("./hashcache");
-const detectProjectRoot = require("../../detectProjectRoot").detectProjectRoot;
 const api = require("../../api");
 const logger = require("../../logger");
 const { Queue } = require("../../throttler/queue");
@@ -27,8 +26,7 @@ class Uploader {
   constructor(options) {
     this.version = options.version;
     this.cwd = options.cwd || process.cwd();
-
-    this.projectRoot = detectProjectRoot(this.cwd);
+    this.projectRoot = options.projectRoot;
 
     this.gzipLevel = options.gzipLevel || 9;
     this.hashQueue = new Queue({

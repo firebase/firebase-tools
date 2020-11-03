@@ -17,6 +17,7 @@ var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFr
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
+var { checkForNode8 } = require("./checkRuntimeDependencies");
 
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
@@ -127,6 +128,12 @@ module.exports = function(context, options, payload) {
 
   var projectId = context.projectId;
   var sourceUrl = context.uploadUrl;
+
+  // Reset module-level variables to prevent duplicate deploys when using firebase-tools as an import.
+  timings = {};
+  deployments = [];
+  failedDeployments = [];
+
   var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
   // Used in CLI releases v3.4.0 to v3.17.6
   var legacySourceUrlTwo =
@@ -152,8 +159,49 @@ module.exports = function(context, options, payload) {
   var deleteReleaseNames;
   var existingScheduledFunctions;
 
+  // Collect all the functions that have a retry policy
+  var failurePolicyFunctions = functionsInfo.filter((fn) => {
+    return !!fn.failurePolicy;
+  });
+
+  let proceedPrompt = Promise.resolve(true);
+  if (failurePolicyFunctions.length) {
+    var failurePolicyFunctionLabels = failurePolicyFunctions.map((fn) => {
+      return helper.getFunctionLabel(_.get(fn, "name"));
+    });
+    var retryMessage =
+      "The following functions will be retried in case of failure: " +
+      clc.bold(failurePolicyFunctionLabels.join(", ")) +
+      ". " +
+      "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
+      "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+
+    utils.logLabeledWarning("functions", retryMessage);
+
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
+        exit: 1,
+      });
+    } else if (!options.nonInteractive) {
+      proceedPrompt = promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Would you like to proceed with deployment?",
+      });
+    }
+  }
+
   delete payload.functions;
-  return Promise.resolve(context.existingFunctions)
+
+  return proceedPrompt
+    .then((proceed) => {
+      if (!proceed) {
+        throw new FirebaseError("Deployment canceled.", { exit: 1 });
+      }
+
+      return Promise.resolve(context.existingFunctions);
+    })
     .then(function(existingFunctions) {
       var pluckName = function(functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
@@ -217,6 +265,8 @@ module.exports = function(context, options, payload) {
                   timeout: functionInfo.timeout,
                   maxInstances: functionInfo.maxInstances,
                   environmentVariables: defaultEnvVariables,
+                  vpcConnector: functionInfo.vpcConnector,
+                  vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -292,6 +342,8 @@ module.exports = function(context, options, payload) {
               timeout: functionInfo.timeout,
               runtime: runtime,
               maxInstances: functionInfo.maxInstances,
+              vpcConnector: functionInfo.vpcConnector,
+              vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
               environmentVariables: _.assign(
                 {},
                 existingFunction.environmentVariables,
@@ -514,6 +566,7 @@ module.exports = function(context, options, payload) {
               deployments.length - failedDeployments.length
             );
           }
+          checkForNode8(runtime);
           if (failedDeployments.length > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:");
             const sortedFailedDeployments = failedDeployments.sort();
@@ -524,7 +577,13 @@ module.exports = function(context, options, payload) {
             logger.info(
               "    " +
                 clc.bold("firebase deploy --only ") +
-                clc.bold(sortedFailedDeployments.map((name) => `functions:${name}`).join(","))
+                clc.bold('"') +
+                clc.bold(
+                  sortedFailedDeployments
+                    .map((name) => `functions:${name.replace(/-/g, ".")}`)
+                    .join(",")
+                ) +
+                clc.bold('"')
             );
             logger.info("\n\nTo continue deploying other features (such as database), run:");
             logger.info("    " + clc.bold("firebase deploy --except functions"));

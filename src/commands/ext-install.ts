@@ -6,11 +6,12 @@ import TerminalRenderer = require("marked-terminal");
 
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
-import * as checkProjectBilling from "../extensions/checkProjectBilling";
+import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
+import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import * as getProjectId from "../getProjectId";
-import { createServiceAccountAndSetRoles } from "../extensions/rolesHelper";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   promptForAudienceConsent,
@@ -61,11 +62,18 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     "Installing your extension instance. This usually takes 3 to 5 minutes..."
   );
   try {
-    await checkProjectBilling(projectId, spec.displayName || spec.name, spec.billingRequired);
+    if (spec.billingRequired) {
+      const enabled = await isBillingEnabled(projectId);
+      if (!enabled) {
+        await displayNode10CreateBillingNotice(spec, false);
+        await enableBilling(projectId, spec.displayName || spec.name);
+      } else {
+        await displayNode10CreateBillingNotice(spec, true);
+      }
+    }
     const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
     await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
 
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
     let instanceId = spec.name;
     const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
     if (anotherInstanceExists) {
@@ -81,33 +89,16 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
       }
       instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
     }
+    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
+
     spinner.start();
-    let serviceAccountEmail;
-    while (!serviceAccountEmail) {
-      try {
-        serviceAccountEmail = await createServiceAccountAndSetRoles(
-          projectId,
-          _.get(spec, "roles", []),
-          instanceId
-        );
-      } catch (err) {
-        if (err.status === 409) {
-          spinner.stop();
-          logger.info(err.message);
-          instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
-          spinner.start();
-        } else {
-          throw err;
-        }
-      }
-    }
+
     if (!source && extVersion) {
       await extensionsApi.createInstanceFromExtensionVersion(
         projectId,
         instanceId,
         extVersion,
         params,
-        serviceAccountEmail
       );
     } else if (source) {
       await extensionsApi.createInstanceFromSource(
@@ -115,7 +106,6 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         instanceId,
         source,
         params,
-        serviceAccountEmail
       );
     } else {
       throw new FirebaseError(
@@ -173,6 +163,7 @@ export default new Command("ext:install [extensionName]")
   .option("--params <paramsFile>", "name of params variables file with .env format.")
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     const projectId = getProjectId(options, false);
     const paramFilePath = options.params;
@@ -181,7 +172,7 @@ export default new Command("ext:install [extensionName]")
       if (options.interactive) {
         learnMore = true;
         extensionName = await promptForOfficialExtension(
-          "Which official extension do you want to install?\n" +
+          "Which official extension do you wish to install?\n" +
             "  Select an extension, then press Enter to learn more."
         );
       } else {
@@ -275,7 +266,7 @@ export default new Command("ext:install [extensionName]")
         const confirm = await promptOnce({
           type: "confirm",
           default: true,
-          message: "Do you want to install this extension?",
+          message: "Do you wish to install this extension?",
         });
         if (!confirm) {
           return;

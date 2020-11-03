@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e # Immediately exit on failure
 
-# Globally link the CLI for the testing framework.
-npm link
+# Globally link the CLI for the testing framework
+./scripts/npm-link.sh
 
 cd scripts/extensions-emulator-tests/greet-the-world
 npm i

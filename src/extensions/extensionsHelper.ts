@@ -23,7 +23,6 @@ import {
   getInstance,
   getSource,
   Param,
-  ParamType,
   parseRef,
   publishExtensionVersion,
 } from "./extensionsApi";
@@ -55,17 +54,14 @@ export enum SourceOrigin {
 
 export const logPrefix = "extensions";
 export const validLicenses = ["apache-2.0"];
-// Extension archive URLs follow this format: {GITHUB_ARCHIVE_URL}#{EXTENSION_ROOT},
-// e.g. https://github.com/firebase/extensions/archive/next.zip#extensions-next/delete-user-data.
-// EXTENSION_ROOT is optional for single-extension archives and required for multi-extension archives.
-export const urlRegex = /^https:\/\/.*(\.zip|\.tar|\.tar\.gz|\.gz|\.tgz)(#.*)?$/;
+// Extension archive URLs must be HTTPS.
+export const urlRegex = /^https:/;
 export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
 );
 
 export const resourceTypeToNiceName: { [key: string]: string } = {
-  "firebaseextensions.v1beta.scheduledFunction": "Scheduled Function",
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
 
@@ -247,7 +243,7 @@ export function validateSpec(spec: any) {
       errors.push(
         `Invalid type ${param.type} for param${
           param.param ? ` ${param.param}` : ""
-        }. Valid types are ${_.values(ParamType).join(", ")}`
+        }. Valid types are ${_.values(SpecParamType).join(", ")}`
       );
     }
     if (!param.type || param.type == SpecParamType.STRING) {
@@ -447,6 +443,7 @@ export async function createSourceFromLocation(
     [packageUri, extensionRoot] = sourceUri.split("#");
   }
   const res = await createSource(projectId, packageUri, extensionRoot);
+  logger.debug("Created new Extension Source %s", res.name);
   // if we uploaded an object, delete it
   await deleteUploadedSource(objectPath);
   return res;
@@ -540,7 +537,7 @@ export async function promptForRepeatInstance(
 ): Promise<string> {
   const message =
     `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
-    `Do you want to proceed with installing another instance of ${extensionName} in this project?`;
+    `Do you wish to proceed with installing another instance of ${extensionName} in this project?`;
   return await promptOnce({
     type: "confirm",
     message,

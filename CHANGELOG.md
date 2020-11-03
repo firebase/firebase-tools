@@ -1,3 +1,3 @@
-- Adds support for regular expression-based custom headers and rewrites for Firebase Hosting. (#2391)
-- Fixes a bug with RTDB Rules hot reloading in the RTDB emulator. (#2371)
-- Changes default functions runtime to Node.js 10 for `firebase init`.
+- Fixes Cloud Function inspection when using standalone binary release (#2740)
+- Release RTDB emulator v4.6.1: Fix emulator crash on invalid `.validate` rules (#2734)
+- Fixes lookup empty results using Admin SDK in Auth Emulator.

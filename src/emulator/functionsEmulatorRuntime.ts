@@ -23,10 +23,6 @@ import { URL } from "url";
 import * as _ from "lodash";
 
 let triggers: EmulatedTriggerMap | undefined;
-
-let hasAccessedFirestore = false;
-let hasAccessedDatabase = false;
-
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -460,8 +456,17 @@ function wrapCallableHandler(handler: CallableHandler): CallableHandler {
           value: authContext,
         });
         context.auth = JSON.parse(decodeURIComponent(authContext));
+        delete context.rawRequest.headers[HttpConstants.CALLABLE_AUTH_HEADER];
       } else {
         logDebug("No callable functions auth found");
+      }
+
+      // Restore the original auth header in case the code relies on parsing it (for
+      // example, the code could forward it to another function or server).
+      const originalAuth = context.rawRequest.header(HttpConstants.ORIGINAL_AUTH_HEADER);
+      if (originalAuth) {
+        context.rawRequest.headers["authorization"] = originalAuth;
+        delete context.rawRequest.headers[HttpConstants.ORIGINAL_AUTH_HEADER];
       }
     }
     return handler(data, context);
@@ -517,19 +522,39 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
+
+      // When the auth emulator is running, try to disable JWT verification.
+      if (frb.emulators.auth) {
+        if (compareVersionStrings(adminResolution.version, "9.3.0") < 0) {
+          new EmulatorLog(
+            "WARN_ONCE",
+            "runtime-status",
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+          ).log();
+        }
+
+        const auth = defaultApp.auth();
+        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+          logDebug("auth.setJwtVerificationEnabled(false)", {});
+          (auth as any).setJwtVerificationEnabled(false);
+        } else {
+          logDebug("auth.setJwtVerificationEnabled not available", {});
+        }
+      }
+
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 
@@ -550,36 +575,34 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target: any) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 }
 
-function warnAboutFirestoreProd(): void {
-  if (hasAccessedFirestore) {
+function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.firestore) {
     return;
   }
 
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
-
-  hasAccessedFirestore = true;
 }
 
-function warnAboutDatabaseProd(): void {
-  if (hasAccessedDatabase) {
+function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.database) {
     return;
   }
 
@@ -588,11 +611,21 @@ function warnAboutDatabaseProd(): void {
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
-
-  hasAccessedDatabase = true;
 }
 
-function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
+function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.auth) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN_ONCE",
+    "runtime-status",
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+  ).log();
+}
+
+async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
   process.env.TZ = "UTC";
   process.env.GCLOUD_PROJECT = frb.projectId;
   process.env.FUNCTIONS_EMULATOR = "true";
@@ -609,10 +642,21 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     // Ignore, config is optional
   }
 
+  // Before firebase-functions version 3.8.0 the Functions SDK would reject non-prod database URLs.
+  const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
+  const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
+  let emulatedDatabaseURL = undefined;
+  if (frb.emulators.database && functionsGt380) {
+    emulatedDatabaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${process.env.GCLOUD_PROJECT}`;
+  }
+
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
   // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL: process.env.DATABASE_URL || `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
+    databaseURL:
+      process.env.DATABASE_URL ||
+      emulatedDatabaseURL ||
+      `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
     storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
     projectId: process.env.GCLOUD_PROJECT,
   });
@@ -624,18 +668,22 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     const target = service.replace(/-/g, ".");
     const mode = frb.triggerType === EmulatedTriggerType.BACKGROUND ? "event" : "http";
 
+    let nodeVersion = 0;
+    if (frb.nodeMajorVersion) {
+      // If nodeMajorVersion is set, we ignore pkg.engines.node
+      nodeVersion = frb.nodeMajorVersion;
+    } else {
+      const pkg = requirePackageJson(frb);
+      if (pkg?.engines?.node) {
+        const nodeSemVer = parseVersionString(pkg.engines.node);
+        nodeVersion = nodeSemVer.major;
+      }
+    }
+
     // Setup predefined environment variables for Node.js 10 and subsequent runtimes
     // https://cloud.google.com/functions/docs/env-var
-    const pkg = requirePackageJson(frb);
-    // If nodeMajorVersion is set, we are emulating an extension so we ignore pkg.engines.node
-    // to match backend behavior.
-    if (frb.nodeMajorVersion) {
+    if (nodeVersion >= 10) {
       setNode10EnvVars(target, mode, service);
-    } else if (pkg?.engines?.node) {
-      const nodeVersion = parseVersionString(pkg.engines.node);
-      if (nodeVersion.major >= 10) {
-        setNode10EnvVars(target, mode, service);
-      }
     }
   }
 
@@ -651,6 +699,13 @@ function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): void {
     process.env[
       Constants.FIREBASE_DATABASE_EMULATOR_HOST
     ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+  }
+
+  // Make firebase-admin point at the Auth emulator
+  if (frb.emulators.auth) {
+    process.env[
+      Constants.FIREBASE_AUTH_EMULATOR_HOST
+    ] = `${frb.emulators.auth.host}:${frb.emulators.auth.port}`;
   }
 
   if (frb.emulators.pubsub) {
@@ -965,15 +1020,7 @@ async function initializeRuntime(
     return;
   }
 
-  initializeEnvironmentalVariables(frb);
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    new EmulatorLog(
-      "WARN",
-      "runtime-status",
-      `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`
-    ).log();
-  }
-
+  await initializeEnvironmentalVariables(frb);
   initializeNetworkFiltering(frb);
   await initializeFunctionsConfigHelper(frb);
   await initializeFirebaseFunctionsStubs(frb);
@@ -1072,6 +1119,25 @@ async function handleMessage(message: string) {
 }
 
 async function main(): Promise<void> {
+  // Since the functions run as attached processes they naturally inherit SIGINT
+  // sent to the functions emulator. We want them to ignore the first signal
+  // to allow for a clean shutdown.
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  process.on("SIGINT", () => {
+    const now = new Date().getTime();
+    if (now - lastSignal < 100) {
+      return;
+    }
+
+    signalCount = signalCount + 1;
+    lastSignal = now;
+
+    if (signalCount >= 2) {
+      process.exit(1);
+    }
+  });
+
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,

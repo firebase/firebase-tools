@@ -8,7 +8,19 @@ import * as path from "path";
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
+const NODE_VERSION = Number.parseInt(process.env.NODE_VERSION || "8");
+
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
+const ADMIN_CREDENTIAL = {
+  getAccessToken: () => {
+    return Promise.resolve({
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      expires_in: 1000000,
+      // eslint-disable-next-line @typescript-eslint/camelcase
+      access_token: "owner",
+    });
+  },
+};
 
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
@@ -60,16 +72,7 @@ describe("database and firestore emulator function triggers", () => {
     admin.initializeApp({
       projectId: FIREBASE_PROJECT,
       databaseURL: `http://localhost:${test.rtdbEmulatorPort}?ns=${FIREBASE_PROJECT}`,
-      credential: {
-        getAccessToken: () => {
-          return Promise.resolve({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            expires_in: 1000000,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            access_token: "owner",
-          });
-        },
-      },
+      credential: ADMIN_CREDENTIAL,
     });
 
     database = admin.database();
@@ -212,6 +215,52 @@ describe("pubsub emulator function triggers", () => {
   });
 });
 
+describe("auth emulator function triggers", () => {
+  let test: TriggerEndToEndTest;
+
+  before(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(TEST_SETUP_TIMEOUT);
+
+    expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
+
+    const config = readConfig();
+    test = new TriggerEndToEndTest(FIREBASE_PROJECT, __dirname, config);
+    await test.startEmulators(["--only", "functions,auth"]);
+  });
+
+  after(async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
+    await test.stopEmulators();
+  });
+
+  it("should write to the auth emulator", async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(EMULATOR_TEST_TIMEOUT);
+
+    // This test only works on Node 10+
+    if (NODE_VERSION < 10) {
+      // eslint-disable-next-line no-invalid-this
+      this.skip();
+    }
+
+    const response = await test.writeToAuth();
+    expect(response.statusCode).to.equal(200);
+    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+  });
+
+  it("should have have triggered cloud functions", function() {
+    // This test only works on Node 10+
+    if (NODE_VERSION < 10) {
+      // eslint-disable-next-line no-invalid-this
+      this.skip();
+    }
+
+    expect(test.authTriggerCount).to.equal(1);
+  });
+});
+
 describe("import/export end to end", () => {
   it("should be able to import/export firestore data", async function() {
     // eslint-disable-next-line no-invalid-this
@@ -263,5 +312,126 @@ describe("import/export end to end", () => {
     await importCLI.stop();
 
     expect(true).to.be.true;
+  });
+
+  it("should be able to import/export rtdb data", async function() {
+    // eslint-disable-next-line no-invalid-this
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "database"],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // Write some data to export
+    const config = readConfig();
+    const port = config.emulators!.database.port;
+    const aApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-a`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-a"
+    );
+    const bApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-b`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-b"
+    );
+    const cApp = admin.initializeApp(
+      {
+        projectId: FIREBASE_PROJECT,
+        databaseURL: `http://localhost:${port}?ns=namespace-c`,
+        credential: ADMIN_CREDENTIAL,
+      },
+      "rtdb-export-c"
+    );
+
+    // Write to two namespaces
+    const aRef = aApp.database().ref("ns");
+    await aRef.set("namespace-a");
+    const bRef = bApp.database().ref("ns");
+    await bRef.set("namespace-b");
+
+    // Read from a third
+    const cRef = cApp.database().ref("ns");
+    await cRef.once("value");
+
+    // Ask for export
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
+
+    // Check that the right export files are created
+    const dbExportPath = path.join(exportPath, "database_export");
+    const dbExportFiles = fs.readdirSync(dbExportPath);
+    expect(dbExportFiles).to.eql(["namespace-a.json", "namespace-b.json"]);
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "database", "--import", exportPath, "--export-on-exit"],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    // Read the data
+    const aSnap = await aRef.once("value");
+    const bSnap = await bRef.once("value");
+    expect(aSnap.val()).to.eql("namespace-a");
+    expect(bSnap.val()).to.eql("namespace-b");
+
+    // Delete all of the import files
+    for (const f of fs.readdirSync(dbExportPath)) {
+      const fullPath = path.join(dbExportPath, f);
+      await fs.unlinkSync(fullPath);
+    }
+
+    // Delete all the data in one namespace
+    await bApp
+      .database()
+      .ref()
+      .set(null);
+
+    // Stop the CLI (which will export on exit)
+    await importCLI.stop();
+
+    // Confirm the data exported is as expected
+    const aPath = path.join(dbExportPath, "namespace-a.json");
+    const aData = JSON.parse(fs.readFileSync(aPath).toString());
+    expect(aData).to.deep.equal({ ns: "namespace-a" });
+
+    const bPath = path.join(dbExportPath, "namespace-b.json");
+    const bData = JSON.parse(fs.readFileSync(bPath).toString());
+    expect(bData).to.equal(null);
   });
 });

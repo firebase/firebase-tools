@@ -27,6 +27,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   const firebaseMiddleware = initMiddleware(init);
 
   const morganStream = new Writable();
+  // eslint-disable-next-line @typescript-eslint/unbound-method
   morganStream._write = (
     chunk: any,
     encoding: string,
@@ -48,7 +49,7 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     port: port,
     host: options.host,
     config: config,
-    cwd: detectProjectRoot(options.cwd),
+    cwd: detectProjectRoot(options),
     stack: "strict",
     before: {
       files: (req: Request, res: Response, next: NextFunction) => {

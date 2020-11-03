@@ -19,6 +19,7 @@ var EXPORTED_JSON_KEYS = [
   "createdAt",
   "phoneNumber",
   "disabled",
+  "customAttributes",
 ];
 var EXPORTED_JSON_KEYS_RENAMING = {
   lastLoginAt: "lastSignedInAt",
@@ -69,6 +70,7 @@ var _transUserToArray = function(user) {
   arr[24] = user.lastLoginAt;
   arr[25] = user.phoneNumber;
   arr[26] = user.disabled;
+  arr[27] = user.customAttributes;
   return arr;
 };
 

@@ -15,8 +15,8 @@ export async function doSetup(setup: any, config: any) {
   const choices = ALL_SERVICE_EMULATORS.map((e) => {
     return {
       value: e,
-      name: _.capitalize(e),
-      checked: config && config.has(e),
+      name: Constants.description(e),
+      checked: config && (config.has(e) || config.has(`emulators.${e}`)),
     };
   });
 
@@ -76,17 +76,17 @@ export async function doSetup(setup: any, config: any) {
       if (ui.enabled) {
         await prompt(ui, [
           {
-            type: "number",
+            type: "input",
             name: "port",
             message: `Which port do you want to use for the ${clc.underline(
               uiDesc
             )} (leave empty to use any available port)?`,
           },
         ]);
-        if (!ui.port) {
-          // Don't write `port: ""` into the config file.
-          delete ui.port;
-        }
+
+        // Parse the input as a number
+        const portNum = Number.parseInt(ui.port);
+        ui.port = isNaN(portNum) ? undefined : portNum;
       }
     }
 

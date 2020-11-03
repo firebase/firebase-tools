@@ -78,6 +78,7 @@ const TEST_INSTANCE_1 = {
     createTime: "2019-06-19T00:21:06.722782Z",
   },
 };
+
 const TEST_INSTANCE_2 = {
   name: "projects/invader-zim/instances/image-resizer",
   createTime: "2019-05-19T00:20:10.416947Z",
@@ -96,6 +97,35 @@ const TEST_INSTANCES_RESPONSE = {
 
 const TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN: any = _.cloneDeep(TEST_INSTANCES_RESPONSE);
 TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.nextPageToken = "abc123";
+
+const PACKAGE_URI = "https://storage.googleapis.com/ABCD.zip";
+const SOURCE_NAME = "projects/firebasemods/sources/abcd";
+const TEST_SOURCE = {
+  name: SOURCE_NAME,
+  packageUri: PACKAGE_URI,
+  hash: "deadbeef",
+  spec: {
+    name: "test",
+    displayName: "Old",
+    description: "descriptive",
+    version: "1.0.0",
+    license: "MIT",
+    resources: [
+      {
+        name: "resource1",
+        type: "firebaseextensions.v1beta.function",
+        description: "desc",
+        propertiesYaml:
+          "eventTrigger:\n  eventType: providers/cloud.firestore/eventTypes/document.write\n  resource: projects/${PROJECT_ID}/databases/(default)/documents/${COLLECTION_PATH}/{documentId}\nlocation: ${LOCATION}",
+      },
+    ],
+    author: { authorName: "Tester" },
+    contributors: [{ authorName: "Tester 2" }],
+    billingRequired: true,
+    sourceUrl: "test.com",
+    params: [],
+  },
+};
 
 const NEXT_PAGE_TOKEN = "random123";
 const PUBLISHED_EXTENSIONS = { extensions: [TEST_EXTENSION_1, TEST_EXTENSION_2] };
@@ -207,8 +237,7 @@ describe("extensions", () => {
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
-        {},
-        "my-service-account@proj.gserviceaccount.com"
+        {}
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -230,8 +259,7 @@ describe("extensions", () => {
           hash: "abc123",
           spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
         },
-        {},
-        "my-service-account@proj.gserviceaccount.com"
+        {}
       );
       expect(nock.isDone()).to.be.true;
     });
@@ -258,10 +286,27 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {},
-          "my-service-account@proj.gserviceaccount.com"
+          {}
         )
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include config.extensionRef and config.extensionVersion for an update to a published extension", async () => {
+      nock(api.extensionsOrigin)
+        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
+        .query({ updateMask: "config.extensionRef,config.extensionVersion" })
+        .reply(200, { name: "operations/abc123" });
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/operations/abc123`)
+        .reply(200, { done: true });
+
+      await extensionsApi.updateInstanceFromRegistry(
+        PROJECT_ID,
+        INSTANCE_ID,
+        "extens-test/firestore-translate-text"
+      );
+
       expect(nock.isDone()).to.be.true;
     });
 
@@ -274,7 +319,7 @@ describe("extensions", () => {
         .reply(502);
 
       await expect(
-        extensionsApi.createInstanceFromSource(
+        extensionsApi.createInstance(
           PROJECT_ID,
           INSTANCE_ID,
           {
@@ -290,8 +335,7 @@ describe("extensions", () => {
               params: [],
             },
           },
-          {},
-          "my-service-account@proj.gserviceaccount.com"
+          {}
         )
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
       expect(nock.isDone()).to.be.true;
@@ -406,24 +450,6 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should include config.extensionRef and config.extensionVersion for an update to a published extension", async () => {
-      nock(api.extensionsOrigin)
-        .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.extensionRef,config.extensionVersion" })
-        .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
-
-      await extensionsApi.updateInstanceFromRegistry(
-        PROJECT_ID,
-        INSTANCE_ID,
-        "extens-test/firestore-translate-text"
-      );
-
-      expect(nock.isDone()).to.be.true;
-    });
-
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
@@ -464,375 +490,449 @@ describe("extensions", () => {
     });
   });
 
-  describe("publishExtensionVersion", () => {
+  describe("getSource", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should make a GET call to the correct endpoint", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/${SOURCE_NAME}`)
+        .reply(200, TEST_SOURCE);
+
+      const source = await extensionsApi.getSource(SOURCE_NAME);
+      expect(nock.isDone()).to.be.true;
+      expect(source.spec.resources).to.have.lengthOf(1);
+      expect(source.spec.resources[0]).to.have.property("properties");
+    });
+
+    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+      nock(api.extensionsOrigin)
+        .get(`/${VERSION}/${SOURCE_NAME}`)
+        .reply(404);
+
+      await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("createSource", () => {
     afterEach(() => {
       nock.cleanAll();
     });
 
     it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
       nock(api.extensionsOrigin)
-        .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(200, {
-          done: true,
-          response: TEST_EXT_VERSION_3,
-        });
+        .reply(200, { done: true, response: TEST_SOURCE });
 
-      const res = await extensionsApi.publishExtensionVersion(
-        TEST_EXT_VERSION_3.ref,
-        "www.google.com/test-extension.zip"
-      );
-      expect(res).to.deep.equal(TEST_EXT_VERSION_3);
+      const source = await extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, ",./");
       expect(nock.isDone()).to.be.true;
+      expect(source.spec.resources).to.have.lengthOf(1);
+      expect(source.spec.resources[0]).to.have.property("properties");
     });
 
-    it("should throw a FirebaseError if publishExtensionVersion returns an error response", async () => {
+    it("should throw a FirebaseError if create returns an error response", async () => {
       nock(api.extensionsOrigin)
-        .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(500);
 
-      await expect(
-        extensionsApi.publishExtensionVersion(
-          `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-          "www.google.com/test-extension.zip",
-          "/"
-        )
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
+      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
+        FirebaseError,
+        "HTTP Error: 500, Unknown Error"
+      );
       expect(nock.isDone()).to.be.true;
     });
 
     it("stop polling and throw if the operation call throws an unexpected error", async () => {
       nock(api.extensionsOrigin)
-        .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
         .reply(502);
 
-      await expect(
-        extensionsApi.publishExtensionVersion(
-          `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
-          "www.google.com/test-extension.zip",
-          "/"
-        )
-      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(
-        extensionsApi.publishExtensionVersion(
-          `${PUBLISHER_ID}/${EXTENSION_ID}`,
-          "www.google.com/test-extension.zip",
-          "/"
-        )
-      ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
-    });
-  });
-
-  describe("unpublishExtension", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should make a POST call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
-        .reply(200);
-
-      await extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
-        .reply(404);
-
-      await expect(
-        extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(
-        extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-      ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
-    });
-  });
-
-  describe("getExtension", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
-        .reply(200);
-
-      await extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
-        .reply(404);
-
-      await expect(
-        extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
+      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
-        "Extension reference must be in format"
+        "HTTP Error: 502, Unknown Error"
       );
-    });
-  });
-
-  describe("getExtensionVersion", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .get(
-          `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
-        )
-        .reply(200, TEST_EXTENSION_1);
-
-      const got = await extensionsApi.getExtensionVersion(
-        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
-      );
-      expect(got).to.deep.equal(TEST_EXTENSION_1);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .get(
-          `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
-        )
-        .reply(404);
-
-      await expect(
-        extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(
-        extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
-      ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
-    });
-  });
-
-  describe("listExtensions", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
-
-    it("should return a list of published extensions", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, PUBLISHED_EXTENSIONS);
-
-      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
-      expect(extensions).to.deep.equal(PUBLISHED_EXTENSIONS.extensions);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should return a list of all extensions", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, ALL_EXTENSIONS);
-
-      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
-
-      expect(extensions).to.deep.equal(ALL_EXTENSIONS.extensions);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should query for more extensions if the response has a next_page_token", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, PUBLISHED_WITH_TOKEN);
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          queryParams.pageToken === NEXT_PAGE_TOKEN;
-          return queryParams;
-        })
-        .reply(200, NEXT_PAGE_EXTENSIONS);
-
-      const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
-
-      const expected = PUBLISHED_WITH_TOKEN.extensions.concat(NEXT_PAGE_EXTENSIONS.extensions);
-      expect(extensions).to.deep.equal(expected);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw FirebaseError if any call returns an error", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(503, PUBLISHED_EXTENSIONS);
-
-      await expect(extensionsApi.listExtensions(PUBLISHER_ID)).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
   });
+});
 
-  describe("listExtensionVersions", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
 
-    it("should return a list of published extension versions", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, PUBLISHED_EXT_VERSIONS);
-
-      const extensions = await extensionsApi.listExtensionVersions(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`
-      );
-      expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should return a list of all extension versions", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, ALL_EXT_VERSIONS);
-
-      const extensions = await extensionsApi.listExtensionVersions(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`
-      );
-
-      expect(extensions).to.deep.equal(ALL_EXT_VERSIONS.extensionVersions);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should query for more extension versions if the response has a next_page_token", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          queryParams.pageToken === NEXT_PAGE_TOKEN;
-          return queryParams;
-        })
-        .reply(200, NEXT_PAGE_VERSIONS);
-
-      const extensions = await extensionsApi.listExtensionVersions(
-        `${PUBLISHER_ID}/${EXTENSION_ID}`
-      );
-
-      const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
-        NEXT_PAGE_VERSIONS.extensionVersions
-      );
-      expect(extensions).to.deep.equal(expected);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw FirebaseError if any call returns an error", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          return queryParams;
-        })
-        .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
-        .query((queryParams: any) => {
-          queryParams.pageSize === "100";
-          queryParams.nextPageToken === NEXT_PAGE_TOKEN;
-          return queryParams;
-        })
-        .reply(500);
-
-      await expect(
-        extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw an error for an invalid ref", async () => {
-      await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
-        FirebaseError,
-        "Extension reference must be in format"
-      );
-    });
+describe("publishExtensionVersion", () => {
+  afterEach(() => {
+    nock.cleanAll();
   });
 
-  describe("registerPublisherProfile", () => {
-    afterEach(() => {
-      nock.cleanAll();
-    });
+  it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`)
+      .reply(200, { name: "operations/abc123" });
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/operations/abc123`)
+      .reply(200, {
+        done: true,
+        response: TEST_EXT_VERSION_3,
+      });
 
-    const PUBLISHER_PROFILE = {
-      name: "projects/test-publisher/publisherProfile",
-      publisherId: "test-publisher",
-      registerTime: "2020-06-30T00:21:06.722782Z",
-    };
-    it("should make a POST call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
-        .reply(200, PUBLISHER_PROFILE);
+    const res = await extensionsApi.publishExtensionVersion(
+      TEST_EXT_VERSION_3.ref,
+      "www.google.com/test-extension.zip"
+    );
+    expect(res).to.deep.equal(TEST_EXT_VERSION_3);
+    expect(nock.isDone()).to.be.true;
+  });
 
-      const res = await extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID);
-      expect(res).to.deep.equal(PUBLISHER_PROFILE);
-      expect(nock.isDone()).to.be.true;
-    });
+  it("should throw a FirebaseError if publishExtensionVersion returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+      .reply(500);
 
-    it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
-        .reply(404);
-      await expect(
-        extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
-      ).to.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
-    });
+    await expect(
+      extensionsApi.publishExtensionVersion(
+        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        "www.google.com/test-extension.zip",
+        "/"
+      )
+    ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("stop polling and throw if the operation call throws an unexpected error", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+      .reply(200, { name: "operations/abc123" });
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/operations/abc123`)
+      .reply(502);
+
+    await expect(
+      extensionsApi.publishExtensionVersion(
+        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`,
+        "www.google.com/test-extension.zip",
+        "/"
+      )
+    ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(
+      extensionsApi.publishExtensionVersion(
+        `${PUBLISHER_ID}/${EXTENSION_ID}`,
+        "www.google.com/test-extension.zip",
+        "/"
+      )
+    ).to.be.rejectedWith(FirebaseError, "ExtensionVersion ref");
+  });
+});
+
+describe("unpublishExtension", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a POST call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
+      .reply(200);
+
+    await extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
+      .reply(404);
+
+    await expect(
+      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(
+      extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
+    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+  });
+});
+
+describe("getExtension", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(200);
+
+    await extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
+      .reply(404);
+
+    await expect(
+      extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
+      FirebaseError,
+      "Extension reference must be in format"
+    );
+  });
+});
+
+describe("getExtensionVersion", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should make a GET call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+      )
+      .reply(200, TEST_EXTENSION_1);
+
+    const got = await extensionsApi.getExtensionVersion(
+      `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
+    );
+    expect(got).to.deep.equal(TEST_EXTENSION_1);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions/${EXTENSION_VERSION}`
+      )
+      .reply(404);
+
+    await expect(
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(
+      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+  });
+});
+
+describe("listExtensions", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should return a list of published extensions", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, PUBLISHED_EXTENSIONS);
+
+    const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
+    expect(extensions).to.deep.equal(PUBLISHED_EXTENSIONS.extensions);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should return a list of all extensions", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, ALL_EXTENSIONS);
+
+    const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
+
+    expect(extensions).to.deep.equal(ALL_EXTENSIONS.extensions);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should query for more extensions if the response has a next_page_token", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, PUBLISHED_WITH_TOKEN);
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        queryParams.pageToken === NEXT_PAGE_TOKEN;
+        return queryParams;
+      })
+      .reply(200, NEXT_PAGE_EXTENSIONS);
+
+    const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
+
+    const expected = PUBLISHED_WITH_TOKEN.extensions.concat(NEXT_PAGE_EXTENSIONS.extensions);
+    expect(extensions).to.deep.equal(expected);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw FirebaseError if any call returns an error", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(503, PUBLISHED_EXTENSIONS);
+
+    await expect(extensionsApi.listExtensions(PUBLISHER_ID)).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+});
+
+describe("listExtensionVersions", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  it("should return a list of published extension versions", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, PUBLISHED_EXT_VERSIONS);
+
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
+    expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should return a list of all extension versions", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, ALL_EXT_VERSIONS);
+
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
+
+    expect(extensions).to.deep.equal(ALL_EXT_VERSIONS.extensionVersions);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should query for more extension versions if the response has a next_page_token", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        queryParams.pageToken === NEXT_PAGE_TOKEN;
+        return queryParams;
+      })
+      .reply(200, NEXT_PAGE_VERSIONS);
+
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
+
+    const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
+      NEXT_PAGE_VERSIONS.extensionVersions
+    );
+    expect(extensions).to.deep.equal(expected);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw FirebaseError if any call returns an error", async () => {
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        return queryParams;
+      })
+      .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
+    nock(api.extensionsOrigin)
+      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .query((queryParams: any) => {
+        queryParams.pageSize === "100";
+        queryParams.nextPageToken === NEXT_PAGE_TOKEN;
+        return queryParams;
+      })
+      .reply(500);
+
+    await expect(
+      extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw an error for an invalid ref", async () => {
+    await expect(extensionsApi.listExtensionVersions("")).to.be.rejectedWith(
+      FirebaseError,
+      "Extension reference must be in format"
+    );
+  });
+});
+
+describe("registerPublisherProfile", () => {
+  afterEach(() => {
+    nock.cleanAll();
+  });
+
+  const PUBLISHER_PROFILE = {
+    name: "projects/test-publisher/publisherProfile",
+    publisherId: "test-publisher",
+    registerTime: "2020-06-30T00:21:06.722782Z",
+  };
+  it("should make a POST call to the correct endpoint", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
+      .reply(200, PUBLISHER_PROFILE);
+
+    const res = await extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID);
+    expect(res).to.deep.equal(PUBLISHER_PROFILE);
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should throw a FirebaseError if the endpoint returns an error response", async () => {
+    nock(api.extensionsOrigin)
+      .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
+      .reply(404);
+    await expect(
+      extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID)
+    ).to.be.rejectedWith(FirebaseError);
+    expect(nock.isDone()).to.be.true;
   });
 });

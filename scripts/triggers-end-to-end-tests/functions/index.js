@@ -9,6 +9,7 @@ const { PubSub } = require("@google-cloud/pubsub");
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
+const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
 
 /*
  * We install onWrite triggers for START_DOCUMENT_NAME in both the firestore and
@@ -73,6 +74,16 @@ exports.writeToScheduledPubsub = functions.https.onRequest(async (req, res) => {
   res.json({ published: "ok" });
 });
 
+exports.writeToAuth = functions.https.onRequest(async (req, res) => {
+  const time = new Date().getTime();
+  await admin.auth().createUser({
+    uid: `uid${time}`,
+    email: `user${time}@example.com`,
+  });
+
+  res.json({ created: "ok" });
+});
+
 exports.firestoreReaction = functions.firestore
   .document(START_DOCUMENT_NAME)
   .onWrite(async (/* change, ctx */) => {
@@ -119,5 +130,11 @@ exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* 
 exports.pubsubScheduled = functions.pubsub.schedule("every mon 07:00").onRun((context) => {
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Resource", JSON.stringify(context.resource));
+  return true;
+});
+
+exports.authReaction = functions.auth.user().onCreate((user, ctx) => {
+  console.log(AUTH_FUNCTION_LOG);
+  console.log("User", JSON.stringify(user));
   return true;
 });

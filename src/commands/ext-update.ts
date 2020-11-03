@@ -4,8 +4,11 @@ import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
 
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+import { displayNode10UpdateBillingNotice } from "../extensions/billingMigrationHelper";
+import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -50,6 +53,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
     "firebaseextensions.instances.get",
   ])
   .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, updateSource: string, options: any) => {
     const spinner = ora.default(
       `Updating ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
@@ -200,26 +204,26 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
       }
       await displayChanges(existingSpec, newSpec, published);
+      if (newSpec.billingRequired) {
+        const enabled = await isBillingEnabled(projectId);
+        if (!enabled) {
+          await displayNode10UpdateBillingNotice(existingSpec, newSpec, false);
+          await enableBilling(projectId, instanceId);
+        } else {
+          await displayNode10UpdateBillingNotice(existingSpec, newSpec, true);
+        }
+      }
       const newParams = await paramHelper.promptForNewParams(
         existingSpec,
         newSpec,
         existingParams,
         projectId
       );
-      const rolesToRemove = _.differenceWith(
-        existingSpec.roles,
-        _.get(newSpec, "roles", []),
-        _.isEqual
-      );
       spinner.start();
       const updateOptions: UpdateOptions = {
         projectId,
         instanceId,
         source: newSource,
-        rolesToAdd: _.get(newSpec, "roles", []),
-        rolesToRemove,
-        serviceAccountEmail: existingInstance.serviceAccountEmail,
-        billingRequired: newSpec.billingRequired,
       };
       if (!_.isEqual(newParams, existingParams)) {
         updateOptions.params = newParams;

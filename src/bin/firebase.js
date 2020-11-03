@@ -18,7 +18,19 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 const updateNotifier = require("update-notifier")({ pkg: pkg });
-updateNotifier.notify({ defer: true, isGlobal: true });
+const clc = require("cli-color");
+const TerminalRenderer = require("marked-terminal");
+const marked = require("marked");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+const updateMessage =
+  `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+  `To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
+  `For other CLI management options, visit the ${marked(
+    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+  )}`;
+updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
 const client = require("..");
 const errorOut = require("../errorOut").errorOut;
@@ -28,7 +40,6 @@ const logger = require("../logger");
 const fs = require("fs");
 const fsutils = require("../fsutils");
 const path = require("path");
-const clc = require("cli-color");
 const ansiStrip = require("cli-color/strip");
 const { configstore } = require("../configstore");
 const _ = require("lodash");
@@ -37,7 +48,34 @@ const handlePreviewToggles = require("../handlePreviewToggles");
 const utils = require("../utils");
 let cmd;
 
-const logFilename = path.join(process.cwd(), "/firebase-debug.log");
+function findAvailableLogFile() {
+  const candidates = ["firebase-debug.log"];
+  for (let i = 1; i < 10; i++) {
+    candidates.push(`firebase-debug.${i}.log`);
+  }
+
+  for (const c of candidates) {
+    const logFilename = path.join(process.cwd(), c);
+
+    try {
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
+      return logFilename;
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        // File does not exist, which is fine
+        return logFilename;
+      }
+
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
+    }
+  }
+
+  throw new Error("Unable to obtain permissions for firebase-debug.log");
+}
+
+const logFilename = findAvailableLogFile();
 
 if (!process.env.DEBUG && _.includes(args, "--debug")) {
   process.env.DEBUG = true;

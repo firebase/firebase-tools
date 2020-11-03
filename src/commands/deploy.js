@@ -10,9 +10,10 @@ const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
 const filterTargets = require("../filterTargets");
+const { requireHostingSite } = require("../requireHostingSite");
 
 // in order of least time-consuming to most time-consuming
-const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting"];
+const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting", "remoteconfig"];
 const TARGET_PERMISSIONS = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
@@ -35,6 +36,7 @@ const TARGET_PERMISSIONS = {
     "firebaserules.rulesets.create",
     "firebaserules.releases.update",
   ],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
 };
 
 module.exports = new Command("deploy")
@@ -66,10 +68,14 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(function(options) {
+  .before(async function(options) {
     // only fetch the default instance for hosting or database deploys
-    if (_.intersection(options.filteredTargets, ["hosting", "database"]).length > 0) {
-      return requireInstance(options);
+    if (_.includes(options.filteredTargets, "database")) {
+      await requireInstance(options);
+    }
+
+    if (_.includes(options.filteredTargets, "hosting")) {
+      await requireHostingSite(options);
     }
   })
   .before(checkValidTargetFilters)

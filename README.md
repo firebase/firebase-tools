@@ -149,6 +149,40 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **hosting:disable** | Stop serving Firebase Hosting traffic for the active project. A "Site Not Found" message will be displayed at your project's Hosting URL after running this command. |
 
+### Remote Config Commands
+
+| Command                        | Description                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
+| **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
+
+Use `firebase:deploy --only remoteconfig` to update and publish a project's Firebase Remote Config template.
+
+## Authentication
+
+### General
+
+The Firebase CLI can use one of three authentication methods listed in descending priority:
+
+- `GOOGLE_APPLICATION_CREDENTIALS` - if this environment variable points to a service account key file, the Firebase CLI will authenticate as a service account.
+- `firebase login` - you can log in to the CLI directly as yourself. The CLI will store an authorized user credential.
+  - `FIREBASE_TOKEN` - you can explicitly use this environment variable to pass in a long-lived user token from `firebase login:ci`.
+- `gcloud auth application-default login` - if your development machine has application default credentials from the Google Cloud CLI, we will use them if none of the above credentials are present.
+
+### Cloud Functions Emulator
+
+The Cloud Functions emulator is exposed through commands like `emulators:start`,
+`serve` and `functions:shell`. Emulated Cloud Functions run as independent `node` processes
+on your development machine which means they have their own credential discovery mechanism.
+
+By default these `node` processes are not able to discover credentials from `firebase login`.
+In order to provide a better development experience, when you are logged in to the CLI
+through `firebase login` we take the user credentials and construct a temporary credential
+that we pass into the emulator through `GOOGLE_APPLICATION_CREDENTIALS`. We **only** do this
+if you have not already set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+yourself.
+
 ## Using with CI Systems
 
 The Firebase CLI requires a browser to complete authentication, but is fully
@@ -172,50 +206,42 @@ will immediately revoke access for the specified token.
 
 ## Using as a Module
 
-The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+The Firebase CLI can also be used programmatically as a standard Node module.
+Each command is exposed as a function that takes positional arguments followed
+by an options object and returns a Promise.
+
+So if we run this command at our command line:
+
+```bash
+$ firebase --project="foo" apps:list ANDROID
+```
+
+That translates to the following in Node:
 
 ```js
-var client = require("firebase-tools");
-client.projects
-  .list()
-  .then(function(data) {
-    console.log(data);
+const client = require("firebase-tools");
+client.apps
+  .list("ANDROID", { project: "foo" })
+  .then((data) => {
+    // ...
   })
-  .catch(function(err) {
-    // handle error
-  });
-
-client
-  .deploy({
-    project: "myfirebase",
-    token: process.env.FIREBASE_TOKEN,
-    force: true,
-    cwd: "/path/to/project/folder",
-  })
-  .then(function() {
-    console.log("Rules have been deployed!");
-  })
-  .catch(function(err) {
-    // handle error
+  .catch((err) => {
+    // ...
   });
 ```
 
-Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
-provide any positional arguments as strings followed by an object containing the options:
+The options object must be the very last argument and any unspecified
+positional argument will get the default value of `""`. The following
+two invocations are equivalent:
 
 ```js
-var client = require("firebase-tools");
-client
-  .use("projectId", {
-    // Equivalent to --add when using the CLI
-    add: true,
-  })
-  .then(function(data) {
-    console.log(data);
-  })
-  .catch(function(err) {
-    // handle error
-  });
+const client = require("firebase-tools");
+
+// #1 - No arguments or options, defaults will be inferred
+client.apps.list();
+
+// #2 - Explicitly provide "" for all arguments and {} for options
+client.apps.list("", {});
 ```
 
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically

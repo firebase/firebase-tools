@@ -8,7 +8,7 @@ var path = require("path");
 var { Command } = require("../command");
 var Config = require("../config");
 var fsutils = require("../fsutils");
-var init = require("../init");
+var { init } = require("../init");
 var logger = require("../logger");
 var { prompt, promptOnce } = require("../prompt");
 var { requireAuth } = require("../requireAuth");
@@ -100,6 +100,11 @@ module.exports = new Command("init [feature]")
         name: "Emulators: Set up local emulators for Firebase features",
         checked: false,
       },
+      {
+        value: "remoteconfig",
+        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
+        checked: false,
+      },
     ];
 
     var next;
@@ -125,7 +130,6 @@ module.exports = new Command("init [feature]")
           setup.features = [feature];
           return undefined;
         }
-
         return prompt(setup, [
           {
             type: "checkbox",
