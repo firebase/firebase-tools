@@ -1,32 +1,31 @@
-"use strict";
+import * as _ from "lodash";
+import * as fs from "fs";
+import * as url from "url";
 
-var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var request = require("request");
-var api = require("../api");
-var responseToError = require("../responseToError");
-var logger = require("../logger");
-var { FirebaseError } = require("../error");
-var { Emulators } = require("../emulator/types");
-var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-var { populateInstanceDetails } = require("../management/database");
-const { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
-var utils = require("../utils");
-var _ = require("lodash");
-var fs = require("fs");
-var url = require("url");
+import { Command } from "../command";
+import * as requireInstance from "../requireInstance";
+import { requirePermissions } from "../requirePermissions";
+import * as request from "request";
+import * as api from "../api";
+import * as responseToError from "../responseToError";
+import * as logger from "../logger";
+import { FirebaseError } from "../error";
+import { Emulators } from "../emulator/types";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import { populateInstanceDetails } from "../management/database";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import * as utils from "../utils";
 
-var _applyStringOpts = function(dest, src, keys, jsonKeys) {
-  _.forEach(keys, function(key) {
+function applyStringOpts(dest: any, src: any, keys: string[], jsonKeys: string[]): void {
+  _.forEach(keys, (key) => {
     if (src[key]) {
       dest[key] = src[key];
     }
   });
 
   // some keys need JSON encoding of the querystring value
-  _.forEach(jsonKeys, function(key) {
-    var jsonVal;
+  _.forEach(jsonKeys, (key) => {
+    let jsonVal;
     try {
       jsonVal = JSON.parse(src[key]);
     } catch (e) {
@@ -37,9 +36,9 @@ var _applyStringOpts = function(dest, src, keys, jsonKeys) {
       dest[key] = JSON.stringify(jsonVal);
     }
   });
-};
+}
 
-module.exports = new Command("database:get <path>")
+export default new Command("database:get <path>")
   .description("fetch and print JSON data at the specified path")
   .option("-o, --output <filename>", "save output to the specified file")
   .option("--pretty", "pretty print response")
@@ -61,14 +60,14 @@ module.exports = new Command("database:get <path>")
   .before(requireInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(function(path, options) {
+  .action((path, options) => {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
     const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
     let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
-    var query = {};
+    const query: { [key: string]: string } = {};
     if (options.shallow) {
       query.shallow = "true";
     }
@@ -84,7 +83,7 @@ module.exports = new Command("database:get <path>")
     if (options.orderByValue) {
       options.orderBy = "$value";
     }
-    _applyStringOpts(
+    applyStringOpts(
       query,
       options,
       ["limitToFirst", "limitToLast"],
@@ -99,40 +98,51 @@ module.exports = new Command("database:get <path>")
     dbUrl = urlObj.href;
 
     logger.debug("Query URL: ", dbUrl);
-    var reqOptions = {
+    const reqOptions = {
       url: dbUrl,
     };
 
-    return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-      return new Promise(function(resolve, reject) {
-        var fileOut = !!options.output;
-        var outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
-        var erroring;
-        var errorResponse = "";
-        var response;
+    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
+      return new Promise((resolve, reject) => {
+        const fileOut = !!options.output;
+        const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+        const writeOut = (s: Buffer | string, cb?: Function): void => {
+          if (outStream === process.stdout) {
+            outStream.write(s, cb);
+          } else if (outStream instanceof fs.WriteStream) {
+            outStream.write(s, (err) => {
+              if (cb) {
+                cb(err);
+              }
+            });
+          }
+        };
+        let erroring = false;
+        let errorResponse = "";
+        let response: any;
 
         request
           .get(reqOptionsWithToken)
-          .on("response", function(res) {
+          .on("response", (res) => {
             response = res;
             if (response.statusCode >= 400) {
               erroring = true;
             }
           })
-          .on("data", function(chunk) {
+          .on("data", (chunk) => {
             if (erroring) {
               errorResponse += chunk;
             } else {
-              outStream.write(chunk);
+              writeOut(chunk);
             }
           })
-          .on("end", function() {
-            outStream.write("\n", function() {
+          .on("end", () => {
+            writeOut("\n", () => {
               resolve();
             });
             if (erroring) {
               try {
-                var data = JSON.parse(errorResponse);
+                const data = JSON.parse(errorResponse);
                 return reject(responseToError(response, data));
               } catch (e) {
                 return reject(
