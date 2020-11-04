@@ -191,6 +191,11 @@ export class Client {
     return data.access_token;
   }
 
+  private requestURL(options: ClientRequestOptions<unknown>): string {
+    const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
+    return `${this.opts.urlPrefix}${versionPath}${options.path}`;
+  }
+
   private async doRequest<ReqT, ResT>(
     options: ClientRequestOptions<ReqT>
   ): Promise<ClientResponse<ResT>> {
@@ -198,8 +203,7 @@ export class Client {
       options.path = "/" + options.path;
     }
 
-    const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
-    let fetchURL = `${this.opts.urlPrefix}${versionPath}${options.path}`;
+    let fetchURL = this.requestURL(options);
     if (options.queryParams) {
       // TODO(bkendall): replace this half-hearted implementation with
       // URLSearchParams when on node >= 10.
@@ -254,32 +258,36 @@ export class Client {
     };
   }
 
-  private logRequest(fetchOptions: ClientRequestOptions<unknown>): void {
-    let searchParamLog = "";
-    if (fetchOptions.queryParams) {
-      if (!fetchOptions.skipLog?.queryParams) {
-        searchParamLog = JSON.stringify(fetchOptions.queryParams);
-      } else {
-        searchParamLog = "[SEARCH PARAMS OMITTED]";
+  private logRequest(options: ClientRequestOptions<unknown>): void {
+    let searchParamLog = "[omitted]";
+    if (options.queryParams) {
+      if (!options.skipLog?.queryParams) {
+        searchParamLog = JSON.stringify(options.queryParams);
       }
     }
-    const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
-    const urlLog = `${this.opts.urlPrefix}/${versionPath}${fetchOptions.path}`;
-    logger.debug("[apiv2] HTTP REQUEST:", fetchOptions.method, urlLog, searchParamLog);
-    if (fetchOptions.json) {
-      if (!fetchOptions.skipLog?.body) {
-        logger.debug("[apiv2] HTTP REQUEST BODY:", JSON.stringify(fetchOptions.json));
-      } else {
-        logger.debug("[apiv2] HTTP REQUEST BODY OMITTED");
+    const logURL = this.requestURL(options);
+    logger.debug(`>>> [apiv2][searchParams] ${options.method} ${logURL} ${searchParamLog}`);
+    if (options.json) {
+      let logBody = "[omitted]";
+      if (!options.skipLog?.body) {
+        logBody = JSON.stringify(options.json);
       }
+      logger.debug(`>>> [apiv2][body] ${options.method} ${logURL} ${logBody}`);
     }
   }
 
   private logResponse(res: Response, body: unknown, options: ClientRequestOptions<unknown>): void {
-    logger.debug("[apiv2] HTTP RESPONSE", res.status);
+    const logURL = this.requestURL(options);
+    logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);
 
+    let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
-      logger.debug("[apiv2] HTTP RESPONSE BODY", body);
+      try {
+        logBody = JSON.stringify(body);
+      } catch (_) {
+        logBody = `${body}`;
+      }
     }
+    logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);
   }
 }
