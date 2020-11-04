@@ -1,5 +1,0 @@
-- Fixes Cloud Function inspection when using standalone binary release (#2740)
-- Fix Database emulator crash on invalid `.validate` rules (#2734)
-- Fix Database emulator rejecting Auth emulator tokens.
-- Fixes lookup empty results using Admin SDK in Auth Emulator.
-- Automatically connects to other running emulators from the Firebase Hosting emulator.
