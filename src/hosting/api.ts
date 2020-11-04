@@ -1,5 +1,6 @@
 import { FirebaseError } from "../error";
 import * as api from "../api";
+import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
@@ -162,6 +163,12 @@ export function normalizeName(s: string): string {
   return s.replace(/[/:_]/g, "-");
 }
 
+const apiClient = new Client({
+  urlPrefix: api.hostingApiOrigin,
+  apiVersion: "v1beta1",
+  auth: true,
+});
+
 /**
  * getChannel retrieves information about a channel.
  * @param project the project ID or number (can be provided `-`),
@@ -175,13 +182,8 @@ export async function getChannel(
   channelId: string
 ): Promise<Channel | null> {
   try {
-    const res = await api.request(
-      "GET",
-      `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-      {
-        auth: true,
-        origin: api.hostingApiOrigin,
-      }
+    const res = await apiClient.get<Channel>(
+      `/projects/${project}/sites/${site}/channels/${channelId}`
     );
     return res.body;
   } catch (e) {
@@ -205,16 +207,15 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await api.request("GET", `/v1beta1/projects/${project}/sites/${site}/channels`, {
-        auth: true,
-        origin: api.hostingApiOrigin,
-        query: { pageToken: nextPageToken, pageSize: 100 },
-      });
+      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>(
+        `/projects/${project}/sites/${site}/channels`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
       const c = res.body?.channels;
       if (c) {
         channels.push(...c);
       }
-      nextPageToken = res.body?.nextPageToken;
+      nextPageToken = res.body?.nextPageToken || "";
       if (!nextPageToken) {
         return channels;
       }
@@ -242,16 +243,9 @@ export async function createChannel(
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION
 ): Promise<Channel> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
+  const res = await apiClient.post<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` }
   );
   return res.body;
 }
@@ -269,19 +263,10 @@ export async function updateChannelTtl(
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS
 ): Promise<Channel> {
-  const res = await api.request(
-    "PATCH",
-    `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      query: {
-        updateMask: ["ttl"].join(","),
-      },
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
+  const res = await apiClient.patch<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels/${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` },
+    { queryParams: { updateMask: ["ttl"].join(",") } }
   );
   return res.body;
 }
@@ -297,10 +282,7 @@ export async function deleteChannel(
   site: string,
   channelId: string
 ): Promise<void> {
-  await api.request("DELETE", `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`, {
-    auth: true,
-    origin: api.hostingApiOrigin,
-  });
+  await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
 }
 
 /**
