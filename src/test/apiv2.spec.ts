@@ -27,7 +27,7 @@ describe("apiv2", () => {
       sandbox.restore();
     });
 
-    it("should make a basic 404 GET request", async () => {
+    it("should throw on a basic 404 GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
         .reply(404, { message: "not found" });
@@ -38,6 +38,22 @@ describe("apiv2", () => {
         path: "/path/to/foo",
       });
       await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Not Found/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should be able to resolve on a 404 GET request", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(404, { message: "not found" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        resolveOnHTTPError: true,
+      });
+      expect(r.status).to.equal(404);
+      expect(r.body).to.deep.equal({ message: "not found" });
       expect(nock.isDone()).to.be.true;
     });
 

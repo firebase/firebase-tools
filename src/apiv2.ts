@@ -242,7 +242,9 @@ export class Client {
     this.logResponse(res, body, options);
 
     if (res.status >= 400) {
-      throw responseToError({ statusCode: res.status }, body);
+      if (!options.resolveOnHTTPError) {
+        throw responseToError({ statusCode: res.status }, body);
+      }
     }
 
     return {
