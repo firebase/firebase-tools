@@ -259,14 +259,15 @@ export class Client {
   }
 
   private logRequest(options: ClientRequestOptions<unknown>): void {
-    let searchParamLog = "[omitted]";
+    let queryParamsLog = "[none]";
     if (options.queryParams) {
+      queryParamsLog = "[omitted]";
       if (!options.skipLog?.queryParams) {
-        searchParamLog = JSON.stringify(options.queryParams);
+        queryParamsLog = JSON.stringify(options.queryParams);
       }
     }
     const logURL = this.requestURL(options);
-    logger.debug(`>>> [apiv2][searchParams] ${options.method} ${logURL} ${searchParamLog}`);
+    logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     if (options.json) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
