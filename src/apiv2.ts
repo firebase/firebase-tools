@@ -1,4 +1,5 @@
 import fetch, { Response, RequestInit } from "node-fetch";
+import { Readable } from "stream";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -12,7 +13,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
   json?: T;
-  responseType?: "json";
+  responseType?: "json" | "stream";
 }
 
 interface VerbOptions<T> {
@@ -238,6 +239,8 @@ export class Client {
     let body: ResT;
     if (options.responseType === "json") {
       body = await res.json();
+    } else if (options.responseType === "stream") {
+      body = (res.body as unknown) as ResT;
     } else {
       // This is how the linter wants the casting to T to work.
       body = ((await res.text()) as unknown) as ResT;
@@ -283,10 +286,15 @@ export class Client {
 
     let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
-      try {
-        logBody = JSON.stringify(body);
-      } catch (_) {
-        logBody = `${body}`;
+      if (body instanceof Readable) {
+        // Don't attempt to read any stream type, in case the caller needs it.
+        logBody = "[stream]";
+      } else {
+        try {
+          logBody = JSON.stringify(body);
+        } catch (_) {
+          logBody = `${body}`;
+        }
       }
     }
     logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);

@@ -71,6 +71,27 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should be able to stream a GET request", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(200, "ablobofdata");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "stream",
+      });
+      const data = await new Promise((resolve, reject) => {
+        let s = "";
+        r.body.on("error", reject);
+        r.body.on("data", (d) => (s += d));
+        r.body.on("end", () => resolve(s));
+      });
+      expect(data).to.deep.equal("ablobofdata");
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should make a basic GET request if path didn't include a leading slash", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
