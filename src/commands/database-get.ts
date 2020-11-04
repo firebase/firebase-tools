@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as fs from "fs";
 import * as url from "url";
 
@@ -69,8 +68,9 @@ export default new Command("database:get <path>")
   .before(requireInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(async (path, options) => {
-    if (!_.startsWith(path, "/")) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .action(async (path: string, options: any) => {
+    if (!path.startsWith("/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
