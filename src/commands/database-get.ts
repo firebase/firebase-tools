@@ -2,40 +2,49 @@ import * as _ from "lodash";
 import * as fs from "fs";
 import * as url from "url";
 
+import { Client } from "../apiv2";
 import { Command } from "../command";
-import * as requireInstance from "../requireInstance";
-import { requirePermissions } from "../requirePermissions";
-import * as request from "request";
-import * as api from "../api";
-import * as responseToError from "../responseToError";
-import * as logger from "../logger";
-import { FirebaseError } from "../error";
 import { Emulators } from "../emulator/types";
-import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import { FirebaseError } from "../error";
 import { populateInstanceDetails } from "../management/database";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import { requirePermissions } from "../requirePermissions";
+import * as requireInstance from "../requireInstance";
+import * as responseToError from "../responseToError";
 import * as utils from "../utils";
 
-function applyStringOpts(dest: any, src: any, keys: string[], jsonKeys: string[]): void {
-  _.forEach(keys, (key) => {
+/**
+ * Copies any `keys` from `src` to `dest`. Then copies any `jsonKeys` from
+ * `src` as JSON strings to `dest`. Modifies `dest`.
+ * @param dest destination object.
+ * @param src source to read from for `keys` and `jsonKeys`.
+ * @param keys keys to copy from `src`.
+ * @param jsonKeys keys to copy as JSON strings from `src`.
+ */
+function applyStringOpts(
+  dest: { [key: string]: string },
+  src: { [key: string]: string },
+  keys: string[],
+  jsonKeys: string[]
+): void {
+  for (const key of keys) {
     if (src[key]) {
       dest[key] = src[key];
     }
-  });
-
+  }
   // some keys need JSON encoding of the querystring value
-  _.forEach(jsonKeys, (key) => {
+  for (const key of jsonKeys) {
     let jsonVal;
     try {
       jsonVal = JSON.parse(src[key]);
-    } catch (e) {
+    } catch (_) {
       jsonVal = src[key];
     }
-
     if (src[key]) {
       dest[key] = JSON.stringify(jsonVal);
     }
-  });
+  }
 }
 
 export default new Command("database:get <path>")
@@ -60,13 +69,13 @@ export default new Command("database:get <path>")
   .before(requireInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action((path, options) => {
+  .action(async (path, options) => {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
     const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
-    let dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
+    const dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     const query: { [key: string]: string } = {};
     if (options.shallow) {
       query.shallow = "true";
@@ -91,70 +100,50 @@ export default new Command("database:get <path>")
     );
 
     const urlObj = new url.URL(dbUrl);
-    Object.keys(query).forEach((key) => {
-      urlObj.searchParams.set(key, query[key]);
+    const client = new Client({
+      urlPrefix: urlObj.origin,
+      auth: true,
+    });
+    const res = await client.request<unknown, NodeJS.ReadableStream>({
+      method: "GET",
+      path: urlObj.pathname,
+      queryParams: query,
+      responseType: "stream",
+      resolveOnHTTPError: true,
     });
 
-    dbUrl = urlObj.href;
+    const fileOut = !!options.output;
+    const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
 
-    logger.debug("Query URL: ", dbUrl);
-    const reqOptions = {
-      url: dbUrl,
-    };
+    if (res.status >= 400) {
+      const r = await streamToString(res.body);
+      let d;
+      try {
+        d = JSON.parse(r);
+      } catch (e) {
+        throw new FirebaseError("Malformed JSON response", { original: e, exit: 2 });
+      }
+      throw responseToError(res, d);
+    }
 
-    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
-      return new Promise((resolve, reject) => {
-        const fileOut = !!options.output;
-        const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
-        const writeOut = (s: Buffer | string, cb?: Function): void => {
-          if (outStream === process.stdout) {
-            outStream.write(s, cb);
-          } else if (outStream instanceof fs.WriteStream) {
-            outStream.write(s, (err) => {
-              if (cb) {
-                cb(err);
-              }
-            });
-          }
-        };
-        let erroring = false;
-        let errorResponse = "";
-        let response: any;
-
-        request
-          .get(reqOptionsWithToken)
-          .on("response", (res) => {
-            response = res;
-            if (response.statusCode >= 400) {
-              erroring = true;
-            }
-          })
-          .on("data", (chunk) => {
-            if (erroring) {
-              errorResponse += chunk;
-            } else {
-              writeOut(chunk);
-            }
-          })
-          .on("end", () => {
-            writeOut("\n", () => {
-              resolve();
-            });
-            if (erroring) {
-              try {
-                const data = JSON.parse(errorResponse);
-                return reject(responseToError(response, data));
-              } catch (e) {
-                return reject(
-                  new FirebaseError("Malformed JSON response", {
-                    exit: 2,
-                    original: e,
-                  })
-                );
-              }
-            }
-          })
-          .on("error", reject);
-      });
+    res.body.pipe(outStream);
+    // Tack on a single newline at the end of the stream.
+    res.body.once("end", () => {
+      if (outStream === process.stdout) {
+        outStream.write("\n");
+      } else if (outStream instanceof fs.WriteStream) {
+        outStream.write("\n");
+      } else {
+        throw new FirebaseError("Could not write line break", { status: 2 });
+      }
     });
   });
+
+function streamToString(s: NodeJS.ReadableStream): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let b = "";
+    s.on("error", reject);
+    s.on("data", (d) => (b += `${d}`));
+    s.once("end", () => resolve(b));
+  });
+}
