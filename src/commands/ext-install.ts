@@ -186,7 +186,7 @@ export default new Command("ext:install [extensionName]")
       const registryEntry = await resolveRegistryEntry(name);
       const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       source = await extensionsApi.getSource(sourceUrl);
-      displayExtInfo(extensionName, source.spec);
+      displayExtInfo(extensionName, source.spec, true);
       await confirmInstallInstance();
       const audienceConsent = await promptForAudienceConsent(registryEntry);
       if (!audienceConsent) {
@@ -215,12 +215,12 @@ export default new Command("ext:install [extensionName]")
           case SourceOrigin.PUBLISHED_EXTENSION: {
             await extensionsApi.getExtension(extensionName);
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
-            displayExtInfo(extensionName, extVersion.spec);
+            displayExtInfo(extensionName, extVersion.spec, true);
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
-            displayExtInfo(extensionName, extVersion.spec);
+            displayExtInfo(extensionName, extVersion.spec, true);
             break;
           }
           default: {
