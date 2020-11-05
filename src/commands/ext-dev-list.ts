@@ -20,10 +20,12 @@ export default new Command("ext:dev:list [publisherId]")
   .action(async (publisherId: string, options: any) => {
     if (!publisherId) {
       throw new FirebaseError(
-        `You need to enter a publisher ID to view their published extensions. Expected Usage: ${clc.bold("ext:dev:list <publisher ID>")}`
-      )
+        `You need to enter a publisher ID to view their published extensions. Expected Usage: ${clc.bold(
+          "ext:dev:list <publisher ID>"
+        )}`
+      );
     }
-    
+
     let extensions;
     try {
       extensions = await listExtensions(publisherId);
