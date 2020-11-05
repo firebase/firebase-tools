@@ -478,3 +478,11 @@ export function datetimeString(d: Date): string {
 export function isCloudEnvironment() {
   return !!process.env.CODESPACES;
 }
+
+/**
+ * Indicates whether or not this process is likely to be running in WSL.
+ * @return true if we're likely in WSL, false otherwise
+ */
+export function isRunningInWSL(): boolean {
+  return !!process.env.WSL_DISTRO_NAME;
+}
