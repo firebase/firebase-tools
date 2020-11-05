@@ -77,6 +77,7 @@ describe("normalizeName", () => {
     { in: "happyBranch", out: "happyBranch" },
     { in: "happy:branch", out: "happy-branch" },
     { in: "happy_branch", out: "happy-branch" },
+    { in: "happy#branch", out: "happy-branch" },
   ];
 
   for (const t of tests) {

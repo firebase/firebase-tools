@@ -160,7 +160,7 @@ export interface Version {
  */
 export function normalizeName(s: string): string {
   // Using a regex replaces *all* bad characters.
-  return s.replace(/[/:_]/g, "-");
+  return s.replace(/[/:_#]/g, "-");
 }
 
 const apiClient = new Client({
