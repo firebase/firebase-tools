@@ -9,6 +9,7 @@ import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
+import * as logger from "../logger";
 import * as requireInstance from "../requireInstance";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
@@ -116,12 +117,13 @@ export default new Command("database:get <path>")
     const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
 
     if (res.status >= 400) {
+      // TODO(bkendall): consider moving stream-handling logic to responseToError.
       const r = await utils.streamToString(res.body);
       let d;
       try {
         d = JSON.parse(r);
       } catch (e) {
-        throw new FirebaseError("Malformed JSON response", { original: e, exit: 2 });
+        logger.debug("Malformed JSON response:", e, r);
       }
       throw responseToError({ statusCode: res.status }, d);
     }
