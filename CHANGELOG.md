@@ -1,1 +1,2 @@
-- Work around Java emulators + WSL connectivity issues.
+- Works around Java emulators + WSL connectivity issues.
+- Fixes normalization when creating/deploying Firebase Hosting channels.
