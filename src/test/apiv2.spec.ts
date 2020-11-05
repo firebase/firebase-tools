@@ -72,6 +72,17 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should not allow resolving on http error when streaming", async () => {
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "stream",
+        resolveOnHTTPError: false,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /streaming.+resolveOnHTTPError/);
+    });
+
     it("should be able to stream a GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
@@ -82,24 +93,44 @@ describe("apiv2", () => {
         method: "GET",
         path: "/path/to/foo",
         responseType: "stream",
+        resolveOnHTTPError: true,
       });
       const data = await streamToString(r.body);
       expect(data).to.deep.equal("ablobofdata");
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should throw on a 404 GET request", async () => {
+    it("should resolve a 400 GET request", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(400, "who dis?");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "stream",
+        resolveOnHTTPError: true,
+      });
+      expect(r.status).to.equal(400);
+      expect(await streamToString(r.body)).to.equal("who dis?");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resolve a 404 GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
         .reply(404, "not here");
 
       const c = new Client({ urlPrefix: "https://example.com" });
-      const r = c.request<unknown, NodeJS.ReadableStream>({
+      const r = await c.request<unknown, NodeJS.ReadableStream>({
         method: "GET",
         path: "/path/to/foo",
         responseType: "stream",
+        resolveOnHTTPError: true,
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Not Found/);
+      expect(r.status).to.equal(404);
+      expect(await streamToString(r.body)).to.equal("not here");
       expect(nock.isDone()).to.be.true;
     });
 

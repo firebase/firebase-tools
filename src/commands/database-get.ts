@@ -118,7 +118,7 @@ export default new Command("database:get <path>")
 
     if (res.status >= 400) {
       // TODO(bkendall): consider moving stream-handling logic to responseToError.
-      const r = await utils.streamToString(res.body);
+      const r = await res.response.text();
       let d;
       try {
         d = JSON.parse(r);

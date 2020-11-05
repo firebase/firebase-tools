@@ -144,6 +144,15 @@ export class Client {
       reqOptions.responseType = "json";
     }
 
+    // TODO(bkendall): stream + !resolveOnHTTPError makes for difficult handling.
+    //   Figure out if there's a better way to handle streamed >=400 responses.
+    if (reqOptions.responseType === "stream" && !reqOptions.resolveOnHTTPError) {
+      throw new FirebaseError(
+        "apiv2 will not handle HTTP errors while streaming and you must set `resolveOnHTTPError` and check for res.status >= 400 on your own",
+        { exit: 2 }
+      );
+    }
+
     reqOptions = this.addRequestHeaders(reqOptions);
 
     if (this.opts.auth) {
