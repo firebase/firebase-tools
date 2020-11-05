@@ -233,4 +233,14 @@ describe("utils", () => {
       );
     });
   });
+
+  describe("streamToString/stringToStream", () => {
+    it("should be able to create and read streams", async () => {
+      const stream = utils.stringToStream("hello world");
+      if (!stream) {
+        throw new Error("stream came back undefined");
+      }
+      await expect(utils.streamToString(stream)).to.eventually.equal("hello world");
+    });
+  });
 });

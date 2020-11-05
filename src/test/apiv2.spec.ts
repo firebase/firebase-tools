@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+import { streamToString } from "../utils";
 import * as helpers from "./helpers";
 
 describe("apiv2", () => {
@@ -82,13 +83,40 @@ describe("apiv2", () => {
         path: "/path/to/foo",
         responseType: "stream",
       });
-      const data = await new Promise((resolve, reject) => {
-        let s = "";
-        r.body.on("error", reject);
-        r.body.on("data", (d) => (s += d));
-        r.body.on("end", () => resolve(s));
-      });
+      const data = await streamToString(r.body);
       expect(data).to.deep.equal("ablobofdata");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw on a 404 GET request", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(404, "not here");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "stream",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Not Found/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should be able to resolve a stream on a 404 GET request", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(404, "does not exist");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: "/path/to/foo",
+        responseType: "stream",
+        resolveOnHTTPError: true,
+      });
+      const data = await streamToString(r.body);
+      expect(data).to.deep.equal("does not exist");
       expect(nock.isDone()).to.be.true;
     });
 

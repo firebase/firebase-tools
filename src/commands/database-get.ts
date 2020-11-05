@@ -116,14 +116,14 @@ export default new Command("database:get <path>")
     const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
 
     if (res.status >= 400) {
-      const r = await streamToString(res.body);
+      const r = await utils.streamToString(res.body);
       let d;
       try {
         d = JSON.parse(r);
       } catch (e) {
         throw new FirebaseError("Malformed JSON response", { original: e, exit: 2 });
       }
-      throw responseToError(res, d);
+      throw responseToError({ statusCode: res.status }, d);
     }
 
     res.body.pipe(outStream);
@@ -142,12 +142,3 @@ export default new Command("database:get <path>")
       }
     });
   });
-
-function streamToString(s: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let b = "";
-    s.on("error", reject);
-    s.on("data", (d) => (b += `${d}`));
-    s.once("end", () => resolve(b));
-  });
-}
