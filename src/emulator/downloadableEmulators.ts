@@ -168,6 +168,20 @@ function _getCommand(
 
   const cmdLineArgs = baseCmd.args.slice();
 
+  if (
+    baseCmd.binary === "java" &&
+    utils.isRunningInWSL() &&
+    (!args.host || !args.host.includes(":"))
+  ) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Force
+    // Java to use IPv4 sockets in WSL (unless IPv6 address explicitly used).
+    // Otherwise, Java will open a tcp6 socket (even if IPv4 address is used),
+    // which handles both 4/6 on Linux but NOT IPv4 from the host to WSL.
+    // This is a hack because it breaks all IPv6 connections as a side effect.
+    // See: https://docs.oracle.com/javase/8/docs/api/java/net/doc-files/net-properties.html
+    cmdLineArgs.unshift("-Djava.net.preferIPv4Stack=true"); // first argument
+  }
+
   const logger = EmulatorLogger.forEmulator(emulator);
   Object.keys(args).forEach((key) => {
     if (!baseCmd.optionalArgs.includes(key)) {
