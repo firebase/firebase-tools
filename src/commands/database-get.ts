@@ -123,7 +123,7 @@ export default new Command("database:get <path>")
       try {
         d = JSON.parse(r);
       } catch (e) {
-        logger.debug("Malformed JSON response:", e, r);
+        throw new FirebaseError("Malformed JSON response", { original: e, exit: 2 });
       }
       throw responseToError({ statusCode: res.status }, d);
     }
@@ -140,7 +140,7 @@ export default new Command("database:get <path>")
         s.write("\n");
         s.close();
       } else {
-        throw new FirebaseError("Could not write line break", { status: 2 });
+        logger.debug("[database:get] Could not write line break to outStream");
       }
     });
   });
