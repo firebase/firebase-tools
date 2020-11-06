@@ -56,7 +56,7 @@ describe("extension emulator", () => {
 
     const res = await test.invokeHttpFunction(TEST_FUNCTION_NAME, FIREBASE_PROJECT_ZONE);
 
-    expect(res.statusCode).to.equal(200);
+    expect(res.status).to.equal(200);
     expect(res.body).to.equal("Hello World from greet-the-world");
   });
 });
