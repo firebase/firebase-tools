@@ -3,6 +3,7 @@ import * as _ from "lodash";
 import * as marked from "marked";
 import * as ora from "ora";
 import TerminalRenderer = require("marked-terminal");
+import * as semver from "semver";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
@@ -28,6 +29,7 @@ import {
   updateToVersionFromRegistry,
   updateToVersionFromPublisherSource,
   updateFromPublisherSource,
+  getExistingSourceOrigin,
 } from "../extensions/updateHelper";
 import * as getProjectId from "../getProjectId";
 import { requirePermissions } from "../requirePermissions";
@@ -66,7 +68,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       } catch (err) {
         if (err.status === 404) {
           return utils.reject(
-            `No extension instance ${instanceId} found in project ${projectId}.`,
+            `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
+              projectId
+            )}'.`,
             {
               exit: 1,
             }
@@ -78,15 +82,75 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         existingInstance,
         "config.source.spec"
       );
+      if (existingInstance.config.source.state === "DELETED") {
+        throw new FirebaseError(
+          `Instance '${clc.bold(
+            instanceId
+          )}' cannot be updated anymore because the underlying extension was unpublished from Firebase's registry of extensions. Going forward, you will only be able to re-configure or uninstall this instance.`
+        );
+      }
       const existingParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
       displayExtInfo(instanceId, existingSpec, true);
 
+      // Infer updateSource if instance is from the registry
+      if (existingInstance.config.extensionRef && !updateSource) {
+        updateSource = `${existingInstance.config.extensionRef}@latest`;
+      } else if (existingInstance.config.extensionRef && semver.valid(updateSource)) {
+        updateSource = `${existingInstance.config.extensionRef}@${updateSource}`;
+      }
+
       let newSourceName: string;
       let published = false;
-      const origin = await getSourceOrigin(updateSource);
+
+      const existingSourceOrigin = await getExistingSourceOrigin(
+        projectId,
+        instanceId,
+        existingSpec.name,
+        existingSource
+      );
+      const newSourceOrigin = await getSourceOrigin(updateSource);
+
+      // We only allow the following types of updates.
+      let validUpdate = false;
+      if (existingSourceOrigin === SourceOrigin.OFFICIAL_EXTENSION) {
+        if (
+          [
+            SourceOrigin.LOCAL,
+            SourceOrigin.URL,
+            SourceOrigin.OFFICIAL_EXTENSION,
+            SourceOrigin.OFFICIAL_EXTENSION_VERSION,
+          ].indexOf(newSourceOrigin) > -1
+        ) {
+          validUpdate = true;
+        }
+      } else if (existingSourceOrigin === SourceOrigin.PUBLISHED_EXTENSION) {
+        if (
+          [
+            SourceOrigin.LOCAL,
+            SourceOrigin.URL,
+            SourceOrigin.PUBLISHED_EXTENSION,
+            SourceOrigin.PUBLISHED_EXTENSION_VERSION,
+          ].indexOf(newSourceOrigin) > -1
+        ) {
+          validUpdate = true;
+        }
+      } else if (
+        existingSourceOrigin === SourceOrigin.LOCAL ||
+        existingSourceOrigin === SourceOrigin.URL
+      ) {
+        if ([SourceOrigin.LOCAL, SourceOrigin.URL].indexOf(newSourceOrigin) > -1) {
+          validUpdate = true;
+        }
+      }
+      if (!validUpdate) {
+        throw new FirebaseError(
+          `Cannot update from a(n) ${existingSourceOrigin} to a(n) ${newSourceOrigin}. Please provide a new source that is a(n) ${existingSourceOrigin} and try again.`
+        );
+      }
+
       // TODO: remove "falls through" once producer and registry experience are released
-      switch (origin) {
+      switch (newSourceOrigin) {
         case SourceOrigin.LOCAL: {
           if (previews.extdev) {
             newSourceName = await updateFromLocalSource(
@@ -115,33 +179,22 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           // falls through
         }
         // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.VERSION: {
-          if (previews.extdev) {
-            const extRef = _.get(existingInstance, "extensionRef");
-            const extVer = _.get(existingInstance, "extensionVersion", "latest");
-            if (previews.extdev && extRef) {
-              newSourceName = await updateToVersionFromPublisherSource(
-                instanceId,
-                `${extRef}@${extVer}`,
-                existingSpec,
-                existingSource
-              );
-            } else {
-              newSourceName = await updateToVersionFromRegistry(
-                instanceId,
-                existingSpec,
-                existingSource,
-                updateSource
-              );
-            }
-            break;
-          }
+        case SourceOrigin.OFFICIAL_EXTENSION_VERSION: {
+          newSourceName = await updateToVersionFromRegistry(
+            projectId,
+            instanceId,
+            existingSpec,
+            existingSource,
+            updateSource
+          );
+          break;
           // falls through
         }
         // eslint-disable-next-line no-fallthrough
         case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
           if (previews.extdev) {
             newSourceName = await updateToVersionFromPublisherSource(
+              projectId,
               instanceId,
               updateSource,
               existingSpec,
@@ -156,6 +209,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         case SourceOrigin.PUBLISHED_EXTENSION: {
           if (previews.extdev) {
             newSourceName = await updateFromPublisherSource(
+              projectId,
               instanceId,
               updateSource,
               existingSpec,
@@ -167,40 +221,36 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           // falls through
         }
         // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.OFFICIAL: {
-          const extRef = _.get(existingInstance, "extensionRef");
-          if (previews.extdev && extRef) {
-            newSourceName = await updateFromPublisherSource(
-              instanceId,
-              extRef,
-              existingSpec,
-              existingSource
-            );
-          } else {
-            newSourceName = await updateFromRegistry(instanceId, existingSpec, existingSource);
-          }
+        case SourceOrigin.OFFICIAL_EXTENSION: {
+          newSourceName = await updateFromRegistry(
+            projectId,
+            instanceId,
+            existingSpec,
+            existingSource
+          );
           break;
         }
         default: {
-          throw new FirebaseError(`unknown source origin for ${updateSource}`);
+          throw new FirebaseError(`Unknown source '${clc.bold(updateSource)}.'`);
         }
       }
 
       const newSource = await extensionsApi.getSource(newSourceName);
       const newSpec = newSource.spec;
-      if (!previews.extdev || !updateSource) {
-        if (existingSpec.version === newSpec.version) {
-          utils.logLabeledBullet(
-            logPrefix,
-            `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
-              existingSpec.version
-            )}.`
-          );
-          const retry = await retryUpdate();
-          if (!retry) {
-            utils.logLabeledBullet(logPrefix, "Update aborted.");
-            return;
-          }
+      if (
+        [SourceOrigin.LOCAL, SourceOrigin.URL].indexOf(newSourceOrigin) === -1 &&
+        existingSpec.version === newSpec.version
+      ) {
+        utils.logLabeledBullet(
+          logPrefix,
+          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+            existingSpec.version
+          )}.`
+        );
+        const retry = await retryUpdate();
+        if (!retry) {
+          utils.logLabeledBullet(logPrefix, "Update aborted.");
+          return;
         }
       }
       await displayChanges(existingSpec, newSpec, published);

@@ -232,6 +232,7 @@ describe("extensions", () => {
         PROJECT_ID,
         INSTANCE_ID,
         {
+          state: "ACTIVE",
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
@@ -274,6 +275,7 @@ describe("extensions", () => {
           PROJECT_ID,
           INSTANCE_ID,
           {
+            state: "ACTIVE",
             name: "sources/blah",
             packageUri: "https://test.fake/pacakge.zip",
             hash: "abc123",
@@ -401,6 +403,7 @@ describe("extensions", () => {
 
   describe("updateInstance", () => {
     const testSource: extensionsApi.ExtensionSource = {
+      state: "ACTIVE",
       name: "abc123",
       packageUri: "www.google.com/pack.zip",
       hash: "abc123",

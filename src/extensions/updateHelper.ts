@@ -6,7 +6,7 @@ import * as logger from "../logger";
 import * as resolveSource from "./resolveSource";
 import * as extensionsApi from "./extensionsApi";
 import { promptOnce } from "../prompt";
-import { createSourceFromLocation, logPrefix, SourceOrigin } from "./extensionsHelper";
+import { createSourceFromLocation, logPrefix, SourceOrigin, urlRegex } from "./extensionsHelper";
 import * as utils from "../utils";
 import {
   displayUpdateChangesNoInput,
@@ -22,6 +22,35 @@ function invalidSourceErrMsgTemplate(instanceId: string, source: string): string
   - Check your directory path or URL, then run \`${clc.bold(
     "firebase ext:update " + instanceId + " <otherSource>"
   )}\` to update from a local directory or URL source.`;
+}
+
+export async function getExistingSourceOrigin(
+  projectId: string,
+  instanceId: string,
+  extensionName: string,
+  existingSource: string
+): Promise<SourceOrigin> {
+  let instance = await extensionsApi.getInstance(projectId, instanceId);
+  if (instance && instance.config.extensionRef) {
+    return SourceOrigin.PUBLISHED_EXTENSION;
+  }
+  let existingSourceOrigin: SourceOrigin;
+  try {
+    const registryEntry = await resolveSource.resolveRegistryEntry(extensionName);
+    if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
+      existingSourceOrigin = SourceOrigin.OFFICIAL_EXTENSION;
+    } else {
+      existingSourceOrigin = SourceOrigin.PUBLISHED_EXTENSION;
+    }
+  } catch {
+    // If registry entry does not exist, assume existing source was from local directory or URL.
+    if (urlRegex.test(existingSource)) {
+      existingSourceOrigin = SourceOrigin.URL;
+    } else {
+      existingSourceOrigin = SourceOrigin.LOCAL;
+    }
+  }
+  return existingSourceOrigin;
 }
 
 async function showUpdateVersionInfo(
@@ -51,6 +80,8 @@ async function showUpdateVersionInfo(
 
 /**
  * Prints out warning messages and requires user to consent before continuing with update.
+ * @param projectId name of the project
+ * @param instanceId name of the instance
  * @param extensionName name of the extension being updated
  * @param existingSource current source of the extension instance
  * @param nextSourceOrigin new source of the extension instance (to be updated to)
@@ -58,52 +89,19 @@ async function showUpdateVersionInfo(
  * @param additionalMsg any additional warnings associated with this update
  */
 export async function warningUpdateToOtherSource(
-  extensionName: string,
-  existingSource: string,
+  existingSourceOrigin: SourceOrigin,
   warning: string,
   nextSourceOrigin: SourceOrigin,
   additionalMsg?: string
 ): Promise<void> {
-  let existingSourceOrigin: SourceOrigin;
-  try {
-    const registryEntry = await resolveSource.resolveRegistryEntry(extensionName);
-    if (resolveSource.isOfficialSource(registryEntry, existingSource)) {
-      existingSourceOrigin = SourceOrigin.OFFICIAL;
-    } else {
-      existingSourceOrigin = SourceOrigin.PUBLISHED_EXTENSION;
-    }
-  } catch {
-    // If registry entry does not exist, assume existing source was from local directory or URL.
-    existingSourceOrigin = SourceOrigin.LOCAL;
-  }
-
-  // We only allow the following types of updates.
-  if (
-    !(
-      (existingSourceOrigin === SourceOrigin.OFFICIAL && nextSourceOrigin === SourceOrigin.LOCAL) ||
-      (existingSourceOrigin === SourceOrigin.OFFICIAL && nextSourceOrigin === SourceOrigin.URL) ||
-      // When checking existing Extension source origins, we don't differentiate between LOCAL and URL sources (see above).
-      (existingSourceOrigin === SourceOrigin.LOCAL && nextSourceOrigin === SourceOrigin.URL) ||
-      existingSourceOrigin === nextSourceOrigin
-    )
-  ) {
-    throw new FirebaseError(
-      `Cannot update from a(n) ${existingSourceOrigin} to a(n) ${nextSourceOrigin}. Please provide a new source that is a(n) ${existingSourceOrigin} and try again.`
-    );
-  }
-
   let msg = warning;
-  if (nextSourceOrigin === SourceOrigin.LOCAL || nextSourceOrigin === SourceOrigin.URL) {
-    msg +=
-      "\nUpdating this extension instance to an unpublished extension source will upload the unpublished extension source " +
-      "to the registry of community extensions, but it must be published before it can be seen by others.\n";
+  let joinText = "";
+  if (existingSourceOrigin === nextSourceOrigin) {
+    joinText = "also ";
   }
-
-  if (existingSourceOrigin !== nextSourceOrigin) {
-    msg +=
-      `\nThe current source for this instance is a(n) ${existingSourceOrigin}. The new source for this instance will be a(n) ${nextSourceOrigin}.\n` +
-      `${additionalMsg || ""}`;
-  }
+  msg +=
+    `The current source for this instance is a(n) ${existingSourceOrigin}. The new source for this instance will ${joinText}be a(n) ${nextSourceOrigin}.\n\n` +
+    `${additionalMsg || ""}`;
   const updateWarning = {
     from: existingSourceOrigin,
     description: msg,
@@ -207,12 +205,17 @@ export async function updateFromLocalSource(
   );
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, localSource);
   const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.";
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the local directory.\n\n";
   const additionalMsg =
-    "After updating from a local source, this instance cannot be updated in the future to use an official source.";
-  await module.exports.warningUpdateToOtherSource(
+    "After updating from a local source, this instance cannot be updated in the future to use a published source from Firebase's registry of extensions.";
+  const existingSourceOrigin = await getExistingSourceOrigin(
+    projectId,
+    instanceId,
     existingSpec.name,
-    existingSource,
+    existingSource
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSourceOrigin,
     warning,
     SourceOrigin.LOCAL,
     additionalMsg
@@ -247,12 +250,17 @@ export async function updateFromUrlSource(
   );
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, urlSource);
   const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.";
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the URL.\n\n";
   const additionalMsg =
-    "After updating from a URL source, this instance cannot be updated in the future to use an official source.";
-  await module.exports.warningUpdateToOtherSource(
+    "After updating from a URL source, this instance cannot be updated in the future to use a published source from Firebase's registry of extensions.";
+  const existingSourceOrigin = await getExistingSourceOrigin(
+    projectId,
+    instanceId,
     existingSpec.name,
-    existingSource,
+    existingSource
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSourceOrigin,
     warning,
     SourceOrigin.URL,
     additionalMsg
@@ -267,6 +275,7 @@ export async function updateFromUrlSource(
  * @param existingSource name of existing instance source
  */
 export async function updateToVersionFromPublisherSource(
+  projectId: string,
   instanceId: string,
   extRef: string,
   existingSpec: extensionsApi.ExtensionSpec,
@@ -279,10 +288,15 @@ export async function updateToVersionFromPublisherSource(
   );
   await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extRef);
   const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the published extension.";
-  await module.exports.warningUpdateToOtherSource(
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the published extension.\n\n";
+  const existingSourceOrigin = await getExistingSourceOrigin(
+    projectId,
+    instanceId,
     existingSpec.name,
-    existingSource,
+    existingSource
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSourceOrigin,
     warning,
     SourceOrigin.PUBLISHED_EXTENSION
   );
@@ -296,12 +310,14 @@ export async function updateToVersionFromPublisherSource(
  * @param existingSource name of existing instance source
  */
 export async function updateFromPublisherSource(
+  projectId: string,
   instanceId: string,
   extRef: string,
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
   return updateToVersionFromPublisherSource(
+    projectId,
     instanceId,
     `${extRef}@latest`,
     existingSpec,
@@ -318,6 +334,7 @@ export async function updateFromPublisherSource(
  * @param version Version to update the instance to
  */
 export async function updateToVersionFromRegistry(
+  projectId: string,
   instanceId: string,
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string,
@@ -352,17 +369,20 @@ export async function updateToVersionFromRegistry(
       );
     }
   }
-
   const targetVersion = resolveSource.getTargetVersion(registryEntry, version);
   await showUpdateVersionInfo(instanceId, existingSpec.version, targetVersion);
-
   const warning =
-    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.\n";
-  await module.exports.warningUpdateToOtherSource(
+    "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the latest released version.\n\n";
+  const existingSourceOrigin = await getExistingSourceOrigin(
+    projectId,
+    instanceId,
     existingSpec.name,
-    existingSource,
+    existingSource
+  );
+  await module.exports.warningUpdateToOtherSource(
+    existingSourceOrigin,
     warning,
-    SourceOrigin.OFFICIAL
+    SourceOrigin.OFFICIAL_EXTENSION
   );
   await resolveSource.promptForUpdateWarnings(registryEntry, existingSpec.version, targetVersion);
   return resolveSource.resolveSourceUrl(registryEntry, existingSpec.name, targetVersion);
@@ -376,9 +396,10 @@ export async function updateToVersionFromRegistry(
  * @param existingSource name of existing instance source
  */
 export async function updateFromRegistry(
+  projectId: string,
   instanceId: string,
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
-  return updateToVersionFromRegistry(instanceId, existingSpec, existingSource, "latest");
+  return updateToVersionFromRegistry(projectId, instanceId, existingSpec, existingSource, "latest");
 }

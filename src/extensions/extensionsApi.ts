@@ -63,6 +63,7 @@ export interface ExtensionConfig {
 }
 
 export interface ExtensionSource {
+  state: "STATE_UNSPECIFIED" | "ACTIVE" | "DELETED";
   name: string;
   packageUri: string;
   hash: string;

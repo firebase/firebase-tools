@@ -44,12 +44,12 @@ export enum SpecParamType {
 }
 
 export enum SourceOrigin {
-  OFFICIAL = "official extension",
+  OFFICIAL_EXTENSION = "official extension",
   LOCAL = "unpublished extension (local source)",
   PUBLISHED_EXTENSION = "published extension",
   PUBLISHED_EXTENSION_VERSION = "specific version of a published extension",
   URL = "unpublished extension (URL source)",
-  VERSION = "specific version of an official extension",
+  OFFICIAL_EXTENSION_VERSION = "specific version of an official extension",
 }
 
 export const logPrefix = "extensions";
@@ -576,8 +576,12 @@ export async function promptForRepeatInstance(
   extensionName: string
 ): Promise<string> {
   const message =
-    `An extension with the ID ${extensionName} already exists in the project ${projectName}.\n` +
-    `Do you wish to proceed with installing another instance of ${extensionName} in this project?`;
+    `An extension with the ID '${clc.bold(
+      extensionName
+    )}' already exists in the project '${clc.bold(projectName)}'.\n` +
+    `Do you want to proceed with installing another instance of extension '${clc.bold(
+      extensionName
+    )}' in this project?`;
   return await promptOnce({
     type: "confirm",
     message,
@@ -613,39 +617,51 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
  */
 export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
   if (!sourceOrVersion) {
-    return SourceOrigin.OFFICIAL;
+    return SourceOrigin.OFFICIAL_EXTENSION;
   }
   if (urlRegex.test(sourceOrVersion)) {
     return SourceOrigin.URL;
   }
   if (semver.valid(sourceOrVersion)) {
-    return SourceOrigin.VERSION;
+    return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
   }
-  try {
-    const { publisherId, extensionId, version } = parseRef(sourceOrVersion);
-    if (publisherId && extensionId && !version) {
-      // Ensure valid Extension Ref by trying to get it from the backend.
-      await getExtension(sourceOrVersion);
-      return SourceOrigin.PUBLISHED_EXTENSION;
+  // If it contains a forward slash, it could be either an extension reference or a local path.
+  if (sourceOrVersion.indexOf("/") > -1) {
+    try {
+      const { publisherId, extensionId, version } = parseRef(sourceOrVersion);
+      if (publisherId && extensionId && !version) {
+        // Ensure valid Extension Ref by trying to get it from the backend.
+        await getExtension(sourceOrVersion);
+        return SourceOrigin.PUBLISHED_EXTENSION;
+      }
+      if (publisherId && extensionId && version) {
+        await getExtensionVersion(sourceOrVersion);
+        return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
+      }
+    } catch (err) {
+      // sourceOrVersion can still be a valid local path
+      if (fs.existsSync(sourceOrVersion)) {
+        return SourceOrigin.LOCAL;
+      }
+      throw new FirebaseError(
+        `Could not find source '${clc.bold(
+          sourceOrVersion
+        )}'. If this is a published extension, please make sure ` +
+          `it matches the format '${clc.bold(
+            "{publisher}/{extension}(@{version})"
+          )}'.\n\nOtherwise, please make sure the ` +
+          "local/URL path exists and try again."
+      );
     }
-    if (publisherId && extensionId && version) {
-      await getExtensionVersion(sourceOrVersion);
-      return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
-    }
-  } catch (err) {
-    // sourceOrVersion can still be a valid local path
-    if (fs.existsSync(sourceOrVersion)) {
-      return SourceOrigin.LOCAL;
-    }
-    if (err instanceof FirebaseError) {
-      throw err;
-    }
-    throw new FirebaseError(
-      `Failed to determine the source origin for source '${clc.bold(sourceOrVersion)}': ${err}`
-    );
+  }
+  // sourceOrVersion can still be a valid local path
+  if (fs.existsSync(sourceOrVersion)) {
+    return SourceOrigin.LOCAL;
   }
   throw new FirebaseError(
-    `Invalid source ${sourceOrVersion}. Please check to make sure this source exists and try again.`
+    `Could not find source '${clc.bold(
+      sourceOrVersion
+    )}'. Check to make sure the source is correct, and then please try again.`
   );
 }
 
