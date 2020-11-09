@@ -69,6 +69,6 @@ export default new Command("database:update <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, path)
+      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
     );
   });

@@ -110,6 +110,19 @@ export class Client {
     return this.request<string, ResT>(reqOptions);
   }
 
+  put<ReqT, ResT>(
+    path: string,
+    json?: ReqT,
+    options: ClientVerbOptions<ReqT> = {}
+  ): Promise<ClientResponse<ResT>> {
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+      method: "PUT",
+      path,
+      body: JSON.stringify(json),
+    });
+    return this.request<ReqT, ResT>(reqOptions);
+  }
+
   delete<ResT>(
     path: string,
     options: ClientVerbOptions<unknown> = {}
