@@ -1,0 +1,1 @@
+- Set `FIREBASE_AUTH_EMULATOR_HOST` in `emulators:exec`.
