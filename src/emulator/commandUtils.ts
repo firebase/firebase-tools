@@ -276,7 +276,7 @@ function processKillSignal(
           pids.push(emulatorInfo.pid as number);
           emulatorsTable.push([
             Constants.description(emulatorInfo.name),
-            `${emulatorInfo.host}:${emulatorInfo.port}`,
+            EmulatorRegistry.getInfoHostString(emulatorInfo),
             emulatorInfo.pid,
           ]);
         }
@@ -322,14 +322,14 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
     const info = databaseInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
     env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
   }
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
     const info = firestoreInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
 
     env[Constants.FIRESTORE_EMULATOR_HOST] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
@@ -338,14 +338,14 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   const authInstance = EmulatorRegistry.get(Emulators.AUTH);
   if (authInstance) {
     const info = authInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
     env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = address;
   }
 
   const hubInstance = EmulatorRegistry.get(Emulators.HUB);
   if (hubInstance) {
     const info = hubInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
     env[EmulatorHub.EMULATOR_HUB_ENV] = address;
   }
 

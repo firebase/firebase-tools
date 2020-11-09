@@ -17,8 +17,10 @@ export class AuthCloudFunction {
 
     if (functionsEmulator) {
       this.enabled = true;
-      this.functionsEmulatorInfo = functionsEmulator.getInfo();
-      this.multicastEndpoint = `http://${this.functionsEmulatorInfo?.host}:${this.functionsEmulatorInfo?.port}/functions/projects/${projectId}/trigger_multicast`;
+      this.functionsEmulatorInfo = functionsEmulator.getInfo()!;
+      this.multicastEndpoint = `http://${EmulatorRegistry.getInfoHostString(
+        this.functionsEmulatorInfo
+      )}/functions/projects/${projectId}/trigger_multicast`;
     }
   }
 
