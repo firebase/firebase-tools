@@ -83,7 +83,7 @@ module.exports = new Command("database:set <path> [infile]")
               logger.info();
               logger.info(
                 clc.bold("View data at:"),
-                utils.getDatabaseViewDataUrl(origin, options.instance, path)
+                utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
               );
               return resolve();
             })
