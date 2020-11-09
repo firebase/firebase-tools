@@ -1,1 +1,3 @@
-- Work around Java emulators + WSL connectivity issues.
+- Works around Java emulators + WSL connectivity issues.
+- Fixes normalization when creating/deploying Firebase Hosting channels.
+- Release RTDB emulator 4.7.1 out-of-region request error fix
