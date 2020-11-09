@@ -59,7 +59,7 @@ export default new Command("database:update <path> [infile]")
       await c.request({
         method: "PATCH",
         path: jsonUrl.pathname,
-        stream: inStream,
+        body: inStream,
       });
     } catch (err) {
       throw new FirebaseError("Unexpected error while setting data");

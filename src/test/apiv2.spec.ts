@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { utils } from "mocha";
 import * as nock from "nock";
 import * as sinon from "sinon";
 
@@ -220,7 +219,7 @@ describe("apiv2", () => {
       const r = await c.request({
         method: "POST",
         path: "/path/to/foo",
-        json: POST_DATA,
+        body: POST_DATA,
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
@@ -235,23 +234,10 @@ describe("apiv2", () => {
       const r = await c.request({
         method: "POST",
         path: "/path/to/foo",
-        stream: stringToStream("hello world"),
+        body: stringToStream("hello world"),
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
-    });
-
-    it("should not allow specifying both json and stream", async () => {
-      const c = new Client({ urlPrefix: "https://example.com" });
-      const r = c.request({
-        method: "GET",
-        path: "/path/to/foo",
-        json: { foo: "bar" },
-        stream: stringToStream("hello world"),
-        responseType: "stream",
-        resolveOnHTTPError: true,
-      });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /both.+stream.+json.+options/);
     });
   });
 

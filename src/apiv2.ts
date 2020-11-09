@@ -12,8 +12,7 @@ type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
-  json?: T;
-  stream?: NodeJS.ReadableStream;
+  body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
 }
 
@@ -90,12 +89,12 @@ export class Client {
     json?: ReqT,
     options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+    const reqOptions: ClientRequestOptions<string> = Object.assign(options, {
       method: "POST",
       path,
-      json,
+      body: JSON.stringify(json),
     });
-    return this.request<ReqT, ResT>(reqOptions);
+    return this.request<string, ResT>(reqOptions);
   }
 
   patch<ReqT, ResT>(
@@ -103,12 +102,12 @@ export class Client {
     json?: ReqT,
     options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+    const reqOptions: ClientRequestOptions<string> = Object.assign(options, {
       method: "PATCH",
       path,
-      json,
+      body: JSON.stringify(json),
     });
-    return this.request<ReqT, ResT>(reqOptions);
+    return this.request<string, ResT>(reqOptions);
   }
 
   delete<ResT>(
@@ -151,12 +150,6 @@ export class Client {
       throw new FirebaseError(
         "apiv2 will not handle HTTP errors while streaming and you must set `resolveOnHTTPError` and check for res.status >= 400 on your own",
         { exit: 2 }
-      );
-    }
-
-    if (reqOptions.json && reqOptions.stream) {
-      throw new FirebaseError(
-        "apiv2 does not handle both `stream` and `json` set in request options"
       );
     }
 
@@ -239,11 +232,8 @@ export class Client {
       method: options.method,
     };
 
-    if (options.json) {
-      fetchOptions.body = JSON.stringify(options.json);
-    }
-    if (options.stream) {
-      fetchOptions.body = options.stream;
+    if (typeof options.body !== "string" && !isStream(options.body)) {
+      options.body = JSON.stringify(options.body);
     }
 
     this.logRequest(options);
@@ -290,10 +280,10 @@ export class Client {
     }
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
-    if (options.json) {
+    if (options.body) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
-        logBody = JSON.stringify(options.json);
+        logBody = bodyToString(options.body);
       }
       logger.debug(`>>> [apiv2][body] ${options.method} ${logURL} ${logBody}`);
     }
@@ -305,17 +295,25 @@ export class Client {
 
     let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
-      if (body instanceof Readable) {
-        // Don't attempt to read any stream type, in case the caller needs it.
-        logBody = "[stream]";
-      } else {
-        try {
-          logBody = JSON.stringify(body);
-        } catch (_) {
-          logBody = `${body}`;
-        }
-      }
+      logBody = bodyToString(body);
     }
     logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);
   }
+}
+
+function bodyToString(body: unknown): string {
+  if (isStream(body)) {
+    // Don't attempt to read any stream type, in case the caller needs it.
+    return "[stream]";
+  } else {
+    try {
+      return JSON.stringify(body);
+    } catch (_) {
+      return `${body}`;
+    }
+  }
+}
+
+function isStream(o: unknown): boolean {
+  return o instanceof Readable;
 }
