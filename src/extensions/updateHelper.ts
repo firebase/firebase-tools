@@ -168,10 +168,10 @@ export interface UpdateOptions {
  */
 export async function update(updateOptions: UpdateOptions): Promise<any> {
   const { projectId, instanceId, source, extRef, params } = updateOptions;
-  if (source) {
-    return await extensionsApi.updateInstance(projectId, instanceId, source, params);
-  } else if (extRef) {
+  if (extRef) {
     return await extensionsApi.updateInstanceFromRegistry(projectId, instanceId, extRef, params);
+  } else if (source) {
+    return await extensionsApi.updateInstance(projectId, instanceId, source, params);
   }
   throw new FirebaseError(
     `Neither a source nor a version of the extension was supplied for ${instanceId}. Please make sure this is a valid extension and try again.`

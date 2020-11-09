@@ -235,8 +235,14 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         }
       }
 
+      // TODO(fix): currently exploiting an oversight in this method call to make calls to both
+      // the getExtensionSource endpoint and getExtenionVersion endpoint. Only ExtensionSources
+      // are returned by this method, so in the case of a getExtensionVersion call, only overlapping
+      // fields like name and ExtensionSpec are surfaced.
+      // We should fix this.
       const newSource = await extensionsApi.getSource(newSourceName);
       const newSpec = newSource.spec;
+
       if (
         [SourceOrigin.LOCAL, SourceOrigin.URL].indexOf(newSourceOrigin) === -1 &&
         existingSpec.version === newSpec.version
@@ -275,6 +281,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         instanceId,
         source: newSource,
       };
+      if (newSourceName.includes("publisher")) {
+        updateOptions.extRef = newSourceName;
+      }
       if (!_.isEqual(newParams, existingParams)) {
         updateOptions.params = newParams;
       }
