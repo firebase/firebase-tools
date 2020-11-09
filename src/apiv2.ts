@@ -13,6 +13,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
   json?: T;
+  stream?: NodeJS.ReadableStream;
   responseType?: "json" | "stream";
 }
 
@@ -153,6 +154,12 @@ export class Client {
       );
     }
 
+    if (reqOptions.json && reqOptions.stream) {
+      throw new FirebaseError(
+        "apiv2 does not handle both `stream` and `json` set in request options"
+      );
+    }
+
     reqOptions = this.addRequestHeaders(reqOptions);
 
     if (this.opts.auth) {
@@ -234,6 +241,9 @@ export class Client {
 
     if (options.json) {
       fetchOptions.body = JSON.stringify(options.json);
+    }
+    if (options.stream) {
+      fetchOptions.body = options.stream;
     }
 
     this.logRequest(options);

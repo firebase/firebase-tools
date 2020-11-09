@@ -1,10 +1,11 @@
 import { expect } from "chai";
+import { utils } from "mocha";
 import * as nock from "nock";
 import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
-import { streamToString } from "../utils";
+import { streamToString, stringToStream } from "../utils";
 import * as helpers from "./helpers";
 
 describe("apiv2", () => {
@@ -223,6 +224,34 @@ describe("apiv2", () => {
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a basic POST request with a stream", async () => {
+      nock("https://example.com")
+        .post("/path/to/foo", "hello world")
+        .reply(200, { success: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/path/to/foo",
+        stream: stringToStream("hello world"),
+      });
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should not allow specifying both json and stream", async () => {
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        json: { foo: "bar" },
+        stream: stringToStream("hello world"),
+        responseType: "stream",
+        resolveOnHTTPError: true,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /both.+stream.+json.+options/);
     });
   });
 
