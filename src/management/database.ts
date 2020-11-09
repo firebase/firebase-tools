@@ -6,7 +6,6 @@
 import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { previews } from "../previews";
 import { FirebaseError } from "../error";
 import { Constants } from "../emulator/constants";
 const MGMT_API_VERSION = "v1beta";
@@ -49,9 +48,7 @@ export interface DatabaseInstance {
  * @param options command options that will be modified to add instanceDetails.
  */
 export async function populateInstanceDetails(options: any): Promise<void> {
-  if (previews.rtdbmanagement) {
-    options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
-  }
+  options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
   return Promise.resolve();
 }
 
