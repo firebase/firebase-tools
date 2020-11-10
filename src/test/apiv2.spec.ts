@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
