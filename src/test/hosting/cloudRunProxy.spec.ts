@@ -9,6 +9,7 @@ import cloudRunProxy, {
   CloudRunProxyOptions,
   CloudRunProxyRewrite,
 } from "../../hosting/cloudRunProxy";
+import { mockAuth } from "../helpers";
 
 describe("cloudRunProxy", () => {
   const fakeOptions: CloudRunProxyOptions = {
@@ -17,8 +18,15 @@ describe("cloudRunProxy", () => {
   const fakeRewrite: CloudRunProxyRewrite = { run: { serviceId: "helloworld" } };
   const cloudRunServiceOrigin = "https://helloworld-hash-uc.a.run.app";
 
+  let sandbox: sinon.SinonSandbox;
+  beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    mockAuth(sandbox);
+  });
+
   afterEach(() => {
     nock.cleanAll();
+    sandbox.restore();
   });
 
   it("should error when not provided a valid Cloud Run service ID", async () => {
