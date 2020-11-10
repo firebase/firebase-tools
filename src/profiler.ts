@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as fs from "fs";
 import * as ora from "ora";
 import * as readline from "readline";
@@ -28,7 +27,6 @@ export async function profiler(options: any): Promise<unknown> {
   const tmpFile = tmp.tmpNameSync();
   const tmpStream = fs.createWriteStream(tmpFile);
   const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
-  let counter = 0;
   const spinner = ora({
     text: "0 operations recorded. Press [enter] to stop",
     color: "yellow",
@@ -67,7 +65,6 @@ export async function profiler(options: any): Promise<unknown> {
     resolveOnHTTPError: true,
     headers: {
       Accept: "text/event-stream",
-      Connection: "keep-alive",
     },
     signal: controller.signal,
   });
@@ -80,6 +77,7 @@ export async function profiler(options: any): Promise<unknown> {
     spinner.start();
   }
 
+  let counter = 0;
   res.body.on("data", (chunk: Buffer) => {
     if (chunk.toString().includes("event: log")) {
       counter++;
