@@ -5,7 +5,6 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import { OperationPollerOptions, pollOperation } from "../operation-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
-import { mockAuth } from "./helpers";
 
 const TEST_ORIGIN = "https://firebasedummy.googleapis.com.com";
 const VERSION = "v1";
@@ -21,7 +20,6 @@ describe("OperationPoller", () => {
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      mockAuth(sandbox);
       stubApiRequest = sandbox.stub(api, "request");
       pollerOptions = {
         apiOrigin: TEST_ORIGIN,
