@@ -245,8 +245,12 @@ export class Client {
       method: options.method,
     };
 
-    if (typeof options.body !== "string" && !isStream(options.body)) {
-      options.body = JSON.stringify(options.body);
+    if (options.body) {
+      if (typeof options.body === "string" || isStream(options.body)) {
+        fetchOptions.body = options.body;
+      } else {
+        fetchOptions.body = JSON.stringify(options.body);
+      }
     }
 
     this.logRequest(options);
@@ -327,6 +331,6 @@ function bodyToString(body: unknown): string {
   }
 }
 
-function isStream(o: unknown): boolean {
+function isStream(o: unknown): o is NodeJS.ReadableStream {
   return o instanceof Readable;
 }

@@ -11,6 +11,8 @@ describe("apiv2", () => {
   beforeEach(() => {
     // The api module has package variables that we don't want sticking around.
     delete require.cache[require.resolve("../apiv2")];
+
+    nock.cleanAll();
   });
 
   after(() => {
