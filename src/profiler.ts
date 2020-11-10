@@ -91,16 +91,21 @@ export async function profiler(options: any): Promise<unknown> {
   });
   // If the duration passes or another exception happens, this handler is
   // called.
+  let resError: Error | undefined;
   res.body.on("error", (e) => {
     if (e.type !== "aborted") {
+      resError = e;
       logger.error("Unexpected error from response stream:", e);
     }
   });
 
-  const p = new Promise((resolve) => {
+  const p = new Promise((resolve, reject) => {
     const fn = (): void => {
       // Use the signal to stop the ongoing request.
       controller.abort();
+      if (resError) {
+        return reject(resError);
+      }
       resolve(generateReport());
     };
     if (options.duration) {
