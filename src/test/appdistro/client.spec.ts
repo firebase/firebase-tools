@@ -13,6 +13,7 @@ import {
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import { Distribution } from "../../appdistribution/distribution";
+import { mockAuth } from "../helpers";
 
 tmp.setGracefulCleanup();
 
@@ -26,6 +27,7 @@ describe("distribution", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    mockAuth(sandbox);
     sandbox.useFakeTimers();
   });
 
