@@ -1,15 +1,15 @@
 import * as crypto from "crypto";
-import * as request from "request";
-import * as ProgressBar from "progress";
-
-import { FirebaseError } from "../error";
-import { Emulators, EmulatorDownloadDetails } from "./types";
-import * as downloadableEmulators from "./downloadableEmulators";
-import * as tmp from "tmp";
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as ProgressBar from "progress";
+import * as tmp from "tmp";
 import * as unzipper from "unzipper";
+
+import { Client } from "../apiv2";
 import { EmulatorLogger } from "./emulatorLogger";
+import { Emulators, EmulatorDownloadDetails } from "./types";
+import { FirebaseError } from "../error";
+import * as downloadableEmulators from "./downloadableEmulators";
 
 tmp.setGracefulCleanup();
 
@@ -90,37 +90,38 @@ function removeOldFiles(
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.
  * Resolves to the temporary file's name, rejects if there's any error.
+ * @param remoteUrl URL to download.
  */
-function downloadToTmp(remoteUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const tmpfile = tmp.fileSync();
-    const req = request.get(remoteUrl);
-    const writeStream = fs.createWriteStream(tmpfile.name);
-    req.on("error", (err: any) => reject(err));
+async function downloadToTmp(remoteUrl: string): Promise<string> {
+  const u = new URL(remoteUrl);
+  const c = new Client({ urlPrefix: u.origin, auth: false });
+  const tmpfile = tmp.fileSync();
+  const writeStream = fs.createWriteStream(tmpfile.name);
 
-    let bar: ProgressBar;
-
-    req.on("response", (response) => {
-      if (response.statusCode !== 200) {
-        reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
-      }
-
-      const total = parseInt(response.headers["content-length"] || "0", 10);
-      const totalMb = Math.ceil(total / 1000000);
-      bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
-    });
-
-    req.on("data", (chunk) => {
-      if (bar) {
-        bar.tick(chunk.length);
-      }
-    });
-
-    writeStream.on("finish", () => {
-      resolve(tmpfile.name);
-    });
-    req.pipe(writeStream);
+  const res = await c.request<void, NodeJS.ReadableStream>({
+    method: "GET",
+    path: u.pathname,
+    responseType: "stream",
+    resolveOnHTTPError: true,
   });
+  if (res.status !== 200) {
+    throw new FirebaseError(`download failed, status ${res.status}`, { exit: 1 });
+  }
+
+  const total = parseInt(res.response.headers.get("content-length") || "0", 10);
+  const totalMb = Math.ceil(total / 1000000);
+  const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
+
+  res.body.on("data", (chunk) => {
+    bar.tick(chunk.length);
+  });
+
+  await new Promise((resolve) => {
+    writeStream.on("finish", resolve);
+    res.body.pipe(writeStream);
+  });
+
+  return tmpfile.name;
 }
 
 /**
