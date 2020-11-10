@@ -41,9 +41,19 @@ import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
-  const host = Constants.normalizeHost(
+  let host = Constants.normalizeHost(
     options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
   );
+
+  if (host === "localhost" && utils.isRunningInWSL()) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
+    // 127.0.0.1 instead of localhost. This, combined with the hack in
+    // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
+    // The CLI (including the hub) will also consistently report 127.0.0.1,
+    // causing clients to connect via IPv4 only (which mitigates the problem of
+    // some clients resolving localhost to IPv6 and get connection refused).
+    host = "127.0.0.1";
+  }
 
   const portVal = options.config.get(Constants.getPortKey(emulator), undefined);
   let port;
@@ -523,17 +533,6 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     }
   }
 
-  if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
-    const hostingEmulator = new HostingEmulator({
-      host: hostingAddr.host,
-      port: hostingAddr.port,
-      options,
-    });
-
-    await startEmulator(hostingEmulator);
-  }
-
   if (shouldStart(options, Emulators.AUTH)) {
     if (!projectId) {
       throw new FirebaseError(
@@ -567,6 +566,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  // Hosting emulator needs to start after all of the others so that we can detect
+  // which are running and call useEmulator in __init.js
+  if (shouldStart(options, Emulators.HOSTING)) {
+    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
+    const hostingEmulator = new HostingEmulator({
+      host: hostingAddr.host,
+      port: hostingAddr.port,
+      options,
+    });
+
+    await startEmulator(hostingEmulator);
   }
 
   if (!noUi && shouldStart(options, Emulators.UI)) {

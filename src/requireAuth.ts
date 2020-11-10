@@ -2,6 +2,7 @@ import { GoogleAuth, GoogleAuthOptions } from "google-auth-library";
 import * as clc from "cli-color";
 
 import * as api from "./api";
+import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -36,6 +37,7 @@ async function autoAuth(options: any, authScopes: string[]): Promise<void> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   api.setAccessToken(token);
+  token !== null ? apiv2.setAccessToken(token) : false;
 }
 
 /**
@@ -71,6 +73,7 @@ export async function requireAuth(options: any): Promise<void> {
 
   if (tokenOpt) {
     api.setRefreshToken(tokenOpt);
+    apiv2.setRefreshToken(tokenOpt);
     return;
   }
 
@@ -81,4 +84,5 @@ export async function requireAuth(options: any): Promise<void> {
   options.user = user;
   options.tokens = tokens;
   api.setRefreshToken(tokens.refresh_token);
+  apiv2.setRefreshToken(tokens.refresh_token);
 }

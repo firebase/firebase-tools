@@ -67,6 +67,7 @@ module.exports = new Command("database:push <path> [infile]")
 
             var consoleUrl = utils.getDatabaseViewDataUrl(
               origin,
+              options.project,
               options.instance,
               path + body.name
             );

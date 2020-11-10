@@ -10,13 +10,18 @@
     <!-- include only the Firebase features as you need -->
     <script defer src="/__/firebase/{{VERSION}}/firebase-auth.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-database.js"></script>
+    <script defer src="/__/firebase/{{VERSION}}/firebase-firestore.js"></script>
+    <script defer src="/__/firebase/{{VERSION}}/firebase-functions.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-messaging.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-storage.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-analytics.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-remote-config.js"></script>
     <script defer src="/__/firebase/{{VERSION}}/firebase-performance.js"></script>
-    <!-- initialize the SDK after all desired features are loaded -->
-    <script defer src="/__/firebase/init.js"></script>
+    <!-- 
+      initialize the SDK after all desired features are loaded, set useEmulator to false
+      to avoid connecting the SDK to running emulators.
+    -->
+    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
 
     <style media="screen">
       body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
@@ -50,6 +55,8 @@
         //
         // firebase.auth().onAuthStateChanged(user => { });
         // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
+        // firebase.firestore().doc('/foo/bar').get().then(() => { });
+        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
         // firebase.messaging().requestPermission().then(() => { });
         // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
         // firebase.analytics(); // call to activate
@@ -63,6 +70,8 @@
           let features = [
             'auth', 
             'database', 
+            'firestore',
+            'functions',
             'messaging', 
             'storage', 
             'analytics', 

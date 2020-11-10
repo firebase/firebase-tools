@@ -62,15 +62,39 @@ PID="$!"
 sleep 5
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+
+# Test that ?useEmulator has the expected effect on init.js
+INIT_JS_NONE="$(curl localhost:${PORT}/__/firebase/init.js)"
+[[ "${INIT_JS_NONE}" =~ "firebaseEmulators = undefined" ]] || (echo "Expected firebaseEmulators to be undefined" && false)
+INIT_JS_FALSE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=false)"
+[[ "${INIT_JS_FALSE}" =~ "firebaseEmulators = undefined" ]] || (echo "Expected firebaseEmulators to be undefined" && false)
+INIT_JS_TRUE="$(curl localhost:${PORT}/__/firebase/init.js\?useEmulator=true)"
+[[ "${INIT_JS_TRUE}" =~ "firebaseEmulators = {" ]] || (echo "Expected firebaseEmulators to be defined" && false)
+
 kill "$PID"
 wait
 echo "Tested local hosting emulator."
+
+# This test can only run on one Node version in the matrix because if it runs twice
+# in parallel the deploys will clobber each other. This is only a temporary
+# workaround, when we update the CLI to stop supporting Node 8 we can remove
+# this hack or find some way to lock.
+if [ "${NODE_VERSION}" != 8* ]; then
+  echo "Not running deployment tests on Node version ${NODE_VERSION}"
+  exit 0
+fi
 
 echo "Testing hosting deployment..."
 firebase deploy --only hosting --project "${FBTOOLS_TARGET_PROJECT}"
 sleep 5
 VALUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/${TARGET_FILE})"
 test "${DATE}" = "${VALUE}" || (echo "Expected ${VALUE} to equal ${DATE}." && false)
+
+# Test that ?useEmulator has no effect on init.js
+INIT_JS_NONE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js)"
+INIT_JS_TRUE="$(curl https://${FBTOOLS_TARGET_PROJECT}.web.app/__/firebase/init.js\?useEmulator=true)"
+test "${INIT_JS_NONE}" = "${INIT_JS_TRUE}" || (echo "Expected ${INIT_JS_NONE} to equal ${INIT_JS_TRUE}." && false)
+
 echo "Tested hosting deployment."
 
 # Test more complex scenarios:
