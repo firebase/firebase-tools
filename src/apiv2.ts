@@ -89,12 +89,12 @@ export class Client {
     json?: ReqT,
     options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    const reqOptions: ClientRequestOptions<string> = Object.assign(options, {
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "POST",
       path,
-      body: JSON.stringify(json),
+      body: json,
     });
-    return this.request<string, ResT>(reqOptions);
+    return this.request<ReqT, ResT>(reqOptions);
   }
 
   patch<ReqT, ResT>(
@@ -102,12 +102,12 @@ export class Client {
     json?: ReqT,
     options: ClientVerbOptions<ReqT> = {}
   ): Promise<ClientResponse<ResT>> {
-    const reqOptions: ClientRequestOptions<string> = Object.assign(options, {
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PATCH",
       path,
-      body: JSON.stringify(json),
+      body: json,
     });
-    return this.request<string, ResT>(reqOptions);
+    return this.request<ReqT, ResT>(reqOptions);
   }
 
   put<ReqT, ResT>(
@@ -118,7 +118,7 @@ export class Client {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PUT",
       path,
-      body: JSON.stringify(json),
+      body: json,
     });
     return this.request<ReqT, ResT>(reqOptions);
   }
