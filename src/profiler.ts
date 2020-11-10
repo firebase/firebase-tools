@@ -37,7 +37,7 @@ export async function profiler(options: any): Promise<unknown> {
   // command or the duration passes.
   const controller = new AbortController();
 
-  const generateReport = async (): Promise<void> => {
+  const generateReport = (): Promise<void> => {
     rl.close();
     spinner.stop();
     controller.abort();
