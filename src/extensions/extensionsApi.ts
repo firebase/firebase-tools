@@ -356,10 +356,10 @@ export async function updateInstanceFromRegistry(
   const body: any = {
     config: {
       extensionRef: `${publisherId}/${extensionId}`,
-      extensionVersion: version || "latest",
+      extensionVersion: version,
     },
   };
-  let updateMask = "config.extensionRef,config.extensionVersion";
+  let updateMask = "config.extension_ref,config.extension_version";
   if (params) {
     body.params = params;
     updateMask += ",config.params";
@@ -695,4 +695,32 @@ export function parseRef(
   throw new FirebaseError(
     "Extension reference must be in format '{publisher}/{extension}(@{version})'."
   );
+}
+
+/**
+ * @param extensionVersionName resource name of the format `publishers/<publisherID>/extensions/<extensionID>/versions/<versionID>`
+ * @return array of ref split into publisher id, extension id, and version id (if applicable)
+ */
+export function parseExtensionVersionName(
+  extensionVersionName: string
+): {
+  publisherId: string;
+  extensionId: string;
+  version?: string;
+} {
+  const parts = extensionVersionName.split("/");
+  if (
+    parts.length !== 6 ||
+    parts[0] !== "publishers" ||
+    parts[2] !== "extensions" ||
+    parts[4] !== "versions"
+  ) {
+    throw new FirebaseError(
+      "Extension version name must be in the format `publishers/<publisherID>/extensions/<extensionID>/versions/<versionID>`."
+    );
+  }
+  const publisherId = parts[1];
+  const extensionId = parts[3];
+  const version = parts[5];
+  return { publisherId, extensionId, version };
 }

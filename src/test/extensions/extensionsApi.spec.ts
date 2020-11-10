@@ -294,10 +294,10 @@ describe("extensions", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should include config.extensionRef and config.extensionVersion for an update to a published extension", async () => {
+    it("should include config.extension_ref and config.extension_version for an update to a published extension", async () => {
       nock(api.extensionsOrigin)
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
-        .query({ updateMask: "config.extensionRef,config.extensionVersion" })
+        .query({ updateMask: "config.extension_ref,config.extension_version" })
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
