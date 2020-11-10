@@ -1,4 +1,4 @@
-import { Client, ClientResponse } from "./apiv2";
+import { Client } from "./apiv2";
 import { FirebaseError } from "./error";
 import { Queue } from "./throttler/queue";
 
@@ -58,9 +58,9 @@ export class OperationPoller<T> {
       auth: true,
     });
     return async () => {
-      let res: ClientResponse<OperationResult<T>>;
+      let res;
       try {
-        res = await apiClient.get(options.operationResourceName);
+        res = await apiClient.get<OperationResult<T>>(options.operationResourceName);
       } catch (err) {
         // Responses with 500 or 503 status code are treated as retriable errors.
         if (err.status === 500 || err.status === 503) {
