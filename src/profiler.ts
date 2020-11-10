@@ -7,6 +7,7 @@ import AbortController from "abort-controller";
 
 import { Client } from "./apiv2";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "./database/api";
+import * as logger from "./logger";
 import * as ProfileReport from "./profileReport";
 import * as responseToError from "./responseToError";
 import * as utils from "./utils";
@@ -33,9 +34,12 @@ export async function profiler(options: any): Promise<unknown> {
     color: "yellow",
   });
   const outputFormat = options.raw ? "RAW" : options.parent.json ? "JSON" : "TXT";
+
+  // Controller is used to stop the request stream when the user stops the
+  // command or the duration passes.
   const controller = new AbortController();
 
-  const generateReport = _.once(() => {
+  const generateReport = async (): Promise<void> => {
     rl.close();
     spinner.stop();
     controller.abort();
@@ -47,11 +51,11 @@ export async function profiler(options: any): Promise<unknown> {
       collapse: options.collapse,
     };
     const report = new ProfileReport(dataFile, outStream, reportOptions);
-    report.generate();
-  });
+    return report.generate();
+  };
 
   if (options.input) {
-    // If there is input, don't contact the server
+    // If there is input, don't contact the server.
     return generateReport();
   }
 
@@ -82,25 +86,24 @@ export async function profiler(options: any): Promise<unknown> {
       spinner.text = `${counter} operations recorded. Press [enter] to stop`;
     }
   });
-  // if (!options.duration) {
-  //   res.body.on("end", () => {
-  //     spinner.text = counter + " operations recorded.\n";
-  //     generateReport();
-  //   });
-  // }
-
+  // If the response stream is closed, this handler is called (not
+  // necessarially an error condition).
+  res.body.on("end", () => {
+    spinner.text = counter + " operations recorded.\n";
+  });
+  // If the duration passes or another exception happens, this handler is
+  // called.
   res.body.on("error", (e) => {
-    if (e.name !== "AbortError") {
-      console.error("Error", e);
+    if (e.type !== "aborted") {
+      logger.error("Unexpected error from response stream:", e);
     }
   });
 
-  res.body.pipe(tmpStream);
-
-  return new Promise((resolve) => {
+  const p = new Promise((resolve) => {
     const fn = (): void => {
-      generateReport();
-      resolve();
+      // Use the signal to stop the ongoing request.
+      controller.abort();
+      resolve(generateReport());
     };
     if (options.duration) {
       setTimeout(fn, options.duration * 1000);
@@ -109,4 +112,8 @@ export async function profiler(options: any): Promise<unknown> {
       rl.question("", fn);
     }
   });
+
+  // With everything set, start the stream and return the promise.
+  res.body.pipe(tmpStream);
+  return p;
 }
