@@ -133,7 +133,7 @@ function buildConfig(
  */
 function getFunctionSourceDirectory(functionResources: Resource[]): String {
   let sourceDirectory;
-  for (let r of functionResources) {
+  for (const r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
     if (!dir) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
