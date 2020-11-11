@@ -1,1 +1,2 @@
-- Fixes and issue where the `${param:FOO}` syntax for Extensions did not work with the emulator.
+- Fixes an issue where the `${param:FOO}` syntax for Firebase Extensions did not work with the emulator.
+- Fixes issue in `database:settings:get` where the value wasn't being properly displayed.
