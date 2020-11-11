@@ -17,7 +17,6 @@ import {
   WebAppMetadata,
 } from "../../management/apps";
 import * as pollUtils from "../../operation-poller";
-import { mockAuth } from "../helpers";
 import { FirebaseError } from "../../error";
 
 const PROJECT_ID = "the-best-firebase-project";
@@ -70,7 +69,6 @@ describe("App management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
     readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");

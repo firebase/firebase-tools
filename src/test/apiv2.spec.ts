@@ -1,11 +1,9 @@
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { streamToString, stringToStream } from "../utils";
-import * as helpers from "./helpers";
 
 describe("apiv2", () => {
   beforeEach(() => {
@@ -20,16 +18,6 @@ describe("apiv2", () => {
   });
 
   describe("request", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
     it("should throw on a basic 404 GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
@@ -244,16 +232,6 @@ describe("apiv2", () => {
   });
 
   describe("verbs", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
     it("should make a GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")

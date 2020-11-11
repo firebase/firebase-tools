@@ -321,10 +321,9 @@ async function getProjectPage<T>(
     pageToken?: string;
   }
 ): Promise<ProjectPage<T>> {
-  let apiResponse;
   const { responseKey, pageToken, pageSize } = options;
   const pageTokenQueryString = pageToken ? `&pageToken=${pageToken}` : "";
-  apiResponse = await api.request(
+  const apiResponse = await api.request(
     "GET",
     `${apiResource}?pageSize=${pageSize}${pageTokenQueryString}`,
     {

@@ -6,7 +6,6 @@ var os = require("os");
 var sinon = require("sinon");
 
 var accountExporter = require("../accountExporter");
-var helpers = require("./helpers");
 
 var expect = chai.expect;
 describe("accountExporter", function() {
@@ -44,7 +43,6 @@ describe("accountExporter", function() {
 
     beforeEach(function() {
       sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
       spyWrite = sandbox.spy(writeStream, "write");
       for (var i = 0; i < 7; i++) {
         userList.push({
