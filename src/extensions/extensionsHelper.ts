@@ -172,7 +172,7 @@ export function validateSpec(spec: any) {
   if (!spec.version) {
     errors.push("extension.yaml; is missing required field: version");
   }
-  for (let resource of spec.resources) {
+  for (const resource of spec.resources) {
     if (!resource.name) {
       errors.push("Resource is missing required field: name");
     }
@@ -182,17 +182,17 @@ export function validateSpec(spec: any) {
       );
     }
   }
-  for (let api of spec.apis || []) {
+  for (const api of spec.apis || []) {
     if (!api.apiName) {
       errors.push("API is missing required field: apiName");
     }
   }
-  for (let role of spec.roles || []) {
+  for (const role of spec.roles || []) {
     if (!role.role) {
       errors.push("Role is missing required field: role");
     }
   }
-  for (let param of spec.params || []) {
+  for (const param of spec.params || []) {
     if (!param.param) {
       errors.push("Param is missing required field: param");
     }
@@ -245,7 +245,7 @@ export function validateSpec(spec: any) {
           }`
         );
       }
-      for (let opt of param.options || []) {
+      for (const opt of param.options || []) {
         if (opt.value == undefined) {
           errors.push(
             `Option for param${
@@ -365,7 +365,7 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
   if (officialExtensionRegex.test(extensionName)) {
     const [name, version] = extensionName.split("@");
     const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
+    const sourceUrl = resolveSourceUrl(registryEntry, name, version);
     return await getSource(sourceUrl);
   } else if (existingSourceRegex.test(extensionName)) {
     logger.info(`Fetching the source "${extensionName}"...`);
