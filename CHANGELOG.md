@@ -1,2 +1,1 @@
 - Fixes issue in `database:settings:get` where the value wasn't being properly displayed.
-
