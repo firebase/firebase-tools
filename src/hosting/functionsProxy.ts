@@ -25,7 +25,7 @@ export interface FunctionProxyRewrite {
 export default function(
   options: FunctionsProxyOptions
 ): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
-  return async (rewrite: FunctionProxyRewrite) => {
+  return (rewrite: FunctionProxyRewrite) => {
     // TODO(samstern): This proxy assumes all functions are in the default region, but this is
     //                 not a safe assumption.
     const projectId = getProjectId(options, false);
@@ -49,6 +49,6 @@ export default function(
       }
     }
 
-    return await proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`);
+    return Promise.resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
   };
 }

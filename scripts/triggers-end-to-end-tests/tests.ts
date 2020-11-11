@@ -413,7 +413,7 @@ describe("import/export end to end", () => {
     // Delete all of the import files
     for (const f of fs.readdirSync(dbExportPath)) {
       const fullPath = path.join(dbExportPath, f);
-      await fs.unlinkSync(fullPath);
+      fs.unlinkSync(fullPath);
     }
 
     // Delete all the data in one namespace

@@ -1047,7 +1047,7 @@ async function initializeRuntime(
     require("../extractTriggers")(triggerModule, triggerDefinitions);
   }
 
-  triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
+  triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
   return triggers;
