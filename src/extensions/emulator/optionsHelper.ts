@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
 import * as _ from "lodash";
 import * as path from "path";
-import * as paramHelper from "./paramHelper";
+import * as paramHelper from "../paramHelper";
 import * as specHelper from "./specHelper";
 import * as triggerHelper from "./triggerHelper";
 import { Resource } from "../extensionsApi";
