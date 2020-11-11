@@ -1,4 +1,4 @@
-- Reveals `europe-west1` region for Firebase Realtime Database
+- Reveals `europe-west1` region for Firebase Realtime Database.
 - Fixes an issue where the `${param:FOO}` syntax for Firebase Extensions did not work with the emulator.
 - Fixes issue in `database:settings:get` where the value wasn't being properly displayed.
-- Fixes RTDB console URLs for `database:push|set|update` commands
+- Fixes RTDB console URLs for `database:push|set|update` commands.
