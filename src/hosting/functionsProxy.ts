@@ -26,29 +26,31 @@ export default function(
   options: FunctionsProxyOptions
 ): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
   return (rewrite: FunctionProxyRewrite) => {
-    // TODO(samstern): This proxy assumes all functions are in the default region, but this is
-    //                 not a safe assumption.
-    const projectId = getProjectId(options, false);
-    let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
-    let destLabel = "live";
+    return new Promise((resolve) => {
+      // TODO(samstern): This proxy assumes all functions are in the default region, but this is
+      //                 not a safe assumption.
+      const projectId = getProjectId(options, false);
+      let url = `https://us-central1-${projectId}.cloudfunctions.net/${rewrite.function}`;
+      let destLabel = "live";
 
-    if (includes(options.targets, "functions")) {
-      destLabel = "local";
+      if (includes(options.targets, "functions")) {
+        destLabel = "local";
 
-      // If the functions emulator is running we know the port, otherwise
-      // things still point to production.
-      const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
-      if (functionsEmu) {
-        url = FunctionsEmulator.getHttpFunctionUrl(
-          functionsEmu.getInfo().host,
-          functionsEmu.getInfo().port,
-          projectId,
-          rewrite.function,
-          "us-central1"
-        );
+        // If the functions emulator is running we know the port, otherwise
+        // things still point to production.
+        const functionsEmu = EmulatorRegistry.get(Emulators.FUNCTIONS);
+        if (functionsEmu) {
+          url = FunctionsEmulator.getHttpFunctionUrl(
+            functionsEmu.getInfo().host,
+            functionsEmu.getInfo().port,
+            projectId,
+            rewrite.function,
+            "us-central1"
+          );
+        }
       }
-    }
 
-    return Promise.resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
+      resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
+    });
   };
 }
