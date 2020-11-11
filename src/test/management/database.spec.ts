@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import * as api from "../../api";
 
-import { mockAuth } from "../helpers";
 import {
   DatabaseLocation,
   DatabaseInstance,
@@ -50,7 +49,7 @@ const INSTANCE_RESPONSE_ASIA_SOUTHEAST1 = {
   state: DatabaseInstanceState.ACTIVE,
 };
 
-function generateDatabaseUrl(instanceName: String, location: DatabaseLocation) {
+function generateDatabaseUrl(instanceName: string, location: DatabaseLocation): string {
   if (location == DatabaseLocation.ANY) {
     throw new Error("can't generate url for any location");
   }
@@ -92,7 +91,6 @@ describe("Database management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 

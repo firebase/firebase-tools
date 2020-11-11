@@ -3,7 +3,6 @@ import { expect } from "chai";
 import api = require("../../api");
 import sinon = require("sinon");
 
-import { mockAuth } from "../helpers";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 import * as remoteconfig from "../../remoteconfig/rollback";
 
@@ -40,7 +39,6 @@ describe("RemoteConfig Rollback", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 

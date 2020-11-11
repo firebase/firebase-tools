@@ -352,7 +352,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   };
   if (options.import) {
     const importDir = path.resolve(options.import);
-    const foundMetadata = await findExportMetadata(importDir);
+    const foundMetadata = findExportMetadata(importDir);
     if (foundMetadata) {
       exportMetadata = foundMetadata;
     } else {
