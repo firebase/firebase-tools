@@ -49,7 +49,7 @@ const INSTANCE_RESPONSE_ASIA_SOUTHEAST1 = {
   state: DatabaseInstanceState.ACTIVE,
 };
 
-function generateDatabaseUrl(instanceName: String, location: DatabaseLocation) {
+function generateDatabaseUrl(instanceName: string, location: DatabaseLocation): string {
   if (location == DatabaseLocation.ANY) {
     throw new Error("can't generate url for any location");
   }
