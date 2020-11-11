@@ -1,1 +1,3 @@
+- Reveals `europe-west1` region for RTDB
 - Fixes issue in `database:settings:get` where the value wasn't being properly displayed.
+- Fixes RTDB console URLs for `database:push|set|update` commands
