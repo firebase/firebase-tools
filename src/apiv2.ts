@@ -1,4 +1,5 @@
 import fetch, { Response, RequestInit } from "node-fetch";
+import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 
 import { FirebaseError } from "./error";
@@ -14,6 +15,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
   path: string;
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
+  signal?: AbortSignal;
 }
 
 interface VerbOptions<T> {
@@ -243,14 +245,13 @@ export class Client {
     const fetchOptions: RequestInit = {
       headers: options.headers,
       method: options.method,
+      signal: options.signal,
     };
 
-    if (options.body) {
-      if (typeof options.body === "string" || isStream(options.body)) {
-        fetchOptions.body = options.body;
-      } else {
-        fetchOptions.body = JSON.stringify(options.body);
-      }
+    if (typeof options.body === "string" || isStream(options.body)) {
+      fetchOptions.body = options.body;
+    } else if (options.body !== undefined) {
+      fetchOptions.body = JSON.stringify(options.body);
     }
 
     this.logRequest(options);
@@ -309,7 +310,6 @@ export class Client {
   private logResponse(res: Response, body: unknown, options: ClientRequestOptions<unknown>): void {
     const logURL = this.requestURL(options);
     logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);
-
     let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
       logBody = bodyToString(body);
