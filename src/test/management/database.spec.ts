@@ -26,9 +26,9 @@ const SOME_DATABASE_INSTANCE: DatabaseInstance = {
 
 const SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST: DatabaseInstance = {
   name: DATABASE_INSTANCE_NAME,
-  location: DatabaseLocation.ASIA_SOUTHEAST1,
+  location: DatabaseLocation.EUROPE_WEST1,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.ASIA_SOUTHEAST1),
+  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.EUROPE_WEST1),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
@@ -41,10 +41,10 @@ const INSTANCE_RESPONSE_US_CENTRAL1 = {
   state: DatabaseInstanceState.ACTIVE,
 };
 
-const INSTANCE_RESPONSE_ASIA_SOUTHEAST1 = {
-  name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.ASIA_SOUTHEAST1}/instances/${DATABASE_INSTANCE_NAME}`,
+const INSTANCE_RESPONSE_EUROPE_WEST1 = {
+  name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances/${DATABASE_INSTANCE_NAME}`,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.ASIA_SOUTHEAST1),
+  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.EUROPE_WEST1),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
@@ -149,16 +149,16 @@ describe("Database management", () => {
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST;
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_ASIA_SOUTHEAST1 });
+      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
       const resultDatabaseInstance = await createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
-        DatabaseLocation.ASIA_SOUTHEAST1
+        DatabaseLocation.EUROPE_WEST1
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.ASIA_SOUTHEAST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}`,
         {
           auth: true,
           origin: api.rtdbManagementOrigin,
@@ -200,16 +200,13 @@ describe("Database management", () => {
       const instancesPerLocation = 2;
       const expectedInstanceList = [
         ...generateInstanceList(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceList(instancesPerLocation, DatabaseLocation.ASIA_SOUTHEAST1),
+        ...generateInstanceList(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
       apiRequestStub.onFirstCall().resolves({
         body: {
           instances: [
             ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
-            ...generateInstanceListApiResponse(
-              instancesPerLocation,
-              DatabaseLocation.ASIA_SOUTHEAST1
-            ),
+            ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
           ],
         },
       });
@@ -261,13 +258,13 @@ describe("Database management", () => {
       const nextPageToken = "next-page-token";
       const expectedInstancesList = [
         ...generateInstanceList(countPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceList(countPerLocation, DatabaseLocation.ASIA_SOUTHEAST1),
+        ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
         ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
 
       const expectedResponsesList = [
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.ASIA_SOUTHEAST1),
+        ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
         ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
       ];
 
