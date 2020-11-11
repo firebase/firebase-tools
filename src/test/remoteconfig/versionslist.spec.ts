@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import * as api from "../../api";
 import * as remoteconfig from "../../remoteconfig/versionslist";
-import { mockAuth } from "../helpers";
 import { ListVersionsResult, Version } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
@@ -53,7 +52,6 @@ describe("RemoteConfig ListVersions", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 
