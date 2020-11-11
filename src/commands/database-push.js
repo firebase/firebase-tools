@@ -34,7 +34,7 @@ module.exports = new Command("database:push <path> [infile]")
     }
     var inStream =
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     var url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     if (!infile && !options.data) {
@@ -67,6 +67,7 @@ module.exports = new Command("database:push <path> [infile]")
 
             var consoleUrl = utils.getDatabaseViewDataUrl(
               origin,
+              options.project,
               options.instance,
               path + body.name
             );

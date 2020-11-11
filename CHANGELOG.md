@@ -1,0 +1,4 @@
+- Adds support for the `europe-west1` region for Firebase Realtime Database.
+- Fixes an issue where the `${param:FOO}` syntax for Firebase Extensions did not work with the emulator.
+- Fixes issue in `database:settings:get` where the value wasn't being properly displayed.
+- Fixes Firebase Console URLs for Firebase Realtime Database `database:push`, `database:set`, and `database:update` commands.

@@ -424,7 +424,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             case Constants.SERVICE_AUTH:
-              added = await this.addAuthTrigger(this.args.projectId, definition);
+              added = this.addAuthTrigger(this.args.projectId, definition);
               break;
             default:
               this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
