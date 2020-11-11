@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import * as api from "../../api";
 
-import { mockAuth } from "../helpers";
 import {
   DatabaseLocation,
   DatabaseInstance,
@@ -92,7 +91,6 @@ describe("Database management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 

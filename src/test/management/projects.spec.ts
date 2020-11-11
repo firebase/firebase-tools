@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import * as api from "../../api";
 import * as projectManager from "../../management/projects";
 import * as pollUtils from "../../operation-poller";
-import { mockAuth } from "../helpers";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "the-best-firebase-project";
@@ -86,7 +85,6 @@ describe("Project management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
   });
