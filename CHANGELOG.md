@@ -1,0 +1,1 @@
+- Fixes and issue where the `${param:FOO}` syntax for Extensions did not work with the emulator.
