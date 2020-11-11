@@ -16,7 +16,7 @@ var responseToError = require("./responseToError");
 const { realtimeOriginOrEmulatorOrCustomUrl } = require("./database/api");
 
 module.exports = function(options) {
-  const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+  const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
   var url = utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?");
 
   var rl = readline.createInterface({
