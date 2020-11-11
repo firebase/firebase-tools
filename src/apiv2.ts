@@ -298,7 +298,7 @@ export class Client {
     }
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
-    if (options.body) {
+    if (options.body !== undefined) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
         logBody = bodyToString(options.body);
