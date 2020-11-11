@@ -131,7 +131,7 @@ function buildConfig(
  * values for properties.sourceDirectory.
  * @param functionResources An array of function type resources
  */
-function getFunctionSourceDirectory(functionResources: Resource[]): String {
+function getFunctionSourceDirectory(functionResources: Resource[]): string {
   let sourceDirectory;
   for (const r of functionResources) {
     let dir = _.get(r, "properties.sourceDirectory");
