@@ -75,7 +75,7 @@ export default new Command("database:get <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     const query: { [key: string]: string } = {};
     if (options.shallow) {

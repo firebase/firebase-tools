@@ -34,7 +34,7 @@ module.exports = new Command("database:set <path> [infile]")
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
     const dbJsonPath = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 

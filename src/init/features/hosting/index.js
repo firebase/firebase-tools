@@ -1,22 +1,22 @@
 "use strict";
 
-let clc = require("cli-color");
-let fs = require("fs");
+const clc = require("cli-color");
+const fs = require("fs");
 
-let api = require("../../../api");
-let logger = require("../../../logger");
-let { prompt } = require("../../../prompt");
-let { initGitHub } = require("./github");
+const api = require("../../../api");
+const logger = require("../../../logger");
+const { prompt } = require("../../../prompt");
+const { initGitHub } = require("./github");
 
-let INDEX_TEMPLATE = fs.readFileSync(
+const INDEX_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/index.html",
   "utf8"
 );
-let MISSING_TEMPLATE = fs.readFileSync(
+const MISSING_TEMPLATE = fs.readFileSync(
   __dirname + "/../../../../templates/init/hosting/404.html",
   "utf8"
 );
-let DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
+const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 module.exports = function(setup, config, options) {
   setup.hosting = {};
