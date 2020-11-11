@@ -78,7 +78,7 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
 
 /**
  * This function substitutes params used in the extension spec with values.
- * (e.g If the original object contains `path/${FOO}` and the param FOO has the value of "bar",
+ * (e.g If the original object contains `path/${FOO}` or `path/${param:FOO}` and the param FOO has the value of "bar",
  * then it will become `path/bar`)
  * @param original Object containing strings that have placeholders that look like`${}`
  * @param params params to substitute the placeholders for
