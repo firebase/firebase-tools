@@ -245,7 +245,7 @@ export class Client {
       method: options.method,
     };
 
-    if (options.json) {
+    if (options.json !== undefined) {
       fetchOptions.body = JSON.stringify(options.json);
     }
 
