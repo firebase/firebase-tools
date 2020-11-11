@@ -3,7 +3,6 @@ import * as nock from "nock";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../error";
-import { mockAuth } from "./helpers";
 import { OperationPollerOptions, pollOperation } from "../operation-poller";
 import TimeoutError from "../throttler/errors/timeout-error";
 
@@ -19,7 +18,6 @@ describe("OperationPoller", () => {
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      mockAuth(sandbox);
       pollerOptions = {
         apiOrigin: TEST_ORIGIN,
         apiVersion: VERSION,

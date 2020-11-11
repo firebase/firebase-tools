@@ -1,11 +1,9 @@
 import { expect } from "chai";
 import * as _ from "lodash";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
 import { cloudscheduler } from "../../gcp";
 import { FirebaseError } from "../../error";
-import { mockAuth } from "../helpers";
 import * as api from "../../api";
 
 const VERSION = "v1beta1";
@@ -23,14 +21,7 @@ const TEST_JOB = {
 
 describe("cloudscheduler", () => {
   describe("createOrUpdateJob", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      mockAuth(sandbox);
-    });
-
     afterEach(() => {
-      sandbox.restore();
       nock.cleanAll();
     });
 

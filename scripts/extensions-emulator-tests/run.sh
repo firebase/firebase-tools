@@ -11,5 +11,5 @@ cd - # Return to root so that we don't need a relative path for mocha
 mocha \
   --require ts-node/register \
   --require source-map-support/register \
-  --require src/test/helpers/mocha-bootstrap.js \
+  --require src/test/helpers/mocha-bootstrap.ts \
   scripts/extensions-emulator-tests/tests.ts

@@ -1,9 +1,7 @@
 import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
-import * as helpers from "../helpers";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
@@ -75,14 +73,6 @@ const TEST_SOURCE = {
 };
 
 describe("extensions", () => {
-  beforeEach(() => {
-    helpers.mockAuth(sinon);
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
   describe("listInstances", () => {
     afterEach(() => {
       nock.cleanAll();
