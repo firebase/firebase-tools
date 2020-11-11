@@ -29,7 +29,7 @@ export default new Command("database:settings:get <path>")
       }
       const u = new URL(
         utils.getDatabaseUrl(
-          realtimeOriginOrCustomUrl(options),
+          realtimeOriginOrCustomUrl(options.instanceDetails.databaseUrl),
           options.instance,
           `/.settings/${path}.json`
         )

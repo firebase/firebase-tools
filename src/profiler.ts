@@ -19,7 +19,7 @@ tmp.setGracefulCleanup();
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function profiler(options: any): Promise<unknown> {
-  const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+  const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
   const url = new URL(utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?"));
   const rl = readline.createInterface({ input: process.stdin });
 
