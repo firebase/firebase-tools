@@ -7,7 +7,7 @@ var requireInstance = require("../requireInstance");
 var { populateInstanceDetails } = require("../management/database");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
-var profiler = require("../profiler");
+var { profiler } = require("../profiler");
 var { Emulators } = require("../emulator/types");
 var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
 
