@@ -1,15 +1,17 @@
-import { EmulatorRegistry } from "../registry";
+import { Client } from "../../apiv2";
+
 import { EmulatorInfo, Emulators } from "../types";
-import { UserInfo } from "./state";
-import * as request from "request";
 import { EmulatorLogger } from "../emulatorLogger";
+import { EmulatorRegistry } from "../registry";
+import { UserInfo } from "./state";
 
 type AuthCloudFunctionAction = "create" | "delete";
 
 export class AuthCloudFunction {
   private logger = EmulatorLogger.forEmulator(Emulators.AUTH);
   private functionsEmulatorInfo?: EmulatorInfo;
-  private multicastEndpoint = "";
+  private multicastOrigin = "";
+  private multicastPath = "";
   private enabled = false;
 
   constructor(private projectId: string) {
@@ -17,41 +19,46 @@ export class AuthCloudFunction {
 
     if (functionsEmulator) {
       this.enabled = true;
-      this.functionsEmulatorInfo = functionsEmulator.getInfo()!;
-      this.multicastEndpoint = `http://${EmulatorRegistry.getInfoHostString(
+      this.functionsEmulatorInfo = functionsEmulator.getInfo();
+      this.multicastOrigin = `http://${EmulatorRegistry.getInfoHostString(
         this.functionsEmulatorInfo
-      )}/functions/projects/${projectId}/trigger_multicast`;
+      )}`;
+      this.multicastPath = `/functions/projects/${projectId}/trigger_multicast`;
     }
   }
 
-  public dispatch(action: AuthCloudFunctionAction, user: UserInfo): void {
+  public async dispatch(action: AuthCloudFunctionAction, user: UserInfo): Promise<void> {
     if (!this.enabled) return;
 
     const userInfoPayload = this.createUserInfoPayload(user);
     const multicastEventBody = this.createEventRequestBody(action, userInfoPayload);
 
-    request.post(this.multicastEndpoint, {
-      body: multicastEventBody,
-      callback: (error, response) => {
-        if (error || response.statusCode != 200) {
-          this.logger.logLabeled(
-            "WARN",
-            "functions",
-            `Firebase Authentication function was not triggered due to emulation error. Please file a bug.`
-          );
-        }
-      },
-    });
+    const c = new Client({ urlPrefix: this.multicastOrigin, auth: false });
+    let res;
+    let err: Error | undefined;
+    try {
+      res = await c.post(this.multicastPath, multicastEventBody);
+    } catch (e) {
+      err = e;
+    }
+
+    if (err || res?.status != 200) {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Firebase Authentication function was not triggered due to emulation error. Please file a bug.`
+      );
+    }
   }
 
   private createEventRequestBody(
     action: AuthCloudFunctionAction,
     userInfoPayload: UserInfoPayload
-  ): string {
-    return JSON.stringify({
+  ): { eventType: string; data: UserInfoPayload } {
+    return {
       eventType: `providers/firebase.auth/eventTypes/user.${action}`,
       data: userInfoPayload,
-    });
+    };
   }
 
   private createUserInfoPayload(user: UserInfo): UserInfoPayload {
