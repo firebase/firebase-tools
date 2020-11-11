@@ -248,7 +248,7 @@ export class Client {
       signal: options.signal,
     };
 
-    if (options.json) {
+    if (options.json !== undefined) {
       fetchOptions.body = JSON.stringify(options.json);
     }
 

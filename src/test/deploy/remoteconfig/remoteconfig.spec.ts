@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import * as api from "../../../api";
 import * as rcDeploy from "../../../deploy/remoteconfig/functions";
-import { mockAuth } from "../../helpers";
 import * as remoteconfig from "../../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
@@ -67,7 +66,6 @@ describe("Remote Config Deploy", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     templateStub = sandbox.stub(remoteconfig, "getTemplate");
     etagStub = sandbox.stub(rcDeploy, "getEtag");

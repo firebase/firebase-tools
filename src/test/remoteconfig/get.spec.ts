@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as api from "../../api";
-import { mockAuth } from "../helpers";
 import * as remoteconfig from "../../remoteconfig/get";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
@@ -97,7 +96,6 @@ describe("Remote Config GET", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
   });
 
