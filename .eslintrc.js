@@ -34,7 +34,6 @@ module.exports = {
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns-type": "off",
 
-        "@typescript-eslint/await-thenable": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
         "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.

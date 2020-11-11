@@ -34,7 +34,7 @@ export default new Command("ext:info <extensionName>")
 
       const [name, version] = extensionName.split("@");
       const registryEntry = await resolveRegistryEntry(name);
-      const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
       const source = await extensionsApi.getSource(sourceUrl);
       spec = source.spec;
     }

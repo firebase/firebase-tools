@@ -365,7 +365,7 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
   if (officialExtensionRegex.test(extensionName)) {
     const [name, version] = extensionName.split("@");
     const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = await resolveSourceUrl(registryEntry, name, version);
+    const sourceUrl = resolveSourceUrl(registryEntry, name, version);
     return await getSource(sourceUrl);
   } else if (existingSourceRegex.test(extensionName)) {
     logger.info(`Fetching the source "${extensionName}"...`);
