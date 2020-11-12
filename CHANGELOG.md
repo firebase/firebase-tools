@@ -1,1 +1,0 @@
-- Fixes issue in setting data in Firebase Realtime Database. (#2814)
