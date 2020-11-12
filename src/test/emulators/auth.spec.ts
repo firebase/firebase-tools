@@ -22,7 +22,6 @@ import {
 } from "../../emulator/auth/state";
 import { useFakeTimers } from "sinon";
 
-/* eslint-disable camelcase, @typescript-eslint/camelcase, @typescript-eslint/no-non-null-assertion */
 const PROJECT_ID = "example";
 
 const TEST_PHONE_NUMBER = "+15555550100";
@@ -3330,6 +3329,33 @@ describe("Auth emulator", () => {
           expect(res.body.error)
             .to.have.property("message")
             .equal("USER_DISABLED");
+        });
+    });
+  });
+
+  describe("accounts:lookup", () => {
+    it("should return user by localId when privileged", async () => {
+      const { localId } = await registerAnonUser(authApp);
+
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: [localId] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.users).to.have.length(1);
+          expect(res.body.users[0].localId).to.equal(localId);
+        });
+    });
+
+    it("should return empty result when localId is not found", async () => {
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: ["noSuchId"] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).not.to.have.property("users");
         });
     });
   });

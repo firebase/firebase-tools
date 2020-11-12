@@ -1,1 +1,1 @@
-- Fixes Cloud Function inspection when using standalone binary release (#2740)
+- Fixes issue in setting data in Firebase Realtime Database. (#2814)

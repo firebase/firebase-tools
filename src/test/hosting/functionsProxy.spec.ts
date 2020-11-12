@@ -37,7 +37,7 @@ describe("functionsProxy", () => {
       .get("/bar/")
       .reply(200, "live version");
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -57,7 +57,7 @@ describe("functionsProxy", () => {
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
-    const mwGenerator = await functionsProxy(options);
+    const mwGenerator = functionsProxy(options);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -74,7 +74,7 @@ describe("functionsProxy", () => {
       .get("/bar/404.html")
       .reply(404, "normal 404");
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -91,7 +91,7 @@ describe("functionsProxy", () => {
       .get("/bar/404-cascade.html")
       .reply(404, "normal 404 with cascade", { "x-cascade": "pass" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
     const finalMw = sinon.stub().callsFake((_, res) => {
@@ -115,7 +115,7 @@ describe("functionsProxy", () => {
       .get("/bar/cached")
       .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -133,7 +133,7 @@ describe("functionsProxy", () => {
       .get("/bar/vary")
       .reply(200, "live vary version", { vary: "Other, Authorization" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -151,7 +151,7 @@ describe("functionsProxy", () => {
       .get("/bar/500")
       .replyWithError({ message: "normal error" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -168,7 +168,7 @@ describe("functionsProxy", () => {
       .get("/bar/timeout")
       .replyWithError({ message: "ahh", code: "ETIMEDOUT" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -185,7 +185,7 @@ describe("functionsProxy", () => {
       .get("/bar/sockettimeout")
       .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 

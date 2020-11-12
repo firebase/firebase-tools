@@ -41,7 +41,7 @@ export function checkResponse(response: string, spec: Param): boolean {
   if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
     _.forEach(responses, (r) => {
       // A choice is valid if it matches one of the option values.
-      let validChoice = _.some(spec.options, (option: ParamOption) => {
+      const validChoice = _.some(spec.options, (option: ParamOption) => {
         return r === option.value;
       });
       if (!validChoice) {

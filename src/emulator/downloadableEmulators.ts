@@ -28,14 +28,14 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.6.0.jar"),
-    version: "4.6.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.1.jar"),
+    version: "4.7.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.6.0.jar",
-      expectedSize: 28458498,
-      expectedChecksum: "2b061fa9ba9f34d0d534f12caecddf3d",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.1.jar",
+      expectedSize: 28926787,
+      expectedChecksum: "2985623323b74e23955915b918a11b1e",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -167,6 +167,20 @@ function _getCommand(
   }
 
   const cmdLineArgs = baseCmd.args.slice();
+
+  if (
+    baseCmd.binary === "java" &&
+    utils.isRunningInWSL() &&
+    (!args.host || !args.host.includes(":"))
+  ) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Force
+    // Java to use IPv4 sockets in WSL (unless IPv6 address explicitly used).
+    // Otherwise, Java will open a tcp6 socket (even if IPv4 address is used),
+    // which handles both 4/6 on Linux but NOT IPv4 from the host to WSL.
+    // This is a hack because it breaks all IPv6 connections as a side effect.
+    // See: https://docs.oracle.com/javase/8/docs/api/java/net/doc-files/net-properties.html
+    cmdLineArgs.unshift("-Djava.net.preferIPv4Stack=true"); // first argument
+  }
 
   const logger = EmulatorLogger.forEmulator(emulator);
   Object.keys(args).forEach((key) => {

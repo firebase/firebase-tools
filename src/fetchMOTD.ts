@@ -1,11 +1,9 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
-import * as request from "request";
 import * as semver from "semver";
 
+import { Client } from "./apiv2";
 import { configstore } from "./configstore";
-import * as api from "./api";
-import * as logger from "./logger";
+import { realtimeOrigin } from "./api";
 import * as utils from "./utils";
 
 const pkg = require("../package.json"); // eslint-disable-line @typescript-eslint/no-var-requires
@@ -21,7 +19,7 @@ export function fetchMOTD(): void {
 
   if (motd && motdFetched > Date.now() - ONE_DAY_MS) {
     if (motd.minVersion && semver.gt(motd.minVersion, pkg.version)) {
-      logger.error(
+      console.error(
         clc.red("Error:"),
         "CLI is out of date (on",
         clc.bold(pkg.version),
@@ -36,26 +34,19 @@ export function fetchMOTD(): void {
     if (motd.message && process.stdout.isTTY) {
       const lastMessage = configstore.get("motd.lastMessage");
       if (lastMessage !== motd.message) {
-        logger.info();
-        logger.info(motd.message);
-        logger.info();
+        console.log();
+        console.log(motd.message);
+        console.log();
         configstore.set("motd.lastMessage", motd.message);
       }
     }
   } else {
-    request(
-      {
-        url: utils.addSubdomain(api.realtimeOrigin, "firebase-public") + "/cli.json",
-        json: true,
-      },
-      (err, res, body) => {
-        if (err) {
-          return;
-        }
-        motd = _.assign({}, body);
-        configstore.set("motd", motd);
-        configstore.set("motd.fetched", Date.now());
-      }
-    );
+    const origin = utils.addSubdomain(realtimeOrigin, "firebase-public");
+    const c = new Client({ urlPrefix: origin, auth: false });
+    c.get("/cli.json").then((res) => {
+      motd = Object.assign({}, res.body);
+      configstore.set("motd", motd);
+      configstore.set("motd.fetched", Date.now());
+    });
   }
 }

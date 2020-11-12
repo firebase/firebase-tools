@@ -40,7 +40,7 @@ describe("commandUtils", () => {
         exportOnExit: "./dataDirThatDoesNotExist",
       }).import
     ).to.be.undefined;
-    let options = testSetExportOnExitOptions({
+    const options = testSetExportOnExitOptions({
       import: "./dataDirThatDoesNotExist",
       exportOnExit: true,
     });

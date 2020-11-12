@@ -6,7 +6,7 @@ source scripts/set-default-credentials.sh
 echo "NODE_VERSION=$NODE_VERSION"
 (
   cd scripts/triggers-end-to-end-tests/functions
-  if [ "$NODE_VERSION" = "8" ]; then
+  if [ "$NODE_VERSION" == 8* ]; then
     cp package{.8,}.json
   else
     cp package{.12,}.json
@@ -18,7 +18,7 @@ echo "NODE_VERSION=$NODE_VERSION"
 mocha \
   --require ts-node/register \
   --require source-map-support/register \
-  --require src/test/helpers/mocha-bootstrap.js \
+  --require src/test/helpers/mocha-bootstrap.ts \
   --exit \
   scripts/triggers-end-to-end-tests/tests.ts
 

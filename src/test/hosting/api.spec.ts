@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
-import * as helpers from "../helpers";
+
 import * as api from "../../api";
 import * as hostingApi from "../../hosting/api";
 
@@ -36,14 +35,6 @@ const PROJECT_ID = "test-project";
 const SITE = "my-site";
 
 describe("hosting", () => {
-  beforeEach(() => {
-    helpers.mockAuth(sinon);
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
   describe("getCleanDomains", () => {
     afterEach(() => {
       nock.cleanAll();
@@ -53,7 +44,7 @@ describe("hosting", () => {
       // mock listChannels response
       nock(api.hostingApiOrigin)
         .get(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`)
-        .query((p: any) => p.pageSize === "100")
+        .query(() => true)
         .reply(200, TEST_CHANNELS_RESPONSE);
       // mock getAuthDomains response
       nock(api.identityOrigin)
@@ -77,6 +68,7 @@ describe("normalizeName", () => {
     { in: "happyBranch", out: "happyBranch" },
     { in: "happy:branch", out: "happy-branch" },
     { in: "happy_branch", out: "happy-branch" },
+    { in: "happy#branch", out: "happy-branch" },
   ];
 
   for (const t of tests) {
