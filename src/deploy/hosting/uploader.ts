@@ -8,7 +8,7 @@ import * as zlib from "zlib";
 
 import { Client } from "../../apiv2";
 import { Queue } from "../../throttler/queue";
-import * as api from "../../api";
+import { hostingApiOrigin } from "../../api";
 import * as hashcache from "./hashcache";
 import * as logger from "../../logger";
 import { FirebaseError } from "../../error";
@@ -30,19 +30,28 @@ export class Uploader {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private hashQueue: Queue<any, unknown>;
   private populateBatchSize: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private populateBatch: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private populateQueue: Queue<any, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private uploadQueue: Queue<any, unknown>;
   private public: string;
   private files: string[];
   private fileCount: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cache: { [key: string]: any };
   private cacheNew: Map<unknown, unknown>;
   private sizeMap: { [key: string]: number };
   private hashMap: { [key: string]: string };
   private pathMap: { [key: string]: string };
-  private uploadUrl = "";
+  private uploadUrl: string | undefined;
   private uploadClient: Client | undefined;
+  private hashClient = new Client({
+    urlPrefix: hostingApiOrigin,
+    auth: true,
+    apiVersion: "v1beta1",
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(options: any) {
@@ -88,7 +97,7 @@ export class Uploader {
       .replace(/=+$/, "");
   }
 
-  async start(): Promise<void> {
+  public async start(): Promise<void> {
     // short-circuit when there's zero files
     if (this.files.length === 0) {
       return;
@@ -197,21 +206,29 @@ export class Uploader {
     this.populateQueue.process();
   }
 
-  populateHandler(batch: any): Promise<unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async populateHandler(batch: any): Promise<void> {
     // wait for any existing populate calls to finish before proceeding
-    return api
-      .request("POST", "/v1beta1/" + this.version + ":populateFiles", {
-        origin: api.hostingApiOrigin,
-        auth: true,
-        data: { files: batch },
-        logOptions: { skipRequestBody: true },
-        timeout: 60000,
-      })
-      .then((result) => {
-        this.uploadUrl = result.body.uploadUrl;
-        this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
-        this.addUploads(result.body.uploadRequiredHashes || []);
-      });
+    const res = await this.hashClient.post<
+      unknown,
+      { uploadUrl: string; uploadRequiredHashes: string[] }
+    >(`/${this.version}:populateFiles`, { files: batch });
+    this.uploadUrl = res.body.uploadUrl;
+    this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
+    this.addUploads(res.body.uploadRequiredHashes || []);
+    // return api
+    //   .request("POST", "/v1beta1/" + this.version + ":populateFiles", {
+    //     origin: api.hostingApiOrigin,
+    //     auth: true,
+    //     data: { files: batch },
+    //     logOptions: { skipRequestBody: true },
+    //     timeout: 60000,
+    //   })
+    //   .then((result) => {
+    //     this.uploadUrl = result.body.uploadUrl;
+    //     this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
+    //     this.addUploads(result.body.uploadRequiredHashes || []);
+    //   });
   }
 
   addUploads(hashes: string[]): void {
