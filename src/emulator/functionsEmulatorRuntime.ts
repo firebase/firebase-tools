@@ -1032,7 +1032,6 @@ async function initializeRuntime(
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
-  let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];
   let triggerModule;
 
@@ -1053,7 +1052,7 @@ async function initializeRuntime(
     require("../extractTriggers")(triggerModule, triggerDefinitions);
   }
 
-  triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
+  const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
   return triggers;

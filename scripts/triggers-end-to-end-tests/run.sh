@@ -18,7 +18,7 @@ echo "NODE_VERSION=$NODE_VERSION"
 mocha \
   --require ts-node/register \
   --require source-map-support/register \
-  --require src/test/helpers/mocha-bootstrap.js \
+  --require src/test/helpers/mocha-bootstrap.ts \
   --exit \
   scripts/triggers-end-to-end-tests/tests.ts
 

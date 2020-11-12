@@ -29,7 +29,7 @@ export default new Command("database:settings:get <path>")
       }
       const u = new URL(
         utils.getDatabaseUrl(
-          realtimeOriginOrCustomUrl(options),
+          realtimeOriginOrCustomUrl(options.instanceDetails.databaseUrl),
           options.instance,
           `/.settings/${path}.json`
         )
@@ -43,6 +43,12 @@ export default new Command("database:settings:get <path>")
           exit: 2,
           original: err,
         });
+      }
+      // strictTriggerValidation returns an object, not a single string.
+      // Check for an object and get the `value` from it.
+      if (typeof res.body === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        res.body = (res.body as any).value;
       }
       utils.logSuccess(`For database instance ${options.instance}\n\t ${path} = ${res.body}`);
     }

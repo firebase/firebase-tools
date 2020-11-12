@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
-import * as helpers from "../helpers";
+
 import * as api from "../../api";
 import * as hostingApi from "../../hosting/api";
 
@@ -36,14 +35,6 @@ const PROJECT_ID = "test-project";
 const SITE = "my-site";
 
 describe("hosting", () => {
-  beforeEach(() => {
-    helpers.mockAuth(sinon);
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
   describe("getCleanDomains", () => {
     afterEach(() => {
       nock.cleanAll();

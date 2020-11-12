@@ -137,7 +137,7 @@ describe("database and firestore emulator function triggers", () => {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToRtdb();
-    expect(response.statusCode).to.equal(200);
+    expect(response.status).to.equal(200);
   });
 
   it("should write to the firestore emulator", async function() {
@@ -145,7 +145,7 @@ describe("database and firestore emulator function triggers", () => {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToFirestore();
-    expect(response.statusCode).to.equal(200);
+    expect(response.status).to.equal(200);
 
     /*
      * We delay again here because the functions triggered
@@ -193,7 +193,7 @@ describe("pubsub emulator function triggers", () => {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToPubsub();
-    expect(response.statusCode).to.equal(200);
+    expect(response.status).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
@@ -206,7 +206,7 @@ describe("pubsub emulator function triggers", () => {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToScheduledPubsub();
-    expect(response.statusCode).to.equal(200);
+    expect(response.status).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
@@ -246,7 +246,7 @@ describe("auth emulator function triggers", () => {
     }
 
     const response = await test.writeToAuth();
-    expect(response.statusCode).to.equal(200);
+    expect(response.status).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
@@ -413,7 +413,7 @@ describe("import/export end to end", () => {
     // Delete all of the import files
     for (const f of fs.readdirSync(dbExportPath)) {
       const fullPath = path.join(dbExportPath, f);
-      await fs.unlinkSync(fullPath);
+      fs.unlinkSync(fullPath);
     }
 
     // Delete all the data in one namespace

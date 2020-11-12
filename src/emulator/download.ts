@@ -31,7 +31,7 @@ module.exports = async (name: DownloadableEmulator) => {
     await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
   }
   if (emulator.opts.skipCache) {
-    await removeOldFiles(name, emulator, true);
+    removeOldFiles(name, emulator, true);
   }
 
   fs.copySync(tmpfile, emulator.downloadPath);
@@ -43,7 +43,7 @@ module.exports = async (name: DownloadableEmulator) => {
   const executablePath = emulator.binaryPath || emulator.downloadPath;
   fs.chmodSync(executablePath, 0o755);
 
-  await removeOldFiles(name, emulator);
+  removeOldFiles(name, emulator);
 };
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {

@@ -67,7 +67,7 @@ describe("WorkQueue", () => {
 
     it("never runs more than the maximum allowed parallel work", async () => {
       let numRun = 0;
-      let timePerJob = 5;
+      const timePerJob = 5;
 
       const numJobs = MAX_PARALLEL * 2;
       for (let i = 0; i < numJobs; i++) {
