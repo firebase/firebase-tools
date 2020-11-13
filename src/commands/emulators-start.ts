@@ -41,7 +41,7 @@ module.exports = new Command("emulators:start")
       }
     }
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    const uiUrl = `http://${uiInfo?.host}:${uiInfo?.port}`;
+    const uiUrl = uiInfo ? EmulatorRegistry.getInfoHostString(uiInfo) : "unknown";
     const head = ["Emulator", "Host:Port"];
 
     if (uiInfo) {
@@ -77,7 +77,7 @@ module.exports = new Command("emulators:start")
 
           return [
             emulatorName,
-            `${info?.host}:${info?.port}`,
+            EmulatorRegistry.getInfoHostString(info),
             isSupportedByUi && uiInfo
               ? stylizeLink(`${uiUrl}/${emulator}`)
               : clc.blackBright("n/a"),
