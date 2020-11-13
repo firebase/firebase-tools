@@ -114,6 +114,17 @@ export class EmulatorRegistry {
     return instance.getInfo();
   }
 
+  static getInfoHostString(info: EmulatorInfo): string {
+    const { host, port } = info;
+
+    // Quote IPv6 addresses
+    if (host.includes(":")) {
+      return `[${host}]:${port}`;
+    } else {
+      return `${host}:${port}`;
+    }
+  }
+
   static getPort(emulator: Emulators): number | undefined {
     const instance = this.INSTANCES.get(emulator);
     if (!instance) {

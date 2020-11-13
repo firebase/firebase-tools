@@ -1,3 +1,4 @@
+import { URL } from "url";
 import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
