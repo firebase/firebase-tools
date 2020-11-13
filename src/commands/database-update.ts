@@ -1,3 +1,4 @@
+import { URL } from "url";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
@@ -30,7 +31,7 @@ export default new Command("database:update <path> [infile]")
     if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const url = utils.getDatabaseUrl(origin, options.instance, path);
     if (!options.confirm) {
       const confirmed = await promptOnce({

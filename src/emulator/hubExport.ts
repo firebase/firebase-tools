@@ -77,7 +77,7 @@ export class HubExport {
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
     const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!!.getInfo();
-    const firestoreHost = `http://${firestoreInfo.host}:${firestoreInfo.port}`;
+    const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
 
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
@@ -94,8 +94,7 @@ export class HubExport {
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
     const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
-    const { host, port } = databaseEmulator.getInfo();
-    const databaseAddr = `http://${host}:${port}`;
+    const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(databaseEmulator.getInfo())}`;
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
@@ -135,6 +134,7 @@ export class HubExport {
       fs.mkdirSync(dbExportPath);
     }
 
+    const { host, port } = databaseEmulator.getInfo();
     for (const ns of namespacesToExport) {
       const exportFile = path.join(dbExportPath, `${ns}.json`);
       const writeStream = fs.createWriteStream(exportFile);

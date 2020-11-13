@@ -1,3 +1,5 @@
+import { URL } from "url";
+
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";

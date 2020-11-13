@@ -647,7 +647,9 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
   let emulatedDatabaseURL = undefined;
   if (frb.emulators.database && functionsGt380) {
-    emulatedDatabaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${process.env.GCLOUD_PROJECT}`;
+    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}?ns=${
+      process.env.GCLOUD_PROJECT
+    }`;
   }
 
   // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
@@ -689,29 +691,33 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
 
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env[
-      Constants.FIRESTORE_EMULATOR_HOST
-    ] = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(frb.emulators.firestore);
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env[
-      Constants.FIREBASE_DATABASE_EMULATOR_HOST
-    ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+    process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(frb.emulators.database);
   }
 
   // Make firebase-admin point at the Auth emulator
   if (frb.emulators.auth) {
-    process.env[
-      Constants.FIREBASE_AUTH_EMULATOR_HOST
-    ] = `${frb.emulators.auth.host}:${frb.emulators.auth.port}`;
+    process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
   }
 
   if (frb.emulators.pubsub) {
-    const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
+    const pubsubHost = formatHost(frb.emulators.pubsub);
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+  }
+}
+
+// This is a duplicate of the helper we use elsewhere but it's important not to
+// add dependencies to this runtime.
+function formatHost(info: { host: string; port: number }) {
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
   }
 }
 
