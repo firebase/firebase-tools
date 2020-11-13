@@ -1,1 +1,2 @@
-- Set `FIREBASE_AUTH_EMULATOR_HOST` in `emulators:exec`.
+- Fixes issue when running in a Node 8 environment where `URL` was not defined. (#2817)
+- Sets `FIREBASE_AUTH_EMULATOR_HOST` in `emulators:exec`.
