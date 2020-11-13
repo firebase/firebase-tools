@@ -1,0 +1,2 @@
+- Fixes issue when running in a Node 8 environment where `URL` was not defined. (#2817)
+
