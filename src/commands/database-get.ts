@@ -10,7 +10,7 @@ import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import requireInstance from "../requireInstance";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
 

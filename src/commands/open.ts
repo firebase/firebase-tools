@@ -8,7 +8,7 @@ import { Command } from "../command";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import * as requireInstance from "../requireInstance";
+import requireInstance from "../requireInstance";
 import * as utils from "../utils";
 
 interface Link {

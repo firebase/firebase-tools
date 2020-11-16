@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";

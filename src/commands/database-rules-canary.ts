@@ -1,9 +1,9 @@
 import { Command } from "../command";
-import * as requireInstance from "../requireInstance";
 import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import requireInstance from "../requireInstance";
 
 export default new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")
