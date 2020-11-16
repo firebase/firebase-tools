@@ -48,7 +48,9 @@ export class RTDBListRemote implements ListRemote {
     }
 
     const t0 = Date.now();
-    const res = await this.apiClient.get<{ [key: string]: unknown }>(url.pathname, { queryParams: params });
+    const res = await this.apiClient.get<{ [key: string]: unknown }>(url.pathname, {
+      queryParams: params,
+    });
     const paths = Object.keys(res.body);
     const dt = Date.now() - t0;
     logger.debug(`[database] sucessfully fetched ${paths.length} path at ${path} ${dt}`);
