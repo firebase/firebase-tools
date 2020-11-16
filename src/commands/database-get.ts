@@ -128,19 +128,22 @@ export default new Command("database:get <path>")
       throw responseToError({ statusCode: res.status }, d);
     }
 
-    res.body.pipe(outStream);
-    // Tack on a single newline at the end of the stream.
-    res.body.once("end", () => {
-      if (outStream === process.stdout) {
-        // `stdout` can simply be written to.
-        outStream.write("\n");
-      } else if (outStream instanceof fs.WriteStream) {
-        // .pipe closes the output file stream, so we need to re-open the file.
-        const s = fs.createWriteStream(options.output, { flags: "a" });
-        s.write("\n");
-        s.close();
-      } else {
-        logger.debug("[database:get] Could not write line break to outStream");
-      }
+    res.body.pipe(outStream, { end: false });
+
+    return new Promise((resolve) => {
+      // Tack on a single newline at the end of the stream.
+      res.body.once("end", () => {
+        if (outStream === process.stdout) {
+          // `stdout` can simply be written to.
+          outStream.write("\n");
+          resolve();
+        } else if (outStream instanceof fs.WriteStream) {
+          outStream.write("\n");
+          outStream.on("close", () => resolve());
+          outStream.close();
+        } else {
+          logger.debug("[database:get] Could not write line break to outStream");
+        }
+      });
     });
   });
