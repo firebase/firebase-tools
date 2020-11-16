@@ -143,6 +143,7 @@ export default new Command("database:get <path>")
           outStream.close();
         } else {
           logger.debug("[database:get] Could not write line break to outStream");
+          resolve();
         }
       });
     });
