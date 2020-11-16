@@ -1,5 +1,5 @@
 import { FirebaseError } from "../error";
-import * as api from "../api";
+import { hostingApiOrigin } from "../api";
 import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
@@ -151,6 +151,26 @@ export interface Version {
   readonly versionBytes: number;
 }
 
+interface CloneVersionRequest {
+  // The name of the version to be cloned, in the format:
+  // `sites/{site}/versions/{version}`
+  sourceVersion: string;
+
+  // If true, immediately finalize the version after cloning is complete.
+  finalize?: boolean;
+}
+
+interface LongRunningOperation<T> {
+  // The identifier of the Operation.
+  readonly name: string;
+
+  // Set to `true` if the Operation is done.
+  readonly done: boolean;
+
+  // Additional metadata about the Operation.
+  readonly metadata: T | undefined;
+}
+
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
  * user provided names. This removes any `/`, ':', '_', or '#' characters and
@@ -164,7 +184,7 @@ export function normalizeName(s: string): string {
 }
 
 const apiClient = new Client({
-  urlPrefix: api.hostingApiOrigin,
+  urlPrefix: hostingApiOrigin,
   apiVersion: "v1beta1",
   auth: true,
 });
@@ -296,22 +316,18 @@ export async function cloneVersion(
   versionName: string,
   finalize = false
 ): Promise<Version> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
+  const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
+    `/projects/-/sites/${site}/versions:clone`,
     {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      data: {
-        finalize,
-      },
+      sourceVersion: versionName,
+      finalize,
     }
   );
-  const name = res.body.name;
+  const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
-    apiOrigin: api.hostingApiOrigin,
+    apiOrigin: hostingApiOrigin,
     apiVersion: "v1beta1",
-    operationResourceName: name,
+    operationResourceName: operationName,
     masterTimeout: 600000,
   });
   return pollRes;
@@ -328,14 +344,11 @@ export async function createRelease(
   channel: string,
   version: string
 ): Promise<Release> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-    }
-  );
+  const res = await apiClient.request<unknown, Release>({
+    method: "POST",
+    path: `/projects/-/sites/${site}/channels/${channel}/releases`,
+    queryParams: { versionName: version },
+  });
   return res.body;
 }
 

@@ -1,3 +1,4 @@
+import { URL } from "url";
 import * as clc from "cli-color";
 import * as fs from "fs";
 
