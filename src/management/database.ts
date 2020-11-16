@@ -137,6 +137,54 @@ export async function createInstance(
 }
 
 /**
+ * Validate if an instance with the specified name can be created.
+ * @param projectId identifier for the user's project.
+ * @param instanceName name of the RTDB instance.
+ * @param databaseType type of the RTDB instance.
+ * @param location location for the project's instance.
+ */
+export async function validateInstanceName(
+  projectId: string,
+  instanceName: string,
+  databaseType: DatabaseInstanceType,
+  location?: DatabaseLocation
+): Promise<String[]> {
+  if (!location) {
+    location = DatabaseLocation.US_CENTRAL1;
+  }
+  try {
+    await api.request(
+      "POST",
+      `/${MGMT_API_VERSION}/projects/${projectId}/locations/${location}/instances?databaseId=${instanceName}&validateOnly=true`,
+      {
+        auth: true,
+        origin: api.rtdbManagementOrigin,
+        timeout: TIMEOUT_MILLIS,
+        data: {
+          type: databaseType,
+        },
+      }
+    );
+    return [instanceName];
+  } catch (err) {
+    logger.debug(
+      `Invalid Realtime Database instance name: ${instanceName}.${
+        err.message ? " " + err.message : ""
+      }`
+    );
+    if (
+      err.details &&
+      err.details[0] &&
+      err.details[0].metadata &&
+      err.details[0].metadata.suggested_database_ids
+    ) {
+      return err.details[0].metadata.suggested_database_ids;
+    }
+    return [];
+  }
+}
+
+/**
  * Parse the `DatabaseLocation` represented by the string
  * @param location the location to parse.
  * @param defaultLocation the default location value to use if unspecified.
