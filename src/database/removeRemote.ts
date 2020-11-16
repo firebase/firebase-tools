@@ -47,16 +47,21 @@ export class RTDBRemoveRemote implements RemoveRemote {
     const t0 = Date.now();
     const url = new URL(utils.getDatabaseUrl(this.host, this.instance, path + ".json"));
     const queryParams = { print: "silent", writeSizeLimit: "tiny" };
-    try {
-      await this.apiClient.patch(url.pathname, body, { queryParams });
-    } catch (e) {
-      const dt = Date.now() - t0;
+    const res = await this.apiClient.request({
+      method: "PATCH",
+      path: url.pathname,
+      body,
+      queryParams,
+      responseType: "stream",
+      resolveOnHTTPError: true,
+    });
+    const dt = Date.now() - t0;
+    if (res.status >= 400) {
       logger.debug(
         `[database] Failed to remove ${note} at ${path} time: ${dt}ms, will try recursively chunked deletes.`
       );
       return false;
     }
-    const dt = Date.now() - t0;
     logger.debug(`[database] Sucessfully removed ${note} at ${path} time: ${dt}ms`);
     return true;
   }
