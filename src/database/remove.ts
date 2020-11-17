@@ -26,9 +26,9 @@ export default class DatabaseRemove {
   /**
    * Construct a new RTDB delete operation.
    *
-   * @constructor
    * @param instance RTBD instance ID.
    * @param path path to delete.
+   * @param host db host.
    */
   constructor(instance: string, path: string, host: string) {
     this.path = path;
@@ -58,11 +58,12 @@ export default class DatabaseRemove {
    *
    * listNumSubPath starts with INITIAL_LIST_NUM_SUB_PATH and grow expontentially until MAX_LIST_NUM_SUB_PATH.
    *
+   * @param path path to delete
    * @return true if this path is small (Does not exceed writeSizeLimit of tiny)
    */
   private async deletePath(path: string): Promise<boolean> {
     if (await this.deleteJobStack.run(() => this.remote.deletePath(path))) {
-      return Promise.resolve(true);
+      return true;
     }
     let listNumSubPath = INITIAL_LIST_NUM_SUB_PATH;
     // The range of batchSize to gradually narrow down.
@@ -74,7 +75,7 @@ export default class DatabaseRemove {
         this.listRemote.listPath(path, listNumSubPath)
       );
       if (subPathList.length === 0) {
-        return Promise.resolve(false);
+        return false;
       }
       const chunks = chunkList(subPathList, batchSize);
       let nSmallChunks = 0;
@@ -115,11 +116,11 @@ export default class DatabaseRemove {
       return this.deletePath(pathLib.join(path, subPaths[0]));
     }
     if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, subPaths))) {
-      return Promise.resolve(true);
+      return true;
     }
     const mid = Math.floor(subPaths.length / 2);
     await this.deleteSubPath(path, subPaths.slice(0, mid));
     await this.deleteSubPath(path, subPaths.slice(mid));
-    return Promise.resolve(false);
+    return false;
   }
 }
