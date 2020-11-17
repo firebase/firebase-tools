@@ -83,12 +83,16 @@ export function getDatabaseUrl(origin: string, namespace: string, pathname: stri
  */
 export function getDatabaseViewDataUrl(
   origin: string,
+  project: string,
   namespace: string,
   pathname: string
 ): string {
   const urlObj = new url.URL(origin);
-  if (urlObj.hostname.includes("firebaseio.com")) {
-    return consoleUrl(namespace, "/database/data" + pathname);
+  if (
+    urlObj.hostname.includes("firebaseio.com") ||
+    urlObj.hostname.includes("firebasedatabase.app")
+  ) {
+    return consoleUrl(project, `/database/${namespace}/data${pathname}`);
   } else {
     // TODO(samstern): View in Emulator UI
     return getDatabaseUrl(origin, namespace, pathname + ".json");

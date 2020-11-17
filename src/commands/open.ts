@@ -8,7 +8,7 @@ import { Command } from "../command";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 interface Link {
@@ -54,7 +54,7 @@ const CHOICES = _.map(LINKS, "name");
 export default new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .action(
     async (linkName: string, options: any): Promise<void> => {
       let link = _.find(LINKS, { arg: linkName });

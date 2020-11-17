@@ -1,13 +1,17 @@
 import * as clc from "cli-color";
-import getInstanceId from "./getInstanceId";
+import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
 import * as utils from "./utils";
 
-export default async function(options: any) {
+/**
+ * Ensures that the supplied options have an instance set. If not, tries to fetch the default instance.
+ * @param options command options
+ */
+export async function requireDatabaseInstance(options: any) {
   if (options.instance) {
     return Promise.resolve();
   }
   try {
-    const instance = await getInstanceId(options);
+    const instance = await getDefaultDatabaseInstance(options);
     if (instance === "") {
       return utils.reject(
         `It looks like you haven't created a Realtime Database instance in this project before. Go to ${clc.bold.underline(

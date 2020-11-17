@@ -3,7 +3,7 @@ import { requirePermissions } from "../requirePermissions";
 import * as metadata from "../database/metadata";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 
 export default new Command("database:rules:canary <rulesetId>")
   .description("mark a staged ruleset as the canary ruleset")
@@ -12,7 +12,7 @@ export default new Command("database:rules:canary <rulesetId>")
     "use the database <instance>.firebaseio.com (if omitted, uses default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (rulesetId: string, options: any) => {
     const oldLabels = await metadata.getRulesetLabels(options.instance);

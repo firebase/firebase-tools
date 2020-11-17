@@ -9,7 +9,7 @@ const TIMEOUT = 30000;
  * @return {Promise} Returns a promise of a Remote Config Template using the RemoteConfigTemplate interface
  */
 export async function rollbackTemplate(projectId: string, versionNumber?: number): Promise<void> {
-  let requestPath = `/v1/projects/${projectId}/remoteConfig:rollback?versionNumber=${versionNumber}`;
+  const requestPath = `/v1/projects/${projectId}/remoteConfig:rollback?versionNumber=${versionNumber}`;
   const response = await api.request("POST", requestPath, {
     auth: true,
     origin: api.remoteConfigApiOrigin,

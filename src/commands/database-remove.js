@@ -1,7 +1,7 @@
 "use strict";
 
 var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
+var { requireDatabaseInstance } = require("../requireDatabaseInstance");
 var { requirePermissions } = require("../requirePermissions");
 var DatabaseRemove = require("../database/remove").default;
 var { Emulators } = require("../emulator/types");
@@ -21,14 +21,14 @@ module.exports = new Command("database:remove <path>")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(function(path, options) {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
     return prompt(options, [
       {

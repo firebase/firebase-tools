@@ -22,7 +22,6 @@ import {
 } from "../../emulator/auth/state";
 import { useFakeTimers } from "sinon";
 
-/* eslint-disable camelcase, @typescript-eslint/camelcase, @typescript-eslint/no-non-null-assertion */
 const PROJECT_ID = "example";
 
 const TEST_PHONE_NUMBER = "+15555550100";
