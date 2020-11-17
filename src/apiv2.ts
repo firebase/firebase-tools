@@ -1,6 +1,7 @@
 import fetch, { Response, RequestInit } from "node-fetch";
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
+import { URLSearchParams } from "url";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -21,7 +22,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
 interface VerbOptions<T> {
   method?: HttpMethod;
   headers?: { [key: string]: string };
-  queryParams?: { [key: string]: string | number };
+  queryParams?: URLSearchParams | { [key: string]: string | number };
 }
 
 interface ClientHandlingOptions {
@@ -230,15 +231,17 @@ export class Client {
 
     let fetchURL = this.requestURL(options);
     if (options.queryParams) {
-      // TODO(bkendall): replace this half-hearted implementation with
-      // URLSearchParams when on node >= 10.
-      const sp: string[] = [];
-      for (const key of Object.keys(options.queryParams)) {
-        const value = options.queryParams[key];
-        sp.push(`${key}=${encodeURIComponent(value)}`);
+      if (!(options.queryParams instanceof URLSearchParams)) {
+        const sp = new URLSearchParams();
+        for (const key of Object.keys(options.queryParams)) {
+          const value = options.queryParams[key];
+          sp.append(key, `${value}`);
+        }
+        options.queryParams = sp;
       }
-      if (sp.length) {
-        fetchURL += "?" + sp.join("&");
+      const queryString = options.queryParams.toString();
+      if (queryString) {
+        fetchURL += `?${queryString}`;
       }
     }
 
@@ -293,7 +296,10 @@ export class Client {
     if (options.queryParams) {
       queryParamsLog = "[omitted]";
       if (!options.skipLog?.queryParams) {
-        queryParamsLog = JSON.stringify(options.queryParams);
+        queryParamsLog =
+          options.queryParams instanceof URLSearchParams
+            ? options.queryParams.toString()
+            : JSON.stringify(options.queryParams);
       }
     }
     const logURL = this.requestURL(options);
