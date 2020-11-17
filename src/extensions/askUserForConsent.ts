@@ -76,16 +76,19 @@ export async function prompt(extensionName: string, projectId: string, roles: st
  */
 export async function promptForPublisherTOS() {
   const termsOfServiceMsg =
-    "By registering this publisher ID, you acknowledge the Firebase Extensions publisher " +
-    "terms of service and understand the responsibilities you assume when distributing " +
-    `an extension. More details here: ${marked(
-      "(https://firebase.google.com/docs/extensions/alpha/terms-of-service)"
-    )}`;
+    "By registering as a publisher, you confirm that you have read the Firebase Extensions Publisher Terms and Conditions (linked below) and you, on behalf of yourself and the organization you represent, agree to comply with it.  Here is a brief summary of the highlights of our terms and conditions:\n" +
+    "  - You ensure extensions you publish comply with all laws and regulations; do not include any viruses, spyware, Trojan horses, or other malicious code; and do not violate any person’s rights, including intellectual property, privacy, and security rights.\n" +
+    "  - You will not engage in any activity that interferes with or accesses in an unauthorized manner the properties or services of Google, Google’s affiliates, or any third party.\n" +
+    "  - If you become aware or should be aware of a critical security issue in your extension, you will provide either a resolution or a written resolution plan within 48 hours.\n" +
+    "  - If Google requests a critical security matter to be patched for your extension, you will respond to Google within 48 hours with either a resolution or a written resolution plan.\n" +
+    "  - Google may remove your extension or terminate the agreement, if you violate any terms.";
   utils.logLabeledBullet(logPrefix, marked(termsOfServiceMsg));
   const question: Question = {
     name: "consent",
     type: "confirm",
-    message: "Do you agree to the terms above and want to continue registering a publisher ID?",
+    message: marked(
+      "Do you accept the [Firebase Extensions Publisher Terms and Conditions](https://firebase.google.com/docs/extensions/alpha/terms-of-service) and acknowledge that your information will be used in accordance with [Google's Privacy Policy](https://policies.google.com/privacy?hl=en)?"
+    ),
     default: false,
   };
   const consented: boolean = await promptOnce(question);
