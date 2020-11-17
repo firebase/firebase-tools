@@ -110,6 +110,6 @@ describe("database:set|get|remove", () => {
     await client.database.remove(path, Object.assign({ confirm: true }, opts));
 
     await client.database.get(path, Object.assign({ output: file.name }, opts));
-    expect(JSON.parse(readFileSync(file.name, 'utf-8'))).to.equal(null);
+    expect(JSON.parse(readFileSync(file.name, "utf-8"))).to.equal(null);
   }).timeout(10 * 1e3);
 });
