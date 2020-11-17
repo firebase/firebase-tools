@@ -176,7 +176,7 @@ export class Client {
       reqOptions = await this.addAuthHeader(reqOptions);
     }
     try {
-      return this.doRequest<ReqT, ResT>(reqOptions);
+      return await this.doRequest<ReqT, ResT>(reqOptions);
     } catch (err) {
       if (err instanceof FirebaseError) {
         throw err;
@@ -275,7 +275,9 @@ export class Client {
       body = (res.body as unknown) as ResT;
     } else {
       // This is how the linter wants the casting to T to work.
-      body = ((await res.text()) as unknown) as ResT;
+      throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
+        exit: 2,
+      });
     }
 
     this.logResponse(res, body, options);
