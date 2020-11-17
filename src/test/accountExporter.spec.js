@@ -6,7 +6,6 @@ var os = require("os");
 var sinon = require("sinon");
 
 var accountExporter = require("../accountExporter");
-var helpers = require("./helpers");
 
 var expect = chai.expect;
 describe("accountExporter", function() {
@@ -44,7 +43,6 @@ describe("accountExporter", function() {
 
     beforeEach(function() {
       sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
       spyWrite = sandbox.spy(writeStream, "write");
       for (var i = 0; i < 7; i++) {
         userList.push({
@@ -133,7 +131,7 @@ describe("accountExporter", function() {
             userList[j].displayName +
             Array(22).join(",") + // A lot of empty fields...
             userList[j].disabled;
-          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + "," + os.EOL);
+          expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
         }
       });
     });
@@ -181,7 +179,7 @@ describe("accountExporter", function() {
           '"' +
           Array(22).join(",") + // A lot of empty fields.
           singleUser.disabled;
-        expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + "," + os.EOL);
+        expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
       });
     });
 
@@ -215,6 +213,35 @@ describe("accountExporter", function() {
             "The second call did not emit the correct string"
           );
         });
+      });
+    });
+
+    it("should export a user's custom attributes", function() {
+      userList[0].customAttributes =
+        '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
+      userList[1].customAttributes =
+        '{ "customBoolean": true, "customString2": "test2", "customInt": 99 }';
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+          nextPageToken: "3",
+        });
+      return serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: writeStream,
+      }).then(function() {
+        expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+        expect(spyWrite.getCall(1).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[1], null, 2)
+        );
+        expect(spyWrite.getCall(2).args[0]).to.eq(
+          "," + os.EOL + JSON.stringify(userList[2], null, 2)
+        );
       });
     });
 

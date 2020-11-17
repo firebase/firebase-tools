@@ -17,7 +17,6 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
-import { previews } from "../previews";
 
 // tslint:disable-next-line
 const downloadEmulator = require("../emulator/download");
@@ -29,14 +28,14 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.6.0.jar"),
-    version: "4.6.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.1.jar"),
+    version: "4.7.1",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.6.0.jar",
-      expectedSize: 28458498,
-      expectedChecksum: "2b061fa9ba9f34d0d534f12caecddf3d",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.1.jar",
+      expectedSize: 28926787,
+      expectedChecksum: "2985623323b74e23955915b918a11b1e",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -52,36 +51,19 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
       namePrefix: "cloud-firestore-emulator",
     },
   },
-  ui: previews.authemulator
-    ? {
-        version: "1.2.0-SNAPSHOT",
-        downloadPath: path.join(CACHE_DIR, "ui-1.2.0-SNAPSHOT.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.2.0-SNAPSHOT"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.2.0-SNAPSHOT", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl:
-            "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.2.0-SNAPSHOT.zip",
-          expectedSize: -1,
-          expectedChecksum: "",
-          namePrefix: "ui",
-          skipChecksumAndSize: true,
-          skipCache: true,
-        },
-      }
-    : {
-        version: "1.1.1",
-        downloadPath: path.join(CACHE_DIR, "ui-v1.1.1.zip"),
-        unzipDir: path.join(CACHE_DIR, "ui-v1.1.1"),
-        binaryPath: path.join(CACHE_DIR, "ui-v1.1.1", "server.bundle.js"),
-        opts: {
-          cacheDir: CACHE_DIR,
-          remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.1.zip",
-          expectedSize: 3248195,
-          expectedChecksum: "098821e328ea98c2180d4d71f3a75381",
-          namePrefix: "ui",
-        },
-      },
+  ui: {
+    version: "1.2.2",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.2.2.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.2.2"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.2.2", "server.bundle.js"),
+    opts: {
+      cacheDir: CACHE_DIR,
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.2.2.zip",
+      expectedSize: 3287578,
+      expectedChecksum: "44b23f98089ab39b2de06018fc92a1ad",
+      namePrefix: "ui",
+    },
+  },
   pubsub: {
     downloadPath: path.join(CACHE_DIR, "pubsub-emulator-0.1.0.zip"),
     version: "0.1.0",
@@ -185,6 +167,20 @@ function _getCommand(
   }
 
   const cmdLineArgs = baseCmd.args.slice();
+
+  if (
+    baseCmd.binary === "java" &&
+    utils.isRunningInWSL() &&
+    (!args.host || !args.host.includes(":"))
+  ) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Force
+    // Java to use IPv4 sockets in WSL (unless IPv6 address explicitly used).
+    // Otherwise, Java will open a tcp6 socket (even if IPv4 address is used),
+    // which handles both 4/6 on Linux but NOT IPv4 from the host to WSL.
+    // This is a hack because it breaks all IPv6 connections as a side effect.
+    // See: https://docs.oracle.com/javase/8/docs/api/java/net/doc-files/net-properties.html
+    cmdLineArgs.unshift("-Djava.net.preferIPv4Stack=true"); // first argument
+  }
 
   const logger = EmulatorLogger.forEmulator(emulator);
   Object.keys(args).forEach((key) => {

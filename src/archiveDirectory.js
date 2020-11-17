@@ -21,7 +21,7 @@ const utils = require("./utils");
  * @param {!Object<string, *>} options
  * @param {string} options.type Type of directory to create: "tar", or "zip".
  * @param {!Array<string>} options.ignore Globs to be ignored.
- * @return {!Object<string, *>} Information about the archive:
+ * @return {!Promise<Object<string, *>>} Information about the archive:
  *    - `file`: file name
  *    - `stream`: read stream of the archive
  *    - `manifest`: list of all files in the archive

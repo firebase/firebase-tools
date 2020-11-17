@@ -4,9 +4,11 @@ import { Binding, getServiceAccount, Policy } from "./iam";
 
 const API_VERSION = "v1";
 
+// Roles listed at https://firebase.google.com/docs/projects/iam/roles-predefined-product
 export const firebaseRoles = {
-  hostingAdmin: "roles/firebasehosting.admin",
   apiKeysViewer: "roles/serviceusage.apiKeysViewer",
+  authAdmin: "roles/firebaseauth.admin",
+  hostingAdmin: "roles/firebasehosting.admin",
   runViewer: "roles/run.viewer",
 };
 

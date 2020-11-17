@@ -10,6 +10,7 @@ const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
 const filterTargets = require("../filterTargets");
+const { requireHostingSite } = require("../requireHostingSite");
 
 // in order of least time-consuming to most time-consuming
 const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting", "remoteconfig"];
@@ -67,10 +68,14 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(function(options) {
+  .before(async function(options) {
     // only fetch the default instance for hosting or database deploys
-    if (_.intersection(options.filteredTargets, ["hosting", "database"]).length > 0) {
-      return requireInstance(options);
+    if (_.includes(options.filteredTargets, "database")) {
+      await requireInstance(options);
+    }
+
+    if (_.includes(options.filteredTargets, "hosting")) {
+      await requireHostingSite(options);
     }
   })
   .before(checkValidTargetFilters)

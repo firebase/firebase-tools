@@ -7,9 +7,10 @@ import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
 
-function stylizeLink(url: String) {
+function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
 }
 
@@ -21,6 +22,7 @@ module.exports = new Command("emulators:start")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
 
@@ -39,7 +41,7 @@ module.exports = new Command("emulators:start")
       }
     }
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    const uiUrl = `http://${uiInfo?.host}:${uiInfo?.port}`;
+    const uiUrl = uiInfo ? EmulatorRegistry.getInfoHostString(uiInfo) : "unknown";
     const head = ["Emulator", "Host:Port"];
 
     if (uiInfo) {
@@ -75,7 +77,7 @@ module.exports = new Command("emulators:start")
 
           return [
             emulatorName,
-            `${info?.host}:${info?.port}`,
+            EmulatorRegistry.getInfoHostString(info),
             isSupportedByUi && uiInfo
               ? stylizeLink(`${uiUrl}/${emulator}`)
               : clc.blackBright("n/a"),

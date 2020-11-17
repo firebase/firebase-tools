@@ -1,5 +1,6 @@
 import { FirebaseError } from "../error";
-import * as api from "../api";
+import { hostingApiOrigin } from "../api";
+import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
@@ -150,17 +151,43 @@ export interface Version {
   readonly versionBytes: number;
 }
 
+interface CloneVersionRequest {
+  // The name of the version to be cloned, in the format:
+  // `sites/{site}/versions/{version}`
+  sourceVersion: string;
+
+  // If true, immediately finalize the version after cloning is complete.
+  finalize?: boolean;
+}
+
+interface LongRunningOperation<T> {
+  // The identifier of the Operation.
+  readonly name: string;
+
+  // Set to `true` if the Operation is done.
+  readonly done: boolean;
+
+  // Additional metadata about the Operation.
+  readonly metadata: T | undefined;
+}
+
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
- * user provided names. This removes any `/`, ':', or '_' characters and
+ * user provided names. This removes any `/`, ':', '_', or '#' characters and
  * replaces them with dashes (`-`).
  * @param s the name to normalize.
  * @return the normalized name.
  */
 export function normalizeName(s: string): string {
-  // Using a regex replaces *all* bad characters.
-  return s.replace(/[/:_]/g, "-");
+  // Using a regex replaces *all* specified characters at once.
+  return s.replace(/[/:_#]/g, "-");
 }
+
+const apiClient = new Client({
+  urlPrefix: hostingApiOrigin,
+  apiVersion: "v1beta1",
+  auth: true,
+});
 
 /**
  * getChannel retrieves information about a channel.
@@ -175,13 +202,8 @@ export async function getChannel(
   channelId: string
 ): Promise<Channel | null> {
   try {
-    const res = await api.request(
-      "GET",
-      `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-      {
-        auth: true,
-        origin: api.hostingApiOrigin,
-      }
+    const res = await apiClient.get<Channel>(
+      `/projects/${project}/sites/${site}/channels/${channelId}`
     );
     return res.body;
   } catch (e) {
@@ -205,16 +227,15 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await api.request("GET", `/v1beta1/projects/${project}/sites/${site}/channels`, {
-        auth: true,
-        origin: api.hostingApiOrigin,
-        query: { pageToken: nextPageToken, pageSize: 100 },
-      });
+      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>(
+        `/projects/${project}/sites/${site}/channels`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
       const c = res.body?.channels;
       if (c) {
         channels.push(...c);
       }
-      nextPageToken = res.body?.nextPageToken;
+      nextPageToken = res.body?.nextPageToken || "";
       if (!nextPageToken) {
         return channels;
       }
@@ -242,16 +263,9 @@ export async function createChannel(
   channelId: string,
   ttlMillis: number = DEFAULT_DURATION
 ): Promise<Channel> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
+  const res = await apiClient.post<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels?channelId=${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` }
   );
   return res.body;
 }
@@ -269,19 +283,10 @@ export async function updateChannelTtl(
   channelId: string,
   ttlMillis: number = ONE_WEEK_MS
 ): Promise<Channel> {
-  const res = await api.request(
-    "PATCH",
-    `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      query: {
-        updateMask: ["ttl"].join(","),
-      },
-      data: {
-        ttl: `${ttlMillis / 1000}s`,
-      },
-    }
+  const res = await apiClient.patch<{ ttl: string }, Channel>(
+    `/projects/${project}/sites/${site}/channels/${channelId}`,
+    { ttl: `${ttlMillis / 1000}s` },
+    { queryParams: { updateMask: ["ttl"].join(",") } }
   );
   return res.body;
 }
@@ -297,10 +302,7 @@ export async function deleteChannel(
   site: string,
   channelId: string
 ): Promise<void> {
-  await api.request("DELETE", `/v1beta1/projects/${project}/sites/${site}/channels/${channelId}`, {
-    auth: true,
-    origin: api.hostingApiOrigin,
-  });
+  await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
 }
 
 /**
@@ -314,22 +316,18 @@ export async function cloneVersion(
   versionName: string,
   finalize = false
 ): Promise<Version> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/-/sites/${site}/versions:clone?sourceVersion=${versionName}`,
+  const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
+    `/projects/-/sites/${site}/versions:clone`,
     {
-      auth: true,
-      origin: api.hostingApiOrigin,
-      data: {
-        finalize,
-      },
+      sourceVersion: versionName,
+      finalize,
     }
   );
-  const name = res.body.name;
+  const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
-    apiOrigin: api.hostingApiOrigin,
+    apiOrigin: hostingApiOrigin,
     apiVersion: "v1beta1",
-    operationResourceName: name,
+    operationResourceName: operationName,
     masterTimeout: 600000,
   });
   return pollRes;
@@ -346,14 +344,11 @@ export async function createRelease(
   channel: string,
   version: string
 ): Promise<Release> {
-  const res = await api.request(
-    "POST",
-    `/v1beta1/projects/-/sites/${site}/channels/${channel}/releases?version_name=${version}`,
-    {
-      auth: true,
-      origin: api.hostingApiOrigin,
-    }
-  );
+  const res = await apiClient.request<unknown, Release>({
+    method: "POST",
+    path: `/projects/-/sites/${site}/channels/${channel}/releases`,
+    queryParams: { versionName: version },
+  });
   return res.body;
 }
 
@@ -371,6 +366,21 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
   }
   authDomains.push(domain);
   return await updateAuthDomains(project, authDomains);
+}
+
+/**
+ * Removes channel domain from Firebase Auth list.
+ * @param project the project ID.
+ * @param url the url of the channel.
+ */
+export async function removeAuthDomain(project: string, url: string): Promise<string[]> {
+  const domains = await getAuthDomains(project);
+  if (!domains.length) {
+    return domains;
+  }
+  const targetDomain = url.replace("https://", "");
+  const authDomains = domains.filter((domain: string) => domain != targetDomain);
+  return updateAuthDomains(project, authDomains);
 }
 
 /**
