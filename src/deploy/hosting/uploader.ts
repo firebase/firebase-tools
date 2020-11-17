@@ -216,19 +216,6 @@ export class Uploader {
     this.uploadUrl = res.body.uploadUrl;
     this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
     this.addUploads(res.body.uploadRequiredHashes || []);
-    // return api
-    //   .request("POST", "/v1beta1/" + this.version + ":populateFiles", {
-    //     origin: api.hostingApiOrigin,
-    //     auth: true,
-    //     data: { files: batch },
-    //     logOptions: { skipRequestBody: true },
-    //     timeout: 60000,
-    //   })
-    //   .then((result) => {
-    //     this.uploadUrl = result.body.uploadUrl;
-    //     this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
-    //     this.addUploads(result.body.uploadRequiredHashes || []);
-    //   });
   }
 
   addUploads(hashes: string[]): void {
