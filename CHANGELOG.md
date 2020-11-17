@@ -1,0 +1,1 @@
+- Updates Firebase Hosting emulator's code to not use the deprecated `request` module.
