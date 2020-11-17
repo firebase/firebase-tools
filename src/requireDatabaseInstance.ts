@@ -5,8 +5,9 @@ import * as utils from "./utils";
 /**
  * Ensures that the supplied options have an instance set. If not, tries to fetch the default instance.
  * @param options command options
+ * @return void promise.
  */
-export async function requireDatabaseInstance(options: any) {
+export async function requireDatabaseInstance(options: any): Promise<void> {
   if (options.instance) {
     return Promise.resolve();
   }
