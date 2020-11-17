@@ -1,12 +1,11 @@
 import * as url from "url";
 import * as qs from "querystring";
-import * as request from "request";
-import { Request } from "request";
 import { RequestHandler } from "express";
 
+import { Client } from "../apiv2";
+import { TemplateServerResponse } from "./implicitInit";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { TemplateServerResponse } from "./implicitInit";
 
 const SDK_PATH_REGEXP = /^\/__\/firebase\/([^/]+)\/([^/]+)$/;
 
@@ -23,15 +22,21 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
     if (match) {
       const version = match[1];
       const sdkName = match[2];
-      const url = `https://www.gstatic.com/firebasejs/${version}/${sdkName}`;
-      const preq: Request = request(url)
-        .on("response", (pres) => {
-          if (pres.statusCode === 404) {
+      const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
+      const c = new Client({ urlPrefix: u.origin, auth: false });
+      c.request<unknown, NodeJS.ReadableStream>({
+        method: "GET",
+        path: u.pathname,
+        responseType: "stream",
+        resolveOnHTTPError: true,
+      })
+        .then((sdkRes) => {
+          if (sdkRes.status === 404) {
             return next();
           }
-          return preq.pipe(res);
+          sdkRes.body.pipe(res);
         })
-        .on("error", (e) => {
+        .catch((e) => {
           utils.logLabeledWarning(
             "hosting",
             `Could not load Firebase SDK ${sdkName} v${version}, check your internet connection.`

@@ -1,12 +1,16 @@
 import { capitalize, includes } from "lodash";
 import { Request, RequestHandler, Response } from "express";
-import * as request from "request";
+import { URL } from "url";
+import AbortController from "abort-controller";
+import { ServerResponse } from "http";
 
+import { Client, HttpMethod } from "../apiv2";
 import * as logger from "../logger";
+import { FirebaseError } from "../error";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
-function makeVary(vary?: string): string {
+function makeVary(vary: string | null = ""): string {
   if (!vary) {
     return "Accept-Encoding, Authorization, Cookie";
   }
@@ -35,67 +39,78 @@ function makeVary(vary?: string): string {
  * the Firebase Hosting origin.
  */
 export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
-  return (req: Request, res: Response, next: () => void): any => {
+  return (req: Request, res: ServerResponse, next: () => void): any => {
     logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
     // Extract the __session cookie from headers to forward it to the
     // functions cookie is not a string[].
     const cookie = (req.headers.cookie as string) || "";
     const sessionCookie = cookie.split(/; ?/).find((c: string) => {
-      return c.trim().indexOf("__session=") === 0;
+      return c.trim().startsWith("__session=");
     });
 
-    const proxied = request({
-      method: req.method,
-      qs: req.query,
-      url: url + req.url,
+    const u = new URL(url + req.url);
+    const c = new Client({ urlPrefix: u.origin, auth: false });
+    const controller = new AbortController();
+    const timer = setTimeout(controller.abort.bind(controller), 1000);
+
+    c.request<unknown, NodeJS.ReadableStream>({
+      method: req.method as HttpMethod,
+      path: u.pathname,
+      queryParams: req.query as { [key: string]: string },
       headers: {
-        "X-Forwarded-Host": req.headers.host,
+        "X-Forwarded-Host": req.headers.host || "",
         "X-Original-Url": req.url,
         Pragma: "no-cache",
         "Cache-Control": "no-cache, no-store",
         // forward the parsed __session cookie if any
-        Cookie: sessionCookie,
+        Cookie: sessionCookie || "",
       },
-      followRedirect: false,
-      timeout: 60000,
-    });
-
-    req.pipe(proxied);
-
-    // err here is `any` in order to check `.code`
-    proxied.on("error", (err: any) => {
-      if (err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT") {
-        res.statusCode = 504;
-        return res.end("Timed out waiting for function to respond.");
-      }
-
-      res.statusCode = 500;
-      res.end(`An internal error occurred while proxying for ${rewriteIdentifier}`);
-    });
-
-    proxied.on("response", (response) => {
-      if (response.statusCode === 404) {
-        // x-cascade is not a string[].
-        const cascade = response.headers["x-cascade"] as string;
-        if (cascade && cascade.toUpperCase() === "PASS") {
-          return next();
+      resolveOnHTTPError: true,
+      responseType: "stream",
+      body: ["GET", "HEAD"].includes(req.method) ? undefined : req,
+      signal: controller.signal,
+    })
+      .then((proxyRes) => {
+        clearTimeout(timer);
+        if (proxyRes.status === 404) {
+          // x-cascade is not a string[].
+          const cascade = proxyRes.response.headers.get("x-cascade");
+          if (cascade && cascade.toUpperCase() === "PASS") {
+            return next();
+          }
         }
-      }
 
-      // default to private cache
-      if (!response.headers["cache-control"]) {
-        response.headers["cache-control"] = "private";
-      }
+        // default to private cache
+        if (!proxyRes.response.headers.get("cache-control")) {
+          proxyRes.response.headers.set("cache-control", "private");
+        }
 
-      // don't allow cookies to be set on non-private cached responses
-      if (response.headers["cache-control"].indexOf("private") < 0) {
-        delete response.headers["set-cookie"];
-      }
+        // don't allow cookies to be set on non-private cached responses
+        const cc = proxyRes.response.headers.get("cache-control");
+        if (cc && !cc.includes("private")) {
+          proxyRes.response.headers.delete("set-cookie");
+        }
 
-      response.headers.vary = makeVary(response.headers.vary);
+        proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
 
-      proxied.pipe(res);
-    });
+        proxyRes.body.pipe(res);
+      })
+      .catch((err) => {
+        console.error(res instanceof ServerResponse);
+        console.error("error", err);
+        clearTimeout(timer);
+        const isAbortError =
+          err instanceof FirebaseError && err.original?.name.includes("AbortError");
+        console.error("abort", isAbortError);
+        if (isAbortError || err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT") {
+          res.statusCode = 504;
+          return res.end("Timed out waiting for function to respond.");
+        }
+
+        console.error("OTHER ERROR");
+        res.statusCode = 500;
+        res.end(`An internal error occurred while proxying for ${rewriteIdentifier}`);
+      });
   };
 }
 

@@ -8,7 +8,7 @@ import * as responseToError from "./responseToError";
 
 const CLI_VERSION = require("../package.json").version;
 
-type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
 interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
