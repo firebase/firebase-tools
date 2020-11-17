@@ -543,11 +543,19 @@ async function createServiceAccountAndKey(
     }
   }
 
-  // The roles for the service account.
-  // https://firebase.google.com/docs/projects/iam/roles-predefined-product#hosting
+  // Service account roles
   const requiredRoles = [
-    firebaseRoles.hostingAdmin,
+    // Required to add preview URLs to Auth authorized domains
+    // https://github.com/firebase/firebase-tools/issues/2732
+    firebaseRoles.authAdmin,
+
+    // Required for CLI deploys
     firebaseRoles.apiKeysViewer,
+
+    // Required to deploy preview channels
+    firebaseRoles.hostingAdmin,
+
+    // Required for projects that use Hosting rewrites to Cloud Run
     firebaseRoles.runViewer,
   ];
   await addServiceAccountToRoles(options.projectId, accountId, requiredRoles);

@@ -154,10 +154,10 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   private async updateRules(instance: string, content: string): Promise<any> {
-    const { host, port } = this.getInfo();
+    const info = this.getInfo();
     try {
       await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${host}:${port}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
         headers: { Authorization: "Bearer owner" },
         data: content,
         json: false,

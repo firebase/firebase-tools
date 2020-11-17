@@ -10,7 +10,7 @@ import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
 
@@ -66,7 +66,7 @@ export default new Command("database:get <path>")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +75,7 @@ export default new Command("database:get <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
     const query: { [key: string]: string } = {};
     if (options.shallow) {

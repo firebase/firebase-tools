@@ -1,7 +1,7 @@
 "use strict";
 
 var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
+var { requireDatabaseInstance } = require("../requireDatabaseInstance");
 var { requirePermissions } = require("../requirePermissions");
 var request = require("request");
 var api = require("../api");
@@ -25,7 +25,7 @@ module.exports = new Command("database:push <path> [infile]")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(function(path, infile, options) {
@@ -34,7 +34,7 @@ module.exports = new Command("database:push <path> [infile]")
     }
     var inStream =
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     var url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     if (!infile && !options.data) {
@@ -67,6 +67,7 @@ module.exports = new Command("database:push <path> [infile]")
 
             var consoleUrl = utils.getDatabaseViewDataUrl(
               origin,
+              options.project,
               options.instance,
               path + body.name
             );

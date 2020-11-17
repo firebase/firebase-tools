@@ -1,10 +1,10 @@
-import * as _ from "lodash";
 import { expect } from "chai";
+import * as _ from "lodash";
 import * as nock from "nock";
-import * as api from "../../api";
 
-import { FirebaseError } from "../../error";
 import { cloudscheduler } from "../../gcp";
+import { FirebaseError } from "../../error";
+import * as api from "../../api";
 
 const VERSION = "v1beta1";
 

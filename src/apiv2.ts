@@ -1,4 +1,5 @@
 import fetch, { Response, RequestInit } from "node-fetch";
+import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 
 import { FirebaseError } from "./error";
@@ -12,8 +13,9 @@ type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
-  json?: T;
+  body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
+  signal?: AbortSignal;
 }
 
 interface VerbOptions<T> {
@@ -92,7 +94,7 @@ export class Client {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "POST",
       path,
-      json,
+      body: json,
     });
     return this.request<ReqT, ResT>(reqOptions);
   }
@@ -105,7 +107,20 @@ export class Client {
     const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
       method: "PATCH",
       path,
-      json,
+      body: json,
+    });
+    return this.request<ReqT, ResT>(reqOptions);
+  }
+
+  put<ReqT, ResT>(
+    path: string,
+    json?: ReqT,
+    options: ClientVerbOptions<ReqT> = {}
+  ): Promise<ClientResponse<ResT>> {
+    const reqOptions: ClientRequestOptions<ReqT> = Object.assign(options, {
+      method: "PUT",
+      path,
+      body: json,
     });
     return this.request<ReqT, ResT>(reqOptions);
   }
@@ -230,10 +245,13 @@ export class Client {
     const fetchOptions: RequestInit = {
       headers: options.headers,
       method: options.method,
+      signal: options.signal,
     };
 
-    if (options.json) {
-      fetchOptions.body = JSON.stringify(options.json);
+    if (typeof options.body === "string" || isStream(options.body)) {
+      fetchOptions.body = options.body;
+    } else if (options.body !== undefined) {
+      fetchOptions.body = JSON.stringify(options.body);
     }
 
     this.logRequest(options);
@@ -280,10 +298,10 @@ export class Client {
     }
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
-    if (options.json) {
+    if (options.body !== undefined) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
-        logBody = JSON.stringify(options.json);
+        logBody = bodyToString(options.body);
       }
       logger.debug(`>>> [apiv2][body] ${options.method} ${logURL} ${logBody}`);
     }
@@ -292,20 +310,27 @@ export class Client {
   private logResponse(res: Response, body: unknown, options: ClientRequestOptions<unknown>): void {
     const logURL = this.requestURL(options);
     logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);
-
     let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
-      if (body instanceof Readable) {
-        // Don't attempt to read any stream type, in case the caller needs it.
-        logBody = "[stream]";
-      } else {
-        try {
-          logBody = JSON.stringify(body);
-        } catch (_) {
-          logBody = `${body}`;
-        }
-      }
+      logBody = bodyToString(body);
     }
     logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);
   }
+}
+
+function bodyToString(body: unknown): string {
+  if (isStream(body)) {
+    // Don't attempt to read any stream type, in case the caller needs it.
+    return "[stream]";
+  } else {
+    try {
+      return JSON.stringify(body);
+    } catch (_) {
+      return `${body}`;
+    }
+  }
+}
+
+function isStream(o: unknown): o is NodeJS.ReadableStream {
+  return o instanceof Readable;
 }

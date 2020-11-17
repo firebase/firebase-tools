@@ -3,11 +3,11 @@
 var _ = require("lodash");
 
 var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
+var { requireDatabaseInstance } = require("../requireDatabaseInstance");
 var { populateInstanceDetails } = require("../management/database");
 var { requirePermissions } = require("../requirePermissions");
 var utils = require("../utils");
-var profiler = require("../profiler");
+var { profiler } = require("../profiler");
 var { Emulators } = require("../emulator/types");
 var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
 
@@ -32,7 +32,7 @@ module.exports = new Command("database:profile")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(function(options) {
