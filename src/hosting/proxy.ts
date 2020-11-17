@@ -78,6 +78,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         },
         resolveOnHTTPError: true,
         responseType: "stream",
+        redirect: "manual",
         body: passThrough,
         signal: controller.signal,
       });

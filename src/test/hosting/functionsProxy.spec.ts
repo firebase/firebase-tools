@@ -69,6 +69,26 @@ describe("functionsProxy", () => {
       });
   });
 
+  it("should return 3xx responses directly", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "redirected", { Location: "https://example.com" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301, "redirected")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
   it("should pass through normal 404 errors", async () => {
     nock("https://us-central1-project-foo.cloudfunctions.net")
       .get("/bar/404.html")

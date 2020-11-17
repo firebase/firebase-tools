@@ -16,6 +16,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
   path: string;
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
+  redirect?: "error" | "follow" | "manual";
   signal?: AbortSignal;
 }
 
@@ -248,6 +249,7 @@ export class Client {
     const fetchOptions: RequestInit = {
       headers: options.headers,
       method: options.method,
+      redirect: options.redirect,
       signal: options.signal,
     };
 
