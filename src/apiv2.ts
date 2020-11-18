@@ -274,7 +274,6 @@ export class Client {
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;
     } else {
-      // This is how the linter wants the casting to T to work.
       throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
         exit: 2,
       });
