@@ -1,1 +1,2 @@
+- Fixes issue where `database:get` would not completely finish writing to the output file.
 - Adds additional logging when deploying to a Firebase Hosting preview channel.
