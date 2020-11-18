@@ -176,14 +176,12 @@ export class Uploader {
     fstream.pipe(hash);
 
     return new Promise((resolve, reject) => {
-      fstream.on("end", () => {
-        const hashVal = hash.read().toString("hex");
-        this.cacheNew.set(filePath, { mtime: mtime, hash: hashVal });
-        this.addHash(filePath, hashVal);
-        resolve();
-      });
-
+      fstream.on("end", resolve);
       fstream.on("error", reject);
+    }).then(() => {
+      const hashVal = hash.read().toString("hex");
+      this.cacheNew.set(filePath, { mtime: mtime, hash: hashVal });
+      this.addHash(filePath, hashVal);
     });
   }
 
@@ -239,6 +237,7 @@ export class Uploader {
       body: this.zipStream(this.hashMap[toUpload]),
       resolveOnHTTPError: true,
       responseType: "stream",
+      signal: controller.signal,
     });
     clearTimeout(timeout);
     if (this.uploadQueue.cursor % 100 === 0) {
