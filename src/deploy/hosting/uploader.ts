@@ -1,29 +1,60 @@
-"use strict";
+import { size } from "lodash";
+import AbortController from "abort-controller";
+import * as clc from "cli-color";
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+import * as zlib from "zlib";
 
-const clc = require("cli-color");
-const fs = require("fs");
-const path = require("path");
-const request = require("request");
-const size = require("lodash/size");
-const zlib = require("zlib");
-const crypto = require("crypto");
-
-const hashcache = require("./hashcache");
-const api = require("../../api");
-const logger = require("../../logger");
-const { Queue } = require("../../throttler/queue");
+import { Client } from "../../apiv2";
+import { Queue } from "../../throttler/queue";
+import { hostingApiOrigin } from "../../api";
+import * as hashcache from "./hashcache";
+import * as logger from "../../logger";
+import { FirebaseError } from "../../error";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
 
-function _progressMessage(message, current, total) {
+function progressMessage(message: string, current: number, total: number): string {
   current = Math.min(current, total);
   const percent = Math.floor(((current * 1.0) / total) * 100).toString();
   return `${message} [${current}/${total}] (${clc.bold.green(`${percent}%`)})`;
 }
 
-class Uploader {
-  constructor(options) {
+export class Uploader {
+  private version: string;
+  private cwd: string;
+  private projectRoot: string;
+  private gzipLevel: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private hashQueue: Queue<any, unknown>;
+  private populateBatchSize: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private populateBatch: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private populateQueue: Queue<any, unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private uploadQueue: Queue<any, unknown>;
+  private public: string;
+  private files: string[];
+  private fileCount: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private cache: { [key: string]: any };
+  private cacheNew: Map<unknown, unknown>;
+  private sizeMap: { [key: string]: number };
+  private hashMap: { [key: string]: string };
+  private pathMap: { [key: string]: string };
+  private uploadUrl: string | undefined;
+  private uploadClient: Client | undefined;
+  private hashClient = new Client({
+    urlPrefix: hostingApiOrigin,
+    auth: true,
+    apiVersion: "v1beta1",
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(options: any) {
     this.version = options.version;
     this.cwd = options.cwd || process.cwd();
     this.projectRoot = options.projectRoot;
@@ -60,42 +91,43 @@ class Uploader {
     this.pathMap = {};
   }
 
-  hashcacheName() {
+  hashcacheName(): string {
     return Buffer.from(path.relative(this.projectRoot, this.public))
       .toString("base64")
       .replace(/=+$/, "");
   }
 
-  start() {
-    const self = this;
+  public async start(): Promise<void> {
     // short-circuit when there's zero files
     if (this.files.length === 0) {
-      return Promise.resolve();
+      return;
     }
 
-    this.files.forEach(function(f) {
-      self.hashQueue.add(f);
-    });
-    self.hashQueue.close();
-    self.hashQueue.process();
-    self.hashQueue
+    for (const f of this.files) {
+      this.hashQueue.add(f);
+    }
+    this.hashQueue.close();
+    this.hashQueue.process();
+    this.hashQueue
       .wait()
-      .then(self.queuePopulate.bind(self))
-      .then(function() {
-        hashcache.dump(self.projectRoot, self.hashcacheName(), self.cacheNew);
-        logger.debug("[hosting][hash queue][FINAL]", self.hashQueue.stats());
-        self.populateQueue.close();
-        return self.populateQueue.wait();
+      .then(this.queuePopulate.bind(this))
+      .then(() => {
+        hashcache.dump(this.projectRoot, this.hashcacheName(), this.cacheNew);
+        logger.debug("[hosting][hash queue][FINAL]", this.hashQueue.stats());
+        this.populateQueue.close();
+        return this.populateQueue.wait();
       })
-      .then(function() {
-        logger.debug("[hosting][populate queue][FINAL]", self.populateQueue.stats());
-        logger.debug("[hosting] uploads queued:", self.uploadQueue.stats().total);
-        self.uploadQueue.close();
+      .then(() => {
+        logger.debug("[hosting][populate queue][FINAL]", this.populateQueue.stats());
+        logger.debug("[hosting] uploads queued:", this.uploadQueue.stats().total);
+        this.uploadQueue.close();
       });
 
-    const fin = function(err) {
-      logger.debug("[hosting][upload queue][FINAL]", self.uploadQueue.stats());
-      if (err) throw err;
+    const fin = (err: unknown): void => {
+      logger.debug("[hosting][upload queue][FINAL]", this.uploadQueue.stats());
+      if (err) {
+        throw err;
+      }
     };
 
     return this.wait()
@@ -103,27 +135,21 @@ class Uploader {
       .catch(fin);
   }
 
-  wait() {
-    return Promise.all([
-      this.hashQueue.wait(),
-      this.populateQueue.wait(),
-      this.uploadQueue.wait(),
-    ]).then(function() {
-      return; // don't return an array of three `undefined`
-    });
+  async wait(): Promise<void> {
+    await Promise.all([this.hashQueue.wait(), this.populateQueue.wait(), this.uploadQueue.wait()]);
   }
 
-  statusMessage() {
+  statusMessage(): string {
     if (!this.hashQueue.finished) {
-      return _progressMessage("hashing files", this.hashQueue.complete, this.fileCount);
+      return progressMessage("hashing files", this.hashQueue.complete, this.fileCount);
     } else if (!this.populateQueue.finished) {
-      return _progressMessage(
+      return progressMessage(
         "adding files to version",
         this.populateQueue.complete * 1000,
         this.fileCount
       );
     } else if (!this.uploadQueue.finished) {
-      return _progressMessage(
+      return progressMessage(
         "uploading new files",
         this.uploadQueue.complete,
         this.uploadQueue.stats().total
@@ -133,7 +159,7 @@ class Uploader {
     }
   }
 
-  hashHandler(filePath) {
+  async hashHandler(filePath: string): Promise<void> {
     const stats = fs.statSync(path.resolve(this.public, filePath));
     const mtime = stats.mtime.getTime();
     this.sizeMap[filePath] = stats.size;
@@ -141,20 +167,19 @@ class Uploader {
     if (cached && cached.mtime === mtime) {
       this.cacheNew.set(filePath, cached);
       this.addHash(filePath, cached.hash);
-      return Promise.resolve();
+      return;
     }
 
-    const fstream = this._zipStream(filePath);
+    const fstream = this.zipStream(filePath);
     const hash = crypto.createHash("sha256");
 
     fstream.pipe(hash);
 
-    const self = this;
-    return new Promise(function(resolve, reject) {
-      fstream.on("end", function() {
+    return new Promise((resolve, reject) => {
+      fstream.on("end", () => {
         const hashVal = hash.read().toString("hex");
-        self.cacheNew.set(filePath, { mtime: mtime, hash: hashVal });
-        self.addHash(filePath, hashVal);
+        this.cacheNew.set(filePath, { mtime: mtime, hash: hashVal });
+        this.addHash(filePath, hashVal);
         resolve();
       });
 
@@ -162,12 +187,11 @@ class Uploader {
     });
   }
 
-  addHash(filePath, hash) {
+  addHash(filePath: string, hash: string): void {
     this.hashMap[hash] = filePath;
     this.pathMap[filePath] = hash;
 
     this.populateBatch["/" + filePath] = hash;
-    this.populateCount++;
 
     const curBatchSize = size(this.populateBatch);
     if (curBatchSize > 0 && curBatchSize % this.populateBatchSize === 0) {
@@ -175,90 +199,70 @@ class Uploader {
     }
   }
 
-  queuePopulate() {
+  queuePopulate(): void {
     const pop = this.populateBatch;
     this.populateQueue.add(pop);
     this.populateBatch = {};
     this.populateQueue.process();
   }
 
-  populateHandler(batch) {
-    const self = this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async populateHandler(batch: any): Promise<void> {
     // wait for any existing populate calls to finish before proceeding
-    return api
-      .request("POST", "/v1beta1/" + self.version + ":populateFiles", {
-        origin: api.hostingApiOrigin,
-        auth: true,
-        data: { files: batch },
-        logOptions: { skipRequestBody: true },
-        timeout: 60000,
-      })
-      .then(function(result) {
-        self.uploadUrl = result.body.uploadUrl;
-        self.addUploads(result.body.uploadRequiredHashes || []);
-      });
+    const res = await this.hashClient.post<
+      unknown,
+      { uploadUrl: string; uploadRequiredHashes: string[] }
+    >(`/${this.version}:populateFiles`, { files: batch });
+    this.uploadUrl = res.body.uploadUrl;
+    this.uploadClient = new Client({ urlPrefix: this.uploadUrl, auth: true });
+    this.addUploads(res.body.uploadRequiredHashes || []);
   }
 
-  addUploads(hashes) {
-    const self = this;
-    hashes.forEach(function(hash) {
-      self.uploadQueue.add(hash);
+  addUploads(hashes: string[]): void {
+    for (const hash of hashes) {
+      this.uploadQueue.add(hash);
+    }
+    this.uploadQueue.process();
+  }
+
+  async uploadHandler(toUpload: string): Promise<void> {
+    if (!this.uploadClient) {
+      throw new FirebaseError("No upload client available.", { exit: 2 });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, this.uploadTimeout(this.hashMap[toUpload]));
+    const res = await this.uploadClient.request({
+      method: "POST",
+      path: `/${toUpload}`,
+      body: this.zipStream(this.hashMap[toUpload]),
+      resolveOnHTTPError: true,
+      responseType: "stream",
     });
-    self.uploadQueue.process();
+    clearTimeout(timeout);
+    if (this.uploadQueue.cursor % 100 === 0) {
+      logger.debug("[hosting][upload]", this.uploadQueue.stats());
+    }
+    if (res.status !== 200) {
+      logger.debug(
+        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${res.status}: ${
+          res.response.headers
+        } ${await res.response.text()}`
+      );
+      throw new Error("Unexpected error while uploading file.");
+    }
   }
 
-  uploadHandler(toUpload) {
-    const self = this;
-
-    return api
-      .addRequestHeaders({
-        url: this.uploadUrl + "/" + toUpload,
-      })
-      .then(function(reqOpts) {
-        return new Promise(function(resolve, reject) {
-          self._zipStream(self.hashMap[toUpload]).pipe(
-            request.post(
-              Object.assign(reqOpts, {
-                timeout: self._uploadTimeout(self.hashMap[toUpload]),
-              }),
-              function(err, res) {
-                if (self.uploadQueue.cursor % 100 === 0) {
-                  logger.debug("[hosting][upload]", self.uploadQueue.stats());
-                }
-                if (err) {
-                  return reject(err);
-                } else if (res.statusCode !== 200) {
-                  logger.debug(
-                    "[hosting][upload]",
-                    self.hashMap[toUpload],
-                    "(" + toUpload + ")",
-                    "HTTP ERROR",
-                    res.statusCode,
-                    ":",
-                    res.headers,
-                    res.body
-                  );
-                  return reject(new Error("Unexpected error while uploading file."));
-                }
-
-                resolve();
-              }
-            )
-          );
-        });
-      });
-  }
-
-  _zipStream(filePath) {
+  zipStream(filePath: string): zlib.Gzip {
+    const file = fs.createReadStream(path.resolve(this.public, filePath));
     const gzip = zlib.createGzip({ level: this.gzipLevel });
-    return fs.createReadStream(path.resolve(this.public, filePath)).pipe(gzip);
+    return file.pipe(gzip);
   }
 
-  _uploadTimeout(filePath) {
+  uploadTimeout(filePath: string): number {
     const size = this.sizeMap[filePath] || 0;
     // 20s per MB bounded to min/max timeouts
     return Math.min(Math.max(Math.round(size / 1000) * 20, MIN_UPLOAD_TIMEOUT), MAX_UPLOAD_TIMEOUT);
   }
 }
-
-module.exports = Uploader;
