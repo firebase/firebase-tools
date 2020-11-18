@@ -15,8 +15,8 @@ const INSTANCE_RESOURCE_NAME_REGEX = /projects\/([^\/]+?)\/locations\/([^\/]+?)\
 
 export enum DatabaseInstanceType {
   DATABASE_INSTANCE_TYPE_UNSPECIFIED = "unspecified",
-  DEFAULT_DATABASE = "default",
-  USER_DATABASE = "user",
+  DEFAULT_DATABASE = "default_database",
+  USER_DATABASE = "user_database",
 }
 
 export enum DatabaseInstanceState {
@@ -105,7 +105,8 @@ export async function getDatabaseInstanceDetails(
 export async function createInstance(
   projectId: string,
   instanceName: string,
-  location: DatabaseLocation
+  location: DatabaseLocation,
+  databaseType: DatabaseInstanceType
 ): Promise<DatabaseInstance> {
   try {
     const response = await api.request(
@@ -115,6 +116,9 @@ export async function createInstance(
         auth: true,
         origin: api.rtdbManagementOrigin,
         timeout: TIMEOUT_MILLIS,
+        data: {
+          type: databaseType,
+        },
       }
     );
 
@@ -143,7 +147,7 @@ export async function validateInstanceName(
   instanceName: string,
   databaseType: DatabaseInstanceType,
   location?: DatabaseLocation
-): Promise<String[]> {
+): Promise<string[]> {
   if (!location) {
     location = DatabaseLocation.US_CENTRAL1;
   }
@@ -167,15 +171,22 @@ export async function validateInstanceName(
         err.message ? " " + err.message : ""
       }`
     );
+    const errBody = err.context.body.error;
     if (
-      err.details &&
-      err.details[0] &&
-      err.details[0].metadata &&
-      err.details[0].metadata.suggested_database_ids
+      errBody &&
+      errBody.details &&
+      errBody.details[0] &&
+      errBody.details[0].metadata &&
+      errBody.details[0].metadata.suggested_database_ids
     ) {
-      return err.details[0].metadata.suggested_database_ids;
+      return errBody.details[0].metadata.suggested_database_ids.split(",");
     }
-    return [];
+    throw new FirebaseError(
+      `Failed to validate Realtime Database instance name: ${instanceName}.`,
+      {
+        original: err,
+      }
+    );
   }
 }
 

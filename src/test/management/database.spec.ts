@@ -11,6 +11,7 @@ import {
   getDatabaseInstanceDetails,
   createInstance,
   listDatabaseInstances,
+  validateInstanceName,
 } from "../../management/database";
 
 const PROJECT_ID = "the-best-firebase-project";
@@ -24,7 +25,7 @@ const SOME_DATABASE_INSTANCE: DatabaseInstance = {
   state: DatabaseInstanceState.ACTIVE,
 };
 
-const SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST: DatabaseInstance = {
+const SOME_DATABASE_INSTANCE_EUROPE_WEST1: DatabaseInstance = {
   name: DATABASE_INSTANCE_NAME,
   location: DatabaseLocation.EUROPE_WEST1,
   project: PROJECT_ID,
@@ -148,12 +149,13 @@ describe("Database management", () => {
 
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
-      const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_ASIA_SOUTHEAST;
+      const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_EUROPE_WEST1;
       apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
       const resultDatabaseInstance = await createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
-        DatabaseLocation.EUROPE_WEST1
+        DatabaseLocation.EUROPE_WEST1,
+        DatabaseInstanceType.USER_DATABASE
       );
       expect(resultDatabaseInstance).to.deep.equal(expectedDatabaseInstance);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -163,6 +165,9 @@ describe("Database management", () => {
           auth: true,
           origin: api.rtdbManagementOrigin,
           timeout: 10000,
+          data: {
+            type: DatabaseInstanceType.USER_DATABASE,
+          },
         }
       );
     });
@@ -174,7 +179,12 @@ describe("Database management", () => {
 
       let err;
       try {
-        await createInstance(PROJECT_ID, badInstanceName, DatabaseLocation.US_CENTRAL1);
+        await createInstance(
+          PROJECT_ID,
+          badInstanceName,
+          DatabaseLocation.US_CENTRAL1,
+          DatabaseInstanceType.DEFAULT_DATABASE
+        );
       } catch (e) {
         err = e;
       }
@@ -190,6 +200,120 @@ describe("Database management", () => {
           auth: true,
           origin: api.rtdbManagementOrigin,
           timeout: 10000,
+          data: {
+            type: DatabaseInstanceType.DEFAULT_DATABASE,
+          },
+        }
+      );
+    });
+  });
+
+  describe("validateInstanceName", () => {
+    it("should resolve with new DatabaseInstance if instance names is available and API call succeeds", async () => {
+      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
+      const instanceNames = await validateInstanceName(
+        PROJECT_ID,
+        DATABASE_INSTANCE_NAME,
+        DatabaseInstanceType.USER_DATABASE,
+        DatabaseLocation.EUROPE_WEST1
+      );
+      expect(instanceNames).to.deep.equal([SOME_DATABASE_INSTANCE_EUROPE_WEST1.name]);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}&validateOnly=true`,
+        {
+          auth: true,
+          origin: api.rtdbManagementOrigin,
+          timeout: 10000,
+          data: {
+            type: DatabaseInstanceType.USER_DATABASE,
+          },
+        }
+      );
+    });
+
+    it("should resolve with suggested instance names if the API call fails with suggestions ", async () => {
+      const badInstanceName = "invalid:database|name";
+      const expectedErrorObj = {
+        context: {
+          body: {
+            error: {
+              details: [
+                {
+                  metadata: {
+                    suggested_database_ids: "dbName1,dbName2,dbName3",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+      apiRequestStub.onFirstCall().rejects(expectedErrorObj);
+      const instanceNames = await validateInstanceName(
+        PROJECT_ID,
+        badInstanceName,
+        DatabaseInstanceType.USER_DATABASE,
+        DatabaseLocation.EUROPE_WEST1
+      );
+      expect(instanceNames).to.deep.equal(["dbName1", "dbName2", "dbName3"]);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${badInstanceName}&validateOnly=true`,
+        {
+          auth: true,
+          origin: api.rtdbManagementOrigin,
+          timeout: 10000,
+          data: {
+            type: DatabaseInstanceType.USER_DATABASE,
+          },
+        }
+      );
+    });
+
+    it("should reject if API call fails without suggestions", async () => {
+      const badInstanceName = "non-existent-instance";
+      const expectedErrorObj = {
+        context: {
+          body: {
+            error: {
+              details: [
+                {
+                  metadata: {},
+                },
+              ],
+            },
+          },
+        },
+      };
+      apiRequestStub.onFirstCall().rejects(expectedErrorObj);
+
+      let err;
+      try {
+        await validateInstanceName(
+          PROJECT_ID,
+          badInstanceName,
+          DatabaseInstanceType.DEFAULT_DATABASE,
+          DatabaseLocation.US_CENTRAL1
+        );
+      } catch (e) {
+        err = e;
+      }
+
+      expect(err.message).to.equal(
+        `Failed to validate Realtime Database instance name: ${badInstanceName}.`
+      );
+      expect(err.original).to.equal(expectedErrorObj);
+      expect(apiRequestStub).to.be.calledOnceWith(
+        "POST",
+        `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances?databaseId=${badInstanceName}&validateOnly=true`,
+        {
+          auth: true,
+          origin: api.rtdbManagementOrigin,
+          timeout: 10000,
+          data: {
+            type: DatabaseInstanceType.DEFAULT_DATABASE,
+          },
         }
       );
     });
