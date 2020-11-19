@@ -18,7 +18,7 @@ const functionsEmulator = new FunctionsEmulator({
 });
 functionsEmulator.nodeBinary = process.execPath;
 
-async function _countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
+async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;
   const counts: { [key: string]: number } = {};
 
@@ -106,7 +106,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["unidentified-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
 
@@ -124,7 +124,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
 
         expect(logs["unidentified-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
@@ -143,7 +143,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
 
         expect(logs["googleapis-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
@@ -160,7 +160,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -200,7 +200,7 @@ describe("FunctionsEmulator-Runtime", () => {
               .onCreate(() => {}),
           };
         });
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -227,7 +227,7 @@ describe("FunctionsEmulator-Runtime", () => {
           expect(JSON.parse(el.text)).to.deep.eq({ operand: 4 });
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -490,7 +490,7 @@ describe("FunctionsEmulator-Runtime", () => {
         }
       );
 
-      const logs = await _countLogEntries(worker);
+      const logs = await countLogEntries(worker);
       expect(logs["functions-config-missing-value"]).to.eq(2);
     }).timeout(TIMEOUT_MED);
   });
@@ -736,7 +736,7 @@ describe("FunctionsEmulator-Runtime", () => {
           expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -765,7 +765,7 @@ describe("FunctionsEmulator-Runtime", () => {
           expect(JSON.parse(el.text)).to.deep.eq({ before_exists: true, after_exists: true });
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -793,7 +793,7 @@ describe("FunctionsEmulator-Runtime", () => {
           expect(JSON.parse(el.text)).to.deep.eq({ snap_exists: true });
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
@@ -821,7 +821,7 @@ describe("FunctionsEmulator-Runtime", () => {
           expect(JSON.parse(el.text)).to.deep.eq({ snap_exists: true });
         });
 
-        const logs = await _countLogEntries(worker);
+        const logs = await countLogEntries(worker);
         expect(logs["function-log"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
     });
@@ -838,7 +838,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = _countLogEntries(worker);
+        const logs = countLogEntries(worker);
 
         try {
           await callHTTPSFunction(worker, frb);
@@ -863,7 +863,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = _countLogEntries(worker);
+        const logs = countLogEntries(worker);
 
         try {
           await callHTTPSFunction(worker, frb);
@@ -888,7 +888,7 @@ describe("FunctionsEmulator-Runtime", () => {
           };
         });
 
-        const logs = _countLogEntries(worker);
+        const logs = countLogEntries(worker);
 
         try {
           await callHTTPSFunction(worker, frb);
