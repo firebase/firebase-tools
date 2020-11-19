@@ -1,14 +1,16 @@
 import { expect } from "chai";
-import { InvokeRuntimeOpts, FunctionsEmulator } from "../../emulator/functionsEmulator";
-import { EmulatorLog } from "../../emulator/types";
-import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
-import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
+import * as _ from "lodash";
+import * as express from "express";
+
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import { EmulatorLog } from "../../emulator/types";
 import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
-import * as request from "request";
-import * as express from "express";
-import * as _ from "lodash";
+import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import { IncomingMessage, request } from "http";
+import { InvokeRuntimeOpts, FunctionsEmulator } from "../../emulator/functionsEmulator";
+import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
+import { streamToString } from "../../utils";
 
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
@@ -51,38 +53,36 @@ function invokeRuntimeWithFunctions(
 async function callHTTPSFunction(
   worker: RuntimeWorker,
   frb: FunctionsRuntimeBundle,
-  options: any = {},
+  options: { headers?: { [key: string]: string } } = {},
   requestData?: string
 ): Promise<string> {
   await worker.waitForSocketReady();
 
-  const dataPromise = new Promise<string>((resolve, reject) => {
-    const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
-    const requestOptions: request.CoreOptions = {
-      method: "POST",
-      ...options,
-    };
+  if (!worker.lastArgs) {
+    throw new Error("Can't talk to worker with undefined args");
+  }
 
+  const socketPath = worker.lastArgs.frb.socketPath;
+  const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
+
+  const res = await new Promise<IncomingMessage>((resolve, reject) => {
+    const req = request(
+      {
+        method: "POST",
+        headers: options.headers,
+        socketPath,
+        path,
+      },
+      resolve
+    );
+    req.on("error", reject);
     if (requestData) {
-      requestOptions.body = requestData;
+      req.write(requestData);
     }
-
-    if (!worker.lastArgs) {
-      throw new Error("Can't talk to worker with undefined args");
-    }
-
-    const socketPath = worker.lastArgs.frb.socketPath;
-    request(`http://unix:${socketPath}:${path}`, requestOptions, (err, res, body) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      resolve(body);
-    });
+    req.end();
   });
 
-  const result = await dataPromise;
+  const result = await streamToString(res);
   await worker.runtime.exit;
 
   return result;
@@ -531,7 +531,7 @@ describe("FunctionsEmulator-Runtime", () => {
           {
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
-              "Content-Length": reqData.length,
+              "Content-Length": `${reqData.length}`,
             },
           },
           reqData
@@ -558,7 +558,7 @@ describe("FunctionsEmulator-Runtime", () => {
           {
             headers: {
               "Content-Type": "application/json",
-              "Content-Length": reqData.length,
+              "Content-Length": `${reqData.length}`,
             },
           },
           reqData
@@ -585,7 +585,7 @@ describe("FunctionsEmulator-Runtime", () => {
           {
             headers: {
               "Content-Type": "text/plain",
-              "Content-Length": reqData.length,
+              "Content-Length": `${reqData.length}`,
             },
           },
           reqData
@@ -612,7 +612,7 @@ describe("FunctionsEmulator-Runtime", () => {
           {
             headers: {
               "Content-Type": "gibber/ish",
-              "Content-Length": reqData.length,
+              "Content-Length": `${reqData.length}`,
             },
           },
           reqData
@@ -640,7 +640,7 @@ describe("FunctionsEmulator-Runtime", () => {
           {
             headers: {
               "Content-Type": "gibber/ish",
-              "Content-Length": reqData.length,
+              "Content-Length": `${reqData.length}`,
             },
           },
           reqData
