@@ -1,23 +1,21 @@
-"use strict";
+import { Command } from "../command";
+import * as requireInstance from "../requireInstance";
+import { requirePermissions } from "../requirePermissions";
+import * as request from "request";
+import * as api from "../api";
+import * as responseToError from "../responseToError";
+import { FirebaseError } from "../error";
+import { Emulators } from "../emulator/types";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import { populateInstanceDetails } from "../management/database";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import * as utils from "../utils";
+import * as clc from "cli-color";
+import * as logger from "../logger";
+import * as fs from "fs";
+import * as _ from "lodash";
 
-var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var request = require("request");
-var api = require("../api");
-var responseToError = require("../responseToError");
-var { FirebaseError } = require("../error");
-var { Emulators } = require("../emulator/types");
-var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-const { populateInstanceDetails } = require("../management/database");
-const { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
-var utils = require("../utils");
-var clc = require("cli-color");
-var logger = require("../logger");
-var fs = require("fs");
-var _ = require("lodash");
-
-module.exports = new Command("database:push <path> [infile]")
+export default new Command("database:push <path> [infile]")
   .description("add a new JSON object to a list of data in your Firebase")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option(
@@ -28,28 +26,29 @@ module.exports = new Command("database:push <path> [infile]")
   .before(requireInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(function(path, infile, options) {
+  .action((path, infile, options) => {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    var inStream =
+    const inStream =
       utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
     const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-    var url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
+    const url = utils.getDatabaseUrl(origin, options.instance, path + ".json");
 
     if (!infile && !options.data) {
       utils.explainStdin();
     }
     logger.debug("Database URL:" + url);
-    var reqOptions = {
+    const reqOptions = {
       url: url,
       json: true,
     };
 
-    return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-      return new Promise(function(resolve, reject) {
+    return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
+      return new Promise((resolve, reject) => {
         inStream.pipe(
-          request.post(reqOptionsWithToken, function(err, res, body) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          request.post(reqOptionsWithToken, (err: Error, res: any, body: any) => {
             logger.info();
             if (err) {
               return reject(
@@ -65,7 +64,7 @@ module.exports = new Command("database:push <path> [infile]")
               path += "/";
             }
 
-            var consoleUrl = utils.getDatabaseViewDataUrl(
+            const consoleUrl = utils.getDatabaseViewDataUrl(
               origin,
               options.project,
               options.instance,
