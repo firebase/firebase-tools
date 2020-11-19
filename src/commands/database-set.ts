@@ -1,24 +1,22 @@
-"use strict";
+import { Command } from "../command";
+import * as requireInstance from "../requireInstance";
+import { requirePermissions } from "../requirePermissions";
+import * as request from "request";
+import * as api from "../api";
+import * as responseToError from "../responseToError";
+import { FirebaseError } from "../error";
+import { Emulators } from "../emulator/types";
+import { printNoticeIfEmulated } from "../emulator/commandUtils";
+import { populateInstanceDetails } from "../management/database";
+import * as utils from "../utils";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import * as clc from "cli-color";
+import * as logger from "../logger";
+import * as fs from "fs";
+import { prompt } from "../prompt";
+import * as _ from "lodash";
 
-var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var request = require("request");
-var api = require("../api");
-var responseToError = require("../responseToError");
-var { FirebaseError } = require("../error");
-var { Emulators } = require("../emulator/types");
-var { printNoticeIfEmulated } = require("../emulator/commandUtils");
-var { populateInstanceDetails } = require("../management/database");
-var utils = require("../utils");
-var { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
-var clc = require("cli-color");
-var logger = require("../logger");
-var fs = require("fs");
-var { prompt } = require("../prompt");
-var _ = require("lodash");
-
-module.exports = new Command("database:set <path> [infile]")
+export default new Command("database:set <path> [infile]")
   .description("store JSON data at the specified path via STDIN, arg, or file")
   .option("-d, --data <data>", "specify escaped JSON directly")
   .option("-y, --confirm", "pass this option to bypass confirmation prompt")
@@ -30,7 +28,7 @@ module.exports = new Command("database:set <path> [infile]")
   .before(requireInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
-  .action(function(path, infile, options) {
+  .action((path, infile, options) => {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
@@ -45,12 +43,12 @@ module.exports = new Command("database:set <path> [infile]")
         default: false,
         message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
       },
-    ]).then(function() {
+    ]).then(() => {
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
 
-      var inStream =
+      const inStream =
         utils.stringToStream(options.data) ||
         (infile ? fs.createReadStream(infile) : process.stdin);
 
@@ -58,15 +56,16 @@ module.exports = new Command("database:set <path> [infile]")
         utils.explainStdin();
       }
 
-      var reqOptions = {
+      const reqOptions = {
         url: dbJsonPath,
         json: true,
       };
 
-      return api.addRequestHeaders(reqOptions).then(function(reqOptionsWithToken) {
-        return new Promise(function(resolve, reject) {
+      return api.addRequestHeaders(reqOptions).then((reqOptionsWithToken) => {
+        return new Promise((resolve, reject) => {
           inStream.pipe(
-            request.put(reqOptionsWithToken, function(err, res, body) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            request.put(reqOptionsWithToken, (err: Error, res: any, body: any) => {
               logger.info();
               if (err) {
                 logger.debug(err);
