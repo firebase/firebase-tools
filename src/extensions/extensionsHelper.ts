@@ -3,7 +3,7 @@ import * as clc from "cli-color";
 import * as ora from "ora";
 import * as semver from "semver";
 import * as fs from "fs";
-
+import * as marked from "marked";
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
@@ -443,9 +443,11 @@ export async function publishExtensionVersionFromLocalSource(
     publishSpinner.fail();
     if (err.status == 404) {
       throw new FirebaseError(
-        `Couldn't find publisher ID '${clc.bold(
-          publisherId
-        )}'. Please ensure that you have registered this ID.`
+        marked(
+          `Couldn't find publisher ID '${clc.bold(
+            publisherId
+          )}'. Please ensure that you have registered this ID. To register as a publisher, you can check out the [Firebase documentation](https://firebase.google.com/docs/extensions/alpha/share#register_as_an_extensions_publisher) for step-by-step instructions.`
+        )
       );
     }
     throw err;
