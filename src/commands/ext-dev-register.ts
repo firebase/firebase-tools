@@ -45,7 +45,7 @@ export default new Command("ext:dev:register")
           ` - Publisher ID '${clc.bold(publisherId)}' is registered to another project\n` +
           ` - Project '${clc.bold(projectId)}' already has a publisher ID\n\n` +
           ` Try again with a unique publisher ID or a new project. If your business’s name has been registered to another project, contact Firebase support ${marked(
-            "(https://firebase.google.com/support/troubleshooter/extensions)."
+            "(https://firebase.google.com/support/troubleshooter/contact)."
           )}`;
         throw new FirebaseError(error, { exit: 1 });
       }
