@@ -127,14 +127,15 @@ async function enableApiIfNeeded(project: string) {
     spinner.fail();
     throw err;
   }
-  spinner.succeed();
+  spinner.succeed();  
 }
 
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
   setup.config = {};
   await enableApiIfNeeded(setup.projectId);
+  logger.info();
   setup.instance =
-    setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
+    setup.instance || await getDefaultDatabaseInstance({ project: setup.projectId });
   const instanceDetails =
     setup.instance !== ""
       ? await getDatabaseInstanceDetails(setup.projectId, setup.instance)
