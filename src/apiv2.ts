@@ -1,6 +1,7 @@
 import fetch, { Response, RequestInit } from "node-fetch";
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
+import { URLSearchParams } from "url";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -8,20 +9,21 @@ import * as responseToError from "./responseToError";
 
 const CLI_VERSION = require("../package.json").version;
 
-type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
+export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
 interface RequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
+  redirect?: "error" | "follow" | "manual";
   signal?: AbortSignal;
 }
 
 interface VerbOptions<T> {
   method?: HttpMethod;
   headers?: { [key: string]: string };
-  queryParams?: { [key: string]: string | number };
+  queryParams?: URLSearchParams | { [key: string]: string | number };
 }
 
 interface ClientHandlingOptions {
@@ -174,7 +176,7 @@ export class Client {
       reqOptions = await this.addAuthHeader(reqOptions);
     }
     try {
-      return this.doRequest<ReqT, ResT>(reqOptions);
+      return await this.doRequest<ReqT, ResT>(reqOptions);
     } catch (err) {
       if (err instanceof FirebaseError) {
         throw err;
@@ -230,21 +232,24 @@ export class Client {
 
     let fetchURL = this.requestURL(options);
     if (options.queryParams) {
-      // TODO(bkendall): replace this half-hearted implementation with
-      // URLSearchParams when on node >= 10.
-      const sp: string[] = [];
-      for (const key of Object.keys(options.queryParams)) {
-        const value = options.queryParams[key];
-        sp.push(`${key}=${encodeURIComponent(value)}`);
+      if (!(options.queryParams instanceof URLSearchParams)) {
+        const sp = new URLSearchParams();
+        for (const key of Object.keys(options.queryParams)) {
+          const value = options.queryParams[key];
+          sp.append(key, `${value}`);
+        }
+        options.queryParams = sp;
       }
-      if (sp.length) {
-        fetchURL += "?" + sp.join("&");
+      const queryString = options.queryParams.toString();
+      if (queryString) {
+        fetchURL += `?${queryString}`;
       }
     }
 
     const fetchOptions: RequestInit = {
       headers: options.headers,
       method: options.method,
+      redirect: options.redirect,
       signal: options.signal,
     };
 
@@ -269,8 +274,9 @@ export class Client {
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;
     } else {
-      // This is how the linter wants the casting to T to work.
-      body = ((await res.text()) as unknown) as ResT;
+      throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
+        exit: 2,
+      });
     }
 
     this.logResponse(res, body, options);
@@ -293,7 +299,10 @@ export class Client {
     if (options.queryParams) {
       queryParamsLog = "[omitted]";
       if (!options.skipLog?.queryParams) {
-        queryParamsLog = JSON.stringify(options.queryParams);
+        queryParamsLog =
+          options.queryParams instanceof URLSearchParams
+            ? options.queryParams.toString()
+            : JSON.stringify(options.queryParams);
       }
     }
     const logURL = this.requestURL(options);
