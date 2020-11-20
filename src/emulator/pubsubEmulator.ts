@@ -123,8 +123,6 @@ export class PubsubEmulator implements EmulatorInstance {
         `Attempted to execute pubsub trigger for topic ${topicName} but could not find Functions emulator`
       );
     }
-    const functionsPort = functionsEmu.getInfo().port;
-    const functionsHost = functionsEmu.getInfo().host;
 
     this.logger.logLabeled(
       "DEBUG",
@@ -159,7 +157,7 @@ export class PubsubEmulator implements EmulatorInstance {
           "POST",
           `/functions/projects/${this.args.projectId}/triggers/${trigger}`,
           {
-            origin: `http://${functionsHost}:${functionsPort}`,
+            origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmu.getInfo())}`,
             data: body,
           }
         );

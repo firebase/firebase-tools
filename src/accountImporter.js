@@ -20,6 +20,7 @@ var ALLOWED_JSON_KEYS = [
   "providerUserInfo",
   "phoneNumber",
   "disabled",
+  "customAttributes",
 ];
 var ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",
@@ -122,6 +123,7 @@ var transArrayToUser = function(arr) {
     phoneNumber: arr[25],
     providerUserInfo: [],
     disabled: arr[26],
+    customAttributes: arr[27],
   };
   _addProviderUserInfo(user, "google.com", arr.slice(7, 11));
   _addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));

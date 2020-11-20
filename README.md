@@ -163,12 +163,14 @@ Use `firebase:deploy --only remoteconfig` to update and publish a project's Fire
 
 ### General
 
-The Firebase CLI can use one of three authentication methods listed in descending priority:
+The Firebase CLI can use one of four authentication methods listed in descending priority:
 
-- `GOOGLE_APPLICATION_CREDENTIALS` - if this environment variable points to a service account key file, the Firebase CLI will authenticate as a service account.
-- `firebase login` - you can log in to the CLI directly as yourself. The CLI will store an authorized user credential.
-  - `FIREBASE_TOKEN` - you can explicitly use this environment variable to pass in a long-lived user token from `firebase login:ci`.
-- `gcloud auth application-default login` - if your development machine has application default credentials from the Google Cloud CLI, we will use them if none of the above credentials are present.
+- **User Token** - provide an explicit long-lived Firebase user token generated from `firebase login:ci`. Note that these tokens are extremely sensitive long-lived credentials and are not the right option for most cases. Consider using service account authorization instead. The token can be set in one of two ways:
+  - Set the `--token` flag on any command, for example `firebase --token="<token>" projects:list`.
+  - Set the `FIREBASE_TOKEN` environment variable.
+- **Local Login** - run `firebase login` to log in to the CLI directly as yourself. The CLI will cache an authorized user credential on your machine.
+- **Service Account** - set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to the path of a JSON service account key file.
+- **Application Default Credentials** - if you use the `gcloud` CLI and log in with `gcloud auth application-default login`, the Firebase CLI will use them if none of the above credentials are present.
 
 ### Cloud Functions Emulator
 
@@ -206,50 +208,42 @@ will immediately revoke access for the specified token.
 
 ## Using as a Module
 
-The Firebase CLI can also be used programmatically as a standard Node module. Each command is exposed as a function that takes an options object and returns a Promise. For example:
+The Firebase CLI can also be used programmatically as a standard Node module.
+Each command is exposed as a function that takes positional arguments followed
+by an options object and returns a Promise.
+
+So if we run this command at our command line:
+
+```bash
+$ firebase --project="foo" apps:list ANDROID
+```
+
+That translates to the following in Node:
 
 ```js
-var client = require("firebase-tools");
-client.projects
-  .list()
-  .then(function(data) {
-    console.log(data);
+const client = require("firebase-tools");
+client.apps
+  .list("ANDROID", { project: "foo" })
+  .then((data) => {
+    // ...
   })
-  .catch(function(err) {
-    // handle error
-  });
-
-client
-  .deploy({
-    project: "myfirebase",
-    token: process.env.FIREBASE_TOKEN,
-    force: true,
-    cwd: "/path/to/project/folder",
-  })
-  .then(function() {
-    console.log("Rules have been deployed!");
-  })
-  .catch(function(err) {
-    // handle error
+  .catch((err) => {
+    // ...
   });
 ```
 
-Some commands, such as `firebase use` require both positional arguments and options flags. In this case you first
-provide any positional arguments as strings followed by an object containing the options:
+The options object must be the very last argument and any unspecified
+positional argument will get the default value of `""`. The following
+two invocations are equivalent:
 
 ```js
-var client = require("firebase-tools");
-client
-  .use("projectId", {
-    // Equivalent to --add when using the CLI
-    add: true,
-  })
-  .then(function(data) {
-    console.log(data);
-  })
-  .catch(function(err) {
-    // handle error
-  });
+const client = require("firebase-tools");
+
+// #1 - No arguments or options, defaults will be inferred
+client.apps.list();
+
+// #2 - Explicitly provide "" for all arguments and {} for options
+client.apps.list("", {});
 ```
 
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically

@@ -295,6 +295,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
         database: this.getEmulatorInfo(Emulators.DATABASE),
         pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
+        auth: this.getEmulatorInfo(Emulators.AUTH),
       },
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
@@ -423,7 +424,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             case Constants.SERVICE_AUTH:
-              added = await this.addAuthTrigger(this.args.projectId, definition);
+              added = this.addAuthTrigger(this.args.projectId, definition);
               break;
             default:
               this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -486,8 +487,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!databaseEmu) {
       return Promise.resolve(false);
     }
-    const databaseHost = databaseEmu.getInfo().host;
-    const databasePort = databaseEmu.getInfo().port;
 
     if (!definition.eventTrigger) {
       this.logger.log(
@@ -529,7 +528,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     return api
       .request("POST", setTriggersPath, {
-        origin: `http://${databaseHost}:${databasePort}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
         headers: {
           Authorization: "Bearer owner",
         },
@@ -550,15 +549,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!firestoreEmu) {
       return Promise.resolve(false);
     }
-    const firestoreHost = firestoreEmu.getInfo().host;
-    const firestorePort = firestoreEmu.getInfo().port;
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     return api
       .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${definition.name}`, {
-        origin: `http://${firestoreHost}:${firestorePort}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
         data: bundle,
         json: false,
       })
@@ -666,9 +663,18 @@ export class FunctionsEmulator implements EmulatorInstance {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
+        auth: EmulatorRegistry.getInfo(Emulators.AUTH),
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
+  }
+  /**
+   * Returns a node major version ("10", "8") or null
+   * @param frb the current Functions Runtime Bundle
+   */
+  getRequestedNodeRuntimeVersion(frb: FunctionsRuntimeBundle): string | undefined {
+    const pkg = require(path.join(frb.cwd, "package.json"));
+    return frb.nodeMajorVersion || (pkg.engines && pkg.engines.node);
   }
   /**
    * Returns the path to a "node" executable to use.
@@ -705,6 +711,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       // Will happen if we haven't asked about local version yet
     }
 
+    // If the requested version is already locally available, let's use that
+    if (requestedMajorVersion === localMajorVersion) {
+      this.logger.logLabeled(
+        "SUCCESS",
+        "functions",
+        `Using node@${requestedMajorVersion} from local cache.`
+      );
+      return localNodePath;
+    }
+
     // If the requested version is the same as the host, let's use that
     if (requestedMajorVersion === hostMajorVersion) {
       this.logger.logLabeled(
@@ -713,16 +729,6 @@ export class FunctionsEmulator implements EmulatorInstance {
         `Using node@${requestedMajorVersion} from host.`
       );
       return process.execPath;
-    }
-
-    // If the requested version is already locally available, let's use that
-    if (localMajorVersion === requestedMajorVersion) {
-      this.logger.logLabeled(
-        "SUCCESS",
-        "functions",
-        `Using node@${requestedMajorVersion} from local cache.`
-      );
-      return localNodePath;
     }
 
     // Otherwise we'll begin the conversational flow to install the correct version locally
@@ -748,8 +754,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     if (this.args.debugPort) {
-      const { host } = this.getInfo();
-      args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      if (process.env.FIREPIT_VERSION && process.execPath == opts.nodeBinary) {
+        const requestedMajorNodeVersion = this.getRequestedNodeRuntimeVersion(frb);
+        this.logger.log(
+          "WARN",
+          `To enable function inspection, please run "${process.execPath} is:npm i node@${requestedMajorNodeVersion} --save-dev" in your functions directory`
+        );
+      } else {
+        const { host } = this.getInfo();
+        args.unshift(`--inspect=${host}:${this.args.debugPort}`);
+      }
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {

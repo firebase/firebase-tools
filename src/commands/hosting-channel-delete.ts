@@ -1,14 +1,13 @@
 import { bold, underline } from "cli-color";
 
 import { Command } from "../command";
-import { deleteChannel, normalizeName } from "../hosting/api";
+import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
-import * as requireInstance from "../requireInstance";
-import * as getInstanceId from "../getInstanceId";
 import { logLabeledSuccess } from "../utils";
 import { promptOnce } from "../prompt";
+import { requireHostingSite } from "../requireHostingSite";
 
 interface ChannelInfo {
   target: string | null;
@@ -23,16 +22,17 @@ export default new Command("hosting:channel:delete <channelId>")
   .option("-f, --force", "delete without confirmation")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
-  .before(requireInstance)
+  .before(requireHostingSite)
   .action(
     async (
       channelId: string,
       options: any // eslint-disable-line @typescript-eslint/no-explicit-any
     ): Promise<void> => {
       const projectId = getProjectId(options);
-      const siteId = options.site || (await getInstanceId(options));
+      const siteId = options.site;
 
       channelId = normalizeName(channelId);
+      const channel = await getChannel(projectId, siteId, channelId);
 
       let confirmed = Boolean(options.force);
       if (!confirmed) {
@@ -50,6 +50,9 @@ export default new Command("hosting:channel:delete <channelId>")
       }
 
       await deleteChannel(projectId, siteId, channelId);
+      if (channel) {
+        await removeAuthDomain(projectId, channel.url);
+      }
 
       logLabeledSuccess(
         "hosting:channels",

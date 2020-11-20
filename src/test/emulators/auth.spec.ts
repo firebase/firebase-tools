@@ -22,7 +22,6 @@ import {
 } from "../../emulator/auth/state";
 import { useFakeTimers } from "sinon";
 
-/* eslint-disable camelcase, @typescript-eslint/camelcase, @typescript-eslint/no-non-null-assertion */
 const PROJECT_ID = "example";
 
 const TEST_PHONE_NUMBER = "+15555550100";
@@ -448,6 +447,20 @@ describe("Auth emulator", () => {
             phone: [phoneNumber],
             email: [email],
           });
+        });
+    });
+
+    it("should error if account to be linked is disabled", async () => {
+      const { idToken, localId } = await registerAnonUser(authApp);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+        .send({ idToken, email: "alice@example.com", password: "notasecret" })
+        .query({ key: "fake-api-key" })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
         });
     });
 
@@ -971,6 +984,21 @@ describe("Auth emulator", () => {
           expect(res.body.error.message).equals("INVALID_PASSWORD");
         });
     });
+
+    it("should error if user is disabled", async () => {
+      const user = { email: "alice@example.com", password: "notasecret" };
+      const { localId } = await registerUser(authApp, user);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword")
+        .query({ key: "fake-api-key" })
+        .send({ email: user.email, password: "notasecret" })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
   });
 
   describe("accounts:update", () => {
@@ -1238,6 +1266,31 @@ describe("Auth emulator", () => {
             .to.have.property("message")
             .equals("INVALID_PHONE_NUMBER : Invalid format.");
         });
+    });
+
+    it("should error if user is disabled when updating by idToken", async () => {
+      const { localId, idToken } = await registerAnonUser(authApp);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+        .query({ key: "fake-api-key" })
+        .send({ idToken, displayName: "Foo" })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("USER_DISABLED");
+        });
+    });
+
+    it("should still update user despite user is disabled when authenticated", async () => {
+      const { localId } = await registerAnonUser(authApp);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      // These should still work.
+      await updateAccountByLocalId(authApp, localId, { displayName: "Foo" });
+      await updateAccountByLocalId(authApp, localId, { disableUser: false });
     });
 
     it("should invalidate old tokens after updating validSince or password", async () => {
@@ -1532,6 +1585,25 @@ describe("Auth emulator", () => {
       expect(oobs).to.have.length(0);
     });
 
+    it("should error if user is disabled", async () => {
+      const { localId, idToken, email } = await registerUser(authApp, {
+        email: "foo@example.com",
+        password: "foobar",
+      });
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+        .query({ key: "fake-api-key" })
+        .send({ email, idToken, requestType: "VERIFY_EMAIL" })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("USER_DISABLED");
+        });
+    });
+
     it("should error when continueUrl is invalid", async () => {
       const { idToken } = await registerUser(authApp, {
         email: "alice@example.com",
@@ -1733,6 +1805,24 @@ describe("Auth emulator", () => {
         });
     });
 
+    it("should error if user is disabled", async () => {
+      const { localId, email } = await registerUser(authApp, {
+        email: "bob@example.com",
+        password: "notasecret",
+      });
+      const { oobCode } = await createEmailSignInOob(authApp, email);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ email, oobCode })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
+
     it("should error if email mismatches", async () => {
       const { oobCode } = await createEmailSignInOob(authApp, "alice@example.com");
 
@@ -1806,6 +1896,27 @@ describe("Auth emulator", () => {
           expect(res.body.error)
             .to.have.property("message")
             .equals("EMAIL_EXISTS");
+        });
+    });
+
+    it("should error if user to be linked is disabled", async () => {
+      const { email, localId, idToken } = await registerUser(authApp, {
+        email: "alice@example.com",
+        password: "notasecret",
+      });
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      const { oobCode } = await createEmailSignInOob(authApp, email);
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
+        .query({ key: "fake-api-key" })
+        .send({ email, oobCode, idToken })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("USER_DISABLED");
         });
     });
   });
@@ -1988,6 +2099,35 @@ describe("Auth emulator", () => {
         });
     });
 
+    it("should error if user is disabled", async () => {
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const { localId } = await signInWithPhoneNumber(authApp, phoneNumber);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      const sessionInfo = await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+
+      const codes = await inspectVerificationCodes(authApp);
+      const code = codes[0].code;
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("USER_DISABLED");
+        });
+    });
+
     it("should link phone number to existing account by idToken", async () => {
       const { localId, idToken } = await registerAnonUser(authApp);
 
@@ -2017,6 +2157,35 @@ describe("Auth emulator", () => {
             .to.have.property("phoneNumber")
             .equals(phoneNumber);
           expect(res.body.localId).to.equal(localId);
+        });
+    });
+
+    it("should error if user to be linked is disabled", async () => {
+      const { localId, idToken } = await registerAnonUser(authApp);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      const phoneNumber = TEST_PHONE_NUMBER;
+      const sessionInfo = await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode")
+        .query({ key: "fake-api-key" })
+        .send({ phoneNumber, recaptchaToken: "ignored" })
+        .then((res) => {
+          expectStatusCode(200, res);
+          return res.body.sessionInfo;
+        });
+
+      const codes = await inspectVerificationCodes(authApp);
+      const code = codes[0].code;
+
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber")
+        .query({ key: "fake-api-key" })
+        .send({ sessionInfo, code, idToken })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equals("USER_DISABLED");
         });
     });
 
@@ -2091,6 +2260,21 @@ describe("Auth emulator", () => {
           expect(res.body.project_id).to.equal("12345");
           expect(res.body.token_type).to.equal("Bearer");
           expect(res.body.user_id).to.equal(localId);
+        });
+    });
+
+    it("should error if user is disabled", async () => {
+      const { refreshToken, localId } = await registerAnonUser(authApp);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      await supertest(authApp)
+        .post("/securetoken.googleapis.com/v1/token")
+        .type("form")
+        .send({ refreshToken: refreshToken, grantType: "refresh_token" })
+        .query({ key: "fake-api-key" })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
         });
     });
   });
@@ -2390,6 +2574,32 @@ describe("Auth emulator", () => {
         sub: "123456789012345678901",
       });
       expect(user4.localId).not.to.equal(user1.localId);
+    });
+
+    it("should error if user is disabled", async () => {
+      const user = await signInWithFakeClaims(authApp, "google.com", {
+        sub: "123456789012345678901",
+      });
+      await updateAccountByLocalId(authApp, user.localId, { disableUser: true });
+
+      const claims = fakeClaims({
+        sub: "123456789012345678901",
+        name: "Foo",
+      });
+      const fakeIdToken = JSON.stringify(claims);
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          idToken: user.idToken,
+          postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
     });
 
     it("should add IDP as a sign-in method for email if available", async () => {
@@ -2708,6 +2918,33 @@ describe("Auth emulator", () => {
       expect(!!info.emailVerified).to.be.equal(!!claims.email_verified);
     });
 
+    it("should error if user to be linked is disabled", async () => {
+      const user = await registerUser(authApp, {
+        email: "foo@example.com",
+        password: "notasecret",
+      });
+      await updateAccountByLocalId(authApp, user.localId, { disableUser: true });
+
+      const claims = fakeClaims({
+        sub: "123456789012345678901",
+        name: "Foo",
+      });
+      const fakeIdToken = JSON.stringify(claims);
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
+        .query({ key: "fake-api-key" })
+        .send({
+          idToken: user.idToken,
+          postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+          requestUri: "http://localhost",
+          returnIdpCredential: true,
+        })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error.message).to.equal("USER_DISABLED");
+        });
+    });
+
     it("should return error if IDP account is already linked to the same user", async () => {
       // Given a user with already linked with IDP account:
       const providerId = "google.com";
@@ -2914,11 +3151,9 @@ describe("Auth emulator", () => {
       const email = "alice@example.com";
       const { localId } = await signInWithEmailLink(authApp, email);
       const customClaims = { abc: "abc", foo: "bar" };
-      await supertest(authApp)
-        .post("/identitytoolkit.googleapis.com/v1/accounts:update")
-        .set("Authorization", "Bearer owner")
-        .send({ localId, customAttributes: JSON.stringify(customClaims) })
-        .then((res) => expectStatusCode(200, res));
+      await updateAccountByLocalId(authApp, localId, {
+        customAttributes: JSON.stringify(customClaims),
+      });
 
       const claims = { abc: "def", ultimate: { answer: 42 } };
       const token = JSON.stringify({ uid: localId, claims });
@@ -3074,6 +3309,53 @@ describe("Auth emulator", () => {
         .then((res) => {
           expectStatusCode(400, res);
           expect(res.body.error.message).to.include("FORBIDDEN_CLAIM : firebase");
+        });
+    });
+
+    it("should error if user is disabled", async () => {
+      // Given an email sign-in user with some custom claims:
+      const email = "alice@example.com";
+      const { localId } = await signInWithEmailLink(authApp, email);
+      await updateAccountByLocalId(authApp, localId, { disableUser: true });
+
+      const claims = { abc: "def", ultimate: { answer: 42 } };
+      const token = JSON.stringify({ uid: localId, claims });
+      await supertest(authApp)
+        .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
+        .query({ key: "fake-api-key" })
+        .send({ token })
+        .then((res) => {
+          expectStatusCode(400, res);
+          expect(res.body.error)
+            .to.have.property("message")
+            .equal("USER_DISABLED");
+        });
+    });
+  });
+
+  describe("accounts:lookup", () => {
+    it("should return user by localId when privileged", async () => {
+      const { localId } = await registerAnonUser(authApp);
+
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: [localId] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body.users).to.have.length(1);
+          expect(res.body.users[0].localId).to.equal(localId);
+        });
+    });
+
+    it("should return empty result when localId is not found", async () => {
+      await supertest(authApp)
+        .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+        .set("Authorization", "Bearer owner")
+        .send({ localId: ["noSuchId"] })
+        .then((res) => {
+          expectStatusCode(200, res);
+          expect(res.body).not.to.have.property("users");
         });
     });
   });
@@ -3438,6 +3720,20 @@ function updateProjectConfig(authApp: Express.Application, config: {}): Promise<
     .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
     .set("Authorization", "Bearer owner")
     .send(config)
+    .then((res) => {
+      expectStatusCode(200, res);
+    });
+}
+
+function updateAccountByLocalId(
+  authApp: Express.Application,
+  localId: string,
+  fields: {}
+): Promise<void> {
+  return supertest(authApp)
+    .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+    .set("Authorization", "Bearer owner")
+    .send({ localId, ...fields })
     .then((res) => {
       expectStatusCode(200, res);
     });
