@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { requirePermissions } from "../requirePermissions";
 import DatabaseRemove from "../database/remove";
 import { Emulators } from "../emulator/types";
@@ -19,7 +19,7 @@ module.exports = new Command("database:remove <path>")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action((path, options) => {

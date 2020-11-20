@@ -1,7 +1,7 @@
 "use strict";
 
 const _ = require("lodash");
-const requireInstance = require("../requireInstance");
+const { requireDatabaseInstance } = require("../requireDatabaseInstance");
 const { requirePermissions } = require("../requirePermissions");
 const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
@@ -71,7 +71,7 @@ module.exports = new Command("deploy")
   .before(async function(options) {
     // only fetch the default instance for hosting or database deploys
     if (_.includes(options.filteredTargets, "database")) {
-      await requireInstance(options);
+      await requireDatabaseInstance(options);
     }
 
     if (_.includes(options.filteredTargets, "hosting")) {
