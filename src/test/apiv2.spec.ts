@@ -90,6 +90,53 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should error with a FirebaseError if JSON is malformed", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(200, `{not:"json"}`);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Unexpected token.+JSON/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error with a FirebaseError if an error happens", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .replyWithError("boom");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request.+/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error with a FirebaseError if an invalid responseType is provided", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(200, "");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        // Don't really do this. This is for testing only.
+        responseType: "notjson" as "json",
+      });
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Unable to interpret response.+/
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should resolve a 400 GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
@@ -251,6 +298,18 @@ describe("apiv2", () => {
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.post("/path/to/foo", POST_DATA);
+      expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PUT request", async () => {
+      const DATA = { post: "data" };
+      nock("https://example.com")
+        .put("/path/to/foo", DATA)
+        .reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.put("/path/to/foo", DATA);
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;
     });
