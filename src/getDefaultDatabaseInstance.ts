@@ -1,5 +1,3 @@
-"use strict";
-
 import { getFirebaseProject } from "./management/projects";
 
 /**
@@ -9,8 +7,5 @@ import { getFirebaseProject } from "./management/projects";
  */
 export async function getDefaultDatabaseInstance(options: any): Promise<string> {
   const projectDetails = await getFirebaseProject(options.project);
-  if (projectDetails.resources && projectDetails.resources.realtimeDatabaseInstance) {
-    return projectDetails.resources.realtimeDatabaseInstance;
-  }
-  return "";
+  return projectDetails.resources?.realtimeDatabaseInstance || "";
 }

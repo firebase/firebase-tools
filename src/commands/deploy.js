@@ -1,7 +1,7 @@
 "use strict";
 
 const _ = require("lodash");
-var { requireDatabaseInstance } = require("../requireDatabaseInstance");
+const { requireDatabaseInstance } = require("../requireDatabaseInstance");
 const { requirePermissions } = require("../requirePermissions");
 const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");

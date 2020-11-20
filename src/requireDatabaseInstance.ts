@@ -1,4 +1,5 @@
 import * as clc from "cli-color";
+import { FirebaseError } from "./error";
 import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
 import * as utils from "./utils";
 
@@ -14,22 +15,17 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
   try {
     const instance = await getDefaultDatabaseInstance(options);
     if (instance === "") {
-      return utils.reject(
+      throw new FirebaseError(
         `It looks like you haven't created a Realtime Database instance in this project before. Go to ${clc.bold.underline(
           `https://console.firebase.google.com/project/${options.project}/database`
-        )} to create your default Realtime Database instance.`,
-        { exit: 1 }
+        )} to create your default Realtime Database instance.`
       );
     }
     options.instance = instance;
-    return Promise.resolve();
+    return;
   } catch (err) {
-    return utils.reject(
-      `Failed to get details for project: ${options.project}. Please look at firebase-debug.log for more details`,
-      {
-        exit: 1,
-        original: err,
-      }
-    );
+    return utils.reject(`Failed to get details for project: ${options.project}.`, {
+      original: err,
+    });
   }
 }
