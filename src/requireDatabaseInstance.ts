@@ -1,7 +1,6 @@
 import * as clc from "cli-color";
 import { FirebaseError } from "./error";
 import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
-import * as utils from "./utils";
 
 /**
  * Ensures that the supplied options have an instance set. If not, tries to fetch the default instance.
@@ -10,13 +9,13 @@ import * as utils from "./utils";
  */
 export async function requireDatabaseInstance(options: any): Promise<void> {
   if (options.instance) {
-    return Promise.resolve();
+    return;
   }
   let instance;
   try {
     instance = await getDefaultDatabaseInstance(options);
   } catch (err) {
-    return utils.reject(`Failed to get details for project: ${options.project}.`, {
+    throw new FirebaseError(`Failed to get details for project: ${options.project}.`, {
       original: err,
     });
   }
@@ -28,5 +27,4 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
     );
   }
   options.instance = instance;
-  return;
 }
