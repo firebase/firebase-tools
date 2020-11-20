@@ -1,5 +1,3 @@
-"use strict";
-
 import * as clc from "cli-color";
 import * as api from "../../api";
 import { prompt, promptOnce } from "../../prompt";
@@ -16,6 +14,8 @@ import {
   getDatabaseInstanceDetails,
 } from "../../management/database";
 import ora = require("ora");
+import { check, ensure } from "../../ensureApiEnabled";
+import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 
 interface DatabaseSetup {
   projectId: string;
@@ -38,7 +38,6 @@ async function getDBRules(instanceDetails: DatabaseInstance) {
   if (!instanceDetails || !instanceDetails.name) {
     return Promise.resolve(DEFAULT_RULES);
   }
-  logger.info("DB url: ", instanceDetails.databaseUrl);
   const response = await api.request("GET", "/.settings/rules.json", {
     auth: true,
     origin: instanceDetails.databaseUrl,
@@ -63,6 +62,9 @@ async function writeDBRules(instanceDetails: DatabaseInstance, filename: string,
 }
 
 async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
+  logger.info(
+    "It seems like you haven’t initialized Realtime Database in your project yet. Let's set it up!"
+  );
   const selectedLocation = await promptOnce({
     type: "list",
     message: "Please choose the location for your default Realtime Database instance:",
@@ -77,8 +79,8 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
     DatabaseInstanceType.DEFAULT_DATABASE,
     selectedLocation
   );
-  let instanceName = project;
-  if (possibleIds[0] !== project) {
+  let instanceName = `${project}-default-rtdb`;
+  if (possibleIds[0] !== instanceName) {
     instanceName = possibleIds[0];
     logger.info(
       `${clc.yellow(
@@ -102,11 +104,41 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
   }
 }
 
+async function enableApiIfNeeded(project: string) {
+  const spinner = ora(
+    `Checking that the Realtime Database API is enabled for your project: ${project}`
+  ).start();
+  let isApiEnabled;
+  try {
+    isApiEnabled = await check(project, "firebasedatabase.googleapis.com", "rtdb", true);
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+
+  if (isApiEnabled) {
+    spinner.succeed();
+    return;
+  }
+  spinner.text = `Enabling the Realtime Database API for your project: ${project}`;
+  try {
+    await ensure(project, "firebasedatabase.googleapis.com", "rtdb", true);
+  } catch (err) {
+    spinner.fail();
+    throw err;
+  }
+  spinner.succeed();
+}
+
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
   setup.config = {};
-  const instanceDetails = setup.instance
-    ? await getDatabaseInstanceDetails(setup.projectId, setup.instance)
-    : await createDefaultDatabaseInstance(setup.projectId);
+  await enableApiIfNeeded(setup.projectId);
+  setup.instance =
+    setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
+  const instanceDetails =
+    setup.instance !== ""
+      ? await getDatabaseInstanceDetails(setup.projectId, setup.instance)
+      : await createDefaultDatabaseInstance(setup.projectId);
   let filename = null;
 
   logger.info();
