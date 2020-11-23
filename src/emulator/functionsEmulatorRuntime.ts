@@ -958,15 +958,19 @@ async function invokeTrigger(
     throw new Error("frb.triggerId unexpectedly null");
   }
 
-  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
-    frb,
-  }).log();
-
   const trigger = triggers[frb.triggerId];
   logDebug("triggerDefinition", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
+  new EmulatorLog(
+    "INFO",
+    "runtime-status",
+    `Beginning execution of "${trigger.definition.entryPoint}"`,
+    {
+      frb,
+    }
+  ).log();
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -1004,7 +1008,7 @@ async function invokeTrigger(
   new EmulatorLog(
     "INFO",
     "runtime-status",
-    `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
+    `Finished "${trigger.definition.entryPoint}" in ~${Math.max(seconds, 1)}s`
   ).log();
 }
 
@@ -1052,6 +1056,14 @@ async function initializeRuntime(
     require("../extractTriggers")(triggerModule, triggerDefinitions);
   }
 
+  // Add a generation suffix to each background trigger name
+  const gen = frb.triggerGeneration || 0;
+  for (const def of triggerDefinitions) {
+    if (def.eventTrigger) {
+      def.name = `${def.name}-${gen}`;
+    }
+  }
+
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
@@ -1097,6 +1109,8 @@ async function handleMessage(message: string) {
   }
 
   if (!triggers[runtimeArgs.frb.triggerId]) {
+    // TODO(samstern): This log statement will print "entryPoint-generation" 
+    // when it should just print "entryPoint", but this log should also never happen.
     new EmulatorLog(
       "FATAL",
       "runtime-status",

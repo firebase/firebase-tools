@@ -100,10 +100,16 @@ interface RequestWithRawBody extends express.Request {
 
 interface TriggerDescription {
   name: string;
+  entryPoint: string;
   type: string;
   labels?: { [key: string]: any };
   details?: string;
   ignored?: boolean;
+}
+
+interface EmulatedTriggerRecord {
+  def: EmulatedTriggerDefinition;
+  enabled: boolean;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -119,13 +125,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   nodeBinary = "";
   private destroyServer?: () => Promise<void>;
-  private triggers: EmulatedTriggerDefinition[] = [];
-  private knownTriggerIDs: { [triggerId: string]: boolean } = {};
+  private triggers: { [triggerName: string]: EmulatedTriggerRecord } = {};
+  private triggerGeneration = 1;
 
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-  private backgroundTriggersEnabled = true;
 
   private multicastTriggers: { [s: string]: string[] } = {};
 
@@ -209,18 +214,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       req: express.Request,
       res: express.Response
     ) => {
-      // When background triggers are disabled just ignore the request and respond
-      // with 204 "No Content"
-      if (!this.backgroundTriggersEnabled) {
-        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
-        res.status(204).send();
-        return;
-      }
-
       const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
+
+      // When background triggers are disabled just ignore the request and respond
+      // with 204 "No Content"
+      const record = this.triggers[triggerId];
+      if (record && !record.enabled) {
+        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
+        res.status(204).send();
+        return;
+      }
 
       this.workQueue.submit(() => {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
@@ -346,119 +352,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       persistent: true,
     });
 
-    // TODO(abehaskins): Gracefully handle removal of deleted function definitions
-    const loadTriggers = async () => {
-      /*
-      When a user changes their code, we need to look for triggers defined in their updates sources.
-      To do this, we spin up a "diagnostic" runtime invocation. In other words, we pretend we're
-      going to invoke a cloud function in the emulator, but stop short of actually running a function.
-      Instead, we set up the environment and catch a special "triggers-parsed" log from the runtime
-      then exit out.
-
-      A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except functionId == "".
-       */
-
-      // Before loading any triggers we need to make sure there are no 'stale' workers
-      // in the pool that would cause us to run old code.
-      this.workerPool.refresh();
-
-      const worker = this.invokeRuntime(this.getBaseBundle(), {
-        nodeBinary: this.nodeBinary,
-        env: this.args.env,
-        extensionTriggers: this.args.predefinedTriggers,
-      });
-
-      const triggerParseEvent = await EmulatorLog.waitForLog(
-        worker.runtime.events,
-        "SYSTEM",
-        "triggers-parsed"
-      );
-      const triggerDefinitions = triggerParseEvent.data
-        .triggerDefinitions as EmulatedTriggerDefinition[];
-
-      const toSetup = triggerDefinitions.filter(
-        (definition) => !this.knownTriggerIDs[definition.name]
-      );
-
-      this.triggers = triggerDefinitions;
-
-      const triggerResults: TriggerDescription[] = [];
-
-      for (const definition of toSetup) {
-        if (definition.httpsTrigger) {
-          // TODO(samstern): Right now we only emulate each function in one region, but it's possible
-          //                 that a developer is running the same function in multiple regions.
-          const region = getFunctionRegion(definition);
-          const { host, port } = this.getInfo();
-          const url = FunctionsEmulator.getHttpFunctionUrl(
-            host,
-            port,
-            this.args.projectId,
-            definition.name,
-            region
-          );
-
-          triggerResults.push({
-            name: definition.name,
-            type: "http",
-            labels: definition.labels,
-            details: url,
-          });
-        } else {
-          const service: string = getFunctionService(definition);
-          const result: TriggerDescription = {
-            name: definition.name,
-            type: Constants.getServiceName(service),
-            labels: definition.labels,
-          };
-
-          let added = false;
-          switch (service) {
-            case Constants.SERVICE_FIRESTORE:
-              added = await this.addFirestoreTrigger(this.args.projectId, definition);
-              break;
-            case Constants.SERVICE_REALTIME_DATABASE:
-              added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
-              break;
-            case Constants.SERVICE_PUBSUB:
-              added = await this.addPubsubTrigger(this.args.projectId, definition);
-              break;
-            case Constants.SERVICE_AUTH:
-              added = this.addAuthTrigger(this.args.projectId, definition);
-              break;
-            default:
-              this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
-              break;
-          }
-          result.ignored = !added;
-          triggerResults.push(result);
-        }
-
-        this.knownTriggerIDs[definition.name] = true;
-      }
-
-      const successTriggers = triggerResults.filter((r) => !r.ignored);
-      for (const result of successTriggers) {
-        const msg = result.details
-          ? `${clc.bold(result.type)} function initialized (${result.details}).`
-          : `${clc.bold(result.type)} function initialized.`;
-        this.logger.logLabeled("SUCCESS", `functions[${result.name}]`, msg);
-      }
-
-      const ignoreTriggers = triggerResults.filter((r) => r.ignored);
-      for (const result of ignoreTriggers) {
-        const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
-        this.logger.logLabeled("BULLET", `functions[${result.name}]`, msg);
-      }
-    };
-
-    const debouncedLoadTriggers = _.debounce(loadTriggers, 1000);
+    const debouncedLoadTriggers = _.debounce(() => this.loadTriggers(), 1000);
     watcher.on("change", (filePath) => {
       this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
 
-    return loadTriggers();
+    return this.loadTriggers();
   }
 
   async stop(): Promise<void> {
@@ -476,6 +376,110 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.workerPool.exit();
     if (this.destroyServer) {
       await this.destroyServer();
+    }
+  }
+
+  /**
+   * When a user changes their code, we need to look for triggers defined in their updates sources.
+   * To do this, we spin up a "diagnostic" runtime invocation. In other words, we pretend we're
+   * going to invoke a cloud function in the emulator, but stop short of actually running a function.
+   * Instead, we set up the environment and catch a special "triggers-parsed" log from the runtime
+   * then exit out.
+   *
+   * A "diagnostic" FunctionsRuntimeBundle looks just like a normal bundle except triggerId == "".
+   *
+   * TODO(abehaskins): Gracefully handle removal of deleted function definitions
+   */
+  async loadTriggers() {
+    // Before loading any triggers we need to make sure there are no 'stale' workers
+    // in the pool that would cause us to run old code.
+    this.workerPool.refresh();
+
+    const worker = this.invokeRuntime(this.getBaseBundle(), {
+      nodeBinary: this.nodeBinary,
+      env: this.args.env,
+      extensionTriggers: this.args.predefinedTriggers,
+    });
+
+    const triggerParseEvent = await EmulatorLog.waitForLog(
+      worker.runtime.events,
+      "SYSTEM",
+      "triggers-parsed"
+    );
+    const triggerDefinitions = triggerParseEvent.data
+      .triggerDefinitions as EmulatedTriggerDefinition[];
+
+    const triggerResults: TriggerDescription[] = [];
+
+    const toSetup = triggerDefinitions.filter((definition) => !this.triggers[definition.name]);
+
+    for (const definition of toSetup) {
+      if (definition.httpsTrigger) {
+        // TODO(samstern): Right now we only emulate each function in one region, but it's possible
+        //                 that a developer is running the same function in multiple regions.
+        const region = getFunctionRegion(definition);
+        const { host, port } = this.getInfo();
+        const url = FunctionsEmulator.getHttpFunctionUrl(
+          host,
+          port,
+          this.args.projectId,
+          definition.name,
+          region
+        );
+
+        triggerResults.push({
+          name: definition.name,
+          entryPoint: definition.entryPoint,
+          type: "http",
+          labels: definition.labels,
+          details: url,
+        });
+      } else {
+        const service: string = getFunctionService(definition);
+        const result: TriggerDescription = {
+          name: definition.name,
+          entryPoint: definition.entryPoint,
+          type: Constants.getServiceName(service),
+          labels: definition.labels,
+        };
+
+        let added = false;
+        switch (service) {
+          case Constants.SERVICE_FIRESTORE:
+            added = await this.addFirestoreTrigger(this.args.projectId, definition);
+            break;
+          case Constants.SERVICE_REALTIME_DATABASE:
+            added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
+            break;
+          case Constants.SERVICE_PUBSUB:
+            added = await this.addPubsubTrigger(this.args.projectId, definition);
+            break;
+          case Constants.SERVICE_AUTH:
+            added = this.addAuthTrigger(this.args.projectId, definition);
+            break;
+          default:
+            this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
+            break;
+        }
+        result.ignored = !added;
+        triggerResults.push(result);
+      }
+
+      this.addTriggerRecord(definition);
+    }
+
+    const successTriggers = triggerResults.filter((r) => !r.ignored);
+    for (const result of successTriggers) {
+      const msg = result.details
+        ? `${clc.bold(result.type)} function initialized (${result.details}).`
+        : `${clc.bold(result.type)} function initialized.`;
+      this.logger.logLabeled("SUCCESS", `functions[${result.entryPoint}]`, msg);
+    }
+
+    const ignoreTriggers = triggerResults.filter((r) => r.ignored);
+    for (const result of ignoreTriggers) {
+      const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
+      this.logger.logLabeled("BULLET", `functions[${result.entryPoint}]`, msg);
     }
   }
 
@@ -514,7 +518,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       topic: `projects/${projectId}/topics/${definition.name}`,
     });
 
-    logger.debug(`addDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
+    logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
 
     let setTriggersPath = "/.settings/functionTriggers.json";
     if (instance !== "") {
@@ -635,22 +639,25 @@ export class FunctionsEmulator implements EmulatorInstance {
     return Emulators.FUNCTIONS;
   }
 
-  getTriggers(): EmulatedTriggerDefinition[] {
-    return this.triggers;
+  getTriggerDefinitions(): EmulatedTriggerDefinition[] {
+    return Object.values(this.triggers).map((record) => record.def);
   }
 
-  getTriggerById(triggerId: string): EmulatedTriggerDefinition {
-    for (const trigger of this.triggers) {
-      if (trigger.name === triggerId) {
-        return trigger;
-      }
+  getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition {
+    const record = this.triggers[triggerName];
+    if (!record) {
+      throw new FirebaseError(`No trigger with name ${triggerName}`);
     }
 
-    throw new FirebaseError(`No trigger with name ${triggerId}`);
+    return record.def;
+  }
+
+  addTriggerRecord(def: EmulatedTriggerDefinition) {
+    this.triggers[def.name] = { def, enabled: true };
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
-    this.triggers = triggers;
+    triggers.forEach((def) => this.addTriggerRecord(def));
   }
 
   getBaseBundle(): FunctionsRuntimeBundle {
@@ -659,6 +666,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
+      triggerGeneration: this.triggerGeneration,
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
@@ -818,12 +826,26 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.workerPool.submitWork(frb.triggerId, frb, opts);
   }
 
-  setBackgroundTriggersEnabled(enabled: boolean) {
-    this.backgroundTriggersEnabled = enabled;
+  disableBackgroundTriggers() {
+    Object.values(this.triggers).forEach((record) => {
+      if (record.def.eventTrigger) {
+        this.logger.logLabeled(
+          "BULLET",
+          `functions[${record.def.entryPoint}]`,
+          "function temporarily disabled."
+        );
+        record.enabled = false;
+      }
+    });
+  }
+
+  async reloadTriggers() {
+    this.triggerGeneration++;
+    return this.loadTriggers();
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerId: string, proto: any) {
-    const trigger = this.getTriggerById(triggerId);
+    const trigger = this.getTriggerDefinitionByName(triggerId);
     const service = getFunctionService(trigger);
     const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.BACKGROUND, proto);
 
@@ -861,7 +883,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // For analytics, track the invoked service
       if (triggerId) {
-        const trigger = this.getTriggerById(triggerId);
+        const trigger = this.getTriggerDefinitionByName(triggerId);
         track(EVENT_INVOKE, getFunctionService(trigger));
       }
 
@@ -925,7 +947,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
-    const trigger = this.getTriggerById(triggerId);
+    const trigger = this.getTriggerDefinitionByName(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
