@@ -91,7 +91,6 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       const existingParams = _.get(existingInstance, "config.params");
       const existingSource = _.get(existingInstance, "config.source.name");
-      displayExtInfo(instanceId, existingSpec, true);
 
       // Infer updateSource if instance is from the registry
       if (existingInstance.config.extensionRef && !updateSource) {
@@ -148,6 +147,15 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           `Cannot update from a(n) ${existingSourceOrigin} to a(n) ${newSourceOrigin}. Please provide a new source that is a(n) ${existingSourceOrigin} and try again.`
         );
       }
+
+      const isPublished =
+        [
+          SourceOrigin.OFFICIAL_EXTENSION,
+          SourceOrigin.OFFICIAL_EXTENSION_VERSION,
+          SourceOrigin.PUBLISHED_EXTENSION,
+          SourceOrigin.PUBLISHED_EXTENSION_VERSION,
+        ].indexOf(newSourceOrigin) > -1;
+      displayExtInfo(instanceId, existingSpec, isPublished);
 
       // TODO: remove "falls through" once producer and registry experience are released
       switch (newSourceOrigin) {

@@ -481,7 +481,7 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
         )}' doesn't exist. This could happen for two reasons:\n` +
           `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
           `  -The name of the extension version '${clc.bold(
-            extensionId
+            `${extensionId}@${version}`
           )}' doesn't exist or could be misspelled\n` +
           `Please correct the extension reference and try again.`
       );
