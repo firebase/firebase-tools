@@ -126,8 +126,10 @@ export class FunctionsEmulator implements EmulatorInstance {
   nodeBinary = "";
   private destroyServer?: () => Promise<void>;
   private triggers: { [triggerName: string]: EmulatedTriggerRecord } = {};
-  private triggerGeneration = 1;
 
+  // Keep a "generation number" for triggers so that we can disable functions
+  // and reload them with a new name.
+  private triggerGeneration = 0;
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);

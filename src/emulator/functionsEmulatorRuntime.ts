@@ -1109,7 +1109,7 @@ async function handleMessage(message: string) {
   }
 
   if (!triggers[runtimeArgs.frb.triggerId]) {
-    // TODO(samstern): This log statement will print "entryPoint-generation" 
+    // TODO(samstern): This log statement will print "entryPoint-generation"
     // when it should just print "entryPoint", but this log should also never happen.
     new EmulatorLog(
       "FATAL",
