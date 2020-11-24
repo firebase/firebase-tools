@@ -44,27 +44,29 @@ describe("extractTriggers", function() {
   });
 
   it("should attach a suffix only to background triggers", function() {
+    const triggers1 = []
     extractTriggers(
       {
         foo: fnWithTrigger,
       },
-      triggers,
+      triggers1,
       "",
       0
     );
-    expect(triggers[0].name).to.eq("foo");
-    expect(triggers[0].entryPoint).to.eq("foo");
+    expect(triggers1[0].name).to.eq("foo");
+    expect(triggers1[0].entryPoint).to.eq("foo");
 
+    const triggers2 = [];
     extractTriggers(
       {
         foo: bgFnWithTrigger,
       },
-      triggers,
+      triggers2,
       "",
       0
     );
-    expect(triggers[0].name).to.eq("foo-0");
-    expect(triggers[0].entryPoint).to.eq("foo");
+    expect(triggers2[0].name).to.eq("foo-0");
+    expect(triggers2[0].entryPoint).to.eq("foo");
   });
 
   it("should find nested functions and set name and entryPoint", function() {
