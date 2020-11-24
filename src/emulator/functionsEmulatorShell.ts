@@ -27,14 +27,12 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     utils.logLabeledBullet("functions", `Loaded functions: ${entryPoints.join(", ")}`);
 
     for (const trigger of this.triggers) {
-      const name = trigger.name;
-
       if (trigger.httpsTrigger) {
-        this.urls[name] = FunctionsEmulator.getHttpFunctionUrl(
+        this.urls[trigger.name] = FunctionsEmulator.getHttpFunctionUrl(
           this.emu.getInfo().host,
           this.emu.getInfo().port,
           this.emu.getProjectId(),
-          name,
+          trigger.entryPoint,
           getFunctionRegion(trigger)
         );
       }

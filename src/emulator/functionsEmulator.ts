@@ -117,10 +117,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     host: string,
     port: number,
     projectId: string,
-    name: string,
+    entryPoint: string,
     region: string
   ): string {
-    return `http://${host}:${port}/${projectId}/${region}/${name}`;
+    return `http://${host}:${port}/${projectId}/${region}/${entryPoint}`;
   }
 
   nodeBinary = "";
@@ -425,7 +425,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           host,
           port,
           this.args.projectId,
-          definition.name,
+          definition.entryPoint,
           region
         );
 
