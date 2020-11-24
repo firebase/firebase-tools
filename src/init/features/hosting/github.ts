@@ -392,7 +392,8 @@ async function promptForRepo(
       type: "input",
       name: "repo",
       default: defaultGithubRepo(), // TODO look at github origin
-      message: "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
+      message: 
+        "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         const { body } = await api.request("GET", `/repos/${repo}/actions/secrets/public-key`, {
           origin: api.githubApiOrigin,
