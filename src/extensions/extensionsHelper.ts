@@ -4,6 +4,7 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as fs from "fs";
 import * as marked from "marked";
+
 import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
@@ -19,7 +20,6 @@ import {
   ExtensionSource,
   ExtensionVersion,
   getExtension,
-  getExtensionVersion,
   getInstance,
   getSource,
   Param,
@@ -621,44 +621,41 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
   if (!sourceOrVersion) {
     return SourceOrigin.OFFICIAL_EXTENSION;
   }
-  if (urlRegex.test(sourceOrVersion)) {
-    return SourceOrigin.URL;
-  }
+
+  // NOTE: If a semver is passed in, we automatically asssume it is an official extension version.
+  // If this was meant to be an extension from the Registry, please pass in the full reference instead.
+  // This is just an interim solution - when official extensions are migrated to use the Registry, the
+  // SourceOrigin types will be the same, and we won't have to worry about this nuance.
   if (semver.valid(sourceOrVersion)) {
     return SourceOrigin.OFFICIAL_EXTENSION_VERSION;
   }
-  // If it contains a forward slash, it could be either an extension reference or a local path.
-  if (sourceOrVersion.indexOf("/") > -1) {
-    try {
-      const { publisherId, extensionId, version } = parseRef(sourceOrVersion);
-      if (publisherId && extensionId && !version) {
-        // Ensure valid Extension Ref by trying to get it from the backend.
-        await getExtension(sourceOrVersion);
-        return SourceOrigin.PUBLISHED_EXTENSION;
-      }
-      if (publisherId && extensionId && version) {
-        await getExtensionVersion(sourceOrVersion);
-        return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
-      }
-    } catch (err) {
-      // sourceOrVersion can still be a valid local path
-      if (fs.existsSync(sourceOrVersion)) {
-        return SourceOrigin.LOCAL;
-      }
-      throw new FirebaseError(
-        `Could not find source '${clc.bold(
-          sourceOrVersion
-        )}'. If this is a published extension, please make sure ` +
-          `it matches the format '${clc.bold(
-            "{publisher}/{extension}(@{version})"
-          )}'.\n\nOtherwise, please make sure the ` +
-          "local/URL path exists and try again."
-      );
-    }
-  }
-  // sourceOrVersion can still be a valid local path
+  // First, check if the input matches a local or URL first.
   if (fs.existsSync(sourceOrVersion)) {
     return SourceOrigin.LOCAL;
+  }
+  if (urlRegex.test(sourceOrVersion)) {
+    return SourceOrigin.URL;
+  }
+  // Next, check if the source matches an extension in the official extensions registry (registry.json).
+  try {
+    await resolveRegistryEntry(sourceOrVersion);
+    return SourceOrigin.OFFICIAL_EXTENSION;
+  } catch {
+    // Silently fail.
+  }
+  // Next, check if the source is an extension reference.
+  if (sourceOrVersion.indexOf("/") > -1) {
+    let ref;
+    try {
+      ref = parseRef(sourceOrVersion);
+    } catch (err) {
+      // Silently fail.
+    }
+    if (ref && ref.publisherId && ref.extensionId && !ref.version) {
+      return SourceOrigin.PUBLISHED_EXTENSION;
+    } else if (ref && ref.publisherId && ref.extensionId && ref.version) {
+      return SourceOrigin.PUBLISHED_EXTENSION_VERSION;
+    }
   }
   throw new FirebaseError(
     `Could not find source '${clc.bold(

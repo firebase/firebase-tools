@@ -270,23 +270,37 @@ export async function updateFromUrlSource(
 
 /**
  * @param instanceId Id of the instance to update
- * @param extRef extension reference of extension source to update to (publisherId/extensionId@versionId)
+ * @param extVersionRef extension reference of extension source to update to (publisherId/extensionId@versionId)
  * @param existingSpec ExtensionSpec of existing instance source
  * @param existingSource name of existing instance source
  */
 export async function updateToVersionFromPublisherSource(
   projectId: string,
   instanceId: string,
-  extRef: string,
+  extVersionRef: string,
   existingSpec: extensionsApi.ExtensionSpec,
   existingSource: string
 ): Promise<string> {
-  const source = await extensionsApi.getExtensionVersion(extRef);
+  let source;
+  try {
+    source = await extensionsApi.getExtensionVersion(extVersionRef);
+  } catch (err) {
+    let refObj = extensionsApi.parseRef(extVersionRef);
+    let version = refObj.version;
+    let extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
+    throw new FirebaseError(
+      `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
+        version
+      )}) is not a published version. To update, use the latest version of this extension (${clc.bold(
+        extension.latestVersion
+      )}).`
+    );
+  }
   utils.logLabeledBullet(
     logPrefix,
     `${clc.bold("You are updating this extension instance to a published source.")}`
   );
-  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extRef);
+  await showUpdateVersionInfo(instanceId, existingSpec.version, source.spec.version, extVersionRef);
   const warning =
     "All the instance's extension-specific resources and logic will be overwritten to use the source code and files from the published extension.\n\n";
   const existingSourceOrigin = await getExistingSourceOrigin(

@@ -49,6 +49,15 @@ const EXTENSION_VERSION = {
   createTime: "2020-06-30T00:21:06.722782Z",
 };
 
+const EXTENSION = {
+  name: "publishers/test-publisher/extensions/test",
+  ref: "test-publisher/test",
+  spec: SPEC,
+  state: "PUBLISHED",
+  createTime: "2020-06-30T00:21:06.722782Z",
+  latestVersion: "0.2.0",
+};
+
 const REGISTRY_ENTRY = {
   name: "test",
   labels: {
@@ -226,12 +235,14 @@ describe("updateHelper", () => {
 
   describe("updateToVersionFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
+    let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let registryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
       registryStub.resolves(REGISTRY_ENTRY);
@@ -242,6 +253,7 @@ describe("updateHelper", () => {
 
     afterEach(() => {
       promptStub.restore();
+      getExtensionStub.restore();
       createSourceStub.restore();
       registryStub.restore();
       isOfficialStub.restore();
@@ -249,6 +261,7 @@ describe("updateHelper", () => {
     });
     it("should return the correct source name for a valid published extension version source", async () => {
       promptStub.resolves(true);
+      getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       const name = await updateHelper.updateToVersionFromPublisherSource(
         "test-project",
@@ -261,6 +274,7 @@ describe("updateHelper", () => {
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
+      getExtensionStub.throws(Error("NOT FOUND"));
       createSourceStub.throws(Error("NOT FOUND"));
       await expect(
         updateHelper.updateToVersionFromPublisherSource(
@@ -274,6 +288,7 @@ describe("updateHelper", () => {
     });
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
+      getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       await expect(
         updateHelper.updateToVersionFromPublisherSource(
@@ -289,12 +304,14 @@ describe("updateHelper", () => {
 
   describe("updateFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
+    let getExtensionStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let registryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
+      getExtensionStub = sinon.stub(extensionsApi, "getExtension");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
       registryStub = sinon.stub(resolveSource, "resolveRegistryEntry");
       registryStub.resolves(REGISTRY_ENTRY);
@@ -305,6 +322,7 @@ describe("updateHelper", () => {
 
     afterEach(() => {
       promptStub.restore();
+      getExtensionStub.restore();
       createSourceStub.restore();
       registryStub.restore();
       isOfficialStub.restore();
@@ -312,6 +330,7 @@ describe("updateHelper", () => {
     });
     it("should return the correct source name for the latest published extension source", async () => {
       promptStub.resolves(true);
+      getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       const name = await updateHelper.updateToVersionFromPublisherSource(
         "test-project",
@@ -324,6 +343,7 @@ describe("updateHelper", () => {
     });
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
+      getExtensionStub.throws(Error("NOT FOUND"));
       createSourceStub.throws(Error("NOT FOUND"));
       await expect(
         updateHelper.updateToVersionFromPublisherSource(
@@ -337,6 +357,7 @@ describe("updateHelper", () => {
     });
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
+      getExtensionStub.resolves(EXTENSION);
       createSourceStub.resolves(EXTENSION_VERSION);
       await expect(
         updateHelper.updateToVersionFromPublisherSource(
