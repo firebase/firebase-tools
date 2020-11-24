@@ -287,7 +287,9 @@ export async function updateToVersionFromPublisherSource(
   } catch (err) {
     const refObj = extensionsApi.parseRef(extVersionRef);
     const version = refObj.version;
-    const extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
+    const extension = await extensionsApi.getExtension(
+      `${refObj.publisherId}/${refObj.extensionId}`
+    );
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
         version
