@@ -39,6 +39,19 @@ describe("extractTriggers", function() {
     expect(triggers[0].entryPoint).to.eq("foo");
   });
 
+  it("should attach a prefix when specified", function() {
+    extractTriggers(
+      {
+        foo: fnWithTrigger,
+      },
+      triggers
+    ),
+      "",
+      "-test";
+    expect(triggers[0].name).to.eq("foo-test");
+    expect(triggers[0].entryPoint).to.eq("foo");
+  });
+
   it("should find nested functions and set name and entryPoint", function() {
     extractTriggers(
       {

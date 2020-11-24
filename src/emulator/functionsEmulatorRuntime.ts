@@ -1053,15 +1053,10 @@ async function initializeRuntime(
   if (extensionTriggers) {
     triggerDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions);
-  }
-
-  // Add a generation suffix to each background trigger name
-  const gen = frb.triggerGeneration || 0;
-  for (const def of triggerDefinitions) {
-    if (def.eventTrigger) {
-      def.name = `${def.name}-${gen}`;
-    }
+    // Add a generation suffix to each trigger name (unless the functions are serialized)
+    const gen = frb.triggerGeneration || 0;
+    const suffix = serializedFunctionTrigger ? "" : `-${gen}`;
+    require("../extractTriggers")(triggerModule, triggerDefinitions, "", suffix);
   }
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
