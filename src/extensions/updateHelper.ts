@@ -30,7 +30,7 @@ export async function getExistingSourceOrigin(
   extensionName: string,
   existingSource: string
 ): Promise<SourceOrigin> {
-  let instance = await extensionsApi.getInstance(projectId, instanceId);
+  const instance = await extensionsApi.getInstance(projectId, instanceId);
   if (instance && instance.config.extensionRef) {
     return SourceOrigin.PUBLISHED_EXTENSION;
   }
@@ -285,9 +285,9 @@ export async function updateToVersionFromPublisherSource(
   try {
     source = await extensionsApi.getExtensionVersion(extVersionRef);
   } catch (err) {
-    let refObj = extensionsApi.parseRef(extVersionRef);
-    let version = refObj.version;
-    let extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
+    const refObj = extensionsApi.parseRef(extVersionRef);
+    const version = refObj.version;
+    const extension = await extensionsApi.getExtension(`${refObj.publisherId}/${refObj.extensionId}`);
     throw new FirebaseError(
       `Could not find source '${clc.bold(extVersionRef)}' because (${clc.bold(
         version

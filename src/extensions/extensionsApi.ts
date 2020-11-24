@@ -615,7 +615,7 @@ export async function unpublishExtension(ref: string): Promise<void> {
   if (version) {
     throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
   }
-  let url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`;
+  const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`;
   try {
     await api.request("POST", url, {
       auth: true,

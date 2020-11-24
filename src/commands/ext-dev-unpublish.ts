@@ -15,7 +15,7 @@ module.exports = new Command("ext:dev:unpublish [ref]")
   .before(requireAuth)
   .action(async (ref: string, options: any) => {
     const { publisherId, extensionId, version } = parseRef(ref);
-    let message =
+    const message =
       "If you unpublish this extension, developers won't be able to install it. For developers who currently have this extension installed, it will continue to run and will appear as unpublished when listed in the Firebase console or Firebase CLI.";
     utils.logLabeledWarning(logPrefix, message);
     if (version) {
@@ -36,7 +36,7 @@ module.exports = new Command("ext:dev:unpublish [ref]")
   });
 
 export async function comfirmUnpublish(publisherId: string, extensionId: string): Promise<string> {
-  let message = `You are about to unpublish ALL versions of ${clc.green(
+  const message = `You are about to unpublish ALL versions of ${clc.green(
     `${publisherId}/${extensionId}`
   )}.\nDo you wish to continue? `;
   return await promptOnce({
