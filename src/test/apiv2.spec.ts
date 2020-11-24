@@ -1,16 +1,16 @@
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
-import { streamToString } from "../utils";
-import * as helpers from "./helpers";
+import { streamToString, stringToStream } from "../utils";
 
 describe("apiv2", () => {
   beforeEach(() => {
     // The api module has package variables that we don't want sticking around.
     delete require.cache[require.resolve("../apiv2")];
+
+    nock.cleanAll();
   });
 
   after(() => {
@@ -18,16 +18,6 @@ describe("apiv2", () => {
   });
 
   describe("request", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
     it("should throw on a basic 404 GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
@@ -97,6 +87,53 @@ describe("apiv2", () => {
       });
       const data = await streamToString(r.body);
       expect(data).to.deep.equal("ablobofdata");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error with a FirebaseError if JSON is malformed", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(200, `{not:"json"}`);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Unexpected token.+JSON/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error with a FirebaseError if an error happens", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .replyWithError("boom");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request.+/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error with a FirebaseError if an invalid responseType is provided", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(200, "");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        // Don't really do this. This is for testing only.
+        responseType: "notjson" as "json",
+      });
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Unable to interpret response.+/
+      );
       expect(nock.isDone()).to.be.true;
     });
 
@@ -219,7 +256,22 @@ describe("apiv2", () => {
       const r = await c.request({
         method: "POST",
         path: "/path/to/foo",
-        json: POST_DATA,
+        body: POST_DATA,
+      });
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a basic POST request with a stream", async () => {
+      nock("https://example.com")
+        .post("/path/to/foo", "hello world")
+        .reply(200, { success: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/path/to/foo",
+        body: stringToStream("hello world"),
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
@@ -227,16 +279,6 @@ describe("apiv2", () => {
   });
 
   describe("verbs", () => {
-    let sandbox: sinon.SinonSandbox;
-    beforeEach(() => {
-      sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
     it("should make a GET request", async () => {
       nock("https://example.com")
         .get("/path/to/foo")
@@ -256,6 +298,18 @@ describe("apiv2", () => {
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.post("/path/to/foo", POST_DATA);
+      expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should make a PUT request", async () => {
+      const DATA = { post: "data" };
+      nock("https://example.com")
+        .put("/path/to/foo", DATA)
+        .reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.put("/path/to/foo", DATA);
       expect(r.body).to.deep.equal({ foo: "bar" });
       expect(nock.isDone()).to.be.true;
     });

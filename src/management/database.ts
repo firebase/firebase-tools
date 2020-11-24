@@ -6,13 +6,11 @@
 import * as api from "../api";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { previews } from "../previews";
 import { FirebaseError } from "../error";
 import { Constants } from "../emulator/constants";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 const APP_LIST_PAGE_SIZE = 100;
-// projects/$PROJECT_ID/locations/$LOCATION_ID/instances/$INSTANCE_ID
 const INSTANCE_RESOURCE_NAME_REGEX = /projects\/([^\/]+?)\/locations\/([^\/]+?)\/instances\/([^\/]*)/;
 
 export enum DatabaseInstanceType {
@@ -31,7 +29,6 @@ export enum DatabaseInstanceState {
 export enum DatabaseLocation {
   US_CENTRAL1 = "us-central1",
   EUROPE_WEST1 = "europe-west1",
-  ASIA_SOUTHEAST1 = "asia-southeast1",
   ANY = "-",
 }
 
@@ -49,9 +46,7 @@ export interface DatabaseInstance {
  * @param options command options that will be modified to add instanceDetails.
  */
 export async function populateInstanceDetails(options: any): Promise<void> {
-  if (previews.rtdbmanagement) {
-    options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
-  }
+  options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
   return Promise.resolve();
 }
 
@@ -152,15 +147,13 @@ export function parseDatabaseLocation(
   switch (location.toLowerCase()) {
     case "europe-west1":
       return DatabaseLocation.EUROPE_WEST1;
-    case "asia-southeast1":
-      return DatabaseLocation.ASIA_SOUTHEAST1;
     case "us-central1":
       return DatabaseLocation.US_CENTRAL1;
     case "":
       return defaultLocation;
     default:
       throw new FirebaseError(
-        `Unexpected location value: ${location}. Only us-central1, europe-west1, and asia-southeast1 locations are supported`
+        `Unexpected location value: ${location}. Only us-central1, and europe-west1 locations are supported`
       );
   }
 }

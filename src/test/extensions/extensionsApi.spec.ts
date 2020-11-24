@@ -1,9 +1,7 @@
 import * as _ from "lodash";
 import { expect } from "chai";
 import * as nock from "nock";
-import * as sinon from "sinon";
 
-import * as helpers from "../helpers";
 import * as api from "../../api";
 import { FirebaseError } from "../../error";
 
@@ -146,14 +144,6 @@ const PUBLISHED_VERSIONS_WITH_TOKEN = {
 const NEXT_PAGE_VERSIONS = { extensionVersions: [TEST_EXT_VERSION_3] };
 
 describe("extensions", () => {
-  beforeEach(() => {
-    helpers.mockAuth(sinon);
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
   describe("listInstances", () => {
     afterEach(() => {
       nock.cleanAll();
@@ -318,7 +308,7 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(502);
+        .reply(502, {});
 
       await expect(
         extensionsApi.createInstance(PROJECT_ID, INSTANCE_ID, {
@@ -551,7 +541,7 @@ describe("extensions", () => {
         .reply(200, { name: "operations/abc123" });
       nock(api.extensionsOrigin)
         .get(`/${VERSION}/operations/abc123`)
-        .reply(502);
+        .reply(502, {});
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,

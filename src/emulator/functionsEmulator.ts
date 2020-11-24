@@ -424,7 +424,7 @@ export class FunctionsEmulator implements EmulatorInstance {
               added = await this.addPubsubTrigger(this.args.projectId, definition);
               break;
             case Constants.SERVICE_AUTH:
-              added = await this.addAuthTrigger(this.args.projectId, definition);
+              added = this.addAuthTrigger(this.args.projectId, definition);
               break;
             default:
               this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
@@ -487,8 +487,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!databaseEmu) {
       return Promise.resolve(false);
     }
-    const databaseHost = databaseEmu.getInfo().host;
-    const databasePort = databaseEmu.getInfo().port;
 
     if (!definition.eventTrigger) {
       this.logger.log(
@@ -530,7 +528,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     return api
       .request("POST", setTriggersPath, {
-        origin: `http://${databaseHost}:${databasePort}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
         headers: {
           Authorization: "Bearer owner",
         },
@@ -551,15 +549,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!firestoreEmu) {
       return Promise.resolve(false);
     }
-    const firestoreHost = firestoreEmu.getInfo().host;
-    const firestorePort = firestoreEmu.getInfo().port;
 
     const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     return api
       .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${definition.name}`, {
-        origin: `http://${firestoreHost}:${firestorePort}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
         data: bundle,
         json: false,
       })

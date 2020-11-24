@@ -1,3 +1,5 @@
+import { URL } from "url";
+
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
@@ -7,7 +9,7 @@ import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export default new Command("database:settings:set <path> <value>")
@@ -18,7 +20,7 @@ export default new Command("database:settings:set <path> <value>")
   )
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +36,7 @@ export default new Command("database:settings:set <path> <value>")
 
     const u = new URL(
       utils.getDatabaseUrl(
-        realtimeOriginOrCustomUrl(options),
+        realtimeOriginOrCustomUrl(options.instanceDetails.databaseUrl),
         options.instance,
         `/.settings/${path}.json`
       )

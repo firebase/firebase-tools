@@ -31,7 +31,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
     if (functionsInfo) {
-      this.args.functions_emulator = `${functionsInfo.host}:${functionsInfo.port}`;
+      this.args.functions_emulator = EmulatorRegistry.getInfoHostString(functionsInfo);
     }
 
     if (this.args.rules && this.args.projectId) {
@@ -93,7 +93,7 @@ export class FirestoreEmulator implements EmulatorInstance {
   private updateRules(content: string): Promise<Issue[]> {
     const projectId = this.args.projectId;
 
-    const { host, port } = this.getInfo();
+    const info = this.getInfo();
     const body = {
       // Invalid rulesets will still result in a 200 response but with more information
       ignore_errors: true,
@@ -109,7 +109,7 @@ export class FirestoreEmulator implements EmulatorInstance {
 
     return api
       .request("PUT", `/emulator/v1/projects/${projectId}:securityRules`, {
-        origin: `http://${host}:${port}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
         data: body,
       })
       .then((res) => {

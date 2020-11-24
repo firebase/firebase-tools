@@ -4,7 +4,6 @@ var chai = require("chai");
 var sinon = require("sinon");
 var api = require("../api");
 var accountImporter = require("../accountImporter");
-var helpers = require("./helpers");
 
 var expect = chai.expect;
 describe("accountImporter", function() {
@@ -110,7 +109,6 @@ describe("accountImporter", function() {
 
     beforeEach(function() {
       sandbox = sinon.createSandbox();
-      helpers.mockAuth(sandbox);
       mockApi = sandbox.mock(api);
       for (var i = 0; i < 10; i++) {
         batches.push([

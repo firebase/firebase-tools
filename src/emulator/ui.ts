@@ -29,7 +29,7 @@ export class EmulatorUI implements EmulatorInstance {
       HOST: host.toString(),
       PORT: port.toString(),
       GCLOUD_PROJECT: projectId,
-      [EmulatorHub.EMULATOR_HUB_ENV]: `${hubInfo.host}:${hubInfo.port}`,
+      [EmulatorHub.EMULATOR_HUB_ENV]: EmulatorRegistry.getInfoHostString(hubInfo),
     };
 
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);

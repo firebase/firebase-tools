@@ -1,17 +1,15 @@
-"use strict";
-
-var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
-var { requirePermissions } = require("../requirePermissions");
-var DatabaseRemove = require("../database/remove").default;
-var { Emulators } = require("../emulator/types");
-var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
-var { populateInstanceDetails } = require("../management/database");
-var { realtimeOriginOrEmulatorOrCustomUrl } = require("../database/api");
-var utils = require("../utils");
-var { prompt } = require("../prompt");
-var clc = require("cli-color");
-var _ = require("lodash");
+import { Command } from "../command";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { requirePermissions } from "../requirePermissions";
+import DatabaseRemove from "../database/remove";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
+import { populateInstanceDetails } from "../management/database";
+import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
+import * as utils from "../utils";
+import { prompt } from "../prompt";
+import * as clc from "cli-color";
+import * as _ from "lodash";
 
 module.exports = new Command("database:remove <path>")
   .description("remove data from your Firebase at the specified path")
@@ -21,14 +19,14 @@ module.exports = new Command("database:remove <path>")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
-  .action(function(path, options) {
+  .action((path, options) => {
     if (!_.startsWith(path, "/")) {
       return utils.reject("Path must begin with /", { exit: 1 });
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
     const databaseUrl = utils.getDatabaseUrl(origin, options.instance, path);
     return prompt(options, [
       {
@@ -37,13 +35,13 @@ module.exports = new Command("database:remove <path>")
         default: false,
         message: "You are about to remove all data at " + clc.cyan(databaseUrl) + ". Are you sure?",
       },
-    ]).then(function() {
+    ]).then(() => {
       if (!options.confirm) {
         return utils.reject("Command aborted.", { exit: 1 });
       }
 
-      var removeOps = new DatabaseRemove(options.instance, path, origin);
-      return removeOps.execute().then(function() {
+      const removeOps = new DatabaseRemove(options.instance, path, origin);
+      return removeOps.execute().then(() => {
         utils.logSuccess("Data removed successfully");
       });
     });
