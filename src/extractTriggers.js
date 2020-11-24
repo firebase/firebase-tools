@@ -25,8 +25,10 @@ var extractTriggers = function(mod, triggers, prefix, suffix) {
       for (var key of Object.keys(child.__trigger)) {
         trigger[key] = child.__trigger[key];
       }
-      trigger.name = prefix + funcName + suffix;
-      trigger.entryPoint = trigger.name.replace(/-/g, ".");
+
+      const baseName = prefix + funcName;
+      trigger.name = baseName + suffix;
+      trigger.entryPoint = baseName.replace(/-/g, ".");
       triggers.push(trigger);
     } else if (typeof child === "object" && child !== null) {
       extractTriggers(child, triggers, prefix + funcName + "-", suffix);
