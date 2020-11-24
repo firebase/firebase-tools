@@ -7,11 +7,11 @@
  * @param {Object} mod module, usually the result of require(functions/index.js)
  * @param {Array<EmulatedTriggerDefinition>} triggers array of definitions to extend (in-place).
  * @param {string|undefined} prefix optional function name prefix, for example when using grouped functions.
- * @param {string|undefined} suffix optional function name suffix, for example to mark generation numbers.
+ * @param {number|undefined} generation optional generation number for background triggers.
  */
-var extractTriggers = function(mod, triggers, prefix, suffix) {
+var extractTriggers = function(mod, triggers, prefix, generation) {
   prefix = prefix || "";
-  suffix = suffix || "";
+  generation = generation || 0;
   for (var funcName of Object.keys(mod)) {
     var child = mod[funcName];
     if (typeof child === "function" && child.__trigger && typeof child.__trigger === "object") {
@@ -26,12 +26,17 @@ var extractTriggers = function(mod, triggers, prefix, suffix) {
         trigger[key] = child.__trigger[key];
       }
 
-      const baseName = prefix + funcName;
-      trigger.name = baseName + suffix;
+      var baseName = prefix + funcName;
+      if (trigger.eventTrigger) {
+        trigger.name = baseName + "-" + generation;
+      } else {
+        trigger.name = baseName;
+      }
+
       trigger.entryPoint = baseName.replace(/-/g, ".");
       triggers.push(trigger);
     } else if (typeof child === "object" && child !== null) {
-      extractTriggers(child, triggers, prefix + funcName + "-", suffix);
+      extractTriggers(child, triggers, prefix + funcName + "-", generation);
     }
   }
 };

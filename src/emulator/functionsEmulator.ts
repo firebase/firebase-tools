@@ -648,6 +648,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition {
     const record = this.triggers[triggerName];
     if (!record) {
+      logger.debug(`Could not find name=${triggerName} in ${JSON.stringify(this.triggers)}`);
       throw new FirebaseError(`No trigger with name ${triggerName}`);
     }
 
@@ -885,7 +886,6 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // For analytics, track the invoked service
       if (triggerId) {
-        const trigger = this.getTriggerDefinitionByName(triggerId);
         track(EVENT_INVOKE, getFunctionService(trigger));
       }
 
@@ -977,7 +977,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
-    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.HTTPS, undefined);
+    const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.HTTPS, undefined);
 
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {

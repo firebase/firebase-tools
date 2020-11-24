@@ -8,6 +8,10 @@ const extractTriggers = require("../extractTriggers");
 describe("extractTriggers", function() {
   const fnWithTrigger = function() {};
   fnWithTrigger.__trigger = { service: "function.with.trigger" };
+
+  const bgFnWithTrigger = function() {};
+  bgFnWithTrigger.__trigger = { service: "function.with.trigger", eventTrigger: {} };
+
   const fnWithoutTrigger = function() {};
   let triggers;
 
@@ -39,16 +43,27 @@ describe("extractTriggers", function() {
     expect(triggers[0].entryPoint).to.eq("foo");
   });
 
-  it("should attach a prefix when specified", function() {
+  it("should attach a suffix only to background triggers", function() {
     extractTriggers(
       {
         foo: fnWithTrigger,
       },
-      triggers
-    ),
+      triggers,
       "",
-      "-test";
-    expect(triggers[0].name).to.eq("foo-test");
+      0
+    );
+    expect(triggers[0].name).to.eq("foo");
+    expect(triggers[0].entryPoint).to.eq("foo");
+
+    extractTriggers(
+      {
+        foo: bgFnWithTrigger,
+      },
+      triggers,
+      "",
+      0
+    );
+    expect(triggers[0].name).to.eq("foo-0");
     expect(triggers[0].entryPoint).to.eq("foo");
   });
 

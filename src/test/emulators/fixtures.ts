@@ -37,7 +37,7 @@ export const FunctionRuntimeBundles = {
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "function_id-0",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
 
@@ -73,7 +73,7 @@ export const FunctionRuntimeBundles = {
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "function_id-0",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
 
@@ -109,7 +109,7 @@ export const FunctionRuntimeBundles = {
         },
       },
     },
-    triggerId: "function_id",
+    triggerId: "function_id-0",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
 
@@ -157,7 +157,7 @@ export const FunctionRuntimeBundles = {
         timestamp: "2019-05-15T16:21:15.148831Z",
       },
     },
-    triggerId: "function_id",
+    triggerId: "function_id-0",
     projectId: "fake-project-id",
   } as FunctionsRuntimeBundle,
 
