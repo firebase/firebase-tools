@@ -650,7 +650,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return record.def;
   }
 
-  getTriggerKey(def: EmulatedTriggerDefinition) {
+  getTriggerKey(def: EmulatedTriggerDefinition): string {
     // For background triggers we attach the current generation as a suffix
     return def.eventTrigger ? def.name + "-" + this.triggerGeneration : def.name;
   }
@@ -661,7 +661,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       ignored: boolean;
       url?: string;
     }
-  ) {
+  ): void {
     const key = this.getTriggerKey(def);
     this.triggers[key] = { def, enabled: true, ignored: opts.ignored, url: opts.url };
   }
@@ -891,9 +891,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
 
       // For analytics, track the invoked service
-      if (triggerKey) {
-        track(EVENT_INVOKE, getFunctionService(trigger));
-      }
+      track(EVENT_INVOKE, getFunctionService(trigger));
 
       worker.waitForDone().then(() => {
         resolve({ status: "acknowledged" });

@@ -958,14 +958,15 @@ async function invokeTrigger(
     throw new Error("frb.triggerId unexpectedly null");
   }
 
+  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
+    frb,
+  }).log();
+
   const trigger = triggers[frb.triggerId];
   logDebug("triggerDefinition", trigger.definition);
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
-  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
-    frb,
-  }).log();
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -1048,7 +1049,7 @@ async function initializeRuntime(
   if (extensionTriggers) {
     triggerDefinitions = extensionTriggers;
   } else {
-    require("../extractTriggers")(triggerModule, triggerDefinitions, "");
+    require("../extractTriggers")(triggerModule, triggerDefinitions);
   }
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
@@ -1096,8 +1097,6 @@ async function handleMessage(message: string) {
   }
 
   if (!triggers[runtimeArgs.frb.triggerId]) {
-    // TODO(samstern): This log statement will print "entryPoint-generation"
-    // when it should just print "entryPoint", but this log should also never happen.
     new EmulatorLog(
       "FATAL",
       "runtime-status",
