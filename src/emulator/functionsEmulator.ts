@@ -417,6 +417,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         //                 that a developer is running the same function in multiple regions.
         const region = getFunctionRegion(definition);
         const { host, port } = this.getInfo();
+        added = true;
         url = FunctionsEmulator.getHttpFunctionUrl(
           host,
           port,
