@@ -216,11 +216,13 @@ export default new Command("ext:install [extensionName]")
             await extensionsApi.getExtension(extensionName);
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
             displayExtInfo(extensionName, extVersion.spec, true);
+            await confirmInstallInstance();
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
             extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
             displayExtInfo(extensionName, extVersion.spec, true);
+            await confirmInstallInstance();
             break;
           }
           default: {
