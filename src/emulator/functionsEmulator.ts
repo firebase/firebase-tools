@@ -355,7 +355,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return debouncedLoadTriggers();
     });
 
-    return this.loadTriggers();
+    return this.loadTriggers(true);
   }
 
   async stop(): Promise<void> {
@@ -387,7 +387,7 @@ export class FunctionsEmulator implements EmulatorInstance {
    *
    * TODO(abehaskins): Gracefully handle removal of deleted function definitions
    */
-  async loadTriggers() {
+  async loadTriggers(force: boolean = false) {
     // Before loading any triggers we need to make sure there are no 'stale' workers
     // in the pool that would cause us to run old code.
     this.workerPool.refresh();
@@ -406,7 +406,15 @@ export class FunctionsEmulator implements EmulatorInstance {
     const triggerDefinitions = triggerParseEvent.data
       .triggerDefinitions as EmulatedTriggerDefinition[];
 
-    const toSetup = triggerDefinitions.filter((definition) => !this.triggers[definition.name]);
+    // When force is true we set up all triggers, otherwise we only set up
+    // triggers which have a unique function name
+    const toSetup = triggerDefinitions.filter((definition) => {
+      if (force) {
+        return true;
+      }
+
+      return this.getTriggerDefinitionByName(definition.name) === undefined;
+    });
 
     for (const definition of toSetup) {
       let added = false;
@@ -466,23 +474,21 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
       }
 
-      this.addTriggerRecord(definition, { ignored: !added, url });
-    }
+      const ignored = !added;
+      this.addTriggerRecord(definition, { ignored, url });
 
-    const enabledTriggers = Object.values(this.triggers).filter((r) => r.enabled);
-    for (const record of enabledTriggers) {
-      const type = record.def.httpsTrigger
+      const type = definition.httpsTrigger
         ? "http"
-        : Constants.getServiceName(getFunctionService(record.def));
+        : Constants.getServiceName(getFunctionService(definition));
 
-      if (record.ignored) {
+      if (ignored) {
         const msg = `function ignored because the ${type} emulator does not exist or is not running.`;
-        this.logger.logLabeled("BULLET", `functions[${record.def.name}]`, msg);
+        this.logger.logLabeled("BULLET", `functions[${definition.name}]`, msg);
       } else {
-        const msg = record.url
-          ? `${clc.bold(type)} function initialized (${record.url}).`
+        const msg = url
+          ? `${clc.bold(type)} function initialized (${url}).`
           : `${clc.bold(type)} function initialized.`;
-        this.logger.logLabeled("SUCCESS", `functions[${record.def.name}]`, msg);
+        this.logger.logLabeled("SUCCESS", `functions[${definition.name}]`, msg);
       }
     }
   }
@@ -644,11 +650,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   getTriggerDefinitionByKey(triggerKey: string): EmulatedTriggerDefinition {
     const record = this.triggers[triggerKey];
     if (!record) {
-      logger.debug(`Could not find name=${triggerKey} in ${JSON.stringify(this.triggers)}`);
-      throw new FirebaseError(`No trigger with name ${triggerKey}`);
+      logger.debug(`Could not find key=${triggerKey} in ${JSON.stringify(this.triggers)}`);
+      throw new FirebaseError(`No trigger with key ${triggerKey}`);
     }
 
     return record.def;
+  }
+
+  getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition | undefined {
+    const record = Object.values(this.triggers).find((r) => r.def.name === triggerName);
+    return record?.def;
   }
 
   getTriggerKey(def: EmulatedTriggerDefinition): string {
@@ -851,7 +862,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
-    return this.loadTriggers();
+    return this.loadTriggers(true);
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
