@@ -48,7 +48,6 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   triggerType?: EmulatedTriggerType;
-  triggerGeneration?: number;
   emulators: {
     firestore?: {
       host: string;

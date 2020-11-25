@@ -963,14 +963,9 @@ async function invokeTrigger(
   const mode = trigger.definition.httpsTrigger ? "HTTPS" : "BACKGROUND";
 
   logDebug(`Running ${frb.triggerId} in mode ${mode}`);
-  new EmulatorLog(
-    "INFO",
-    "runtime-status",
-    `Beginning execution of "${trigger.definition.entryPoint}"`,
-    {
-      frb,
-    }
-  ).log();
+  new EmulatorLog("INFO", "runtime-status", `Beginning execution of "${frb.triggerId}"`, {
+    frb,
+  }).log();
 
   let seconds = 0;
   const timerId = setInterval(() => {
@@ -1008,7 +1003,7 @@ async function invokeTrigger(
   new EmulatorLog(
     "INFO",
     "runtime-status",
-    `Finished "${trigger.definition.entryPoint}" in ~${Math.max(seconds, 1)}s`
+    `Finished "${frb.triggerId}" in ~${Math.max(seconds, 1)}s`
   ).log();
 }
 
@@ -1053,9 +1048,7 @@ async function initializeRuntime(
   if (extensionTriggers) {
     triggerDefinitions = extensionTriggers;
   } else {
-    // Add a generation suffix to each trigger name
-    const gen = frb.triggerGeneration || 0;
-    require("../extractTriggers")(triggerModule, triggerDefinitions, "", gen);
+    require("../extractTriggers")(triggerModule, triggerDefinitions, "");
   }
 
   const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);

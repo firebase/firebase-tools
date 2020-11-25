@@ -29,6 +29,8 @@ import {
   getFunctionRegion,
   getFunctionService,
   HttpConstants,
+  EventTrigger,
+  EventSchedule,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -98,18 +100,11 @@ interface RequestWithRawBody extends express.Request {
   rawBody: Buffer;
 }
 
-interface TriggerDescription {
-  name: string;
-  entryPoint: string;
-  type: string;
-  labels?: { [key: string]: any };
-  details?: string;
-  ignored?: boolean;
-}
-
 interface EmulatedTriggerRecord {
   def: EmulatedTriggerDefinition;
   enabled: boolean;
+  ignored: boolean;
+  url?: string;
 }
 
 export class FunctionsEmulator implements EmulatorInstance {
@@ -117,10 +112,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     host: string,
     port: number,
     projectId: string,
-    entryPoint: string,
+    name: string,
     region: string
   ): string {
-    return `http://${host}:${port}/${projectId}/${region}/${entryPoint}`;
+    return `http://${host}:${port}/${projectId}/${region}/${name}`;
   }
 
   nodeBinary = "";
@@ -411,113 +406,111 @@ export class FunctionsEmulator implements EmulatorInstance {
     const triggerDefinitions = triggerParseEvent.data
       .triggerDefinitions as EmulatedTriggerDefinition[];
 
-    const triggerResults: TriggerDescription[] = [];
-
     const toSetup = triggerDefinitions.filter((definition) => !this.triggers[definition.name]);
 
     for (const definition of toSetup) {
+      let added = false;
+      let url: string | undefined = undefined;
+
       if (definition.httpsTrigger) {
         // TODO(samstern): Right now we only emulate each function in one region, but it's possible
         //                 that a developer is running the same function in multiple regions.
         const region = getFunctionRegion(definition);
         const { host, port } = this.getInfo();
-        const url = FunctionsEmulator.getHttpFunctionUrl(
+        url = FunctionsEmulator.getHttpFunctionUrl(
           host,
           port,
           this.args.projectId,
           definition.entryPoint,
           region
         );
-
-        triggerResults.push({
-          name: definition.name,
-          entryPoint: definition.entryPoint,
-          type: "http",
-          labels: definition.labels,
-          details: url,
-        });
-      } else {
+      } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
-        const result: TriggerDescription = {
-          name: definition.name,
-          entryPoint: definition.entryPoint,
-          type: Constants.getServiceName(service),
-          labels: definition.labels,
-        };
+        const key = this.getTriggerKey(definition);
 
-        let added = false;
         switch (service) {
           case Constants.SERVICE_FIRESTORE:
-            added = await this.addFirestoreTrigger(this.args.projectId, definition);
+            added = await this.addFirestoreTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger
+            );
             break;
           case Constants.SERVICE_REALTIME_DATABASE:
-            added = await this.addRealtimeDatabaseTrigger(this.args.projectId, definition);
+            added = await this.addRealtimeDatabaseTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger
+            );
             break;
           case Constants.SERVICE_PUBSUB:
-            added = await this.addPubsubTrigger(this.args.projectId, definition);
+            added = await this.addPubsubTrigger(
+              this.args.projectId,
+              key,
+              definition.eventTrigger,
+              definition.schedule
+            );
             break;
           case Constants.SERVICE_AUTH:
-            added = this.addAuthTrigger(this.args.projectId, definition);
+            added = this.addAuthTrigger(this.args.projectId, key, definition.eventTrigger);
             break;
           default:
             this.logger.log("DEBUG", `Unsupported trigger: ${JSON.stringify(definition)}`);
             break;
         }
-        result.ignored = !added;
-        triggerResults.push(result);
+      } else {
+        this.logger.log(
+          "WARN",
+          `Trigger trigger "${definition.name}" has has neither "httpsTrigger" or "eventTrigger" member`
+        );
       }
 
-      this.addTriggerRecord(definition);
+      this.addTriggerRecord(definition, { ignored: !added, url });
     }
 
-    const successTriggers = triggerResults.filter((r) => !r.ignored);
-    for (const result of successTriggers) {
-      const msg = result.details
-        ? `${clc.bold(result.type)} function initialized (${result.details}).`
-        : `${clc.bold(result.type)} function initialized.`;
-      this.logger.logLabeled("SUCCESS", `functions[${result.entryPoint}]`, msg);
-    }
+    const enabledTriggers = Object.values(this.triggers).filter((r) => r.enabled);
+    for (const record of enabledTriggers) {
+      const type = record.def.httpsTrigger
+        ? "http"
+        : Constants.getServiceName(getFunctionService(record.def));
 
-    const ignoreTriggers = triggerResults.filter((r) => r.ignored);
-    for (const result of ignoreTriggers) {
-      const msg = `function ignored because the ${result.type} emulator does not exist or is not running.`;
-      this.logger.logLabeled("BULLET", `functions[${result.entryPoint}]`, msg);
+      if (record.ignored) {
+        const msg = `function ignored because the ${type} emulator does not exist or is not running.`;
+        this.logger.logLabeled("BULLET", `functions[${record.def.name}]`, msg);
+      } else {
+        const msg = record.url
+          ? `${clc.bold(type)} function initialized (${record.url}).`
+          : `${clc.bold(type)} function initialized.`;
+        this.logger.logLabeled("SUCCESS", `functions[${record.def.name}]`, msg);
+      }
     }
   }
 
   addRealtimeDatabaseTrigger(
     projectId: string,
-    definition: EmulatedTriggerDefinition
+    key: string,
+    eventTrigger: EventTrigger
   ): Promise<boolean> {
     const databaseEmu = EmulatorRegistry.get(Emulators.DATABASE);
     if (!databaseEmu) {
       return Promise.resolve(false);
     }
 
-    if (!definition.eventTrigger) {
-      this.logger.log(
-        "WARN",
-        `Event trigger "${definition.name}" has undefined "eventTrigger" member`
-      );
-      return Promise.reject();
-    }
-
-    const result: string[] | null = DATABASE_PATH_PATTERN.exec(definition.eventTrigger.resource);
+    const result: string[] | null = DATABASE_PATH_PATTERN.exec(eventTrigger.resource);
     if (result === null || result.length !== 3) {
       this.logger.log(
         "WARN",
-        `Event trigger "${definition.name}" has malformed "resource" member. ` +
-          `${definition.eventTrigger.resource}`
+        `Event trigger "${key}" has malformed "resource" member. ` + `${eventTrigger.resource}`
       );
       return Promise.reject();
     }
 
     const instance = result[1];
     const bundle = JSON.stringify({
-      name: `projects/${projectId}/locations/_/functions/${definition.name}`,
+      name: `projects/${projectId}/locations/_/functions/${key}`,
       path: result[2], // path stored in the second capture group
-      event: definition.eventTrigger.eventType,
-      topic: `projects/${projectId}/topics/${definition.name}`,
+      event: eventTrigger.eventType,
+      topic: `projects/${projectId}/topics/${key}`,
     });
 
     logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
@@ -550,17 +543,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
   }
 
-  addFirestoreTrigger(projectId: string, definition: EmulatedTriggerDefinition): Promise<boolean> {
+  addFirestoreTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger
+  ): Promise<boolean> {
     const firestoreEmu = EmulatorRegistry.get(Emulators.FIRESTORE);
     if (!firestoreEmu) {
       return Promise.resolve(false);
     }
 
-    const bundle = JSON.stringify({ eventTrigger: definition.eventTrigger });
+    const bundle = JSON.stringify({ eventTrigger });
     logger.debug(`addFirestoreTrigger`, JSON.stringify(bundle));
 
     return api
-      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${definition.name}`, {
+      .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
         origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
         data: bundle,
         json: false,
@@ -576,48 +573,46 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async addPubsubTrigger(
     projectId: string,
-    definition: EmulatedTriggerDefinition
+    key: string,
+    eventTrigger: EventTrigger,
+    schedule: EventSchedule | undefined
   ): Promise<boolean> {
     const pubsubPort = EmulatorRegistry.getPort(Emulators.PUBSUB);
     if (!pubsubPort) {
       return false;
     }
 
-    if (!definition.eventTrigger) {
-      return false;
-    }
-
     const pubsubEmulator = EmulatorRegistry.get(Emulators.PUBSUB) as PubsubEmulator;
 
-    logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+    logger.debug(`addPubsubTrigger`, JSON.stringify({ eventTrigger }));
 
     // "resource":\"projects/{PROJECT_ID}/topics/{TOPIC_ID}";
-    const resource = definition.eventTrigger.resource;
+    const resource = eventTrigger.resource;
     let topic;
-    if (definition.schedule) {
+    if (schedule) {
       // In production this topic looks like
       // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
       // the deploy location to match as closely as possible.
-      topic = "firebase-schedule-" + definition.name;
+      topic = "firebase-schedule-" + key;
     } else {
       const resourceParts = resource.split("/");
       topic = resourceParts[resourceParts.length - 1];
     }
 
     try {
-      await pubsubEmulator.addTrigger(topic, definition.name);
+      await pubsubEmulator.addTrigger(topic, key);
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  addAuthTrigger(projectId: string, definition: EmulatedTriggerDefinition): boolean {
-    logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger: definition.eventTrigger }));
+  addAuthTrigger(projectId: string, key: string, eventTrigger: EventTrigger): boolean {
+    logger.debug(`addAuthTrigger`, JSON.stringify({ eventTrigger }));
 
-    const eventTriggerId = `${projectId}:${definition.eventTrigger?.eventType}`;
+    const eventTriggerId = `${projectId}:${eventTrigger.eventType}`;
     const triggers = this.multicastTriggers[eventTriggerId] || [];
-    triggers.push(definition.entryPoint);
+    triggers.push(key);
     this.multicastTriggers[eventTriggerId] = triggers;
     return true;
   }
@@ -645,22 +640,34 @@ export class FunctionsEmulator implements EmulatorInstance {
     return Object.values(this.triggers).map((record) => record.def);
   }
 
-  getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition {
-    const record = this.triggers[triggerName];
+  getTriggerDefinitionByKey(triggerKey: string): EmulatedTriggerDefinition {
+    const record = this.triggers[triggerKey];
     if (!record) {
-      logger.debug(`Could not find name=${triggerName} in ${JSON.stringify(this.triggers)}`);
-      throw new FirebaseError(`No trigger with name ${triggerName}`);
+      logger.debug(`Could not find name=${triggerKey} in ${JSON.stringify(this.triggers)}`);
+      throw new FirebaseError(`No trigger with name ${triggerKey}`);
     }
 
     return record.def;
   }
 
-  addTriggerRecord(def: EmulatedTriggerDefinition) {
-    this.triggers[def.name] = { def, enabled: true };
+  getTriggerKey(def: EmulatedTriggerDefinition) {
+    // For background triggers we attach the current generation as a suffix
+    return def.eventTrigger ? def.name + "-" + this.triggerGeneration : def.name;
+  }
+
+  addTriggerRecord(
+    def: EmulatedTriggerDefinition,
+    opts: {
+      ignored: boolean;
+      url?: string;
+    }
+  ) {
+    const key = this.getTriggerKey(def);
+    this.triggers[key] = { def, enabled: true, ignored: opts.ignored, url: opts.url };
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
-    triggers.forEach((def) => this.addTriggerRecord(def));
+    triggers.forEach((def) => this.addTriggerRecord(def, { ignored: false }));
   }
 
   getBaseBundle(): FunctionsRuntimeBundle {
@@ -669,7 +676,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       projectId: this.args.projectId,
       triggerId: "",
       triggerType: undefined,
-      triggerGeneration: this.triggerGeneration,
       emulators: {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
@@ -847,10 +853,10 @@ export class FunctionsEmulator implements EmulatorInstance {
     return this.loadTriggers();
   }
 
-  private async handleBackgroundTrigger(projectId: string, triggerId: string, proto: any) {
-    const trigger = this.getTriggerDefinitionByName(triggerId);
+  private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
+    const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
-    const worker = this.startFunctionRuntime(triggerId, EmulatedTriggerType.BACKGROUND, proto);
+    const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.BACKGROUND, proto);
 
     return new Promise((resolve, reject) => {
       if (projectId !== this.args.projectId) {
@@ -869,9 +875,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         // If the trigger's resource does not match the invoked projet ID, we should 404.
         if (!trigger.eventTrigger!.resource.startsWith(`projects/_/instances/${projectId}`)) {
           logger.debug(
-            `Received functions trigger for function "${triggerId}" of project "${projectId}" that did not match definition: ${JSON.stringify(
-              trigger
-            )}.`
+            `Received functions trigger for function "${
+              trigger.name
+            }" of project "${projectId}" that did not match definition: ${JSON.stringify(trigger)}.`
           );
           reject({ code: 404 });
           return;
@@ -885,7 +891,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
 
       // For analytics, track the invoked service
-      if (triggerId) {
+      if (triggerKey) {
         track(EVENT_INVOKE, getFunctionService(trigger));
       }
 
@@ -949,7 +955,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
-    const trigger = this.getTriggerDefinitionByName(triggerId);
+    const trigger = this.getTriggerDefinitionByKey(triggerId);
 
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
