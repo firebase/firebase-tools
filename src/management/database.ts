@@ -136,18 +136,19 @@ export async function createInstance(
 }
 
 /**
- * Validate if an instance with the specified name can be created.
+ * Checks if an instance with the specified name can be created.
  * @param projectId identifier for the user's project.
  * @param instanceName name of the RTDB instance.
  * @param databaseType type of the RTDB instance.
  * @param location location for the project's instance.
+ * @return an object containing a boolean field "available", indicating if the specified name is available. If not available, the second optional array of strings "suggestedIds" is present and non-empty.
  */
-export async function validateInstanceName(
+export async function checkInstanceNameAvailable(
   projectId: string,
   instanceName: string,
   databaseType: DatabaseInstanceType,
   location?: DatabaseLocation
-): Promise<string[]> {
+): Promise<{ available: boolean; suggestedIds?: string[] }> {
   if (!location) {
     location = DatabaseLocation.US_CENTRAL1;
   }
@@ -164,7 +165,9 @@ export async function validateInstanceName(
         },
       }
     );
-    return [instanceName];
+    return {
+      available: true,
+    };
   } catch (err) {
     logger.debug(
       `Invalid Realtime Database instance name: ${instanceName}.${
@@ -172,14 +175,11 @@ export async function validateInstanceName(
       }`
     );
     const errBody = err.context.body.error;
-    if (
-      errBody &&
-      errBody.details &&
-      errBody.details[0] &&
-      errBody.details[0].metadata &&
-      errBody.details[0].metadata.suggested_database_ids
-    ) {
-      return errBody.details[0].metadata.suggested_database_ids.split(",");
+    if (errBody?.details?.[0]?.metadata?.suggested_database_ids) {
+      return {
+        available: false,
+        suggestedIds: errBody.details[0].metadata.suggested_database_ids.split(","),
+      };
     }
     throw new FirebaseError(
       `Failed to validate Realtime Database instance name: ${instanceName}.`,

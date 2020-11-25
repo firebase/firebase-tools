@@ -11,7 +11,7 @@ import {
   getDatabaseInstanceDetails,
   createInstance,
   listDatabaseInstances,
-  validateInstanceName,
+  checkInstanceNameAvailable,
 } from "../../management/database";
 
 const PROJECT_ID = "the-best-firebase-project";
@@ -208,16 +208,18 @@ describe("Database management", () => {
     });
   });
 
-  describe("validateInstanceName", () => {
-    it("should resolve with new DatabaseInstance if instance names is available and API call succeeds", async () => {
+  describe("checkInstanceNameAvailable", () => {
+    it("should resolve with new DatabaseInstance if specified instance name is available and API call succeeds", async () => {
       apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
-      const instanceNames = await validateInstanceName(
+      const output = await checkInstanceNameAvailable(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
         DatabaseInstanceType.USER_DATABASE,
         DatabaseLocation.EUROPE_WEST1
       );
-      expect(instanceNames).to.deep.equal([SOME_DATABASE_INSTANCE_EUROPE_WEST1.name]);
+      expect(output).to.deep.equal({
+        available: true,
+      });
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
         `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${DATABASE_INSTANCE_NAME}&validateOnly=true`,
@@ -250,13 +252,16 @@ describe("Database management", () => {
         },
       };
       apiRequestStub.onFirstCall().rejects(expectedErrorObj);
-      const instanceNames = await validateInstanceName(
+      const output = await checkInstanceNameAvailable(
         PROJECT_ID,
         badInstanceName,
         DatabaseInstanceType.USER_DATABASE,
         DatabaseLocation.EUROPE_WEST1
       );
-      expect(instanceNames).to.deep.equal(["dbName1", "dbName2", "dbName3"]);
+      expect(output).to.deep.equal({
+        available: false,
+        suggestedIds: ["dbName1", "dbName2", "dbName3"],
+      });
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
         `/v1beta/projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances?databaseId=${badInstanceName}&validateOnly=true`,
@@ -290,7 +295,7 @@ describe("Database management", () => {
 
       let err;
       try {
-        await validateInstanceName(
+        await checkInstanceNameAvailable(
           PROJECT_ID,
           badInstanceName,
           DatabaseInstanceType.DEFAULT_DATABASE,

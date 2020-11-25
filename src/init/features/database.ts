@@ -10,12 +10,13 @@ import {
   DatabaseInstance,
   DatabaseInstanceType,
   DatabaseLocation,
-  validateInstanceName,
+  checkInstanceNameAvailable,
   getDatabaseInstanceDetails,
 } from "../../management/database";
 import ora = require("ora");
-import { check, ensure } from "../../ensureApiEnabled";
+import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
+import { FirebaseError } from "../../error";
 
 interface DatabaseSetup {
   projectId: string;
@@ -73,15 +74,23 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
       { name: "europe-west1", value: DatabaseLocation.EUROPE_WEST1 },
     ],
   });
-  const possibleIds = await validateInstanceName(
+  let instanceName = `${project}-default-rtdb`;
+  // check if the conventional default instance name is available.
+  const checkOutput = await checkInstanceNameAvailable(
     project,
-    project,
+    instanceName,
     DatabaseInstanceType.DEFAULT_DATABASE,
     selectedLocation
   );
-  let instanceName = `${project}-default-rtdb`;
-  if (possibleIds[0] !== instanceName) {
-    instanceName = possibleIds[0];
+  // if the conventional instance name is not available, pick the first suggestion.
+  if (!checkOutput.available) {
+    if (!checkOutput.suggestedIds || checkOutput.suggestedIds.length === 0) {
+      logger.debug(
+        `No instance names were suggested instead of conventional instance name: ${instanceName}`
+      );
+      throw new FirebaseError("Failed to create default RTDB instance");
+    }
+    instanceName = checkOutput.suggestedIds[0];
     logger.info(
       `${clc.yellow(
         "WARNING:"
@@ -104,35 +113,9 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
   }
 }
 
-async function enableApiIfNeeded(project: string) {
-  const spinner = ora(
-    `Checking that the Realtime Database API is enabled for your project: ${project}`
-  ).start();
-  let isApiEnabled;
-  try {
-    isApiEnabled = await check(project, "firebasedatabase.googleapis.com", "rtdb", true);
-  } catch (err) {
-    spinner.fail();
-    throw err;
-  }
-
-  if (isApiEnabled) {
-    spinner.succeed();
-    return;
-  }
-  spinner.text = `Enabling the Realtime Database API for your project: ${project}`;
-  try {
-    await ensure(project, "firebasedatabase.googleapis.com", "rtdb", true);
-  } catch (err) {
-    spinner.fail();
-    throw err;
-  }
-  spinner.succeed();
-}
-
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
   setup.config = {};
-  await enableApiIfNeeded(setup.projectId);
+  await ensure(setup.projectId, "firebasedatabase.googleapis.com", "Realtime Database", false);
   logger.info();
   setup.instance =
     setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
@@ -156,6 +139,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
     },
   ]);
   filename = setup.config.rulesFile!;
+  let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
     const msg =
       "File " +
@@ -164,14 +148,13 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       " Do you want to overwrite it with the Database Rules for " +
       clc.bold(instanceDetails.name) +
       " from the Firebase Console?";
-    return promptOnce({
+    writeRules = await promptOnce({
       type: "confirm",
       message: msg,
       default: false,
     });
   }
-  const overwrite = await Promise.resolve(true);
-  if (overwrite) {
+  if (writeRules) {
     return writeDBRules(instanceDetails, filename, config);
   }
   logger.info("Skipping overwrite of Database Rules.");
