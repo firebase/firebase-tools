@@ -445,7 +445,7 @@ export class FunctionsEmulator implements EmulatorInstance {
             break;
           case Constants.SERVICE_PUBSUB:
             added = await this.addPubsubTrigger(
-              this.args.projectId,
+              definition.name,
               key,
               definition.eventTrigger,
               definition.schedule
@@ -572,7 +572,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async addPubsubTrigger(
-    projectId: string,
+    triggerName: string,
     key: string,
     eventTrigger: EventTrigger,
     schedule: EventSchedule | undefined
@@ -593,7 +593,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // In production this topic looks like
       // "firebase-schedule-{FUNCTION_NAME}-{DEPLOY-LOCATION}", we simply drop
       // the deploy location to match as closely as possible.
-      topic = "firebase-schedule-" + key;
+      topic = "firebase-schedule-" + triggerName;
     } else {
       const resourceParts = resource.split("/");
       topic = resourceParts[resourceParts.length - 1];
