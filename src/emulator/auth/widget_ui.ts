@@ -77,21 +77,15 @@ function sendAuthEventViaIframeRelay(authEvent, cb) {
   var sent = false;
   if (window.opener) {
     for (var i = 0; i < window.opener.frames.length; i++) {
-      // Try/catch is necessary because without it, the code will crash the first time one of the frames does not have
-      // the same origin (from the iframeWin.location.search) and the loop will not reach the other frames.
-      try {
-        var iframeWin = window.opener.frames[i];
-        var query = new URLSearchParams(iframeWin.location.search);
-        if (query.get('apiKey') === apiKey && query.get('appName') === appName) {
-          iframeWin.postMessage({
-            data: {authEvent: authEvent, storageKey: storageKey},
-            eventId: Math.floor(Math.random() * Math.pow(10, 20)).toString(),
-            eventType: "sendAuthEvent",
-          }, '*');
-          sent = true;
-        }
-      } catch (e) {
-        // The frame does not have the same origin
+      var iframeWin = window.opener.frames[i];
+      var query = new URLSearchParams(iframeWin.location.search);
+      if (query.get('apiKey') === apiKey && query.get('appName') === appName) {
+        iframeWin.postMessage({
+          data: {authEvent: authEvent, storageKey: storageKey},
+          eventId: Math.floor(Math.random() * Math.pow(10, 20)).toString(),
+          eventType: "sendAuthEvent",
+        }, '*');
+        sent = true;
       }
     }
   }
