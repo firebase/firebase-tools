@@ -244,6 +244,7 @@ describe("Database management", () => {
               details: [
                 {
                   metadata: {
+                    /* eslint-disable-next-line @typescript-eslint/camelcase */
                     suggested_database_ids: "dbName1,dbName2,dbName3",
                   },
                 },
