@@ -74,6 +74,7 @@ function generateInstanceList(counts: number, location: DatabaseLocation): Datab
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function generateInstanceListApiResponse(counts: number, location: DatabaseLocation): any[] {
   return Array.from(Array(counts), (_, i: number) => {
     const name = `my-db-instance-${i}`;

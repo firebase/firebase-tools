@@ -19,6 +19,7 @@ export default new Command("database:instances:create <instanceName>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.create"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (instanceName: string, options: any) => {
     const projectId = getProjectId(options);
     const location = parseDatabaseLocation(options.location, DatabaseLocation.US_CENTRAL1);
