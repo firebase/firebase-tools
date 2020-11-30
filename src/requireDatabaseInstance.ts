@@ -21,8 +21,10 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
   }
   if (instance === "") {
     throw new FirebaseError(
-      `It looks like you haven't created a Realtime Database instance in this project before. Go to ${clc.bold.underline(
-        `https://console.firebase.google.com/project/${options.project}/database`
+      `It looks like you haven't created a Realtime Database instance in this project before. Please run ${clc.bold.underline(
+        "firebase init"
+      )} and select ${clc.yellow(
+        "Realtime Database"
       )} to create your default Realtime Database instance.`
     );
   }
