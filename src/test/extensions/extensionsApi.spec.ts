@@ -597,7 +597,7 @@ describe("publishExtensionVersion", () => {
       .reply(200, { name: "operations/abc123" });
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/operations/abc123`)
-      .reply(502);
+      .reply(502, {});
 
     await expect(
       extensionsApi.publishExtensionVersion(
