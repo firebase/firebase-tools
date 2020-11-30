@@ -9,7 +9,7 @@ import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export default new Command("database:settings:get <path>")
@@ -20,7 +20,7 @@ export default new Command("database:settings:get <path>")
   )
   .help(HELP_TEXT)
   .before(requirePermissions, ["firebasedatabase.instances.get"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(

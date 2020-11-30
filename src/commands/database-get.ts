@@ -10,7 +10,7 @@ import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as responseToError from "../responseToError";
 import * as utils from "../utils";
 
@@ -66,7 +66,7 @@ export default new Command("database:get <path>")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.get"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,19 +128,23 @@ export default new Command("database:get <path>")
       throw responseToError({ statusCode: res.status }, d);
     }
 
-    res.body.pipe(outStream);
-    // Tack on a single newline at the end of the stream.
-    res.body.once("end", () => {
-      if (outStream === process.stdout) {
-        // `stdout` can simply be written to.
-        outStream.write("\n");
-      } else if (outStream instanceof fs.WriteStream) {
-        // .pipe closes the output file stream, so we need to re-open the file.
-        const s = fs.createWriteStream(options.output, { flags: "a" });
-        s.write("\n");
-        s.close();
-      } else {
-        logger.debug("[database:get] Could not write line break to outStream");
-      }
+    res.body.pipe(outStream, { end: false });
+
+    return new Promise((resolve) => {
+      // Tack on a single newline at the end of the stream.
+      res.body.once("end", () => {
+        if (outStream === process.stdout) {
+          // `stdout` can simply be written to.
+          outStream.write("\n");
+          resolve();
+        } else if (outStream instanceof fs.WriteStream) {
+          outStream.write("\n");
+          outStream.on("close", () => resolve());
+          outStream.close();
+        } else {
+          logger.debug("[database:get] Could not write line break to outStream");
+          resolve();
+        }
+      });
     });
   });

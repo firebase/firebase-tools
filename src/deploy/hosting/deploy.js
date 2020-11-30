@@ -1,6 +1,6 @@
 "use strict";
 
-const Uploader = require("./uploader");
+const { Uploader } = require("./uploader");
 const { detectProjectRoot } = require("../../detectProjectRoot");
 var { listFiles } = require("../../listFiles");
 var logger = require("../../logger");

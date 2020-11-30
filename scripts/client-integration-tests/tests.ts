@@ -1,8 +1,12 @@
 import { expect } from "chai";
 import { join } from "path";
-import { writeFileSync, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, unlinkSync } from "fs";
+import * as uuid from "uuid";
+import * as tmp from "tmp";
 
 import firebase = require("../../src");
+
+tmp.setGracefulCleanup();
 
 // Typescript doesn't like calling functions on `firebase`.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -84,4 +88,28 @@ describe("apps:sdkconfig", () => {
     expect(config.sdkConfig).to.exist;
     expect(config.sdkConfig.appId).to.equal(appID);
   });
+});
+
+describe("database:set|get|remove", () => {
+  it("should be able to interact with the database", async () => {
+    const opts = { project: process.env.FBTOOLS_TARGET_PROJECT };
+    const path = `/${uuid()}`;
+    const data = { foo: "bar" };
+
+    await client.database.set(
+      path,
+      Object.assign({ data: JSON.stringify(data), confirm: true }, opts)
+    );
+
+    // Have to read to a file in order to get data.
+    const file = tmp.fileSync();
+
+    await client.database.get(path, Object.assign({ output: file.name }, opts));
+    expect(JSON.parse(readFileSync(file.name).toString())).to.deep.equal(data);
+
+    await client.database.remove(path, Object.assign({ confirm: true }, opts));
+
+    await client.database.get(path, Object.assign({ output: file.name }, opts));
+    expect(JSON.parse(readFileSync(file.name, "utf-8"))).to.equal(null);
+  }).timeout(10 * 1e3);
 });
