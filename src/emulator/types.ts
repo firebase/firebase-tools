@@ -2,6 +2,7 @@ import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
 export enum Emulators {
+  AUTH = "auth",
   HUB = "hub",
   FUNCTIONS = "functions",
   FIRESTORE = "firestore",
@@ -28,6 +29,7 @@ export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
 export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE];
 
 export const ALL_SERVICE_EMULATORS = [
+  Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -42,6 +44,14 @@ export const EMULATORS_SUPPORTED_BY_FUNCTIONS = [
 ];
 
 export const EMULATORS_SUPPORTED_BY_UI = [
+  Emulators.AUTH,
+  Emulators.DATABASE,
+  Emulators.FIRESTORE,
+  Emulators.FUNCTIONS,
+];
+
+export const EMULATORS_SUPPORTED_BY_USE_EMULATOR = [
+  Emulators.AUTH,
   Emulators.DATABASE,
   Emulators.FIRESTORE,
   Emulators.FUNCTIONS,

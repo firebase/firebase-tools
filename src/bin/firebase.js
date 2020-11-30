@@ -18,7 +18,19 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
 }
 
 const updateNotifier = require("update-notifier")({ pkg: pkg });
-updateNotifier.notify({ defer: true, isGlobal: true });
+const clc = require("cli-color");
+const TerminalRenderer = require("marked-terminal");
+const marked = require("marked");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+const updateMessage =
+  `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+  `To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
+  `For other CLI management options, visit the ${marked(
+    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+  )}`;
+updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
 const client = require("..");
 const errorOut = require("../errorOut").errorOut;
@@ -28,7 +40,6 @@ const logger = require("../logger");
 const fs = require("fs");
 const fsutils = require("../fsutils");
 const path = require("path");
-const clc = require("cli-color");
 const ansiStrip = require("cli-color/strip");
 const { configstore } = require("../configstore");
 const _ = require("lodash");

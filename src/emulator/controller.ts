@@ -2,7 +2,6 @@ import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
-import * as http from "http";
 
 import * as Config from "../config";
 import * as logger from "../logger";
@@ -20,6 +19,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { parseRuntimeVersion } from "./functionsEmulatorUtils";
+import { AuthEmulator } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
 import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
@@ -41,9 +41,19 @@ import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 
 async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
-  const host = Constants.normalizeHost(
+  let host = Constants.normalizeHost(
     options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
   );
+
+  if (host === "localhost" && utils.isRunningInWSL()) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
+    // 127.0.0.1 instead of localhost. This, combined with the hack in
+    // downloadableEmulators.ts, forces the emulator to listen on IPv4 ONLY.
+    // The CLI (including the hub) will also consistently report 127.0.0.1,
+    // causing clients to connect via IPv4 only (which mitigates the problem of
+    // some clients resolving localhost to IPv6 and get connection refused).
+    host = "127.0.0.1";
+  }
 
   const portVal = options.config.get(Constants.getPortKey(emulator), undefined);
   let port;
@@ -342,7 +352,7 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   };
   if (options.import) {
     const importDir = path.resolve(options.import);
-    const foundMetadata = await findExportMetadata(importDir);
+    const foundMetadata = findExportMetadata(importDir);
     if (foundMetadata) {
       exportMetadata = foundMetadata;
     } else {
@@ -518,55 +528,27 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
         const ns = path.basename(f, ".json");
-
-        databaseLogger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
-
-        const readStream = fs.createReadStream(fPath);
-
-        await new Promise((resolve, reject) => {
-          const req = http.request(
-            {
-              method: "PUT",
-              host: databaseAddr.host,
-              port: databaseAddr.port,
-              path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
-              headers: {
-                Authorization: "Bearer owner",
-                "Content-Type": "application/json",
-              },
-            },
-            (response) => {
-              if (response.statusCode === 200) {
-                resolve();
-              } else {
-                databaseLogger.log("DEBUG", "Database import failed: " + response.statusCode);
-                response
-                  .on("data", (d) => {
-                    databaseLogger.log("DEBUG", d.toString());
-                  })
-                  .on("end", reject);
-              }
-            }
-          );
-
-          req.on("error", reject);
-          readStream.pipe(req, { end: true });
-        }).catch((e) => {
-          throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
-        });
+        await databaseEmulator.importData(ns, fPath);
       }
     }
   }
 
-  if (shouldStart(options, Emulators.HOSTING)) {
-    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
-    const hostingEmulator = new HostingEmulator({
-      host: hostingAddr.host,
-      port: hostingAddr.port,
-      options,
-    });
+  if (shouldStart(options, Emulators.AUTH)) {
+    if (!projectId) {
+      throw new FirebaseError(
+        `Cannot start the ${Constants.description(
+          Emulators.AUTH
+        )} without a project: run 'firebase init' or provide the --project flag`
+      );
+    }
 
-    await startEmulator(hostingEmulator);
+    const authAddr = await getAndCheckAddress(Emulators.AUTH, options);
+    const authEmulator = new AuthEmulator({
+      host: authAddr.host,
+      port: authAddr.port,
+      projectId,
+    });
+    await startEmulator(authEmulator);
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {
@@ -584,6 +566,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       auto_download: true,
     });
     await startEmulator(pubsubEmulator);
+  }
+
+  // Hosting emulator needs to start after all of the others so that we can detect
+  // which are running and call useEmulator in __init.js
+  if (shouldStart(options, Emulators.HOSTING)) {
+    const hostingAddr = await getAndCheckAddress(Emulators.HOSTING, options);
+    const hostingEmulator = new HostingEmulator({
+      host: hostingAddr.host,
+      port: hostingAddr.port,
+      options,
+    });
+
+    await startEmulator(hostingEmulator);
   }
 
   if (!noUi && shouldStart(options, Emulators.UI)) {

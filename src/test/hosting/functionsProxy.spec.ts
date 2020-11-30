@@ -37,7 +37,7 @@ describe("functionsProxy", () => {
       .get("/bar/")
       .reply(200, "live version");
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -57,7 +57,7 @@ describe("functionsProxy", () => {
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];
 
-    const mwGenerator = await functionsProxy(options);
+    const mwGenerator = functionsProxy(options);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -69,12 +69,75 @@ describe("functionsProxy", () => {
       });
   });
 
+  it("should proxy a request body on a POST request", async () => {
+    nock("http://localhost:7778")
+      .post("/project-foo/us-central1/bar/", "data")
+      .reply(200, "you got post data");
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .post("/")
+      .send("data")
+      .expect(200, "you got post data")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should proxy with a query string", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .query({ key: "value" })
+      .reply(200, "query!");
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .query({ key: "value" })
+      .expect(200, "query!")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should return 3xx responses directly", async () => {
+    nock("http://localhost:7778")
+      .get("/project-foo/us-central1/bar/")
+      .reply(301, "redirected", { Location: "https://example.com" });
+
+    const options = cloneDeep(fakeOptions);
+    options.targets = ["functions"];
+
+    const mwGenerator = functionsProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(301, "redirected")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
   it("should pass through normal 404 errors", async () => {
     nock("https://us-central1-project-foo.cloudfunctions.net")
       .get("/bar/404.html")
       .reply(404, "normal 404");
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -91,7 +154,7 @@ describe("functionsProxy", () => {
       .get("/bar/404-cascade.html")
       .reply(404, "normal 404 with cascade", { "x-cascade": "pass" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
     const finalMw = sinon.stub().callsFake((_, res) => {
@@ -115,7 +178,7 @@ describe("functionsProxy", () => {
       .get("/bar/cached")
       .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -133,7 +196,7 @@ describe("functionsProxy", () => {
       .get("/bar/vary")
       .reply(200, "live vary version", { vary: "Other, Authorization" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -151,7 +214,7 @@ describe("functionsProxy", () => {
       .get("/bar/500")
       .replyWithError({ message: "normal error" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -168,7 +231,7 @@ describe("functionsProxy", () => {
       .get("/bar/timeout")
       .replyWithError({ message: "ahh", code: "ETIMEDOUT" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 
@@ -185,7 +248,7 @@ describe("functionsProxy", () => {
       .get("/bar/sockettimeout")
       .replyWithError({ message: "ahh", code: "ESOCKETTIMEDOUT" });
 
-    const mwGenerator = await functionsProxy(fakeOptions);
+    const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
     const spyMw = sinon.spy(mw);
 

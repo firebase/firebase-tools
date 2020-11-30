@@ -6,7 +6,7 @@ import * as fs from "fs-extra";
 import { fileExistsSync } from "../../fsutils";
 import { ExtensionSpec, Resource } from "../extensionsApi";
 import { FirebaseError } from "../../error";
-import { substituteParams } from "./paramHelper";
+import { substituteParams } from "../extensionsHelper";
 import { EmulatorLogger } from "../../emulator/emulatorLogger";
 import { Emulators } from "../../emulator/types";
 

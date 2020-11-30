@@ -60,6 +60,7 @@ export class EmulatorRegistry {
       database: 3.0,
       firestore: 3.1,
       pubsub: 3.2,
+      auth: 3.3,
 
       // Hub shuts down once almost everything else is done
       hub: 4,
@@ -111,6 +112,17 @@ export class EmulatorRegistry {
     }
 
     return instance.getInfo();
+  }
+
+  static getInfoHostString(info: EmulatorInfo): string {
+    const { host, port } = info;
+
+    // Quote IPv6 addresses
+    if (host.includes(":")) {
+      return `[${host}]:${port}`;
+    } else {
+      return `${host}:${port}`;
+    }
   }
 
   static getPort(emulator: Emulators): number | undefined {

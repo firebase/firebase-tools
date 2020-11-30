@@ -15,7 +15,7 @@ exports.updateRules = function(projectId, instance, src, options) {
   return populateInstanceDetails(downstreamOptions)
     .then(function() {
       const origin = utils.getDatabaseUrl(
-        realtimeOriginOrCustomUrl(downstreamOptions),
+        realtimeOriginOrCustomUrl(downstreamOptions.instanceDetails.databaseUrl),
         instance,
         ""
       );

@@ -58,12 +58,10 @@ export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
-/**
- * We want to be able to run the Firestore and Database emulators even in the absence
- * of firebase.json. For Functions and Hosting we require the JSON file since the
- * config interactions can become fairly complex.
- */
-const DEFAULT_CONFIG = new Config({ database: {}, firestore: {}, functions: {}, hosting: {} }, {});
+const DEFAULT_CONFIG = new Config(
+  { database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  {}
+);
 
 export function printNoticeIfEmulated(
   options: any,
@@ -134,6 +132,10 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     config: DEFAULT_CONFIG,
   };
   const optionsWithConfig = options.config ? options : optionsWithDefaultConfig;
+
+  // We want to be able to run most emulators even in the absence of
+  // firebase.json. For Functions and Hosting we require the JSON file since the
+  // config interactions can become fairly complex.
   const canStartWithoutConfig =
     options.only &&
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
@@ -274,7 +276,7 @@ function processKillSignal(
           pids.push(emulatorInfo.pid as number);
           emulatorsTable.push([
             Constants.description(emulatorInfo.name),
-            `${emulatorInfo.host}:${emulatorInfo.port}`,
+            EmulatorRegistry.getInfoHostString(emulatorInfo),
             emulatorInfo.pid,
           ]);
         }
@@ -320,23 +322,30 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   const databaseInstance = EmulatorRegistry.get(Emulators.DATABASE);
   if (databaseInstance) {
     const info = databaseInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
     env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = address;
   }
 
   const firestoreInstance = EmulatorRegistry.get(Emulators.FIRESTORE);
   if (firestoreInstance) {
     const info = firestoreInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
 
     env[Constants.FIRESTORE_EMULATOR_HOST] = address;
     env[FirestoreEmulator.FIRESTORE_EMULATOR_ENV_ALT] = address;
   }
 
+  const authInstance = EmulatorRegistry.get(Emulators.AUTH);
+  if (authInstance) {
+    const info = authInstance.getInfo();
+    const address = EmulatorRegistry.getInfoHostString(info);
+    env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = address;
+  }
+
   const hubInstance = EmulatorRegistry.get(Emulators.HUB);
   if (hubInstance) {
     const info = hubInstance.getInfo();
-    const address = `${info.host}:${info.port}`;
+    const address = EmulatorRegistry.getInfoHostString(info);
     env[EmulatorHub.EMULATOR_HUB_ENV] = address;
   }
 

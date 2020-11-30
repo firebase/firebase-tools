@@ -1,7 +1,4 @@
 import * as _ from "lodash";
-import * as logger from "../logger";
-import * as parseTriggers from "../parseTriggers";
-import * as utils from "../utils";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
@@ -64,6 +61,10 @@ export interface FunctionsRuntimeBundle {
       host: string;
       port: number;
     };
+    auth?: {
+      host: string;
+      port: number;
+    };
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
@@ -116,29 +117,6 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
-}
-
-export async function getTriggersFromDirectory(
-  projectId: string,
-  functionsDir: string,
-  firebaseConfig: any
-): Promise<EmulatedTriggerMap> {
-  let triggerDefinitions;
-
-  try {
-    triggerDefinitions = await parseTriggers(
-      projectId,
-      functionsDir,
-      {},
-      JSON.stringify(firebaseConfig)
-    );
-  } catch (e) {
-    utils.logWarning(`Failed to load functions source code.`);
-    logger.info(e.message);
-    return {};
-  }
-
-  return getEmulatedTriggersFromDefinitions(triggerDefinitions, functionsDir);
 }
 
 export function getEmulatedTriggersFromDefinitions(

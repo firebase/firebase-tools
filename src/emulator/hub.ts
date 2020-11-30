@@ -10,6 +10,7 @@ import { Constants } from "./constants";
 import { Emulators, EmulatorInstance, EmulatorInfo } from "./types";
 import { HubExport } from "./hubExport";
 import { EmulatorRegistry } from "./registry";
+import { FunctionsEmulator } from "./functionsEmulator";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -32,6 +33,8 @@ export class EmulatorHub implements EmulatorInstance {
   static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
+  static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
+  static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
 
   /**
@@ -100,6 +103,40 @@ export class EmulatorHub implements EmulatorInstance {
           message: errorString,
         });
       }
+    });
+
+    this.hub.put(EmulatorHub.PATH_DISABLE_FUNCTIONS, (req, res) => {
+      utils.logLabeledBullet(
+        "emulators",
+        `Disabling Cloud Functions triggers, non-HTTP functions will not execute.`
+      );
+
+      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+      if (!instance) {
+        res.status(400).json({ error: "The Cloud Functions emulator is not running." });
+        return;
+      }
+
+      const emu = instance as FunctionsEmulator;
+      emu.disableBackgroundTriggers();
+      res.status(200).json({ enabled: false });
+    });
+
+    this.hub.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
+      utils.logLabeledBullet(
+        "emulators",
+        `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
+      );
+
+      const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
+      if (!instance) {
+        res.status(400).send("The Cloud Functions emulator is not running.");
+        return;
+      }
+
+      const emu = instance as FunctionsEmulator;
+      await emu.reloadTriggers();
+      res.status(200).json({ enabled: true });
     });
   }
 

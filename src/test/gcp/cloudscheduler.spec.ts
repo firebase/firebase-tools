@@ -1,10 +1,10 @@
-import * as _ from "lodash";
 import { expect } from "chai";
+import * as _ from "lodash";
 import * as nock from "nock";
-import * as api from "../../api";
 
-import { FirebaseError } from "../../error";
 import { cloudscheduler } from "../../gcp";
+import { FirebaseError } from "../../error";
+import * as api from "../../api";
 
 const VERSION = "v1beta1";
 
@@ -111,6 +111,22 @@ describe("cloudscheduler", () => {
       await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
+      );
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should error and exit if cloud scheduler create request fail", async () => {
+      nock(api.cloudschedulerOrigin)
+        .get(`/${VERSION}/${TEST_JOB.name}`)
+        .reply(404, { context: { response: { statusCode: 404 } } });
+      nock(api.cloudschedulerOrigin)
+        .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
+        .reply(400, { context: { response: { statusCode: 400 } } });
+
+      await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
       );
 
       expect(nock.isDone()).to.be.true;

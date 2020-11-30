@@ -2,6 +2,7 @@ import * as chokidar from "chokidar";
 import * as clc from "cli-color";
 import * as fs from "fs";
 import * as path from "path";
+import * as http from "http";
 
 import * as api from "../api";
 import * as downloadableEmulators from "./downloadableEmulators";
@@ -9,6 +10,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators } from "../emulator/types";
 import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
+import { FirebaseError } from "../error";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -21,6 +23,7 @@ export interface DatabaseEmulatorArgs {
 }
 
 export class DatabaseEmulator implements EmulatorInstance {
+  private importedNamespaces: string[] = [];
   private rulesWatcher?: chokidar.FSWatcher;
   private logger = EmulatorLogger.forEmulator(Emulators.DATABASE);
 
@@ -106,11 +109,55 @@ export class DatabaseEmulator implements EmulatorInstance {
     return Emulators.DATABASE;
   }
 
-  private async updateRules(instance: string, content: string): Promise<any> {
+  getImportedNamespaces(): string[] {
+    return this.importedNamespaces;
+  }
+
+  async importData(ns: string, fPath: string): Promise<void> {
+    this.logger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+
+    const readStream = fs.createReadStream(fPath);
     const { host, port } = this.getInfo();
+
+    await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          method: "PUT",
+          host,
+          port,
+          path: `/.json?ns=${ns}&disableTriggers=true&writeSizeLimit=unlimited`,
+          headers: {
+            Authorization: "Bearer owner",
+            "Content-Type": "application/json",
+          },
+        },
+        (response) => {
+          if (response.statusCode === 200) {
+            this.importedNamespaces.push(ns);
+            resolve();
+          } else {
+            this.logger.log("DEBUG", "Database import failed: " + response.statusCode);
+            response
+              .on("data", (d) => {
+                this.logger.log("DEBUG", d.toString());
+              })
+              .on("end", reject);
+          }
+        }
+      );
+
+      req.on("error", reject);
+      readStream.pipe(req, { end: true });
+    }).catch((e) => {
+      throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+    });
+  }
+
+  private async updateRules(instance: string, content: string): Promise<any> {
+    const info = this.getInfo();
     try {
       await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
-        origin: `http://${host}:${port}`,
+        origin: `http://${EmulatorRegistry.getInfoHostString(info)}`,
         headers: { Authorization: "Bearer owner" },
         data: content,
         json: false,
