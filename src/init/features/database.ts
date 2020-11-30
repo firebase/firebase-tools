@@ -35,7 +35,7 @@ const DEFAULT_RULES = JSON.stringify(
   2
 );
 
-async function getDBRules(instanceDetails: DatabaseInstance) {
+async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   if (!instanceDetails || !instanceDetails.name) {
     return Promise.resolve(DEFAULT_RULES);
   }
@@ -46,7 +46,11 @@ async function getDBRules(instanceDetails: DatabaseInstance) {
   return response.body;
 }
 
-async function writeDBRules(instanceDetails: DatabaseInstance, filename: string, config: Config) {
+async function writeDBRules(
+  instanceDetails: DatabaseInstance,
+  filename: string,
+  config: Config
+): Promise<void> {
   const rules = await getDBRules(instanceDetails);
   config.writeProjectFile(filename, rules);
   utils.logSuccess(
@@ -113,9 +117,14 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
   }
 }
 
+/**
+ * doSetup is the entry point for setting up the database product.
+ * @param setup information helpful for database setup
+ * @param config legacy config parameter. not used for database setup.
+ */
 export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
   setup.config = {};
-  await ensure(setup.projectId, "firebasedatabase.googleapis.com", "Realtime Database", false);
+  await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
   logger.info();
   setup.instance =
     setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
@@ -138,7 +147,10 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       default: "database.rules.json",
     },
   ]);
-  filename = setup.config.rulesFile!;
+  if (!setup.config.rulesFile) {
+    throw new FirebaseError("Rules file cannot be empty");
+  }
+  filename = setup.config.rulesFile;
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
     const msg =

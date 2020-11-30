@@ -11,7 +11,7 @@ import { Constants } from "../emulator/constants";
 const MGMT_API_VERSION = "v1beta";
 const TIMEOUT_MILLIS = 10000;
 const APP_LIST_PAGE_SIZE = 100;
-const INSTANCE_RESOURCE_NAME_REGEX = /projects\/([^\/]+?)\/locations\/([^\/]+?)\/instances\/([^\/]*)/;
+const INSTANCE_RESOURCE_NAME_REGEX = /projects\/([^/]+?)\/locations\/([^/]+?)\/instances\/([^/]*)/;
 
 export enum DatabaseInstanceType {
   DATABASE_INSTANCE_TYPE_UNSPECIFIED = "unspecified",
@@ -101,6 +101,7 @@ export async function getDatabaseInstanceDetails(
  * @param projectId identifier for the user's project.
  * @param instanceName name of the RTDB instance.
  * @param location location for the project's instance.
+ * @param databaseType type of the database being created.
  */
 export async function createInstance(
   projectId: string,
