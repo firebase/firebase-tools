@@ -5,4 +5,4 @@
 - Shows filtered values when sorted in the Firestore Emulator UI.
 - Shows spaces in field keys in the Firestore Emulator UI.
 - Fixes Auth Emulator UI not including project ID in API calls.
-- Fixed an issue in the emulated auth widget UI where there would be an error if one of the opener frames was a cross-origin frame
+- Fixed an issue in the emulated auth widget UI where there would be an error if one of the opener frames was a cross-origin frame.
