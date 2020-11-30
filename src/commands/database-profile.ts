@@ -1,17 +1,15 @@
-"use strict";
+import * as _ from "lodash";
 
-var _ = require("lodash");
+import { Command } from "../command";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
+import { populateInstanceDetails } from "../management/database";
+import { requirePermissions } from "../requirePermissions";
+import * as utils from "../utils";
+import { profiler } from "../profiler";
+import { Emulators } from "../emulator/types";
+import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-var { Command } = require("../command");
-var requireInstance = require("../requireInstance");
-var { populateInstanceDetails } = require("../management/database");
-var { requirePermissions } = require("../requirePermissions");
-var utils = require("../utils");
-var { profiler } = require("../profiler");
-var { Emulators } = require("../emulator/types");
-var { warnEmulatorNotSupported } = require("../emulator/commandUtils");
-
-var description = "profile the Realtime Database and generate a usage report";
+const description = "profile the Realtime Database and generate a usage report";
 
 module.exports = new Command("database:profile")
   .description(description)
@@ -32,10 +30,10 @@ module.exports = new Command("database:profile")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
-  .action(function(options) {
+  .action((options) => {
     // Validate options
     if (options.raw && options.input) {
       return utils.reject("Cannot specify both an input file and raw format", {
