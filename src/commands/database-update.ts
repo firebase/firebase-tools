@@ -12,7 +12,7 @@ import { promptOnce } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import * as logger from "../logger";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export default new Command("database:update <path> [infile]")
@@ -24,7 +24,7 @@ export default new Command("database:update <path> [infile]")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(printNoticeIfEmulated, Emulators.DATABASE)
   .action(async (path: string, infile: string | undefined, options) => {
