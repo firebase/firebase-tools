@@ -18,7 +18,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
   nodejs12: "Node.js 12",
-  nodejs14: "Node.js 14 (Preview)",
+  nodejs14: "Node.js 14 (Beta)",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
