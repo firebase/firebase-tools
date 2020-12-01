@@ -24,9 +24,13 @@ export class WorkQueue {
 
   private queue: Array<Work> = [];
   private workRunningCount: number = 0;
-  private notifyQueue: () => void = () => {};
-  private notifyWorkFinish: () => void = () => {};
-  private stopped: boolean = true;
+  private notifyQueue: () => void = () => {
+    // Noop by default, will be set by .start() when queue is empty.
+  };
+  private notifyWorkFinish: () => void = () => {
+    // Noop by default, will be set by .start() when there are too many jobs.
+  };
+  private stopped = true;
 
   constructor(
     private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO,
