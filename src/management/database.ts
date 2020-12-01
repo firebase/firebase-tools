@@ -177,13 +177,13 @@ export async function checkInstanceNameAvailable(
       }`
     );
     const errBody = err.context.body.error;
-    /* eslint-disable @typescript-eslint/camelcase */
+    // eslint-disable-next-line @typescript-eslint/camelcase
     if (errBody?.details?.[0]?.metadata?.suggested_database_ids) {
       return {
         available: false,
+        // eslint-disable-next-line @typescript-eslint/camelcase
         suggestedIds: errBody.details[0].metadata.suggested_database_ids.split(","),
       };
-      /* eslint-enable @typescript-eslint/camelcase */
     }
     throw new FirebaseError(
       `Failed to validate Realtime Database instance name: ${instanceName}.`,

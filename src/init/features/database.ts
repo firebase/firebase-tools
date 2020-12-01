@@ -37,7 +37,7 @@ const DEFAULT_RULES = JSON.stringify(
 
 async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   if (!instanceDetails || !instanceDetails.name) {
-    return Promise.resolve(DEFAULT_RULES);
+    return DEFAULT_RULES;
   }
   const response = await api.request("GET", "/.settings/rules.json", {
     auth: true,
@@ -177,5 +177,5 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       clc.bold("firebase deploy") +
       "."
   );
-  return Promise.resolve();
+  return;
 }
