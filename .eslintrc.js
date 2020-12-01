@@ -39,7 +39,7 @@ module.exports = {
         "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-misused-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unnecessary-type-assertion": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": ["warn", { "functions": false, "typedefs": false }], // TODO(bkendall): change to error.
+        "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.
@@ -48,6 +48,11 @@ module.exports = {
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
+
+        // Use the TS version of the rule which allows `function foo(this) ...`.
+        // https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-this.md
+        "no-invalid-this": "off",
+        "@typescript-eslint/no-invalid-this": ["error"],
       },
     },
     {
@@ -64,7 +69,6 @@ module.exports = {
         "@typescript-eslint/prefer-regexp-exec": "off",
         "@typescript-eslint/unbound-method": "off",
 
-        "no-invalid-this": "warn", // TODO(bkendall): remove, allow to error.
         "no-var": "off", // TODO(bkendall): remove, allow to error.
         "prefer-arrow-callback": "off", // TODO(bkendall): remove, allow to error.
       },
