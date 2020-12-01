@@ -37,7 +37,7 @@ const DEFAULT_RULES = JSON.stringify(
 
 async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   if (!instanceDetails || !instanceDetails.name) {
-    return Promise.resolve(DEFAULT_RULES);
+    return DEFAULT_RULES;
   }
   const response = await api.request("GET", "/.settings/rules.json", {
     auth: true,
@@ -46,30 +46,21 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   return response.body;
 }
 
-async function writeDBRules(
-  instanceDetails: DatabaseInstance,
+function writeDBRules(
+  rules: string,
+  logMessagePrefix: string,
   filename: string,
   config: Config
-): Promise<void> {
-  const rules = await getDBRules(instanceDetails);
+): void {
   config.writeProjectFile(filename, rules);
-  utils.logSuccess(
-    "Database Rules for " +
-      clc.bold(instanceDetails.name) +
-      " have been downloaded to " +
-      clc.bold(filename) +
-      "."
-  );
+  utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
   logger.info(
-    "Future modifications to " + clc.bold(filename) + " will update Database Rules when you run"
+    `Future modifications to ${clc.bold(filename)} will update Database Rules when you run`
   );
   logger.info(clc.bold("firebase deploy") + ".");
 }
 
 async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
-  logger.info(
-    "It seems like you haven’t initialized Realtime Database in your project yet. Let's set it up!"
-  );
   const selectedLocation = await promptOnce({
     type: "list",
     message: "Please choose the location for your default Realtime Database instance:",
@@ -128,10 +119,21 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   logger.info();
   setup.instance =
     setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
-  const instanceDetails =
-    setup.instance !== ""
-      ? await getDatabaseInstanceDetails(setup.projectId, setup.instance)
-      : await createDefaultDatabaseInstance(setup.projectId);
+  let instanceDetails;
+  if (setup.instance !== "") {
+    instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
+  } else {
+    const confirm = await promptOnce({
+      type: "confirm",
+      name: "confirm",
+      default: true,
+      message:
+        "It seems like you haven’t initialized Realtime Database in your project yet. Do you want to set it up?",
+    });
+    if (confirm) {
+      instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
+    }
+  }
   let filename = null;
 
   logger.info();
@@ -153,13 +155,11 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   filename = setup.config.rulesFile;
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
-    const msg =
-      "File " +
-      clc.bold(filename) +
-      " already exists." +
-      " Do you want to overwrite it with the Database Rules for " +
-      clc.bold(instanceDetails.name) +
-      " from the Firebase Console?";
+    const msg = `File ${clc.bold(filename)} already exists. Do you want to overwrite it with ${
+      instanceDetails
+        ? `the Database Rules for ${clc.bold(instanceDetails.name)} from the Firebase Console?`
+        : `default rules?`
+    }`;
     writeRules = await promptOnce({
       type: "confirm",
       message: msg,
@@ -167,15 +167,23 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
     });
   }
   if (writeRules) {
-    return writeDBRules(instanceDetails, filename, config);
+    if (instanceDetails) {
+      writeDBRules(
+        await getDBRules(instanceDetails),
+        `Database Rules for ${instanceDetails.name}`,
+        filename,
+        config
+      );
+      return;
+    }
+    writeDBRules(DEFAULT_RULES, "Default rules", filename, config);
+    return;
   }
   logger.info("Skipping overwrite of Database Rules.");
   logger.info(
-    "The rules defined in " +
-      clc.bold(filename) +
-      " will be published when you do " +
-      clc.bold("firebase deploy") +
-      "."
+    `The rules defined in ${clc.bold(filename)} will be published when you do ${clc.bold(
+      "firebase deploy"
+    )}.`
   );
-  return Promise.resolve();
+  return;
 }

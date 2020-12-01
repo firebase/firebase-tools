@@ -45,6 +45,7 @@ export interface DatabaseInstance {
  * Populate instanceDetails in commandOptions.
  * @param options command options that will be modified to add instanceDetails.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function populateInstanceDetails(options: any): Promise<void> {
   options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
   return Promise.resolve();
@@ -176,9 +177,11 @@ export async function checkInstanceNameAvailable(
       }`
     );
     const errBody = err.context.body.error;
+    // eslint-disable-next-line @typescript-eslint/camelcase
     if (errBody?.details?.[0]?.metadata?.suggested_database_ids) {
       return {
         available: false,
+        // eslint-disable-next-line @typescript-eslint/camelcase
         suggestedIds: errBody.details[0].metadata.suggested_database_ids.split(","),
       };
     }
@@ -222,6 +225,7 @@ export function parseDatabaseLocation(
  * Lists all database instances for the specified project.
  * Repeatedly calls the paginated API until all pages have been read.
  * @param projectId the project to list apps for.
+ * @param location optional location filter to restrict instances to specified location.
  * @param pageSize the number of results to be returned in a response.
  * @return list of all DatabaseInstances.
  */
@@ -265,6 +269,7 @@ export async function listDatabaseInstances(
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
   if (!serverInstance.name) {
     throw new FirebaseError(`DatabaseInstance response is missing field "name"`);
