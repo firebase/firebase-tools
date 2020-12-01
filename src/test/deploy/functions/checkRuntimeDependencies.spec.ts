@@ -80,7 +80,7 @@ describe("checkRuntimeDependencies()", () => {
     });
   });
 
-  ["nodejs10", "nodejs12"].forEach((runtime) => {
+  ["nodejs10", "nodejs12", "nodejs14"].forEach((runtime) => {
     describe(`with ${runtime}`, () => {
       describe("with cloudbuild service enabled", () => {
         beforeEach(() => {

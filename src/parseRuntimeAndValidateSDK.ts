@@ -18,6 +18,7 @@ const MESSAGE_FRIENDLY_RUNTIMES: { [key: string]: string } = {
   nodejs8: "Node.js 8 (Deprecated)",
   nodejs10: "Node.js 10",
   nodejs12: "Node.js 12",
+  nodejs14: "Node.js 14 (Preview)",
 };
 
 const ENGINE_RUNTIMES: { [key: string]: string } = {
@@ -25,6 +26,7 @@ const ENGINE_RUNTIMES: { [key: string]: string } = {
   8: "nodejs8",
   10: "nodejs10",
   12: "nodejs12",
+  14: "nodejs14",
 };
 
 const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
@@ -32,19 +34,19 @@ const ENGINE_RUNTIMES_NAMES = Object.values(ENGINE_RUNTIMES);
 export const RUNTIME_NOT_SET =
   "`runtime` field is required but was not found in firebase.json.\n" +
   "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  '"runtime": "nodejs10"\n';
+  '"runtime": "nodejs12"\n';
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs8")}, ${clc.bold("nodejs10")}, and ${clc.bold(
-      "nodejs12"
+    `Valid choices are: ${clc.bold("nodejs10")}, ${clc.bold("nodejs12")}, and ${clc.bold(
+      "nodejs14"
     )}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": "8"}')}, ${clc.bold('{"node": "10"}')}, and ${clc.bold(
-      '{"node":"12"}'
+    `Valid choices are: ${clc.bold('{"node": "10"}')}, ${clc.bold('{"node":"12"}')}, and ${clc.bold(
+      '{"node":"14"}'
     )}.`
 );
 
