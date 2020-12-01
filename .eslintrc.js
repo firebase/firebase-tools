@@ -33,6 +33,8 @@ module.exports = {
       rules: {
         "jsdoc/require-param-type": "off",
         "jsdoc/require-returns-type": "off",
+        "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
+        "@typescript-eslint/no-invalid-this": ["error"],
 
         "@typescript-eslint/camelcase": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
@@ -48,11 +50,6 @@ module.exports = {
         "no-case-declarations": "warn", // TODO(bkendall): remove, allow to error.
         "no-constant-condition": "warn", // TODO(bkendall): remove, allow to error.
         "no-fallthrough": "warn", // TODO(bkendall): remove, allow to error.
-
-        // Use the TS version of the rule which allows `function foo(this) ...`.
-        // https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-this.md
-        "no-invalid-this": "off",
-        "@typescript-eslint/no-invalid-this": ["error"],
       },
     },
     {
