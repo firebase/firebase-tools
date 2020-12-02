@@ -155,7 +155,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
 
       // TODO: remove "falls through" once producer and registry experience are released
       switch (newSourceOrigin) {
-        case SourceOrigin.LOCAL: {
+        case SourceOrigin.LOCAL:
           if (previews.extdev) {
             newSourceName = await updateFromLocalSource(
               projectId,
@@ -166,10 +166,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
             break;
           }
-          // falls through
-        }
+        // falls through
         // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.URL: {
+        case SourceOrigin.URL:
           if (previews.extdev) {
             newSourceName = await updateFromUrlSource(
               projectId,
@@ -180,10 +179,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             );
             break;
           }
-          // falls through
-        }
-        // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.OFFICIAL_EXTENSION_VERSION: {
+        case SourceOrigin.OFFICIAL_EXTENSION_VERSION:
           newSourceName = await updateToVersionFromRegistry(
             projectId,
             instanceId,
@@ -192,10 +188,16 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             updateSource
           );
           break;
-          // falls through
-        }
-        // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
+        case SourceOrigin.OFFICIAL_EXTENSION:
+          newSourceName = await updateFromRegistry(
+            projectId,
+            instanceId,
+            existingSpec,
+            existingSource
+          );
+          break;
+        // falls through
+        case SourceOrigin.PUBLISHED_EXTENSION_VERSION:
           if (previews.extdev) {
             newSourceName = await updateToVersionFromPublisherSource(
               projectId,
@@ -207,10 +209,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             published = true;
             break;
           }
-          // falls through
-        }
-        // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.PUBLISHED_EXTENSION: {
+        // falls through
+        case SourceOrigin.PUBLISHED_EXTENSION:
           if (previews.extdev) {
             newSourceName = await updateFromPublisherSource(
               projectId,
@@ -222,21 +222,8 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             published = true;
             break;
           }
-          // falls through
-        }
-        // eslint-disable-next-line no-fallthrough
-        case SourceOrigin.OFFICIAL_EXTENSION: {
-          newSourceName = await updateFromRegistry(
-            projectId,
-            instanceId,
-            existingSpec,
-            existingSource
-          );
-          break;
-        }
-        default: {
+        default:
           throw new FirebaseError(`Unknown source '${clc.bold(updateSource)}.'`);
-        }
       }
 
       // TODO(fix): currently exploiting an oversight in this method call to make calls to both
