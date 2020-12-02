@@ -12,7 +12,7 @@ import {
 import getProjectId = require("../getProjectId");
 import { getDefaultDatabaseInstance } from "../getDefaultDatabaseInstance";
 import { FirebaseError } from "../error";
-import * as clc from "cli-color";
+import { MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE } from "../requireDatabaseInstance";
 
 export default new Command("database:instances:create <instanceName>")
   .description("create a realtime database instance")
@@ -27,13 +27,7 @@ export default new Command("database:instances:create <instanceName>")
     const projectId = getProjectId(options);
     const defaultDatabaseInstance = await getDefaultDatabaseInstance({ project: projectId });
     if (defaultDatabaseInstance === "") {
-      throw new FirebaseError(
-        `It looks like you haven't created a Realtime Database instance in this project before. Please run ${clc.cyan.bold(
-          "firebase init"
-        )} and select ${clc.yellow(
-          "Realtime Database"
-        )} to create your default Realtime Database instance.`
-      );
+      throw new FirebaseError(MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE);
     }
     const location = parseDatabaseLocation(options.location, DatabaseLocation.US_CENTRAL1);
     const instance = await createInstance(
