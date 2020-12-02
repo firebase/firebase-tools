@@ -138,7 +138,7 @@ describe("updateHelper", () => {
     let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
@@ -163,7 +163,7 @@ describe("updateHelper", () => {
       );
       expect(name).to.equal(SOURCE.name);
     });
-    
+
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       createSourceStub.throwsException("Invalid source");
@@ -171,7 +171,7 @@ describe("updateHelper", () => {
         updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
     });
-    
+
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       createSourceStub.resolves(SOURCE);
@@ -185,7 +185,7 @@ describe("updateHelper", () => {
     let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
@@ -247,7 +247,7 @@ describe("updateHelper", () => {
     let registryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
@@ -267,7 +267,7 @@ describe("updateHelper", () => {
       isOfficialStub.restore();
       getInstanceStub.restore();
     });
-    
+
     it("should return the correct source name for a valid published extension version source", async () => {
       promptStub.resolves(true);
       getExtensionStub.resolves(EXTENSION);
@@ -281,7 +281,7 @@ describe("updateHelper", () => {
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
     });
-    
+
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       getExtensionStub.throws(Error("NOT FOUND"));
@@ -296,7 +296,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith("NOT FOUND");
     });
-    
+
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       getExtensionStub.resolves(EXTENSION);
@@ -320,7 +320,7 @@ describe("updateHelper", () => {
     let registryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       getExtensionStub = sinon.stub(extensionsApi, "getExtension");
@@ -340,7 +340,7 @@ describe("updateHelper", () => {
       isOfficialStub.restore();
       getInstanceStub.restore();
     });
-    
+
     it("should return the correct source name for the latest published extension source", async () => {
       promptStub.resolves(true);
       getExtensionStub.resolves(EXTENSION);
@@ -354,7 +354,7 @@ describe("updateHelper", () => {
       );
       expect(name).to.equal(EXTENSION_VERSION.name);
     });
-    
+
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       getExtensionStub.throws(Error("NOT FOUND"));
@@ -369,7 +369,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith("NOT FOUND");
     });
-    
+
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       getExtensionStub.resolves(EXTENSION);
@@ -392,7 +392,7 @@ describe("updateHelper", () => {
     let registryEntryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
@@ -437,7 +437,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
-    
+
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       await expect(
@@ -450,7 +450,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-    
+
     it("should not update if version given less than min version required", async () => {
       await expect(
         updateHelper.updateToVersionFromRegistry(
@@ -470,7 +470,7 @@ describe("updateHelper", () => {
     let registryEntryStub: sinon.SinonStub;
     let isOfficialStub: sinon.SinonStub;
     let getInstanceStub: sinon.SinonStub;
-    
+
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsApi, "getExtensionVersion");
@@ -488,7 +488,7 @@ describe("updateHelper", () => {
       isOfficialStub.restore();
       getInstanceStub.restore();
     });
-    
+
     it("should return the correct source name for a valid published source", async () => {
       promptStub.resolves(true);
       const name = await updateHelper.updateFromRegistry(
@@ -499,7 +499,7 @@ describe("updateHelper", () => {
       );
       expect(name).to.equal("projects/firebasemods/sources/abc");
     });
-    
+
     it("should throw an error for an invalid source", async () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
@@ -507,7 +507,7 @@ describe("updateHelper", () => {
         updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
     });
-    
+
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);

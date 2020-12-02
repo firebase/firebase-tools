@@ -45,7 +45,7 @@ const testRegistryEntry = {
 
 describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
-  
+
   beforeEach(() => {
     confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves(true);
   });
