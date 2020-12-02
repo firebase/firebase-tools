@@ -19,11 +19,13 @@ export default new Command("ext:dev:publish <extensionRef>")
   )
   .before(requireAuth)
   .action(async (extensionRef: string) => {
-    const {publisherId, extensionId, version}  = parseRef(extensionRef)
+    const { publisherId, extensionId, version } = parseRef(extensionRef);
     if (version) {
       throw new FirebaseError(
-        `The input extension reference must be of the format ${clc.bold("<publisherId>/<extensionId>")}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.` 
-      )
+        `The input extension reference must be of the format ${clc.bold(
+          "<publisherId>/<extensionId>"
+        )}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.`
+      );
     }
     if (!publisherId || !extensionId) {
       throw new FirebaseError(

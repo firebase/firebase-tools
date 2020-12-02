@@ -145,13 +145,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         );
       }
 
-      const isPublished =
-        [
-          SourceOrigin.OFFICIAL_EXTENSION,
-          SourceOrigin.OFFICIAL_EXTENSION_VERSION,
-          SourceOrigin.PUBLISHED_EXTENSION,
-          SourceOrigin.PUBLISHED_EXTENSION_VERSION,
-        ].includes(newSourceOrigin);
+      const isPublished = [
+        SourceOrigin.OFFICIAL_EXTENSION,
+        SourceOrigin.OFFICIAL_EXTENSION_VERSION,
+        SourceOrigin.PUBLISHED_EXTENSION,
+        SourceOrigin.PUBLISHED_EXTENSION_VERSION,
+      ].includes(newSourceOrigin);
       displayExtInfo(instanceId, existingSpec, isPublished);
 
       // TODO: remove "falls through" once producer and registry experience are released
