@@ -1123,7 +1123,7 @@ async function handleMessage(message: string) {
   }
 }
 
-async function main(): Promise<void> {
+function main(): void {
   // Since the functions run as attached processes they naturally inherit SIGINT
   // sent to the functions emulator. We want them to ignore the first signal
   // to allow for a clean shutdown.

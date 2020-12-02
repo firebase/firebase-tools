@@ -21,7 +21,9 @@ describe("Command", () => {
         ["foo", "bar"]
       );
       command.help("here's how!");
-      command.action(() => {});
+      command.action(() => {
+        // do nothing
+      });
     }).not.to.throw;
   });
 

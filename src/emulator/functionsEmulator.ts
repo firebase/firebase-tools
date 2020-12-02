@@ -207,10 +207,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // A trigger named "foo" needs to respond at "foo" as well as "foo/*" but not "fooBar".
     const httpsFunctionRoutes = [httpsFunctionRoute, `${httpsFunctionRoute}/*`];
 
-    const backgroundHandler: express.RequestHandler = async (
-      req: express.Request,
-      res: express.Response
-    ) => {
+    const backgroundHandler: express.RequestHandler = (req, res) => {
       const triggerId = req.params.trigger_name;
       const projectId = req.params.project_id;
       const reqBody = (req as RequestWithRawBody).rawBody;
@@ -240,19 +237,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       });
     };
 
-    const httpsHandler: express.RequestHandler = async (
-      req: express.Request,
-      res: express.Response
-    ) => {
+    const httpsHandler: express.RequestHandler = (req, res) => {
       this.workQueue.submit(() => {
         return this.handleHttpsTrigger(req, res);
       });
     };
 
-    const multicastHandler: express.RequestHandler = async (
-      req: express.Request,
-      res: express.Response
-    ) => {
+    const multicastHandler: express.RequestHandler = (req, res) => {
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
       const triggers = this.multicastTriggers[`${this.args.projectId}:${proto.eventType}`] || [];

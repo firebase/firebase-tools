@@ -12,6 +12,10 @@ import { InvokeRuntimeOpts, FunctionsEmulator } from "../../emulator/functionsEm
 import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
 import { streamToString } from "../../utils";
 
+const DO_NOTHING = () => {
+  // do nothing.
+};
+
 const functionsEmulator = new FunctionsEmulator({
   projectId: "fake-project-id",
   functionsDir: MODULE_ROOT,
@@ -156,7 +160,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(DO_NOTHING),
           };
         });
 
@@ -172,7 +176,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(DO_NOTHING),
           };
         });
 
@@ -197,7 +201,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions")
               .firestore.document("test/test")
-              .onCreate(() => {}),
+              .onCreate(DO_NOTHING),
           };
         });
         const logs = await countLogEntries(worker);

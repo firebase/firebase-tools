@@ -52,8 +52,7 @@ describe("database and firestore emulator function triggers", () => {
   let firestore: admin.firestore.Firestore | undefined;
   const firestoreUnsub: Array<() => void> = [];
 
-  before(async function() {
-    // eslint-disable-next-line no-invalid-this
+  before(async function(this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -123,8 +122,7 @@ describe("database and firestore emulator function triggers", () => {
     firestoreUnsub.push(unsub);
   });
 
-  after(async function() {
-    // eslint-disable-next-line no-invalid-this
+  after(async function(this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
@@ -132,16 +130,14 @@ describe("database and firestore emulator function triggers", () => {
     await test.stopEmulators();
   });
 
-  it("should write to the database emulator", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should write to the database emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToRtdb();
     expect(response.status).to.equal(200);
   });
 
-  it("should write to the firestore emulator", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should write to the firestore emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToFirestore();
@@ -171,8 +167,7 @@ describe("database and firestore emulator function triggers", () => {
 describe("pubsub emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function() {
-    // eslint-disable-next-line no-invalid-this
+  before(async function(this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -182,14 +177,12 @@ describe("pubsub emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,pubsub"]);
   });
 
-  after(async function() {
-    // eslint-disable-next-line no-invalid-this
+  after(async function(this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the pubsub emulator", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should write to the pubsub emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToPubsub();
@@ -201,8 +194,7 @@ describe("pubsub emulator function triggers", () => {
     expect(test.pubsubTriggerCount).to.equal(1);
   });
 
-  it("should write to the scheduled pubsub emulator", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should write to the scheduled pubsub emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToScheduledPubsub();
@@ -218,8 +210,7 @@ describe("pubsub emulator function triggers", () => {
 describe("auth emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function() {
-    // eslint-disable-next-line no-invalid-this
+  before(async function(this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -229,19 +220,16 @@ describe("auth emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,auth"]);
   });
 
-  after(async function() {
-    // eslint-disable-next-line no-invalid-this
+  after(async function(this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the auth emulator", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should write to the auth emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     // This test only works on Node 10+
     if (NODE_VERSION < 10) {
-      // eslint-disable-next-line no-invalid-this
       this.skip();
     }
 
@@ -250,10 +238,9 @@ describe("auth emulator function triggers", () => {
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered cloud functions", function() {
+  it("should have have triggered cloud functions", function(this) {
     // This test only works on Node 10+
     if (NODE_VERSION < 10) {
-      // eslint-disable-next-line no-invalid-this
       this.skip();
     }
 
@@ -262,8 +249,7 @@ describe("auth emulator function triggers", () => {
 });
 
 describe("import/export end to end", () => {
-  it("should be able to import/export firestore data", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should be able to import/export firestore data", async function(this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -314,8 +300,7 @@ describe("import/export end to end", () => {
     expect(true).to.be.true;
   });
 
-  it("should be able to import/export rtdb data", async function() {
-    // eslint-disable-next-line no-invalid-this
+  it("should be able to import/export rtdb data", async function(this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 

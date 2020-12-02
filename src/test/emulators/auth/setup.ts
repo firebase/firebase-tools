@@ -16,11 +16,9 @@ export function describeAuthEmulator(
   title: string,
   fn: (this: Suite, utils: AuthTestUtils) => void
 ): Suite {
-  // Avoid arrow functions in order to pass Mocha `this` properly in:
-  return describe(`Auth Emulator: ${title}`, function() {
+  return describe(`Auth Emulator: ${title}`, function(this) {
     let authApp: Express.Application;
-    beforeEach("setup or reuse auth server", async function() {
-      // eslint-disable-next-line no-invalid-this
+    beforeEach("setup or reuse auth server", async function(this) {
       this.timeout(10000);
       authApp = await createOrReuseApp();
     });
@@ -30,7 +28,6 @@ export function describeAuthEmulator(
       clock = useFakeTimers();
     });
     afterEach(() => clock.restore());
-    // eslint-disable-next-line no-invalid-this
     return fn.call(this, { authApi: () => supertest(authApp), getClock: () => clock });
   });
 }
