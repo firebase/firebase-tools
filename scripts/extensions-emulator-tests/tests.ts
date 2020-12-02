@@ -28,8 +28,8 @@ function readConfig(): FrameworkOptions {
 describe("extension emulator", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function() {
-    this.timeout(TEST_SETUP_TIMEOUT); // eslint-disable-line no-invalid-this
+  before(async function(this) {
+    this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
 
@@ -46,13 +46,13 @@ describe("extension emulator", () => {
     ]);
   });
 
-  after(async function() {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS); // eslint-disable-line no-invalid-this
+  after(async function(this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should execute an HTTP function", async function() {
-    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS); // eslint-disable-line no-invalid-this
+  it("should execute an HTTP function", async function(this) {
+    this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
 
     const res = await test.invokeHttpFunction(TEST_FUNCTION_NAME, FIREBASE_PROJECT_ZONE);
 
