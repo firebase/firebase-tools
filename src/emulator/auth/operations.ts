@@ -64,6 +64,7 @@ export const authOperations: AuthOps = {
         query: queryAccounts,
         sendOobCode,
         update: setAccountInfo,
+        batchGet,
       },
     },
   },
@@ -226,6 +227,33 @@ function lookup(
     // Drop users property if no users are found. This is needed for Node.js
     // Admin SDK: https://github.com/firebase/firebase-admin-node/issues/1078
     users: users.length ? users : undefined,
+  };
+}
+
+function batchGet(
+  state: ProjectState,
+  reqBody: unknown,
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
+  const limit = Math.min(parseInt(ctx.params.query.maxResults) || 20, 1000);
+  assert(limit >= 0, "((Auth Emulator: maxResults must not be negative.))");
+
+  const users = state.queryUsers(
+    {},
+    { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
+  );
+  let newPageToken: string | undefined = undefined;
+  if (users.length > limit) {
+    users.length = limit;
+    if (users.length) {
+      newPageToken = users[users.length - 1].localId;
+    }
+  }
+
+  return {
+    kind: "identitytoolkit#DownloadAccountResponse",
+    users,
+    nextPageToken: newPageToken,
   };
 }
 
