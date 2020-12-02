@@ -3,7 +3,12 @@ import logger = require("../logger");
 import { requirePermissions } from "../requirePermissions";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 import { Emulators } from "../emulator/types";
-import { createInstance, DatabaseLocation, parseDatabaseLocation } from "../management/database";
+import {
+  createInstance,
+  DatabaseInstanceType,
+  DatabaseLocation,
+  parseDatabaseLocation,
+} from "../management/database";
 import getProjectId = require("../getProjectId");
 
 export default new Command("database:instances:create <instanceName>")
@@ -14,10 +19,16 @@ export default new Command("database:instances:create <instanceName>")
   )
   .before(requirePermissions, ["firebasedatabase.instances.create"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (instanceName: string, options: any) => {
     const projectId = getProjectId(options);
     const location = parseDatabaseLocation(options.location, DatabaseLocation.US_CENTRAL1);
-    const instance = await createInstance(projectId, instanceName, location);
+    const instance = await createInstance(
+      projectId,
+      instanceName,
+      location,
+      DatabaseInstanceType.USER_DATABASE
+    );
     logger.info(`created database instance ${instance.name}`);
     return instance;
   });
