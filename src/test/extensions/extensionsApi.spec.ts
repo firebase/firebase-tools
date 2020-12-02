@@ -347,7 +347,7 @@ describe("extensions", () => {
 
       await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
       expect(nock.isDone()).to.be.true;
-    }).timeout(2000);
+    });
 
     it("should throw a FirebaseError if update returns an error response", async () => {
       nock(api.extensionsOrigin)

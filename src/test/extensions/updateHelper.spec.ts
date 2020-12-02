@@ -167,7 +167,7 @@ describe("updateHelper", () => {
       createSourceStub.throwsException("Invalid source");
       await expect(
         updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
-      ).to.to.be.rejectedWith(FirebaseError, "Unable to update from the source");
+      ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
     });
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
@@ -176,7 +176,7 @@ describe("updateHelper", () => {
         updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  }).timeout(2500);
+  });
 
   describe("updateFromUrlSource", () => {
     let promptStub: sinon.SinonStub;
@@ -231,7 +231,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  }).timeout(2500);
+  });
 
   describe("updateToVersionFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
@@ -300,7 +300,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  }).timeout(2500);
+  });
 
   describe("updateFromPublisherSource", () => {
     let promptStub: sinon.SinonStub;
@@ -369,7 +369,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  }).timeout(2500);
+  });
 
   describe("updateToVersionFromOfficialSource", () => {
     let promptStub: sinon.SinonStub;
@@ -444,7 +444,7 @@ describe("updateHelper", () => {
         )
       ).to.be.rejectedWith(FirebaseError, "is less than the minimum version required");
     });
-  }).timeout(2500);
+  });
 
   describe("updateFromOfficialSource", () => {
     let promptStub: sinon.SinonStub;
@@ -493,5 +493,5 @@ describe("updateHelper", () => {
         updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
-  }).timeout(2500);
+  });
 });

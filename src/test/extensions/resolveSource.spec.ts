@@ -64,7 +64,7 @@ describe("checkForUpdateWarnings", () => {
         "After updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
     };
     expect(confirmUpdateWarningSpy).to.have.been.calledWith(expectedUpdateWarning);
-  }).timeout(5000);
+  });
 
   it("should display no warnings if none are applicable", async () => {
     await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.1", "0.1.2");
