@@ -34,7 +34,9 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
-  private actionFn: ActionFunction = (): void => {};
+  private actionFn: ActionFunction = (): void => {
+    // noop by default, unless overwritten by `.action(fn)`.
+  };
   private befores: BeforeFunction[] = [];
   private helpText = "";
   private client?: CLIClient;

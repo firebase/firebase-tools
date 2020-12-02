@@ -20,7 +20,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   urls: { [name: string]: string } = {};
 
   constructor(private emu: FunctionsEmulator) {
-    this.triggers = emu.getTriggers();
+    this.triggers = emu.getTriggerDefinitions();
     this.emulatedFunctions = this.triggers.map((t) => t.name);
 
     const entryPoints = this.triggers.map((t) => t.entryPoint);
