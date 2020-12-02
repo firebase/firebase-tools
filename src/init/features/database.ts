@@ -187,7 +187,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   }
   logger.info("Skipping overwrite of Realtime Database Security Rules.");
   logger.info(
-    `The security rules defined in ${clc.bold(filename)} will be published when you do ${clc.bold(
+    `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
       "firebase deploy"
     )}.`
   );
