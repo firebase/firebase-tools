@@ -45,6 +45,7 @@ const testRegistryEntry = {
 
 describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
+  
   beforeEach(() => {
     confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves(true);
   });
@@ -72,6 +73,7 @@ describe("checkForUpdateWarnings", () => {
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
   });
 });
+
 describe("isPublishedSource", () => {
   it("should return true for an published source", () => {
     const result = resolveSource.isOfficialSource(
