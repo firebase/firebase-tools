@@ -55,7 +55,9 @@ function writeDBRules(
   config.writeProjectFile(filename, rules);
   utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
   logger.info(
-    `Future modifications to ${clc.bold(filename)} will update Database Rules when you run`
+    `Future modifications to ${clc.bold(
+      filename
+    )} will update Realtime Database Security Rules when you run`
   );
   logger.info(clc.bold("firebase deploy") + ".");
 }
@@ -89,7 +91,7 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
     logger.info(
       `${clc.yellow(
         "WARNING:"
-      )} your project ID has the legacy name format, and the default database will be named differently: ${instanceName}`
+      )} your project ID has the legacy name format, so your default Realtime Database instance will be named differently: ${instanceName}`
     );
   }
   const spinner = ora(`Creating your default Realtime Database instance: ${instanceName}`).start();
@@ -137,7 +139,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   let filename = null;
 
   logger.info();
-  logger.info("Firebase Realtime Database Rules allow you to define how your data should be");
+  logger.info(
+    "Firebase Realtime Database Security Rules allow you to define how your data should be"
+  );
   logger.info("structured and when your data can be read from and written to.");
   logger.info();
 
@@ -145,7 +149,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
     {
       type: "input",
       name: "rulesFile",
-      message: "What file should be used for Database Rules?",
+      message: "What file should be used for Realtime Database Security Rules?",
       default: "database.rules.json",
     },
   ]);
@@ -157,7 +161,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   if (fsutils.fileExistsSync(filename)) {
     const msg = `File ${clc.bold(filename)} already exists. Do you want to overwrite it with ${
       instanceDetails
-        ? `the Database Rules for ${clc.bold(instanceDetails.name)} from the Firebase Console?`
+        ? `the Realtime Database Security Rules for ${clc.bold(
+            instanceDetails.name
+          )} from the Firebase Console?`
         : `default rules?`
     }`;
     writeRules = await promptOnce({
@@ -179,9 +185,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
     writeDBRules(DEFAULT_RULES, "Default rules", filename, config);
     return;
   }
-  logger.info("Skipping overwrite of Database Rules.");
+  logger.info("Skipping overwrite of Realtime Database Security Rules.");
   logger.info(
-    `The rules defined in ${clc.bold(filename)} will be published when you do ${clc.bold(
+    `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
       "firebase deploy"
     )}.`
   );
