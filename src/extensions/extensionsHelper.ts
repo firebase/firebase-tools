@@ -644,7 +644,7 @@ export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOr
     // Silently fail.
   }
   // Next, check if the source is an extension reference.
-  if (sourceOrVersion.indexOf("/") > -1) {
+  if (sourceOrVersion.includes("/")) {
     let ref;
     try {
       ref = parseRef(sourceOrVersion);

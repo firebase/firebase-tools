@@ -151,7 +151,7 @@ export default new Command("ext:install [extensionName]")
   .description(
     "install an official extension if [extensionName] or [extensionName@version] is provided; " +
       (previews.extdev
-        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionName] is provided "
+        ? "install a local extension if [localPathOrUrl] or [url#root] is provided; install a published extension (not authored by Firebase) if [publisherId/extensionId] is provided "
         : "") +
       "or run with `-i` to see all available extensions."
   )
@@ -258,7 +258,7 @@ export default new Command("ext:install [extensionName]")
           logPrefix,
           `You selected: ${clc.bold(spec.displayName)}.\n` +
             `${spec.description}\n` +
-            `View details: https:// firebase.google.com/products/extensions/${name}\n`
+            `View details: https://firebase.google.com/products/extensions/${name}\n`
         );
         const confirm = await promptOnce({
           type: "confirm",

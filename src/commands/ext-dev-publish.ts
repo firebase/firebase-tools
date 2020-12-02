@@ -1,5 +1,7 @@
 import { Command } from "../command";
 import { publishExtensionVersionFromLocalSource } from "../extensions/extensionsHelper";
+import { parseRef } from "../extensions/extensionsApi";
+
 import { findExtensionYaml } from "../extensions/localHelper";
 import { requireAuth } from "../requireAuth";
 import * as clc from "cli-color";
@@ -8,7 +10,7 @@ import { FirebaseError } from "../error";
 /**
  * Command for publishing an extension version.
  */
-export default new Command("ext:dev:publish <publisherId>/<extensionId>")
+export default new Command("ext:dev:publish <extensionRef>")
   .description(`publish a new version of an extension`)
   .help(
     "if you have not previously published a version of this extension, this will " +
@@ -16,13 +18,18 @@ export default new Command("ext:dev:publish <publisherId>/<extensionId>")
       "be greater than previous versions."
   )
   .before(requireAuth)
-  .action(async (extensionRef: string, options: any) => {
-    const [publisherId, extensionId] = extensionRef.split("/");
+  .action(async (extensionRef: string) => {
+    const {publisherId, extensionId, version}  = parseRef(extensionRef)
+    if (version) {
+      throw new FirebaseError(
+        `The input extension reference must be of the format ${clc.bold("<publisherId>/<extensionId>")}. Version should not be supplied and will be inferred directly from extension.yaml. Please increment the version in extension.yaml if you would like to bump/specify a version.` 
+      )
+    }
     if (!publisherId || !extensionId) {
       throw new FirebaseError(
         `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
           extensionRef
-        )}'. Please use the format '${clc.bold("<publisher-id>/<extension-id>")}'.`
+        )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
       );
     }
     const extensionYamlDirectory = findExtensionYaml(process.cwd());
@@ -31,6 +38,5 @@ export default new Command("ext:dev:publish <publisherId>/<extensionId>")
       extensionId,
       extensionYamlDirectory
     );
-
     return res;
   });

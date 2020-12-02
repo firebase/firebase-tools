@@ -14,18 +14,10 @@ import { requireAuth } from "../requireAuth";
 /**
  * List all published extensions associated with this publisher ID
  */
-export default new Command("ext:dev:list [publisherId]")
+export default new Command("ext:dev:list <publisherId>")
   .description("list all published extensions associated with this publisher ID")
   .before(requireAuth)
-  .action(async (publisherId: string, options: any) => {
-    if (!publisherId) {
-      throw new FirebaseError(
-        `You need to enter a publisher ID to view their published extensions. Expected Usage: ${clc.bold(
-          "ext:dev:list <publisher ID>"
-        )}`
-      );
-    }
-
+  .action(async (publisherId: string) => {
     let extensions;
     try {
       extensions = await listExtensions(publisherId);

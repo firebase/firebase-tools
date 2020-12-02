@@ -67,13 +67,10 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         existingInstance = await extensionsApi.getInstance(projectId, instanceId);
       } catch (err) {
         if (err.status === 404) {
-          return utils.reject(
+          throw new FirebaseError(
             `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
               projectId
-            )}'.`,
-            {
-              exit: 1,
-            }
+            )}'.`
           );
         }
         throw err;
@@ -119,7 +116,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             SourceOrigin.URL,
             SourceOrigin.OFFICIAL_EXTENSION,
             SourceOrigin.OFFICIAL_EXTENSION_VERSION,
-          ].indexOf(newSourceOrigin) > -1
+          ].includes(newSourceOrigin)
         ) {
           validUpdate = true;
         }
@@ -130,7 +127,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             SourceOrigin.URL,
             SourceOrigin.PUBLISHED_EXTENSION,
             SourceOrigin.PUBLISHED_EXTENSION_VERSION,
-          ].indexOf(newSourceOrigin) > -1
+          ].includes(newSourceOrigin)
         ) {
           validUpdate = true;
         }
@@ -138,7 +135,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         existingSourceOrigin === SourceOrigin.LOCAL ||
         existingSourceOrigin === SourceOrigin.URL
       ) {
-        if ([SourceOrigin.LOCAL, SourceOrigin.URL].indexOf(newSourceOrigin) > -1) {
+        if ([SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin)) {
           validUpdate = true;
         }
       }
@@ -154,7 +151,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
           SourceOrigin.OFFICIAL_EXTENSION_VERSION,
           SourceOrigin.PUBLISHED_EXTENSION,
           SourceOrigin.PUBLISHED_EXTENSION_VERSION,
-        ].indexOf(newSourceOrigin) > -1;
+        ].includes(newSourceOrigin);
       displayExtInfo(instanceId, existingSpec, isPublished);
 
       // TODO: remove "falls through" once producer and registry experience are released
@@ -252,7 +249,7 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const newSpec = newSource.spec;
 
       if (
-        [SourceOrigin.LOCAL, SourceOrigin.URL].indexOf(newSourceOrigin) === -1 &&
+        ![SourceOrigin.LOCAL, SourceOrigin.URL].includes(newSourceOrigin) &&
         existingSpec.version === newSpec.version
       ) {
         utils.logLabeledBullet(

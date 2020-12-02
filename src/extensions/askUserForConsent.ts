@@ -15,7 +15,7 @@ marked.setOptions({
 
 /**
  * Returns a string that will be displayed in the prompt to user.
- * @param {string} role
+ * @param role
  * @return {!Promise<string>}
  */
 export async function formatDescription(extensionName: string, projectId: string, roles: string[]) {
@@ -23,8 +23,8 @@ export async function formatDescription(extensionName: string, projectId: string
     extensionName
   )} will be granted the following access to project ${clc.bold(projectId)}`;
   const results: string[] = await Promise.all(
-    roles.map(async (role: string) => {
-      return await retrieveRoleInfo(role);
+    roles.map((role: string) => {
+      return retrieveRoleInfo(role);
     })
   );
   results.unshift(question);
@@ -35,7 +35,7 @@ export async function formatDescription(extensionName: string, projectId: string
  * Returns a string representing a Role, see
  * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
  * for more details on parameters of a Role.
- * @param {string} role
+ * @param role
  * @return {!Promise<string>}
  */
 export async function retrieveRoleInfo(role: string) {
@@ -45,12 +45,12 @@ export async function retrieveRoleInfo(role: string) {
 
 /**
  * Displays roles and corresponding descriptions and asks user for consent
- * @param {Array<string>} roles
+ * @param roles
  * @return {Promise<?>}
  */
 export async function prompt(extensionName: string, projectId: string, roles: string[]) {
   if (!roles || !roles.length) {
-    return Promise.resolve();
+    return;
   }
 
   const message = await formatDescription(extensionName, projectId, roles);
