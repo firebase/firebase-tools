@@ -31,7 +31,7 @@ export default new Command("ext:dev:list <publisherId>")
           publisherId
         )}. This could happen for two reasons:\n` +
           "  - The publisher ID doesn't exist or could be misspelled\n" +
-          "  -This publisher has not published any extensions\n\n" +
+          "  - This publisher has not published any extensions\n\n" +
           "If you are expecting some extensions to appear, please make sure you have the correct publisher ID and try again."
       );
     }
