@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.16.2",
+  "version": "8.17.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -169,7 +169,7 @@
     "@types/uuid": "^3.4.4",
     "@types/winston": "^2.4.4",
     "@types/ws": "^7.2.3",
-    "@typescript-eslint/eslint-plugin": "^2.3.0",
+    "@typescript-eslint/eslint-plugin": "^2.34.0",
     "@typescript-eslint/parser": "^2.34.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",

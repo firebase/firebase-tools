@@ -72,7 +72,7 @@ module.exports = new Command("init [feature]")
     var choices = [
       {
         value: "database",
-        name: "Database: Deploy Firebase Realtime Database Rules",
+        name: "Database: Configure Firebase Realtime Database and deploy rules",
         checked: false,
       },
       {
