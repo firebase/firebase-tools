@@ -396,7 +396,7 @@ FirestoreDelete.prototype._deletePath = function() {
       }
 
       // For a shallow delete, this error is fatal.
-      return utils.reject("Unable to delete " + clc.cyan(this.path));
+      return utils.reject("Unable to delete " + clc.cyan(self.path));
     });
   } else {
     initialDelete = Promise.resolve();

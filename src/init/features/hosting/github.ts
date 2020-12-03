@@ -398,7 +398,8 @@ async function promptForRepo(
       type: "input",
       name: "repo",
       default: defaultGithubRepo(), // TODO look at github origin
-      message: "For which GitHub repository would you like to set up a GitHub workflow?",
+      message:
+        "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         // eslint-disable-next-line camelcase
         const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
