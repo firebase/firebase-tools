@@ -26,16 +26,22 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Instance ID", "Author", "State", "Version", "Last update"],
+    head: ["Extension", "Author", "Instance ID", "State", "Version", "Your last update"],
     style: { head: ["yellow"] },
   });
   // Order instances newest to oldest.
   const sorted = _.sortBy(instances, "createTime", "asc").reverse();
   sorted.forEach((instance) => {
+    let extension = _.get(instance, "config.extensionRef", "");
+    if (extension === "") {
+      extension = _.get(instance, "config.source.spec.name", "");
+    }
     table.push([
-      _.last(instance.name.split("/")),
+      extension,
       _.get(instance, "config.source.spec.author.authorName", ""),
-      instance.state,
+      _.last(instance.name.split("/")),
+      instance.state +
+        (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : ""),
       _.get(instance, "config.source.spec.version", ""),
       extensionsUtils.formatTimestamp(instance.updateTime),
     ]);
