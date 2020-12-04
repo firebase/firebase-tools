@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as api from "../../api";
 import * as remoteconfig from "../../remoteconfig/get";
+import * as remoteconfigcommon from "../../remoteconfig/common";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 const PROJECT_ID = "the-remoteconfig-test-project";
@@ -140,14 +141,14 @@ describe("Remote Config GET", () => {
 
     it("should return a correctly parsed entry value with one parameter", () => {
       const expectRCParameters = "RCTestkey\n";
-      const RCParameters = remoteconfig.parseTemplateForTable(expectedProjectInfo.parameters);
+      const RCParameters = remoteconfigcommon.parseTemplateForTable(expectedProjectInfo.parameters);
 
       expect(RCParameters).to.deep.equal(expectRCParameters);
     });
 
     it("should return a correctly parsed entry value with two parameters", () => {
       const expectRCParameters = "RCTestkey\nenterNumber\n";
-      const RCParameters = remoteconfig.parseTemplateForTable(
+      const RCParameters = remoteconfigcommon.parseTemplateForTable(
         projectInfoWithTwoParameters.parameters
       );
 
