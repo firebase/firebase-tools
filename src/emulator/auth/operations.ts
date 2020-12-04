@@ -976,7 +976,12 @@ function signInWithIdp(
   }
 
   let { response, rawId } = fakeFetchUserInfoFromIdp(providerId, claims);
-  response.oauthAccessToken = oauthAccessToken;
+
+  // Always return an access token, so that clients depending on it sorta work.
+  // e.g. JS SDK creates credentials from accessTokens for most providers:
+  // https://github.com/firebase/firebase-js-sdk/blob/6d640284ef6fd228bd7defdcb2d85a9f88239ad8/packages/auth/src/authcredential.js#L1515
+  response.oauthAccessToken =
+    oauthAccessToken || `FirebaseAuthEmulatorFakeAccessToken_${providerId}`;
   response.oauthIdToken = oauthIdToken;
   // What about response.refreshToken?
 
