@@ -246,6 +246,20 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should handle a 204 response with no data", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .reply(204);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      expect(r.body).to.deep.equal(undefined);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should make a basic POST request", async () => {
       const POST_DATA = { post: "data" };
       nock("https://example.com")
