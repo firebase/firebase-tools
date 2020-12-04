@@ -30,6 +30,8 @@ import {
 import { logError } from "./utils";
 import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
+import bodyParser = require("body-parser");
+import { URLSearchParams } from "url";
 const apiSpec = apiSpecUntyped as OpenAPIObject;
 
 const API_SPEC_PATH = "/emulator/openapi.json";
@@ -380,15 +382,36 @@ function registerLegacyRoutes(app: express.Express): void {
     throw new NotImplementedError(`signOutUser is not implemented in the Auth Emulator.`);
   });
 
-  // TODO: Need to rewrite paths and put project ID into the URL.
+  // Rewrites that require parsing targetProjectId from request body, e.g.
   // /downloadAccount => /v1/projects/{target_project_id}/accounts:batchGet
-  // /uploadAccount => /v1/projects/{target_project_id}/accounts:batchCreate
-  app.post(`${relyingPartyPrefix}downloadAccount`, () => {
-    throw new NotImplementedError(`downloadAccount is not implemented in the Auth Emulator.`);
-  });
-  app.post(`${relyingPartyPrefix}uploadAccount`, () => {
-    throw new NotImplementedError(`uploadAccount is not implemented in the Auth Emulator.`);
-  });
+  for (const [oldPath, newMethod, newPath] of [
+    ["downloadAccount", "GET", "accounts:batchGet"],
+    ["uploadAccount", "POST", "accounts:batchCreate"],
+  ]) {
+    app.post(`${relyingPartyPrefix}${oldPath}`, bodyParser.json(), (req, res, next) => {
+      req.body = convertKeysToCamelCase(req.body || {});
+      const targetProjectId = req.body.targetProjectId;
+      if (!targetProjectId) {
+        // Matching production behavior when targetProjectId is unspecified.
+        return next(new BadRequestError("INSUFFICIENT_PERMISSION"));
+      }
+
+      delete req.body.targetProjectId;
+      req.method = newMethod;
+      let qs = req.url.split("?", 2)[1] || "";
+      if (newMethod === "GET") {
+        Object.assign(req.query, req.body);
+
+        // Update the URL to match query since exegeisis does its own parsing.
+        const bodyAsQuery = new URLSearchParams(req.body).toString();
+        qs = qs ? `${qs}&${bodyAsQuery}` : bodyAsQuery;
+        delete req.body;
+        delete req.headers["content-type"];
+      }
+      req.url = `${v1Prefix}projects/${encodeURIComponent(targetProjectId)}/${newPath}?${qs}`;
+      next();
+    });
+  }
 }
 
 function toExegesisController(
