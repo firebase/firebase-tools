@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 
 import { Command } from "../command";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import { populateInstanceDetails } from "../management/database";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -30,7 +30,7 @@ module.exports = new Command("database:profile")
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
   )
   .before(requirePermissions, ["firebasedatabase.instances.update"])
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .before(populateInstanceDetails)
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action((options) => {

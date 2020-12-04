@@ -118,11 +118,11 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      emu.setBackgroundTriggersEnabled(false);
+      emu.disableBackgroundTriggers();
       res.status(200).json({ enabled: false });
     });
 
-    this.hub.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, (req, res) => {
+    this.hub.put(EmulatorHub.PATH_ENABLE_FUNCTIONS, async (req, res) => {
       utils.logLabeledBullet(
         "emulators",
         `Enabling Cloud Functions triggers, non-HTTP functions will execute.`
@@ -135,7 +135,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      emu.setBackgroundTriggersEnabled(true);
+      await emu.reloadTriggers();
       res.status(200).json({ enabled: true });
     });
   }

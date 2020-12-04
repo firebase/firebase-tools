@@ -5,6 +5,7 @@ import { safeLoad } from "js-yaml";
 import * as ora from "ora";
 import * as path from "path";
 import * as sodium from "tweetsodium";
+
 import { Setup } from "../..";
 import { login } from "../../../auth";
 import { dirExistsSync } from "../../../fsutils";
@@ -17,7 +18,8 @@ import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceMa
 import * as logger from "../../../logger";
 import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess } from "../../../utils";
-import api = require("../../../api");
+import { githubApiOrigin, githubClientId } from "../../../api";
+import { Client } from "../../../apiv2";
 
 let GIT_DIR: string;
 let GITHUB_DIR: string;
@@ -30,6 +32,8 @@ const YML_MERGE_FILENAME = "firebase-hosting-merge.yml";
 
 const CHECKOUT_GITHUB_ACTION_NAME = "actions/checkout@v2";
 const HOSTING_GITHUB_ACTION_NAME = "FirebaseExtended/action-hosting-deploy@v0";
+
+const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
 
 /**
  * Assists in setting up a GitHub workflow by doing the following:
@@ -188,7 +192,7 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
   );
   logger.info(
-    bold.underline(`https://github.com/settings/connections/applications/${api.githubClientId}`)
+    bold.underline(`https://github.com/settings/connections/applications/${githubClientId}`)
   );
   logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
 }
@@ -371,14 +375,16 @@ async function uploadSecretToGitHub(
   keyId: string,
   secretName: string
 ): Promise<{ status: any }> {
-  return await api.request("PUT", `/repos/${repo}/actions/secrets/${secretName}`, {
-    origin: api.githubApiOrigin,
-    headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-    data: {
-      ["encrypted_value"]: encryptedServiceAccountJSON,
-      ["key_id"]: keyId,
-    },
-  });
+  const data = {
+    ["encrypted_value"]: encryptedServiceAccountJSON,
+    ["key_id"]: keyId,
+  };
+  const headers = { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" };
+  return await githubApiClient.put<any, { status: any }>(
+    `/repos/${repo}/actions/secrets/${secretName}`,
+    data,
+    { headers }
+  );
 }
 
 async function promptForRepo(
@@ -392,15 +398,17 @@ async function promptForRepo(
       type: "input",
       name: "repo",
       default: defaultGithubRepo(), // TODO look at github origin
-      message: "For which GitHub repository would you like to set up a GitHub workflow?",
+      message:
+        "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
-        const { body } = await api.request("GET", `/repos/${repo}/actions/secrets/public-key`, {
-          origin: api.githubApiOrigin,
-          headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-          data: {
-            type: "owner",
-          },
-        });
+        // eslint-disable-next-line camelcase
+        const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
+          `/repos/${repo}/actions/secrets/public-key`,
+          {
+            headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
+            queryParams: { type: "owner" },
+          }
+        );
         key = body.key;
         keyId = body.key_id;
         return true;
@@ -475,18 +483,21 @@ async function promptForWriteYMLFile({ message }: { message: string }) {
 }
 
 async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, any>> {
-  const { body: ghUserDetails } = await api.request("GET", `/user`, {
-    origin: api.githubApiOrigin,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { body: ghUserDetails } = await githubApiClient.get<Record<string, any>>("/user", {
     headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
   });
   return ghUserDetails;
 }
 
 async function getRepoDetails(repo: string, ghAccessToken: string) {
-  const { body } = await api.request("GET", `/repos/${repo}`, {
-    origin: api.githubApiOrigin,
-    headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-  });
+  // eslint-disable-next-line camelcase
+  const { body } = await githubApiClient.get<{ default_branch: string; id: string }>(
+    `/repos/${repo}`,
+    {
+      headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
+    }
+  );
   return body;
 }
 
