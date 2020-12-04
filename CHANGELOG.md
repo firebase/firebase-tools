@@ -1,3 +1,1 @@
-- Fixes issue where `database:get` would not completely finish writing to the output file.
-- Updates Firebase Hosting emulator's code to not use the deprecated `request` module.
-- Fixes race condition with disabling of background triggers (#2857).
+- Adds [i18n rewrites](https://firebase.google.com/docs/hosting/i18n-rewrites) to the Firebase Hosting emulator.
