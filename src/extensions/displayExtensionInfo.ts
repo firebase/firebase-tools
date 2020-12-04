@@ -65,9 +65,9 @@ export function displayExtInfo(
 }
 
 /**
- * Prints out all changes to the spec that don't require explicit approval or input
+ * Prints out all changes to the spec that don't require explicit approval or input.
  *
- * @param spec The current spec of a ExtensionInstance
+ * @param spec The current spec of a ExtensionInstance.
  * @param newSpec The spec that the ExtensionInstance is being updated to
  * @param published whether or not this spec is for a published extension
  */
@@ -124,7 +124,7 @@ export function displayUpdateChangesNoInput(
 
 /**
  * Checks for spec changes that require explicit user consent,
- * and individually prompts the user for each changed field
+ * and individually prompts the user for each changed field.
  *
  * @param spec The current spec of a ExtensionInstance
  * @param newSpec The spec that the ExtensionInstance is being updated to
@@ -215,6 +215,7 @@ function getResourceReadableName(resource: extensionsApi.Resource): string {
 }
 
 /**
+ * Asks the user to provide permission to update the instance.
  * @param field
  * @param message
  */

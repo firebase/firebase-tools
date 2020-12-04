@@ -143,7 +143,7 @@ export interface ParamOption {
 }
 
 /**
- * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account
+ * Create a new extension instance, given a extension source path or extension reference, a set of params, and a service account.
  *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance
@@ -172,7 +172,7 @@ export async function createInstance(
 }
 
 /**
- * Create a new extension instance, given a extension source path, a set of params, and a service account
+ * Create a new extension instance, given a extension source path, a set of params, and a service account.
  *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance
@@ -193,7 +193,7 @@ export async function createInstanceFromSource(
 }
 
 /**
- * Create a new extension instance, given a extension source path, a set of params, and a service account
+ * Create a new extension instance, given a extension source path, a set of params, and a service account.
  *
  * @param projectId the project to create the instance in
  * @param instanceId the id to set for the instance

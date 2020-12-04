@@ -20,16 +20,16 @@ import {
 } from "../extensions/resolveSource";
 import * as paramHelper from "../extensions/paramHelper";
 import {
-  instanceIdExists,
-  ensureExtensionsApiEnabled,
+  confirmInstallInstance,
   createSourceFromLocation,
+  ensureExtensionsApiEnabled,
+  getSourceOrigin,
+  instanceIdExists,
   logPrefix,
   promptForOfficialExtension,
   promptForRepeatInstance,
   promptForValidInstanceId,
-  getSourceOrigin,
   SourceOrigin,
-  confirmInstallInstance,
 } from "../extensions/extensionsHelper";
 import { getRandomString } from "../extensions/utils";
 import { requirePermissions } from "../requirePermissions";

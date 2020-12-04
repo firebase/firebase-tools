@@ -15,8 +15,9 @@ marked.setOptions({
 
 /**
  * Returns a string that will be displayed in the prompt to user.
- * @param role
- * @return {!Promise<string>}
+ * @param extensionName name or ID of the extension (i.e. firestore-bigquery-export)
+ * @param projectId ID for the project where we are trying to install an extension into
+ * @param roles the role(s) we would like to grant to the service account managing the extension
  */
 export async function formatDescription(extensionName: string, projectId: string, roles: string[]) {
   const question = `${clc.bold(
@@ -36,7 +37,6 @@ export async function formatDescription(extensionName: string, projectId: string
  * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
  * for more details on parameters of a Role.
  * @param role
- * @return {!Promise<string>}
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
@@ -44,7 +44,7 @@ export async function retrieveRoleInfo(role: string) {
 }
 
 /**
- * Displays roles and corresponding descriptions and asks user for consent
+ * Displays roles and corresponding descriptions and asks user for consent.
  * @param roles
  * @return {Promise<?>}
  */
