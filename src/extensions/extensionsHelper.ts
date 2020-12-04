@@ -65,6 +65,8 @@ export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
   STORAGE_BUCKET: "project-id.appspot.com",
   EXT_INSTANCE_ID: "extension-id",
+  DATABASE_INSTANCE: "project-id-default-rtdb",
+  DATABASE_URL: "https://project-id-default-rtdb.firebaseio.com"
 };
 export const resourceTypeToNiceName: { [key: string]: string } = {
   "firebaseextensions.v1beta.function": "Cloud Function",
