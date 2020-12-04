@@ -62,10 +62,10 @@ export const EXTENSIONS_BUCKET_NAME = envOverride(
 );
 // Placeholders that can be used whever param substitution is needed, but are not available.
 export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
-  "PROJECT_ID": "project-id",
-  "STORAGE_BUCKET": "project-id.appspot.com",
-  "EXT_INSTANCE_ID": "extension-id"
-}
+  PROJECT_ID: "project-id",
+  STORAGE_BUCKET: "project-id.appspot.com",
+  EXT_INSTANCE_ID: "extension-id",
+};
 export const resourceTypeToNiceName: { [key: string]: string } = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
@@ -380,7 +380,7 @@ export async function publishExtensionVersionFromLocalSource(
   }
 
   // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
-  let subbedSpec = JSON.parse(JSON.stringify(extensionSpec))
+  const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams(extensionSpec.params || [], AUTOPOULATED_PARAM_PLACEHOLDERS);
   validateSpec(subbedSpec);
 
