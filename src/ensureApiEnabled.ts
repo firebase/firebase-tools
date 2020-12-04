@@ -43,23 +43,23 @@ export async function check(
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
 export async function enable(projectId: string, apiName: string): Promise<void> {
-  return api
-    .request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
+  try {
+    await api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
       auth: true,
       origin: api.serviceUsageOrigin,
-    })
-    .catch((err) => {
-      if (isBillingError(err)) {
-        throw new FirebaseError(`Your project ${bold(
-          projectId
-        )} must be on the Blaze (pay-as-you-go) plan to complete this command. Required API ${bold(
-          apiName
-        )} can't be enabled until the upgrade is complete. To upgrade, visit the following URL:
+    });
+  } catch (err) {
+    if (isBillingError(err)) {
+      throw new FirebaseError(`Your project ${bold(
+        projectId
+      )} must be on the Blaze (pay-as-you-go) plan to complete this command. Required API ${bold(
+        apiName
+      )} can't be enabled until the upgrade is complete. To upgrade, visit the following URL:
 
 https://console.firebase.google.com/project/${projectId}/usage/details`);
-      }
-      throw err;
-    });
+    }
+    throw err;
+  }
 }
 
 async function pollCheckEnabled(
