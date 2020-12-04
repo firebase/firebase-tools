@@ -18,6 +18,7 @@ marked.setOptions({
  * @param extensionName name or ID of the extension (i.e. firestore-bigquery-export)
  * @param projectId ID for the project where we are trying to install an extension into
  * @param roles the role(s) we would like to grant to the service account managing the extension
+ * @return {string}
  */
 export async function formatDescription(extensionName: string, projectId: string, roles: string[]) {
   const question = `${clc.bold(
@@ -36,7 +37,8 @@ export async function formatDescription(extensionName: string, projectId: string
  * Returns a string representing a Role, see
  * https://cloud.google.com/iam/reference/rest/v1/organizations.roles#Role
  * for more details on parameters of a Role.
- * @param role
+ * @param role to get info for
+ * @return {string}
  */
 export async function retrieveRoleInfo(role: string) {
   const res = await iam.getRole(role);
@@ -45,7 +47,9 @@ export async function retrieveRoleInfo(role: string) {
 
 /**
  * Displays roles and corresponding descriptions and asks user for consent.
- * @param roles
+ * @param extensionName name of extension to install/update
+ * @param projectId ID of user's project
+ * @param roles roles that require user approval
  * @return {Promise<?>}
  */
 export async function prompt(extensionName: string, projectId: string, roles: string[]) {
@@ -64,8 +68,7 @@ export async function prompt(extensionName: string, projectId: string, roles: st
   const consented = await promptOnce(question);
   if (!consented) {
     throw new FirebaseError(
-      "Without explicit consent for the roles listed, we cannot deploy this extension.",
-      { exit: 1 }
+      "Without explicit consent for the roles listed, we cannot deploy this extension."
     );
   }
 }
