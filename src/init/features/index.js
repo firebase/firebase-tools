@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = {
-  database: require("./database"),
+  database: require("./database").doSetup,
   firestore: require("./firestore").doSetup,
   functions: require("./functions"),
   hosting: require("./hosting"),

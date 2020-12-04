@@ -270,7 +270,12 @@ export class Client {
 
     let body: ResT;
     if (options.responseType === "json") {
-      body = await res.json();
+      // 204 statuses have no content. Don't try to `json` it.
+      if (res.status === 204) {
+        body = (undefined as unknown) as ResT;
+      } else {
+        body = await res.json();
+      }
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;
     } else {

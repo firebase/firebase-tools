@@ -9,7 +9,8 @@ var utils = require("../utils");
 module.exports = new Command("help [command]")
   .description("display help information")
   .action(function(commandName) {
-    var cmd = this.client.getCommand(commandName);
+    var client = this.client; // eslint-disable-line no-invalid-this
+    var cmd = client.getCommand(commandName);
     if (cmd) {
       cmd.outputHelp();
     } else if (commandName) {
@@ -17,9 +18,9 @@ module.exports = new Command("help [command]")
       utils.logWarning(
         clc.bold(commandName) + " is not a valid command. See below for valid commands"
       );
-      this.client.cli.outputHelp();
+      client.cli.outputHelp();
     } else {
-      this.client.cli.outputHelp();
+      client.cli.outputHelp();
       logger.info();
       logger.info(
         "  To get help with a specific command, type",
