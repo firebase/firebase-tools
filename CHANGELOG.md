@@ -1,2 +1,2 @@
 - Adds [i18n rewrites](https://firebase.google.com/docs/hosting/i18n-rewrites) to the Firebase Hosting emulator.
-- Release RTDB emulator v4.7.2: Emulator namespace created on the metered plan by default
+- Releases RTDB emulator v4.7.2: Emulator namespace created on the metered plan by default.
