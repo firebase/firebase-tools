@@ -154,6 +154,7 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | Command                        | Description                                                                                                |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
 | **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:update**        | Update a Firebase project's Remote Config template.                                                        |
 | **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
 | **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
 

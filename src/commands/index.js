@@ -107,6 +107,7 @@ module.exports = function(client) {
   client.projects.list = loadCommand("projects-list");
   client.remoteconfig = {};
   client.remoteconfig.get = loadCommand("remoteconfig-get");
+  client.remoteconfig.update = loadCommand("remoteconfig-update");
   client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
   client.remoteconfig.versions = {};
   client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");

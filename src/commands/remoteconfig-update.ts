@@ -1,4 +1,4 @@
-import * as rcGet from "../remoteconfig/get";
+import * as rcUpdate from "../remoteconfig/update";
 import { Command } from "../command";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
@@ -16,26 +16,25 @@ const tableHead = ["Entry Name", "Value"];
 // Creates a maximum limit of 50 names for each entry
 const MAX_DISPLAY_ITEMS = 20;
 
-function checkValidNumber(versionNumber: string): string {
-  if (typeof Number(versionNumber) == "number") {
-    return versionNumber;
-  }
-  return "null";
-}
-
-module.exports = new Command("remoteconfig:get")
-  .description("get a Firebase project's Remote Config template")
-  .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
-  .option(
-    "-o, --output [filename]",
-    "write config output to a filename (if omitted, will use the default file path)"
-  )
+module.exports = new Command("remoteconfig:update")
+  .description("update a Firebase project's Remote Config template")
+  .option("--validate-only", "if set, the server will only attempt to validate the RemoteConfig")
+  .option("-i, --input [filename]", "read config from a filename")
   .before(requireAuth)
-  .before(requirePermissions, ["cloudconfig.configs.get"])
+  .before(requirePermissions, ["cloudconfig.configs.update"])
   .action(async (options) => {
-    const template: RemoteConfigTemplate = await rcGet.getTemplate(
+    const validateOnly = Boolean(options.validateOnly);
+
+    const filename = options.input;
+    if (!fs.existsSync(filename)) {
+      throw new Error(`File ${filename} does not exist. `);
+    }
+    const payload = fs.readFileSync(filename, "utf8");
+
+    const template: RemoteConfigTemplate = await rcUpdate.updateTemplate(
       getProjectId(options),
-      checkValidNumber(options.versionNumber)
+      payload,
+      validateOnly
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
     if (template.conditions) {
@@ -53,20 +52,7 @@ module.exports = new Command("remoteconfig:get")
 
     const updatedParameterGroups = parseTemplateForTable(template.parameterGroups);
     table.push(["parameterGroups", updatedParameterGroups]);
-    table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
-
-    // Firebase remoteconfig:get --output implementation
-    const fileOut = !!options.output;
-    if (fileOut) {
-      const shouldUseDefaultFilename = options.output === true || options.output === "";
-      const filename = shouldUseDefaultFilename
-        ? options.config.get("remoteconfig.template")
-        : options.output;
-      const outTemplate = { ...template };
-      delete outTemplate.version;
-      fs.writeFileSync(filename, JSON.stringify(outTemplate, null, 2));
-    } else {
-      logger.info(table.toString());
-    }
-    return template;
+    if (!validateOnly)
+      table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
+    logger.info(table.toString());
   });
