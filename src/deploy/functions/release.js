@@ -267,6 +267,7 @@ module.exports = function(context, options, payload) {
                   environmentVariables: defaultEnvVariables,
                   vpcConnector: functionInfo.vpcConnector,
                   vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+                  serviceAccountEmail: functionInfo.serviceAccountEmail,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -344,6 +345,7 @@ module.exports = function(context, options, payload) {
               maxInstances: functionInfo.maxInstances,
               vpcConnector: functionInfo.vpcConnector,
               vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+              serviceAccountEmail: functionInfo.serviceAccountEmail,
               environmentVariables: _.assign(
                 {},
                 existingFunction.environmentVariables,
