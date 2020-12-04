@@ -60,7 +60,14 @@ export const EXTENSIONS_BUCKET_NAME = envOverride(
   "FIREBASE_EXTENSIONS_UPLOAD_BUCKET",
   "firebase-ext-eap-uploads"
 );
-
+// Placeholders that can be used whever param substitution is needed, but are not available.
+export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
+  PROJECT_ID: "project-id",
+  STORAGE_BUCKET: "project-id.appspot.com",
+  EXT_INSTANCE_ID: "extension-id",
+  DATABASE_INSTANCE: "project-id-default-rtdb",
+  DATABASE_URL: "https://project-id-default-rtdb.firebaseio.com",
+};
 export const resourceTypeToNiceName: { [key: string]: string } = {
   "firebaseextensions.v1beta.function": "Cloud Function",
 };
@@ -374,7 +381,10 @@ export async function publishExtensionVersionFromLocalSource(
     );
   }
 
-  validateSpec(extensionSpec);
+  // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
+  const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
+  subbedSpec.params = substituteParams(extensionSpec.params || [], AUTOPOULATED_PARAM_PLACEHOLDERS);
+  validateSpec(subbedSpec);
 
   const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
   if (!consent) {
