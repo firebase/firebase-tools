@@ -235,7 +235,7 @@ function batchGet(
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
-  const limit = Math.min(parseInt(ctx.params.query.maxResults) || 20, 1000);
+  const limit = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
   assert(limit >= 0, "((Auth Emulator: maxResults must not be negative.))");
 
   const users = state.queryUsers(
@@ -1306,7 +1306,7 @@ function parseIdToken(
   // TODO: Check JWT expiration here.
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
-  assert(!user.validSince || decoded.payload.iat >= parseInt(user.validSince), "TOKEN_EXPIRED");
+  assert(!user.validSince || decoded.payload.iat >= Number(user.validSince), "TOKEN_EXPIRED");
   assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
