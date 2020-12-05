@@ -3,3 +3,5 @@
 - Adds new Cloud Functions regions and new versions of `firebase-functions` and `firebase-admin` to `ext:dev:init` templates.
 - Fixes unclear error messages when trying to enable APIs that require billing on projects without a billing account.
 - Adds support for specifying the service account a Cloud Function should run as, by setting the `serviceAccount` in `functions.runWith()`.
+- Fixes Firestore Emulator listCollectionId not returning collections with nested docs.
+- Fixes Firestore Emulator listDocuments with showMissing returning 500 errors.
