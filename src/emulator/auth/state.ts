@@ -401,18 +401,21 @@ export class ProjectState {
     filter: {
       /* no filter supported yet */
     },
-    sort: {
+    options: {
       order: "ASC" | "DESC";
       sortByField: "localId";
+      startToken?: string;
     }
   ): UserInfo[] {
     const users = [];
     for (const user of this.users.values()) {
-      /* TODO */ filter;
-      users.push(user);
+      if (!options.startToken || user.localId > options.startToken) {
+        /* TODO */ filter;
+        users.push(user);
+      }
     }
     users.sort((a, b) => {
-      if (sort.sortByField === "localId") {
+      if (options.sortByField === "localId") {
         if (a.localId < b.localId) {
           return -1;
         } else if (a.localId > b.localId) {
@@ -421,7 +424,7 @@ export class ProjectState {
       }
       return 0;
     });
-    return sort.order === "DESC" ? users.reverse() : users;
+    return options.order === "DESC" ? users.reverse() : users;
   }
 
   createTemporaryProof(phoneNumber: string): TemporaryProofRecord {

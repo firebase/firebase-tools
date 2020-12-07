@@ -96,6 +96,9 @@ function _createFunction(options) {
   if (options.environmentVariables) {
     data.environmentVariables = options.environmentVariables;
   }
+  if (options.serviceAccountEmail) {
+    data.serviceAccountEmail = options.serviceAccountEmail;
+  }
 
   return api
     .request("POST", endpoint, {
@@ -197,6 +200,10 @@ function _updateFunction(options) {
   if (options.environmentVariables) {
     data.environmentVariables = options.environmentVariables;
     masks.push("environmentVariables");
+  }
+  if (options.serviceAccountEmail) {
+    data.serviceAccountEmail = options.serviceAccountEmail;
+    masks.push("serviceAccountEmail");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(

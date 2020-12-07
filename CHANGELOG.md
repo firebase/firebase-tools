@@ -1,4 +1,8 @@
-- Fixes issue where `database:get` would not completely finish writing to the output file.
-- Updates Firebase Hosting emulator's code to not use the deprecated `request` module.
-- Fixes race condition with disabling of background triggers (#2857).
+- Adds [i18n rewrites](https://firebase.google.com/docs/hosting/i18n-rewrites) to the Firebase Hosting emulator.
+- Changes Auth Emulator IDP sign-in to always return an access token.
+- Adds new Cloud Functions regions and new versions of `firebase-functions` and `firebase-admin` to `ext:dev:init` templates.
+- Fixes unclear error messages when trying to enable APIs that require billing on projects without a billing account.
+- Adds support for specifying the service account a Cloud Function should run as, by setting the `serviceAccount` in `functions.runWith()`.
+- Fixes Firestore Emulator listCollectionId not returning collections with nested docs.
+- Fixes Firestore Emulator listDocuments with showMissing returning 500 errors.
 - Adds additional logging when deploying to a Firebase Hosting preview channel.

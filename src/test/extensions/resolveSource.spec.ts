@@ -2,7 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 
 import * as resolveSource from "../../extensions/resolveSource";
-import * as updateHelper from "../../extensions/updateHelper";
 
 const testRegistryEntry = {
   name: "test-stuff",
@@ -48,7 +47,7 @@ describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmUpdateWarningSpy = sinon.stub(updateHelper, "confirmUpdateWarning").resolves();
+    confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves(true);
   });
 
   afterEach(() => {
@@ -75,8 +74,8 @@ describe("checkForUpdateWarnings", () => {
   });
 });
 
-describe("isOfficialSource", () => {
-  it("should return true for an official source", () => {
+describe("isPublishedSource", () => {
+  it("should return true for an published source", () => {
     const result = resolveSource.isOfficialSource(
       testRegistryEntry,
       "projects/firebasemods/sources/2kd"
@@ -84,7 +83,7 @@ describe("isOfficialSource", () => {
     expect(result).to.be.true;
   });
 
-  it("should return false for an unofficial source", () => {
+  it("should return false for an unpublished source", () => {
     const result = resolveSource.isOfficialSource(
       testRegistryEntry,
       "projects/firebasemods/sources/invalid"
