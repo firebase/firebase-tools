@@ -5,3 +5,4 @@
 - Adds support for specifying the service account a Cloud Function should run as, by setting the `serviceAccount` in `functions.runWith()`.
 - Fixes Firestore Emulator listCollectionId not returning collections with nested docs.
 - Fixes Firestore Emulator listDocuments with showMissing returning 500 errors.
+- Adds additional logging when deploying to a Firebase Hosting preview channel.
