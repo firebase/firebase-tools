@@ -4,7 +4,7 @@ import * as track from "../../track";
 import * as logger from "../../logger";
 import { ensure } from "../../ensureApiEnabled";
 import { logLabeledWarning } from "../../utils";
-import { FirebaseError } from "../../error";
+import { FirebaseError, isBillingError } from "../../error";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 const CLOUD_BUILD_API = "cloudbuild.googleapis.com";
@@ -62,20 +62,6 @@ https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project=
 For additional information about this requirement, see Firebase FAQs:
 ${FAQ_URL}
 `);
-}
-
-function isBillingError(e: {
-  context?: {
-    body?: {
-      error?: {
-        details?: { type: string; violations?: { type: string }[] }[];
-      };
-    };
-  };
-}): boolean {
-  return !!e.context?.body?.error?.details?.find((d) =>
-    d.violations?.find((v) => v.type === "serviceusage/billing-enabled")
-  );
 }
 
 function isPermissionError(e: { context?: { body?: { error?: { status?: string } } } }): boolean {

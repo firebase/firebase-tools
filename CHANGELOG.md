@@ -1,1 +1,0 @@
-- Adds [i18n rewrites](https://firebase.google.com/docs/hosting/i18n-rewrites) to the Firebase Hosting emulator.
