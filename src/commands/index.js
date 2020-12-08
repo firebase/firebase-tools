@@ -70,9 +70,13 @@ module.exports = function(client) {
   if (previews.extdev) {
     client.ext.dev = {};
     client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.list = loadCommand("ext-dev-list");
+    client.ext.dev.register = loadCommand("ext-dev-register");
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
+    client.ext.dev.publish = loadCommand("ext-dev-publish");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");

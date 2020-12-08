@@ -116,6 +116,10 @@ export default new Command("hosting:channel:deploy [channelId]")
           } else {
             chan = await createChannel(projectId, site, channelId, expireTTL);
             logger.debug("[hosting] created new channnel for site", site, chan);
+            logLabeledSuccess(
+              LOG_TAG,
+              `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+            );
             try {
               await addAuthDomain(projectId, chan.url);
             } catch (e) {

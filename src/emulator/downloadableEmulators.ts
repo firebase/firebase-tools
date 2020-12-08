@@ -40,14 +40,14 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.9.jar"),
-    version: "1.11.9",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.11.jar"),
+    version: "1.11.11",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.9.jar",
-      expectedSize: 64448827,
-      expectedChecksum: "0b841d928e1d0877e789010301b265a4",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.11.jar",
+      expectedSize: 63886307,
+      expectedChecksum: "398782f4108360434ef9e7cc86df50f6",
       namePrefix: "cloud-firestore-emulator",
     },
   },
@@ -116,7 +116,12 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
+    args: [
+      "-Dgoogle.cloud_firestore.debug_log_level=FINE",
+      "-Duser.language=en",
+      "-jar",
+      getExecPath(Emulators.FIRESTORE),
+    ],
     optionalArgs: [
       "port",
       "webchannel_port",

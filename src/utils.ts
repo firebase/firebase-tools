@@ -18,6 +18,7 @@ import { Socket } from "net";
 const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
+const THIRTY_DAYS_IN_MILLISECONDS = 30 * 24 * 60 * 60 * 1000;
 
 export const envOverrides: string[] = [];
 
@@ -505,4 +506,11 @@ export function isCloudEnvironment() {
  */
 export function isRunningInWSL(): boolean {
   return !!process.env.WSL_DISTRO_NAME;
+}
+
+/**
+ * Generates a date that is 30 days from Date.now()
+ */
+export function thirtyDaysFromNow(): Date {
+  return new Date(Date.now() + THIRTY_DAYS_IN_MILLISECONDS);
 }
