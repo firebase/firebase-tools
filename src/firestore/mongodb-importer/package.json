@@ -1,7 +1,7 @@
 {
-  "name": "firestore-upload",
+  "name": "mongodb-importer",
   "version": "1.0.0",
-  "description": "Upload your CSV and JSON data easily to Cloud Firestore. Not all of this code is mine, a lot of it is from sources I found on the Internet.",
+  "description": "Transfer an entire MongoDB collection to Cloud Firestore easily. Not all of this code is mine, a lot of it is from sources I found on the Internet.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
