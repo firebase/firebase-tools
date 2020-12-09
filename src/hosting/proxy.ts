@@ -8,7 +8,7 @@ import AbortController from "abort-controller";
 import { Client, HttpMethod } from "../apiv2";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
-import { FetchError } from "node-fetch";
+import { FetchError, Headers } from "node-fetch";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
@@ -62,20 +62,35 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       req.pipe(passThrough);
     }
 
+    const headers = new Headers({
+      "X-Forwarded-Host": req.headers.host || "",
+      "X-Original-Url": req.url || "",
+      Pragma: "no-cache",
+      "Cache-Control": "no-cache, no-store",
+      // forward the parsed __session cookie if any
+      Cookie: sessionCookie || "",
+    });
+    for (const key of Object.keys(req.headers)) {
+      const value = req.headers[key];
+      if (value == undefined) {
+        headers.delete(key);
+      } else if (Array.isArray(value)) {
+        headers.delete(key);
+        for (const v of value) {
+          headers.append(key, v);
+        }
+      } else {
+        headers.set(key, value);
+      }
+    }
+
     let proxyRes;
     try {
       proxyRes = await c.request<unknown, NodeJS.ReadableStream>({
         method: (req.method || "GET") as HttpMethod,
         path: u.pathname,
         queryParams: u.searchParams,
-        headers: {
-          "X-Forwarded-Host": req.headers.host || "",
-          "X-Original-Url": req.url || "",
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache, no-store",
-          // forward the parsed __session cookie if any
-          Cookie: sessionCookie || "",
-        },
+        headers,
         resolveOnHTTPError: true,
         responseType: "stream",
         redirect: "manual",
