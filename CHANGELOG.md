@@ -1,1 +1,0 @@
-- Fixes issue where emulated functions were not receiving all expected headers.
