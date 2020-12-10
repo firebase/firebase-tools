@@ -21,7 +21,6 @@ import * as bodyParser from "body-parser";
 import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
-import { logWarning } from "../utils";
 
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
@@ -97,9 +96,6 @@ interface ProxyTarget extends Object {
 class Proxied<T extends ProxyTarget> {
   /**
    * Gets a property from the original object.
-   *
-   * @param target
-   * @param key
    */
   static getOriginal(target: any, key: string): any {
     const value = target[key];
@@ -115,10 +111,6 @@ class Proxied<T extends ProxyTarget> {
 
   /**
    * Run the original target.
-   *
-   * @param target
-   * @param thisArg
-   * @param argArray
    */
   static applyOriginal(target: any, thisArg: any, argArray: any[]): any {
     return target.apply(thisArg, argArray);
@@ -144,8 +136,6 @@ class Proxied<T extends ProxyTarget> {
    * and .any() functions so the original value of the object is accessible. When no
    * .any() is provided, the original value of the object is returned when the field
    * key does not match any known rewrite.
-   *
-   * @param original
    */
   constructor(private original: T) {
     this.proxy = new Proxy(this.original, {
@@ -173,9 +163,6 @@ class Proxied<T extends ProxyTarget> {
 
   /**
    * Calling .when("a", () => "b") will rewrite obj["a"] to be equal to "b"
-   *
-   * @param key
-   * @param value
    */
   when(key: string, value: (target: T, key: string) => any): Proxied<T> {
     this.rewrites[key] = value;
@@ -184,8 +171,6 @@ class Proxied<T extends ProxyTarget> {
 
   /**
    * Calling .any(() => "b") will rewrite all fields on obj to be equal to "b"
-   *
-   * @param value
    */
   any(value: (target: T, key: string) => any): Proxied<T> {
     this.anyValue = value;
@@ -194,8 +179,6 @@ class Proxied<T extends ProxyTarget> {
 
   /**
    * Calling .applied(() => "b") will make obj() equal to "b"
-   *
-   * @param value
    */
   applied(value: () => any): Proxied<T> {
     this.appliedValue = value;
@@ -206,7 +189,7 @@ class Proxied<T extends ProxyTarget> {
    * Return the final proxied object.
    */
   finalize(): T {
-    return this.proxy;
+    return this.proxy as T;
   }
 }
 
@@ -297,8 +280,6 @@ async function verifyDeveloperNodeModules(frb: FunctionsRuntimeBundle): Promise<
 
 /**
  * Get the developer's package.json file.
- *
- * @param frb
  */
 function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefined {
   if (developerPkgJSON) {
@@ -329,8 +310,6 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
  * C, we have to catch it before then (which is how the google-gax blocker could work).
  *
  * So yeah, we'll try our best and hopefully we can catch 90% of requests.
- *
- * @param frb
  */
 function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
   const networkingModules = [
@@ -466,8 +445,6 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
 /**
  * Wrap a callable functions handler with an outer method that extracts a special authorization
  * header used to mock auth in the emulator.
- *
- * @param handler
  */
 function wrapCallableHandler(handler: CallableHandler): CallableHandler {
   const newHandler = (data: any, context: https.CallableContext) => {
@@ -510,8 +487,6 @@ function getDefaultConfig(): any {
  * unauthenticated app.
  *
  * We also mock out firestore.settings() so we can merge the emulator settings with the developer's.
- *
- * @param frb
  */
 async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
@@ -659,18 +634,19 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   const configPath = `${frb.cwd}/.runtimeconfig.json`;
   try {
     const configContent = fs.readFileSync(configPath, "utf8");
+    if (configContent) {
+      // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
+      try {
+        JSON.parse(configContent.toString());
 
-    // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
-    try {
-      JSON.parse(configContent.toString());
-
-      logDebug(`Found local functions config: ${configPath}`);
-      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
-    } catch (e) {
-      new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+        logDebug(`Found local functions config: ${configPath}`);
+        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      } catch (e) {
+        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+      }
     }
   } catch (e) {
-    // Ignore, config is optionalCLOUD_RUNTIME_CONFIG
+    // Ignore, config is optional
   }
 
   // Before firebase-functions version 3.8.0 the Functions SDK would reject non-prod database URLs.
@@ -794,10 +770,6 @@ async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Pro
 /**
  * Setup predefined environment variables for Node.js 10 and subsequent runtimes
  * https://cloud.google.com/functions/docs/env-var
- *
- * @param target
- * @param mode
- * @param service
  */
 function setNode10EnvVars(target: string, mode: "event" | "http", service: string) {
   process.env.FUNCTION_TARGET = target;
@@ -915,8 +887,6 @@ async function processBackground(
 
 /**
  * Run the given function while redirecting logs and looking out for errors.
- *
- * @param func
  */
 async function runFunction(func: () => Promise<any>): Promise<any> {
   let caughtErr;
