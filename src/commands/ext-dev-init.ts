@@ -70,7 +70,9 @@ async function typescriptSelected(config: Config): Promise<void> {
     await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
   }
   await config.askWriteProjectFile("functions/tsconfig.json", tsconfigTemplate);
-  await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate);
+  if (lint) {
+    await config.askWriteProjectFile("functions/tsconfig.dev.json", tsconfigDevTemplate);
+  }
   await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
 

@@ -50,7 +50,9 @@ module.exports = function(setup, config) {
       return config.askWriteProjectFile("functions/tsconfig.json", TSCONFIG_TEMPLATE);
     })
     .then(function() {
-      return config.askWriteProjectFile("functions/tsconfig.dev.json", TSCONFIG_DEV_TEMPLATE);
+      if (setup.functions.lint) {
+        return config.askWriteProjectFile("functions/tsconfig.dev.json", TSCONFIG_DEV_TEMPLATE);
+      }
     })
     .then(function() {
       return config.askWriteProjectFile("functions/src/index.ts", INDEX_TEMPLATE);
