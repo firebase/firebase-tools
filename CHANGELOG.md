@@ -1,0 +1,1 @@
+- Adds Node.js 14 (Beta) runtime support to Cloud Functions for Firebase.
