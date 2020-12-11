@@ -15,7 +15,6 @@ import { EmulatorRegistry } from "./registry";
 import { FirestoreEmulator } from "./firestoreEmulator";
 import * as getProjectId from "../getProjectId";
 import { prompt } from "../prompt";
-import { EmulatorHub } from "./hub";
 import { onExit } from "./controller";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
@@ -346,7 +345,7 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
   if (hubInstance) {
     const info = hubInstance.getInfo();
     const address = EmulatorRegistry.getInfoHostString(info);
-    env[EmulatorHub.EMULATOR_HUB_ENV] = address;
+    env[Constants.FIREBASE_EMULATOR_HUB] = address;
   }
 
   const proc = childProcess.spawn(script, {
