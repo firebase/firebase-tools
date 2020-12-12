@@ -268,6 +268,7 @@ module.exports = function(context, options, payload) {
                   vpcConnector: functionInfo.vpcConnector,
                   vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
                   serviceAccountEmail: functionInfo.serviceAccountEmail,
+                  ingressSettings: functionInfo.ingressSettings,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
@@ -346,6 +347,7 @@ module.exports = function(context, options, payload) {
               vpcConnector: functionInfo.vpcConnector,
               vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
               serviceAccountEmail: functionInfo.serviceAccountEmail,
+              ingressSettings: functionInfo.ingressSettings,
               environmentVariables: _.assign(
                 {},
                 existingFunction.environmentVariables,

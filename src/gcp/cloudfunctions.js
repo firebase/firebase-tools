@@ -99,6 +99,9 @@ function _createFunction(options) {
   if (options.serviceAccountEmail) {
     data.serviceAccountEmail = options.serviceAccountEmail;
   }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+  }
 
   return api
     .request("POST", endpoint, {
@@ -204,6 +207,10 @@ function _updateFunction(options) {
   if (options.serviceAccountEmail) {
     data.serviceAccountEmail = options.serviceAccountEmail;
     masks.push("serviceAccountEmail");
+  }
+  if (options.ingressSettings) {
+    data.ingressSettings = options.ingressSettings;
+    masks.push("ingressSettings");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
