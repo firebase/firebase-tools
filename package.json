@@ -130,7 +130,6 @@
   },
   "devDependencies": {
     "@manifoldco/swagger-to-ts": "^2.0.0",
-    "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
     "@types/chai": "^4.2.12",
     "@types/chai-as-promised": "^7.1.3",
