@@ -59,6 +59,13 @@ describe("getRuntimeChoice", () => {
       expect(warningSpy).not.called;
     });
 
+    it("should return node 14 if runtime field is set to node 14", () => {
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal("nodejs14");
+      expect(warningSpy).not.called;
+    });
+
     it("should print warning when firebase-functions version is below 2.0.0", () => {
       SDKVersionStub.returns("0.5.0");
 
@@ -104,6 +111,14 @@ describe("getRuntimeChoice", () => {
       SDKVersionStub.returns("3.4.0");
 
       expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs12");
+      expect(warningSpy).not.called;
+    });
+
+    it("should return node 14 if engines field is set to node 12", () => {
+      cjsonStub.returns({ engines: { node: "14" } });
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs14");
       expect(warningSpy).not.called;
     });
 
