@@ -30,7 +30,6 @@ export interface EmulatorHubArgs {
 export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
 
 export class EmulatorHub implements EmulatorInstance {
-  static EMULATOR_HUB_ENV = "FIREBASE_EMULATOR_HUB";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
