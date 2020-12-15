@@ -50,6 +50,12 @@ export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
     )}.`
 );
 
+export const DEPRECATED_NODE_VERSION_INFO =
+  `\n\nDeploys to runtimes below Node.js 10 are now disabled in the Firebase CLI. ` +
+  `${clc.bold(
+    `Existing Node.js 8 functions ${clc.underline("will stop executing on 2021-03-15")}`
+  )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
+
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold.yellow("functions: ") +
   "You must have a " +
@@ -107,17 +113,18 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
  */
 export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): string {
   const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
-  const errorMessage = runtimeFromConfig
-    ? UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
-    : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG;
+  const errorMessage =
+    (runtimeFromConfig
+      ? UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
+      : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) + DEPRECATED_NODE_VERSION_INFO;
 
   if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
     track("functions_runtime_notices", "package_missing_runtime");
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
-  if (runtime === "nodejs6") {
-    track("functions_runtime_notices", "nodejs6_deploy_prohibited");
+  if (["nodejs6", "nodejs8"].includes(runtime)) {
+    track("functions_runtime_notices", `${runtime}_deploy_prohibited`);
     throw new FirebaseError(errorMessage, { exit: 1 });
   }
 
