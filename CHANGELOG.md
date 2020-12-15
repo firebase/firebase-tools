@@ -1,2 +1,3 @@
 - Shows missing documents in Emulator UI Firestore viewer.
 - Better supports paths with special characters in Emulator UI Firestore viewer.
+- Fixes generating email link from Admin SDK failing with Auth Emulator (#2933).
