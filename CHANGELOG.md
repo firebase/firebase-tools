@@ -1,0 +1,3 @@
+- Breaking: Drops support for Node.js 8.
+- Breaking: Disables deploys of Cloud Functions for Firebase running Node.js 8.
+- Updates several dependencies that require Node.js >= 10 to fix `npm audit` issues.
