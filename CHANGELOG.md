@@ -1,4 +1,0 @@
-- Shows missing documents in Emulator UI Firestore viewer.
-- Better supports paths with special characters in Emulator UI Firestore viewer.
-- Fixes generating email link from Admin SDK failing with Auth Emulator (#2933).
-- Fixes issue where multiple set-cookie headers were being proxied incorrectly in proxied responses through the Firebase Hosting emulator (#2931).
