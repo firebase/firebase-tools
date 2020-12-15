@@ -495,7 +495,6 @@ function sendOobCode(
     );
   }
 
-  let user: UserInfo | undefined;
   let email: string;
   let mode: string;
 
@@ -509,15 +508,24 @@ function sendOobCode(
       mode = "resetPassword";
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
-      user = state.getUserByEmail(email);
-      assert(user, "EMAIL_NOT_FOUND");
+      assert(state.getUserByEmail(email), "EMAIL_NOT_FOUND");
       break;
     case "VERIFY_EMAIL":
       mode = "verifyEmail";
-      // Get the user from idToken, reqBody.email is ignored.
-      user = parseIdToken(state, reqBody.idToken || "").user;
-      assert(user.email, "MISSING_EMAIL");
-      email = user.email;
+
+      // Matching production behavior, reqBody.returnOobLink is used as a signal
+      // for Admin usage (instead of whether request is OAuth 2 authenticated.)
+      if (reqBody.returnOobLink && !reqBody.idToken) {
+        assert(reqBody.email, "MISSING_EMAIL");
+        email = canonicalizeEmailAddress(reqBody.email);
+        const maybeUser = state.getUserByEmail(email);
+        assert(maybeUser, "USER_NOT_FOUND");
+      } else {
+        // Get the user from idToken, reqBody.email is ignored.
+        const user = parseIdToken(state, reqBody.idToken || "").user;
+        assert(user.email, "MISSING_EMAIL");
+        email = user.email;
+      }
       break;
 
     default:
