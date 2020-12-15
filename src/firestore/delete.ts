@@ -385,9 +385,12 @@ export class FirestoreDelete {
           ) {
             logger.debug("Transaction too big error deleting doc batch", e);
 
-            // Cut batch size in half. Note that we have multiple batches out at once
-            // so we need to accouont for multiple concurrent failures hitting this branch
-            const newBatchSize = Math.floor(toDelete.length / 2);
+            // Cut batch size way down. If one batch is over 10MB then we need to go much
+            // lower in order to keep the total I/O appropriately low.
+            //
+            // Note that we have multiple batches out at once so we need to account for multiple
+            // concurrent failures hitting this branch.
+            const newBatchSize = Math.floor(toDelete.length / 10);
 
             if (newBatchSize < this.deleteBatchSize) {
               utils.logLabeledWarning(
