@@ -1,6 +1,6 @@
 import api = require("../api");
 
-const _API_ROOT = "/v1beta1/";
+const _API_ROOT = "/v1/";
 
 /**
  * List all collection IDs.
@@ -60,26 +60,10 @@ export async function deleteDocuments(project: string, docs: any[]): Promise<num
 
   const body = { writes };
 
-  try {
-    const res = await api.request("POST", url, {
-      auth: true,
-      data: body,
-      origin: api.firestoreOriginOrEmulator,
-    });
-    return res.body.writeResults.length;
-  } catch (err) {
-    if (
-      err.status === 400 &&
-      err.message.indexOf("Transaction too big") !== -1 &&
-      docs.length > 2
-    ) {
-      // If the batch is too large, we can get errors. Recursively split the
-      // batch into pieces and process them individually. This can lead to
-      // partial deletes if one of them succeeeds and the other fails.
-      const a = await deleteDocuments(project, docs.slice(0, docs.length / 2));
-      const b = await deleteDocuments(project, docs.slice(docs.length / 2));
-      return a + b;
-    }
-    throw err;
-  }
+  const res = await api.request("POST", url, {
+    auth: true,
+    data: body,
+    origin: api.firestoreOriginOrEmulator,
+  });
+  return res.body.writeResults.length;
 }
