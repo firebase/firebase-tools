@@ -1,2 +1,3 @@
 - Shows missing documents in Emulator UI Firestore viewer.
 - Better supports paths with special characters in Emulator UI Firestore viewer.
+- Fixes issue where multiple set-cookie headers were being proxied incorrectly in proxied responses through the Firebase Hosting emulator (#2931).
