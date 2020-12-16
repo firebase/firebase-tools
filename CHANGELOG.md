@@ -1,1 +1,0 @@
-- Fixes "checkForNode8 is not a function" issue in `firebase deploy` (#2944).
