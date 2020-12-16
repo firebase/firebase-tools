@@ -19,7 +19,7 @@ var utils = require("./utils");
  * @constructor
  * @this Config
  *
- * @param {object} src
+ * @param {*} src
  * @param {object=} options
  */
 var Config = function(src, options) {
