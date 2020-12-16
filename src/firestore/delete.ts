@@ -1,7 +1,6 @@
 import * as clc from "cli-color";
 import * as ProgressBar from "progress";
 
-import * as api from "../api";
 import * as apiv2 from "../apiv2";
 import * as firestore from "../gcp/firestore";
 import { FirebaseError } from "../error";
