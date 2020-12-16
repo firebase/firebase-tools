@@ -235,7 +235,11 @@ export class FirestoreDelete {
    * @param startAfter the name of the document to start after (optional).
    * @return a promise for an array of documents.
    */
-  private getDescendantBatch(allDescendants: boolean, batchSize: number, startAfter?: string): Promise<any[]> {
+  private getDescendantBatch(
+    allDescendants: boolean,
+    batchSize: number,
+    startAfter?: string
+  ): Promise<any[]> {
     const url = this.parent + ":runQuery";
     let body;
     if (this.isDocumentPath) {
