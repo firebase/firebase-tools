@@ -14,11 +14,11 @@ describe("accountExporter", function() {
 
   describe("validateOptions", function() {
     it("should reject when no format provided", function() {
-      return expect(validateOptions({}, "output_file")).to.be.rejected;
+      return expect(() => validateOptions({}, "output_file")).to.throw;
     });
 
     it("should reject when format is not csv or json", function() {
-      return expect(validateOptions({ format: "txt" }, "output_file")).to.be.rejected;
+      return expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw;
     });
 
     it("should ignore format param when implicitly specified in file name", function() {
