@@ -86,7 +86,7 @@ export class FirestoreDelete {
     if (!options.allCollections) {
       this.validateOptions();
     }
-      
+ 
     this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
       total: Number.MAX_SAFE_INTEGER,
     });
@@ -95,7 +95,7 @@ export class FirestoreDelete {
   /**
    * Update the delete batch size and dependent properties.
    */
-  private setDeleteBatchSize(size: number) {
+  private setDeleteBatchSize(size: number): void {
     this.deleteBatchSize = size;
     this.maxQueueSize = this.deleteBatchSize * this.maxPendingDeletes * 2;
   }
@@ -103,7 +103,7 @@ export class FirestoreDelete {
   /**
    * Validate all options, throwing an exception for any fatal errors.
    */
-  private validateOptions() {
+  private validateOptions(): void {
     if (this.recursive && this.shallow) {
       throw new FirebaseError("Cannot pass recursive and shallow options together.");
     }
@@ -273,7 +273,7 @@ export class FirestoreDelete {
         data: body,
         origin: api.firestoreOriginOrEmulator,
       })
-      .then((res: any) => {
+      .then((res) => {
         // Return the 'document' property for each element in the response,
         // where it exists.
         return res.body
@@ -334,7 +334,7 @@ export class FirestoreDelete {
             queue = queue.concat(docs);
             lastDocName = docs[docs.length - 1].name;
           })
-          .catch((e: any) => {
+          .catch((e) => {
             logger.debug("Failed to fetch page after " + lastDocName, e);
             pageIncoming = false;
 
@@ -372,12 +372,12 @@ export class FirestoreDelete {
       numPendingDeletes++;
       firestore
         .deleteDocuments(this.project, toDelete)
-        .then((numDeleted: number) => {
+        .then((numDeleted) => {
           this.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
           numPendingDeletes--;
         })
-        .catch((e: any) => {
+        .catch((e) => {
           // If the transaction is too large, reduce the batch size
           if (
             e.status === 400 &&
@@ -451,11 +451,11 @@ export class FirestoreDelete {
    *
    * @return a promise for the entire operation.
    */
-  private deletePath() {
+  private deletePath(): Promise<any> {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
-      initialDelete = firestore.deleteDocument(doc).catch((err: any) => {
+      initialDelete = firestore.deleteDocument(doc).catch((err) => {
         logger.debug("deletePath:initialDelete:error", err);
         if (this.allDescendants) {
           // On a recursive delete, we are insensitive to
@@ -480,14 +480,14 @@ export class FirestoreDelete {
    *
    * @return a promise for all of the operations combined.
    */
-  public deleteDatabase() {
+  public deleteDatabase(): Promise<any[]> {
     return firestore
       .listCollectionIds(this.project)
-      .catch((err: any) => {
+      .catch((err) => {
         logger.debug("deleteDatabase:listCollectionIds:error", err);
         return utils.reject("Unable to list collection IDs");
       })
-      .then((collectionIds: string[]) => {
+      .then((collectionIds) => {
         const promises = [];
 
         logger.info("Deleting the following collections: " + clc.cyan(collectionIds.join(", ")));
@@ -509,10 +509,9 @@ export class FirestoreDelete {
    * Check if a path has any children. Useful for determining
    * if deleting a path will affect more than one document.
    *
-   * @return {Promise<boolean>} a promise that retruns true if the path has
-   * children and false otherwise.
+   * @return a promise that retruns true if the path has children and false otherwise.
    */
-  public checkHasChildren() {
+  public checkHasChildren(): Promise<boolean> {
     return this.getDescendantBatch(true, 1).then((docs: any[]) => {
       return docs.length > 0;
     });
