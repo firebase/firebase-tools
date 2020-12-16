@@ -46,14 +46,18 @@ export async function listReleases(
   projectId: string,
   pageToken?: string
 ): Promise<ListReleasesResponse> {
-  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/releases`, {
-    auth: true,
-    origin: api.rulesOrigin,
-    query: {
-      pageSize: MAX_RELEASES_PAGE_SIZE,
-      pageToken,
-    },
-  });
+  const response = await api.request(
+    "GET",
+    `/${API_VERSION}/projects/${projectId}/releases`,
+    {
+      auth: true,
+      origin: api.rulesOrigin,
+      query: {
+        pageSize: MAX_RELEASES_PAGE_SIZE,
+        pageToken,
+      },
+    }
+  );
   if (response.status === 200) {
     return response.body;
   }
@@ -81,7 +85,10 @@ export async function listAllReleases(projectId: string): Promise<Release[]> {
   let pageToken;
   let releases: Release[] = [];
   do {
-    const response: ListReleasesResponse = await listReleases(projectId, pageToken);
+    const response: ListReleasesResponse = await listReleases(
+      projectId,
+      pageToken
+    );
     if (response.releases && response.releases.length > 0) {
       releases = releases.concat(response.releases);
     }
@@ -126,14 +133,18 @@ export async function listRulesets(
   projectId: string,
   pageToken?: string
 ): Promise<ListRulesetsResponse> {
-  const response = await api.request("GET", `/${API_VERSION}/projects/${projectId}/rulesets`, {
-    auth: true,
-    origin: api.rulesOrigin,
-    query: {
-      pageSize: MAX_RULESET_PAGE_SIZE,
-      pageToken,
-    },
-  });
+  const response = await api.request(
+    "GET",
+    `/${API_VERSION}/projects/${projectId}/rulesets`,
+    {
+      auth: true,
+      origin: api.rulesOrigin,
+      query: {
+        pageSize: MAX_RULESET_PAGE_SIZE,
+        pageToken,
+      },
+    }
+  );
   if (response.status === 200) {
     return response.body;
   }
@@ -145,11 +156,16 @@ export async function listRulesets(
  *
  * May require many network requests.
  */
-export async function listAllRulesets(projectId: string): Promise<ListRulesetsEntry[]> {
+export async function listAllRulesets(
+  projectId: string
+): Promise<ListRulesetsEntry[]> {
   let pageToken;
   let rulesets: ListRulesetsEntry[] = [];
   do {
-    const response: ListRulesetsResponse = await listRulesets(projectId, pageToken);
+    const response: ListRulesetsResponse = await listRulesets(
+      projectId,
+      pageToken
+    );
     if (response.rulesets) {
       rulesets = rulesets.concat(response.rulesets);
     }
@@ -177,7 +193,10 @@ export function getRulesetId(ruleset: ListRulesetsEntry): string {
  * Delete the ruleset from the given project. If the ruleset is referenced
  * by a release, the operation will fail.
  */
-export async function deleteRuleset(projectId: string, id: string): Promise<void> {
+export async function deleteRuleset(
+  projectId: string,
+  id: string
+): Promise<void> {
   const response = await api.request(
     "DELETE",
     `/${API_VERSION}/projects/${projectId}/rulesets/${id}`,
@@ -197,14 +216,21 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
+export async function createRuleset(
+  projectId: string,
+  files: RulesetFile[]
+): Promise<string> {
   const payload = { source: { files } };
 
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/rulesets`, {
-    auth: true,
-    data: payload,
-    origin: api.rulesOrigin,
-  });
+  const response = await api.request(
+    "POST",
+    `/${API_VERSION}/projects/${projectId}/rulesets`,
+    {
+      auth: true,
+      data: payload,
+      origin: api.rulesOrigin,
+    }
+  );
   if (response.status === 200) {
     logger.debug("[rules] created ruleset", response.body.name);
     return response.body.name;
@@ -229,11 +255,15 @@ export async function createRelease(
     rulesetName,
   };
 
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}/releases`, {
-    auth: true,
-    data: payload,
-    origin: api.rulesOrigin,
-  });
+  const response = await api.request(
+    "POST",
+    `/${API_VERSION}/projects/${projectId}/releases`,
+    {
+      auth: true,
+      data: payload,
+      origin: api.rulesOrigin,
+    }
+  );
   if (response.status === 200) {
     logger.debug("[rules] created release", response.body.name);
     return response.body.name;
@@ -289,12 +319,19 @@ export async function updateOrCreateRelease(
   });
 }
 
-export function testRuleset(projectId: string, files: RulesetFile[]): Promise<any> {
-  return api.request("POST", `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`, {
-    origin: api.rulesOrigin,
-    data: {
-      source: { files },
-    },
-    auth: true,
-  });
+export function testRuleset(
+  projectId: string,
+  files: RulesetFile[]
+): Promise<any> {
+  return api.request(
+    "POST",
+    `/${API_VERSION}/projects/${encodeURIComponent(projectId)}:test`,
+    {
+      origin: api.rulesOrigin,
+      data: {
+        source: { files },
+      },
+      auth: true,
+    }
+  );
 }

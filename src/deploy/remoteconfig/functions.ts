@@ -11,7 +11,10 @@ const TIMEOUT = 30000;
  * @param versionNumber Firebase Remote Config Template version number
  * @return {Promise<string>} Returns a Promise of the Remote Config Template Etag string
  */
-export async function getEtag(projectNumber: string, versionNumber?: string): Promise<string> {
+export async function getEtag(
+  projectNumber: string,
+  versionNumber?: string
+): Promise<string> {
   let reqPath = `/v1/projects/${projectNumber}/remoteConfig`;
   if (versionNumber) {
     reqPath = reqPath + "?versionNumber=" + versionNumber;
@@ -35,7 +38,9 @@ export function validateInputRemoteConfigTemplate(
 ): RemoteConfigTemplate {
   const templateCopy = JSON.parse(JSON.stringify(template));
   if (!templateCopy || templateCopy == "null" || templateCopy == "undefined") {
-    throw new FirebaseError(`Invalid Remote Config template: ${JSON.stringify(templateCopy)}`);
+    throw new FirebaseError(
+      `Invalid Remote Config template: ${JSON.stringify(templateCopy)}`
+    );
   }
   if (typeof templateCopy.etag !== "string" || templateCopy.etag == "") {
     throw new FirebaseError("ETag must be a non-empty string");

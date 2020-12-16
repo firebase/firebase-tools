@@ -18,8 +18,8 @@ function removeInspectOptions(options) {
   return options.filter((opt) => !opt.startsWith("--inspect"));
 }
 
-module.exports = function(projectId, sourceDir, configValues, firebaseConfig) {
-  return new Promise(function(resolve, reject) {
+module.exports = function (projectId, sourceDir, configValues, firebaseConfig) {
+  return new Promise(function (resolve, reject) {
     var env = _.cloneDeep(process.env);
     env.GCLOUD_PROJECT = projectId;
     if (!_.isEmpty(configValues)) {
@@ -41,12 +41,18 @@ module.exports = function(projectId, sourceDir, configValues, firebaseConfig) {
 
     var execArgv = removeInspectOptions(process.execArgv);
     if (env.NODE_OPTIONS) {
-      env.NODE_OPTIONS = removeInspectOptions(env.NODE_OPTIONS.split(" ")).join(" ");
+      env.NODE_OPTIONS = removeInspectOptions(env.NODE_OPTIONS.split(" ")).join(
+        " "
+      );
     }
 
-    var parser = fork(TRIGGER_PARSER, [sourceDir], { silent: true, env: env, execArgv: execArgv });
+    var parser = fork(TRIGGER_PARSER, [sourceDir], {
+      silent: true,
+      env: env,
+      execArgv: execArgv,
+    });
 
-    parser.on("message", function(message) {
+    parser.on("message", function (message) {
       if (message.triggers) {
         resolve(message.triggers);
       } else if (message.error) {
@@ -54,7 +60,7 @@ module.exports = function(projectId, sourceDir, configValues, firebaseConfig) {
       }
     });
 
-    parser.on("exit", function(code) {
+    parser.on("exit", function (code) {
       if (code !== 0) {
         reject(
           new FirebaseError(

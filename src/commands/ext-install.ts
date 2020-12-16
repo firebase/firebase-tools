@@ -7,7 +7,10 @@ import TerminalRenderer = require("marked-terminal");
 import * as askUserForConsent from "../extensions/askUserForConsent";
 import { displayExtInfo } from "../extensions/displayExtensionInfo";
 import { displayNode10CreateBillingNotice } from "../extensions/billingMigrationHelper";
-import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import {
+  isBillingEnabled,
+  enableBilling,
+} from "../extensions/checkProjectBilling";
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -50,8 +53,16 @@ interface InstallExtensionOptions {
   extVersion?: extensionsApi.ExtensionVersion;
 }
 
-async function installExtension(options: InstallExtensionOptions): Promise<void> {
-  const { projectId, extensionName, source, extVersion, paramFilePath } = options;
+async function installExtension(
+  options: InstallExtensionOptions
+): Promise<void> {
+  const {
+    projectId,
+    extensionName,
+    source,
+    extVersion,
+    paramFilePath,
+  } = options;
   const spec = source?.spec || extVersion?.spec;
   if (!spec) {
     throw new FirebaseError(
@@ -71,8 +82,14 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         await displayNode10CreateBillingNotice(spec, true);
       }
     }
-    const roles = spec.roles ? spec.roles.map((role: extensionsApi.Role) => role.role) : [];
-    await askUserForConsent.prompt(spec.displayName || spec.name, projectId, roles);
+    const roles = spec.roles
+      ? spec.roles.map((role: extensionsApi.Role) => role.role)
+      : [];
+    await askUserForConsent.prompt(
+      spec.displayName || spec.name,
+      projectId,
+      roles
+    );
 
     let instanceId = spec.name;
     const anotherInstanceExists = await instanceIdExists(projectId, instanceId);
@@ -87,9 +104,15 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         );
         return;
       }
-      instanceId = await promptForValidInstanceId(`${instanceId}-${getRandomString(4)}`);
+      instanceId = await promptForValidInstanceId(
+        `${instanceId}-${getRandomString(4)}`
+      );
     }
-    const params = await paramHelper.getParams(projectId, _.get(spec, "params", []), paramFilePath);
+    const params = await paramHelper.getParams(
+      projectId,
+      _.get(spec, "params", []),
+      paramFilePath
+    );
 
     spinner.start();
 
@@ -101,7 +124,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
         params
       );
     } else if (source) {
-      await extensionsApi.createInstanceFromSource(projectId, instanceId, source, params);
+      await extensionsApi.createInstanceFromSource(
+        projectId,
+        instanceId,
+        source,
+        params
+      );
     } else {
       throw new FirebaseError(
         `Neither a extension source nor an extension version was supplied for ${extensionName}. Please make sure this is a valid extension and try again.`
@@ -112,8 +140,9 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
 
     utils.logLabeledSuccess(
       logPrefix,
-      `Successfully installed your instance of ${clc.bold(spec.displayName || spec.name)}! ` +
-        `Its Instance ID is ${clc.bold(instanceId)}.`
+      `Successfully installed your instance of ${clc.bold(
+        spec.displayName || spec.name
+      )}! ` + `Its Instance ID is ${clc.bold(instanceId)}.`
     );
     utils.logLabeledBullet(
       logPrefix,
@@ -138,9 +167,12 @@ async function installExtension(options: InstallExtensionOptions): Promise<void>
     if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred installing extension: ${err.message}`, {
-      original: err,
-    });
+    throw new FirebaseError(
+      `Error occurred installing extension: ${err.message}`,
+      {
+        original: err,
+      }
+    );
   }
 }
 
@@ -155,7 +187,10 @@ export default new Command("ext:install [extensionName]")
         : "") +
       "or run with `-i` to see all available extensions."
   )
-  .option("--params <paramsFile>", "name of params variables file with .env format.")
+  .option(
+    "--params <paramsFile>",
+    "name of params variables file with .env format."
+  )
   .before(requirePermissions, ["firebaseextensions.instances.create"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -202,7 +237,9 @@ export default new Command("ext:install [extensionName]")
               source = await createSourceFromLocation(projectId, extensionName);
             } catch (err) {
               throw new FirebaseError(
-                `Unable to find published extension '${clc.bold(extensionName)}', ` +
+                `Unable to find published extension '${clc.bold(
+                  extensionName
+                )}', ` +
                   `and encountered the following error when trying to create an instance of extension '${clc.bold(
                     extensionName
                   )}':\n ${err.message}`
@@ -214,13 +251,17 @@ export default new Command("ext:install [extensionName]")
           }
           case SourceOrigin.PUBLISHED_EXTENSION: {
             await extensionsApi.getExtension(extensionName);
-            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}@latest`);
+            extVersion = await extensionsApi.getExtensionVersion(
+              `${extensionName}@latest`
+            );
             displayExtInfo(extensionName, extVersion.spec, true);
             await confirmInstallInstance();
             break;
           }
           case SourceOrigin.PUBLISHED_EXTENSION_VERSION: {
-            extVersion = await extensionsApi.getExtensionVersion(`${extensionName}`);
+            extVersion = await extensionsApi.getExtensionVersion(
+              `${extensionName}`
+            );
             displayExtInfo(extensionName, extVersion.spec, true);
             await confirmInstallInstance();
             break;
@@ -278,9 +319,12 @@ export default new Command("ext:install [extensionName]")
       });
     } catch (err) {
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred installing the extension: ${err.message}`, {
-          original: err,
-        });
+        throw new FirebaseError(
+          `Error occurred installing the extension: ${err.message}`,
+          {
+            original: err,
+          }
+        );
       }
       throw err;
     }

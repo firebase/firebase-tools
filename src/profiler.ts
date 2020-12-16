@@ -19,19 +19,29 @@ tmp.setGracefulCleanup();
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function profiler(options: any): Promise<unknown> {
-  const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-  const url = new URL(utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?"));
+  const origin = realtimeOriginOrEmulatorOrCustomUrl(
+    options.instanceDetails.databaseUrl
+  );
+  const url = new URL(
+    utils.getDatabaseUrl(origin, options.instance, "/.settings/profile.json?")
+  );
   const rl = readline.createInterface({ input: process.stdin });
 
   const fileOut = !!options.output;
   const tmpFile = tmp.tmpNameSync();
   const tmpStream = fs.createWriteStream(tmpFile);
-  const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+  const outStream = fileOut
+    ? fs.createWriteStream(options.output)
+    : process.stdout;
   const spinner = ora({
     text: "0 operations recorded. Press [enter] to stop",
     color: "yellow",
   });
-  const outputFormat = options.raw ? "RAW" : options.parent.json ? "JSON" : "TXT";
+  const outputFormat = options.raw
+    ? "RAW"
+    : options.parent.json
+    ? "JSON"
+    : "TXT";
 
   // Controller is used to stop the request stream when the user stops the
   // command or the duration passes.

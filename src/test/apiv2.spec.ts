@@ -70,13 +70,14 @@ describe("apiv2", () => {
         responseType: "stream",
         resolveOnHTTPError: false,
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /streaming.+resolveOnHTTPError/);
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /streaming.+resolveOnHTTPError/
+      );
     });
 
     it("should be able to stream a GET request", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .reply(200, "ablobofdata");
+      nock("https://example.com").get("/path/to/foo").reply(200, "ablobofdata");
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request<unknown, NodeJS.ReadableStream>({
@@ -100,28 +101,30 @@ describe("apiv2", () => {
         method: "GET",
         path: "/path/to/foo",
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Unexpected token.+JSON/);
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Unexpected token.+JSON/
+      );
       expect(nock.isDone()).to.be.true;
     });
 
     it("should error with a FirebaseError if an error happens", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .replyWithError("boom");
+      nock("https://example.com").get("/path/to/foo").replyWithError("boom");
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request({
         method: "GET",
         path: "/path/to/foo",
       });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request.+/);
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /Failed to make request.+/
+      );
       expect(nock.isDone()).to.be.true;
     });
 
     it("should error with a FirebaseError if an invalid responseType is provided", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .reply(200, "");
+      nock("https://example.com").get("/path/to/foo").reply(200, "");
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request({
@@ -138,9 +141,7 @@ describe("apiv2", () => {
     });
 
     it("should resolve a 400 GET request", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .reply(400, "who dis?");
+      nock("https://example.com").get("/path/to/foo").reply(400, "who dis?");
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request<unknown, NodeJS.ReadableStream>({
@@ -155,9 +156,7 @@ describe("apiv2", () => {
     });
 
     it("should resolve a 404 GET request", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .reply(404, "not here");
+      nock("https://example.com").get("/path/to/foo").reply(404, "not here");
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request<unknown, NodeJS.ReadableStream>({
@@ -221,7 +220,10 @@ describe("apiv2", () => {
         .get("/v1/path/to/foo")
         .reply(200, { foo: "bar" });
 
-      const c = new Client({ urlPrefix: "https://example.com", apiVersion: "v1" });
+      const c = new Client({
+        urlPrefix: "https://example.com",
+        apiVersion: "v1",
+      });
       const r = await c.request({
         method: "GET",
         path: "/path/to/foo",
@@ -247,9 +249,7 @@ describe("apiv2", () => {
     });
 
     it("should handle a 204 response with no data", async () => {
-      nock("https://example.com")
-        .get("/path/to/foo")
-        .reply(204);
+      nock("https://example.com").get("/path/to/foo").reply(204);
 
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = await c.request({

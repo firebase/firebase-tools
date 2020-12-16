@@ -95,17 +95,24 @@ export class EmulatedTrigger {
   the actual module which contains multiple functions / definitions. We locate the one we need below using
   definition.entryPoint
    */
-  constructor(public definition: EmulatedTriggerDefinition, private module: any) {}
+  constructor(
+    public definition: EmulatedTriggerDefinition,
+    private module: any
+  ) {}
 
   get memoryLimitBytes(): number {
-    return memoryLookup[this.definition.availableMemoryMb || "128MB"] * 1024 * 1024;
+    return (
+      memoryLookup[this.definition.availableMemoryMb || "128MB"] * 1024 * 1024
+    );
   }
 
   get timeoutMs(): number {
     if (typeof this.definition.timeout === "number") {
       return this.definition.timeout * 1000;
     } else {
-      return parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000;
+      return (
+        parseInt((this.definition.timeout || "60s").split("s")[0], 10) * 1000
+      );
     }
   }
 
@@ -123,10 +130,13 @@ export function getEmulatedTriggersFromDefinitions(
   definitions: EmulatedTriggerDefinition[],
   module: any
 ): EmulatedTriggerMap {
-  return definitions.reduce((obj: { [triggerName: string]: any }, definition: any) => {
-    obj[definition.name] = new EmulatedTrigger(definition, module);
-    return obj;
-  }, {});
+  return definitions.reduce(
+    (obj: { [triggerName: string]: any }, definition: any) => {
+      obj[definition.name] = new EmulatedTrigger(definition, module);
+      return obj;
+    },
+    {}
+  );
 }
 
 export function getTemporarySocketPath(pid: number, cwd: string): string {

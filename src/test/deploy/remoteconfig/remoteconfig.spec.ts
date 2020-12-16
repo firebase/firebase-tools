@@ -17,7 +17,8 @@ function createTemplate(versionNumber: string): RemoteConfigTemplate {
     conditions: [
       {
         name: "RCTestCondition",
-        expression: "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
+        expression:
+          "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
       },
     ],
     parameters: {
@@ -66,7 +67,9 @@ describe("Remote Config Deploy", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
     templateStub = sandbox.stub(remoteconfig, "getTemplate");
     etagStub = sandbox.stub(rcDeploy, "getEtag");
   });
@@ -82,7 +85,11 @@ describe("Remote Config Deploy", () => {
       etagStub.withArgs(PROJECT_NUMBER, "6").returns(header);
 
       const etag = await rcDeploy.getEtag(PROJECT_NUMBER, "6");
-      const RCtemplate = await rcDeploy.publishTemplate(PROJECT_NUMBER, currentTemplate, etag);
+      const RCtemplate = await rcDeploy.publishTemplate(
+        PROJECT_NUMBER,
+        currentTemplate,
+        etag
+      );
 
       expect(RCtemplate).to.deep.equal(expectedTemplateInfo);
       expect(apiRequestStub).to.be.calledOnceWith(

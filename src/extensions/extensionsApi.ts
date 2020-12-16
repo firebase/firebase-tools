@@ -40,7 +40,13 @@ export interface ExtensionInstance {
   name: string;
   createTime: string;
   updateTime: string;
-  state: "STATE_UNSPECIFIED" | "DEPLOYING" | "UNINSTALLING" | "ACTIVE" | "ERRORED" | "PAUSED";
+  state:
+    | "STATE_UNSPECIFIED"
+    | "DEPLOYING"
+    | "UNINSTALLING"
+    | "ACTIVE"
+    | "ERRORED"
+    | "PAUSED";
   config: ExtensionConfig;
   serviceAccountEmail: string;
   errorStatus?: string;
@@ -154,14 +160,18 @@ export async function createInstance(
   instanceId: string,
   config: any
 ): Promise<ExtensionInstance> {
-  const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/instances/`, {
-    auth: true,
-    origin: api.extensionsOrigin,
-    data: {
-      name: `projects/${projectId}/instances/${instanceId}`,
-      config: config,
-    },
-  });
+  const createRes = await api.request(
+    "POST",
+    `/${VERSION}/projects/${projectId}/instances/`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+      data: {
+        name: `projects/${projectId}/instances/${instanceId}`,
+        config: config,
+      },
+    }
+  );
   const pollRes = await operationPoller.pollOperation<ExtensionInstance>({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
@@ -221,7 +231,10 @@ export async function createInstanceFromExtensionVersion(
  * @param projectId the project where the instance exists
  * @param instanceId the id of the instance to delete
  */
-export async function deleteInstance(projectId: string, instanceId: string): Promise<any> {
+export async function deleteInstance(
+  projectId: string,
+  instanceId: string
+): Promise<any> {
   const deleteRes = await api.request(
     "DELETE",
     `/${VERSION}/projects/${projectId}/instances/${instanceId}`,
@@ -269,17 +282,23 @@ export async function getInstance(
  *
  * @param projectId the project to list instances for
  */
-export async function listInstances(projectId: string): Promise<ExtensionInstance[]> {
+export async function listInstances(
+  projectId: string
+): Promise<ExtensionInstance[]> {
   const instances: any[] = [];
   const getNextPage = async (pageToken?: string) => {
-    const res = await api.request("GET", `/${VERSION}/projects/${projectId}/instances`, {
-      auth: true,
-      origin: api.extensionsOrigin,
-      query: {
-        pageSize: PAGE_SIZE_MAX,
-        pageToken,
-      },
-    });
+    const res = await api.request(
+      "GET",
+      `/${VERSION}/projects/${projectId}/instances`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+        query: {
+          pageSize: PAGE_SIZE_MAX,
+          pageToken,
+        },
+      }
+    );
     if (Array.isArray(res.body.instances)) {
       instances.push(...res.body.instances);
     }
@@ -421,14 +440,18 @@ export async function createSource(
   packageUri: string,
   extensionRoot: string
 ): Promise<ExtensionSource> {
-  const createRes = await api.request("POST", `/${VERSION}/projects/${projectId}/sources/`, {
-    auth: true,
-    origin: api.extensionsOrigin,
-    data: {
-      packageUri,
-      extensionRoot,
-    },
-  });
+  const createRes = await api.request(
+    "POST",
+    `/${VERSION}/projects/${projectId}/sources/`,
+    {
+      auth: true,
+      origin: api.extensionsOrigin,
+      data: {
+        packageUri,
+        extensionRoot,
+      },
+    }
+  );
   const pollRes = await operationPoller.pollOperation<ExtensionSource>({
     apiOrigin: api.extensionsOrigin,
     apiVersion: VERSION,
@@ -458,10 +481,14 @@ export function getSource(sourceName: string): Promise<ExtensionSource> {
 /**
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id@1.0.0)
  */
-export async function getExtensionVersion(ref: string): Promise<ExtensionVersion> {
+export async function getExtensionVersion(
+  ref: string
+): Promise<ExtensionVersion> {
   const { publisherId, extensionId, version } = parseRef(ref);
   if (!version) {
-    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+    throw new FirebaseError(
+      `ExtensionVersion ref "${ref}" must supply a version.`
+    );
   }
   try {
     const res = await api.request(
@@ -479,7 +506,9 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
         `The extension reference '${clc.bold(
           ref
         )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
+          `  -The publisher ID '${clc.bold(
+            publisherId
+          )}' doesn't exist or could be misspelled\n` +
           `  -The name of the extension version '${clc.bold(
             `${extensionId}@${version}`
           )}' doesn't exist or could be misspelled\n` +
@@ -488,7 +517,9 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension version '${clc.bold(ref)}': ${err}`);
+    throw new FirebaseError(
+      `Failed to query the extension version '${clc.bold(ref)}': ${err}`
+    );
   }
 }
 
@@ -496,18 +527,24 @@ export async function getExtensionVersion(ref: string): Promise<ExtensionVersion
  * @param publisherId the publisher for which we are listing Extensions
  * @param showUnpublished whether to include unpublished Extensions, default = false
  */
-export async function listExtensions(publisherId: string): Promise<Extension[]> {
+export async function listExtensions(
+  publisherId: string
+): Promise<Extension[]> {
   const extensions: Extension[] = [];
   const getNextPage = async (pageToken?: string) => {
-    const res = await api.request("GET", `/${VERSION}/publishers/${publisherId}/extensions`, {
-      auth: true,
-      origin: api.extensionsOrigin,
-      showUnpublished: false,
-      query: {
-        pageSize: PAGE_SIZE_MAX,
-        pageToken,
-      },
-    });
+    const res = await api.request(
+      "GET",
+      `/${VERSION}/publishers/${publisherId}/extensions`,
+      {
+        auth: true,
+        origin: api.extensionsOrigin,
+        showUnpublished: false,
+        query: {
+          pageSize: PAGE_SIZE_MAX,
+          pageToken,
+        },
+      }
+    );
     if (Array.isArray(res.body.extensions)) {
       extensions.push(...res.body.extensions);
     }
@@ -523,7 +560,9 @@ export async function listExtensions(publisherId: string): Promise<Extension[]> 
  * @param ref user-friendly identifier for the ExtensionVersion (publisher-id/extension-id)
  * @param showUnpublished whether to include unpublished ExtensionVersions, default = false
  */
-export async function listExtensionVersions(ref: string): Promise<ExtensionVersion[]> {
+export async function listExtensionVersions(
+  ref: string
+): Promise<ExtensionVersion[]> {
   const { publisherId, extensionId } = parseRef(ref);
   const extensionVersions: ExtensionVersion[] = [];
   const getNextPage = async (pageToken?: string) => {
@@ -582,7 +621,9 @@ export async function publishExtensionVersion(
 ): Promise<ExtensionVersion> {
   const { publisherId, extensionId, version } = parseRef(ref);
   if (!version) {
-    throw new FirebaseError(`ExtensionVersion ref "${ref}" must supply a version.`);
+    throw new FirebaseError(
+      `ExtensionVersion ref "${ref}" must supply a version.`
+    );
   }
 
   const publishRes = await api.request(
@@ -613,7 +654,9 @@ export async function publishExtensionVersion(
 export async function unpublishExtension(ref: string): Promise<void> {
   const { publisherId, extensionId, version } = parseRef(ref);
   if (version) {
-    throw new FirebaseError(`Extension reference "${ref}" must not contain a version.`);
+    throw new FirebaseError(
+      `Extension reference "${ref}" must not contain a version.`
+    );
   }
   const url = `/${VERSION}/publishers/${publisherId}/extensions/${extensionId}:unpublish`;
   try {
@@ -631,7 +674,9 @@ export async function unpublishExtension(ref: string): Promise<void> {
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Error occurred unpublishing extension '${ref}': ${err}`);
+    throw new FirebaseError(
+      `Error occurred unpublishing extension '${ref}': ${err}`
+    );
   }
 }
 
@@ -657,7 +702,9 @@ export async function getExtension(ref: string): Promise<Extension> {
         `The extension reference '${clc.bold(
           ref
         )}' doesn't exist. This could happen for two reasons:\n` +
-          `  -The publisher ID '${clc.bold(publisherId)}' doesn't exist or could be misspelled\n` +
+          `  -The publisher ID '${clc.bold(
+            publisherId
+          )}' doesn't exist or could be misspelled\n` +
           `  -The name of the extension '${clc.bold(
             extensionId
           )}' doesn't exist or could be misspelled\n` +
@@ -666,7 +713,9 @@ export async function getExtension(ref: string): Promise<Extension> {
     } else if (err instanceof FirebaseError) {
       throw err;
     }
-    throw new FirebaseError(`Failed to query the extension '${clc.bold(ref)}': ${err}`);
+    throw new FirebaseError(
+      `Failed to query the extension '${clc.bold(ref)}': ${err}`
+    );
   }
 }
 
@@ -688,7 +737,9 @@ export function parseRef(
     const extensionId = parts[2];
     const version = parts[4];
     if (version && !semver.valid(version) && version !== "latest") {
-      throw new FirebaseError(`Extension reference ${ref} contains an invalid version ${version}.`);
+      throw new FirebaseError(
+        `Extension reference ${ref} contains an invalid version ${version}.`
+      );
     }
     return { publisherId, extensionId, version };
   }

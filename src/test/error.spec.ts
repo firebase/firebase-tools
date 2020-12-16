@@ -12,14 +12,21 @@ describe("error", () => {
     it("should apply default options", () => {
       const error = new FirebaseError("test-message");
 
-      expect(error).to.deep.include({ children: [], exit: 1, name: "FirebaseError", status: 500 });
+      expect(error).to.deep.include({
+        children: [],
+        exit: 1,
+        name: "FirebaseError",
+        status: 500,
+      });
     });
 
     it("should persist all options", () => {
       /**
        * All possible options that might be provided to `FirebaseError`.
        */
-      type FirebaseErrorOptions = ConstructorParameters<typeof FirebaseError>[1];
+      type FirebaseErrorOptions = ConstructorParameters<
+        typeof FirebaseError
+      >[1];
 
       /*
        * The following `Required` ensures all options are defined, so the test

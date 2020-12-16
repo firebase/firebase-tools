@@ -18,7 +18,11 @@ module.exports = {
       "deployment-tool": _value(),
     };
   },
-  check: function(labels) {
-    return labels && labels["deployment-tool"] && labels["deployment-tool"].indexOf(BASE) === 0;
+  check: function (labels) {
+    return (
+      labels &&
+      labels["deployment-tool"] &&
+      labels["deployment-tool"].indexOf(BASE) === 0
+    );
   },
 };

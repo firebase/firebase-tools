@@ -14,7 +14,14 @@ import { LogData } from "./loggingEmulator";
  * WARN - warnings from our code that humans need.
  * WARN_ONCE - warnings from our code that humans need, but only once per session.
  */
-type LogType = "DEBUG" | "INFO" | "BULLET" | "SUCCESS" | "USER" | "WARN" | "WARN_ONCE";
+type LogType =
+  | "DEBUG"
+  | "INFO"
+  | "BULLET"
+  | "SUCCESS"
+  | "USER"
+  | "WARN"
+  | "WARN_ONCE";
 
 const TYPE_VERBOSITY: { [type in LogType]: number } = {
   DEBUG: 0,
@@ -131,7 +138,10 @@ export class EmulatorLogger {
         break;
       case "DEBUG":
         if (log.data && Object.keys(log.data).length > 0) {
-          this.log("DEBUG", `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`);
+          this.log(
+            "DEBUG",
+            `[${log.type}] ${log.text} ${JSON.stringify(log.data)}`
+          );
         } else {
           this.log("DEBUG", `[${log.type}] ${log.text}`);
         }
@@ -158,7 +168,10 @@ export class EmulatorLogger {
     switch (systemLog.type) {
       case "runtime-status":
         if (systemLog.text === "killed") {
-          this.log("WARN", `Your function was killed because it raised an unhandled error.`);
+          this.log(
+            "WARN",
+            `Your function was killed because it raised an unhandled error.`
+          );
         }
         break;
       case "googleapis-network-access":
@@ -193,9 +206,9 @@ export class EmulatorLogger {
             systemLog.data.name
           }" to be installed as a ${
             systemLog.data.isDev ? "development dependency" : "dependency"
-          }. To fix this, run "npm install ${systemLog.data.isDev ? "--save-dev" : "--save"} ${
-            systemLog.data.name
-          }" in your functions directory.`
+          }. To fix this, run "npm install ${
+            systemLog.data.isDev ? "--save-dev" : "--save"
+          } ${systemLog.data.name}" in your functions directory.`
         );
         break;
       case "uninstalled-module":
@@ -220,9 +233,13 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         break;
       case "function-code-resolution-failed":
         this.log("WARN", systemLog.data.error);
-        const helper = ["We were unable to load your functions code. (see above)"];
+        const helper = [
+          "We were unable to load your functions code. (see above)",
+        ];
         if (systemLog.data.isPotentially.wrong_directory) {
-          helper.push(`   - There is no "package.json" file in your functions directory.`);
+          helper.push(
+            `   - There is no "package.json" file in your functions directory.`
+          );
         }
         if (systemLog.data.isPotentially.typescript) {
           helper.push(
@@ -237,7 +254,10 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
         utils.logWarning(helper.join("\n"), "warn", this.data);
         break;
       case "function-runtimeconfig-json-invalid":
-        this.log("WARN", "Found .runtimeconfig.json but the JSON format is invalid.");
+        this.log(
+          "WARN",
+          "Found .runtimeconfig.json but the JSON format is invalid."
+        );
       default:
       // Silence
     }

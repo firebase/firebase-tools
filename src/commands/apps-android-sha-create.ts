@@ -2,7 +2,11 @@ import * as clc from "cli-color";
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../management/apps";
+import {
+  AppAndroidShaData,
+  createAppAndroidSha,
+  ShaCertificateType,
+} from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner } from "../utils";
 
@@ -18,7 +22,11 @@ module.exports = new Command("apps:android:sha:create <appId> <shaHash>")
   .description("add a SHA certificate hash for a given app id.")
   .before(requireAuth)
   .action(
-    async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {
+    async (
+      appId: string = "",
+      shaHash: string = "",
+      options: any
+    ): Promise<AppAndroidShaData> => {
       const projectId = getProjectId(options);
 
       const shaCertificate = await promiseWithSpinner<AppAndroidShaData>(

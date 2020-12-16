@@ -33,7 +33,8 @@ export const DESC_INSPECT_FUNCTIONS =
   "emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)";
 
 export const FLAG_IMPORT = "--import [dir]";
-export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
+export const DESC_IMPORT =
+  "import emulator data from a previous export (see emulators:export)";
 
 export const FLAG_EXPORT_ON_EXIT_NAME = "--export-on-exit";
 export const FLAG_EXPORT_ON_EXIT = `${FLAG_EXPORT_ON_EXIT_NAME} [dir]`;
@@ -58,7 +59,13 @@ export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
 
 const DEFAULT_CONFIG = new Config(
-  { database: {}, firestore: {}, functions: {}, hosting: {}, emulators: { auth: {}, pubsub: {} } },
+  {
+    database: {},
+    firestore: {},
+    functions: {},
+    hosting: {},
+    emulators: { auth: {}, pubsub: {} },
+  },
   {}
 );
 
@@ -153,7 +160,9 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   }
 
   if (canStartWithoutConfig && !options.config) {
-    utils.logWarning("Could not find config (firebase.json) so using defaults.");
+    utils.logWarning(
+      "Could not find config (firebase.json) so using defaults."
+    );
     options.config = DEFAULT_CONFIG;
   } else {
     await requireConfig(options);
@@ -190,10 +199,15 @@ export function setExportOnExitOptions(options: any) {
     // --import ./data --export-on-exit
     if (options.import) {
       options.exportOnExit =
-        typeof options.exportOnExit === "string" ? options.exportOnExit : options.import;
+        typeof options.exportOnExit === "string"
+          ? options.exportOnExit
+          : options.import;
 
       const importPath = path.resolve(options.import);
-      if (!fsutils.dirExistsSync(importPath) && options.import === options.exportOnExit) {
+      if (
+        !fsutils.dirExistsSync(importPath) &&
+        options.import === options.exportOnExit
+      ) {
         // --import path does not exist and is the same as --export-on-exit, let's not import and only --export-on-exit
         options.exportOnExit = options.import;
         delete options.import;
@@ -225,7 +239,9 @@ function processKillSignal(
       if (diff < 100) {
         // If we got a signal twice in 100ms it likely was not an intentional human action.
         // It could be a shaky MacBook keyboard or a known issue with "npm" scripts and signals.
-        logger.debug(`Ignoring signal ${signal} due to short delay of ${diff}ms`);
+        logger.debug(
+          `Ignoring signal ${signal} due to short delay of ${diff}ms`
+        );
         return;
       }
 
@@ -249,8 +265,8 @@ function processKillSignal(
         await controller.cleanShutdown();
       } else {
         logger.debug(`Skipping clean onExit() and cleanShutdown()`);
-        const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter((i) =>
-          Boolean(i.pid)
+        const runningEmulatorsInfosWithPid = EmulatorRegistry.listRunningWithInfo().filter(
+          (i) => Boolean(i.pid)
         );
 
         utils.logLabeledWarning(
@@ -259,7 +275,9 @@ function processKillSignal(
             runningEmulatorsInfosWithPid.length
           } subprocess${
             runningEmulatorsInfosWithPid.length > 1 ? "es" : ""
-          } to finish. These processes ${clc.bold("may")} still be running on your machine: `
+          } to finish. These processes ${clc.bold(
+            "may"
+          )} still be running on your machine: `
         );
 
         const pids: number[] = [];
@@ -281,7 +299,11 @@ function processKillSignal(
         }
         logger.info(`\n${emulatorsTable}\n\nTo force them to exit run:\n`);
         if (process.platform === "win32") {
-          logger.info(clc.bold(`TASKKILL ${pids.map((pid) => "/PID " + pid).join(" ")} /T\n`));
+          logger.info(
+            clc.bold(
+              `TASKKILL ${pids.map((pid) => "/PID " + pid).join(" ")} /T\n`
+            )
+          );
         } else {
           logger.info(clc.bold(`kill ${pids.join(" ")}\n`));
         }
@@ -297,7 +319,10 @@ function processKillSignal(
 export function shutdownWhenKilled(options: any): Promise<void> {
   return new Promise((res, rej) => {
     ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"].forEach((signal: string) => {
-      process.on(signal as Signals, processKillSignal(signal as Signals, res, rej, options));
+      process.on(
+        signal as Signals,
+        processKillSignal(signal as Signals, res, rej, options)
+      );
     });
   })
     .then(() => {
@@ -313,7 +338,10 @@ export function shutdownWhenKilled(options: any): Promise<void> {
     });
 }
 
-async function runScript(script: string, extraEnv: Record<string, string>): Promise<number> {
+async function runScript(
+  script: string,
+  extraEnv: Record<string, string>
+): Promise<number> {
   utils.logBullet(`Running script: ${clc.bold(script)}`);
 
   const env: NodeJS.ProcessEnv = { ...process.env, ...extraEnv };
@@ -359,7 +387,9 @@ async function runScript(script: string, extraEnv: Record<string, string>): Prom
 
   return new Promise((resolve, reject) => {
     proc.on("error", (err: any) => {
-      utils.logWarning(`There was an error running the script: ${JSON.stringify(err)}`);
+      utils.logWarning(
+        `There was an error running the script: ${JSON.stringify(err)}`
+      );
       reject();
     });
 
@@ -414,8 +444,11 @@ export async function emulatorExec(script: string, options: any) {
   }
 
   if (exitCode !== 0) {
-    throw new FirebaseError(`Script "${clc.bold(script)}" exited with code ${exitCode}`, {
-      exit: exitCode,
-    });
+    throw new FirebaseError(
+      `Script "${clc.bold(script)}" exited with code ${exitCode}`,
+      {
+        exit: exitCode,
+      }
+    );
   }
 }

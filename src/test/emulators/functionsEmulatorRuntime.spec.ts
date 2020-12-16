@@ -5,10 +5,18 @@ import * as express from "express";
 import { Change } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { EmulatorLog } from "../../emulator/types";
-import { FunctionRuntimeBundles, TIMEOUT_LONG, TIMEOUT_MED, MODULE_ROOT } from "./fixtures";
+import {
+  FunctionRuntimeBundles,
+  TIMEOUT_LONG,
+  TIMEOUT_MED,
+  MODULE_ROOT,
+} from "./fixtures";
 import { FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
 import { IncomingMessage, request } from "http";
-import { InvokeRuntimeOpts, FunctionsEmulator } from "../../emulator/functionsEmulator";
+import {
+  InvokeRuntimeOpts,
+  FunctionsEmulator,
+} from "../../emulator/functionsEmulator";
 import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
 import { streamToString } from "../../utils";
 
@@ -22,7 +30,9 @@ const functionsEmulator = new FunctionsEmulator({
 });
 functionsEmulator.nodeBinary = process.execPath;
 
-async function countLogEntries(worker: RuntimeWorker): Promise<{ [key: string]: number }> {
+async function countLogEntries(
+  worker: RuntimeWorker
+): Promise<{ [key: string]: number }> {
   const runtime = worker.runtime;
   const counts: { [key: string]: number } = {};
 
@@ -96,37 +106,43 @@ describe("FunctionsEmulator-Runtime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing unknown HTTP requests via 'http'", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                await new Promise((resolve) => {
-                  console.log(require("http").get.toString());
-                  require("http").get("http://example.com", resolve);
-                });
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(async () => {
+                  await new Promise((resolve) => {
+                    console.log(require("http").get.toString());
+                    require("http").get("http://example.com", resolve);
+                  });
+                }),
+            };
+          }
+        );
 
         const logs = await countLogEntries(worker);
         expect(logs["unidentified-network-access"]).to.gte(1);
       }).timeout(TIMEOUT_LONG);
 
       it("should log outgoing unknown HTTP requests via 'https'", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                await new Promise((resolve) => {
-                  require("https").get("https://example.com", resolve);
-                });
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(async () => {
+                  await new Promise((resolve) => {
+                    require("https").get("https://example.com", resolve);
+                  });
+                }),
+            };
+          }
+        );
 
         const logs = await countLogEntries(worker);
 
@@ -134,18 +150,24 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_LONG);
 
       it("should log outgoing Google API requests", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(async () => {
-                await new Promise((resolve) => {
-                  require("https").get("https://storage.googleapis.com", resolve);
-                });
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(async () => {
+                  await new Promise((resolve) => {
+                    require("https").get(
+                      "https://storage.googleapis.com",
+                      resolve
+                    );
+                  });
+                }),
+            };
+          }
+        );
 
         const logs = await countLogEntries(worker);
 
@@ -155,30 +177,36 @@ describe("FunctionsEmulator-Runtime", () => {
 
     describe("_InitializeFirebaseAdminStubs(...)", () => {
       it("should provide stubbed default app from initializeApp", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(DO_NOTHING),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(DO_NOTHING),
+            };
+          }
+        );
 
         const logs = await countLogEntries(worker);
         expect(logs["default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should provide a stubbed app with custom options", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp({
-            custom: true,
-          });
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(DO_NOTHING),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp({
+              custom: true,
+            });
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(DO_NOTHING),
+            };
+          }
+        );
 
         let foundMatch = false;
         worker.runtime.events.on("log", (el: EmulatorLog) => {
@@ -195,33 +223,43 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide non-stubbed non-default app from initializeApp", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp(); // We still need to initialize default for snapshots
-          require("firebase-admin").initializeApp({}, "non-default");
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(DO_NOTHING),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp(); // We still need to initialize default for snapshots
+            require("firebase-admin").initializeApp({}, "non-default");
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(DO_NOTHING),
+            };
+          }
+        );
         const logs = await countLogEntries(worker);
         expect(logs["non-default-admin-app-used"]).to.eq(1);
       }).timeout(TIMEOUT_MED);
 
       it("should route all sub-fields accordingly", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onCreate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate(() => {
-                console.log(
-                  JSON.stringify(require("firebase-admin").firestore.FieldValue.increment(4))
-                );
-                return Promise.resolve();
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onCreate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate(() => {
+                  console.log(
+                    JSON.stringify(
+                      require("firebase-admin").firestore.FieldValue.increment(
+                        4
+                      )
+                    )
+                  );
+                  return Promise.resolve();
+                }),
+            };
+          }
+        );
 
         worker.runtime.events.on("log", (el: EmulatorLog) => {
           if (el.level !== "USER") {
@@ -236,7 +274,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose Firestore prod when the emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {};
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
@@ -244,10 +284,12 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(admin.firestore()._settings);
-              return Promise.resolve();
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(admin.firestore()._settings);
+                return Promise.resolve();
+              }
+            ),
           };
         });
 
@@ -260,7 +302,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {
           firestore: {
             host: "localhost",
@@ -270,12 +314,14 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                var: process.env.FIRESTORE_EMULATOR_HOST,
-              });
-              return Promise.resolve();
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({
+                  var: process.env.FIRESTORE_EMULATOR_HOST,
+                });
+                return Promise.resolve();
+              }
+            ),
           };
         });
 
@@ -286,7 +332,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {
           firestore: {
             host: "localhost",
@@ -299,10 +347,12 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(admin.firestore()._settings);
-              return Promise.resolve();
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(admin.firestore()._settings);
+                return Promise.resolve();
+              }
+            ),
           };
         });
 
@@ -315,7 +365,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose RTDB prod when the emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {};
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
@@ -323,15 +375,14 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
-              });
-              return Promise.resolve();
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({
+                  url: admin.database().ref().toString(),
+                });
+                return Promise.resolve();
+              }
+            ),
           };
         });
 
@@ -341,7 +392,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {
           database: {
             host: "localhost",
@@ -351,11 +404,13 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
-              });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({
+                  var: process.env.FIREBASE_DATABASE_EMULATOR_HOST,
+                });
+              }
+            ),
           };
         });
 
@@ -366,7 +421,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {
           database: {
             host: "localhost",
@@ -379,14 +436,13 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
-              });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({
+                  url: admin.database().ref().toString(),
+                });
+              }
+            ),
           };
         });
 
@@ -396,7 +452,9 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should return an emulated databaseURL when RTDB emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         frb.emulators = {
           database: {
             host: "localhost",
@@ -409,38 +467,50 @@ describe("FunctionsEmulator-Runtime", () => {
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+              }
+            ),
           };
         });
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(`http://localhost:9090?ns=${frb.projectId}`);
+        expect(info.databaseURL).to.eql(
+          `http://localhost:9090?ns=${frb.projectId}`
+        );
       }).timeout(TIMEOUT_MED);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(
+          FunctionRuntimeBundles.onRequest
+        ) as FunctionsRuntimeBundle;
         const worker = invokeRuntimeWithFunctions(frb, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
 
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(JSON.parse(process.env.FIREBASE_CONFIG!));
+              }
+            ),
           };
         });
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(`https://${frb.projectId}.firebaseio.com`);
+        expect(info.databaseURL).to.eql(
+          `https://${frb.projectId}.firebaseio.com`
+        );
       }).timeout(TIMEOUT_MED);
     });
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
-      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+      const frb = _.cloneDeep(
+        FunctionRuntimeBundles.onRequest
+      ) as FunctionsRuntimeBundle;
       frb.emulators = {
         auth: {
           host: "localhost",
@@ -450,11 +520,13 @@ describe("FunctionsEmulator-Runtime", () => {
 
       const worker = invokeRuntimeWithFunctions(frb, () => {
         return {
-          function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-            res.json({
-              var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-            });
-          }),
+          function_id: require("firebase-functions").https.onRequest(
+            (req: any, res: any) => {
+              res.json({
+                var: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+              });
+            }
+          ),
         };
       });
 
@@ -506,9 +578,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({ from_trigger: true });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({ from_trigger: true });
+              }
+            ),
           };
         });
 
@@ -522,9 +596,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(req.body);
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
           };
         });
 
@@ -549,9 +625,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(req.body);
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
           };
         });
 
@@ -576,9 +654,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(req.body);
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
           };
         });
 
@@ -603,9 +683,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json(req.body);
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json(req.body);
+              }
+            ),
           };
         });
 
@@ -631,9 +713,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.send(req.rawBody);
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.send(req.rawBody);
+              }
+            ),
           };
         });
 
@@ -682,9 +766,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              res.json({ hostname: req.hostname });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                res.json({ hostname: req.hostname });
+              }
+            ),
           };
         });
 
@@ -701,10 +787,12 @@ describe("FunctionsEmulator-Runtime", () => {
         const frb = FunctionRuntimeBundles.onRequest;
         const worker = invokeRuntimeWithFunctions(frb, () => {
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              const now = new Date();
-              res.json({ offset: now.getTimezoneOffset() });
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                const now = new Date();
+                res.json({ offset: now.getTimezoneOffset() });
+              }
+            ),
           };
         });
 
@@ -715,29 +803,35 @@ describe("FunctionsEmulator-Runtime", () => {
 
     describe("Cloud Firestore", () => {
       it("should provide Change for firestore.onWrite()", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onWrite((change: Change<DocumentSnapshot>) => {
-                console.log(
-                  JSON.stringify({
-                    before_exists: change.before.exists,
-                    after_exists: change.after.exists,
-                  })
-                );
-                return Promise.resolve();
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onWrite,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onWrite((change: Change<DocumentSnapshot>) => {
+                  console.log(
+                    JSON.stringify({
+                      before_exists: change.before.exists,
+                      after_exists: change.after.exists,
+                    })
+                  );
+                  return Promise.resolve();
+                }),
+            };
+          }
+        );
 
         worker.runtime.events.on("log", (el: EmulatorLog) => {
           if (el.level !== "USER") {
             return;
           }
 
-          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: false, after_exists: true });
+          expect(JSON.parse(el.text)).to.deep.eq({
+            before_exists: false,
+            after_exists: true,
+          });
         });
 
         const logs = await countLogEntries(worker);
@@ -745,28 +839,34 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide Change for firestore.onUpdate()", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onUpdate, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onUpdate((change: Change<DocumentSnapshot>) => {
-                console.log(
-                  JSON.stringify({
-                    before_exists: change.before.exists,
-                    after_exists: change.after.exists,
-                  })
-                );
-                return Promise.resolve();
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onUpdate,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onUpdate((change: Change<DocumentSnapshot>) => {
+                  console.log(
+                    JSON.stringify({
+                      before_exists: change.before.exists,
+                      after_exists: change.after.exists,
+                    })
+                  );
+                  return Promise.resolve();
+                }),
+            };
+          }
+        );
 
         worker.runtime.events.on("log", (el: EmulatorLog) => {
           if (el.level !== "USER") {
             return;
           }
-          expect(JSON.parse(el.text)).to.deep.eq({ before_exists: true, after_exists: true });
+          expect(JSON.parse(el.text)).to.deep.eq({
+            before_exists: true,
+            after_exists: true,
+          });
         });
 
         const logs = await countLogEntries(worker);
@@ -774,21 +874,24 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide DocumentSnapshot for firestore.onDelete()", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onDelete, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onDelete((snap: DocumentSnapshot) => {
-                console.log(
-                  JSON.stringify({
-                    snap_exists: snap.exists,
-                  })
-                );
-                return Promise.resolve();
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onDelete,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onDelete((snap: DocumentSnapshot) => {
+                  console.log(
+                    JSON.stringify({
+                      snap_exists: snap.exists,
+                    })
+                  );
+                  return Promise.resolve();
+                }),
+            };
+          }
+        );
 
         worker.runtime.events.on("log", (el: EmulatorLog) => {
           if (el.level !== "USER") {
@@ -802,21 +905,24 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should provide DocumentSnapshot for firestore.onCreate()", async () => {
-        const worker = invokeRuntimeWithFunctions(FunctionRuntimeBundles.onWrite, () => {
-          require("firebase-admin").initializeApp();
-          return {
-            function_id: require("firebase-functions")
-              .firestore.document("test/test")
-              .onCreate((snap: DocumentSnapshot) => {
-                console.log(
-                  JSON.stringify({
-                    snap_exists: snap.exists,
-                  })
-                );
-                return Promise.resolve();
-              }),
-          };
-        });
+        const worker = invokeRuntimeWithFunctions(
+          FunctionRuntimeBundles.onWrite,
+          () => {
+            require("firebase-admin").initializeApp();
+            return {
+              function_id: require("firebase-functions")
+                .firestore.document("test/test")
+                .onCreate((snap: DocumentSnapshot) => {
+                  console.log(
+                    JSON.stringify({
+                      snap_exists: snap.exists,
+                    })
+                  );
+                  return Promise.resolve();
+                }),
+            };
+          }
+        );
 
         worker.runtime.events.on("log", (el: EmulatorLog) => {
           if (el.level !== "USER") {
@@ -836,9 +942,11 @@ describe("FunctionsEmulator-Runtime", () => {
         const worker = invokeRuntimeWithFunctions(frb, () => {
           require("firebase-admin").initializeApp();
           return {
-            function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
-              throw new Error("not a thing");
-            }),
+            function_id: require("firebase-functions").https.onRequest(
+              (req: any, res: any) => {
+                throw new Error("not a thing");
+              }
+            ),
           };
         });
 

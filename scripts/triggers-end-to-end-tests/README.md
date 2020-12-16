@@ -63,17 +63,21 @@ This function performs a document write that triggers the following realtime
 database function:
 
 ```javascript
-exports.rtdbReaction = functions.database.ref(START_DOCUMENT_NAME).onWrite(async (change, ctx) => {
-  console.log(RTDB_FUNCTION_LOG);
+exports.rtdbReaction = functions.database
+  .ref(START_DOCUMENT_NAME)
+  .onWrite(async (change, ctx) => {
+    console.log(RTDB_FUNCTION_LOG);
 
-  const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
-  await ref.set({ done: new Date().toISOString() });
+    const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
+    await ref.set({ done: new Date().toISOString() });
 
-  const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
-  await firestoreref.set({ done: new Date().toISOString() });
+    const firestoreref = admin
+      .firestore()
+      .doc(END_DOCUMENT_NAME + "_from_database");
+    await firestoreref.set({ done: new Date().toISOString() });
 
-  return true;
-});
+    return true;
+  });
 ```
 
 The driver program for the end-to-end test has spawned the functions emulator as

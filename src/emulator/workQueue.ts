@@ -104,7 +104,11 @@ export class WorkQueue {
       return;
     }
 
-    this.logger.logLabeled("BULLET", "functions", "Waiting for all functions to finish...");
+    this.logger.logLabeled(
+      "BULLET",
+      "functions",
+      "Waiting for all functions to finish..."
+    );
     return new Promise((res, rej) => {
       const delta = 100;
       let elapsed = 0;
@@ -154,6 +158,10 @@ export class WorkQueue {
   }
 
   private logState() {
-    this.logger.logLabeled("DEBUG", "work-queue", JSON.stringify(this.getState()));
+    this.logger.logLabeled(
+      "DEBUG",
+      "work-queue",
+      JSON.stringify(this.getState())
+    );
   }
 }

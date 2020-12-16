@@ -44,7 +44,10 @@ export function displayExtInfo(
     lines.push(`**Source code**: ${spec.sourceUrl}`);
   }
   if (lines.length > 0) {
-    utils.logLabeledBullet(logPrefix, `information about '${clc.bold(extensionName)}':`);
+    utils.logLabeledBullet(
+      logPrefix,
+      `information about '${clc.bold(extensionName)}':`
+    );
     const infoStr = lines.join("\n");
     // Convert to markdown and convert any trailing newlines to a single newline.
     const formatted = marked(infoStr).replace(/\n+$/, "\n");
@@ -142,10 +145,16 @@ export async function displayUpdateChangesRequiringConfirmation(
       "Do you wish to continue?";
     await getConsent("license", marked(message));
   }
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const apisDiffDeletions = _.differenceWith(spec.apis, _.get(newSpec, "apis", []), _.isEqual);
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const apisDiffAdditions = _.differenceWith(newSpec.apis, _.get(spec, "apis", []), _.isEqual);
+  const apisDiffDeletions = _.differenceWith(
+    spec.apis,
+    _.get(newSpec, "apis", []),
+    _.isEqual // eslint-disable-line @typescript-eslint/unbound-method
+  );
+  const apisDiffAdditions = _.differenceWith(
+    newSpec.apis,
+    _.get(spec, "apis", []),
+    _.isEqual // eslint-disable-line @typescript-eslint/unbound-method
+  );
   if (apisDiffDeletions.length || apisDiffAdditions.length) {
     let message = "\n**APIs:**\n";
     apisDiffDeletions.forEach((api) => {
@@ -180,10 +189,16 @@ export async function displayUpdateChangesRequiringConfirmation(
     await getConsent("resources", marked(message));
   }
 
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const rolesDiffDeletions = _.differenceWith(spec.roles, _.get(newSpec, "roles", []), _.isEqual);
-  // eslint-disable-next-line @typescript-eslint/unbound-method
-  const rolesDiffAdditions = _.differenceWith(newSpec.roles, _.get(spec, "roles", []), _.isEqual);
+  const rolesDiffDeletions = _.differenceWith(
+    spec.roles,
+    _.get(newSpec, "roles", []),
+    _.isEqual // eslint-disable-line @typescript-eslint/unbound-method
+  );
+  const rolesDiffAdditions = _.differenceWith(
+    newSpec.roles,
+    _.get(spec, "roles", []),
+    _.isEqual // eslint-disable-line @typescript-eslint/unbound-method
+  );
   if (rolesDiffDeletions.length || rolesDiffAdditions.length) {
     let message = "\n**Permissions:**\n";
     rolesDiffDeletions.forEach((role) => {
@@ -204,7 +219,10 @@ export async function displayUpdateChangesRequiringConfirmation(
   }
 }
 
-function compareResources(resource1: extensionsApi.Resource, resource2: extensionsApi.Resource) {
+function compareResources(
+  resource1: extensionsApi.Resource,
+  resource2: extensionsApi.Resource
+) {
   return resource1.name == resource2.name && resource1.type == resource2.type;
 }
 
@@ -219,7 +237,10 @@ function getResourceReadableName(resource: extensionsApi.Resource): string {
  * @param field
  * @param message
  */
-export async function getConsent(field: string, message: string): Promise<void> {
+export async function getConsent(
+  field: string,
+  message: string
+): Promise<void> {
   const consent = await promptOnce({
     type: "confirm",
     message,

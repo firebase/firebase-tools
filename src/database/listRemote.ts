@@ -34,7 +34,9 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const url = new URL(`${utils.addSubdomain(this.host, this.instance)}${path}.json`);
+    const url = new URL(
+      `${utils.addSubdomain(this.host, this.instance)}${path}.json`
+    );
 
     const params: any = {
       shallow: true,
@@ -48,12 +50,17 @@ export class RTDBListRemote implements ListRemote {
     }
 
     const t0 = Date.now();
-    const res = await this.apiClient.get<{ [key: string]: unknown }>(url.pathname, {
-      queryParams: params,
-    });
+    const res = await this.apiClient.get<{ [key: string]: unknown }>(
+      url.pathname,
+      {
+        queryParams: params,
+      }
+    );
     const paths = Object.keys(res.body);
     const dt = Date.now() - t0;
-    logger.debug(`[database] sucessfully fetched ${paths.length} path at ${path} ${dt}`);
+    logger.debug(
+      `[database] sucessfully fetched ${paths.length} path at ${path} ${dt}`
+    );
     return paths;
   }
 }

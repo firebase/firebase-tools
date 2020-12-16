@@ -36,7 +36,10 @@ module.exports = {
         "@typescript-eslint/no-invalid-this": ["error"],
 
         "@typescript-eslint/ban-types": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/explicit-function-return-type": ["warn", { allowExpressions: true }], // TODO(bkendall): SET to error.
+        "@typescript-eslint/explicit-function-return-type": [
+          "warn",
+          { allowExpressions: true },
+        ], // TODO(bkendall): SET to error.
         "@typescript-eslint/no-extra-non-null-assertion": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-floating-promises": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-inferrable-types": "warn", // TODO(bkendall): remove, allow to error.
@@ -46,7 +49,10 @@ module.exports = {
         "@typescript-eslint/no-unsafe-call": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-member-access": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/no-unsafe-return": "warn", // TODO(bkendall): remove, allow to error.
-        "@typescript-eslint/no-use-before-define": ["warn", { functions: false, typedefs: false }], // TODO(bkendall): change to error.
+        "@typescript-eslint/no-use-before-define": [
+          "warn",
+          { functions: false, typedefs: false },
+        ], // TODO(bkendall): change to error.
         "@typescript-eslint/no-var-requires": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-includes": "warn", // TODO(bkendall): remove, allow to error.
         "@typescript-eslint/prefer-regexp-exec": "warn", // TODO(bkendall): remove, allow to error.

@@ -11,7 +11,8 @@ marked.setOptions({
   renderer: new TerminalRenderer(),
 });
 
-const urlPricingExamples = "https://cloud.google.com/functions/pricing#pricing_examples";
+const urlPricingExamples =
+  "https://cloud.google.com/functions/pricing#pricing_examples";
 const urlFAQ = "https://firebase.google.com/support/faq/#extensions-pricing";
 
 const billingMsgUpdate =
@@ -36,11 +37,16 @@ const defaultRuntimes: { [key: string]: string } = {
   v1beta: "nodejs8",
 };
 
-function hasRuntime(spec: extensionsApi.ExtensionSpec, runtime: string): boolean {
+function hasRuntime(
+  spec: extensionsApi.ExtensionSpec,
+  runtime: string
+): boolean {
   const specVersion = spec.specVersion || defaultSpecVersion;
   const defaultRuntime = defaultRuntimes[specVersion];
   const resources = spec.resources || [];
-  return resources.some((r) => runtime === (r.properties?.runtime || defaultRuntime));
+  return resources.some(
+    (r) => runtime === (r.properties?.runtime || defaultRuntime)
+  );
 }
 
 /**

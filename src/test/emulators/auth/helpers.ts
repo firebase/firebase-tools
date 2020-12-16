@@ -3,7 +3,11 @@ import { inspect } from "util";
 import * as supertest from "supertest";
 import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../../../emulator/auth/operations";
-import { OobRecord, PhoneVerificationRecord, UserInfo } from "../../../emulator/auth/state";
+import {
+  OobRecord,
+  PhoneVerificationRecord,
+  UserInfo,
+} from "../../../emulator/auth/state";
 import { TestAgent, PROJECT_ID } from "./setup";
 
 export { PROJECT_ID };
@@ -46,7 +50,10 @@ export const REAL_GOOGLE_ACCOUNT = {
  * @param expected the expected status code
  * @param res the supertest Response
  */
-export function expectStatusCode(expected: number, res: supertest.Response): void {
+export function expectStatusCode(
+  expected: number,
+  res: supertest.Response
+): void {
   if (res.status !== expected) {
     const body = inspect(res.body);
     throw new AssertionError(
@@ -62,7 +69,9 @@ export function expectStatusCode(expected: number, res: supertest.Response): voi
  * @param input custom field values
  * @return a complete claims plain JS object
  */
-export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): IdpJwtPayload {
+export function fakeClaims(
+  input: Partial<IdpJwtPayload> & { sub: string }
+): IdpJwtPayload {
   return Object.assign(
     {
       iss: "example.com",
@@ -80,7 +89,12 @@ export function fakeClaims(input: Partial<IdpJwtPayload> & { sub: string }): Idp
 export function registerUser(
   testAgent: TestAgent,
   user: { email: string; password: string; displayName?: string }
-): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
+): Promise<{
+  idToken: string;
+  localId: string;
+  refreshToken: string;
+  email: string;
+}> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
     .send(user)
@@ -117,7 +131,12 @@ export async function signInWithEmailLink(
   testAgent: TestAgent,
   email: string,
   idTokenToLink?: string
-): Promise<{ idToken: string; localId: string; refreshToken: string; email: string }> {
+): Promise<{
+  idToken: string;
+  localId: string;
+  refreshToken: string;
+  email: string;
+}> {
   const { oobCode } = await createEmailSignInOob(testAgent, email);
 
   return testAgent
@@ -167,15 +186,20 @@ export function signInWithFakeClaims(
   testAgent: TestAgent,
   providerId: string,
   claims: Partial<IdpJwtPayload> & { sub: string }
-): Promise<{ idToken: string; localId: string; refreshToken: string; email?: string }> {
+): Promise<{
+  idToken: string;
+  localId: string;
+  refreshToken: string;
+  email?: string;
+}> {
   const fakeIdToken = JSON.stringify(fakeClaims(claims));
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
     .query({ key: "fake-api-key" })
     .send({
-      postBody: `providerId=${encodeURIComponent(providerId)}&id_token=${encodeURIComponent(
-        fakeIdToken
-      )}`,
+      postBody: `providerId=${encodeURIComponent(
+        providerId
+      )}&id_token=${encodeURIComponent(fakeIdToken)}`,
       requestUri: "http://localhost",
       returnIdpCredential: true,
       returnSecureToken: true,
@@ -207,7 +231,10 @@ export async function expectUserNotExistsForIdToken(
     });
 }
 
-export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string): Promise<void> {
+export async function expectIdTokenExpired(
+  testAgent: TestAgent,
+  idToken: string
+): Promise<void> {
   await testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
     .send({ idToken })
@@ -220,7 +247,10 @@ export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string
     });
 }
 
-export function getAccountInfoByIdToken(testAgent: TestAgent, idToken: string): Promise<UserInfo> {
+export function getAccountInfoByIdToken(
+  testAgent: TestAgent,
+  idToken: string
+): Promise<UserInfo> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
     .send({ idToken })
@@ -233,17 +263,23 @@ export function getAccountInfoByIdToken(testAgent: TestAgent, idToken: string): 
 }
 
 export function inspectOobs(testAgent: TestAgent): Promise<OobRecord[]> {
-  return testAgent.get(`/emulator/v1/projects/${PROJECT_ID}/oobCodes`).then((res) => {
-    expectStatusCode(200, res);
-    return res.body.oobCodes;
-  });
+  return testAgent
+    .get(`/emulator/v1/projects/${PROJECT_ID}/oobCodes`)
+    .then((res) => {
+      expectStatusCode(200, res);
+      return res.body.oobCodes;
+    });
 }
 
-export function inspectVerificationCodes(testAgent: TestAgent): Promise<PhoneVerificationRecord[]> {
-  return testAgent.get(`/emulator/v1/projects/${PROJECT_ID}/verificationCodes`).then((res) => {
-    expectStatusCode(200, res);
-    return res.body.verificationCodes;
-  });
+export function inspectVerificationCodes(
+  testAgent: TestAgent
+): Promise<PhoneVerificationRecord[]> {
+  return testAgent
+    .get(`/emulator/v1/projects/${PROJECT_ID}/verificationCodes`)
+    .then((res) => {
+      expectStatusCode(200, res);
+      return res.body.verificationCodes;
+    });
 }
 
 export function createEmailSignInOob(
@@ -263,7 +299,10 @@ export function createEmailSignInOob(
     });
 }
 
-export function getSigninMethods(testAgent: TestAgent, email: string): Promise<string[]> {
+export function getSigninMethods(
+  testAgent: TestAgent,
+  email: string
+): Promise<string[]> {
   return testAgent
     .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
     .send({ continueUri: "http://example.com/", identifier: email })
@@ -274,7 +313,10 @@ export function getSigninMethods(testAgent: TestAgent, email: string): Promise<s
     });
 }
 
-export function updateProjectConfig(testAgent: TestAgent, config: {}): Promise<void> {
+export function updateProjectConfig(
+  testAgent: TestAgent,
+  config: {}
+): Promise<void> {
   return testAgent
     .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
     .set("Authorization", "Bearer owner")

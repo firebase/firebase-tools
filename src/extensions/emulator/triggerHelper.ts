@@ -24,7 +24,9 @@ export function functionResourceToEmulatedTriggerDefintion(
   if (properties.httpsTrigger) {
     etd.httpsTrigger = properties.httpsTrigger;
   } else if (properties.eventTrigger) {
-    properties.eventTrigger.service = getServiceFromEventType(properties.eventTrigger.eventType);
+    properties.eventTrigger.service = getServiceFromEventType(
+      properties.eventTrigger.eventType
+    );
     etd.eventTrigger = properties.eventTrigger;
   } else {
     EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(

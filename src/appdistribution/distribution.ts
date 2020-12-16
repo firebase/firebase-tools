@@ -25,7 +25,9 @@ export class Distribution {
       distributionType !== DistributionFileType.IPA &&
       distributionType !== DistributionFileType.APK
     ) {
-      throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
+      throw new FirebaseError(
+        "unsupported distribution file format, should be .ipa or .apk"
+      );
     }
 
     try {
@@ -52,7 +54,9 @@ export class Distribution {
       case DistributionFileType.APK:
         return "android";
       default:
-        throw new FirebaseError("Unsupported distribution file format, should be .ipa or .apk");
+        throw new FirebaseError(
+          "Unsupported distribution file format, should be .ipa or .apk"
+        );
     }
   }
 
@@ -69,9 +73,9 @@ export class Distribution {
       stream.on("data", (data) => hash.update(data));
       stream.on("end", () => {
         return resolve(
-          `projects/${app.projectNumber}/apps/${app.appId}/releases/-/binaries/${hash.digest(
-            "hex"
-          )}`
+          `projects/${app.projectNumber}/apps/${
+            app.appId
+          }/releases/-/binaries/${hash.digest("hex")}`
         );
       });
     });

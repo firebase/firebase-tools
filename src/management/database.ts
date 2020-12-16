@@ -47,7 +47,10 @@ export interface DatabaseInstance {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function populateInstanceDetails(options: any): Promise<void> {
-  options.instanceDetails = await getDatabaseInstanceDetails(options.project, options.instance);
+  options.instanceDetails = await getDatabaseInstanceDetails(
+    options.project,
+    options.instance
+  );
   return Promise.resolve();
 }
 
@@ -180,7 +183,9 @@ export async function checkInstanceNameAvailable(
     if (errBody?.details?.[0]?.metadata?.suggested_database_ids) {
       return {
         available: false,
-        suggestedIds: errBody.details[0].metadata.suggested_database_ids.split(","),
+        suggestedIds: errBody.details[0].metadata.suggested_database_ids.split(
+          ","
+        ),
       };
     }
     throw new FirebaseError(
@@ -236,7 +241,9 @@ export async function listDatabaseInstances(
   try {
     let nextPageToken = "";
     do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const pageTokenQueryString = nextPageToken
+        ? `&pageToken=${nextPageToken}`
+        : "";
       const response = await api.request(
         "GET",
         `/${MGMT_API_VERSION}/projects/${projectId}/locations/${location}/instances?pageSize=${pageSize}${pageTokenQueryString}`,
@@ -270,7 +277,9 @@ export async function listDatabaseInstances(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertDatabaseInstance(serverInstance: any): DatabaseInstance {
   if (!serverInstance.name) {
-    throw new FirebaseError(`DatabaseInstance response is missing field "name"`);
+    throw new FirebaseError(
+      `DatabaseInstance response is missing field "name"`
+    );
   }
   const m = serverInstance.name.match(INSTANCE_RESOURCE_NAME_REGEX);
   if (!m || m.length != 4) {

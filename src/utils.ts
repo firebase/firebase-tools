@@ -72,7 +72,11 @@ export function envOverride(
 /**
  * Get the full URL to a path in the database or database emulator.
  */
-export function getDatabaseUrl(origin: string, namespace: string, pathname: string): string {
+export function getDatabaseUrl(
+  origin: string,
+  namespace: string,
+  pathname: string
+): string {
   const withPath = url.resolve(origin, pathname);
   return addDatabaseNamespace(withPath, namespace);
 }
@@ -105,7 +109,10 @@ export function getDatabaseViewDataUrl(
  *  - Prod: Add a subdomain.
  *  - Emulator: Add `?ns=` parameter.
  */
-export function addDatabaseNamespace(origin: string, namespace: string): string {
+export function addDatabaseNamespace(
+  origin: string,
+  namespace: string
+): string {
   const urlObj = new url.URL(origin);
   if (urlObj.hostname.includes(namespace)) {
     return urlObj.href;
@@ -215,7 +222,10 @@ export function explainStdin(): void {
     });
   }
   if (process.stdin.isTTY) {
-    logger.info(clc.bold("Note:"), "Reading STDIN. Type JSON data and then press Ctrl-D");
+    logger.info(
+      clc.bold("Note:"),
+      "Reading STDIN. Type JSON data and then press Ctrl-D"
+    );
   }
 }
 
@@ -314,7 +324,9 @@ export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
  * Returns a single Promise that is resolved when all the given promises have
  * either resolved or rejected.
  */
-export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
+export function promiseAllSettled(
+  promises: Array<Promise<any>>
+): Promise<SettledPromise[]> {
   const wrappedPromises = _.map(promises, async (p) => {
     try {
       const val = await Promise.resolve(p);
@@ -402,7 +414,9 @@ export function setupLoggers() {
       new winston.transports.Console({
         level: "debug",
         format: winston.format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          const segments = [info.message, ...(info[SPLAT] || [])].map(
+            tryStringify
+          );
           return `${ansiStrip(segments.join(" "))}`;
         }),
       })
@@ -424,7 +438,10 @@ export function setupLoggers() {
 /**
  * Runs a given function inside a spinner with a message
  */
-export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
+export async function promiseWithSpinner<T>(
+  action: () => Promise<T>,
+  message: string
+): Promise<T> {
   const spinner = ora(message).start();
   let data;
   try {
@@ -476,20 +493,16 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-    .getDate()
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
     .toString()
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
   const time = `${d
     .getHours()
     .toString()
     .padStart(2, "0")}:${d
     .getMinutes()
     .toString()
-    .padStart(2, "0")}:${d
-    .getSeconds()
-    .toString()
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
   return `${day} ${time}`;
 }
 

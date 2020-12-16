@@ -22,9 +22,12 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
   try {
     instance = await getDefaultDatabaseInstance(options);
   } catch (err) {
-    throw new FirebaseError(`Failed to get details for project: ${options.project}.`, {
-      original: err,
-    });
+    throw new FirebaseError(
+      `Failed to get details for project: ${options.project}.`,
+      {
+        original: err,
+      }
+    );
   }
   if (instance === "") {
     throw new FirebaseError(MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE);

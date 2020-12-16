@@ -8,7 +8,7 @@ var utils = require("../utils");
 
 module.exports = new Command("help [command]")
   .description("display help information")
-  .action(function(commandName) {
+  .action(function (commandName) {
     var client = this.client; // eslint-disable-line no-invalid-this
     var cmd = client.getCommand(commandName);
     if (cmd) {
@@ -16,7 +16,8 @@ module.exports = new Command("help [command]")
     } else if (commandName) {
       logger.warn();
       utils.logWarning(
-        clc.bold(commandName) + " is not a valid command. See below for valid commands"
+        clc.bold(commandName) +
+          " is not a valid command. See below for valid commands"
       );
       client.cli.outputHelp();
     } else {

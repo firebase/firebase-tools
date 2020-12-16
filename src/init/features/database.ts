@@ -53,7 +53,9 @@ function writeDBRules(
   config: Config
 ): void {
   config.writeProjectFile(filename, rules);
-  utils.logSuccess(`${logMessagePrefix} have been written to ${clc.bold(filename)}.`);
+  utils.logSuccess(
+    `${logMessagePrefix} have been written to ${clc.bold(filename)}.`
+  );
   logger.info(
     `Future modifications to ${clc.bold(
       filename
@@ -62,10 +64,13 @@ function writeDBRules(
   logger.info(clc.bold("firebase deploy") + ".");
 }
 
-async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
+async function createDefaultDatabaseInstance(
+  project: string
+): Promise<DatabaseInstance> {
   const selectedLocation = await promptOnce({
     type: "list",
-    message: "Please choose the location for your default Realtime Database instance:",
+    message:
+      "Please choose the location for your default Realtime Database instance:",
     choices: [
       { name: "us-central1", value: DatabaseLocation.US_CENTRAL1 },
       { name: "europe-west1", value: DatabaseLocation.EUROPE_WEST1 },
@@ -94,7 +99,9 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
       )} your project ID has the legacy name format, so your default Realtime Database instance will be named differently: ${instanceName}`
     );
   }
-  const spinner = ora(`Creating your default Realtime Database instance: ${instanceName}`).start();
+  const spinner = ora(
+    `Creating your default Realtime Database instance: ${instanceName}`
+  ).start();
   try {
     const createdInstance = await createInstance(
       project,
@@ -115,15 +122,27 @@ async function createDefaultDatabaseInstance(project: string): Promise<DatabaseI
  * @param setup information helpful for database setup
  * @param config legacy config parameter. not used for database setup.
  */
-export async function doSetup(setup: DatabaseSetup, config: Config): Promise<void> {
+export async function doSetup(
+  setup: DatabaseSetup,
+  config: Config
+): Promise<void> {
   setup.config = {};
-  await ensure(setup.projectId, "firebasedatabase.googleapis.com", "database", false);
+  await ensure(
+    setup.projectId,
+    "firebasedatabase.googleapis.com",
+    "database",
+    false
+  );
   logger.info();
   setup.instance =
-    setup.instance || (await getDefaultDatabaseInstance({ project: setup.projectId }));
+    setup.instance ||
+    (await getDefaultDatabaseInstance({ project: setup.projectId }));
   let instanceDetails;
   if (setup.instance !== "") {
-    instanceDetails = await getDatabaseInstanceDetails(setup.projectId, setup.instance);
+    instanceDetails = await getDatabaseInstanceDetails(
+      setup.projectId,
+      setup.instance
+    );
   } else {
     const confirm = await promptOnce({
       type: "confirm",
@@ -159,7 +178,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   filename = setup.config.rulesFile;
   let writeRules = true;
   if (fsutils.fileExistsSync(filename)) {
-    const msg = `File ${clc.bold(filename)} already exists. Do you want to overwrite it with ${
+    const msg = `File ${clc.bold(
+      filename
+    )} already exists. Do you want to overwrite it with ${
       instanceDetails
         ? `the Realtime Database Security Rules for ${clc.bold(
             instanceDetails.name
@@ -187,9 +208,9 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
   }
   logger.info("Skipping overwrite of Realtime Database Security Rules.");
   logger.info(
-    `The security rules defined in ${clc.bold(filename)} will be published when you run ${clc.bold(
-      "firebase deploy"
-    )}.`
+    `The security rules defined in ${clc.bold(
+      filename
+    )} will be published when you run ${clc.bold("firebase deploy")}.`
   );
   return;
 }

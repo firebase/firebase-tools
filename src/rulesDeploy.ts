@@ -91,8 +91,14 @@ export class RulesDeploy {
    */
   private async getCurrentRules(
     service: RulesetServiceType
-  ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
-    const latestName = await gcp.rules.getLatestRulesetName(this.options.project, service);
+  ): Promise<{
+    latestName: string | null;
+    latestContent: RulesetFile[] | null;
+  }> {
+    const latestName = await gcp.rules.getLatestRulesetName(
+      this.options.project,
+      service
+    );
     let latestContent: RulesetFile[] | null = null;
     if (latestName) {
       latestContent = await gcp.rules.getRulesetContent(latestName);
@@ -125,7 +131,9 @@ export class RulesDeploy {
       const files = this.rulesFiles[filename];
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logBullet(
-          `${clc.bold.cyan(RulesetType[this.type] + ":")} latest version of ${clc.bold(
+          `${clc.bold.cyan(
+            RulesetType[this.type] + ":"
+          )} latest version of ${clc.bold(
             filename
           )} already up to date, skipping upload...`
         );
@@ -133,9 +141,14 @@ export class RulesDeploy {
         continue;
       }
       utils.logBullet(
-        `${clc.bold.cyan(RulesetType[this.type] + ":")} uploading rules ${clc.bold(filename)}...`
+        `${clc.bold.cyan(
+          RulesetType[this.type] + ":"
+        )} uploading rules ${clc.bold(filename)}...`
       );
-      newRulesetsByFilename.set(filename, gcp.rules.createRuleset(this.options.project, files));
+      newRulesetsByFilename.set(
+        filename,
+        gcp.rules.createRuleset(this.options.project, files)
+      );
     }
 
     try {
@@ -154,7 +167,9 @@ export class RulesDeploy {
           " quota exceeded error while uploading rules"
       );
 
-      const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
+      const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(
+        this.options.project
+      );
 
       if (history.length > RULESET_COUNT_LIMIT) {
         const answers = await prompt(
@@ -172,20 +187,30 @@ export class RulesDeploy {
         );
         if (answers.confirm) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
-          const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
+          const releases: Release[] = await gcp.rules.listAllReleases(
+            this.options.project
+          );
           const unreleased: ListRulesetsEntry[] = _.reject(
             history,
             (ruleset: ListRulesetsEntry): boolean => {
-              return !!releases.find((release) => release.rulesetName === ruleset.name);
+              return !!releases.find(
+                (release) => release.rulesetName === ruleset.name
+              );
             }
           );
           const entriesToDelete = unreleased.reverse().slice(0, RULESETS_TO_GC);
           // To avoid running into quota issues, delete entries in _serial_ rather than parallel.
           for (const entry of entriesToDelete) {
-            await gcp.rules.deleteRuleset(this.options.project, gcp.rules.getRulesetId(entry));
+            await gcp.rules.deleteRuleset(
+              this.options.project,
+              gcp.rules.getRulesetId(entry)
+            );
             logger.debug(`[rules] Deleted ${entry.name}`);
           }
-          utils.logBullet(clc.bold.yellow(RulesetType[this.type] + ":") + " retrying rules upload");
+          utils.logBullet(
+            clc.bold.yellow(RulesetType[this.type] + ":") +
+              " retrying rules upload"
+          );
           return this.createRulesets(service);
         }
       }
@@ -206,7 +231,10 @@ export class RulesDeploy {
     subResourceName?: string
   ): Promise<void> {
     // Cast as a RulesetServiceType to test the value against known types.
-    if (resourceName === RulesetServiceType.FIREBASE_STORAGE && !subResourceName) {
+    if (
+      resourceName === RulesetServiceType.FIREBASE_STORAGE &&
+      !subResourceName
+    ) {
       throw new FirebaseError(`Cannot release resource type "${resourceName}"`);
     }
     await gcp.rules.updateOrCreateRelease(
@@ -217,9 +245,9 @@ export class RulesDeploy {
         : resourceName
     );
     utils.logSuccess(
-      `${clc.bold.green(RulesetType[this.type] + ":")} released rules ${clc.bold(
-        filename
-      )} to ${clc.bold(resourceName)}`
+      `${clc.bold.green(
+        RulesetType[this.type] + ":"
+      )} released rules ${clc.bold(filename)} to ${clc.bold(resourceName)}`
     );
   }
 
@@ -228,18 +256,23 @@ export class RulesDeploy {
    * @param filename The filename to compile.
    * @param files The files to compile.
    */
-  private async compileRuleset(filename: string, files: RulesetFile[]): Promise<void> {
+  private async compileRuleset(
+    filename: string,
+    files: RulesetFile[]
+  ): Promise<void> {
     utils.logBullet(
-      `${clc.bold.cyan(this.type + ":")} checking ${clc.bold(filename)} for compilation errors...`
+      `${clc.bold.cyan(this.type + ":")} checking ${clc.bold(
+        filename
+      )} for compilation errors...`
     );
     const response = await gcp.rules.testRuleset(this.options.project, files);
     if (_.get(response, "body.issues", []).length) {
       const warnings: string[] = [];
       const errors: string[] = [];
       response.body.issues.forEach((issue: any) => {
-        const issueMessage = `[${issue.severity.substring(0, 1)}] ${issue.sourcePosition.line}:${
-          issue.sourcePosition.column
-        } - ${issue.description}`;
+        const issueMessage = `[${issue.severity.substring(0, 1)}] ${
+          issue.sourcePosition.line
+        }:${issue.sourcePosition.column} - ${issue.description}`;
 
         if (issue.severity === "ERROR") {
           errors.push(issueMessage);
@@ -256,13 +289,17 @@ export class RulesDeploy {
 
       if (errors.length > 0) {
         const add = errors.length === 1 ? "" : "s";
-        const message = `Compilation error${add} in ${clc.bold(filename)}:\n${errors.join("\n")}`;
+        const message = `Compilation error${add} in ${clc.bold(
+          filename
+        )}:\n${errors.join("\n")}`;
         throw new FirebaseError(message, { exit: 1 });
       }
     }
 
     utils.logSuccess(
-      `${clc.bold.green(this.type + ":")} rules file ${clc.bold(filename)} compiled successfully`
+      `${clc.bold.green(this.type + ":")} rules file ${clc.bold(
+        filename
+      )} compiled successfully`
     );
   }
 }

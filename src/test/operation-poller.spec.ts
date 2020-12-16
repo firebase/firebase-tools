@@ -35,7 +35,9 @@ describe("OperationPoller", () => {
         .get(FULL_RESOURCE_NAME)
         .reply(200, { done: true, response: "completed" });
 
-      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal(
+        "completed"
+      );
       expect(nock.isDone()).to.be.true;
     });
 
@@ -66,25 +68,22 @@ describe("OperationPoller", () => {
         .get(FULL_RESOURCE_NAME)
         .reply(404, { message: "poll failed" });
 
-      await expect(pollOperation<string>(pollerOptions)).to.eventually.be.rejectedWith(
-        FirebaseError,
-        "404"
-      );
+      await expect(
+        pollOperation<string>(pollerOptions)
+      ).to.eventually.be.rejectedWith(FirebaseError, "404");
       expect(nock.isDone()).to.be.true;
     });
 
     it("should retry polling if http request responds with 500 or 503 status code", async () => {
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(500, {});
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(503, {});
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(500, {});
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(503, {});
       nock(TEST_ORIGIN)
         .get(FULL_RESOURCE_NAME)
         .reply(200, { done: true, response: "completed" });
 
-      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal(
+        "completed"
+      );
       expect(nock.isDone()).to.be.true;
     });
 
@@ -97,7 +96,9 @@ describe("OperationPoller", () => {
         .get(FULL_RESOURCE_NAME)
         .reply(200, { done: true, response: "completed" });
 
-      expect(await pollOperation<string>(pollerOptions)).to.deep.equal("completed");
+      expect(await pollOperation<string>(pollerOptions)).to.deep.equal(
+        "completed"
+      );
       expect(nock.isDone()).to.be.true;
     });
 

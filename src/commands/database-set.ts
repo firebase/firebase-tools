@@ -32,16 +32,23 @@ export default new Command("database:set <path> [infile]")
     if (!_.startsWith(path, "/")) {
       throw new FirebaseError("Path must begin with /");
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(
+      options.instanceDetails.databaseUrl
+    );
     const dbPath = utils.getDatabaseUrl(origin, options.instance, path);
-    const dbJsonURL = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    const dbJsonURL = new URL(
+      utils.getDatabaseUrl(origin, options.instance, path + ".json")
+    );
 
     if (!options.confirm) {
       const confirm = await promptOnce({
         type: "confirm",
         name: "confirm",
         default: false,
-        message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
+        message:
+          "You are about to overwrite all data at " +
+          clc.cyan(dbPath) +
+          ". Are you sure?",
       });
       if (!confirm) {
         throw new FirebaseError("Command aborted.");
@@ -49,7 +56,8 @@ export default new Command("database:set <path> [infile]")
     }
 
     const inStream =
-      utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
+      utils.stringToStream(options.data) ||
+      (infile ? fs.createReadStream(infile) : process.stdin);
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -64,13 +72,20 @@ export default new Command("database:set <path> [infile]")
       });
     } catch (err) {
       logger.debug(err);
-      throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
+      throw new FirebaseError(`Unexpected error while setting data: ${err}`, {
+        exit: 2,
+      });
     }
 
     utils.logSuccess("Data persisted successfully");
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(
+        origin,
+        options.project,
+        options.instance,
+        path
+      )
     );
   });

@@ -24,14 +24,22 @@ export async function createOrUpdateSchedulesAndTopics(
     ]);
     schedulerEnabled = true;
   } else if (existingScheduledFunctions.length) {
-    schedulerEnabled = await check(projectId, "cloudscheduler.googleapis.com", "scheduler", false);
+    schedulerEnabled = await check(
+      projectId,
+      "cloudscheduler.googleapis.com",
+      "scheduler",
+      false
+    );
   }
   for (const trigger of triggers) {
     const [, , , region, , functionName] = trigger.name.split("/");
     const scheduleName = getScheduleName(trigger.name, appEngineLocation);
     const topicName = getTopicName(trigger.name);
     if (!trigger.schedule) {
-      if (schedulerEnabled && _.includes(existingScheduledFunctions, trigger.name)) {
+      if (
+        schedulerEnabled &&
+        _.includes(existingScheduledFunctions, trigger.name)
+      ) {
         // we need to delete any schedules that exist for functions that are being deployed without a schedule
         try {
           await deleteJob(scheduleName);

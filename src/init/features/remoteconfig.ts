@@ -21,7 +21,10 @@ interface RemoteConfigSetup {
  * @param config Input is of type Config
  * @return {Promise} Returns a promise and writes the project file for remoteconfig template when initializing
  */
-export async function doSetup(setup: RemoteConfigSetup, config: Config): Promise<void> {
+export async function doSetup(
+  setup: RemoteConfigSetup,
+  config: Config
+): Promise<void> {
   setup.config.remoteconfig = {};
   const jsonFilePath = await promptOnce({
     type: "input",

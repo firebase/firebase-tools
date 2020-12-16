@@ -41,7 +41,9 @@ describe("askUserForParam", () => {
         })
       ).to.equal(false);
       expect(
-        logWarningSpy.calledWith(`Param param is required, but no value was provided.`)
+        logWarningSpy.calledWith(
+          `Param param is required, but no value was provided.`
+        )
       ).to.equal(true);
     });
 

@@ -111,7 +111,12 @@ steps:
   # Publish the firepit builds.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "node"
-    args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
+    args:
+      [
+        "/usr/src/app/pipeline.js",
+        "--package=firebase-tools@latest",
+        "--publish",
+      ]
 
 timeout: 1200s # 20 minutes
 

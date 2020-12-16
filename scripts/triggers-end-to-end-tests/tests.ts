@@ -6,7 +6,10 @@ import * as os from "os";
 import * as path from "path";
 
 import { CLIProcess } from "../integration-helpers/cli";
-import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
+import {
+  FrameworkOptions,
+  TriggerEndToEndTest,
+} from "../integration-helpers/framework";
 
 const NODE_VERSION = Number.parseInt(process.env.NODE_VERSION || "8");
 
@@ -50,7 +53,7 @@ describe("database and firestore emulator function triggers", () => {
   let firestore: admin.firestore.Firestore | undefined;
   const firestoreUnsub: Array<() => void> = [];
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -85,7 +88,10 @@ describe("database and firestore emulator function triggers", () => {
         test.rtdbFromFirestore = true;
       },
       (err: Error) => {
-        expect.fail(err, `Error reading ${FIRESTORE_COMPLETION_MARKER} from database emulator.`);
+        expect.fail(
+          err,
+          `Error reading ${FIRESTORE_COMPLETION_MARKER} from database emulator.`
+        );
       }
     );
 
@@ -95,7 +101,10 @@ describe("database and firestore emulator function triggers", () => {
         test.rtdbFromRtdb = true;
       },
       (err: Error) => {
-        expect.fail(err, `Error reading ${DATABASE_COMPLETION_MARKER} from database emulator.`);
+        expect.fail(
+          err,
+          `Error reading ${DATABASE_COMPLETION_MARKER} from database emulator.`
+        );
       }
     );
 
@@ -104,7 +113,10 @@ describe("database and firestore emulator function triggers", () => {
         test.firestoreFromFirestore = true;
       },
       (err: Error) => {
-        expect.fail(err, `Error reading ${FIRESTORE_COMPLETION_MARKER} from firestore emulator.`);
+        expect.fail(
+          err,
+          `Error reading ${FIRESTORE_COMPLETION_MARKER} from firestore emulator.`
+        );
       }
     );
     firestoreUnsub.push(unsub);
@@ -114,13 +126,16 @@ describe("database and firestore emulator function triggers", () => {
         test.firestoreFromRtdb = true;
       },
       (err: Error) => {
-        expect.fail(err, `Error reading ${DATABASE_COMPLETION_MARKER} from firestore emulator.`);
+        expect.fail(
+          err,
+          `Error reading ${DATABASE_COMPLETION_MARKER} from firestore emulator.`
+        );
       }
     );
     firestoreUnsub.push(unsub);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
@@ -128,14 +143,14 @@ describe("database and firestore emulator function triggers", () => {
     await test.stopEmulators();
   });
 
-  it("should write to the database emulator", async function(this) {
+  it("should write to the database emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToRtdb();
     expect(response.status).to.equal(200);
   });
 
-  it("should write to the firestore emulator", async function(this) {
+  it("should write to the firestore emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToFirestore();
@@ -148,7 +163,9 @@ describe("database and firestore emulator function triggers", () => {
      * fixture state handlers to complete before we check
      * that state in the next test.
      */
-    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMULATORS_WRITE_DELAY_MS)
+    );
   });
 
   it("should have have triggered cloud functions", () => {
@@ -165,7 +182,7 @@ describe("database and firestore emulator function triggers", () => {
 describe("pubsub emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -175,29 +192,33 @@ describe("pubsub emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,pubsub"]);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the pubsub emulator", async function(this) {
+  it("should write to the pubsub emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToPubsub();
     expect(response.status).to.equal(200);
-    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMULATORS_WRITE_DELAY_MS)
+    );
   });
 
   it("should have have triggered cloud functions", () => {
     expect(test.pubsubTriggerCount).to.equal(1);
   });
 
-  it("should write to the scheduled pubsub emulator", async function(this) {
+  it("should write to the scheduled pubsub emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToScheduledPubsub();
     expect(response.status).to.equal(200);
-    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMULATORS_WRITE_DELAY_MS)
+    );
   });
 
   it("should have have triggered cloud functions", () => {
@@ -208,7 +229,7 @@ describe("pubsub emulator function triggers", () => {
 describe("auth emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -218,12 +239,12 @@ describe("auth emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,auth"]);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the auth emulator", async function(this) {
+  it("should write to the auth emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     // This test only works on Node 10+
@@ -233,10 +254,12 @@ describe("auth emulator function triggers", () => {
 
     const response = await test.writeToAuth();
     expect(response.status).to.equal(200);
-    await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMULATORS_WRITE_DELAY_MS)
+    );
   });
 
-  it("should have have triggered cloud functions", function(this) {
+  it("should have have triggered cloud functions", function (this) {
     // This test only works on Node 10+
     if (NODE_VERSION < 10) {
       this.skip();
@@ -247,7 +270,7 @@ describe("auth emulator function triggers", () => {
 });
 
 describe("import/export end to end", () => {
-  it("should be able to import/export firestore data", async function(this) {
+  it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -268,12 +291,17 @@ describe("import/export end to end", () => {
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
+    await exportCLI.start(
+      "emulators:export",
+      FIREBASE_PROJECT,
+      [exportPath],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes("Export complete");
       }
-      return data.includes("Export complete");
-    });
+    );
     await exportCLI.stop();
 
     // Stop the suite
@@ -298,7 +326,7 @@ describe("import/export end to end", () => {
     expect(true).to.be.true;
   });
 
-  it("should be able to import/export rtdb data", async function(this) {
+  it("should be able to import/export rtdb data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -357,12 +385,17 @@ describe("import/export end to end", () => {
     // Ask for export
     const exportCLI = new CLIProcess("2", __dirname);
     const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-    await exportCLI.start("emulators:export", FIREBASE_PROJECT, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
+    await exportCLI.start(
+      "emulators:export",
+      FIREBASE_PROJECT,
+      [exportPath],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes("Export complete");
       }
-      return data.includes("Export complete");
-    });
+    );
     await exportCLI.stop();
 
     // Check that the right export files are created
@@ -400,10 +433,7 @@ describe("import/export end to end", () => {
     }
 
     // Delete all the data in one namespace
-    await bApp
-      .database()
-      .ref()
-      .set(null);
+    await bApp.database().ref().set(null);
 
     // Stop the CLI (which will export on exit)
     await importCLI.stop();

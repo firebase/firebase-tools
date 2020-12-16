@@ -25,7 +25,9 @@ export function assertHasOneOf(obj: any, props: string[]): void {
   });
 
   if (count !== 1) {
-    throw new FirebaseError(`Must contain exactly one of "${props.join(",")}": ${objString}`);
+    throw new FirebaseError(
+      `Must contain exactly one of "${props.join(",")}": ${objString}`
+    );
   }
 }
 
@@ -36,6 +38,8 @@ export function assertHasOneOf(obj: any, props: string[]): void {
 export function assertEnum(obj: any, prop: string, valid: any[]): void {
   const objString = clc.cyan(JSON.stringify(obj));
   if (valid.indexOf(obj[prop]) < 0) {
-    throw new FirebaseError(`Field "${prop}" must be one of  ${valid.join(", ")}: ${objString}`);
+    throw new FirebaseError(
+      `Field "${prop}" must be one of  ${valid.join(", ")}: ${objString}`
+    );
   }
 }

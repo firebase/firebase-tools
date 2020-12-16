@@ -18,7 +18,7 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-module.exports = function(setup, config, options) {
+module.exports = function (setup, config, options) {
   setup.hosting = {};
 
   logger.info();
@@ -28,9 +28,13 @@ module.exports = function(setup, config, options) {
       " directory is the folder (relative to your project directory) that"
   );
   logger.info(
-    "will contain Hosting assets to be uploaded with " + clc.bold("firebase deploy") + ". If you"
+    "will contain Hosting assets to be uploaded with " +
+      clc.bold("firebase deploy") +
+      ". If you"
   );
-  logger.info("have a build process for your assets, use your build's output directory.");
+  logger.info(
+    "have a build process for your assets, use your build's output directory."
+  );
   logger.info();
 
   return prompt(setup.hosting, [
@@ -44,7 +48,8 @@ module.exports = function(setup, config, options) {
       name: "spa",
       type: "confirm",
       default: false,
-      message: "Configure as a single-page app (rewrite all urls to /index.html)?",
+      message:
+        "Configure as a single-page app (rewrite all urls to /index.html)?",
     },
     {
       name: "github",
@@ -52,7 +57,7 @@ module.exports = function(setup, config, options) {
       default: false,
       message: "Set up automatic builds and deploys with GitHub?",
     },
-  ]).then(function() {
+  ]).then(function () {
     setup.config.hosting = {
       public: setup.hosting.public,
       ignore: DEFAULT_IGNORES,
@@ -60,16 +65,24 @@ module.exports = function(setup, config, options) {
 
     let next;
     if (setup.hosting.spa) {
-      setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
+      setup.config.hosting.rewrites = [
+        { source: "**", destination: "/index.html" },
+      ];
       next = Promise.resolve();
     } else {
       // SPA doesn't need a 404 page since everything is index.html
-      next = config.askWriteProjectFile(setup.hosting.public + "/404.html", MISSING_TEMPLATE);
+      next = config.askWriteProjectFile(
+        setup.hosting.public + "/404.html",
+        MISSING_TEMPLATE
+      );
     }
 
     return next
       .then(() => {
-        const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
+        const c = new Client({
+          urlPrefix: "https://www.gstatic.com",
+          auth: false,
+        });
         return c.get("/firebasejs/releases.json");
       })
       .then((response) => {

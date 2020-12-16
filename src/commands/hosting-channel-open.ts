@@ -14,7 +14,9 @@ import { requireHostingSite } from "../requireHostingSite";
 
 export default new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
-  .help("if unable to open the URL in a browser, it will be displayed in the output")
+  .help(
+    "if unable to open the URL in a browser, it will be displayed in the output"
+  )
   .option("--site <siteId>", "the site to which the channel belongs")
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.get"])
@@ -47,7 +49,9 @@ export default new Command("hosting:channel:open [channelId]")
       const channel = await getChannel(projectId, siteId, channelId);
       if (!channel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(channelId)} for site ${bold(siteId)}.`
+          `Could not find the channel ${bold(channelId)} for site ${bold(
+            siteId
+          )}.`
         );
       }
 

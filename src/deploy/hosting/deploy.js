@@ -10,7 +10,7 @@ var utils = require("../../utils");
 var clc = require("cli-color");
 var SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   if (!context.hosting || !context.hosting.deploys) {
     return Promise.resolve();
   }
@@ -23,7 +23,8 @@ module.exports = function(context, options) {
     } else {
       process.stdout.write(clc.erase.line + clc.move.left(9999));
       process.stdout.write(
-        clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
+        clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") +
+          newMessage
       );
     }
     spins++;
@@ -32,7 +33,10 @@ module.exports = function(context, options) {
   function _runDeploys(deploys, debugging) {
     const deploy = deploys.shift();
 
-    utils.logLabeledBullet("hosting[" + deploy.site + "]", "beginning deploy...");
+    utils.logLabeledBullet(
+      "hosting[" + deploy.site + "]",
+      "beginning deploy..."
+    );
     var t0 = Date.now();
 
     const publicDir = options.config.path(deploy.config.public);
@@ -51,7 +55,7 @@ module.exports = function(context, options) {
     });
 
     var progressInterval = setInterval(
-      function() {
+      function () {
         _updateSpinner(uploader.statusMessage());
       },
       debugging ? 2000 : 200
@@ -59,21 +63,24 @@ module.exports = function(context, options) {
 
     return uploader
       .start()
-      .then(function() {
+      .then(function () {
         clearInterval(progressInterval);
         if (!debugging) {
           process.stdout.write(clc.erase.line + clc.move.left(9999));
         }
-        utils.logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
+        utils.logLabeledSuccess(
+          "hosting[" + deploy.site + "]",
+          "file upload complete"
+        );
         var dt = Date.now() - t0;
         logger.debug("[hosting] deploy completed after " + dt + "ms");
         return track("Hosting Deploy", "success", dt);
       })
-      .catch(function(err) {
+      .catch(function (err) {
         clearInterval(progressInterval);
         return Promise.reject(err);
       })
-      .then(function() {
+      .then(function () {
         if (deploys.length) {
           return _runDeploys(deploys);
         }

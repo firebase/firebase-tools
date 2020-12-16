@@ -56,7 +56,9 @@ describe("prompt", () => {
 
       await prompt.prompt(options, qs);
 
-      expect(options).to.deep.equal(Object.assign({ hello: "world" }, PROMPT_RESPONSES));
+      expect(options).to.deep.equal(
+        Object.assign({ hello: "world" }, PROMPT_RESPONSES)
+      );
     });
   });
 
@@ -64,7 +66,9 @@ describe("prompt", () => {
     it("should provide a name if one is not provided", async () => {
       await prompt.promptOnce({ message: "foo" });
 
-      expect(inquirerStub).calledOnceWith([{ name: "question", message: "foo" }]);
+      expect(inquirerStub).calledOnceWith([
+        { name: "question", message: "foo" },
+      ]);
     });
 
     it("should return the value for the given name", async () => {

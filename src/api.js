@@ -17,7 +17,7 @@ var accessToken;
 var refreshToken;
 var commandScopes;
 
-var _request = function(options, logOptions) {
+var _request = function (options, logOptions) {
   logOptions = logOptions || {};
   var qsLog = "";
   var bodyLog = "<request body omitted>";
@@ -30,13 +30,20 @@ var _request = function(options, logOptions) {
     bodyLog = options.body || options.form || "";
   }
 
-  logger.debug(">>> HTTP REQUEST", options.method, options.url, qsLog, "\n", bodyLog);
+  logger.debug(
+    ">>> HTTP REQUEST",
+    options.method,
+    options.url,
+    qsLog,
+    "\n",
+    bodyLog
+  );
 
   options.headers = options.headers || {};
   options.headers["connection"] = "keep-alive";
 
-  return new Promise(function(resolve, reject) {
-    var req = request(options, function(err, response, body) {
+  return new Promise(function (resolve, reject) {
+    var req = request(options, function (err, response, body) {
       if (err) {
         return reject(
           new FirebaseError("Server Error. " + err.message, {
@@ -64,7 +71,7 @@ var _request = function(options, logOptions) {
 
     if (_.size(options.files) > 0) {
       var form = req.form();
-      _.forEach(options.files, function(details, param) {
+      _.forEach(options.files, function (details, param) {
         form.append(param, details.stream, {
           knownLength: details.knownLength,
           filename: details.filename,
@@ -75,7 +82,7 @@ var _request = function(options, logOptions) {
   });
 };
 
-var _appendQueryData = function(path, data) {
+var _appendQueryData = function (path, data) {
   if (data && _.size(data) > 0) {
     path += _.includes(path, "?") ? "&" : "?";
     path += querystring.stringify(data);
@@ -90,7 +97,10 @@ var api = {
     "FIREBASE_CLIENT_ID",
     "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com"
   ),
-  clientSecret: utils.envOverride("FIREBASE_CLIENT_SECRET", "j9iVZfS8kkCEFUPaAeJV0sAi"),
+  clientSecret: utils.envOverride(
+    "FIREBASE_CLIENT_SECRET",
+    "j9iVZfS8kkCEFUPaAeJV0sAi"
+  ),
   cloudbillingOrigin: utils.envOverride(
     "FIREBASE_CLOUDBILLING_URL",
     "https://cloudbilling.googleapis.com"
@@ -103,19 +113,34 @@ var api = {
     "FIREBASE_APP_DISTRIBUTION_URL",
     "https://firebaseappdistribution.googleapis.com"
   ),
-  appengineOrigin: utils.envOverride("FIREBASE_APPENGINE_URL", "https://appengine.googleapis.com"),
-  authOrigin: utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com"),
-  consoleOrigin: utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com"),
+  appengineOrigin: utils.envOverride(
+    "FIREBASE_APPENGINE_URL",
+    "https://appengine.googleapis.com"
+  ),
+  authOrigin: utils.envOverride(
+    "FIREBASE_AUTH_URL",
+    "https://accounts.google.com"
+  ),
+  consoleOrigin: utils.envOverride(
+    "FIREBASE_CONSOLE_URL",
+    "https://console.firebase.google.com"
+  ),
   deployOrigin: utils.envOverride(
     "FIREBASE_DEPLOY_URL",
     utils.envOverride("FIREBASE_UPLOAD_URL", "https://deploy.firebase.com")
   ),
-  firebaseApiOrigin: utils.envOverride("FIREBASE_API_URL", "https://firebase.googleapis.com"),
+  firebaseApiOrigin: utils.envOverride(
+    "FIREBASE_API_URL",
+    "https://firebase.googleapis.com"
+  ),
   firebaseExtensionsRegistryOrigin: utils.envOverride(
     "FIREBASE_EXT_REGISTRY_ORIGIN",
     "https://extensions-registry.firebaseapp.com"
   ),
-  firedataOrigin: utils.envOverride("FIREBASE_FIREDATA_URL", "https://mobilesdk-pa.googleapis.com"),
+  firedataOrigin: utils.envOverride(
+    "FIREBASE_FIREDATA_URL",
+    "https://mobilesdk-pa.googleapis.com"
+  ),
   firestoreOriginOrEmulator: utils.envOverride(
     Constants.FIRESTORE_EMULATOR_HOST,
     utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
@@ -126,17 +151,26 @@ var api = {
       return `http://${val}`;
     }
   ),
-  firestoreOrigin: utils.envOverride("FIRESTORE_URL", "https://firestore.googleapis.com"),
+  firestoreOrigin: utils.envOverride(
+    "FIRESTORE_URL",
+    "https://firestore.googleapis.com"
+  ),
   functionsOrigin: utils.envOverride(
     "FIREBASE_FUNCTIONS_URL",
     "https://cloudfunctions.googleapis.com"
   ),
-  functionsUploadRegion: utils.envOverride("FIREBASE_FUNCTIONS_UPLOAD_REGION", "us-central1"),
+  functionsUploadRegion: utils.envOverride(
+    "FIREBASE_FUNCTIONS_UPLOAD_REGION",
+    "us-central1"
+  ),
   cloudschedulerOrigin: utils.envOverride(
     "FIREBASE_CLOUDSCHEDULER_URL",
     "https://cloudscheduler.googleapis.com"
   ),
-  pubsubOrigin: utils.envOverride("FIREBASE_PUBSUB_URL", "https://pubsub.googleapis.com"),
+  pubsubOrigin: utils.envOverride(
+    "FIREBASE_PUBSUB_URL",
+    "https://pubsub.googleapis.com"
+  ),
   googleOrigin: utils.envOverride(
     "FIREBASE_TOKEN_URL",
     utils.envOverride("FIREBASE_GOOGLE_URL", "https://www.googleapis.com")
@@ -146,12 +180,18 @@ var api = {
     "FIREBASE_IDENTITY_URL",
     "https://identitytoolkit.googleapis.com"
   ),
-  iamOrigin: utils.envOverride("FIREBASE_IAM_URL", "https://iam.googleapis.com"),
+  iamOrigin: utils.envOverride(
+    "FIREBASE_IAM_URL",
+    "https://iam.googleapis.com"
+  ),
   extensionsOrigin: utils.envOverride(
     "FIREBASE_EXT_URL",
     "https://firebaseextensions.googleapis.com"
   ),
-  realtimeOrigin: utils.envOverride("FIREBASE_REALTIME_URL", "https://firebaseio.com"),
+  realtimeOrigin: utils.envOverride(
+    "FIREBASE_REALTIME_URL",
+    "https://firebaseio.com"
+  ),
   rtdbManagementOrigin: utils.envOverride(
     "FIREBASE_RTDB_MANAGEMENT_URL",
     "https://firebasedatabase.googleapis.com"
@@ -168,12 +208,18 @@ var api = {
     "FIREBASE_RESOURCEMANAGER_URL",
     "https://cloudresourcemanager.googleapis.com"
   ),
-  rulesOrigin: utils.envOverride("FIREBASE_RULES_URL", "https://firebaserules.googleapis.com"),
+  rulesOrigin: utils.envOverride(
+    "FIREBASE_RULES_URL",
+    "https://firebaserules.googleapis.com"
+  ),
   runtimeconfigOrigin: utils.envOverride(
     "FIREBASE_RUNTIMECONFIG_URL",
     "https://runtimeconfig.googleapis.com"
   ),
-  storageOrigin: utils.envOverride("FIREBASE_STORAGE_URL", "https://storage.googleapis.com"),
+  storageOrigin: utils.envOverride(
+    "FIREBASE_STORAGE_URL",
+    "https://storage.googleapis.com"
+  ),
   firebaseStorageOrigin: utils.envOverride(
     "FIREBASE_FIREBASESTORAGE_URL",
     "https://firebasestorage.googleapis.com"
@@ -182,28 +228,34 @@ var api = {
     "FIREBASE_HOSTING_API_URL",
     "https://firebasehosting.googleapis.com"
   ),
-  cloudRunApiOrigin: utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com"),
+  cloudRunApiOrigin: utils.envOverride(
+    "CLOUD_RUN_API_URL",
+    "https://run.googleapis.com"
+  ),
   serviceUsageOrigin: utils.envOverride(
     "FIREBASE_SERVICE_USAGE_URL",
     "https://serviceusage.googleapis.com"
   ),
   githubOrigin: utils.envOverride("GITHUB_URL", "https://github.com"),
-  githubApiOrigin: utils.envOverride("GITHUB_API_URL", "https://api.github.com"),
+  githubApiOrigin: utils.envOverride(
+    "GITHUB_API_URL",
+    "https://api.github.com"
+  ),
   githubClientId: utils.envOverride("GITHUB_CLIENT_ID", "89cf50f02ac6aaed3484"),
   githubClientSecret: utils.envOverride(
     "GITHUB_CLIENT_SECRET",
     "3330d14abc895d9a74d5f17cd7a00711fa2c5bf0"
   ),
-  setRefreshToken: function(token) {
+  setRefreshToken: function (token) {
     refreshToken = token;
   },
-  setAccessToken: function(token) {
+  setAccessToken: function (token) {
     accessToken = token;
   },
-  getScopes: function() {
+  getScopes: function () {
     return commandScopes;
   },
-  setScopes: function(s) {
+  setScopes: function (s) {
     commandScopes = _.uniq(
       _.flatten(
         [
@@ -216,15 +268,19 @@ var api = {
     );
     logger.debug("> command requires scopes:", JSON.stringify(commandScopes));
   },
-  getAccessToken: function() {
+  getAccessToken: function () {
     // Runtime fetch of Auth singleton to prevent circular module dependencies
     return accessToken
       ? Promise.resolve({ access_token: accessToken })
       : require("./auth").getAccessToken(refreshToken, commandScopes);
   },
-  addRequestHeaders: function(reqOptions, options) {
+  addRequestHeaders: function (reqOptions, options) {
     _.set(reqOptions, ["headers", "User-Agent"], "FirebaseCLI/" + CLI_VERSION);
-    _.set(reqOptions, ["headers", "X-Client-Version"], "FirebaseCLI/" + CLI_VERSION);
+    _.set(
+      reqOptions,
+      ["headers", "X-Client-Version"],
+      "FirebaseCLI/" + CLI_VERSION
+    );
 
     var secureRequest = true;
     if (options && options.origin) {
@@ -240,12 +296,16 @@ var api = {
       ? api.getAccessToken()
       : Promise.resolve({ access_token: "owner" });
 
-    return getTokenPromise.then(function(result) {
-      _.set(reqOptions, "headers.authorization", "Bearer " + result.access_token);
+    return getTokenPromise.then(function (result) {
+      _.set(
+        reqOptions,
+        "headers.authorization",
+        "Bearer " + result.access_token
+      );
       return reqOptions;
     });
   },
-  request: function(method, resource, options) {
+  request: function (method, resource, options) {
     options = _.extend(
       {
         data: {},
@@ -256,7 +316,9 @@ var api = {
     );
 
     if (!options.origin) {
-      throw new FirebaseError("Cannot make request without an origin", { exit: 2 });
+      throw new FirebaseError("Cannot make request without an origin", {
+        exit: 2,
+      });
     }
 
     var validMethods = ["GET", "PUT", "POST", "DELETE", "PATCH"];
@@ -291,24 +353,29 @@ var api = {
     reqOptions.headers = options.headers;
     reqOptions.timeout = options.timeout;
 
-    var requestFunction = function() {
+    var requestFunction = function () {
       return _request(reqOptions, options.logOptions);
     };
 
     if (options.auth === true) {
-      requestFunction = function() {
-        return api.addRequestHeaders(reqOptions, options).then(function(reqOptionsWithToken) {
-          return _request(reqOptionsWithToken, options.logOptions);
-        });
+      requestFunction = function () {
+        return api
+          .addRequestHeaders(reqOptions, options)
+          .then(function (reqOptionsWithToken) {
+            return _request(reqOptionsWithToken, options.logOptions);
+          });
       };
     }
 
-    return requestFunction().catch(function(err) {
+    return requestFunction().catch(function (err) {
       if (
         options.retryCodes &&
-        _.includes(options.retryCodes, _.get(err, "context.response.statusCode"))
+        _.includes(
+          options.retryCodes,
+          _.get(err, "context.response.statusCode")
+        )
       ) {
-        return new Promise(function(resolve) {
+        return new Promise(function (resolve) {
           setTimeout(resolve, 1000);
         }).then(requestFunction);
       }

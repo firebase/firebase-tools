@@ -25,7 +25,10 @@ describe("RulesDeploy", () => {
 
   describe("addFile", () => {
     it("should successfully add a file that exists", () => {
-      const rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
+      const rd = new RulesDeploy(
+        BASE_OPTIONS,
+        RulesetServiceType.CLOUD_FIRESTORE
+      );
 
       expect(() => {
         rd.addFile("firestore.rules");
@@ -33,7 +36,10 @@ describe("RulesDeploy", () => {
     });
 
     it("should throw an error if the file does not exist", () => {
-      const rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
+      const rd = new RulesDeploy(
+        BASE_OPTIONS,
+        RulesetServiceType.CLOUD_FIRESTORE
+      );
 
       expect(() => {
         rd.addFile("no.way");
@@ -46,7 +52,9 @@ describe("RulesDeploy", () => {
 
     beforeEach(() => {
       rd = new RulesDeploy(BASE_OPTIONS, RulesetServiceType.CLOUD_FIRESTORE);
-      sinon.stub(gcp.rules, "testRuleset").rejects(new Error("behavior unspecified"));
+      sinon
+        .stub(gcp.rules, "testRuleset")
+        .rejects(new Error("behavior unspecified"));
     });
 
     afterEach(() => {
@@ -104,7 +112,10 @@ describe("RulesDeploy", () => {
       rd.addFile("storage.rules");
 
       const result = rd.compile();
-      await expect(result).to.eventually.be.rejectedWith(Error, "failed to compile");
+      await expect(result).to.eventually.be.rejectedWith(
+        Error,
+        "failed to compile"
+      );
     });
 
     it("should fail if one file fails to compile (returned an error in the response)", async () => {
@@ -221,20 +232,26 @@ describe("RulesDeploy", () => {
       });
 
       it("should create rulesets if one was provided", async () => {
-        (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().resolves("compiled");
+        (gcp.rules.createRuleset as sinon.SinonStub)
+          .onFirstCall()
+          .resolves("compiled");
         rd.addFile("firestore.rules");
 
         const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
         await expect(result).to.eventually.deep.equal(["compiled"]);
 
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+        expect(
+          gcp.rules.createRuleset
+        ).calledOnceWithExactly(BASE_OPTIONS.project, [
           { name: "firestore.rules", content: sinon.match.string },
         ]);
       });
 
       it("should throw an error if createRuleset fails", async () => {
         rd.addFile("firestore.rules");
-        (gcp.rules.createRuleset as sinon.SinonStub).rejects(new Error("oh no!"));
+        (gcp.rules.createRuleset as sinon.SinonStub).rejects(
+          new Error("oh no!")
+        );
 
         const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
         await expect(result).to.eventually.be.rejectedWith(Error, "oh no!");
@@ -253,12 +270,14 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "firestore.rules", content: sinon.match.string },
-        ]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }]
+        );
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }]
+        );
       });
     });
 
@@ -271,7 +290,9 @@ describe("RulesDeploy", () => {
       ];
 
       beforeEach(() => {
-        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves("deadbeef");
+        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(
+          "deadbeef"
+        );
         (gcp.rules.getRulesetContent as sinon.SinonStub).resolves(content);
       });
 
@@ -281,7 +302,9 @@ describe("RulesDeploy", () => {
 
       it("should throw an error if createRuleset fails", async () => {
         rd.addFile("storage.rules");
-        (gcp.rules.createRuleset as sinon.SinonStub).rejects(new Error("oh no!"));
+        (gcp.rules.createRuleset as sinon.SinonStub).rejects(
+          new Error("oh no!")
+        );
 
         const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
         await expect(result).to.eventually.be.rejectedWith(Error, "oh no!");
@@ -313,7 +336,9 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["created"]);
 
         expect(gcp.rules.createRuleset).calledOnce;
-        expect(gcp.rules.createRuleset).calledOnceWithExactly(BASE_OPTIONS.project, [
+        expect(
+          gcp.rules.createRuleset
+        ).calledOnceWithExactly(BASE_OPTIONS.project, [
           { name: "storage.rules", content: sinon.match.string },
         ]);
       });
@@ -332,12 +357,14 @@ describe("RulesDeploy", () => {
         await expect(result).to.eventually.deep.equal(["one", "two"]);
 
         expect(gcp.rules.createRuleset).calledTwice;
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "firestore.rules", content: sinon.match.string },
-        ]);
-        expect(gcp.rules.createRuleset).calledWithExactly(BASE_OPTIONS.project, [
-          { name: "storage.rules", content: sinon.match.string },
-        ]);
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "firestore.rules", content: sinon.match.string }]
+        );
+        expect(gcp.rules.createRuleset).calledWithExactly(
+          BASE_OPTIONS.project,
+          [{ name: "storage.rules", content: sinon.match.string }]
+        );
       });
     });
 
@@ -346,11 +373,17 @@ describe("RulesDeploy", () => {
       (QUOTA_ERROR as any).status = 429;
 
       beforeEach(() => {
-        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves("deadbeef");
+        (gcp.rules.getLatestRulesetName as sinon.SinonStub).resolves(
+          "deadbeef"
+        );
         (gcp.rules.getRulesetContent as sinon.SinonStub).resolves([]);
-        (gcp.rules.createRuleset as sinon.SinonStub).rejects(new Error("failing"));
+        (gcp.rules.createRuleset as sinon.SinonStub).rejects(
+          new Error("failing")
+        );
 
-        sinon.stub(gcp.rules, "listAllRulesets").rejects(new Error("listAllRulesets failing"));
+        sinon
+          .stub(gcp.rules, "listAllRulesets")
+          .rejects(new Error("listAllRulesets failing"));
       });
 
       afterEach(() => {
@@ -365,7 +398,9 @@ describe("RulesDeploy", () => {
       });
 
       it("should do nothing if there are not a lot of previous rulesets", async () => {
-        (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+        (gcp.rules.createRuleset as sinon.SinonStub)
+          .onFirstCall()
+          .rejects(QUOTA_ERROR);
         (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1));
         rd.addFile("firestore.rules");
 
@@ -375,10 +410,18 @@ describe("RulesDeploy", () => {
 
       describe("and a prompt is made", () => {
         beforeEach(() => {
-          sinon.stub(prompt, "prompt").rejects(new Error("behavior unspecified"));
-          sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
-          sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
-          sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
+          sinon
+            .stub(prompt, "prompt")
+            .rejects(new Error("behavior unspecified"));
+          sinon
+            .stub(gcp.rules, "listAllReleases")
+            .rejects(new Error("listAllReleases failing"));
+          sinon
+            .stub(gcp.rules, "deleteRuleset")
+            .rejects(new Error("deleteRuleset failing"));
+          sinon
+            .stub(gcp.rules, "getRulesetId")
+            .throws(new Error("getRulesetId failing"));
         });
 
         afterEach(() => {
@@ -386,9 +429,13 @@ describe("RulesDeploy", () => {
         });
 
         it("should prompt for a choice (no)", async () => {
-          (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+          (gcp.rules.createRuleset as sinon.SinonStub)
+            .onFirstCall()
+            .rejects(QUOTA_ERROR);
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(Array(1001));
-          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: false });
+          (prompt.prompt as sinon.SinonStub)
+            .onFirstCall()
+            .resolves({ confirm: false });
           rd.addFile("firestore.rules");
 
           const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
@@ -398,17 +445,23 @@ describe("RulesDeploy", () => {
         });
 
         it("should prompt for a choice (yes) and delete and retry creation", async () => {
-          (gcp.rules.createRuleset as sinon.SinonStub).onFirstCall().rejects(QUOTA_ERROR);
+          (gcp.rules.createRuleset as sinon.SinonStub)
+            .onFirstCall()
+            .rejects(QUOTA_ERROR);
           (gcp.rules.listAllRulesets as sinon.SinonStub).resolves(
             new Array(1001).fill(0).map(() => ({ name: "foo" }))
           );
-          (prompt.prompt as sinon.SinonStub).onFirstCall().resolves({ confirm: true });
+          (prompt.prompt as sinon.SinonStub)
+            .onFirstCall()
+            .resolves({ confirm: true });
           (gcp.rules.listAllReleases as sinon.SinonStub).resolves([
             { rulesetName: "name", name: "bar" },
           ]);
           (gcp.rules.getRulesetId as sinon.SinonStub).returns("");
           (gcp.rules.deleteRuleset as sinon.SinonStub).resolves();
-          (gcp.rules.createRuleset as sinon.SinonStub).onSecondCall().resolves("created");
+          (gcp.rules.createRuleset as sinon.SinonStub)
+            .onSecondCall()
+            .resolves("created");
           rd.addFile("firestore.rules");
 
           const result = rd.createRulesets(RulesetServiceType.CLOUD_FIRESTORE);
@@ -436,7 +489,10 @@ describe("RulesDeploy", () => {
     it("should release the rules", async () => {
       (gcp.rules.updateOrCreateRelease as sinon.SinonStub).resolves();
 
-      const result = rd.release("firestore.rules", RulesetServiceType.CLOUD_FIRESTORE);
+      const result = rd.release(
+        "firestore.rules",
+        RulesetServiceType.CLOUD_FIRESTORE
+      );
       await expect(result).to.eventually.be.fulfilled;
 
       expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(
@@ -447,7 +503,10 @@ describe("RulesDeploy", () => {
     });
 
     it("should enforce a subresource for storage", async () => {
-      const result = rd.release("firestore.rules", RulesetServiceType.FIREBASE_STORAGE);
+      const result = rd.release(
+        "firestore.rules",
+        RulesetServiceType.FIREBASE_STORAGE
+      );
       await expect(result).to.eventually.be.rejectedWith(
         FirebaseError,
         /Cannot release resource type "firebase.storage"/
@@ -459,7 +518,11 @@ describe("RulesDeploy", () => {
     it("should append a subresource for storage", async () => {
       (gcp.rules.updateOrCreateRelease as sinon.SinonStub).resolves();
 
-      const result = rd.release("firestore.rules", RulesetServiceType.FIREBASE_STORAGE, "bar");
+      const result = rd.release(
+        "firestore.rules",
+        RulesetServiceType.FIREBASE_STORAGE,
+        "bar"
+      );
       await expect(result).to.eventually.be.fulfilled;
 
       expect(gcp.rules.updateOrCreateRelease).calledOnceWithExactly(

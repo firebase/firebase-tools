@@ -47,7 +47,9 @@ export class EmulatorHubClient {
 
   private assertLocator(): Locator {
     if (this.locator === undefined) {
-      throw new FirebaseError(`Cannot contact the Emulator Hub for project ${this.projectId}`);
+      throw new FirebaseError(
+        `Cannot contact the Emulator Hub for project ${this.projectId}`
+      );
     }
 
     return this.locator;

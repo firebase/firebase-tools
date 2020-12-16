@@ -47,7 +47,9 @@ describe("checkForUpdateWarnings", () => {
   let confirmUpdateWarningSpy: sinon.SinonStub;
 
   beforeEach(() => {
-    confirmUpdateWarningSpy = sinon.stub(resolveSource, "confirmUpdateWarning").resolves(true);
+    confirmUpdateWarningSpy = sinon
+      .stub(resolveSource, "confirmUpdateWarning")
+      .resolves(true);
   });
 
   afterEach(() => {
@@ -55,7 +57,11 @@ describe("checkForUpdateWarnings", () => {
   });
 
   it("should display the correct warning", async () => {
-    await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.0", "0.2.0");
+    await resolveSource.promptForUpdateWarnings(
+      testRegistryEntry,
+      "0.1.0",
+      "0.2.0"
+    );
 
     const expectedUpdateWarning = {
       from: "0.1.0",
@@ -64,11 +70,17 @@ describe("checkForUpdateWarnings", () => {
       action:
         "After updating, you must switch your Cloud Scheduler jobs to <b>PubSub</b>, otherwise your extension will stop running.",
     };
-    expect(confirmUpdateWarningSpy).to.have.been.calledWith(expectedUpdateWarning);
+    expect(confirmUpdateWarningSpy).to.have.been.calledWith(
+      expectedUpdateWarning
+    );
   });
 
   it("should display no warnings if none are applicable", async () => {
-    await resolveSource.promptForUpdateWarnings(testRegistryEntry, "0.1.1", "0.1.2");
+    await resolveSource.promptForUpdateWarnings(
+      testRegistryEntry,
+      "0.1.1",
+      "0.1.2"
+    );
 
     expect(confirmUpdateWarningSpy).not.to.have.been.called;
   });

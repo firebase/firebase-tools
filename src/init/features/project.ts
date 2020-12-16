@@ -18,7 +18,8 @@ import * as utils from "../../utils";
 const OPTION_NO_PROJECT = "Don't set up a default project";
 const OPTION_USE_PROJECT = "Use an existing project";
 const OPTION_NEW_PROJECT = "Create a new project";
-const OPTION_ADD_FIREBASE = "Add Firebase to an existing Google Cloud Platform project";
+const OPTION_ADD_FIREBASE =
+  "Add Firebase to an existing Google Cloud Platform project";
 
 /**
  * Used in init flows to keep information about the project - basically
@@ -70,7 +71,9 @@ async function promptAndAddFirebaseToCloudProject(): Promise<FirebaseProjectMeta
  * @param options the Firebase CLI options object.
  * @return the project metadata, or undefined if no project was selected.
  */
-async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadata | undefined> {
+async function projectChoicePrompt(
+  options: any
+): Promise<FirebaseProjectMetadata | undefined> {
   const choices = [
     { name: OPTION_USE_PROJECT, value: OPTION_USE_PROJECT },
     { name: OPTION_NEW_PROJECT, value: OPTION_NEW_PROJECT },
@@ -103,23 +106,35 @@ async function projectChoicePrompt(options: any): Promise<FirebaseProjectMetadat
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function doSetup(setup: any, config: any, options: any): Promise<void> {
+export async function doSetup(
+  setup: any,
+  config: any,
+  options: any
+): Promise<void> {
   setup.project = {};
 
   logger.info();
-  logger.info(`First, let's associate this project directory with a Firebase project.`);
   logger.info(
-    `You can create multiple project aliases by running ${clc.bold("firebase use --add")}, `
+    `First, let's associate this project directory with a Firebase project.`
+  );
+  logger.info(
+    `You can create multiple project aliases by running ${clc.bold(
+      "firebase use --add"
+    )}, `
   );
   logger.info(`but for now we'll just set up a default project.`);
   logger.info();
 
   const projectFromRcFile = _.get(setup.rcfile, "projects.default");
   if (projectFromRcFile) {
-    utils.logBullet(`.firebaserc already has a default project, using ${projectFromRcFile}.`);
+    utils.logBullet(
+      `.firebaserc already has a default project, using ${projectFromRcFile}.`
+    );
     // we still need to get project info in case user wants to init firestore or storage, which
     // require a resource location:
-    const rcProject: FirebaseProjectMetadata = await getFirebaseProject(projectFromRcFile);
+    const rcProject: FirebaseProjectMetadata = await getFirebaseProject(
+      projectFromRcFile
+    );
     setup.projectId = rcProject.projectId;
     setup.projectLocation = _.get(rcProject, "resources.locationId");
     return;

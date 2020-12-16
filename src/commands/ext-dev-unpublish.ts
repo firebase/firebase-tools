@@ -1,6 +1,10 @@
 import { Command } from "../command";
 import { logPrefix } from "../extensions/extensionsHelper";
-import { unpublishExtension, parseRef, getExtension } from "../extensions/extensionsApi";
+import {
+  unpublishExtension,
+  parseRef,
+  getExtension,
+} from "../extensions/extensionsApi";
 import * as utils from "../utils";
 import { promptOnce } from "../prompt";
 import * as clc from "cli-color";
@@ -32,10 +36,16 @@ module.exports = new Command("ext:dev:unpublish <extensionRef>")
       throw new FirebaseError("unpublishing cancelled.");
     }
     await unpublishExtension(extensionRef);
-    utils.logLabeledSuccess(logPrefix, "successfully unpublished all versions of this extension.");
+    utils.logLabeledSuccess(
+      logPrefix,
+      "successfully unpublished all versions of this extension."
+    );
   });
 
-async function comfirmUnpublish(publisherId: string, extensionId: string): Promise<string> {
+async function comfirmUnpublish(
+  publisherId: string,
+  extensionId: string
+): Promise<string> {
   const message = `You are about to unpublish ALL versions of ${clc.green(
     `${publisherId}/${extensionId}`
   )}.\nDo you wish to continue? `;

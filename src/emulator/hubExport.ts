@@ -38,7 +38,9 @@ export class HubExport {
       return undefined;
     }
 
-    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
+    return JSON.parse(
+      fs.readFileSync(metadataPath, "utf8").toString()
+    ) as ExportMetadata;
   }
 
   public async exportAll(): Promise<void> {
@@ -58,7 +60,8 @@ export class HubExport {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
-        metadata_file: "firestore_export/firestore_export.overall_export_metadata",
+        metadata_file:
+          "firestore_export/firestore_export.overall_export_metadata",
       };
       await this.exportFirestore(metadata);
     }
@@ -71,13 +74,18 @@ export class HubExport {
       await this.exportDatabase(metadata);
     }
 
-    const metadataPath = path.join(this.exportPath, HubExport.METADATA_FILE_NAME);
+    const metadataPath = path.join(
+      this.exportPath,
+      HubExport.METADATA_FILE_NAME
+    );
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, undefined, 2));
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
     const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!!.getInfo();
-    const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
+    const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(
+      firestoreInfo
+    )}`;
 
     const firestoreExportBody = {
       database: `projects/${this.projectId}/databases/(default)`,
@@ -85,20 +93,31 @@ export class HubExport {
       export_name: metadata.firestore!!.path,
     };
 
-    return api.request("POST", `/emulator/v1/projects/${this.projectId}:export`, {
-      origin: firestoreHost,
-      json: true,
-      data: firestoreExportBody,
-    });
+    return api.request(
+      "POST",
+      `/emulator/v1/projects/${this.projectId}:export`,
+      {
+        origin: firestoreHost,
+        json: true,
+        data: firestoreExportBody,
+      }
+    );
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
-    const databaseEmulator = EmulatorRegistry.get(Emulators.DATABASE) as DatabaseEmulator;
-    const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(databaseEmulator.getInfo())}`;
+    const databaseEmulator = EmulatorRegistry.get(
+      Emulators.DATABASE
+    ) as DatabaseEmulator;
+    const databaseAddr = `http://${EmulatorRegistry.getInfoHostString(
+      databaseEmulator.getInfo()
+    )}`;
 
     // Get the list of namespaces
     const inspectURL = `/.inspect/databases.json?ns=${this.projectId}`;
-    const inspectRes = await api.request("GET", inspectURL, { origin: databaseAddr, auth: true });
+    const inspectRes = await api.request("GET", inspectURL, {
+      origin: databaseAddr,
+      auth: true,
+    });
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data

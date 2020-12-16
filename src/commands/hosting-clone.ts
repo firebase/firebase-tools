@@ -56,15 +56,17 @@ export default new Command("hosting:clone <source> <targetChannel>")
       const sChannel = await getChannel("-", sourceSiteId, sourceChannelId);
       if (!sChannel) {
         throw new FirebaseError(
-          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(sourceSiteId)}.`
+          `Could not find the channel ${bold(sourceChannelId)} for site ${bold(
+            sourceSiteId
+          )}.`
         );
       }
       sourceVersionName = sChannel.release?.version?.name;
       if (!sourceVersionName) {
         throw new FirebaseError(
-          `Could not find a version on the channel ${bold(sourceChannelId)} for site ${bold(
-            sourceSiteId
-          )}.`
+          `Could not find a version on the channel ${bold(
+            sourceChannelId
+          )} for site ${bold(sourceSiteId)}.`
         );
       }
     }
@@ -80,7 +82,9 @@ export default new Command("hosting:clone <source> <targetChannel>")
         tChannel = await createChannel("-", targetSiteId, targetChannelId);
       } catch (e) {
         throw new FirebaseError(
-          `Could not create the channel ${bold(targetChannelId)} for site ${bold(targetSiteId)}.`,
+          `Could not create the channel ${bold(
+            targetChannelId
+          )} for site ${bold(targetSiteId)}.`,
           { original: e }
         );
       }
@@ -116,10 +120,16 @@ export default new Command("hosting:clone <source> <targetChannel>")
     const spinner = ora("Cloning site content...").start();
     try {
       if (!equalSiteIds) {
-        const targetVersion = await cloneVersion(targetSiteId, sourceVersionName, true);
+        const targetVersion = await cloneVersion(
+          targetSiteId,
+          sourceVersionName,
+          true
+        );
         if (!targetVersion) {
           throw new FirebaseError(
-            `Could not clone the version ${bold(sourceVersion)} for site ${bold(targetSiteId)}.`
+            `Could not clone the version ${bold(sourceVersion)} for site ${bold(
+              targetSiteId
+            )}.`
           );
         }
         targetVersionName = targetVersion.name;
@@ -132,9 +142,13 @@ export default new Command("hosting:clone <source> <targetChannel>")
 
     spinner.succeed();
     utils.logSuccess(
-      `Site ${bold(sourceSiteId)} ${sourceChannelId ? "channel" : "version"} ${bold(
+      `Site ${bold(sourceSiteId)} ${
+        sourceChannelId ? "channel" : "version"
+      } ${bold(
         sourceChannelId || sourceVersion
-      )} has been cloned to site ${bold(targetSiteId)} channel ${bold(targetChannelId)}.`
+      )} has been cloned to site ${bold(targetSiteId)} channel ${bold(
+        targetChannelId
+      )}.`
     );
     utils.logSuccess(`Channel URL (${targetChannelId}): ${tChannel.url}`);
   });

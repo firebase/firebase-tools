@@ -15,7 +15,7 @@ var { promptOnce } = require("./prompt");
 var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
-var Config = function(src, options) {
+var Config = function (src, options) {
   this.options = options || {};
   this.projectDir = options.projectDir || detectProjectRoot(options);
 
@@ -38,7 +38,7 @@ var Config = function(src, options) {
     _.set(this._src, "database.rules", this._src.rules);
   }
 
-  Config.MATERIALIZE_TARGETS.forEach(function(target) {
+  Config.MATERIALIZE_TARGETS.forEach(function (target) {
     if (_.get(this._src, target)) {
       _.set(this.data, target, this._materialize(target));
     }
@@ -65,7 +65,7 @@ Config.MATERIALIZE_TARGETS = [
   "remoteconfig",
 ];
 
-Config.prototype._hasDeepKey = function(obj, key) {
+Config.prototype._hasDeepKey = function (obj, key) {
   if (_.has(obj, key)) {
     return true;
   }
@@ -78,7 +78,7 @@ Config.prototype._hasDeepKey = function(obj, key) {
   return false;
 };
 
-Config.prototype._materialize = function(target) {
+Config.prototype._materialize = function (target) {
   var val = _.get(this._src, target);
   if (_.isString(val)) {
     var out = this._parseFile(target, val);
@@ -92,18 +92,24 @@ Config.prototype._materialize = function(target) {
     return val;
   }
 
-  throw new FirebaseError('Parse Error: "' + target + '" must be object or import path', {
-    exit: 1,
-  });
+  throw new FirebaseError(
+    'Parse Error: "' + target + '" must be object or import path',
+    {
+      exit: 1,
+    }
+  );
 };
 
-Config.prototype._parseFile = function(target, filePath) {
+Config.prototype._parseFile = function (target, filePath) {
   var fullPath = resolveProjectPath(this.options, filePath);
   var ext = path.extname(filePath);
   if (!fsutils.fileExistsSync(fullPath)) {
-    throw new FirebaseError("Parse Error: Imported file " + filePath + " does not exist", {
-      exit: 1,
-    });
+    throw new FirebaseError(
+      "Parse Error: Imported file " + filePath + " does not exist",
+      {
+        exit: 1,
+      }
+    );
   }
 
   switch (ext) {
@@ -116,7 +122,9 @@ Config.prototype._parseFile = function(target, filePath) {
           return fs.readFileSync(fullPath, "utf8");
         } catch (e) {
           if (e.code === "ENOENT") {
-            throw new FirebaseError(`File not found: ${fullPath}`, { original: e });
+            throw new FirebaseError(`File not found: ${fullPath}`, {
+              original: e,
+            });
           }
           throw e;
         }
@@ -136,27 +144,30 @@ Config.prototype._parseFile = function(target, filePath) {
   }
 };
 
-Config.prototype.get = function(key, fallback) {
+Config.prototype.get = function (key, fallback) {
   return _.get(this.data, key, fallback);
 };
 
-Config.prototype.set = function(key, value) {
+Config.prototype.set = function (key, value) {
   return _.set(this.data, key, value);
 };
 
-Config.prototype.has = function(key) {
+Config.prototype.has = function (key) {
   return _.has(this.data, key);
 };
 
-Config.prototype.path = function(pathName) {
+Config.prototype.path = function (pathName) {
   var outPath = path.normalize(path.join(this.projectDir, pathName));
   if (_.includes(path.relative(this.projectDir, outPath), "..")) {
-    throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
+    throw new FirebaseError(
+      clc.bold(pathName) + " is outside of project directory",
+      { exit: 1 }
+    );
   }
   return outPath;
 };
 
-Config.prototype.readProjectFile = function(p, options) {
+Config.prototype.readProjectFile = function (p, options) {
   options = options || {};
   try {
     var content = fs.readFileSync(this.path(p), "utf8");
@@ -169,13 +180,15 @@ Config.prototype.readProjectFile = function(p, options) {
       return options.fallback;
     }
     if (e.code === "ENOENT") {
-      throw new FirebaseError(`File not found: ${this.path(p)}`, { original: e });
+      throw new FirebaseError(`File not found: ${this.path(p)}`, {
+        original: e,
+      });
     }
     throw e;
   }
 };
 
-Config.prototype.writeProjectFile = function(p, content) {
+Config.prototype.writeProjectFile = function (p, content) {
   if (typeof content !== "string") {
     content = JSON.stringify(content, null, 2) + "\n";
   }
@@ -184,7 +197,7 @@ Config.prototype.writeProjectFile = function(p, content) {
   fs.writeFileSync(this.path(p), content, "utf8");
 };
 
-Config.prototype.askWriteProjectFile = function(p, content) {
+Config.prototype.askWriteProjectFile = function (p, content) {
   var writeTo = this.path(p);
   var next;
   if (fsutils.fileExistsSync(writeTo)) {
@@ -198,7 +211,7 @@ Config.prototype.askWriteProjectFile = function(p, content) {
   }
 
   var self = this;
-  return next.then(function(result) {
+  return next.then(function (result) {
     if (result) {
       self.writeProjectFile(p, content);
       utils.logSuccess("Wrote " + clc.bold(p));
@@ -208,7 +221,7 @@ Config.prototype.askWriteProjectFile = function(p, content) {
   });
 };
 
-Config.load = function(options, allowMissing) {
+Config.load = function (options, allowMissing) {
   const pd = detectProjectRoot(options);
   const filename = options.configPath || Config.FILENAME;
   if (pd) {
@@ -217,9 +230,12 @@ Config.load = function(options, allowMissing) {
       const data = cjson.load(filePath);
       return new Config(data, options);
     } catch (e) {
-      throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
-        exit: 1,
-      });
+      throw new FirebaseError(
+        `There was an error loading ${filename}:\n\n` + e.message,
+        {
+          exit: 1,
+        }
+      );
     }
   }
 
@@ -227,9 +243,12 @@ Config.load = function(options, allowMissing) {
     return null;
   }
 
-  throw new FirebaseError("Not in a Firebase app directory (could not locate firebase.json)", {
-    exit: 1,
-  });
+  throw new FirebaseError(
+    "Not in a Firebase app directory (could not locate firebase.json)",
+    {
+      exit: 1,
+    }
+  );
 };
 
 module.exports = Config;

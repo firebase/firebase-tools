@@ -46,7 +46,10 @@ describe("validate", () => {
 
   describe("functionNamesAreValid", () => {
     it("should allow properly formatted function names", () => {
-      const properNames = { "my-function-1": "some field", "my-function-2": "some field" };
+      const properNames = {
+        "my-function-1": "some field",
+        "my-function-2": "some field",
+      };
 
       expect(() => {
         validate.functionNamesAreValid(properNames);
@@ -65,7 +68,10 @@ describe("validate", () => {
     });
 
     it("should throw error if some function names are improperly formatted", () => {
-      const properNames = { "my-function$%#": "some field", "my-function-2": "some field" };
+      const properNames = {
+        "my-function$%#": "some field",
+        "my-function-2": "some field",
+      };
 
       expect(() => {
         validate.functionNamesAreValid(properNames);
@@ -101,7 +107,12 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/package.json").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        validate.packageJsonIsValid(
+          "sourceDirName",
+          "sourceDir",
+          "projectDir",
+          false
+        );
       }).to.throw(FirebaseError, "No npm package found");
     });
 
@@ -111,17 +122,31 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/index.js").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        validate.packageJsonIsValid(
+          "sourceDirName",
+          "sourceDir",
+          "projectDir",
+          false
+        );
       }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
     it("should throw error if main is defined and that file is missing", () => {
-      cjsonLoadStub.returns({ name: "my-project", main: "src/main.js", engines: { node: "8" } });
+      cjsonLoadStub.returns({
+        name: "my-project",
+        main: "src/main.js",
+        engines: { node: "8" },
+      });
       fileExistsStub.withArgs("sourceDir/package.json").returns(true);
       fileExistsStub.withArgs("sourceDir/src/main.js").returns(false);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+        validate.packageJsonIsValid(
+          "sourceDirName",
+          "sourceDir",
+          "projectDir",
+          false
+        );
       }).to.throw(FirebaseError, "does not exist, can't deploy");
     });
 
@@ -131,7 +156,12 @@ describe("validate", () => {
       fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
       expect(() => {
-        validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", true);
+        validate.packageJsonIsValid(
+          "sourceDirName",
+          "sourceDir",
+          "projectDir",
+          true
+        );
       }).to.not.throw();
     });
 
@@ -142,7 +172,12 @@ describe("validate", () => {
         fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
         expect(() => {
-          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+          validate.packageJsonIsValid(
+            "sourceDirName",
+            "sourceDir",
+            "projectDir",
+            false
+          );
         }).to.throw(FirebaseError, RUNTIME_NOT_SET);
       });
 
@@ -152,7 +187,12 @@ describe("validate", () => {
         fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
         expect(() => {
-          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+          validate.packageJsonIsValid(
+            "sourceDirName",
+            "sourceDir",
+            "projectDir",
+            false
+          );
         }).to.throw(FirebaseError, RUNTIME_NOT_SET);
       });
 
@@ -162,7 +202,12 @@ describe("validate", () => {
         fileExistsStub.withArgs("sourceDir/index.js").returns(true);
 
         expect(() => {
-          validate.packageJsonIsValid("sourceDirName", "sourceDir", "projectDir", false);
+          validate.packageJsonIsValid(
+            "sourceDirName",
+            "sourceDir",
+            "projectDir",
+            false
+          );
         }).to.not.throw();
       });
     });

@@ -78,15 +78,28 @@ export class FakeListRemote implements ListRemote {
 describe("FakeListRemote", () => {
   it("should return limit the number of subpaths returned", async () => {
     const fakeDb = new FakeListRemote({ 1: 1, 2: 2, 3: 3, 4: 4 });
-    await expect(fakeDb.listPath("/", 4)).to.eventually.eql(["1", "2", "3", "4"]);
+    await expect(fakeDb.listPath("/", 4)).to.eventually.eql([
+      "1",
+      "2",
+      "3",
+      "4",
+    ]);
     await expect(fakeDb.listPath("/", 3)).to.eventually.eql(["1", "2", "3"]);
     await expect(fakeDb.listPath("/", 2)).to.eventually.eql(["1", "2"]);
     await expect(fakeDb.listPath("/", 1)).to.eventually.eql(["1"]);
-    await expect(fakeDb.listPath("/", 4, "1")).to.eventually.eql(["2", "3", "4"]);
+    await expect(fakeDb.listPath("/", 4, "1")).to.eventually.eql([
+      "2",
+      "3",
+      "4",
+    ]);
     await expect(fakeDb.listPath("/", 4, "2")).to.eventually.eql(["3", "4"]);
     await expect(fakeDb.listPath("/", 4, "3")).to.eventually.eql(["4"]);
     await expect(fakeDb.listPath("/", 4, "4")).to.eventually.eql([]);
-    await expect(fakeDb.listPath("/", 3, "1")).to.eventually.eql(["2", "3", "4"]);
+    await expect(fakeDb.listPath("/", 3, "1")).to.eventually.eql([
+      "2",
+      "3",
+      "4",
+    ]);
     await expect(fakeDb.listPath("/", 3, "2")).to.eventually.eql(["3", "4"]);
     await expect(fakeDb.listPath("/", 3, "3")).to.eventually.eql(["4"]);
     await expect(fakeDb.listPath("/", 3, "3")).to.eventually.eql(["4"]);

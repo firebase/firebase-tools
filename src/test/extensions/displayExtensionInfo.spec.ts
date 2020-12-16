@@ -21,7 +21,11 @@ const SPEC = {
     { role: "role2", reason: "" },
   ],
   resources: [
-    { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
+    {
+      name: "resource1",
+      type: "firebaseextensions.v1beta.function",
+      description: "desc",
+    },
     { name: "resource2", type: "other", description: "" },
   ],
   author: { authorName: "Tester", url: "firebase.google.com" },
@@ -43,7 +47,11 @@ describe("displayExtensionInfo", () => {
       expect(loggedLines).to.eql(expected);
     });
     it("should display additional information for a published extension", () => {
-      const loggedLines = displayExtensionInfo.displayExtInfo(SPEC.name, SPEC, true);
+      const loggedLines = displayExtensionInfo.displayExtInfo(
+        SPEC.name,
+        SPEC,
+        true
+      );
       const expected: string[] = [
         "**Name**: Old",
         "**Author**: Tester (**[firebase.google.com](firebase.google.com)**)",
@@ -59,9 +67,17 @@ describe("displayExtensionInfo", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.displayName = "new";
 
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
+      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(
+        SPEC,
+        newSpec
+      );
 
-      const expected = ["", "**Name:**", "\u001b[31m- Old\u001b[39m", "\u001b[32m+ new\u001b[39m"];
+      const expected = [
+        "",
+        "**Name:**",
+        "\u001b[31m- Old\u001b[39m",
+        "\u001b[32m+ new\u001b[39m",
+      ];
       expect(loggedLines).to.include.members(expected);
     });
 
@@ -69,7 +85,10 @@ describe("displayExtensionInfo", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.description = "even better";
 
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
+      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(
+        SPEC,
+        newSpec
+      );
 
       const expected = [
         "",
@@ -84,9 +103,15 @@ describe("displayExtensionInfo", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.billingRequired = false;
 
-      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(SPEC, newSpec);
+      const loggedLines = displayExtensionInfo.displayUpdateChangesNoInput(
+        SPEC,
+        newSpec
+      );
 
-      const expected = ["", "**Billing is no longer required for this extension.**"];
+      const expected = [
+        "",
+        "**Billing is no longer required for this extension.**",
+      ];
       expect(loggedLines).to.include.members(expected);
     });
   });
@@ -106,8 +131,12 @@ describe("displayExtensionInfo", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.license = "To Kill";
 
-      expect(displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)).not.to
-        .be.rejected;
+      expect(
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
+      ).not.to.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain("To Kill");
@@ -121,8 +150,12 @@ describe("displayExtensionInfo", () => {
         { apiName: "api3", reason: "" },
       ];
 
-      expect(displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)).not.to
-        .be.rejected;
+      expect(
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
+      ).not.to.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain("- api1");
@@ -137,8 +170,12 @@ describe("displayExtensionInfo", () => {
         { role: "role3", reason: "" },
       ];
 
-      expect(displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)).not.to
-        .be.rejected;
+      expect(
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
+      ).not.to.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain("- role1");
@@ -149,12 +186,20 @@ describe("displayExtensionInfo", () => {
       promptStub.resolves(true);
       const newSpec = _.cloneDeep(SPEC);
       newSpec.resources = [
-        { name: "resource3", type: "firebaseextensions.v1beta.function", description: "new desc" },
+        {
+          name: "resource3",
+          type: "firebaseextensions.v1beta.function",
+          description: "new desc",
+        },
         { name: "resource2", type: "other", description: "" },
       ];
 
-      expect(displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)).not.to
-        .be.rejected;
+      expect(
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
+      ).not.to.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain("- resource1");
@@ -168,8 +213,12 @@ describe("displayExtensionInfo", () => {
       const oldSpec = _.cloneDeep(SPEC);
       oldSpec.billingRequired = false;
 
-      expect(displayExtensionInfo.displayUpdateChangesRequiringConfirmation(oldSpec, SPEC)).not.to
-        .be.rejected;
+      expect(
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          oldSpec,
+          SPEC
+        )
+      ).not.to.be.rejected;
 
       expect(promptStub.callCount).to.equal(1);
       expect(promptStub.firstCall.args[0].message).to.contain(
@@ -188,7 +237,10 @@ describe("displayExtensionInfo", () => {
       ];
 
       expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
       ).to.be.rejectedWith(
         FirebaseError,
         "Without explicit consent for the change to license, we cannot update this extension instance."
@@ -203,7 +255,10 @@ describe("displayExtensionInfo", () => {
       newSpec.license = "new";
 
       expect(
-        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec)
+        displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+          SPEC,
+          newSpec
+        )
       ).to.be.rejectedWith(
         FirebaseError,
         "Without explicit consent for the change to license, we cannot update this extension instance."
@@ -215,7 +270,10 @@ describe("displayExtensionInfo", () => {
       const newSpec = _.cloneDeep(SPEC);
       newSpec.version = "1.1.0";
 
-      await displayExtensionInfo.displayUpdateChangesRequiringConfirmation(SPEC, newSpec);
+      await displayExtensionInfo.displayUpdateChangesRequiringConfirmation(
+        SPEC,
+        newSpec
+      );
 
       expect(promptStub).not.to.have.been.called;
     });

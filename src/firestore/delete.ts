@@ -41,7 +41,11 @@ export class FirestoreDelete {
   constructor(
     project: string,
     path: string | undefined,
-    options: { recursive?: boolean; shallow?: boolean; allCollections?: boolean }
+    options: {
+      recursive?: boolean;
+      shallow?: boolean;
+      allCollections?: boolean;
+    }
   ) {
     this.project = project;
     this.path = path || "";
@@ -76,9 +80,12 @@ export class FirestoreDelete {
       this.validateOptions();
     }
 
-    this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
-      total: Number.MAX_SAFE_INTEGER,
-    });
+    this.progressBar = new ProgressBar(
+      "Deleted :current docs (:rate docs/s)\n",
+      {
+        total: Number.MAX_SAFE_INTEGER,
+      }
+    );
   }
 
   /**
@@ -86,11 +93,15 @@ export class FirestoreDelete {
    */
   private validateOptions() {
     if (this.recursive && this.shallow) {
-      throw new FirebaseError("Cannot pass recursive and shallow options together.");
+      throw new FirebaseError(
+        "Cannot pass recursive and shallow options together."
+      );
     }
 
     if (this.isCollectionPath && !this.recursive && !this.shallow) {
-      throw new FirebaseError("Must pass recursive or shallow option when deleting a collection.");
+      throw new FirebaseError(
+        "Must pass recursive or shallow option when deleting a collection."
+      );
     }
 
     const pieces = this.path.split("/");
@@ -198,7 +209,11 @@ export class FirestoreDelete {
    * @param startAfter document name to start after (optional).
    * @return a StructuredQuery.
    */
-  private docDescendantsQuery(allDescendants: boolean, batchSize: number, startAfter?: string) {
+  private docDescendantsQuery(
+    allDescendants: boolean,
+    batchSize: number,
+    startAfter?: string
+  ) {
     const query: any = {
       structuredQuery: {
         limit: batchSize,
@@ -245,7 +260,11 @@ export class FirestoreDelete {
     if (this.isDocumentPath) {
       body = this.docDescendantsQuery(allDescendants, batchSize, startAfter);
     } else {
-      body = this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
+      body = this.collectionDescendantsQuery(
+        allDescendants,
+        batchSize,
+        startAfter
+      );
     }
 
     return api
@@ -297,7 +316,9 @@ export class FirestoreDelete {
       }
 
       if (failures.length > 0) {
-        logger.debug("Found " + failures.length + " failed operations, failing.");
+        logger.debug(
+          "Found " + failures.length + " failed operations, failing."
+        );
         return true;
       }
 
@@ -358,7 +379,9 @@ export class FirestoreDelete {
             // Retry each doc up to one time
             toDelete.forEach((doc) => {
               if (retried[doc.name]) {
-                logger.debug("Failed to delete doc " + doc.name + " multiple times.");
+                logger.debug(
+                  "Failed to delete doc " + doc.name + " multiple times."
+                );
                 failures.push(doc.name);
               } else {
                 retried[doc.name] = true;
@@ -384,7 +407,11 @@ export class FirestoreDelete {
           if (failures.length == 0) {
             resolve();
           } else {
-            reject(new FirebaseError("Failed to delete documents " + failures, { exit: 1 }));
+            reject(
+              new FirebaseError("Failed to delete documents " + failures, {
+                exit: 1,
+              })
+            );
           }
         }
       }, 0);
@@ -437,7 +464,10 @@ export class FirestoreDelete {
       .then((collectionIds) => {
         const promises = [];
 
-        logger.info("Deleting the following collections: " + clc.cyan(collectionIds.join(", ")));
+        logger.info(
+          "Deleting the following collections: " +
+            clc.cyan(collectionIds.join(", "))
+        );
 
         for (let i = 0; i < collectionIds.length; i++) {
           const collectionId = collectionIds[i];
@@ -473,7 +503,10 @@ export class FirestoreDelete {
     if (this.isDocumentPath && !this.recursive && !this.shallow) {
       verifyRecurseSafe = this.checkHasChildren().then((multiple) => {
         if (multiple) {
-          return utils.reject("Document has children, must specify -r or --shallow.", { exit: 1 });
+          return utils.reject(
+            "Document has children, must specify -r or --shallow.",
+            { exit: 1 }
+          );
         }
       });
     } else {

@@ -13,12 +13,18 @@ module.exports = new Command("remoteconfig:rollback")
     "roll back a project's published Remote Config template to the one specified by the provided version number"
   )
   .before(requireAuth)
-  .before(requirePermissions, ["cloudconfig.configs.get", "cloudconfig.configs.update"])
+  .before(requirePermissions, [
+    "cloudconfig.configs.get",
+    "cloudconfig.configs.update",
+  ])
   .option(
     "-v, --version-number <versionNumber>",
     "rollback to the specified version of the template"
   )
-  .option("--force", "rollback template to the specified version without confirmation")
+  .option(
+    "--force",
+    "rollback template to the specified version without confirmation"
+  )
   .action(async (options) => {
     const templateVersion = await getVersions(getProjectId(options), 1);
     let targetVersion = 0;
@@ -44,7 +50,8 @@ module.exports = new Command("remoteconfig:rollback")
         {
           type: "confirm",
           name: "confirm",
-          message: "Proceed to rollback template to version " + targetVersion + "?",
+          message:
+            "Proceed to rollback template to version " + targetVersion + "?",
           default: false,
         },
       ]);

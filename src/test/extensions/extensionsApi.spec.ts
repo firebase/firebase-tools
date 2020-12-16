@@ -93,7 +93,9 @@ const TEST_INSTANCES_RESPONSE = {
   instances: [TEST_INSTANCE_1, TEST_INSTANCE_2],
 };
 
-const TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN: any = _.cloneDeep(TEST_INSTANCES_RESPONSE);
+const TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN: any = _.cloneDeep(
+  TEST_INSTANCES_RESPONSE
+);
 TEST_INSTANCES_RESPONSE_NEXT_PAGE_TOKEN.nextPageToken = "abc123";
 
 const PACKAGE_URI = "https://storage.googleapis.com/ABCD.zip";
@@ -126,16 +128,27 @@ const TEST_SOURCE = {
 };
 
 const NEXT_PAGE_TOKEN = "random123";
-const PUBLISHED_EXTENSIONS = { extensions: [TEST_EXTENSION_1, TEST_EXTENSION_2] };
+const PUBLISHED_EXTENSIONS = {
+  extensions: [TEST_EXTENSION_1, TEST_EXTENSION_2],
+};
 const ALL_EXTENSIONS = {
   extensions: [TEST_EXTENSION_1, TEST_EXTENSION_2, TEST_EXTENSION_3],
 };
-const PUBLISHED_WITH_TOKEN = { extensions: [TEST_EXTENSION_1], nextPageToken: NEXT_PAGE_TOKEN };
+const PUBLISHED_WITH_TOKEN = {
+  extensions: [TEST_EXTENSION_1],
+  nextPageToken: NEXT_PAGE_TOKEN,
+};
 const NEXT_PAGE_EXTENSIONS = { extensions: [TEST_EXTENSION_2] };
 
-const PUBLISHED_EXT_VERSIONS = { extensionVersions: [TEST_EXT_VERSION_2, TEST_EXT_VERSION_3] };
+const PUBLISHED_EXT_VERSIONS = {
+  extensionVersions: [TEST_EXT_VERSION_2, TEST_EXT_VERSION_3],
+};
 const ALL_EXT_VERSIONS = {
-  extensionVersions: [TEST_EXT_VERSION_1, TEST_EXT_VERSION_2, TEST_EXT_VERSION_3],
+  extensionVersions: [
+    TEST_EXT_VERSION_1,
+    TEST_EXT_VERSION_2,
+    TEST_EXT_VERSION_3,
+  ],
 };
 const PUBLISHED_VERSIONS_WITH_TOKEN = {
   extensionVersions: [TEST_EXT_VERSION_2],
@@ -200,7 +213,9 @@ describe("extensions", () => {
         })
         .reply(503);
 
-      await expect(extensionsApi.listInstances(PROJECT_ID)).to.be.rejectedWith(FirebaseError);
+      await expect(extensionsApi.listInstances(PROJECT_ID)).to.be.rejectedWith(
+        FirebaseError
+      );
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -226,7 +241,14 @@ describe("extensions", () => {
           name: "sources/blah",
           packageUri: "https://test.fake/pacakge.zip",
           hash: "abc123",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
+          spec: {
+            name: "",
+            version: "0.1.0",
+            sourceUrl: "",
+            roles: [],
+            resources: [],
+            params: [],
+          },
         },
         {}
       );
@@ -248,7 +270,14 @@ describe("extensions", () => {
           name: "publishers/test-pub/extensions/test-ext/versions/0.1.0",
           ref: "test-pub/test-ext@0.1.0",
           hash: "abc123",
-          spec: { name: "", version: "0.1.0", sourceUrl: "", roles: [], resources: [], params: [] },
+          spec: {
+            name: "",
+            version: "0.1.0",
+            sourceUrl: "",
+            roles: [],
+            resources: [],
+            params: [],
+          },
         },
         {}
       );
@@ -345,7 +374,9 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true });
 
-      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" });
+      await extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, {
+        MY_PARAM: "value",
+      });
       expect(nock.isDone()).to.be.true;
     });
 
@@ -356,7 +387,9 @@ describe("extensions", () => {
         .reply(500);
 
       await expect(
-        extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, { MY_PARAM: "value" })
+        extensionsApi.configureInstance(PROJECT_ID, INSTANCE_ID, {
+          MY_PARAM: "value",
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
       expect(nock.isDone()).to.be.true;
     });
@@ -384,9 +417,9 @@ describe("extensions", () => {
         .delete(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(404);
 
-      await expect(extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
-      );
+      await expect(
+        extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID)
+      ).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -445,7 +478,9 @@ describe("extensions", () => {
         .reply(500);
 
       await expect(
-        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, { MY_PARAM: "value" })
+        extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
+          MY_PARAM: "value",
+        })
       ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500");
 
       expect(nock.isDone()).to.be.true;
@@ -471,9 +506,9 @@ describe("extensions", () => {
         .get(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(404);
 
-      await expect(extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID)).to.be.rejectedWith(
-        FirebaseError
-      );
+      await expect(
+        extensionsApi.getInstance(PROJECT_ID, INSTANCE_ID)
+      ).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -495,11 +530,11 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/${SOURCE_NAME}`)
-        .reply(404);
+      nock(api.extensionsOrigin).get(`/${VERSION}/${SOURCE_NAME}`).reply(404);
 
-      await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
+      await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(
+        FirebaseError
+      );
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -517,7 +552,11 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(200, { done: true, response: TEST_SOURCE });
 
-      const source = await extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, ",./");
+      const source = await extensionsApi.createSource(
+        PROJECT_ID,
+        PACKAGE_URI,
+        ",./"
+      );
       expect(nock.isDone()).to.be.true;
       expect(source.spec.resources).to.have.lengthOf(1);
       expect(source.spec.resources[0]).to.have.property("properties");
@@ -528,10 +567,9 @@ describe("extensions", () => {
         .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(500);
 
-      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
-        FirebaseError,
-        "HTTP Error: 500, Unknown Error"
-      );
+      await expect(
+        extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 500, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
 
@@ -543,10 +581,9 @@ describe("extensions", () => {
         .get(`/${VERSION}/operations/abc123`)
         .reply(502, {});
 
-      await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
-        FirebaseError,
-        "HTTP Error: 502, Unknown Error"
-      );
+      await expect(
+        extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 502, Unknown Error");
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -559,14 +596,14 @@ describe("publishExtensionVersion", () => {
 
   it("should make a POST call to the correct endpoint, and then poll on the returned operation", async () => {
     nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`)
+      .post(
+        `/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`
+      )
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsOrigin)
-      .get(`/${VERSION}/operations/abc123`)
-      .reply(200, {
-        done: true,
-        response: TEST_EXT_VERSION_3,
-      });
+    nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+      done: true,
+      response: TEST_EXT_VERSION_3,
+    });
 
     const res = await extensionsApi.publishExtensionVersion(
       TEST_EXT_VERSION_3.ref,
@@ -578,7 +615,9 @@ describe("publishExtensionVersion", () => {
 
   it("should throw a FirebaseError if publishExtensionVersion returns an error response", async () => {
     nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`
+      )
       .reply(500);
 
     await expect(
@@ -593,7 +632,9 @@ describe("publishExtensionVersion", () => {
 
   it("stop polling and throw if the operation call throws an unexpected error", async () => {
     nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`
+      )
       .reply(200, { name: "operations/abc123" });
     nock(api.extensionsOrigin)
       .get(`/${VERSION}/operations/abc123`)
@@ -627,7 +668,9 @@ describe("unpublishExtension", () => {
 
   it("should make a POST call to the correct endpoint", async () => {
     nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`
+      )
       .reply(200);
 
     await extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`);
@@ -636,7 +679,9 @@ describe("unpublishExtension", () => {
 
   it("should throw a FirebaseError if the endpoint returns an error response", async () => {
     nock(api.extensionsOrigin)
-      .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`)
+      .post(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}:unpublish`
+      )
       .reply(404);
 
     await expect(
@@ -648,7 +693,10 @@ describe("unpublishExtension", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(
       extensionsApi.unpublishExtension(`${PUBLISHER_ID}/${EXTENSION_ID}@`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+    ).to.be.rejectedWith(
+      FirebaseError,
+      "Extension reference must be in format"
+    );
   });
 });
 
@@ -671,14 +719,16 @@ describe("getExtension", () => {
       .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}`)
       .reply(404);
 
-    await expect(extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)).to.be.rejectedWith(
-      FirebaseError
-    );
+    await expect(
+      extensionsApi.getExtension(`${PUBLISHER_ID}/${EXTENSION_ID}`)
+    ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should throw an error for an invalid ref", async () => {
-    await expect(extensionsApi.getExtension(`${PUBLISHER_ID}`)).to.be.rejectedWith(
+    await expect(
+      extensionsApi.getExtension(`${PUBLISHER_ID}`)
+    ).to.be.rejectedWith(
       FirebaseError,
       "Extension reference must be in format"
     );
@@ -712,7 +762,9 @@ describe("getExtensionVersion", () => {
       .reply(404);
 
     await expect(
-      extensionsApi.getExtensionVersion(`${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`)
+      extensionsApi.getExtensionVersion(
+        `${PUBLISHER_ID}/${EXTENSION_ID}@${EXTENSION_VERSION}`
+      )
     ).to.be.rejectedWith(FirebaseError);
     expect(nock.isDone()).to.be.true;
   });
@@ -720,7 +772,10 @@ describe("getExtensionVersion", () => {
   it("should throw an error for an invalid ref", async () => {
     await expect(
       extensionsApi.getExtensionVersion(`${PUBLISHER_ID}//${EXTENSION_ID}`)
-    ).to.be.rejectedWith(FirebaseError, "Extension reference must be in format");
+    ).to.be.rejectedWith(
+      FirebaseError,
+      "Extension reference must be in format"
+    );
   });
 });
 
@@ -777,7 +832,9 @@ describe("listExtensions", () => {
 
     const extensions = await extensionsApi.listExtensions(PUBLISHER_ID);
 
-    const expected = PUBLISHED_WITH_TOKEN.extensions.concat(NEXT_PAGE_EXTENSIONS.extensions);
+    const expected = PUBLISHED_WITH_TOKEN.extensions.concat(
+      NEXT_PAGE_EXTENSIONS.extensions
+    );
     expect(extensions).to.deep.equal(expected);
     expect(nock.isDone()).to.be.true;
   });
@@ -791,7 +848,9 @@ describe("listExtensions", () => {
       })
       .reply(503, PUBLISHED_EXTENSIONS);
 
-    await expect(extensionsApi.listExtensions(PUBLISHER_ID)).to.be.rejectedWith(FirebaseError);
+    await expect(extensionsApi.listExtensions(PUBLISHER_ID)).to.be.rejectedWith(
+      FirebaseError
+    );
     expect(nock.isDone()).to.be.true;
   });
 });
@@ -803,28 +862,36 @@ describe("listExtensionVersions", () => {
 
   it("should return a list of published extension versions", async () => {
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, PUBLISHED_EXT_VERSIONS);
 
-    const extensions = await extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
     expect(extensions).to.deep.equal(PUBLISHED_EXT_VERSIONS.extensionVersions);
     expect(nock.isDone()).to.be.true;
   });
 
   it("should return a list of all extension versions", async () => {
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, ALL_EXT_VERSIONS);
 
-    const extensions = await extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
 
     expect(extensions).to.deep.equal(ALL_EXT_VERSIONS.extensionVersions);
     expect(nock.isDone()).to.be.true;
@@ -832,14 +899,18 @@ describe("listExtensionVersions", () => {
 
   it("should query for more extension versions if the response has a next_page_token", async () => {
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         queryParams.pageToken === NEXT_PAGE_TOKEN;
@@ -847,7 +918,9 @@ describe("listExtensionVersions", () => {
       })
       .reply(200, NEXT_PAGE_VERSIONS);
 
-    const extensions = await extensionsApi.listExtensionVersions(`${PUBLISHER_ID}/${EXTENSION_ID}`);
+    const extensions = await extensionsApi.listExtensionVersions(
+      `${PUBLISHER_ID}/${EXTENSION_ID}`
+    );
 
     const expected = PUBLISHED_VERSIONS_WITH_TOKEN.extensionVersions.concat(
       NEXT_PAGE_VERSIONS.extensionVersions
@@ -858,14 +931,18 @@ describe("listExtensionVersions", () => {
 
   it("should throw FirebaseError if any call returns an error", async () => {
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         return queryParams;
       })
       .reply(200, PUBLISHED_VERSIONS_WITH_TOKEN);
     nock(api.extensionsOrigin)
-      .get(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`)
+      .get(
+        `/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions`
+      )
       .query((queryParams: any) => {
         queryParams.pageSize === "100";
         queryParams.nextPageToken === NEXT_PAGE_TOKEN;
@@ -902,7 +979,10 @@ describe("registerPublisherProfile", () => {
       .post(`/${VERSION}/projects/${PROJECT_ID}/publisherProfile:register`)
       .reply(200, PUBLISHER_PROFILE);
 
-    const res = await extensionsApi.registerPublisherProfile(PROJECT_ID, PUBLISHER_ID);
+    const res = await extensionsApi.registerPublisherProfile(
+      PROJECT_ID,
+      PUBLISHER_ID
+    );
     expect(res).to.deep.equal(PUBLISHER_PROFILE);
     expect(nock.isDone()).to.be.true;
   });

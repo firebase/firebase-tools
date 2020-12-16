@@ -10,12 +10,16 @@ var API_VERSION = "v1beta1";
 
 function _listConfigs(projectId) {
   return api
-    .request("GET", utils.endpoint([API_VERSION, "projects", projectId, "configs"]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
-      retryCodes: [500, 503],
-    })
-    .then(function(resp) {
+    .request(
+      "GET",
+      utils.endpoint([API_VERSION, "projects", projectId, "configs"]),
+      {
+        auth: true,
+        origin: api.runtimeconfigOrigin,
+        retryCodes: [500, 503],
+      }
+    )
+    .then(function (resp) {
       return Promise.resolve(resp.body.configs);
     });
 }
@@ -32,7 +36,7 @@ function _createConfig(projectId, configId) {
       },
       retryCodes: [500, 503],
     })
-    .catch(function(err) {
+    .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 409) {
         // Config has already been created as part of a parallel operation during firebase functions:config:set
         return Promise.resolve();
@@ -43,12 +47,16 @@ function _createConfig(projectId, configId) {
 
 function _deleteConfig(projectId, configId) {
   return api
-    .request("DELETE", utils.endpoint([API_VERSION, "projects", projectId, "configs", configId]), {
-      auth: true,
-      origin: api.runtimeconfigOrigin,
-      retryCodes: [500, 503],
-    })
-    .catch(function(err) {
+    .request(
+      "DELETE",
+      utils.endpoint([API_VERSION, "projects", projectId, "configs", configId]),
+      {
+        auth: true,
+        origin: api.runtimeconfigOrigin,
+        retryCodes: [500, 503],
+      }
+    )
+    .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
         logger.debug("Config already deleted.");
         return Promise.resolve();
@@ -64,7 +72,7 @@ function _listVariables(configPath) {
       origin: api.runtimeconfigOrigin,
       retryCodes: [500, 503],
     })
-    .then(function(resp) {
+    .then(function (resp) {
       return Promise.resolve(resp.body.variables);
     });
 }
@@ -76,13 +84,16 @@ function _getVariable(varPath) {
       origin: api.runtimeconfigOrigin,
       retryCodes: [500, 503],
     })
-    .then(function(resp) {
+    .then(function (resp) {
       return Promise.resolve(resp.body);
     });
 }
 
 function _createVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables"], "/");
+  var path = _.join(
+    ["projects", projectId, "configs", configId, "variables"],
+    "/"
+  );
   var endpoint = utils.endpoint([API_VERSION, path]);
   return api
     .request("POST", endpoint, {
@@ -94,10 +105,10 @@ function _createVariable(projectId, configId, varId, value) {
       },
       retryCodes: [500, 503],
     })
-    .catch(function(err) {
+    .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
         // parent config doesn't exist yet
-        return _createConfig(projectId, configId).then(function() {
+        return _createConfig(projectId, configId).then(function () {
           return _createVariable(projectId, configId, varId, value);
         });
       }
@@ -106,7 +117,10 @@ function _createVariable(projectId, configId, varId, value) {
 }
 
 function _updateVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  var path = _.join(
+    ["projects", projectId, "configs", configId, "variables", varId],
+    "/"
+  );
   var endpoint = utils.endpoint([API_VERSION, path]);
   return api.request("PUT", endpoint, {
     auth: true,
@@ -119,12 +133,15 @@ function _updateVariable(projectId, configId, varId, value) {
   });
 }
 function _setVariable(projectId, configId, varId, value) {
-  var path = _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
+  var path = _.join(
+    ["projects", projectId, "configs", configId, "variables", varId],
+    "/"
+  );
   return _getVariable(path)
-    .then(function() {
+    .then(function () {
       return _updateVariable(projectId, configId, varId, value);
     })
-    .catch(function(err) {
+    .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
         return _createVariable(projectId, configId, varId, value);
       }
@@ -134,15 +151,22 @@ function _setVariable(projectId, configId, varId, value) {
 
 function _deleteVariable(projectId, configId, varId) {
   var endpoint =
-    utils.endpoint([API_VERSION, "projects", projectId, "configs", configId, "variables", varId]) +
-    "?recursive=true";
+    utils.endpoint([
+      API_VERSION,
+      "projects",
+      projectId,
+      "configs",
+      configId,
+      "variables",
+      varId,
+    ]) + "?recursive=true";
   return api
     .request("DELETE", endpoint, {
       auth: true,
       origin: api.runtimeconfigOrigin,
       retryCodes: [500, 503],
     })
-    .catch(function(err) {
+    .catch(function (err) {
       if (_.get(err, "context.response.statusCode") === 404) {
         logger.debug("Variable already deleted.");
         return Promise.resolve();

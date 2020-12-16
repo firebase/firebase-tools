@@ -5,7 +5,7 @@ var { FirebaseError } = require("./error");
 var utils = require("./utils");
 const { populateInstanceDetails } = require("./management/database");
 const { realtimeOriginOrCustomUrl } = require("./database/api");
-exports.updateRules = function(projectId, instance, src, options) {
+exports.updateRules = function (projectId, instance, src, options) {
   options = options || {};
   var path = ".settings/rules.json";
   if (options.dryRun) {
@@ -13,9 +13,11 @@ exports.updateRules = function(projectId, instance, src, options) {
   }
   var downstreamOptions = { instance: instance, project: projectId };
   return populateInstanceDetails(downstreamOptions)
-    .then(function() {
+    .then(function () {
       const origin = utils.getDatabaseUrl(
-        realtimeOriginOrCustomUrl(downstreamOptions.instanceDetails.databaseUrl),
+        realtimeOriginOrCustomUrl(
+          downstreamOptions.instanceDetails.databaseUrl
+        ),
         instance,
         ""
       );
@@ -27,13 +29,17 @@ exports.updateRules = function(projectId, instance, src, options) {
         resolveOnHTTPError: true,
       });
     })
-    .then(function(response) {
+    .then(function (response) {
       if (response.status === 400) {
         throw new FirebaseError(
-          "Syntax error in database rules:\n\n" + JSON.parse(response.body).error
+          "Syntax error in database rules:\n\n" +
+            JSON.parse(response.body).error
         );
       } else if (response.status > 400) {
-        throw new FirebaseError("Unexpected error while deploying database rules.", { exit: 2 });
+        throw new FirebaseError(
+          "Unexpected error while deploying database rules.",
+          { exit: 2 }
+        );
       }
     });
 };

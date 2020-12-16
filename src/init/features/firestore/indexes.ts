@@ -17,7 +17,9 @@ const INDEXES_TEMPLATE = fs.readFileSync(
 export function initIndexes(setup: any, config: any): Promise<any> {
   logger.info();
   logger.info("Firestore indexes allow you to perform complex queries while");
-  logger.info("maintaining performance that scales with the size of the result");
+  logger.info(
+    "maintaining performance that scales with the size of the result"
+  );
   logger.info("set. You can keep index definitions in your project directory");
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
@@ -52,11 +54,17 @@ export function initIndexes(setup: any, config: any): Promise<any> {
       }
 
       if (!setup.projectId) {
-        return config.writeProjectFile(setup.config.firestore.indexes, INDEXES_TEMPLATE);
+        return config.writeProjectFile(
+          setup.config.firestore.indexes,
+          INDEXES_TEMPLATE
+        );
       }
 
       return getIndexesFromConsole(setup.projectId).then((contents: any) => {
-        return config.writeProjectFile(setup.config.firestore.indexes, contents);
+        return config.writeProjectFile(
+          setup.config.firestore.indexes,
+          contents
+        );
       });
     });
 }

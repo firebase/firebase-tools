@@ -1,4 +1,9 @@
-import { randomBase64UrlStr, randomId, mirrorFieldTo, randomDigits } from "./utils";
+import {
+  randomBase64UrlStr,
+  randomId,
+  mirrorFieldTo,
+  randomDigits,
+} from "./utils";
 import { MakeRequired } from "./utils";
 
 import * as schema from "./schema";
@@ -36,7 +41,9 @@ export class ProjectState {
     return "12345";
   }
 
-  createUser(props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">): UserInfo {
+  createUser(
+    props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">
+  ): UserInfo {
     for (let i = 0; i < 10; i++) {
       // Try this for 10 times to prevent ID collision (since our RNG is
       // Math.random() which isn't really that great).
@@ -111,7 +118,9 @@ export class ProjectState {
     const deleteProviders = options.deleteProviders ?? [];
     const user = this.users.get(localId);
     if (!user) {
-      throw new Error(`Internal assertion error: trying to update nonexistent user: ${localId}`);
+      throw new Error(
+        `Internal assertion error: trying to update nonexistent user: ${localId}`
+      );
     }
     const oldEmail = user.email;
     const oldPhoneNumber = user.phoneNumber;
@@ -222,7 +231,9 @@ export class ProjectState {
   private getUserByLocalIdAssertingExists(localId: string): UserInfo {
     const userInfo = this.getUserByLocalId(localId);
     if (!userInfo) {
-      throw new Error(`Internal state invariant broken: no user with ID: ${localId}`);
+      throw new Error(
+        `Internal state invariant broken: no user with ID: ${localId}`
+      );
     }
     return userInfo;
   }
@@ -263,7 +274,10 @@ export class ProjectState {
     }
   }
 
-  getUserByProviderRawId(provider: string, rawId: string): UserInfo | undefined {
+  getUserByProviderRawId(
+    provider: string,
+    rawId: string
+  ): UserInfo | undefined {
     const localId = this.userIdForProviderRawId.get(provider)?.get(rawId);
     if (!localId) {
       return undefined;
@@ -279,7 +293,9 @@ export class ProjectState {
     const infos: ProviderUserInfo[] = [];
     for (const localId of users.values()) {
       const user = this.getUserByLocalIdAssertingExists(localId);
-      const info = user.providerUserInfo?.find((info) => info.providerId === provider);
+      const info = user.providerUserInfo?.find(
+        (info) => info.providerId === provider
+      );
       if (!info) {
         throw new Error(
           `Internal assertion error: User ${localId} does not have providerInfo ${provider}.`
@@ -313,7 +329,9 @@ export class ProjectState {
 
   validateRefreshToken(
     refreshToken: string
-  ): { user: UserInfo; provider: string; extraClaims: Record<string, unknown> } | undefined {
+  ):
+    | { user: UserInfo; provider: string; extraClaims: Record<string, unknown> }
+    | undefined {
     const record = this.refreshTokens.get(refreshToken);
     if (!record) {
       return undefined;
@@ -366,7 +384,9 @@ export class ProjectState {
     return verification;
   }
 
-  getVerificationCodeBySessionInfo(sessionInfo: string): PhoneVerificationRecord | undefined {
+  getVerificationCodeBySessionInfo(
+    sessionInfo: string
+  ): PhoneVerificationRecord | undefined {
     return this.verificationCodes.get(sessionInfo);
   }
 

@@ -38,7 +38,10 @@ export class DatabaseEmulator implements EmulatorInstance {
     if (this.args.rules) {
       for (const c of this.args.rules) {
         if (!c.instance) {
-          this.logger.log("DEBUG", `args.rules=${JSON.stringify(this.args.rules)}`);
+          this.logger.log(
+            "DEBUG",
+            `args.rules=${JSON.stringify(this.args.rules)}`
+          );
           this.logger.logLabeled(
             "WARN_ONCE",
             "database",
@@ -48,7 +51,10 @@ export class DatabaseEmulator implements EmulatorInstance {
         }
 
         const rulesPath = c.rules;
-        this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+        this.rulesWatcher = chokidar.watch(rulesPath, {
+          persistent: true,
+          ignoreInitial: true,
+        });
         this.rulesWatcher.on("change", async (event, stats) => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
@@ -65,8 +71,16 @@ export class DatabaseEmulator implements EmulatorInstance {
             await this.updateRules(c.instance, newContent);
             this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
           } catch (e) {
-            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(rulesPath, e));
-            this.logger.logLabeled("WARN", "database", "Failed to update rules");
+            this.logger.logLabeled(
+              "WARN",
+              "database",
+              this.prettyPrintRulesError(rulesPath, e)
+            );
+            this.logger.logLabeled(
+              "WARN",
+              "database",
+              "Failed to update rules"
+            );
           }
         });
       }
@@ -84,7 +98,10 @@ export class DatabaseEmulator implements EmulatorInstance {
           continue;
         }
 
-        await this.updateRules(c.instance, fs.readFileSync(c.rules, "utf8").toString());
+        await this.updateRules(
+          c.instance,
+          fs.readFileSync(c.rules, "utf8").toString()
+        );
       }
     }
   }
@@ -114,7 +131,11 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   async importData(ns: string, fPath: string): Promise<void> {
-    this.logger.logLabeled("BULLET", "database", `Importing data from ${fPath}`);
+    this.logger.logLabeled(
+      "BULLET",
+      "database",
+      `Importing data from ${fPath}`
+    );
 
     const readStream = fs.createReadStream(fPath);
     const { host, port } = this.getInfo();
@@ -136,7 +157,10 @@ export class DatabaseEmulator implements EmulatorInstance {
             this.importedNamespaces.push(ns);
             resolve();
           } else {
-            this.logger.log("DEBUG", "Database import failed: " + response.statusCode);
+            this.logger.log(
+              "DEBUG",
+              "Database import failed: " + response.statusCode
+            );
             response
               .on("data", (d) => {
                 this.logger.log("DEBUG", d.toString());
@@ -149,7 +173,10 @@ export class DatabaseEmulator implements EmulatorInstance {
       req.on("error", reject);
       readStream.pipe(req, { end: true });
     }).catch((e) => {
-      throw new FirebaseError("Error during database import.", { original: e, exit: 1 });
+      throw new FirebaseError("Error during database import.", {
+        original: e,
+        exit: 1,
+      });
     });
   }
 

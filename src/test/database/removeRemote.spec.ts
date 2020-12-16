@@ -30,7 +30,9 @@ describe("RemoveRemote", () => {
         error:
           "Data requested exceeds the maximum size that can be accessed with a single request.",
       });
-    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(false);
+    return expect(
+      remote.deleteSubPath("/a/b", ["1", "2", "3"])
+    ).to.eventually.eql(false);
   });
 
   it("should return true when multi-path patch is small", () => {
@@ -38,7 +40,9 @@ describe("RemoveRemote", () => {
       .patch("/a/b.json")
       .query({ print: "silent", writeSizeLimit: "tiny" })
       .reply(200, {});
-    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(true);
+    return expect(
+      remote.deleteSubPath("/a/b", ["1", "2", "3"])
+    ).to.eventually.eql(true);
   });
 
   it("should return false when multi-path patch is large", () => {
@@ -49,6 +53,8 @@ describe("RemoveRemote", () => {
         error:
           "Data requested exceeds the maximum size that can be accessed with a single request.",
       });
-    return expect(remote.deleteSubPath("/a/b", ["1", "2", "3"])).to.eventually.eql(false);
+    return expect(
+      remote.deleteSubPath("/a/b", ["1", "2", "3"])
+    ).to.eventually.eql(false);
   });
 });

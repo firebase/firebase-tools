@@ -54,7 +54,9 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
     const { localId } = await registerAnonUser(authApi());
 
     await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .post(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`
+      )
       .set("Authorization", "Bearer owner")
       .send({ localId: [localId] })
       .then((res) => {
@@ -66,7 +68,9 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
 
   it("should return empty result when localId is not found", async () => {
     await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .post(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`
+      )
       .set("Authorization", "Bearer owner")
       .send({ localId: ["noSuchId"] })
       .then((res) => {
@@ -82,7 +86,9 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
     await registerAnonUser(authApi());
 
     await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`)
+      .post(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`
+      )
       .set("Authorization", "Bearer owner")
       .send({ returnUserInfo: false })
       .then((res) => {
@@ -98,7 +104,9 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
     const { localId: localId2 } = await registerUser(authApi(), user);
 
     await authApi()
-      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`)
+      .post(
+        `/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`
+      )
       .set("Authorization", "Bearer owner")
       .send({
         /* returnUserInfo is true by default */
@@ -106,17 +114,20 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.recordsCount).to.equal("2"); // string (int64 format)
-        expect(res.body.userInfo)
-          .to.be.an.instanceof(Array)
-          .with.lengthOf(2);
+        expect(res.body.userInfo).to.be.an.instanceof(Array).with.lengthOf(2);
 
         const users = res.body.userInfo as UserInfo[];
-        expect(users[0].localId < users[1].localId, "users are not sorted by ID ASC").to.be.true;
+        expect(
+          users[0].localId < users[1].localId,
+          "users are not sorted by ID ASC"
+        ).to.be.true;
         const anonUser = users.find((x) => x.localId === localId);
-        expect(anonUser, "cannot find first registered user").to.be.not.undefined;
+        expect(anonUser, "cannot find first registered user").to.be.not
+          .undefined;
 
         const emailUser = users.find((x) => x.localId === localId2);
-        expect(emailUser, "cannot find second registered user").to.be.not.undefined;
+        expect(emailUser, "cannot find second registered user").to.be.not
+          .undefined;
         expect(emailUser!.email).to.equal(user.email);
       });
   });

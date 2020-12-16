@@ -16,7 +16,9 @@ const RULES_TEMPLATE = fs.readFileSync(
 
 export function initRules(setup: any, config: any): Promise<any> {
   logger.info();
-  logger.info("Firestore Security Rules allow you to define how and when to allow");
+  logger.info(
+    "Firestore Security Rules allow you to define how and when to allow"
+  );
   logger.info("requests. You can keep these rules in your project directory");
   logger.info("and publish them with " + clc.bold("firebase deploy") + ".");
   logger.info();
@@ -53,7 +55,10 @@ export function initRules(setup: any, config: any): Promise<any> {
       }
 
       if (!setup.projectId) {
-        return config.writeProjectFile(setup.config.firestore.rules, getDefaultRules());
+        return config.writeProjectFile(
+          setup.config.firestore.rules,
+          getDefaultRules()
+        );
       }
 
       return getRulesFromConsole(setup.projectId).then((contents: any) => {
@@ -64,7 +69,9 @@ export function initRules(setup: any, config: any): Promise<any> {
 
 function getDefaultRules(): string {
   const date = utils.thirtyDaysFromNow();
-  const formattedForRules = `${date.getFullYear()}, ${date.getMonth() + 1}, ${date.getDate()}`;
+  const formattedForRules = `${date.getFullYear()}, ${
+    date.getMonth() + 1
+  }, ${date.getDate()}`;
   return RULES_TEMPLATE.replace(/{{IN_30_DAYS}}/g, formattedForRules);
 }
 
@@ -86,7 +93,9 @@ function getRulesFromConsole(projectId: string): Promise<any> {
       }
 
       if (rules.length > 1) {
-        return utils.reject("Ruleset has too many files: " + rules.length, { exit: 1 });
+        return utils.reject("Ruleset has too many files: " + rules.length, {
+          exit: 1,
+        });
       }
 
       // Even though the rules API allows for multi-file rulesets, right

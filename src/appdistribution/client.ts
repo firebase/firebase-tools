@@ -45,27 +45,35 @@ export class AppDistributionClient {
   async getApp(): Promise<AppDistributionApp> {
     utils.logBullet("getting app details...");
 
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}`, {
-      origin: api.appDistributionOrigin,
-      auth: true,
-    });
+    const apiResponse = await api.request(
+      "GET",
+      `/v1alpha/apps/${this.appId}`,
+      {
+        origin: api.appDistributionOrigin,
+        auth: true,
+      }
+    );
 
     return _.get(apiResponse, "body");
   }
 
   async uploadDistribution(distribution: Distribution): Promise<string> {
-    const apiResponse = await api.request("POST", `/app-binary-uploads?app_id=${this.appId}`, {
-      auth: true,
-      origin: api.appDistributionOrigin,
-      headers: {
-        "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
-        "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
-        "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
-        "Content-Type": "application/octet-stream",
-      },
-      data: distribution.readStream(),
-      json: false,
-    });
+    const apiResponse = await api.request(
+      "POST",
+      `/app-binary-uploads?app_id=${this.appId}`,
+      {
+        auth: true,
+        origin: api.appDistributionOrigin,
+        headers: {
+          "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
+          "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
+          "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
+          "Content-Type": "application/octet-stream",
+        },
+        data: distribution.readStream(),
+        json: false,
+      }
+    );
 
     return _.get(JSON.parse(apiResponse.body), "token");
   }
@@ -106,7 +114,10 @@ export class AppDistributionClient {
     return _.get(apiResponse, "body");
   }
 
-  async addReleaseNotes(releaseId: string, releaseNotes: string): Promise<void> {
+  async addReleaseNotes(
+    releaseId: string,
+    releaseNotes: string
+  ): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
@@ -121,13 +132,20 @@ export class AppDistributionClient {
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/notes`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await api.request(
+        "POST",
+        `/v1alpha/apps/${this.appId}/releases/${releaseId}/notes`,
+        {
+          origin: api.appDistributionOrigin,
+          auth: true,
+          data,
+        }
+      );
     } catch (err) {
-      throw new FirebaseError(`failed to add release notes with ${err.message}`, { exit: 1 });
+      throw new FirebaseError(
+        `failed to add release notes with ${err.message}`,
+        { exit: 1 }
+      );
     }
 
     utils.logSuccess("added release notes successfully");
@@ -151,11 +169,15 @@ export class AppDistributionClient {
     };
 
     try {
-      await api.request("POST", `/v1alpha/apps/${this.appId}/releases/${releaseId}/enable_access`, {
-        origin: api.appDistributionOrigin,
-        auth: true,
-        data,
-      });
+      await api.request(
+        "POST",
+        `/v1alpha/apps/${this.appId}/releases/${releaseId}/enable_access`,
+        {
+          origin: api.appDistributionOrigin,
+          auth: true,
+          data,
+        }
+      );
     } catch (err) {
       let errorMessage = err.message;
       if (_.has(err, "context.body.error")) {
@@ -166,7 +188,9 @@ export class AppDistributionClient {
           errorMessage = "invalid groups";
         }
       }
-      throw new FirebaseError(`failed to add testers/groups: ${errorMessage}`, { exit: 1 });
+      throw new FirebaseError(`failed to add testers/groups: ${errorMessage}`, {
+        exit: 1,
+      });
     }
 
     utils.logSuccess("added testers/groups successfully");

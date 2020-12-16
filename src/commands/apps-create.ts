@@ -64,15 +64,21 @@ function logPostAppCreationInformation(
       logger.info(`  - App Store ID: ${iosAppMetadata.appStoreId}`);
     }
   } else if (appPlatform === AppPlatform.ANDROID) {
-    logger.info(`  - Package name: ${(appMetadata as AndroidAppMetadata).packageName}`);
+    logger.info(
+      `  - Package name: ${(appMetadata as AndroidAppMetadata).packageName}`
+    );
   }
 
   logger.info("");
-  logger.info("You can run this command to print out your new app's Google Services config:");
+  logger.info(
+    "You can run this command to print out your new app's Google Services config:"
+  );
   logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId}`);
 }
 
-async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
+async function initiateIosAppCreation(
+  options: CreateIosAppOptions
+): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
     await prompt(options, [
       DISPLAY_NAME_QUESTION,
@@ -141,7 +147,9 @@ async function initiateAndroidAppCreation(
   }
 }
 
-async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<WebAppMetadata> {
+async function initiateWebAppCreation(
+  options: CreateWebAppOptions
+): Promise<WebAppMetadata> {
   if (!options.nonInteractive) {
     await prompt(options, [DISPLAY_NAME_QUESTION]);
   }
@@ -150,7 +158,9 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
   }
   const spinner = ora("Creating your Web app").start();
   try {
-    const appData = await createWebApp(options.project, { displayName: options.displayName });
+    const appData = await createWebApp(options.project, {
+      displayName: options.displayName,
+    });
     spinner.succeed();
     return appData;
   } catch (err) {
@@ -163,9 +173,15 @@ module.exports = new Command("apps:create [platform] [displayName]")
   .description(
     "create a new Firebase app. [platform] can be IOS, ANDROID or WEB (case insensitive)."
   )
-  .option("-a, --package-name <packageName>", "required package name for the Android app")
+  .option(
+    "-a, --package-name <packageName>",
+    "required package name for the Android app"
+  )
   .option("-b, --bundle-id <bundleId>", "required bundle id for the iOS app")
-  .option("-s, --app-store-id <appStoreId>", "(optional) app store id for the iOS app")
+  .option(
+    "-s, --app-store-id <appStoreId>",
+    "(optional) app store id for the iOS app"
+  )
   .before(requireAuth)
   .action(
     async (
@@ -192,7 +208,9 @@ module.exports = new Command("apps:create [platform] [displayName]")
         throw new FirebaseError("App platform must be provided");
       }
 
-      logger.info(`Create your ${appPlatform} app in project ${clc.bold(projectId)}:`);
+      logger.info(
+        `Create your ${appPlatform} app in project ${clc.bold(projectId)}:`
+      );
       options.displayName = displayName; // add displayName into options to pass into prompt function
       let appData;
       switch (appPlatform) {

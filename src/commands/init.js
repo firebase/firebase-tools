@@ -15,17 +15,23 @@ var { requireAuth } = require("../requireAuth");
 var utils = require("../utils");
 
 var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
-var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
-var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
+var BANNER_TEXT = fs.readFileSync(
+  path.join(TEMPLATE_ROOT, "banner.txt"),
+  "utf8"
+);
+var GITIGNORE_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_ROOT, "_gitignore"),
+  "utf8"
+);
 
-var _isOutside = function(from, to) {
+var _isOutside = function (from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
 module.exports = new Command("init [feature]")
   .description("setup a Firebase project in the current directory")
   .before(requireAuth)
-  .action(function(feature, options) {
+  .action(function (feature, options) {
     var cwd = options.cwd || process.cwd();
 
     var warnings = [];
@@ -34,7 +40,9 @@ module.exports = new Command("init [feature]")
       warnings.push("You are currently outside your home directory");
     }
     if (cwd === homeDir) {
-      warnings.push("You are initializing your home directory as a Firebase project");
+      warnings.push(
+        "You are initializing your home directory as a Firebase project"
+      );
     }
 
     var config = Config.load(options, true);
@@ -42,7 +50,9 @@ module.exports = new Command("init [feature]")
     if (!existingConfig) {
       config = new Config({}, { projectDir: cwd, cwd: cwd });
     } else {
-      warnings.push("You are initializing in an existing Firebase project directory");
+      warnings.push(
+        "You are initializing in an existing Firebase project directory"
+      );
     }
 
     if (warnings.length) {
@@ -102,7 +112,8 @@ module.exports = new Command("init [feature]")
       },
       {
         value: "remoteconfig",
-        name: "Remote Config: Get, deploy, and rollback configurations for Remote Config",
+        name:
+          "Remote Config: Get, deploy, and rollback configurations for Remote Config",
         checked: false,
       },
     ];
@@ -120,7 +131,7 @@ module.exports = new Command("init [feature]")
     }
 
     return next
-      .then(function(proceed) {
+      .then(function (proceed) {
         if (!proceed) {
           return utils.reject("Aborted by user.", { exit: 1 });
         }
@@ -141,7 +152,7 @@ module.exports = new Command("init [feature]")
           },
         ]);
       })
-      .then(function() {
+      .then(function () {
         if (setup.features.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
@@ -153,14 +164,20 @@ module.exports = new Command("init [feature]")
         setup.features.unshift("project");
         return init(setup, config, options);
       })
-      .then(function() {
+      .then(function () {
         logger.info();
-        utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
+        utils.logBullet(
+          "Writing configuration info to " + clc.bold("firebase.json") + "..."
+        );
         config.writeProjectFile("firebase.json", setup.config);
-        utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
+        utils.logBullet(
+          "Writing project information to " + clc.bold(".firebaserc") + "..."
+        );
         config.writeProjectFile(".firebaserc", setup.rcfile);
         if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
-          utils.logBullet("Writing gitignore file to " + clc.bold(".gitignore") + "...");
+          utils.logBullet(
+            "Writing gitignore file to " + clc.bold(".gitignore") + "..."
+          );
           config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
         }
         logger.info();

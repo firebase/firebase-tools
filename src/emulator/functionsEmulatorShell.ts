@@ -24,7 +24,10 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     this.emulatedFunctions = this.triggers.map((t) => t.name);
 
     const entryPoints = this.triggers.map((t) => t.entryPoint);
-    utils.logLabeledBullet("functions", `Loaded functions: ${entryPoints.join(", ")}`);
+    utils.logLabeledBullet(
+      "functions",
+      `Loaded functions: ${entryPoints.join(", ")}`
+    );
 
     for (const trigger of this.triggers) {
       const name = trigger.name;
@@ -44,7 +47,11 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   call(name: string, data: any, opts: any): void {
     const trigger = this.getTrigger(name);
     logger.debug(`shell:${name}: trigger=${JSON.stringify(trigger)}`);
-    logger.debug(`shell:${name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(data)}`);
+    logger.debug(
+      `shell:${name}: opts=${JSON.stringify(opts)}, data=${JSON.stringify(
+        data
+      )}`
+    );
 
     if (!trigger.eventTrigger) {
       throw new FirebaseError(`Function ${name} is not a background function`);

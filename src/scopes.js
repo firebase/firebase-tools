@@ -4,7 +4,8 @@ module.exports = {
   // default scopes
   OPENID: "openid",
   EMAIL: "email",
-  CLOUD_PROJECTS_READONLY: "https://www.googleapis.com/auth/cloudplatformprojects.readonly",
+  CLOUD_PROJECTS_READONLY:
+    "https://www.googleapis.com/auth/cloudplatformprojects.readonly",
   FIREBASE_PLATFORM: "https://www.googleapis.com/auth/firebase",
 
   // incremental scopes

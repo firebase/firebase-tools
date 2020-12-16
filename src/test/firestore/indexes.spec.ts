@@ -91,13 +91,20 @@ describe("IndexValidation", () => {
             collectionGroup: "collection",
             queryScope: "COLLECTION",
             fields: [
-              { fieldPath: "foo", order: "ASCENDING", arrayConfig: "CONTAINES" },
+              {
+                fieldPath: "foo",
+                order: "ASCENDING",
+                arrayConfig: "CONTAINES",
+              },
               { fieldPath: "bar", order: "DESCENDING" },
             ],
           },
         ],
       });
-    }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig"/);
+    }).to.throw(
+      FirebaseError,
+      /Must contain exactly one of "order,arrayConfig"/
+    );
   });
 });
 
@@ -126,7 +133,8 @@ describe("IndexNameParsing", () => {
 describe("IndexSpecMatching", () => {
   it("should identify a positive index spec match", () => {
     const apiIndex: API.Index = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
       queryScope: API.QueryScope.COLLECTION,
       fields: [
         { fieldPath: "foo", order: API.Order.ASCENDING },
@@ -149,7 +157,8 @@ describe("IndexSpecMatching", () => {
 
   it("should identify a negative index spec match", () => {
     const apiIndex = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collection/indexes/abc123",
       queryScope: "COLLECTION",
       fields: [
         { fieldPath: "foo", order: "DESCENDING" },
@@ -173,7 +182,8 @@ describe("IndexSpecMatching", () => {
 
   it("should identify a positive field spec match", () => {
     const apiField = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
       indexConfig: {
         indexes: [
           {
@@ -202,7 +212,8 @@ describe("IndexSpecMatching", () => {
 
   it("should match a field spec with all indexes excluded", () => {
     const apiField = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
       indexConfig: {},
     } as API.Field;
 
@@ -217,7 +228,8 @@ describe("IndexSpecMatching", () => {
 
   it("should identify a negative field spec match", () => {
     const apiField = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collection/fields/abc123",
       indexConfig: {
         indexes: [
           {
@@ -249,7 +261,9 @@ describe("IndexSpecMatching", () => {
 describe("IndexSorting", () => {
   it("should be able to handle empty arrays", () => {
     expect(([] as Spec.Index[]).sort(sort.compareSpecIndex)).to.eql([]);
-    expect(([] as Spec.FieldOverride[]).sort(sort.compareFieldOverride)).to.eql([]);
+    expect(([] as Spec.FieldOverride[]).sort(sort.compareFieldOverride)).to.eql(
+      []
+    );
     expect(([] as API.Index[]).sort(sort.compareApiIndex)).to.eql([]);
     expect(([] as API.Field[]).sort(sort.compareApiField)).to.eql([]);
   });
@@ -363,14 +377,16 @@ describe("IndexSorting", () => {
   it("should correctly sort an array of API indexes", () => {
     // Sorts first because of collectionGroup
     const a: API.Index = {
-      name: "/projects/project/databases/(default)/collectionGroups/collectionA/indexes/a",
+      name:
+        "/projects/project/databases/(default)/collectionGroups/collectionA/indexes/a",
       queryScope: API.QueryScope.COLLECTION,
       fields: [],
     };
 
     // fieldA ASCENDING should sort before fieldA DESCENDING
     const b: API.Index = {
-      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/b",
+      name:
+        "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/b",
       queryScope: API.QueryScope.COLLECTION,
       fields: [
         {
@@ -383,7 +399,8 @@ describe("IndexSorting", () => {
     // This compound index sorts before the following simple
     // index because the first element sorts first.
     const c: API.Index = {
-      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/c",
+      name:
+        "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/c",
       queryScope: API.QueryScope.COLLECTION,
       fields: [
         {
@@ -398,7 +415,8 @@ describe("IndexSorting", () => {
     };
 
     const d: API.Index = {
-      name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/d",
+      name:
+        "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/d",
       queryScope: API.QueryScope.COLLECTION,
       fields: [
         {
@@ -414,14 +432,16 @@ describe("IndexSorting", () => {
   it("should correctly sort an array of API field overrides", () => {
     // Sorts first because of collectionGroup
     const a: API.Field = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collectionA/fields/fieldA",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collectionA/fields/fieldA",
       indexConfig: {
         indexes: [],
       },
     };
 
     const b: API.Field = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldA",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldA",
       indexConfig: {
         indexes: [],
       },
@@ -429,7 +449,8 @@ describe("IndexSorting", () => {
 
     // Order indexes sort before Array indexes
     const c: API.Field = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
       indexConfig: {
         indexes: [
           {
@@ -441,12 +462,15 @@ describe("IndexSorting", () => {
     };
 
     const d: API.Field = {
-      name: "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
+      name:
+        "/projects/myproject/databases/(default)/collectionGroups/collectionB/fields/fieldB",
       indexConfig: {
         indexes: [
           {
             queryScope: API.QueryScope.COLLECTION,
-            fields: [{ fieldPath: "fieldB", arrayConfig: API.ArrayConfig.CONTAINS }],
+            fields: [
+              { fieldPath: "fieldB", arrayConfig: API.ArrayConfig.CONTAINS },
+            ],
           },
         ],
       },

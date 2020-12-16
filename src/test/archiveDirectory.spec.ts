@@ -14,6 +14,8 @@ describe("archiveDirectory", () => {
   });
 
   it("should throw a happy little error if the directory doesn't exist", async () => {
-    await expect(archiveDirectory(resolve(__dirname, "foo"), {})).to.be.rejectedWith(FirebaseError);
+    await expect(
+      archiveDirectory(resolve(__dirname, "foo"), {})
+    ).to.be.rejectedWith(FirebaseError);
   });
 });

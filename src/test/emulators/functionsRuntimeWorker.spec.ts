@@ -85,7 +85,12 @@ class WorkerStateCounter {
   }
 
   get total() {
-    return this.counts.IDLE + this.counts.BUSY + this.counts.FINISHING + this.counts.FINISHED;
+    return (
+      this.counts.IDLE +
+      this.counts.BUSY +
+      this.counts.FINISHING +
+      this.counts.FINISHED
+    );
   }
 }
 
@@ -103,7 +108,10 @@ describe("FunctionsRuntimeWorker", () => {
 
   describe("RuntimeWorker", () => {
     it("goes from idle --> busy --> idle in normal operation", async () => {
-      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance(true));
+      const worker = new RuntimeWorker(
+        workerPool.getKey("trigger"),
+        new MockRuntimeInstance(true)
+      );
       const counter = new WorkerStateCounter(worker);
 
       worker.execute(new MockRuntimeBundle("trigger"));
@@ -131,7 +139,10 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("goes from busy --> finishing --> finished when marked", async () => {
-      const worker = new RuntimeWorker(workerPool.getKey("trigger"), new MockRuntimeInstance(true));
+      const worker = new RuntimeWorker(
+        workerPool.getKey("trigger"),
+        new MockRuntimeInstance(true)
+      );
       const counter = new WorkerStateCounter(worker);
 
       worker.execute(new MockRuntimeBundle("trigger"));

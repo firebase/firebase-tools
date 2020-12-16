@@ -34,7 +34,9 @@ function main(): void {
     cmpBranch = "origin/master";
   }
 
-  const gitOutput = execSync(`git diff --name-status ${cmpBranch}`, { cwd: root })
+  const gitOutput = execSync(`git diff --name-status ${cmpBranch}`, {
+    cwd: root,
+  })
     .toString()
     .trim();
 

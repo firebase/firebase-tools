@@ -32,12 +32,19 @@ interface NpmShowResult {
  */
 export function getFunctionsSDKVersion(sourceDir: string): string | void {
   try {
-    const child = spawn.sync("npm", ["list", "firebase-functions", "--json=true"], {
-      cwd: sourceDir,
-      encoding: "utf8",
-    });
+    const child = spawn.sync(
+      "npm",
+      ["list", "firebase-functions", "--json=true"],
+      {
+        cwd: sourceDir,
+        encoding: "utf8",
+      }
+    );
     if (child.error) {
-      logger.debug("getFunctionsSDKVersion encountered error:", child.error.stack);
+      logger.debug(
+        "getFunctionsSDKVersion encountered error:",
+        child.error.stack
+      );
       return;
     }
     const output: NpmListResult = JSON.parse(child.stdout);
@@ -58,16 +65,25 @@ export function checkFunctionsSDKVersion(options: any): void {
     return;
   }
 
-  const sourceDir = path.join(options.config.projectDir, options.config.get("functions.source"));
+  const sourceDir = path.join(
+    options.config.projectDir,
+    options.config.get("functions.source")
+  );
   const currentVersion = getFunctionsSDKVersion(sourceDir);
   if (!currentVersion) {
-    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
+    logger.debug(
+      "getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version"
+    );
     return;
   }
   try {
-    const child = spawn.sync("npm", ["show", "firebase-functions", "--json=true"], {
-      encoding: "utf8",
-    });
+    const child = spawn.sync(
+      "npm",
+      ["show", "firebase-functions", "--json=true"],
+      {
+        encoding: "utf8",
+      }
+    );
     if (child.error) {
       logger.debug(
         "checkFunctionsSDKVersion was unable to fetch information from NPM",
@@ -88,11 +104,16 @@ export function checkFunctionsSDKVersion(options: any): void {
           clc.bold("npm install --save firebase-functions@latest") +
           " in your functions directory."
       );
-      if (semver.satisfies(currentVersion, "0.x") && semver.satisfies(latest, "1.x")) {
+      if (
+        semver.satisfies(currentVersion, "0.x") &&
+        semver.satisfies(latest, "1.x")
+      ) {
         utils.logWarning(
           clc.bold.yellow("functions: ") +
             "Please note that there will be breaking changes when you upgrade.\n Go to " +
-            clc.bold("https://firebase.google.com/docs/functions/beta-v1-diff") +
+            clc.bold(
+              "https://firebase.google.com/docs/functions/beta-v1-diff"
+            ) +
             " to learn more."
         );
       }

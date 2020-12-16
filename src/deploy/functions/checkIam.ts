@@ -3,7 +3,11 @@ import { bold } from "cli-color";
 
 import { debug } from "../../logger";
 import * as track from "../../track";
-import { getReleaseNames, getFunctionsInfo, getFilterGroups } from "../../functionsDeployHelper";
+import {
+  getReleaseNames,
+  getFunctionsInfo,
+  getFilterGroups,
+} from "../../functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 
@@ -26,7 +30,10 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
     );
     passed = iamResult.passed;
   } catch (err) {
-    debug("[functions] service account IAM check errored, deploy may fail:", err);
+    debug(
+      "[functions] service account IAM check errored, deploy may fail:",
+      err
+    );
     // we want to fail this check open and not rethrow since it's informational only
     return;
   }
@@ -62,7 +69,11 @@ export async function checkHttpIam(
   const httpFunctionNames: string[] = functionsInfo
     .filter((f) => has(f, "httpsTrigger"))
     .map((f) => f.name);
-  const httpFunctionFullNames: string[] = getReleaseNames(httpFunctionNames, [], filterGroups);
+  const httpFunctionFullNames: string[] = getReleaseNames(
+    httpFunctionNames,
+    [],
+    filterGroups
+  );
   const existingFunctionFullNames: string[] = context.existingFunctions.map(
     (f: { name: string }) => f.name
   );
@@ -86,7 +97,10 @@ export async function checkHttpIam(
     const iamResult = await testIamPermissions(context.projectId, [PERMISSION]);
     passed = iamResult.passed;
   } catch (e) {
-    debug("[functions] failed http create setIamPolicy permission check. deploy may fail:", e);
+    debug(
+      "[functions] failed http create setIamPolicy permission check. deploy may fail:",
+      e
+    );
     // fail open since this is an informational check
     return;
   }

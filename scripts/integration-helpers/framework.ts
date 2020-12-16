@@ -51,7 +51,11 @@ export class TriggerEndToEndTest {
   firestoreFromFirestore = false;
   cliProcess?: CLIProcess;
 
-  constructor(public project: string, private readonly workdir: string, config: FrameworkOptions) {
+  constructor(
+    public project: string,
+    private readonly workdir: string,
+    config: FrameworkOptions
+  ) {
     if (config.emulators) {
       this.rtdbEmulatorPort = config.emulators.database?.port;
       this.firestoreEmulatorPort = config.emulators.firestore?.port;
@@ -76,12 +80,17 @@ export class TriggerEndToEndTest {
 
   startEmulators(additionalArgs: string[] = []): Promise<void> {
     const cli = new CLIProcess("default", this.workdir);
-    const started = cli.start("emulators:start", this.project, additionalArgs, (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
+    const started = cli.start(
+      "emulators:start",
+      this.project,
+      additionalArgs,
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
       }
-      return data.includes(ALL_EMULATORS_STARTED_LOG);
-    });
+    );
 
     cli.process?.stdout.on("data", (data) => {
       if (data.includes(RTDB_FUNCTION_LOG)) {
@@ -124,10 +133,16 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
-    const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
-      "/"
-    )}`;
+  invokeHttpFunction(
+    name: string,
+    zone = FIREBASE_PROJECT_ZONE
+  ): Promise<Response> {
+    const url = `http://localhost:${[
+      this.functionsEmulatorPort,
+      this.project,
+      zone,
+      name,
+    ].join("/")}`;
     return fetch(url);
   }
 
@@ -162,7 +177,11 @@ export class TriggerEndToEndTest {
       elapsed += interval;
       if (elapsed > timeout) {
         clearInterval(id);
-        callback(new Error(`Timed out waiting for condition: ${conditionFn.toString()}}`));
+        callback(
+          new Error(
+            `Timed out waiting for condition: ${conditionFn.toString()}}`
+          )
+        );
         return;
       }
 

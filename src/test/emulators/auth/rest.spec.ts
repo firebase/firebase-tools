@@ -29,7 +29,9 @@ describeAuthEmulator("REST API mapping", ({ authApi }) => {
     // Proto integer value for "EMAIL_SIGNIN". Android client SDK sends this.
     const requestType = 6;
     await authApi()
-      .post("/www.googleapis.com/identitytoolkit/v3/relyingparty/getOobConfirmationCode")
+      .post(
+        "/www.googleapis.com/identitytoolkit/v3/relyingparty/getOobConfirmationCode"
+      )
       .set("Authorization", "Bearer owner")
       .send({ email: "bob@example.com", requestType, returnOobLink: true })
       .then((res) => {
@@ -106,7 +108,10 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       // This authenticates as owner of the default projectId. The exact value
       // and expiry don't matter -- the Emulator only checks for the format.
-      .set("Authorization", "Bearer ya29.AHES6ZRVmB7fkLtd1XTmq6mo0S1wqZZi3-Lh_s-6Uw7p8vtgSwg")
+      .set(
+        "Authorization",
+        "Bearer ya29.AHES6ZRVmB7fkLtd1XTmq6mo0S1wqZZi3-Lh_s-6Uw7p8vtgSwg"
+      )
       .send({
         // This field requires OAuth 2 and should work correctly.
         targetProjectId: "example2",

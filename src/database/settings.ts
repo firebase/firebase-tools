@@ -83,8 +83,10 @@ DATABASE_SETTINGS.set(strictTriggerValidation.path, strictTriggerValidation);
 export const HELP_TEXT: string =
   "\nAvailable Settings:\n" +
   Array.from(DATABASE_SETTINGS.values())
-    .map((setting: DatabaseSetting) => `  ${setting.path}:${setting.description}`)
+    .map(
+      (setting: DatabaseSetting) => `  ${setting.path}:${setting.description}`
+    )
     .join("");
-export const INVALID_PATH_ERROR = `Path must be one of ${Array.from(DATABASE_SETTINGS.keys()).join(
-  ", "
-)}.`;
+export const INVALID_PATH_ERROR = `Path must be one of ${Array.from(
+  DATABASE_SETTINGS.keys()
+).join(", ")}.`;

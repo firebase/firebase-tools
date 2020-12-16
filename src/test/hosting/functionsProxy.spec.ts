@@ -23,7 +23,11 @@ describe("functionsProxy", () => {
   const fakeRewrite: FunctionProxyRewrite = { function: "bar" };
 
   beforeEach(async () => {
-    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, "localhost", 7778);
+    const fakeFunctionsEmulator = new FakeEmulator(
+      Emulators.FUNCTIONS,
+      "localhost",
+      7778
+    );
     await EmulatorRegistry.start(fakeFunctionsEmulator);
   });
 
@@ -201,7 +205,10 @@ describe("functionsProxy", () => {
   it("should remove cookies on non-private cached responses", async () => {
     nock("https://us-central1-project-foo.cloudfunctions.net")
       .get("/bar/cached")
-      .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
+      .reply(200, "cached page", {
+        "cache-control": "custom",
+        "set-cookie": "nom",
+      });
 
     const mwGenerator = functionsProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
@@ -230,7 +237,9 @@ describe("functionsProxy", () => {
       .expect(200, "live vary version")
       .then((res) => {
         expect(spyMw.calledOnce).to.be.true;
-        expect(res.header.vary).to.equal("Other, Authorization, Accept-Encoding, Cookie");
+        expect(res.header.vary).to.equal(
+          "Other, Authorization, Accept-Encoding, Cookie"
+        );
       });
   });
 

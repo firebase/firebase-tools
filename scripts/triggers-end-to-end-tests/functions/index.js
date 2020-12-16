@@ -27,18 +27,12 @@ const pubsub = new PubSub();
 admin.initializeApp();
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
-  await admin
-    .firestore()
-    .doc(START_DOCUMENT_NAME)
-    .delete();
+  await admin.firestore().doc(START_DOCUMENT_NAME).delete();
   res.json({ deleted: true });
 });
 
 exports.deleteFromRtdb = functions.https.onRequest(async (req, res) => {
-  await admin
-    .database()
-    .ref(START_DOCUMENT_NAME)
-    .remove();
+  await admin.database().ref(START_DOCUMENT_NAME).remove();
   res.json({ deleted: true });
 });
 
@@ -59,7 +53,9 @@ exports.writeToRtdb = functions.https.onRequest(async (req, res) => {
 });
 
 exports.writeToPubsub = functions.https.onRequest(async (req, res) => {
-  const msg = await pubsub.topic(PUBSUB_TOPIC).publishJSON({ foo: "bar" }, { attr: "val" });
+  const msg = await pubsub
+    .topic(PUBSUB_TOPIC)
+    .publishJSON({ foo: "bar" }, { attr: "val" });
   console.log("PubSub Emulator Host", process.env.PUBSUB_EMULATOR_HOST);
   console.log("Wrote PubSub Message", msg);
   res.json({ published: "ok" });
@@ -114,24 +110,30 @@ exports.rtdbReaction = functions.database
     const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
     await ref.set({ done: new Date().toISOString() });
 
-    const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
+    const firestoreref = admin
+      .firestore()
+      .doc(END_DOCUMENT_NAME + "_from_database");
     await firestoreref.set({ done: new Date().toISOString() });
 
     return true;
   });
 
-exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* , ctx */) => {
+exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((
+  msg /* , ctx */
+) => {
   console.log(PUBSUB_FUNCTION_LOG);
   console.log("Message", JSON.stringify(msg.json));
   console.log("Attributes", JSON.stringify(msg.attributes));
   return true;
 });
 
-exports.pubsubScheduled = functions.pubsub.schedule("every mon 07:00").onRun((context) => {
-  console.log(PUBSUB_FUNCTION_LOG);
-  console.log("Resource", JSON.stringify(context.resource));
-  return true;
-});
+exports.pubsubScheduled = functions.pubsub
+  .schedule("every mon 07:00")
+  .onRun((context) => {
+    console.log(PUBSUB_FUNCTION_LOG);
+    console.log("Resource", JSON.stringify(context.resource));
+    return true;
+  });
 
 exports.authReaction = functions.auth.user().onCreate((user, ctx) => {
   console.log(AUTH_FUNCTION_LOG);

@@ -5,11 +5,13 @@ var _ = require("lodash");
 var ensureApiEnabled = require("../../ensureApiEnabled");
 var functionsConfig = require("../../functionsConfig");
 var getProjectId = require("../../getProjectId");
-var getRuntimeChoice = require("../../parseRuntimeAndValidateSDK").getRuntimeChoice;
+var getRuntimeChoice = require("../../parseRuntimeAndValidateSDK")
+  .getRuntimeChoice;
 var validator = require("./validate");
-var checkRuntimeDependencies = require("./checkRuntimeDependencies").checkRuntimeDependencies;
+var checkRuntimeDependencies = require("./checkRuntimeDependencies")
+  .checkRuntimeDependencies;
 
-module.exports = function(context, options, payload) {
+module.exports = function (context, options, payload) {
   if (!options.config.has("functions")) {
     return Promise.resolve();
   }
@@ -27,7 +29,12 @@ module.exports = function(context, options, payload) {
     // it's annoying that we have to pass in both sourceDirName and sourceDir
     // but they are two different methods on the config object, so cannot get
     // sourceDir from sourceDirName without passing in config
-    validator.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
+    validator.packageJsonIsValid(
+      sourceDirName,
+      sourceDir,
+      projectDir,
+      !!runtimeFromConfig
+    );
   } catch (e) {
     return Promise.reject(e);
   }
@@ -35,15 +42,24 @@ module.exports = function(context, options, payload) {
   context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig);
 
   return Promise.all([
-    ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
+    ensureApiEnabled.ensure(
+      options.project,
+      "cloudfunctions.googleapis.com",
+      "functions"
+    ),
+    ensureApiEnabled.check(
+      projectId,
+      "runtimeconfig.googleapis.com",
+      "runtimeconfig",
+      true
+    ),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ])
-    .then(function(results) {
+    .then(function (results) {
       _.set(context, "runtimeConfigEnabled", results[1]);
       return functionsConfig.getFirebaseConfig(options);
     })
-    .then(function(result) {
+    .then(function (result) {
       _.set(context, "firebaseConfig", result);
     });
 };

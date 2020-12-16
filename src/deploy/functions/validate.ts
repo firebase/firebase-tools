@@ -17,10 +17,19 @@ const cjson = require("cjson");
  * @param sourceDirName Relative path to source directory.
  * @throws { FirebaseError } Functions directory must exist.
  */
-export function functionsDirectoryExists(options: object, sourceDirName: string): void {
-  if (!fsutils.dirExistsSync(projectPath.resolveProjectPath(options, sourceDirName))) {
+export function functionsDirectoryExists(
+  options: object,
+  sourceDirName: string
+): void {
+  if (
+    !fsutils.dirExistsSync(
+      projectPath.resolveProjectPath(options, sourceDirName)
+    )
+  ) {
     const msg =
-      `could not deploy functions because the ${clc.bold('"' + sourceDirName + '"')} ` +
+      `could not deploy functions because the ${clc.bold(
+        '"' + sourceDirName + '"'
+      )} ` +
       `directory was not found. Please create it or specify a different source directory in firebase.json`;
     throw new FirebaseError(msg);
   }
@@ -34,9 +43,12 @@ export function functionsDirectoryExists(options: object, sourceDirName: string)
  */
 export function functionNamesAreValid(functionNames: {}): void {
   const validFunctionNameRegex = /^[a-zA-Z0-9_-]{1,62}$/;
-  const invalidNames = _.reject(_.keys(functionNames), (name: string): boolean => {
-    return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
-  });
+  const invalidNames = _.reject(
+    _.keys(functionNames),
+    (name: string): boolean => {
+      return _.startsWith(name, ".") || validFunctionNameRegex.test(name);
+    }
+  );
   if (!_.isEmpty(invalidNames)) {
     const msg =
       `${invalidNames.join(", ")} function name(s) can only contain letters, ` +
@@ -68,7 +80,10 @@ export function packageJsonIsValid(
   let data;
   try {
     data = cjson.load(packageJsonFile);
-    logger.debug("> [functions] package.json contents:", JSON.stringify(data, null, 2));
+    logger.debug(
+      "> [functions] package.json contents:",
+      JSON.stringify(data, null, 2)
+    );
     assertFunctionsSourcePresent(data, sourceDir, projectDir);
   } catch (e) {
     const msg = `There was an error reading ${sourceDirName}${path.sep}package.json:\n\n ${e.message}`;
@@ -87,7 +102,11 @@ export function packageJsonIsValid(
  * @param projectDir Project directory.
  * @throws { FirebaseError } Functions source directory and source file must exist.
  */
-function assertFunctionsSourcePresent(data: any, sourceDir: string, projectDir: string): void {
+function assertFunctionsSourcePresent(
+  data: any,
+  sourceDir: string,
+  projectDir: string
+): void {
   const indexJsFile = path.join(sourceDir, data.main || "index.js");
   if (!fsutils.fileExistsSync(indexJsFile)) {
     const msg = `${path.relative(

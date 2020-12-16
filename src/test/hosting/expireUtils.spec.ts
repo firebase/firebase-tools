@@ -19,7 +19,12 @@ describe("calculateChannelExpireTTL", () => {
     });
   }
 
-  const badTests = [{ input: "1.5d" }, { input: "2x" }, { input: "2dd" }, { input: "0.5m" }];
+  const badTests = [
+    { input: "1.5d" },
+    { input: "2x" },
+    { input: "2dd" },
+    { input: "0.5m" },
+  ];
 
   for (const test of badTests) {
     it(`should be able to parse time ${test.input}`, () => {

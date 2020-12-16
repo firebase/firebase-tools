@@ -11,7 +11,11 @@ import Table = require("cli-table");
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
 function pushTableContents(table: Table, version: Version): number {
-  return table.push([version?.updateUser?.email, version?.versionNumber, version?.updateTime]);
+  return table.push([
+    version?.updateUser?.email,
+    version?.versionNumber,
+    version?.updateTime,
+  ]);
 }
 
 module.exports = new Command("remoteconfig:versions:list")

@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { ProviderUserInfo, PROVIDER_PASSWORD, PROVIDER_PHONE } from "../../../emulator/auth/state";
+import {
+  ProviderUserInfo,
+  PROVIDER_PASSWORD,
+  PROVIDER_PHONE,
+} from "../../../emulator/auth/state";
 import { TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
@@ -21,7 +25,10 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
   it("should allow updating and deleting displayName and photoUrl", async () => {
     const { idToken } = await registerAnonUser(authApi());
 
-    const attrs = { displayName: "Alice", photoUrl: "http://localhost/alice.png" };
+    const attrs = {
+      displayName: "Alice",
+      photoUrl: "http://localhost/alice.png",
+    };
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
       .query({ key: "fake-api-key" })
@@ -59,9 +66,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Updating password causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -98,9 +103,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Adding password causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -138,9 +141,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Setting email causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -155,14 +156,19 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
           .equals("anonymous");
       });
 
-    expect(await getSigninMethods(authApi(), email)).not.to.contain(["password"]);
+    expect(await getSigninMethods(authApi(), email)).not.to.contain([
+      "password",
+    ]);
   });
 
   it("should allow changing email of an existing user", async () => {
     const oldEmail = "alice@example.com";
     const password = "notasecret";
     const newEmail = "bob@example.com";
-    const { localId, idToken } = await registerUser(authApi(), { email: oldEmail, password });
+    const { localId, idToken } = await registerUser(authApi(), {
+      email: oldEmail,
+      password,
+    });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -171,9 +177,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Changing email causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -240,7 +244,10 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
 
   it("should noop when setting phoneNumber to the same as before", async () => {
     const phoneNumber = TEST_PHONE_NUMBER;
-    const { localId, idToken } = await signInWithPhoneNumber(authApi(), phoneNumber);
+    const { localId, idToken } = await signInWithPhoneNumber(
+      authApi(),
+      phoneNumber
+    );
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:update")
@@ -337,7 +344,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: idToken2,
-        validSince: "0" /* any value works, only the presence of the field matters */,
+        validSince:
+          "0" /* any value works, only the presence of the field matters */,
       })
       .then((res) => {
         expectStatusCode(200, res);
@@ -368,17 +376,28 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         });
 
       if (user.email) {
-        expect(await getSigninMethods(authApi(), user.email)).not.to.contain(providerId);
-        expect(await getSigninMethods(authApi(), user.email)).not.to.contain("emailLink");
+        expect(await getSigninMethods(authApi(), user.email)).not.to.contain(
+          providerId
+        );
+        expect(await getSigninMethods(authApi(), user.email)).not.to.contain(
+          "emailLink"
+        );
       }
     });
   }
 
   itShouldDeleteProvider(
-    () => registerUser(authApi(), { email: "alice@example.com", password: "notasecret" }),
+    () =>
+      registerUser(authApi(), {
+        email: "alice@example.com",
+        password: "notasecret",
+      }),
     PROVIDER_PASSWORD
   );
-  itShouldDeleteProvider(() => signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER), PROVIDER_PHONE);
+  itShouldDeleteProvider(
+    () => signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER),
+    PROVIDER_PHONE
+  );
   itShouldDeleteProvider(
     () =>
       signInWithFakeClaims(authApi(), "google.com", {
@@ -444,12 +463,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       payload: FirebaseJwtPayload;
     } | null;
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-    expect(decoded!.payload)
-      .to.have.property("foo")
-      .to.eql(attrs.foo);
-    expect(decoded!.payload)
-      .to.have.property("baz")
-      .to.eql(attrs.baz);
+    expect(decoded!.payload).to.have.property("foo").to.eql(attrs.foo);
+    expect(decoded!.payload).to.have.property("baz").to.eql(attrs.baz);
   });
 
   it("should error if customAttributes are invalid", async () => {

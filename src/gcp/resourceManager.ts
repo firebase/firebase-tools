@@ -19,10 +19,14 @@ export const firebaseRoles = {
  * @param projectId the id of the project whose IAM Policy you want to get
  */
 export async function getIamPolicy(projectId: string): Promise<Policy> {
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}:getIamPolicy`, {
-    auth: true,
-    origin: api.resourceManagerOrigin,
-  });
+  const response = await api.request(
+    "POST",
+    `/${API_VERSION}/projects/${projectId}:getIamPolicy`,
+    {
+      auth: true,
+      origin: api.resourceManagerOrigin,
+    }
+  );
   return response.body;
 }
 
@@ -39,14 +43,18 @@ export async function setIamPolicy(
   newPolicy: Policy,
   updateMask?: string
 ): Promise<Policy> {
-  const response = await api.request("POST", `/${API_VERSION}/projects/${projectId}:setIamPolicy`, {
-    auth: true,
-    origin: api.resourceManagerOrigin,
-    data: {
-      policy: newPolicy,
-      updateMask: updateMask,
-    },
-  });
+  const response = await api.request(
+    "POST",
+    `/${API_VERSION}/projects/${projectId}:setIamPolicy`,
+    {
+      auth: true,
+      origin: api.resourceManagerOrigin,
+      data: {
+        policy: newPolicy,
+        updateMask: updateMask,
+      },
+    }
+  );
   return response.body;
 }
 
@@ -70,7 +78,9 @@ export async function addServiceAccountToRoles(
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
-  const newMemberName = `serviceAccount:${fullServiceAccountName.split("/").pop()}`;
+  const newMemberName = `serviceAccount:${fullServiceAccountName
+    .split("/")
+    .pop()}`;
 
   roles.forEach((roleName) => {
     let bindingIndex = findIndex(

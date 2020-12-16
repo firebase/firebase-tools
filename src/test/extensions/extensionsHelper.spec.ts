@@ -27,7 +27,9 @@ describe("extensionsHelper", () => {
         },
       ];
       const testParam = { VAR_ONE: "foo", VAR_TWO: "bar", UNUSED: "faz" };
-      expect(extensionsHelper.substituteParams(testResources, testParam)).to.deep.equal([
+      expect(
+        extensionsHelper.substituteParams(testResources, testParam)
+      ).to.deep.equal([
         {
           resourceOne: {
             name: "foo",
@@ -66,7 +68,9 @@ describe("extensionsHelper", () => {
       },
     ];
     const testParam = { VAR_ONE: "foo", VAR_TWO: "bar", UNUSED: "faz" };
-    expect(extensionsHelper.substituteParams(testResources, testParam)).to.deep.equal([
+    expect(
+      extensionsHelper.substituteParams(testResources, testParam)
+    ).to.deep.equal([
       {
         resourceOne: {
           name: "foo",
@@ -90,9 +94,9 @@ describe("extensionsHelper", () => {
 
   describe("getDBInstanceFromURL", () => {
     it("returns the correct instance name", () => {
-      expect(extensionsHelper.getDBInstanceFromURL("https://my-db.firebaseio.com")).to.equal(
-        "my-db"
-      );
+      expect(
+        extensionsHelper.getDBInstanceFromURL("https://my-db.firebaseio.com")
+      ).to.equal("my-db");
     });
   });
 
@@ -136,18 +140,20 @@ describe("extensionsHelper", () => {
       const envFile = {
         ENV_VAR_ONE: "12345",
         ENV_VAR_TWO: "hello@example.com",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
+        ENV_VAR_THREE:
+          "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
       };
 
-      expect(extensionsHelper.populateDefaultParams(envFile, exampleParamSpec)).to.deep.equal(
-        expected
-      );
+      expect(
+        extensionsHelper.populateDefaultParams(envFile, exampleParamSpec)
+      ).to.deep.equal(expected);
     });
 
     it("should throw error if no default is available", () => {
       const envFile = {
         ENV_VAR_ONE: "12345",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
+        ENV_VAR_THREE:
+          "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
         ENV_VAR_FOUR: "users/{sender}.friends",
       };
 
@@ -190,7 +196,8 @@ describe("extensionsHelper", () => {
       const envFile = {
         ENV_VAR_ONE: "12345",
         ENV_VAR_TWO: "invalid",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
+        ENV_VAR_THREE:
+          "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
         ENV_VAR_FOUR: "users/{sender}.friends",
       };
 
@@ -203,7 +210,8 @@ describe("extensionsHelper", () => {
       const envFile = {
         ENV_VAR_ONE: "12345",
         ENV_VAR_TWO: "invalid",
-        ENV_VAR_THREE: "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
+        ENV_VAR_THREE:
+          "https://${PROJECT_ID}.web.app/?acceptInvitation={token}",
       };
 
       expect(() => {
@@ -549,7 +557,12 @@ describe("extensionsHelper", () => {
       const testSpec = {
         version: "0.1.0",
         specVersion: "v1beta",
-        params: [{ type: extensionsHelper.SpecParamType.SELECT, validationRegex: "test" }],
+        params: [
+          {
+            type: extensionsHelper.SpecParamType.SELECT,
+            validationRegex: "test",
+          },
+        ],
         resources: [],
         sourceUrl: "https://test-source.fake",
         license: "apache-2.0",
@@ -578,7 +591,11 @@ describe("extensionsHelper", () => {
         version: "0.1.0",
         specVersion: "v1beta",
         params: [
-          { type: extensionsHelper.SpecParamType.STRING, validationRegex: "test", default: "fail" },
+          {
+            type: extensionsHelper.SpecParamType.STRING,
+            validationRegex: "test",
+            default: "fail",
+          },
         ],
         resources: [],
         sourceUrl: "https://test-source.fake",
@@ -607,7 +624,9 @@ describe("extensionsHelper", () => {
       const userInput = "a-valid-name";
       promptStub.returns(userInput);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput);
       expect(promptStub).to.have.been.calledOnce;
@@ -620,7 +639,9 @@ describe("extensionsHelper", () => {
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -628,12 +649,15 @@ describe("extensionsHelper", () => {
 
     it("should prompt the user again if the provided id is longer than 45 characters", async () => {
       const extensionName = "extension-name";
-      const userInput1 = "a-really-long-name-that-is-really-longer-than-were-ok-with";
+      const userInput1 =
+        "a-really-long-name-that-is-really-longer-than-were-ok-with";
       const userInput2 = "a-valid-name";
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -648,7 +672,9 @@ describe("extensionsHelper", () => {
       promptStub.onCall(1).returns(userInput2);
       promptStub.onCall(2).returns(userInput3);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput3);
       expect(promptStub).to.have.been.calledThrice;
@@ -661,7 +687,9 @@ describe("extensionsHelper", () => {
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -674,7 +702,9 @@ describe("extensionsHelper", () => {
       promptStub.onCall(0).returns(userInput1);
       promptStub.onCall(1).returns(userInput2);
 
-      const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
+      const instanceId = await extensionsHelper.promptForValidInstanceId(
+        extensionName
+      );
 
       expect(instanceId).to.equal(userInput2);
       expect(promptStub).to.have.been.calledTwice;
@@ -686,7 +716,8 @@ describe("extensionsHelper", () => {
     let uploadStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
     let deleteStub: sinon.SinonStub;
-    const testUrl = "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
+    const testUrl =
+      "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
     const testSource = {
       name: "test",
       packageUri: testUrl,
@@ -699,11 +730,15 @@ describe("extensionsHelper", () => {
     };
 
     beforeEach(() => {
-      archiveStub = sinon.stub(archiveDirectory, "archiveDirectory").resolves({});
+      archiveStub = sinon
+        .stub(archiveDirectory, "archiveDirectory")
+        .resolves({});
       uploadStub = sinon
         .stub(storage, "uploadObject")
         .resolves("/firebase-ext-eap-uploads/object.zip");
-      createSourceStub = sinon.stub(extensionsApi, "createSource").resolves(testSource);
+      createSourceStub = sinon
+        .stub(extensionsApi, "createSource")
+        .resolves(testSource);
       deleteStub = sinon.stub(storage, "deleteObject").resolves();
     });
 
@@ -712,12 +747,22 @@ describe("extensionsHelper", () => {
     });
 
     it("should upload local sources to Firebase Storage then create an ExtensionSource", async () => {
-      const result = await extensionsHelper.createSourceFromLocation("test-proj", ".");
+      const result = await extensionsHelper.createSourceFromLocation(
+        "test-proj",
+        "."
+      );
 
       expect(result).to.equal(testSource);
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
-      expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
+      expect(uploadStub).to.have.been.calledWith(
+        {},
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
+      expect(createSourceStub).to.have.been.calledWith(
+        "test-proj",
+        testUrl + "?alt=media",
+        "/"
+      );
       expect(deleteStub).to.have.been.calledWith(
         `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
@@ -726,12 +771,22 @@ describe("extensionsHelper", () => {
     it("should succeed even when it fails to delete the uploaded archive", async () => {
       deleteStub.throws();
 
-      const result = await extensionsHelper.createSourceFromLocation("test-proj", ".");
+      const result = await extensionsHelper.createSourceFromLocation(
+        "test-proj",
+        "."
+      );
 
       expect(result).to.equal(testSource);
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
-      expect(createSourceStub).to.have.been.calledWith("test-proj", testUrl + "?alt=media", "/");
+      expect(uploadStub).to.have.been.calledWith(
+        {},
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
+      expect(createSourceStub).to.have.been.calledWith(
+        "test-proj",
+        testUrl + "?alt=media",
+        "/"
+      );
       expect(deleteStub).to.have.been.calledWith(
         `/${extensionsHelper.EXTENSIONS_BUCKET_NAME}/object.zip`
       );
@@ -740,7 +795,10 @@ describe("extensionsHelper", () => {
     it("should create an ExtensionSource with url sources", async () => {
       const url = "https://storage.com/my.zip";
 
-      const result = await extensionsHelper.createSourceFromLocation("test-proj", url);
+      const result = await extensionsHelper.createSourceFromLocation(
+        "test-proj",
+        url
+      );
 
       expect(result).to.equal(testSource);
       expect(createSourceStub).to.have.been.calledWith("test-proj", url);
@@ -752,12 +810,15 @@ describe("extensionsHelper", () => {
     it("should throw an error if one is thrown while uploading a local source ", async () => {
       uploadStub.throws(new FirebaseError("something bad happened"));
 
-      await expect(extensionsHelper.createSourceFromLocation("test-proj", ".")).to.be.rejectedWith(
-        FirebaseError
-      );
+      await expect(
+        extensionsHelper.createSourceFromLocation("test-proj", ".")
+      ).to.be.rejectedWith(FirebaseError);
 
       expect(archiveStub).to.have.been.calledWith(".");
-      expect(uploadStub).to.have.been.calledWith({}, extensionsHelper.EXTENSIONS_BUCKET_NAME);
+      expect(uploadStub).to.have.been.calledWith(
+        {},
+        extensionsHelper.EXTENSIONS_BUCKET_NAME
+      );
       expect(createSourceStub).not.to.have.been.called;
       expect(deleteStub).not.to.have.been.called;
     });
@@ -790,7 +851,9 @@ describe("extensionsHelper", () => {
       resolveRegistryEntryStub = sinon
         .stub(resolveSource, "resolveRegistryEntry")
         .resolves(testRegistyEntry);
-      getSourceStub = sinon.stub(extensionsApi, "getSource").resolves(testSource);
+      getSourceStub = sinon
+        .stub(extensionsApi, "getSource")
+        .resolves(testSource);
     });
 
     afterEach(() => {
@@ -800,15 +863,21 @@ describe("extensionsHelper", () => {
     it("should look up official source names in the registry and fetch the ExtensionSource found there", async () => {
       const testOfficialName = "storage-resize-images";
 
-      const result = await extensionsHelper.getExtensionSourceFromName(testOfficialName);
+      const result = await extensionsHelper.getExtensionSourceFromName(
+        testOfficialName
+      );
 
-      expect(resolveRegistryEntryStub).to.have.been.calledWith(testOfficialName);
+      expect(resolveRegistryEntryStub).to.have.been.calledWith(
+        testOfficialName
+      );
       expect(getSourceStub).to.have.been.calledWith(testOnePlatformSourceName);
       expect(result).to.equal(testSource);
     });
 
     it("should fetch ExtensionSources when given a one platform name", async () => {
-      const result = await extensionsHelper.getExtensionSourceFromName(testOnePlatformSourceName);
+      const result = await extensionsHelper.getExtensionSourceFromName(
+        testOnePlatformSourceName
+      );
 
       expect(resolveRegistryEntryStub).not.to.have.been.called;
       expect(getSourceStub).to.have.been.calledWith(testOnePlatformSourceName);
@@ -816,9 +885,9 @@ describe("extensionsHelper", () => {
     });
 
     it("should throw an error if given a invalid namae", async () => {
-      await expect(extensionsHelper.getExtensionSourceFromName(".")).to.be.rejectedWith(
-        FirebaseError
-      );
+      await expect(
+        extensionsHelper.getExtensionSourceFromName(".")
+      ).to.be.rejectedWith(FirebaseError);
 
       expect(resolveRegistryEntryStub).not.to.have.been.called;
       expect(getSourceStub).not.to.have.been.called;
@@ -854,7 +923,9 @@ describe("extensionsHelper", () => {
     it("should throw if it gets an unexpected error response from getInstance", async () => {
       getInstanceStub.resolves({ error: { code: 500, message: "a message" } });
 
-      await expect(extensionsHelper.instanceIdExists("proj", TEST_NAME)).to.be.rejectedWith(
+      await expect(
+        extensionsHelper.instanceIdExists("proj", TEST_NAME)
+      ).to.be.rejectedWith(
         FirebaseError,
         "Unexpected error when checking if instance ID exists: a message"
       );

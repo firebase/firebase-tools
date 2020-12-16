@@ -6,7 +6,12 @@ import * as path from "path";
 import * as api from "../api";
 import * as utils from "../utils";
 import * as downloadableEmulators from "./downloadableEmulators";
-import { EmulatorInfo, EmulatorInstance, Emulators, Severity } from "../emulator/types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  Emulators,
+  Severity,
+} from "../emulator/types";
 import { EmulatorRegistry } from "./registry";
 import { Constants } from "./constants";
 import { Issue } from "./types";
@@ -31,19 +36,27 @@ export class FirestoreEmulator implements EmulatorInstance {
   async start(): Promise<void> {
     const functionsInfo = EmulatorRegistry.getInfo(Emulators.FUNCTIONS);
     if (functionsInfo) {
-      this.args.functions_emulator = EmulatorRegistry.getInfoHostString(functionsInfo);
+      this.args.functions_emulator = EmulatorRegistry.getInfoHostString(
+        functionsInfo
+      );
     }
 
     if (this.args.rules && this.args.projectId) {
       const rulesPath = this.args.rules;
-      this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+      this.rulesWatcher = chokidar.watch(rulesPath, {
+        persistent: true,
+        ignoreInitial: true,
+      });
       this.rulesWatcher.on("change", async (event, stats) => {
         // There have been some race conditions reported (on Windows) where reading the
         // file too quickly after the watcher fires results in an empty file being read.
         // Adding a small delay prevents that at very little cost.
         await new Promise((res) => setTimeout(res, 5));
 
-        utils.logLabeledBullet("firestore", "Change detected, updating rules...");
+        utils.logLabeledBullet(
+          "firestore",
+          "Change detected, updating rules..."
+        );
         const newContent = fs.readFileSync(rulesPath, "utf8").toString();
         const issues = await this.updateRules(newContent);
         if (issues) {
@@ -75,8 +88,10 @@ export class FirestoreEmulator implements EmulatorInstance {
   }
 
   getInfo(): EmulatorInfo {
-    const host = this.args.host || Constants.getDefaultHost(Emulators.FIRESTORE);
-    const port = this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
+    const host =
+      this.args.host || Constants.getDefaultHost(Emulators.FIRESTORE);
+    const port =
+      this.args.port || Constants.getDefaultPort(Emulators.FIRESTORE);
 
     return {
       name: this.getName(),
@@ -129,8 +144,8 @@ export class FirestoreEmulator implements EmulatorInstance {
     const relativePath = path.relative(process.cwd(), filePath);
     const line = issue.sourcePosition.line || 0;
     const col = issue.sourcePosition.column || 0;
-    return `${clc.cyan(relativePath)}:${clc.yellow(line)}:${clc.yellow(col)} - ${clc.red(
-      issue.severity
-    )} ${issue.description}`;
+    return `${clc.cyan(relativePath)}:${clc.yellow(line)}:${clc.yellow(
+      col
+    )} - ${clc.red(issue.severity)} ${issue.description}`;
   }
 }

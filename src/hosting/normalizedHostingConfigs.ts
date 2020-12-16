@@ -8,7 +8,10 @@ interface HostingConfig {
   target: string;
 }
 
-function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig[] {
+function filterOnly(
+  configs: HostingConfig[],
+  onlyString: string
+): HostingConfig[] {
   if (!onlyString) {
     return configs;
   }
@@ -48,7 +51,9 @@ function filterOnly(configs: HostingConfig[], onlyString: string): HostingConfig
       filteredConfigs.push(configsByTarget.get(onlyTarget)!);
     } else {
       throw new FirebaseError(
-        `Hosting site or target ${bold(onlyTarget)} not detected in firebase.json`
+        `Hosting site or target ${bold(
+          onlyTarget
+        )} not detected in firebase.json`
       );
     }
   }
@@ -108,7 +113,9 @@ export function normalizedHostingConfigs(
         }
         cfg.site = matchingTargets[0];
       } else if (!cfg.site) {
-        throw new FirebaseError('Must supply either "site" or "target" in each "hosting" config.');
+        throw new FirebaseError(
+          'Must supply either "site" or "target" in each "hosting" config.'
+        );
       }
     }
   }

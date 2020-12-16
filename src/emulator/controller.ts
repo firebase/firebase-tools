@@ -40,9 +40,15 @@ import * as rimraf from "rimraf";
 import { FLAG_EXPORT_ON_EXIT_NAME } from "./commandUtils";
 import { fileExistsSync } from "../fsutils";
 
-async function getAndCheckAddress(emulator: Emulators, options: any): Promise<Address> {
+async function getAndCheckAddress(
+  emulator: Emulators,
+  options: any
+): Promise<Address> {
   let host = Constants.normalizeHost(
-    options.config.get(Constants.getHostKey(emulator), Constants.getDefaultHost(emulator))
+    options.config.get(
+      Constants.getHostKey(emulator),
+      Constants.getDefaultHost(emulator)
+    )
   );
 
   if (host === "localhost" && utils.isRunningInWSL()) {
@@ -142,7 +148,9 @@ export async function exportOnExit(options: any) {
       await exportEmulatorData(exportOnExitDir, options);
     } catch (e) {
       utils.logWarning(e);
-      utils.logWarning(`Automatic export to "${exportOnExitDir}" failed, going to exit now...`);
+      utils.logWarning(
+        `Automatic export to "${exportOnExitDir}" failed, going to exit now...`
+      );
     }
   }
 }
@@ -201,7 +209,8 @@ export function shouldStart(options: any, name: Emulators): boolean {
     // Emulator UI only starts if we know the project ID AND at least one
     // emulator supported by Emulator UI is launching.
     return (
-      !!options.project && targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
+      !!options.project &&
+      targets.some((target) => EMULATORS_SUPPORTED_BY_UI.indexOf(target) >= 0)
     );
   }
 
@@ -221,7 +230,11 @@ export function shouldStart(options: any, name: Emulators): boolean {
     return false;
   }
 
-  if (name === Emulators.HOSTING && emulatorInTargets && !options.config.get("hosting")) {
+  if (
+    name === Emulators.HOSTING &&
+    emulatorInTargets &&
+    !options.config.get("hosting")
+  ) {
     EmulatorLogger.forEmulator(Emulators.HOSTING).logLabeled(
       "WARN",
       "hosting",
@@ -244,13 +257,17 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   // If there is an export metadata file, we always prefer that
   const importFilePath = path.join(importPath, HubExport.METADATA_FILE_NAME);
   if (fileExistsSync(importFilePath)) {
-    return JSON.parse(fs.readFileSync(importFilePath, "utf8").toString()) as ExportMetadata;
+    return JSON.parse(
+      fs.readFileSync(importFilePath, "utf8").toString()
+    ) as ExportMetadata;
   }
 
   const fileList = fs.readdirSync(importPath);
 
   // The user might have passed a Firestore export directly
-  const firestoreMetadataFile = fileList.find((f) => f.endsWith(".overall_export_metadata"));
+  const firestoreMetadataFile = fileList.find((f) =>
+    f.endsWith(".overall_export_metadata")
+  );
   if (firestoreMetadataFile) {
     const metadata: ExportMetadata = {
       version: EmulatorHub.CLI_VERSION,
@@ -291,7 +308,10 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: any, noUi: boolean = false): Promise<void> {
+export async function startAll(
+  options: any,
+  noUi: boolean = false
+): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -323,9 +343,9 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         EmulatorLogger.forEmulator(name as Emulators).logLabeled(
           "WARN",
           name,
-          `Not starting the ${clc.bold(name)} emulator, make sure you have run ${clc.bold(
-            "firebase init"
-          )}.`
+          `Not starting the ${clc.bold(
+            name
+          )} emulator, make sure you have run ${clc.bold("firebase init")}.`
         );
       } else {
         // this should not work:
@@ -359,14 +379,19 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
         "WARN",
         "emulators",
-        `Could not find import/export metadata file, ${clc.bold("skipping data import!")}`
+        `Could not find import/export metadata file, ${clc.bold(
+          "skipping data import!"
+        )}`
       );
     }
   }
 
   if (shouldStart(options, Emulators.FUNCTIONS)) {
     const functionsLogger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-    const functionsAddr = await getAndCheckAddress(Emulators.FUNCTIONS, options);
+    const functionsAddr = await getAndCheckAddress(
+      Emulators.FUNCTIONS,
+      options
+    );
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.extensionDir || options.config.projectDir,
@@ -418,7 +443,10 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
   if (shouldStart(options, Emulators.FIRESTORE)) {
     const firestoreLogger = EmulatorLogger.forEmulator(Emulators.FIRESTORE);
-    const firestoreAddr = await getAndCheckAddress(Emulators.FIRESTORE, options);
+    const firestoreAddr = await getAndCheckAddress(
+      Emulators.FIRESTORE,
+      options
+    );
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
@@ -454,7 +482,9 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
         firestoreLogger.logLabeled(
           "WARN",
           "firestore",
-          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`
+          `Cloud Firestore rules file ${clc.bold(
+            rules
+          )} specified in firebase.json does not exist.`
         );
       }
     } else {
@@ -522,9 +552,14 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
 
     if (exportMetadata.database) {
       const importDirAbsPath = path.resolve(options.import);
-      const databaseExportDir = path.resolve(importDirAbsPath, exportMetadata.database.path);
+      const databaseExportDir = path.resolve(
+        importDirAbsPath,
+        exportMetadata.database.path
+      );
 
-      const files = fs.readdirSync(databaseExportDir).filter((f) => f.endsWith(".json"));
+      const files = fs
+        .readdirSync(databaseExportDir)
+        .filter((f) => f.endsWith(".json"));
       for (const f of files) {
         const fPath = path.join(databaseExportDir, f);
         const ns = path.basename(f, ".json");
@@ -641,7 +676,9 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   }
 
   utils.logBullet(
-    `Found running emulator hub for project ${clc.bold(projectId)} at ${hubClient.origin}`
+    `Found running emulator hub for project ${clc.bold(projectId)} at ${
+      hubClient.origin
+    }`
   );
 
   // If the export target directory does not exist, we should attempt to create it
@@ -675,7 +712,10 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   // Remove all existing data (metadata.json will be overwritten automatically)
   if (existingMetadata) {
     if (existingMetadata.firestore) {
-      const firestorePath = path.join(exportAbsPath, existingMetadata.firestore.path);
+      const firestorePath = path.join(
+        exportAbsPath,
+        existingMetadata.firestore.path
+      );
       utils.logBullet(`Deleting directory ${firestorePath}`);
       rimraf.sync(firestorePath);
     }
@@ -685,10 +725,13 @@ export async function exportEmulatorData(exportPath: string, options: any) {
   try {
     await hubClient.postExport(exportAbsPath);
   } catch (e) {
-    throw new FirebaseError("Export request failed, see emulator logs for more information.", {
-      exit: 1,
-      original: e,
-    });
+    throw new FirebaseError(
+      "Export request failed, see emulator logs for more information.",
+      {
+        exit: 1,
+        original: e,
+      }
+    );
   }
 
   utils.logSuccess("Export complete");

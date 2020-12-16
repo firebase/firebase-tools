@@ -10,28 +10,32 @@ describe("commandUtils", () => {
   };
 
   it("should validate --export-on-exit options", () => {
-    expect(testSetExportOnExitOptions({ import: "./data" }).exportOnExit).to.be.undefined;
+    expect(testSetExportOnExitOptions({ import: "./data" }).exportOnExit).to.be
+      .undefined;
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./data" }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./data" })
+        .exportOnExit
     ).to.eql("./data");
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: "./dataExport" }).exportOnExit
+      testSetExportOnExitOptions({
+        import: "./data",
+        exportOnExit: "./dataExport",
+      }).exportOnExit
     ).to.eql("./dataExport");
     expect(
-      testSetExportOnExitOptions({ import: "./data", exportOnExit: true }).exportOnExit
+      testSetExportOnExitOptions({ import: "./data", exportOnExit: true })
+        .exportOnExit
     ).to.eql("./data");
     expect(() => testSetExportOnExitOptions({ exportOnExit: true })).to.throw(
       FirebaseError,
       EXPORT_ON_EXIT_USAGE_ERROR
     );
-    expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: true })).to.throw(
-      FirebaseError,
-      EXPORT_ON_EXIT_USAGE_ERROR
-    );
-    expect(() => testSetExportOnExitOptions({ import: "", exportOnExit: "" })).to.throw(
-      FirebaseError,
-      EXPORT_ON_EXIT_USAGE_ERROR
-    );
+    expect(() =>
+      testSetExportOnExitOptions({ import: "", exportOnExit: true })
+    ).to.throw(FirebaseError, EXPORT_ON_EXIT_USAGE_ERROR);
+    expect(() =>
+      testSetExportOnExitOptions({ import: "", exportOnExit: "" })
+    ).to.throw(FirebaseError, EXPORT_ON_EXIT_USAGE_ERROR);
   });
   it("should delete the --import option when the dir does not exist together with --export-on-exit", () => {
     expect(

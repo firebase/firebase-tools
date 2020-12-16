@@ -10,14 +10,18 @@ function extractPattern(type, spec) {
   const regex = spec.regex;
 
   if (glob && regex) {
-    throw new FirebaseError("Cannot specify a " + type + " pattern with both a glob and regex.");
+    throw new FirebaseError(
+      "Cannot specify a " + type + " pattern with both a glob and regex."
+    );
   } else if (glob) {
     return { glob: glob };
   } else if (regex) {
     return { regex: regex };
   }
   throw new FirebaseError(
-    "Cannot specify a " + type + " with no pattern (either a glob or regex required)."
+    "Cannot specify a " +
+      type +
+      " with no pattern (either a glob or regex required)."
   );
 }
 
@@ -25,7 +29,7 @@ function extractPattern(type, spec) {
  * convertConfig takes a hosting config object from firebase.json and transforms it into
  * the valid format for sending to the Firebase Hosting REST API
  */
-module.exports = function(config) {
+module.exports = function (config) {
   const out = {};
 
   if (!config) {
@@ -34,7 +38,7 @@ module.exports = function(config) {
 
   // rewrites
   if (_.isArray(config.rewrites)) {
-    out.rewrites = config.rewrites.map(function(rewrite) {
+    out.rewrites = config.rewrites.map(function (rewrite) {
       const vRewrite = extractPattern("rewrite", rewrite);
       if (rewrite.destination) {
         vRewrite.path = rewrite.destination;
@@ -51,7 +55,7 @@ module.exports = function(config) {
 
   // redirects
   if (_.isArray(config.redirects)) {
-    out.redirects = config.redirects.map(function(redirect) {
+    out.redirects = config.redirects.map(function (redirect) {
       const vRedirect = extractPattern("redirect", redirect);
       vRedirect.location = redirect.destination;
       if (redirect.type) {
@@ -63,10 +67,10 @@ module.exports = function(config) {
 
   // headers
   if (_.isArray(config.headers)) {
-    out.headers = config.headers.map(function(header) {
+    out.headers = config.headers.map(function (header) {
       const vHeader = extractPattern("header", header);
       vHeader.headers = {};
-      (header.headers || []).forEach(function(h) {
+      (header.headers || []).forEach(function (h) {
         vHeader.headers[h.key] = h.value;
       });
       return vHeader;

@@ -58,9 +58,18 @@ export default new Command("database:get <path>")
   .option("--order-by-value", "order by primitive value")
   .option("--limit-to-first <num>", "limit to the first <num> results")
   .option("--limit-to-last <num>", "limit to the last <num> results")
-  .option("--start-at <val>", "start results at <val> (based on specified ordering)")
-  .option("--end-at <val>", "end results at <val> (based on specified ordering)")
-  .option("--equal-to <val>", "restrict results to <val> (based on specified ordering)")
+  .option(
+    "--start-at <val>",
+    "start results at <val> (based on specified ordering)"
+  )
+  .option(
+    "--end-at <val>",
+    "end results at <val> (based on specified ordering)"
+  )
+  .option(
+    "--equal-to <val>",
+    "restrict results to <val> (based on specified ordering)"
+  )
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)"
@@ -75,8 +84,14 @@ export default new Command("database:get <path>")
       return utils.reject("Path must begin with /", { exit: 1 });
     }
 
-    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-    const dbUrl = utils.getDatabaseUrl(dbHost, options.instance, path + ".json");
+    const dbHost = realtimeOriginOrEmulatorOrCustomUrl(
+      options.instanceDetails.databaseUrl
+    );
+    const dbUrl = utils.getDatabaseUrl(
+      dbHost,
+      options.instance,
+      path + ".json"
+    );
     const query: { [key: string]: string } = {};
     if (options.shallow) {
       query.shallow = "true";
@@ -114,7 +129,9 @@ export default new Command("database:get <path>")
     });
 
     const fileOut = !!options.output;
-    const outStream = fileOut ? fs.createWriteStream(options.output) : process.stdout;
+    const outStream = fileOut
+      ? fs.createWriteStream(options.output)
+      : process.stdout;
 
     if (res.status >= 400) {
       // TODO(bkendall): consider moving stream-handling logic to responseToError.
@@ -123,7 +140,10 @@ export default new Command("database:get <path>")
       try {
         d = JSON.parse(r);
       } catch (e) {
-        throw new FirebaseError("Malformed JSON response", { original: e, exit: 2 });
+        throw new FirebaseError("Malformed JSON response", {
+          original: e,
+          exit: 2,
+        });
       }
       throw responseToError({ statusCode: res.status }, d);
     }
@@ -142,7 +162,9 @@ export default new Command("database:get <path>")
           outStream.on("close", () => resolve());
           outStream.close();
         } else {
-          logger.debug("[database:get] Could not write line break to outStream");
+          logger.debug(
+            "[database:get] Could not write line break to outStream"
+          );
           resolve();
         }
       });

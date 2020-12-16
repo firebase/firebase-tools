@@ -1,4 +1,8 @@
-import { EmulatorInfo, EmulatorInstance, Emulators } from "../../emulator/types";
+import {
+  EmulatorInfo,
+  EmulatorInstance,
+  Emulators,
+} from "../../emulator/types";
 import * as express from "express";
 import { createDestroyer } from "../../utils";
 
@@ -9,7 +13,11 @@ export class FakeEmulator implements EmulatorInstance {
   private exp: express.Express;
   private destroyServer?: () => Promise<void>;
 
-  constructor(public name: Emulators, public host: string, public port: number) {
+  constructor(
+    public name: Emulators,
+    public host: string,
+    public port: number
+  ) {
     this.exp = express();
   }
 

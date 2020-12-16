@@ -2,7 +2,12 @@ import * as express from "express";
 import * as exegesisExpress from "exegesis-express";
 import { ValidationError } from "exegesis/lib/errors";
 import * as _ from "lodash";
-import { OpenAPIObject, PathsObject, ServerObject, OperationObject } from "openapi3-ts";
+import {
+  OpenAPIObject,
+  PathsObject,
+  ServerObject,
+  OperationObject,
+} from "openapi3-ts";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import { authOperations, AuthOps, AuthOperation } from "./operations";
@@ -42,7 +47,8 @@ const SERVICE_ACCOUNT_TOKEN_PREFIX = "ya29.";
 function specForRouter(): OpenAPIObject {
   const paths: PathsObject = {};
   Object.entries(apiSpec.paths).forEach(([path, pathObj]) => {
-    const servers = (pathObj as { servers?: { url: string }[] }).servers ?? apiSpec.servers;
+    const servers =
+      (pathObj as { servers?: { url: string }[] }).servers ?? apiSpec.servers;
     if (!servers || !servers.length) {
       throw new Error("No servers defined in API spec.");
     }
@@ -60,7 +66,10 @@ function specForRouter(): OpenAPIObject {
   };
 }
 
-function specWithEmulatorServer(protocol: string, host: string | undefined): OpenAPIObject {
+function specWithEmulatorServer(
+  protocol: string,
+  host: string | undefined
+): OpenAPIObject {
   const paths: PathsObject = {};
   Object.entries(apiSpec.paths).forEach(([path, pathObj]) => {
     const servers = (pathObj as { servers?: { url: string }[] }).servers;
@@ -85,11 +94,14 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
     const result: ServerObject[] = [];
     for (const server of servers) {
       result.push({
-        url: server.url ? server.url.replace("https://", "{EMULATOR}/") : "{EMULATOR}",
+        url: server.url
+          ? server.url.replace("https://", "{EMULATOR}/")
+          : "{EMULATOR}",
         variables: {
           EMULATOR: {
             default: host ? `${protocol}://${host}` : "",
-            description: "The protocol, hostname, and port of Firebase Auth Emulator.",
+            description:
+              "The protocol, hostname, and port of Firebase Auth Emulator.",
           },
         },
       });
@@ -124,7 +136,10 @@ export async function createApp(
   app.use((req, res, next) => {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Headers", "*");
-    res.set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH");
+    res.set(
+      "Access-Control-Allow-Methods",
+      "GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH"
+    );
     if (req.method === "OPTIONS") {
       // This is a CORS preflight request. Just handle it.
       res.end();
@@ -148,7 +163,9 @@ export async function createApp(
   });
 
   registerLegacyRoutes(app);
-  registerHandlers(app, (apiKey) => getProjectStateById(getProjectIdByApiKey(apiKey)));
+  registerHandlers(app, (apiKey) =>
+    getProjectStateById(getProjectIdByApiKey(apiKey))
+  );
 
   const apiKeyAuthenticator: PromiseAuthenticator = (ctx, info) => {
     if (info.in !== "query") {
@@ -167,17 +184,23 @@ export async function createApp(
 
   const oauth2Authenticator: PromiseAuthenticator = (ctx) => {
     const authorization = ctx.req.headers["authorization"];
-    if (!authorization || !authorization.toLowerCase().startsWith(AUTH_HEADER_PREFIX)) {
+    if (
+      !authorization ||
+      !authorization.toLowerCase().startsWith(AUTH_HEADER_PREFIX)
+    ) {
       return undefined;
     }
     const scopes = Object.keys(
-      ctx.api.openApiDoc.components.securitySchemes.Oauth2.flows.authorizationCode.scopes
+      ctx.api.openApiDoc.components.securitySchemes.Oauth2.flows
+        .authorizationCode.scopes
     );
     const token = authorization.substr(AUTH_HEADER_PREFIX.length);
     if (token.toLowerCase() === "owner") {
       // We treat "owner" as a valid account token for the default projectId.
       return { type: "success", user: defaultProjectId, scopes };
-    } else if (token.startsWith(SERVICE_ACCOUNT_TOKEN_PREFIX) /* case sensitive */) {
+    } else if (
+      token.startsWith(SERVICE_ACCOUNT_TOKEN_PREFIX) /* case sensitive */
+    ) {
       // We have received a production service account token. Since the token is
       // opaque and we cannot infer the projectId without contacting prod, we
       // will also assume that the token belongs to the default projectId.
@@ -201,7 +224,9 @@ export async function createApp(
     );
   };
   const apis = await exegesisExpress.middleware(specForRouter(), {
-    controllers: { auth: toExegesisController(authOperations, getProjectStateById) },
+    controllers: {
+      auth: toExegesisController(authOperations, getProjectStateById),
+    },
     authenticators: {
       apiKey: apiKeyAuthenticator,
       Oauth2: oauth2Authenticator,
@@ -228,7 +253,9 @@ export async function createApp(
         } else {
           details = firstError.message;
         }
-        err = new InvalidArgumentError(`Invalid JSON payload received. ${details}`);
+        err = new InvalidArgumentError(
+          `Invalid JSON payload received. ${details}`
+        );
       }
       if (err.name === "HttpBadRequestError") {
         err = new BadRequestError(err.message, "unknown");
@@ -240,7 +267,9 @@ export async function createApp(
     onResponseValidationError({ errors }) {
       logError(
         new Error(
-          `An internal error occured when generating response. Details:\n${JSON.stringify(errors)}`
+          `An internal error occured when generating response. Details:\n${JSON.stringify(
+            errors
+          )}`
         )
       );
       throw new InternalError(
@@ -278,9 +307,12 @@ export async function createApp(
             postController(ctx: ExegesisContext) {
               if (ctx.res.statusCode === 401) {
                 // Normalize unauthenticated responses to match production.
-                const requirements = (ctx.api.operationObject as OperationObject).security;
+                const requirements = (ctx.api
+                  .operationObject as OperationObject).security;
                 if (requirements?.some((req) => req.apiKey)) {
-                  throw new PermissionDeniedError("The request is missing a valid API key.");
+                  throw new PermissionDeniedError(
+                    "The request is missing a valid API key."
+                  );
                 } else {
                   throw new UnauthenticatedError(
                     "Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
@@ -317,7 +349,10 @@ export async function createApp(
     if (err instanceof ApiError) {
       apiError = err;
     } else if (!err.status || err.status === 500) {
-      apiError = new UnknownError(err.message || "Unknown error", err.name || "unknown");
+      apiError = new UnknownError(
+        err.message || "Unknown error",
+        err.name || "unknown"
+      );
     } else {
       // This is a non-500 error following the http error convention, should probably just expose it.
       // For example, this may be a 413 Entity Too Large from body-parser.
@@ -351,7 +386,8 @@ function registerLegacyRoutes(app: express.Express): void {
   // https://www.googleapis.com/discovery/v1/apis/identitytoolkit/v3/rest
   // We do not generate OpenAPI specs for these to reduce bloat. These are not
   // well-documented and the JSON schema definitions are outdated anyway.
-  const relyingPartyPrefix = "/www.googleapis.com/identitytoolkit/v3/relyingparty/";
+  const relyingPartyPrefix =
+    "/www.googleapis.com/identitytoolkit/v3/relyingparty/";
   const v1Prefix = "/identitytoolkit.googleapis.com/v1/";
   for (const [oldPath, newPath] of [
     ["createAuthUri", "accounts:createAuthUri"],
@@ -379,7 +415,9 @@ function registerLegacyRoutes(app: express.Express): void {
   }
 
   app.post(`${relyingPartyPrefix}signOutUser`, () => {
-    throw new NotImplementedError(`signOutUser is not implemented in the Auth Emulator.`);
+    throw new NotImplementedError(
+      `signOutUser is not implemented in the Auth Emulator.`
+    );
   });
 
   // Rewrites that require parsing targetProjectId from request body, e.g.
@@ -388,29 +426,35 @@ function registerLegacyRoutes(app: express.Express): void {
     ["downloadAccount", "GET", "accounts:batchGet"],
     ["uploadAccount", "POST", "accounts:batchCreate"],
   ]) {
-    app.post(`${relyingPartyPrefix}${oldPath}`, bodyParser.json(), (req, res, next) => {
-      req.body = convertKeysToCamelCase(req.body || {});
-      const targetProjectId = req.body.targetProjectId;
-      if (!targetProjectId) {
-        // Matching production behavior when targetProjectId is unspecified.
-        return next(new BadRequestError("INSUFFICIENT_PERMISSION"));
-      }
+    app.post(
+      `${relyingPartyPrefix}${oldPath}`,
+      bodyParser.json(),
+      (req, res, next) => {
+        req.body = convertKeysToCamelCase(req.body || {});
+        const targetProjectId = req.body.targetProjectId;
+        if (!targetProjectId) {
+          // Matching production behavior when targetProjectId is unspecified.
+          return next(new BadRequestError("INSUFFICIENT_PERMISSION"));
+        }
 
-      delete req.body.targetProjectId;
-      req.method = newMethod;
-      let qs = req.url.split("?", 2)[1] || "";
-      if (newMethod === "GET") {
-        Object.assign(req.query, req.body);
+        delete req.body.targetProjectId;
+        req.method = newMethod;
+        let qs = req.url.split("?", 2)[1] || "";
+        if (newMethod === "GET") {
+          Object.assign(req.query, req.body);
 
-        // Update the URL to match query since exegeisis does its own parsing.
-        const bodyAsQuery = new URLSearchParams(req.body).toString();
-        qs = qs ? `${qs}&${bodyAsQuery}` : bodyAsQuery;
-        delete req.body;
-        delete req.headers["content-type"];
+          // Update the URL to match query since exegeisis does its own parsing.
+          const bodyAsQuery = new URLSearchParams(req.body).toString();
+          qs = qs ? `${qs}&${bodyAsQuery}` : bodyAsQuery;
+          delete req.body;
+          delete req.headers["content-type"];
+        }
+        req.url = `${v1Prefix}projects/${encodeURIComponent(
+          targetProjectId
+        )}/${newPath}?${qs}`;
+        next();
       }
-      req.url = `${v1Prefix}projects/${encodeURIComponent(targetProjectId)}/${newPath}?${qs}`;
-      next();
-    });
+    );
   }
 }
 
@@ -430,7 +474,9 @@ function toExegesisController(
         return obj[prop as string];
       }
       const stub: PromiseController = () => {
-        throw new NotImplementedError(`${prop} is not implemented in the Auth Emulator.`);
+        throw new NotImplementedError(
+          `${prop} is not implemented in the Auth Emulator.`
+        );
       };
       return stub;
     },
@@ -454,7 +500,11 @@ function toExegesisController(
       let targetProjectId: string =
         ctx.params.path.targetProjectId || ctx.requestBody?.targetProjectId;
       if (targetProjectId) {
-        if ((ctx.api.operationObject as OperationObject).security?.some((sec) => sec.Oauth2)) {
+        if (
+          (ctx.api.operationObject as OperationObject).security?.some(
+            (sec) => sec.Oauth2
+          )
+        ) {
           // Some APIs (e.g. accounts:signUp) may allow either Oauth2
           // ("authenticated") or apiKey ("unauthenticated"), but only
           // authenticated requests may specify targetProjectId.
@@ -473,7 +523,11 @@ function toExegesisController(
       if (ctx.params.path.tenantId || ctx.requestBody?.tenantId) {
         throw new NotImplementedError("Multi-tenancy is unimplemented.");
       }
-      return operation(getProjectStateById(targetProjectId), ctx.requestBody, ctx);
+      return operation(
+        getProjectStateById(targetProjectId),
+        ctx.requestBody,
+        ctx
+      );
     };
   }
 }
@@ -489,7 +543,11 @@ function wrapValidateBody(pluginContext: ExegesisPluginContext): void {
   if (op.validateBody && !op._authEmulatorValidateBodyWrapped) {
     const validateBody = op.validateBody.bind(op);
     op.validateBody = (body) => {
-      return validateAndFixRestMappingRequestBody(validateBody, body, pluginContext.api);
+      return validateAndFixRestMappingRequestBody(
+        validateBody,
+        body,
+        pluginContext.api
+      );
     };
     op._authEmulatorValidateBodyWrapped = true;
   }
@@ -516,7 +574,11 @@ function validateAndFixRestMappingRequestBody(
     fixedErrors = false;
     for (const error of result.errors) {
       const path = error.location?.path;
-      if (path && !fixedPaths.has(path) && error.ajvError?.message === "should be string") {
+      if (
+        path &&
+        !fixedPaths.has(path) &&
+        error.ajvError?.message === "should be string"
+      ) {
         let schema = api.requestBodyMediaTypeObject.schema;
         if (schema.$ref) {
           schema = _.get(api.openApiDoc, jsonPointerToPath(schema.$ref));
@@ -527,7 +589,10 @@ function validateAndFixRestMappingRequestBody(
           schemaPath[1] === "value" &&
           schemaPath[schemaPath.length - 1] === "type"
         ) {
-          const enumValues = _.get(schema, schemaPath.slice(2, schemaPath.length - 1))?.enum;
+          const enumValues = _.get(
+            schema,
+            schemaPath.slice(2, schemaPath.length - 1)
+          )?.enum;
           if (Array.isArray(enumValues)) {
             const dataPath = jsonPointerToPath(path);
             const value = _.get(body, dataPath);
@@ -562,7 +627,9 @@ function convertKeysToCamelCase(body: any): any {
 }
 
 function jsonPointerToPath(pointer: string): string[] {
-  const path = pointer.split("/").map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
+  const path = pointer
+    .split("/")
+    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
   if (path[0] === "#" || path[0] === "") {
     path.shift();
   }

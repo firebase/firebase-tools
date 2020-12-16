@@ -5,7 +5,8 @@ const { requireDatabaseInstance } = require("../requireDatabaseInstance");
 const { requirePermissions } = require("../requirePermissions");
 const { checkServiceAccountIam } = require("../deploy/functions/checkIam");
 const checkValidTargetFilters = require("../checkValidTargetFilters");
-const checkFunctionsSDKVersion = require("../checkFirebaseSDKVersion").checkFunctionsSDKVersion;
+const checkFunctionsSDKVersion = require("../checkFirebaseSDKVersion")
+  .checkFunctionsSDKVersion;
 const { Command } = require("../command");
 const deploy = require("../deploy");
 const requireConfig = require("../requireConfig");
@@ -13,7 +14,14 @@ const filterTargets = require("../filterTargets");
 const { requireHostingSite } = require("../requireHostingSite");
 
 // in order of least time-consuming to most time-consuming
-const VALID_TARGETS = ["database", "storage", "firestore", "functions", "hosting", "remoteconfig"];
+const VALID_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+];
 const TARGET_PERMISSIONS = {
   database: ["firebasedatabase.instances.update"],
   hosting: ["firebasehosting.sites.update"],
@@ -41,8 +49,14 @@ const TARGET_PERMISSIONS = {
 
 module.exports = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
-  .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
-  .option("-m, --message <message>", "an optional message describing this deploy")
+  .option(
+    "-p, --public <path>",
+    "override the Hosting public directory specified in firebase.json"
+  )
+  .option(
+    "-m, --message <message>",
+    "an optional message describing this deploy"
+  )
   .option(
     "-f, --force",
     "delete Cloud Functions missing from the current working directory without confirmation"
@@ -54,9 +68,12 @@ module.exports = new Command("deploy")
       "When filtering based on export groups (the exported module object keys), use dots to specify group names " +
       '(e.g. "--only functions:group1.subgroup1,functions:group2)"'
   )
-  .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
+  .option(
+    "--except <targets>",
+    'deploy to all targets except specified (e.g. "database")'
+  )
   .before(requireConfig)
-  .before(function(options) {
+  .before(function (options) {
     options.filteredTargets = filterTargets(options, VALID_TARGETS);
     const permissions = options.filteredTargets.reduce((perms, target) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
@@ -68,7 +85,7 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(async function(options) {
+  .before(async function (options) {
     // only fetch the default instance for hosting or database deploys
     if (_.includes(options.filteredTargets, "database")) {
       await requireDatabaseInstance(options);
@@ -80,6 +97,6 @@ module.exports = new Command("deploy")
   })
   .before(checkValidTargetFilters)
   .before(checkFunctionsSDKVersion)
-  .action(function(options) {
+  .action(function (options) {
     return deploy(options.filteredTargets, options);
   });

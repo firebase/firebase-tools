@@ -93,7 +93,8 @@ export function parseAbsoluteUri(uri: string): URL | undefined {
  */
 export function randomId(len: number): string {
   // Alphanumeric characters
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let autoId = "";
   for (let i = 0; i < len; i++) {
     autoId += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -110,7 +111,8 @@ export function randomId(len: number): string {
  * @return the generated string with only base64url characters and NO paddings
  */
 export function randomBase64UrlStr(len: number): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
   let autoId = "";
   for (let i = 0; i < len; i++) {
     autoId += chars.charAt(Math.floor(Math.random() * chars.length));

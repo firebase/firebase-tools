@@ -67,7 +67,11 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   async addTrigger(topicName: string, trigger: string) {
-    this.logger.logLabeled("DEBUG", "pubsub", `addTrigger(${topicName}, ${trigger})`);
+    this.logger.logLabeled(
+      "DEBUG",
+      "pubsub",
+      `addTrigger(${topicName}, ${trigger})`
+    );
 
     const topicTriggers = this.triggers.get(topicName) || new Set();
     if (topicTriggers.has(topicName) && this.subscriptions.has(topicName)) {
@@ -83,21 +87,33 @@ export class PubsubEmulator implements EmulatorInstance {
       if (e && e.code === 6) {
         this.logger.logLabeled("DEBUG", "pubsub", `Topic ${topicName} exists`);
       } else {
-        throw new FirebaseError(`Could not create topic ${topicName}`, { original: e });
+        throw new FirebaseError(`Could not create topic ${topicName}`, {
+          original: e,
+        });
       }
     }
 
     const subName = `emulator-sub-${topicName}`;
     let sub;
     try {
-      this.logger.logLabeled("DEBUG", "pubsub", `Creating sub for topic: ${topicName}`);
+      this.logger.logLabeled(
+        "DEBUG",
+        "pubsub",
+        `Creating sub for topic: ${topicName}`
+      );
       [sub] = await topic.createSubscription(subName);
     } catch (e) {
       if (e && e.code === 6) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Sub for ${topicName} exists`);
+        this.logger.logLabeled(
+          "DEBUG",
+          "pubsub",
+          `Sub for ${topicName} exists`
+        );
         sub = topic.subscription(`emulator-sub-${topicName}`);
       } else {
-        throw new FirebaseError(`Could not create sub ${subName}`, { original: e });
+        throw new FirebaseError(`Could not create sub ${subName}`, {
+          original: e,
+        });
       }
     }
 
@@ -111,7 +127,11 @@ export class PubsubEmulator implements EmulatorInstance {
   }
 
   private async onMessage(topicName: string, message: Message) {
-    this.logger.logLabeled("DEBUG", "pubsub", `onMessage(${topicName}, ${message.id})`);
+    this.logger.logLabeled(
+      "DEBUG",
+      "pubsub",
+      `onMessage(${topicName}, ${message.id})`
+    );
     const topicTriggers = this.triggers.get(topicName);
     if (!topicTriggers || topicTriggers.size === 0) {
       throw new FirebaseError(`No trigger for topic: ${topicName}`);
@@ -157,7 +177,9 @@ export class PubsubEmulator implements EmulatorInstance {
           "POST",
           `/functions/projects/${this.args.projectId}/triggers/${trigger}`,
           {
-            origin: `http://${EmulatorRegistry.getInfoHostString(functionsEmu.getInfo())}`,
+            origin: `http://${EmulatorRegistry.getInfoHostString(
+              functionsEmu.getInfo()
+            )}`,
             data: body,
           }
         );
@@ -168,7 +190,11 @@ export class PubsubEmulator implements EmulatorInstance {
       // If this is the last trigger we need to run, ack the message.
       remaining--;
       if (remaining <= 0) {
-        this.logger.logLabeled("DEBUG", "pubsub", `Acking message ${message.id}`);
+        this.logger.logLabeled(
+          "DEBUG",
+          "pubsub",
+          `Acking message ${message.id}`
+        );
         message.ack();
       }
     }

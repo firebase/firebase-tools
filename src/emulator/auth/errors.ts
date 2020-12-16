@@ -23,7 +23,12 @@ export class ApiError extends ExtendableError {
   }
 
   toJSON(): object {
-    return { code: this.code, message: this.message, errors: this.errors, status: this.status };
+    return {
+      code: this.code,
+      message: this.message,
+      errors: this.errors,
+      status: this.status,
+    };
   }
 }
 
@@ -38,7 +43,9 @@ export interface ErrorItem {
 export class BadRequestError extends ApiError {
   constructor(
     message: string,
-    reasonOrErrors: string | ErrorItem[] = [{ message, reason: "invalid", domain: "global" }]
+    reasonOrErrors: string | ErrorItem[] = [
+      { message, reason: "invalid", domain: "global" },
+    ]
   ) {
     super(400, undefined, message, reasonOrErrors);
   }
@@ -50,7 +57,9 @@ export class BadRequestError extends ApiError {
 export class InvalidArgumentError extends ApiError {
   constructor(
     message: string,
-    reasonOrErrors: string | ErrorItem[] = [{ message, reason: "invalid", domain: "global" }]
+    reasonOrErrors: string | ErrorItem[] = [
+      { message, reason: "invalid", domain: "global" },
+    ]
   ) {
     super(400, "INVALID_ARGUMENT", message, reasonOrErrors);
   }
@@ -65,14 +74,19 @@ export class UnauthenticatedError extends ApiError {
 export class PermissionDeniedError extends ApiError {
   constructor(
     message: string,
-    reasonOrErrors: string | ErrorItem[] = [{ message, reason: "forbidden", domain: "global" }]
+    reasonOrErrors: string | ErrorItem[] = [
+      { message, reason: "forbidden", domain: "global" },
+    ]
   ) {
     super(403, "PERMISSION_DENIED", message, reasonOrErrors);
   }
 }
 
 export class NotFoundError extends ApiError {
-  constructor(message = "Not Found", reasonOrErrors: string | ErrorItem[] = "notFound") {
+  constructor(
+    message = "Not Found",
+    reasonOrErrors: string | ErrorItem[] = "notFound"
+  ) {
     super(404, "NOT_FOUND", message, reasonOrErrors);
   }
 }

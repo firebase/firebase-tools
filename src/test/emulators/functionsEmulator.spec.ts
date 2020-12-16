@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../emulator/functionsEmulator";
+import {
+  FunctionsEmulator,
+  InvokeRuntimeOpts,
+} from "../../emulator/functionsEmulator";
 import * as supertest from "supertest";
 import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
 import * as logger from "../../logger";
@@ -43,7 +46,9 @@ functionsEmulator.setTriggersForTesting([
 ]);
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
-const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(functionsEmulator);
+const startFunctionRuntime = functionsEmulator.startFunctionRuntime.bind(
+  functionsEmulator
+);
 function useFunctions(triggers: () => {}): void {
   const serializedTriggers = triggers.toString();
 
@@ -174,7 +179,9 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
       .then((res) => {
-        expect(res.body.baseUrl).to.eq("/fake-project-id/us-central1/function_id");
+        expect(res.body.baseUrl).to.eq(
+          "/fake-project-id/us-central1/function_id"
+        );
       });
   }).timeout(TIMEOUT_LONG);
 
@@ -222,11 +229,13 @@ describe("FunctionsEmulator-Hub", () => {
   it("should override callable auth", async () => {
     useFunctions(() => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
-          return {
-            auth: ctx.auth,
-          };
-        }),
+        callable_function_id: require("firebase-functions").https.onCall(
+          (data: any, ctx: any) => {
+            return {
+              auth: ctx.auth,
+            };
+          }
+        ),
       };
     });
 
@@ -270,11 +279,13 @@ describe("FunctionsEmulator-Hub", () => {
   it("should override callable auth with unicode", async () => {
     useFunctions(() => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
-          return {
-            auth: ctx.auth,
-          };
-        }),
+        callable_function_id: require("firebase-functions").https.onCall(
+          (data: any, ctx: any) => {
+            return {
+              auth: ctx.auth,
+            };
+          }
+        ),
       };
     });
 
@@ -319,11 +330,13 @@ describe("FunctionsEmulator-Hub", () => {
   it("should override callable auth with a poorly padded ID Token", async () => {
     useFunctions(() => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
-          return {
-            auth: ctx.auth,
-          };
-        }),
+        callable_function_id: require("firebase-functions").https.onCall(
+          (data: any, ctx: any) => {
+            return {
+              auth: ctx.auth,
+            };
+          }
+        ),
       };
     });
 
@@ -358,11 +371,13 @@ describe("FunctionsEmulator-Hub", () => {
   it("should preserve the Authorization header for callable auth", async () => {
     useFunctions(() => {
       return {
-        callable_function_id: require("firebase-functions").https.onCall((data: any, ctx: any) => {
-          return {
-            header: ctx.rawRequest.headers["authorization"],
-          };
-        }),
+        callable_function_id: require("firebase-functions").https.onCall(
+          (data: any, ctx: any) => {
+            return {
+              header: ctx.rawRequest.headers["authorization"],
+            };
+          }
+        ),
       };
     });
 

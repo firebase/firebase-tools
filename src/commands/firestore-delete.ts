@@ -31,7 +31,11 @@ function getConfirmationMessage(deleteOp: FirestoreDelete, options: any) {
     }
 
     // Shallow document delete
-    return "You are about to delete the document at " + clc.cyan(deleteOp.path) + ". Are you sure?";
+    return (
+      "You are about to delete the document at " +
+      clc.cyan(deleteOp.path) +
+      ". Are you sure?"
+    );
   }
 
   // Recursive collection delete
@@ -71,9 +75,15 @@ module.exports = new Command("firestore:delete [path]")
     "Delete all. Deletes the entire Firestore database, " +
       "including all collections and documents. Any other flags or arguments will be ignored."
   )
-  .option("-y, --yes", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .option(
+    "-y, --yes",
+    "No confirmation. Otherwise, a confirmation prompt will appear."
+  )
   .before(printNoticeIfEmulated, Emulators.FIRESTORE)
-  .before(requirePermissions, ["datastore.entities.list", "datastore.entities.delete"])
+  .before(requirePermissions, [
+    "datastore.entities.list",
+    "datastore.entities.delete",
+  ])
   .action(async (path: string | undefined, options: any) => {
     // Guarantee path
     if (!path && !options.allCollections) {

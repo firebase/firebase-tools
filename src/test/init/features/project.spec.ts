@@ -35,13 +35,28 @@ describe("project", () => {
 
   beforeEach(() => {
     getProjectStub = sandbox.stub(projectManager, "getFirebaseProject");
-    createFirebaseProjectStub = sandbox.stub(projectManager, "createFirebaseProjectAndLog");
+    createFirebaseProjectStub = sandbox.stub(
+      projectManager,
+      "createFirebaseProjectAndLog"
+    );
     getOrPromptProjectStub = sandbox.stub(projectManager, "getOrPromptProject");
-    addFirebaseProjectStub = sandbox.stub(projectManager, "addFirebaseToCloudProjectAndLog");
-    promptAvailableProjectIdStub = sandbox.stub(projectManager, "promptAvailableProjectId");
-    promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
-    promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
-    configstoreSetStub = sandbox.stub(configstore, "set").throws("Unexpected configstore set");
+    addFirebaseProjectStub = sandbox.stub(
+      projectManager,
+      "addFirebaseToCloudProjectAndLog"
+    );
+    promptAvailableProjectIdStub = sandbox.stub(
+      projectManager,
+      "promptAvailableProjectId"
+    );
+    promptStub = sandbox
+      .stub(prompt, "prompt")
+      .throws("Unexpected prompt call");
+    promptOnceStub = sandbox
+      .stub(prompt, "promptOnce")
+      .throws("Unexpected promptOnce call");
+    configstoreSetStub = sandbox
+      .stub(configstore, "set")
+      .throws("Unexpected configstore set");
     emptyConfig = new Config("{}", {});
   });
 
@@ -64,7 +79,9 @@ describe("project", () => {
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
-        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal(
+          "my-project-123"
+        );
         expect(promptOnceStub).to.not.be.called;
         expect(getOrPromptProjectStub).to.not.be.called;
       });
@@ -91,12 +108,17 @@ describe("project", () => {
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
-        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal(
+          "my-project-123"
+        );
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptStub).to.be.calledOnce;
-        expect(createFirebaseProjectStub).to.be.calledOnceWith("my-project-123", {
-          displayName: "my-project",
-        });
+        expect(createFirebaseProjectStub).to.be.calledOnceWith(
+          "my-project-123",
+          {
+            displayName: "my-project",
+          }
+        );
       });
 
       it("should throw if project ID is empty after prompt", async () => {
@@ -132,7 +154,9 @@ describe("project", () => {
         const setup = { config: {}, rcfile: {} };
         promptOnceStub
           .onFirstCall()
-          .resolves("Add Firebase to an existing Google Cloud Platform project");
+          .resolves(
+            "Add Firebase to an existing Google Cloud Platform project"
+          );
         promptAvailableProjectIdStub.onFirstCall().resolves("my-project-123");
         addFirebaseProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
         configstoreSetStub.onFirstCall().resolves();
@@ -142,7 +166,9 @@ describe("project", () => {
         expect(_.get(setup, "projectId")).to.deep.equal("my-project-123");
         expect(_.get(setup, "instance")).to.deep.equal("my-project");
         expect(_.get(setup, "projectLocation")).to.deep.equal("us-central");
-        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal("my-project-123");
+        expect(_.get(setup.rcfile, "projects.default")).to.deep.equal(
+          "my-project-123"
+        );
         expect(promptOnceStub).to.be.calledOnce;
         expect(promptAvailableProjectIdStub).to.be.calledOnce;
         expect(addFirebaseProjectStub).to.be.calledOnceWith("my-project-123");
@@ -153,7 +179,9 @@ describe("project", () => {
         const setup = { config: {}, rcfile: {} };
         promptOnceStub
           .onFirstCall()
-          .resolves("Add Firebase to an existing Google Cloud Platform project");
+          .resolves(
+            "Add Firebase to an existing Google Cloud Platform project"
+          );
         promptAvailableProjectIdStub.onFirstCall().resolves("");
 
         let err;
@@ -189,7 +217,10 @@ describe("project", () => {
 
       beforeEach(() => {
         options = {};
-        setup = { config: {}, rcfile: { projects: { default: "my-project-123" } } };
+        setup = {
+          config: {},
+          rcfile: { projects: { default: "my-project-123" } },
+        };
         getProjectStub.onFirstCall().resolves(TEST_FIREBASE_PROJECT);
       });
 

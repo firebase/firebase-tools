@@ -24,7 +24,11 @@ export interface Setup {
 // as an indexable type instead of doing this cast.
 const features = _features as Indexable;
 
-export async function init(setup: Setup, config: any, options: any): Promise<any> {
+export async function init(
+  setup: Setup,
+  config: any,
+  options: any
+): Promise<any> {
   const nextFeature = setup.features.shift();
   if (nextFeature) {
     if (!features[nextFeature]) {
@@ -35,7 +39,9 @@ export async function init(setup: Setup, config: any, options: any): Promise<any
       );
     }
 
-    logger.info(clc.bold("\n" + clc.white("=== ") + _.capitalize(nextFeature) + " Setup"));
+    logger.info(
+      clc.bold("\n" + clc.white("=== ") + _.capitalize(nextFeature) + " Setup")
+    );
 
     await Promise.resolve(features[nextFeature](setup, config, options));
     return init(setup, config, options);

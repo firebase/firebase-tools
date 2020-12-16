@@ -24,8 +24,9 @@ async function selectAppInteractively(
 ): Promise<AppMetadata> {
   if (apps.length === 0) {
     throw new FirebaseError(
-      `There are no ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}apps ` +
-        "associated with this Firebase project"
+      `There are no ${
+        appPlatform === AppPlatform.ANY ? "" : appPlatform + " "
+      }apps ` + "associated with this Firebase project"
     );
   }
 
@@ -58,13 +59,19 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
   .before(requireAuth)
   .action(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async (platform = "", appId = "", options: any): Promise<AppConfigurationData> => {
+    async (
+      platform = "",
+      appId = "",
+      options: any
+    ): Promise<AppConfigurationData> => {
       let appPlatform = getAppPlatform(platform);
 
       if (!appId) {
         let projectId = getProjectId(options);
         if (options.nonInteractive && !projectId) {
-          throw new FirebaseError("Must supply app and project ids in non-interactive mode.");
+          throw new FirebaseError(
+            "Must supply app and project ids in non-interactive mode."
+          );
         } else if (!projectId) {
           const result = await getOrPromptProject(options);
           projectId = result.projectId;
@@ -80,7 +87,10 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
             `Project ${projectId} has multiple apps, must specify an app id.`
           );
         } else {
-          const appMetadata: AppMetadata = await selectAppInteractively(apps, appPlatform);
+          const appMetadata: AppMetadata = await selectAppInteractively(
+            apps,
+            appPlatform
+          );
           appId = appMetadata.appId;
           appPlatform = appMetadata.platform;
         }
@@ -108,8 +118,11 @@ module.exports = new Command("apps:sdkconfig [platform] [appId]")
         return fileInfo;
       }
 
-      const shouldUseDefaultFilename = options.out === true || options.out === "";
-      const filename = shouldUseDefaultFilename ? configData.fileName : options.out;
+      const shouldUseDefaultFilename =
+        options.out === true || options.out === "";
+      const filename = shouldUseDefaultFilename
+        ? configData.fileName
+        : options.out;
       if (fs.existsSync(filename)) {
         if (options.nonInteractive) {
           throw new FirebaseError(`${filename} already exists`);

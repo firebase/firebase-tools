@@ -31,9 +31,14 @@ export default new Command("database:push <path> [infile]")
       throw new FirebaseError("Path must begin with /");
     }
     const inStream =
-      utils.stringToStream(options.data) || (infile ? fs.createReadStream(infile) : process.stdin);
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
-    const u = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+      utils.stringToStream(options.data) ||
+      (infile ? fs.createReadStream(infile) : process.stdin);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(
+      options.instanceDetails.databaseUrl
+    );
+    const u = new URL(
+      utils.getDatabaseUrl(origin, options.instance, path + ".json")
+    );
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -50,7 +55,9 @@ export default new Command("database:push <path> [infile]")
       });
     } catch (err) {
       logger.debug(err);
-      throw new FirebaseError(`Unexpected error while pushing data: ${err}`, { exit: 2 });
+      throw new FirebaseError(`Unexpected error while pushing data: ${err}`, {
+        exit: 2,
+      });
     }
 
     if (!_.endsWith(path, "/")) {

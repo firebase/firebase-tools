@@ -16,7 +16,7 @@ var commandUtils = require("./emulator/commandUtils");
 var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
 var { EmulatorHubClient } = require("./emulator/hubClient");
 
-module.exports = async function(options) {
+module.exports = async function (options) {
   options.port = parseInt(options.port, 10);
 
   let debugPort = undefined;
@@ -47,22 +47,29 @@ module.exports = async function(options) {
       remoteEmulators,
       debugPort,
     })
-    .then(function() {
+    .then(function () {
       return serveFunctions.connect();
     })
-    .then(function() {
+    .then(function () {
       const instance = serveFunctions.get();
       const emulator = new shell.FunctionsEmulatorShell(instance);
 
-      if (emulator.emulatedFunctions && emulator.emulatedFunctions.length === 0) {
+      if (
+        emulator.emulatedFunctions &&
+        emulator.emulatedFunctions.length === 0
+      ) {
         logger.info("No functions emulated.");
         process.exit();
       }
 
-      var initializeContext = function(context) {
-        _.forEach(emulator.triggers, function(trigger) {
+      var initializeContext = function (context) {
+        _.forEach(emulator.triggers, function (trigger) {
           if (_.includes(emulator.emulatedFunctions, trigger.name)) {
-            var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
+            var localFunction = new LocalFunction(
+              trigger,
+              emulator.urls,
+              emulator
+            );
             var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
             _.set(context, triggerNameDotNotation, localFunction.call);
           }
@@ -88,7 +95,7 @@ module.exports = async function(options) {
         )}`
       );
 
-      var writer = function(output) {
+      var writer = function (output) {
         // Prevent full print out of Request object when a request is made
         if (output instanceof request.Request) {
           return "Sent request to function.";
@@ -106,12 +113,9 @@ module.exports = async function(options) {
       initializeContext(replServer.context);
       replServer.on("reset", initializeContext);
 
-      return new Promise(function(resolve) {
-        replServer.on("exit", function() {
-          return serveFunctions
-            .stop()
-            .then(resolve)
-            .catch(resolve);
+      return new Promise(function (resolve) {
+        replServer.on("exit", function () {
+          return serveFunctions.stop().then(resolve).catch(resolve);
         });
       });
     });

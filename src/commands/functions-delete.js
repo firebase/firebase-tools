@@ -20,9 +20,15 @@ module.exports = new Command("functions:delete [filters...]")
     "Specify region of the function to be deleted. " +
       "If omitted, functions from all regions whose names match the filters will be deleted. "
   )
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
-  .before(requirePermissions, ["cloudfunctions.functions.list", "cloudfunctions.functions.delete"])
-  .action(function(filters, options) {
+  .option(
+    "-f, --force",
+    "No confirmation. Otherwise, a confirmation prompt will appear."
+  )
+  .before(requirePermissions, [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.delete",
+  ])
+  .action(function (filters, options) {
     if (!filters.length) {
       return utils.reject("Must supply at least function or group name.");
     }
@@ -32,7 +38,7 @@ module.exports = new Command("functions:delete [filters...]")
     var functionsToDelete = [];
 
     // Dot notation can be used to indicate function inside of a group
-    var filterChunks = _.map(filters, function(filter) {
+    var filterChunks = _.map(filters, function (filter) {
       return filter.split(".");
     });
     return functionsConfig
@@ -43,19 +49,21 @@ module.exports = new Command("functions:delete [filters...]")
       .then(() => {
         return cloudfunctions
           .listAll(projectId)
-          .then(function(result) {
+          .then(function (result) {
             var allFunctions = _.map(result, "name");
-            return _.filter(allFunctions, function(name) {
-              var regionMatches = options.region ? helper.getRegion(name) === options.region : true;
+            return _.filter(allFunctions, function (name) {
+              var regionMatches = options.region
+                ? helper.getRegion(name) === options.region
+                : true;
               var nameMatches = _.some(
-                _.map(filterChunks, function(chunk) {
+                _.map(filterChunks, function (chunk) {
                   return helper.functionMatchesGroup(name, chunk);
                 })
               );
               return regionMatches && nameMatches;
             });
           })
-          .then(function(result) {
+          .then(function (result) {
             functionsToDelete = result;
             if (functionsToDelete.length === 0) {
               return utils.reject(
@@ -65,7 +73,7 @@ module.exports = new Command("functions:delete [filters...]")
                 { exit: 1 }
               );
             }
-            var deleteList = _.map(functionsToDelete, function(func) {
+            var deleteList = _.map(functionsToDelete, function (func) {
               return "\t" + helper.getFunctionLabel(func);
             }).join("\n");
             if (!options.force) {
@@ -82,11 +90,15 @@ module.exports = new Command("functions:delete [filters...]")
               ]);
             }
           })
-          .then(function() {
+          .then(function () {
             if (!(options.confirm || options.force)) {
               return utils.reject("Command aborted.", { exit: 1 });
             }
-            return functionsDelete(functionsToDelete, projectId, appEngineLocation);
+            return functionsDelete(
+              functionsToDelete,
+              projectId,
+              appEngineLocation
+            );
           });
       });
   });

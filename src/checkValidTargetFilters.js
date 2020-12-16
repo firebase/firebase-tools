@@ -4,9 +4,9 @@ var _ = require("lodash");
 
 var { FirebaseError } = require("./error");
 
-module.exports = function(options) {
+module.exports = function (options) {
   function numFilters(targetTypes) {
-    return _.filter(options.only, function(opt) {
+    return _.filter(options.only, function (opt) {
       var optChunks = opt.split(":");
       return _.includes(targetTypes, optChunks[0]) && optChunks.length > 1;
     }).length;
@@ -18,7 +18,7 @@ module.exports = function(options) {
     return numFilters(targetTypes) === 0;
   }
 
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     if (!options.only) {
       return resolve();
     }
@@ -37,7 +37,10 @@ module.exports = function(options) {
         )
       );
     }
-    if (targetContainsFilter(["functions"]) && targetDoesNotContainFilter(["functions"])) {
+    if (
+      targetContainsFilter(["functions"]) &&
+      targetDoesNotContainFilter(["functions"])
+    ) {
       return reject(
         new FirebaseError(
           'Cannot specify "--only functions" and "--only functions:<filter>" at the same time',

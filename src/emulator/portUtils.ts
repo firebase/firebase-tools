@@ -115,7 +115,11 @@ export async function findAvailablePort(
 
   if (avoidRestricted && isRestricted(openPort)) {
     logger.debug(`portUtils: skipping restricted port ${openPort}`);
-    return findAvailablePort(host, suggestUnrestricted(openPort), avoidRestricted);
+    return findAvailablePort(
+      host,
+      suggestUnrestricted(openPort),
+      avoidRestricted
+    );
   }
 
   return openPort;
@@ -124,7 +128,10 @@ export async function findAvailablePort(
 /**
  * Check if a port is open on the given host.
  */
-export async function checkPortOpen(port: number, host: string): Promise<boolean> {
+export async function checkPortOpen(
+  port: number,
+  host: string
+): Promise<boolean> {
   try {
     const inUse = await tcpport.check(port, host);
     return !inUse;
@@ -137,12 +144,17 @@ export async function checkPortOpen(port: number, host: string): Promise<boolean
 /**
  * Wait for a port to close on the given host. Checks every 250ms for up to 30s.
  */
-export async function waitForPortClosed(port: number, host: string): Promise<void> {
+export async function waitForPortClosed(
+  port: number,
+  host: string
+): Promise<void> {
   const interval = 250;
   const timeout = 30000;
   try {
     await tcpport.waitUntilUsedOnHost(port, host, interval, timeout);
   } catch (e) {
-    throw new FirebaseError(`TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`);
+    throw new FirebaseError(
+      `TIMEOUT: Port ${port} on ${host} was not active within ${timeout}ms`
+    );
   }
 }

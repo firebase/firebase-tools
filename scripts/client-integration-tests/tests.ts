@@ -32,7 +32,9 @@ describe("deployHosting", () => {
       targets: {
         [process.env.FBTOOLS_TARGET_PROJECT as string]: {
           hosting: {
-            "client-integration-site": [process.env.FBTOOLS_CLIENT_INTEGRATION_SITE],
+            "client-integration-site": [
+              process.env.FBTOOLS_CLIENT_INTEGRATION_SITE,
+            ],
           },
         },
       },
@@ -55,7 +57,9 @@ describe("deployHosting", () => {
 
 describe("apps:list", () => {
   it("should be able to list apps with missing or undefined optional arguments", async () => {
-    const noArgsApps = await client.apps.list({ project: process.env.FBTOOLS_TARGET_PROJECT });
+    const noArgsApps = await client.apps.list({
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+    });
     expect(noArgsApps).to.have.length.greaterThan(0);
 
     const undefinedArgsApps = await client.apps.list(undefined, {
@@ -70,7 +74,9 @@ describe("apps:list", () => {
   });
 
   it("should list apps configuration", async () => {
-    const apps = await client.apps.list("web", { project: process.env.FBTOOLS_TARGET_PROJECT });
+    const apps = await client.apps.list("web", {
+      project: process.env.FBTOOLS_TARGET_PROJECT,
+    });
 
     expect(apps).to.have.length.greaterThan(0);
   });

@@ -11,7 +11,7 @@ var utils = require("../../utils");
 
 const dbRulesConfig = require("../../database/rulesConfig");
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   var rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
   var next = Promise.resolve();
 
@@ -22,7 +22,7 @@ module.exports = function(context, options) {
   var ruleFiles = {};
   var deploys = [];
 
-  rulesConfig.forEach(function(ruleConfig) {
+  rulesConfig.forEach(function (ruleConfig) {
     if (!ruleConfig.rules) {
       return;
     }
@@ -31,7 +31,7 @@ module.exports = function(context, options) {
     deploys.push(ruleConfig);
   });
 
-  _.forEach(ruleFiles, function(v, file) {
+  _.forEach(ruleFiles, function (v, file) {
     switch (path.extname(file)) {
       case ".json":
         ruleFiles[file] = options.config.readProjectFile(file);
@@ -40,7 +40,9 @@ module.exports = function(context, options) {
         ruleFiles[file] = parseBoltRules(file);
         break;
       default:
-        throw new FirebaseError("Unexpected rules format " + path.extname(file));
+        throw new FirebaseError(
+          "Unexpected rules format " + path.extname(file)
+        );
     }
   });
 
@@ -50,10 +52,15 @@ module.exports = function(context, options) {
   };
   utils.logBullet(clc.bold.cyan("database: ") + "checking rules syntax...");
   return Promise.all(
-    deploys.map(function(deploy) {
+    deploys.map(function (deploy) {
       return rtdb
-        .updateRules(context.projectId, deploy.instance, ruleFiles[deploy.rules], { dryRun: true })
-        .then(function() {
+        .updateRules(
+          context.projectId,
+          deploy.instance,
+          ruleFiles[deploy.rules],
+          { dryRun: true }
+        )
+        .then(function () {
           utils.logSuccess(
             clc.bold.green("database: ") +
               "rules syntax for database " +

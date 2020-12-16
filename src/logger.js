@@ -4,7 +4,7 @@ const winston = require("winston");
 
 function expandErrors(logger) {
   const oldLogFunc = logger.log;
-  logger.log = function(...logArgs) {
+  logger.log = function (...logArgs) {
     const args = logArgs.slice(0);
     if (args.length >= 2 && args[1] instanceof Error) {
       args[1] = args[1].stack;
@@ -20,7 +20,7 @@ const logger = expandErrors(winston.createLogger());
 logger.add(new winston.transports.Console({ silent: true }));
 
 const debug = logger.debug;
-logger.debug = function(...args) {
+logger.debug = function (...args) {
   args[0] = "[" + new Date().toISOString() + "] " + (args[0] || "");
   debug(...args);
 };

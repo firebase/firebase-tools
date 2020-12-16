@@ -1,7 +1,12 @@
 import { bold, underline } from "cli-color";
 
 import { Command } from "../command";
-import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
+import {
+  deleteChannel,
+  normalizeName,
+  getChannel,
+  removeAuthDomain,
+} from "../hosting/api";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
@@ -56,7 +61,9 @@ export default new Command("hosting:channel:delete <channelId>")
 
       logLabeledSuccess(
         "hosting:channels",
-        `Successfully deleted channel ${bold(channelId)} for site ${bold(siteId)}.`
+        `Successfully deleted channel ${bold(channelId)} for site ${bold(
+          siteId
+        )}.`
       );
     }
   );

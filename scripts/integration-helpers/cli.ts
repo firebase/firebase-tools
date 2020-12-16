@@ -3,7 +3,10 @@ import * as subprocess from "child_process";
 export class CLIProcess {
   process?: subprocess.ChildProcess;
 
-  constructor(private readonly name: string, private readonly workdir: string) {}
+  constructor(
+    private readonly name: string,
+    private readonly workdir: string
+  ) {}
 
   start(
     cmd: string,
@@ -43,7 +46,9 @@ export class CLIProcess {
         };
         const customFailure = (): void => {
           p.stdout.removeListener("data", customCallback);
-          reject(new Error("failed to resolve startup before process.stdout closed"));
+          reject(
+            new Error("failed to resolve startup before process.stdout closed")
+          );
         };
         p.stdout.on("data", customCallback);
         p.stdout.on("close", customFailure);

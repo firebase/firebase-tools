@@ -1,8 +1,15 @@
 import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
-import { TEST_PHONE_NUMBER, FAKE_GOOGLE_ACCOUNT, REAL_GOOGLE_ACCOUNT } from "./helpers";
+import {
+  PROVIDER_PASSWORD,
+  SIGNIN_METHOD_EMAIL_LINK,
+} from "../../../emulator/auth/state";
+import {
+  TEST_PHONE_NUMBER,
+  FAKE_GOOGLE_ACCOUNT,
+  REAL_GOOGLE_ACCOUNT,
+} from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -35,15 +42,15 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
         expect(res.body.email).to.equal(FAKE_GOOGLE_ACCOUNT.email);
-        expect(res.body.emailVerified).to.equal(FAKE_GOOGLE_ACCOUNT.emailVerified);
+        expect(res.body.emailVerified).to.equal(
+          FAKE_GOOGLE_ACCOUNT.emailVerified
+        );
         expect(res.body.federatedId).to.equal(
           `https://accounts.google.com/${FAKE_GOOGLE_ACCOUNT.rawId}`
         );
         expect(res.body.oauthIdToken).to.equal(FAKE_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
@@ -97,15 +104,15 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
         expect(res.body.email).to.equal(REAL_GOOGLE_ACCOUNT.email);
-        expect(res.body.emailVerified).to.equal(REAL_GOOGLE_ACCOUNT.emailVerified);
+        expect(res.body.emailVerified).to.equal(
+          REAL_GOOGLE_ACCOUNT.emailVerified
+        );
         expect(res.body.federatedId).to.equal(
           `https://accounts.google.com/${REAL_GOOGLE_ACCOUNT.rawId}`
         );
         expect(res.body.oauthIdToken).to.equal(REAL_GOOGLE_ACCOUNT.idToken);
         expect(res.body.providerId).to.equal("google.com");
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         // The ID Token used above does NOT contain name or photo, so the
         // account created won't have those attributes either.
@@ -159,7 +166,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithIdp")
       .query({ key: "fake-api-key" })
       .send({
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
         returnSecureToken: true,
@@ -167,7 +176,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
-        expect(res.body.federatedId).to.equal(`https://accounts.google.com/${claims.sub}`);
+        expect(res.body.federatedId).to.equal(
+          `https://accounts.google.com/${claims.sub}`
+        );
         expect(res.body.oauthIdToken).to.equal(fakeIdToken);
         expect(res.body.providerId).to.equal("google.com");
         expect(res.body.displayName).to.equal(claims.name);
@@ -175,9 +186,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expect(res.body.firstName).to.equal(claims.given_name);
         expect(res.body.lastName).to.equal(claims.family_name);
         expect(res.body.photoUrl).to.equal(claims.picture);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const raw = JSON.parse(res.body.rawUserInfo);
         expect(raw.id).to.equal(claims.sub);
@@ -236,7 +245,11 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       name: "Alan Turing",
       picture: "http://localhost/turing.png",
     });
-    const { idToken } = await signInWithFakeClaims(authApi(), "google.com", claims);
+    const { idToken } = await signInWithFakeClaims(
+      authApi(),
+      "google.com",
+      claims
+    );
 
     const user = await getAccountInfoByIdToken(authApi(), idToken);
     expect(user.photoUrl).equal(claims.picture);
@@ -245,12 +258,17 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   });
 
   it("should allow duplicate emails if set in project config", async () => {
-    await updateProjectConfig(authApi(), { signIn: { allowDuplicateEmails: true } });
+    await updateProjectConfig(authApi(), {
+      signIn: { allowDuplicateEmails: true },
+    });
 
     const email = "alice@example.com";
 
     // Given there exists an account with email already:
-    const user1 = await registerUser(authApi(), { email, password: "notasecret" });
+    const user1 = await registerUser(authApi(), {
+      email,
+      password: "notasecret",
+    });
 
     // When trying to sign-in with IDP that claims the same email:
     const user2 = await signInWithFakeClaims(authApi(), "google.com", {
@@ -263,7 +281,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   });
 
   it("should sign-up new users without copying email when allowing duplicate emails", async () => {
-    await updateProjectConfig(authApi(), { signIn: { allowDuplicateEmails: true } });
+    await updateProjectConfig(authApi(), {
+      signIn: { allowDuplicateEmails: true },
+    });
 
     const email = "alice@example.com";
 
@@ -277,7 +297,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   });
 
   it("should allow multiple providers with same email when allowing duplicate emails", async () => {
-    await updateProjectConfig(authApi(), { signIn: { allowDuplicateEmails: true } });
+    await updateProjectConfig(authApi(), {
+      signIn: { allowDuplicateEmails: true },
+    });
 
     const email = "alice@example.com";
 
@@ -321,7 +343,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
     const user = await signInWithFakeClaims(authApi(), "google.com", {
       sub: "123456789012345678901",
     });
-    await updateAccountByLocalId(authApi(), user.localId, { disableUser: true });
+    await updateAccountByLocalId(authApi(), user.localId, {
+      disableUser: true,
+    });
 
     const claims = fakeClaims({
       sub: "123456789012345678901",
@@ -333,7 +357,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: user.idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
@@ -440,12 +466,16 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
     const email = "bar@example.com";
     const providerId1 = "facebook.com";
     const originalDisplayName = "Bar";
-    const { localId, idToken } = await signInWithFakeClaims(authApi(), providerId1, {
-      sub: "123456789012345678901",
-      email,
-      email_verified: false,
-      name: originalDisplayName,
-    });
+    const { localId, idToken } = await signInWithFakeClaims(
+      authApi(),
+      providerId1,
+      {
+        sub: "123456789012345678901",
+        email,
+        email_verified: false,
+        name: originalDisplayName,
+      }
+    );
 
     // When signing in with IDP and IDP does not verify email:
     const providerId2 = "google.com";
@@ -547,7 +577,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         // sub is not a string
-        postBody: `providerId=google.com&id_token=${JSON.stringify({ sub: 12345 })}`,
+        postBody: `providerId=google.com&id_token=${JSON.stringify({
+          sub: 12345,
+        })}`,
         requestUri: "http://localhost",
       })
       .then((res) => {
@@ -571,7 +603,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: user.idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
@@ -579,9 +613,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(!!res.body.isNewUser).to.equal(false);
         expect(res.body.localId).to.equal(user.localId);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -619,7 +651,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: user.idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
@@ -627,9 +661,7 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(!!res.body.isNewUser).to.equal(false);
         expect(res.body.localId).to.equal(user.localId);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -663,7 +695,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       email: "foo@example.com",
       password: "notasecret",
     });
-    await updateAccountByLocalId(authApi(), user.localId, { disableUser: true });
+    await updateAccountByLocalId(authApi(), user.localId, {
+      disableUser: true,
+    });
 
     const claims = fakeClaims({
       sub: "123456789012345678901",
@@ -675,7 +709,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: user.idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
@@ -693,7 +729,11 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       email: "alice@example.com",
       email_verified: false,
     };
-    const { idToken } = await signInWithFakeClaims(authApi(), providerId, claims);
+    const { idToken } = await signInWithFakeClaims(
+      authApi(),
+      providerId,
+      claims
+    );
 
     // When trying to link the same IDP account on the same user:
     const fakeIdToken = JSON.stringify(claims);
@@ -702,7 +742,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
         returnIdpCredential: true,
       })
@@ -711,7 +753,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
         expect(res.body.localId).to.be.undefined;
         expect(res.body).not.to.have.property("refreshToken");
 
-        expect(res.body.errorMessage).to.equal("FEDERATED_USER_ID_ALREADY_LINKED");
+        expect(res.body.errorMessage).to.equal(
+          "FEDERATED_USER_ID_ALREADY_LINKED"
+        );
         expect(res.body.oauthIdToken).to.equal(fakeIdToken);
       });
   });
@@ -737,12 +781,16 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken: user.idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).to.equal("FEDERATED_USER_ID_ALREADY_LINKED");
+        expect(res.body.error.message).to.equal(
+          "FEDERATED_USER_ID_ALREADY_LINKED"
+        );
       });
 
     // Sign-in methods for either user should not be changed since linking failed.
@@ -770,7 +818,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
       })
       .then((res) => {
@@ -782,7 +832,10 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   it("should allow linking IDP account with same email to same user", async () => {
     // Given an existing account with the email:
     const email = "alice@example.com";
-    const { idToken, localId } = await registerUser(authApi(), { email, password: "notasecret" });
+    const { idToken, localId } = await registerUser(authApi(), {
+      email,
+      password: "notasecret",
+    });
 
     // When trying to link an IDP account on user with the same email:
     const fakeIdToken = JSON.stringify(
@@ -797,7 +850,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
       })
       .then((res) => {
@@ -817,7 +872,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
     const email = "alice@example.com";
     await registerUser(authApi(), { email, password: "notasecret" });
 
-    await updateProjectConfig(authApi(), { signIn: { allowDuplicateEmails: true } });
+    await updateProjectConfig(authApi(), {
+      signIn: { allowDuplicateEmails: true },
+    });
 
     // When trying to link an IDP account on a different user with the same email:
     const { idToken, localId } = await registerAnonUser(authApi());
@@ -832,7 +889,9 @@ describeAuthEmulator("sign-in with credential", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .send({
         idToken,
-        postBody: `providerId=google.com&id_token=${encodeURIComponent(fakeIdToken)}`,
+        postBody: `providerId=google.com&id_token=${encodeURIComponent(
+          fakeIdToken
+        )}`,
         requestUri: "http://localhost",
       })
       .then((res) => {

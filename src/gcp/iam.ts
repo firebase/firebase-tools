@@ -123,7 +123,10 @@ export async function createServiceAccountKey(
  * @return The raw API response, including status, body, etc.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function deleteServiceAccount(projectId: string, accountEmail: string): Promise<any> {
+export function deleteServiceAccount(
+  projectId: string,
+  accountEmail: string
+): Promise<any> {
   return api.request(
     "DELETE",
     `/${API_VERSION}/projects/${projectId}/serviceAccounts/${accountEmail}`,
@@ -142,12 +145,18 @@ export function deleteServiceAccount(projectId: string, accountEmail: string): P
  * @param role The IAM role to get, e.g. "editor".
  * @return Details about the IAM role.
  */
-export async function getRole(role: string): Promise<{ title: string; description: string }> {
-  const response = await api.request("GET", endpoint([API_VERSION, "roles", role]), {
-    auth: true,
-    origin: api.iamOrigin,
-    retryCodes: [500, 503],
-  });
+export async function getRole(
+  role: string
+): Promise<{ title: string; description: string }> {
+  const response = await api.request(
+    "GET",
+    endpoint([API_VERSION, "roles", role]),
+    {
+      auth: true,
+      origin: api.iamOrigin,
+      retryCodes: [500, 503],
+    }
+  );
   return response.body;
 }
 
@@ -180,11 +189,15 @@ export async function testResourceIamPermissions(
     );
     return { allowed: permissions, missing: [], passed: true };
   }
-  const response = await api.request("POST", `/${apiVersion}/${resourceName}:testIamPermissions`, {
-    auth: true,
-    data: { permissions },
-    origin,
-  });
+  const response = await api.request(
+    "POST",
+    `/${apiVersion}/${resourceName}:testIamPermissions`,
+    {
+      auth: true,
+      data: { permissions },
+      origin,
+    }
+  );
 
   const allowed = (response.body.permissions || []).sort();
   const missing = difference(permissions, allowed);

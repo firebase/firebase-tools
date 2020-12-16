@@ -11,7 +11,9 @@ const utils = require("../utils");
 const API_VERSION = "v1";
 
 function _functionsOpLogReject(func, type, err) {
-  utils.logWarning(clc.bold.yellow("functions:") + " failed to " + type + " function " + func);
+  utils.logWarning(
+    clc.bold.yellow("functions:") + " failed to " + type + " function " + func
+  );
   if (err.context.response.statusCode === 429) {
     logger.debug(err.message);
     logger.info(
@@ -35,7 +37,8 @@ function _functionsOpLogReject(func, type, err) {
  */
 function _generateUploadUrl(projectId, location) {
   const parent = "projects/" + projectId + "/locations/" + location;
-  const endpoint = "/" + API_VERSION + "/" + parent + "/functions:generateUploadUrl";
+  const endpoint =
+    "/" + API_VERSION + "/" + parent + "/functions:generateUploadUrl";
 
   return api
     .request("POST", endpoint, {
@@ -45,11 +48,11 @@ function _generateUploadUrl(projectId, location) {
       retryCodes: [503],
     })
     .then(
-      function(result) {
+      function (result) {
         const responseBody = JSON.parse(result.body);
         return Promise.resolve(responseBody.uploadUrl);
       },
-      function(err) {
+      function (err) {
         logger.info(
           "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
         );
@@ -62,7 +65,8 @@ function _generateUploadUrl(projectId, location) {
  * @param options
  */
 function _createFunction(options) {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const location =
+    "projects/" + options.projectId + "/locations/" + options.region;
   const func = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + location + "/functions";
 
@@ -107,7 +111,7 @@ function _createFunction(options) {
       origin: api.functionsOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         return Promise.resolve({
           func: func,
           eventType: options.eventType,
@@ -116,7 +120,7 @@ function _createFunction(options) {
           type: "create",
         });
       },
-      function(err) {
+      function (err) {
         return _functionsOpLogReject(options.functionName, "create", err);
       }
     );
@@ -155,7 +159,8 @@ async function _setIamPolicy(options) {
  * @param options
  */
 function _updateFunction(options) {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const location =
+    "projects/" + options.projectId + "/locations/" + options.region;
   const func = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + func;
 
@@ -208,7 +213,7 @@ function _updateFunction(options) {
   if (options.trigger.eventTrigger) {
     masks = _.concat(
       masks,
-      _.map(_.keys(options.trigger.eventTrigger), function(subkey) {
+      _.map(_.keys(options.trigger.eventTrigger), function (subkey) {
         return "eventTrigger." + subkey;
       })
     );
@@ -226,7 +231,7 @@ function _updateFunction(options) {
       origin: api.functionsOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         return Promise.resolve({
           func: func,
           done: false,
@@ -234,7 +239,7 @@ function _updateFunction(options) {
           type: "update",
         });
       },
-      function(err) {
+      function (err) {
         return _functionsOpLogReject(options.functionName, "update", err);
       }
     );
@@ -244,7 +249,8 @@ function _updateFunction(options) {
  * @param options
  */
 function _deleteFunction(options) {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
+  const location =
+    "projects/" + options.projectId + "/locations/" + options.region;
   const func = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + func;
   return api
@@ -253,7 +259,7 @@ function _deleteFunction(options) {
       origin: api.functionsOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         return Promise.resolve({
           func: func,
           done: false,
@@ -261,7 +267,7 @@ function _deleteFunction(options) {
           type: "delete",
         });
       },
-      function(err) {
+      function (err) {
         return _functionsOpLogReject(options.functionName, "delete", err);
       }
     );
@@ -273,14 +279,20 @@ function _deleteFunction(options) {
  */
 function _listFunctions(projectId, region) {
   const endpoint =
-    "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
+    "/" +
+    API_VERSION +
+    "/projects/" +
+    projectId +
+    "/locations/" +
+    region +
+    "/functions";
   return api
     .request("GET", endpoint, {
       auth: true,
       origin: api.functionsOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         if (resp.body.unreachable && resp.body.unreachable.length > 0) {
           return utils.reject(
             "Some Cloud Functions regions were unreachable, please try again later.",
@@ -289,12 +301,12 @@ function _listFunctions(projectId, region) {
         }
 
         const functionsList = resp.body.functions || [];
-        _.forEach(functionsList, function(f) {
+        _.forEach(functionsList, function (f) {
           f.functionName = f.name.substring(f.name.lastIndexOf("/") + 1);
         });
         return Promise.resolve(functionsList);
       },
-      function(err) {
+      function (err) {
         logger.debug("[functions] failed to list functions for " + projectId);
         logger.debug("[functions] " + err.message);
         return Promise.reject(err.message);
@@ -320,7 +332,7 @@ function _checkOperation(operation) {
       origin: api.functionsOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         if (resp.body.done) {
           operation.done = true;
         }
@@ -329,8 +341,10 @@ function _checkOperation(operation) {
         }
         return Promise.resolve(operation);
       },
-      function(err) {
-        logger.debug("[functions] failed to get status of operation: " + operation.name);
+      function (err) {
+        logger.debug(
+          "[functions] failed to get status of operation: " + operation.name
+        );
         logger.debug("[functions] " + err.message);
         operation.error = err;
         return Promise.reject(err.message);

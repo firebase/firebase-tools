@@ -1,5 +1,8 @@
 import * as uuid from "uuid";
-import { FunctionsRuntimeInstance, InvokeRuntimeOpts } from "./functionsEmulator";
+import {
+  FunctionsRuntimeInstance,
+  InvokeRuntimeOpts,
+} from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
 import {
   FunctionsRuntimeArgs,
@@ -69,7 +72,10 @@ export class RuntimeWorker {
 
     // TODO(samstern): I would like to do this elsewhere...
     if (!execFrb.socketPath) {
-      execFrb.socketPath = getTemporarySocketPath(this.runtime.pid, execFrb.cwd);
+      execFrb.socketPath = getTemporarySocketPath(
+        this.runtime.pid,
+        execFrb.cwd
+      );
       this.log(`Assigning socketPath: ${execFrb.socketPath}`);
     }
 
@@ -122,7 +128,10 @@ export class RuntimeWorker {
   }
 
   waitForDone(): Promise<any> {
-    if (this.state === RuntimeWorkerState.IDLE || this.state === RuntimeWorkerState.FINISHED) {
+    if (
+      this.state === RuntimeWorkerState.IDLE ||
+      this.state === RuntimeWorkerState.FINISHED
+    ) {
       return Promise.resolve();
     }
 
@@ -142,7 +151,9 @@ export class RuntimeWorker {
   waitForSocketReady(): Promise<any> {
     return (
       this.socketReady ||
-      Promise.reject(new Error("Cannot call waitForSocketReady() if runtime is not BUSY"))
+      Promise.reject(
+        new Error("Cannot call waitForSocketReady() if runtime is not BUSY")
+      )
     );
   }
 
@@ -157,7 +168,9 @@ export class RuntimeWorker {
 export class RuntimeWorkerPool {
   private readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
 
-  constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
+  constructor(
+    private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO
+  ) {}
 
   getKey(triggerId: string | undefined) {
     if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
@@ -256,7 +269,10 @@ export class RuntimeWorkerPool {
     return;
   }
 
-  addWorker(triggerId: string | undefined, runtime: FunctionsRuntimeInstance): RuntimeWorker {
+  addWorker(
+    triggerId: string | undefined,
+    runtime: FunctionsRuntimeInstance
+  ): RuntimeWorker {
     const worker = new RuntimeWorker(this.getKey(triggerId), runtime);
     this.log(`addWorker(${worker.key})`);
 
@@ -271,7 +287,9 @@ export class RuntimeWorkerPool {
       logger.handleRuntimeLog(log);
     }, true /* listen forever */);
 
-    this.log(`Adding worker with key ${worker.key}, total=${keyWorkers.length}`);
+    this.log(
+      `Adding worker with key ${worker.key}, total=${keyWorkers.length}`
+    );
     return worker;
   }
 
@@ -279,7 +297,10 @@ export class RuntimeWorkerPool {
     return this.workers.get(this.getKey(triggerId)) || [];
   }
 
-  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
+  private setTriggerWorkers(
+    triggerId: string | undefined,
+    workers: Array<RuntimeWorker>
+  ) {
     this.workers.set(this.getKey(triggerId), workers);
   }
 
@@ -300,6 +321,9 @@ export class RuntimeWorkerPool {
   }
 
   private log(msg: string): void {
-    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log("DEBUG", `[worker-pool] ${msg}`);
+    EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log(
+      "DEBUG",
+      `[worker-pool] ${msg}`
+    );
   }
 }

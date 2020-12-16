@@ -9,7 +9,11 @@ import { storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
 import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getExtensionRegistry, resolveSourceUrl, resolveRegistryEntry } from "./resolveSource";
+import {
+  getExtensionRegistry,
+  resolveSourceUrl,
+  resolveRegistryEntry,
+} from "./resolveSource";
 import { FirebaseError } from "../error";
 import { checkResponse } from "./askUserForParam";
 import { ensure } from "../ensureApiEnabled";
@@ -89,7 +93,9 @@ export function getDBInstanceFromURL(databaseUrl = ""): string {
 /**
  * Gets Firebase project specific param values.
  */
-export async function getFirebaseProjectParams(projectId: string): Promise<any> {
+export async function getFirebaseProjectParams(
+  projectId: string
+): Promise<any> {
   const body = await getFirebaseConfig({ project: projectId });
 
   // This env variable is needed for parameter-less initialization of firebase-admin
@@ -116,13 +122,23 @@ export async function getFirebaseProjectParams(projectId: string): Promise<any> 
  * @param params params to substitute the placeholders for
  * @return Resources object with substituted params
  */
-export function substituteParams(original: object[], params: { [key: string]: string }): Param[] {
+export function substituteParams(
+  original: object[],
+  params: { [key: string]: string }
+): Param[] {
   const startingString = JSON.stringify(original);
-  const applySubstitution = (str: string, paramVal: string, paramKey: string): string => {
+  const applySubstitution = (
+    str: string,
+    paramVal: string,
+    paramKey: string
+  ): string => {
     const exp1 = new RegExp("\\$\\{" + paramKey + "\\}", "g");
     const exp2 = new RegExp("\\$\\{param:" + paramKey + "\\}", "g");
     const regexes = [exp1, exp2];
-    const substituteRegexMatches = (unsubstituted: string, regex: RegExp): string => {
+    const substituteRegexMatches = (
+      unsubstituted: string,
+      regex: RegExp
+    ): string => {
       return unsubstituted.replace(regex, paramVal);
     };
     return _.reduce(regexes, substituteRegexMatches, str);
@@ -185,7 +201,9 @@ export function validateCommandLineParams(
     }
   });
   if (!allParamsValid) {
-    throw new FirebaseError(`Some param values are not valid. Please check your params file.`);
+    throw new FirebaseError(
+      `Some param values are not valid. Please check your params file.`
+    );
   }
 }
 
@@ -211,7 +229,9 @@ export function validateSpec(spec: any) {
     const formattedLicense = String(spec.license).toLocaleLowerCase();
     if (!validLicenses.includes(formattedLicense)) {
       errors.push(
-        `license field in extension.yaml is invalid. Valid value(s): ${validLicenses.join(", ")}`
+        `license field in extension.yaml is invalid. Valid value(s): ${validLicenses.join(
+          ", "
+        )}`
       );
     }
   }
@@ -224,7 +244,9 @@ export function validateSpec(spec: any) {
       }
       if (!resource.type) {
         errors.push(
-          `Resource${resource.name ? ` ${resource.name}` : ""} is missing required field: type`
+          `Resource${
+            resource.name ? ` ${resource.name}` : ""
+          } is missing required field: type`
         );
       }
     }
@@ -244,7 +266,11 @@ export function validateSpec(spec: any) {
       errors.push("Param is missing required field: param");
     }
     if (!param.label) {
-      errors.push(`Param${param.param ? ` ${param.param}` : ""} is missing required field: label`);
+      errors.push(
+        `Param${
+          param.param ? ` ${param.param}` : ""
+        } is missing required field: label`
+      );
     }
     if (param.type && !_.includes(SpecParamType, param.type)) {
       errors.push(
@@ -276,7 +302,8 @@ export function validateSpec(spec: any) {
     }
     if (
       param.type &&
-      (param.type == SpecParamType.SELECT || param.type == SpecParamType.MULTISELECT)
+      (param.type == SpecParamType.SELECT ||
+        param.type == SpecParamType.MULTISELECT)
     ) {
       if (param.validationRegex) {
         errors.push(
@@ -287,9 +314,9 @@ export function validateSpec(spec: any) {
       }
       if (!param.options) {
         errors.push(
-          `Param${param.param ? ` ${param.param}` : ""} requires options because it is type ${
-            param.type
-          }`
+          `Param${
+            param.param ? ` ${param.param}` : ""
+          } requires options because it is type ${param.type}`
         );
       }
       for (const opt of param.options || []) {
@@ -305,7 +332,9 @@ export function validateSpec(spec: any) {
   }
   if (errors.length) {
     const formatted = errors.map((error) => `  - ${error}`);
-    const message = `The extension.yaml has the following errors: \n${formatted.join("\n")}`;
+    const message = `The extension.yaml has the following errors: \n${formatted.join(
+      "\n"
+    )}`;
     throw new FirebaseError(message);
   }
 }
@@ -313,7 +342,9 @@ export function validateSpec(spec: any) {
 /**
  * @param instanceId ID of the extension instance
  */
-export async function promptForValidInstanceId(instanceId: string): Promise<string> {
+export async function promptForValidInstanceId(
+  instanceId: string
+): Promise<string> {
   let instanceIdIsValid = false;
   let newInstanceId;
   const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
@@ -324,7 +355,9 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
       message: `Please enter a new name for this instance:`,
     });
     if (newInstanceId.length <= 6 || 45 <= newInstanceId.length) {
-      logger.info("Invalid instance ID. Instance ID must be between 6 and 45 characters.");
+      logger.info(
+        "Invalid instance ID. Instance ID must be between 6 and 45 characters."
+      );
     } else if (!instanceIdRegex.test(newInstanceId)) {
       logger.info(
         "Invalid instance ID. Instance ID must start with a lowercase letter, " +
@@ -353,7 +386,10 @@ export async function ensureExtensionsApiEnabled(options: any): Promise<void> {
  * @param bucketName the bucket to upload to
  * @return the path where the source was uploaded to
  */
-async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
+async function archiveAndUploadSource(
+  extPath: string,
+  bucketName: string
+): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
     type: "zip",
     ignore: ["node_modules", ".git"],
@@ -377,16 +413,25 @@ export async function publishExtensionVersionFromLocalSource(
     throw new FirebaseError(
       `Extension ID '${clc.bold(
         extensionId
-      )}' does not match the name in extension.yaml '${clc.bold(extensionSpec.name)}'.`
+      )}' does not match the name in extension.yaml '${clc.bold(
+        extensionSpec.name
+      )}'.`
     );
   }
 
   // Substitute deepcopied spec with autopopulated params, and make sure that it passes basic extension.yaml validation.
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
-  subbedSpec.params = substituteParams(extensionSpec.params || [], AUTOPOULATED_PARAM_PLACEHOLDERS);
+  subbedSpec.params = substituteParams(
+    extensionSpec.params || [],
+    AUTOPOULATED_PARAM_PLACEHOLDERS
+  );
   validateSpec(subbedSpec);
 
-  const consent = await confirmExtensionVersion(publisherId, extensionId, extensionSpec.version);
+  const consent = await confirmExtensionVersion(
+    publisherId,
+    extensionId,
+    extensionSpec.version
+  );
   if (!consent) {
     return;
   }
@@ -433,10 +478,15 @@ export async function publishExtensionVersionFromLocalSource(
   const ref = `${publisherId}/${extensionId}@${extensionSpec.version}`;
   let packageUri: string;
   let objectPath = "";
-  const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+  const uploadSpinner = ora.default(
+    " Archiving and uploading extension source code"
+  );
   try {
     uploadSpinner.start();
-    objectPath = await archiveAndUploadSource(rootDirectory, EXTENSIONS_BUCKET_NAME);
+    objectPath = await archiveAndUploadSource(
+      rootDirectory,
+      EXTENSIONS_BUCKET_NAME
+    );
     uploadSpinner.succeed(" Uploaded extension source code");
     packageUri = storageOrigin + objectPath + "?alt=media";
   } catch (err) {
@@ -480,10 +530,15 @@ export async function createSourceFromLocation(
   let extensionRoot: string;
   let objectPath = "";
   if (!urlRegex.test(sourceUri)) {
-    const uploadSpinner = ora.default(" Archiving and uploading extension source code");
+    const uploadSpinner = ora.default(
+      " Archiving and uploading extension source code"
+    );
     try {
       uploadSpinner.start();
-      objectPath = await archiveAndUploadSource(sourceUri, EXTENSIONS_BUCKET_NAME);
+      objectPath = await archiveAndUploadSource(
+        sourceUri,
+        EXTENSIONS_BUCKET_NAME
+      );
       uploadSpinner.succeed(" Uploaded extension source code");
       packageUri = storageOrigin + objectPath + "?alt=media";
       extensionRoot = "/";
@@ -521,7 +576,9 @@ async function deleteUploadedSource(objectPath: string) {
  *                      or a One-Platform format source name (/project/<projectName>/sources/<sourceId>)
  * @return an ExtensionSource corresponding to extensionName if one exists, undefined otherwise
  */
-export async function getExtensionSourceFromName(extensionName: string): Promise<ExtensionSource> {
+export async function getExtensionSourceFromName(
+  extensionName: string
+): Promise<ExtensionSource> {
   const officialExtensionRegex = /^[a-zA-Z\-]+[0-9@.]*$/;
   const existingSourceRegex = /projects\/.+\/sources\/.+/;
   // if the provided extensionName contains only letters and hyphens, assume it is an official extension
@@ -534,7 +591,9 @@ export async function getExtensionSourceFromName(extensionName: string): Promise
     logger.info(`Fetching the source "${extensionName}"...`);
     return await getSource(extensionName);
   }
-  throw new FirebaseError(`Could not find an extension named '${extensionName}'. `);
+  throw new FirebaseError(
+    `Could not find an extension named '${extensionName}'. `
+  );
 }
 
 /**
@@ -567,7 +626,9 @@ export async function confirmExtensionVersion(
  * @param message The prompt message to display
  * @return Promise that resolves to the extension name (e.g. storage-resize-images)
  */
-export async function promptForOfficialExtension(message: string): Promise<string> {
+export async function promptForOfficialExtension(
+  message: string
+): Promise<string> {
   const officialExts = await getExtensionRegistry(true);
   return await promptOnce({
     name: "input",
@@ -605,7 +666,10 @@ export async function promptForRepeatInstance(
  * @param projectId ID of the project in use
  * @param instanceId ID of the extension instance
  */
-export async function instanceIdExists(projectId: string, instanceId: string): Promise<boolean> {
+export async function instanceIdExists(
+  projectId: string,
+  instanceId: string
+): Promise<boolean> {
   const instanceRes = await getInstance(projectId, instanceId, {
     resolveOnHTTPError: true,
   });
@@ -627,7 +691,9 @@ export async function instanceIdExists(projectId: string, instanceId: string): P
  * Given an update source, return where the update source came from.
  * @param sourceOrVersion path to a source or reference to a source version
  */
-export async function getSourceOrigin(sourceOrVersion: string): Promise<SourceOrigin> {
+export async function getSourceOrigin(
+  sourceOrVersion: string
+): Promise<SourceOrigin> {
   if (!sourceOrVersion) {
     return SourceOrigin.OFFICIAL_EXTENSION;
   }

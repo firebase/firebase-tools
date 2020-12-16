@@ -35,9 +35,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -62,9 +60,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -256,7 +252,10 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     const phoneNumber = TEST_PHONE_NUMBER;
     const email = "alice@example.com";
 
-    const { idToken, localId } = await signInWithPhoneNumber(authApi(), phoneNumber);
+    const { idToken, localId } = await signInWithPhoneNumber(
+      authApi(),
+      phoneNumber
+    );
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       .send({ idToken, email, password: "notasecret" })
@@ -362,10 +361,15 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       .query({ key: "fake-api-key" })
-      .send({ localId: "anything" /* cannot be specified since this is unauthenticated */ })
+      .send({
+        localId:
+          "anything" /* cannot be specified since this is unauthenticated */,
+      })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).to.equal("UNEXPECTED_PARAMETER : User ID");
+        expect(res.body.error.message).to.equal(
+          "UNEXPECTED_PARAMETER : User ID"
+        );
       });
 
     const { idToken, localId } = await registerAnonUser(authApi());
@@ -378,7 +382,9 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).to.equal("UNEXPECTED_PARAMETER : User ID");
+        expect(res.body.error.message).to.equal(
+          "UNEXPECTED_PARAMETER : User ID"
+        );
       });
   });
 
@@ -418,7 +424,9 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .send({ phoneNumber: "5555550100" /* no country code */ })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error.message).to.equal("INVALID_PHONE_NUMBER : Invalid format.");
+        expect(res.body.error.message).to.equal(
+          "INVALID_PHONE_NUMBER : Invalid format."
+        );
       });
   });
 });

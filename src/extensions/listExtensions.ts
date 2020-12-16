@@ -26,7 +26,14 @@ export async function listExtensions(
   }
 
   const table = new Table({
-    head: ["Extension", "Author", "Instance ID", "State", "Version", "Your last update"],
+    head: [
+      "Extension",
+      "Author",
+      "Instance ID",
+      "State",
+      "Version",
+      "Your last update",
+    ],
     style: { head: ["yellow"] },
   });
   // Order instances newest to oldest.
@@ -41,13 +48,18 @@ export async function listExtensions(
       _.get(instance, "config.source.spec.author.authorName", ""),
       _.last(instance.name.split("/")),
       instance.state +
-        (_.get(instance, "config.source.state", "ACTIVE") === "DELETED" ? " (UNPUBLISHED)" : ""),
+        (_.get(instance, "config.source.state", "ACTIVE") === "DELETED"
+          ? " (UNPUBLISHED)"
+          : ""),
       _.get(instance, "config.source.spec.version", ""),
       extensionsUtils.formatTimestamp(instance.updateTime),
     ]);
   });
 
-  utils.logLabeledBullet(logPrefix, `list of extensions installed in ${clc.bold(projectId)}:`);
+  utils.logLabeledBullet(
+    logPrefix,
+    `list of extensions installed in ${clc.bold(projectId)}:`
+  );
   logger.info(table.toString());
   return { instances: sorted };
 }

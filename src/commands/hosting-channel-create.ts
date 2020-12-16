@@ -1,10 +1,23 @@
 import { bold, yellow } from "cli-color";
 
-import { Channel, createChannel, addAuthDomain, normalizeName } from "../hosting/api";
+import {
+  Channel,
+  createChannel,
+  addAuthDomain,
+  normalizeName,
+} from "../hosting/api";
 import { Command } from "../command";
-import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
+import {
+  DEFAULT_DURATION,
+  calculateChannelExpireTTL,
+} from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import {
+  logLabeledSuccess,
+  datetimeString,
+  logLabeledWarning,
+  consoleUrl,
+} from "../utils";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
@@ -64,9 +77,11 @@ export default new Command("hosting:channel:create [channelId]")
       } catch (e) {
         if (e.status == 409) {
           throw new FirebaseError(
-            `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
-              channelId
-            )} with: ${yellow(`firebase hosting:channel:deploy ${channelId}`)}`,
+            `Channel ${bold(channelId)} already exists on site ${bold(
+              site
+            )}. Deploy to ${bold(channelId)} with: ${yellow(
+              `firebase hosting:channel:deploy ${channelId}`
+            )}`,
             { original: e }
           );
         }

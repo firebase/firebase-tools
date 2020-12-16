@@ -10,7 +10,9 @@ import * as logger from "../logger";
  *
  * @param projectId the Firebase project ID.
  */
-export async function checkDatabaseType(projectId: string): Promise<string | undefined> {
+export async function checkDatabaseType(
+  projectId: string
+): Promise<string | undefined> {
   try {
     const resp = await api.request("GET", "/v1/apps/" + projectId, {
       auth: true,

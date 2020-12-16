@@ -1,4 +1,7 @@
-import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import {
+  findModuleRoot,
+  FunctionsRuntimeBundle,
+} from "../../emulator/functionsEmulatorShared";
 
 export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;
@@ -16,7 +19,8 @@ export const FunctionRuntimeBundles = {
     proto: {
       data: {
         value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           fields: {
             when: {
               timestampValue: "2019-04-15T16:55:48.150Z",
@@ -32,7 +36,8 @@ export const FunctionRuntimeBundles = {
         timestamp: "2019-04-15T16:56:13.737Z",
         eventType: "providers/cloud.firestore/eventTypes/document.create",
         resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           service: "firestore.googleapis.com",
         },
       },
@@ -52,7 +57,8 @@ export const FunctionRuntimeBundles = {
     proto: {
       data: {
         value: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           fields: {
             when: {
               timestampValue: "2019-04-15T16:55:48.150Z",
@@ -68,7 +74,8 @@ export const FunctionRuntimeBundles = {
         timestamp: "2019-04-15T16:56:13.737Z",
         eventType: "providers/cloud.firestore/eventTypes/document.write",
         resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           service: "firestore.googleapis.com",
         },
       },
@@ -88,7 +95,8 @@ export const FunctionRuntimeBundles = {
     proto: {
       data: {
         oldValue: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           fields: {
             when: {
               timestampValue: "2019-04-15T16:55:48.150Z",
@@ -104,7 +112,8 @@ export const FunctionRuntimeBundles = {
         timestamp: "2019-04-15T16:56:13.737Z",
         eventType: "providers/cloud.firestore/eventTypes/document.delete",
         resource: {
-          name: "projects/fake-project-id/databases/(default)/documents/test/test",
+          name:
+            "projects/fake-project-id/databases/(default)/documents/test/test",
           service: "firestore.googleapis.com",
         },
       },

@@ -20,7 +20,9 @@ interface RefreshTokenCredential {
 export async function getCredentialPathAsync(): Promise<string | undefined> {
   const filePath = credFilePath();
   if (!filePath) {
-    logger.debug("defaultcredentials: could not create path to default credentials file.");
+    logger.debug(
+      "defaultcredentials: could not create path to default credentials file."
+    );
     return undefined;
   }
 
@@ -34,13 +36,18 @@ export async function getCredentialPathAsync(): Promise<string | undefined> {
   // that this is a somewhat expensive operation so we make it a Promise.
   logger.debug(`defaultcredentials: writing to file ${filePath}`);
   return new Promise((res, rej) => {
-    fs.writeFile(filePath, JSON.stringify(cred, undefined, 2), "utf8", (err) => {
-      if (err) {
-        rej(err);
-      } else {
-        res(filePath);
+    fs.writeFile(
+      filePath,
+      JSON.stringify(cred, undefined, 2),
+      "utf8",
+      (err) => {
+        if (err) {
+          rej(err);
+        } else {
+          res(filePath);
+        }
       }
-    });
+    );
   });
 }
 
@@ -98,7 +105,10 @@ function credFilePath(): string | undefined {
     fs.mkdirSync(fbtConfigDir);
   }
 
-  return path.join(fbtConfigDir, `${userEmailSlug()}_application_default_credentials.json`);
+  return path.join(
+    fbtConfigDir,
+    `${userEmailSlug()}_application_default_credentials.json`
+  );
 }
 
 function userEmailSlug(): string {

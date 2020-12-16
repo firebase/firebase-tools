@@ -3,7 +3,7 @@
 const _ = require("lodash");
 const { FirebaseError } = require("./error");
 
-module.exports = function(response, body) {
+module.exports = function (response, body) {
   if (typeof body === "string" && response.statusCode === 404) {
     body = {
       error: {
@@ -25,13 +25,18 @@ module.exports = function(response, body) {
   }
 
   if (!body.error) {
-    const errMessage = response.statusCode === 404 ? "Not Found" : "Unknown Error";
+    const errMessage =
+      response.statusCode === 404 ? "Not Found" : "Unknown Error";
     body.error = {
       message: errMessage,
     };
   }
 
-  const message = "HTTP Error: " + response.statusCode + ", " + (body.error.message || body.error);
+  const message =
+    "HTTP Error: " +
+    response.statusCode +
+    ", " +
+    (body.error.message || body.error);
 
   let exitCode;
   if (response.statusCode >= 500) {

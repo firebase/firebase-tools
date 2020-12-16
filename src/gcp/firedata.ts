@@ -28,13 +28,17 @@ export async function createDatabaseInstance(
   projectNumber: number,
   instanceName: string
 ): Promise<any> {
-  const response = await api.request("POST", `/v1/projects/${projectNumber}/databases`, {
-    auth: true,
-    origin: api.firedataOrigin,
-    json: {
-      instance: instanceName,
-    },
-  });
+  const response = await api.request(
+    "POST",
+    `/v1/projects/${projectNumber}/databases`,
+    {
+      auth: true,
+      origin: api.firedataOrigin,
+      json: {
+        instance: instanceName,
+      },
+    }
+  );
   if (response.status === 200) {
     return response.body.instance;
   }
@@ -46,11 +50,17 @@ export async function createDatabaseInstance(
  * @param projectId Project from which you want to get the ruleset.
  * @param instanceName The name for the new Realtime Database instance.
  */
-export async function listDatabaseInstances(projectNumber: number): Promise<DatabaseInstance[]> {
-  const response = await api.request("GET", `/v1/projects/${projectNumber}/databases`, {
-    auth: true,
-    origin: api.firedataOrigin,
-  });
+export async function listDatabaseInstances(
+  projectNumber: number
+): Promise<DatabaseInstance[]> {
+  const response = await api.request(
+    "GET",
+    `/v1/projects/${projectNumber}/databases`,
+    {
+      auth: true,
+      origin: api.firedataOrigin,
+    }
+  );
   if (response.status === 200) {
     return response.body.instance;
   }

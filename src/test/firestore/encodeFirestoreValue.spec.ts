@@ -14,13 +14,24 @@ describe("encodeFirestoreValue", () => {
       { in: { foo: d }, res: { foo: { timestampValue: d.toISOString() } } },
       {
         in: { foo: ["str", true] },
-        res: { foo: { arrayValue: { values: [{ stringValue: "str" }, { booleanValue: true }] } } },
+        res: {
+          foo: {
+            arrayValue: {
+              values: [{ stringValue: "str" }, { booleanValue: true }],
+            },
+          },
+        },
       },
       { in: { foo: null }, res: { foo: { nullValue: "NULL_VALUE" } } },
-      { in: { foo: Buffer.from("buffer") }, res: { foo: { bytesValue: Buffer.from("buffer") } } },
+      {
+        in: { foo: Buffer.from("buffer") },
+        res: { foo: { bytesValue: Buffer.from("buffer") } },
+      },
       {
         in: { foo: { nested: true } },
-        res: { foo: { mapValue: { fields: { nested: { booleanValue: true } } } } },
+        res: {
+          foo: { mapValue: { fields: { nested: { booleanValue: true } } } },
+        },
       },
     ];
 

@@ -20,7 +20,10 @@ const SOME_DATABASE_INSTANCE: DatabaseInstance = {
   name: DATABASE_INSTANCE_NAME,
   location: DatabaseLocation.US_CENTRAL1,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.US_CENTRAL1),
+  databaseUrl: generateDatabaseUrl(
+    DATABASE_INSTANCE_NAME,
+    DatabaseLocation.US_CENTRAL1
+  ),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
@@ -29,7 +32,10 @@ const SOME_DATABASE_INSTANCE_EUROPE_WEST1: DatabaseInstance = {
   name: DATABASE_INSTANCE_NAME,
   location: DatabaseLocation.EUROPE_WEST1,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.EUROPE_WEST1),
+  databaseUrl: generateDatabaseUrl(
+    DATABASE_INSTANCE_NAME,
+    DatabaseLocation.EUROPE_WEST1
+  ),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
@@ -37,7 +43,10 @@ const SOME_DATABASE_INSTANCE_EUROPE_WEST1: DatabaseInstance = {
 const INSTANCE_RESPONSE_US_CENTRAL1 = {
   name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.US_CENTRAL1}/instances/${DATABASE_INSTANCE_NAME}`,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.US_CENTRAL1),
+  databaseUrl: generateDatabaseUrl(
+    DATABASE_INSTANCE_NAME,
+    DatabaseLocation.US_CENTRAL1
+  ),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
@@ -45,12 +54,18 @@ const INSTANCE_RESPONSE_US_CENTRAL1 = {
 const INSTANCE_RESPONSE_EUROPE_WEST1 = {
   name: `projects/${PROJECT_ID}/locations/${DatabaseLocation.EUROPE_WEST1}/instances/${DATABASE_INSTANCE_NAME}`,
   project: PROJECT_ID,
-  databaseUrl: generateDatabaseUrl(DATABASE_INSTANCE_NAME, DatabaseLocation.EUROPE_WEST1),
+  databaseUrl: generateDatabaseUrl(
+    DATABASE_INSTANCE_NAME,
+    DatabaseLocation.EUROPE_WEST1
+  ),
   type: DatabaseInstanceType.USER_DATABASE,
   state: DatabaseInstanceState.ACTIVE,
 };
 
-function generateDatabaseUrl(instanceName: string, location: DatabaseLocation): string {
+function generateDatabaseUrl(
+  instanceName: string,
+  location: DatabaseLocation
+): string {
   if (location == DatabaseLocation.ANY) {
     throw new Error("can't generate url for any location");
   }
@@ -60,7 +75,10 @@ function generateDatabaseUrl(instanceName: string, location: DatabaseLocation): 
   return `https://${instanceName}.${location}.firebasedatabase.app`;
 }
 
-function generateInstanceList(counts: number, location: DatabaseLocation): DatabaseInstance[] {
+function generateInstanceList(
+  counts: number,
+  location: DatabaseLocation
+): DatabaseInstance[] {
   return Array.from(Array(counts), (_, i: number) => {
     const name = `my-db-instance-${i}`;
     return {
@@ -75,7 +93,10 @@ function generateInstanceList(counts: number, location: DatabaseLocation): Datab
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function generateInstanceListApiResponse(counts: number, location: DatabaseLocation): any[] {
+function generateInstanceListApiResponse(
+  counts: number,
+  location: DatabaseLocation
+): any[] {
   return Array.from(Array(counts), (_, i: number) => {
     const name = `my-db-instance-${i}`;
     return {
@@ -93,7 +114,9 @@ describe("Database management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
   });
 
   afterEach(() => {
@@ -103,7 +126,9 @@ describe("Database management", () => {
   describe("getInstanceDetails", () => {
     it("should resolve with DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE;
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_US_CENTRAL1 });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: INSTANCE_RESPONSE_US_CENTRAL1 });
 
       const resultDatabaseInstance = await getDatabaseInstanceDetails(
         PROJECT_ID,
@@ -151,7 +176,9 @@ describe("Database management", () => {
   describe("createInstance", () => {
     it("should resolve with new DatabaseInstance if API call succeeds", async () => {
       const expectedDatabaseInstance = SOME_DATABASE_INSTANCE_EUROPE_WEST1;
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
       const resultDatabaseInstance = await createInstance(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
@@ -211,7 +238,9 @@ describe("Database management", () => {
 
   describe("checkInstanceNameAvailable", () => {
     it("should resolve with new DatabaseInstance if specified instance name is available and API call succeeds", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: INSTANCE_RESPONSE_EUROPE_WEST1 });
       const output = await checkInstanceNameAvailable(
         PROJECT_ID,
         DATABASE_INSTANCE_NAME,
@@ -329,19 +358,35 @@ describe("Database management", () => {
     it("should resolve with instance list if it succeeds with only 1 api call", async () => {
       const instancesPerLocation = 2;
       const expectedInstanceList = [
-        ...generateInstanceList(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceList(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
+        ...generateInstanceList(
+          instancesPerLocation,
+          DatabaseLocation.US_CENTRAL1
+        ),
+        ...generateInstanceList(
+          instancesPerLocation,
+          DatabaseLocation.EUROPE_WEST1
+        ),
       ];
       apiRequestStub.onFirstCall().resolves({
         body: {
           instances: [
-            ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
-            ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.EUROPE_WEST1),
+            ...generateInstanceListApiResponse(
+              instancesPerLocation,
+              DatabaseLocation.US_CENTRAL1
+            ),
+            ...generateInstanceListApiResponse(
+              instancesPerLocation,
+              DatabaseLocation.EUROPE_WEST1
+            ),
           ],
         },
       });
 
-      const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY, 5);
+      const instances = await listDatabaseInstances(
+        PROJECT_ID,
+        DatabaseLocation.ANY,
+        5
+      );
 
       expect(instances).to.deep.equal(expectedInstanceList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -364,11 +409,17 @@ describe("Database management", () => {
       apiRequestStub.onFirstCall().resolves({
         body: {
           instances: [
-            ...generateInstanceListApiResponse(instancesPerLocation, DatabaseLocation.US_CENTRAL1),
+            ...generateInstanceListApiResponse(
+              instancesPerLocation,
+              DatabaseLocation.US_CENTRAL1
+            ),
           ],
         },
       });
-      const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.US_CENTRAL1);
+      const instances = await listDatabaseInstances(
+        PROJECT_ID,
+        DatabaseLocation.US_CENTRAL1
+      );
 
       expect(instances).to.deep.equal(expectedInstancesList);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -388,14 +439,29 @@ describe("Database management", () => {
       const nextPageToken = "next-page-token";
       const expectedInstancesList = [
         ...generateInstanceList(countPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
-        ...generateInstanceList(countPerLocation, DatabaseLocation.EUROPE_WEST1),
+        ...generateInstanceList(
+          countPerLocation,
+          DatabaseLocation.EUROPE_WEST1
+        ),
+        ...generateInstanceList(
+          countPerLocation,
+          DatabaseLocation.EUROPE_WEST1
+        ),
       ];
 
       const expectedResponsesList = [
-        ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
-        ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
-        ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.EUROPE_WEST1),
+        ...generateInstanceListApiResponse(
+          countPerLocation,
+          DatabaseLocation.US_CENTRAL1
+        ),
+        ...generateInstanceListApiResponse(
+          countPerLocation,
+          DatabaseLocation.EUROPE_WEST1
+        ),
+        ...generateInstanceListApiResponse(
+          countPerLocation,
+          DatabaseLocation.EUROPE_WEST1
+        ),
       ];
 
       apiRequestStub
@@ -413,7 +479,11 @@ describe("Database management", () => {
           },
         });
 
-      const instances = await listDatabaseInstances(PROJECT_ID, DatabaseLocation.ANY, pageSize);
+      const instances = await listDatabaseInstances(
+        PROJECT_ID,
+        DatabaseLocation.ANY,
+        pageSize
+      );
       expect(instances).to.deep.equal(expectedInstancesList);
       expect(apiRequestStub.firstCall).to.be.calledWith(
         "GET",
@@ -472,7 +542,10 @@ describe("Database management", () => {
         .resolves({
           body: {
             instances: [
-              ...generateInstanceListApiResponse(countPerLocation, DatabaseLocation.US_CENTRAL1),
+              ...generateInstanceListApiResponse(
+                countPerLocation,
+                DatabaseLocation.US_CENTRAL1
+              ),
             ].slice(0, pageSize),
             nextPageToken: nextPageToken,
           },
@@ -482,7 +555,11 @@ describe("Database management", () => {
 
       let err;
       try {
-        await listDatabaseInstances(PROJECT_ID, DatabaseLocation.US_CENTRAL1, pageSize);
+        await listDatabaseInstances(
+          PROJECT_ID,
+          DatabaseLocation.US_CENTRAL1,
+          pageSize
+        );
       } catch (e) {
         err = e;
       }

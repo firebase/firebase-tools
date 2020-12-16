@@ -27,11 +27,17 @@ export class AuthCloudFunction {
     }
   }
 
-  public async dispatch(action: AuthCloudFunctionAction, user: UserInfo): Promise<void> {
+  public async dispatch(
+    action: AuthCloudFunctionAction,
+    user: UserInfo
+  ): Promise<void> {
     if (!this.enabled) return;
 
     const userInfoPayload = this.createUserInfoPayload(user);
-    const multicastEventBody = this.createEventRequestBody(action, userInfoPayload);
+    const multicastEventBody = this.createEventRequestBody(
+      action,
+      userInfoPayload
+    );
 
     const c = new Client({ urlPrefix: this.multicastOrigin, auth: false });
     let res;

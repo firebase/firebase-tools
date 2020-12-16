@@ -94,7 +94,10 @@ export function compareApiField(a: API.Field, b: API.Field): number {
  *   2) The field path.
  *   3) The list of indexes.
  */
-export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverride): number {
+export function compareFieldOverride(
+  a: Spec.FieldOverride,
+  b: Spec.FieldOverride
+): number {
   if (a.collectionGroup !== b.collectionGroup) {
     return a.collectionGroup.localeCompare(b.collectionGroup);
   }
@@ -184,7 +187,11 @@ function compareArrays<T>(a: T[], b: T[], fn: (x: T, y: T) => number): number {
  * If the shorter array is a perfect prefix of the longer array,
  * then the shorter array is sorted first.
  */
-function compareArraysSorted<T>(a: T[], b: T[], fn: (x: T, y: T) => number): number {
+function compareArraysSorted<T>(
+  a: T[],
+  b: T[],
+  fn: (x: T, y: T) => number
+): number {
   const aSorted = a.sort(fn);
   const bSorted = b.sort(fn);
 

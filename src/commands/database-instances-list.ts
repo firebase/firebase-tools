@@ -41,14 +41,21 @@ function logInstancesCount(count = 0): void {
 }
 
 let cmd = new Command("database:instances:list")
-  .description("list realtime database instances, optionally filtered by a specified location")
+  .description(
+    "list realtime database instances, optionally filtered by a specified location"
+  )
   .before(requirePermissions, ["firebasedatabase.instances.list"])
   .before(warnEmulatorNotSupported, Emulators.DATABASE)
   .action(async (options: any) => {
-    const location = parseDatabaseLocation(options.location, DatabaseLocation.ANY);
+    const location = parseDatabaseLocation(
+      options.location,
+      DatabaseLocation.ANY
+    );
     const spinner = ora(
       "Preparing the list of your Firebase Realtime Database instances" +
-        `${location === DatabaseLocation.ANY ? "" : ` for location: ${location}`}`
+        `${
+          location === DatabaseLocation.ANY ? "" : ` for location: ${location}`
+        }`
     ).start();
     let instances;
 
@@ -76,7 +83,9 @@ let cmd = new Command("database:instances:list")
     for (const instance of instances) {
       logger.info(instance.instance);
     }
-    logger.info(`Project ${options.project} has ${instances.length} database instances`);
+    logger.info(
+      `Project ${options.project} has ${instances.length} database instances`
+    );
     return instances;
   });
 

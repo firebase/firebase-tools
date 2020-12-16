@@ -30,9 +30,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .send({ oobCode: oobs[0].oobCode, email })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("idToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("idToken").that.is.a("string");
         expect(res.body.email).to.equal(email);
         expect(res.body.isNewUser).to.equal(true);
 
@@ -50,7 +48,9 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
           .equals("password"); // The provider name is (confusingly) "password".
       });
 
-    expect(await getSigninMethods(authApi(), email)).to.have.members(["emailLink"]);
+    expect(await getSigninMethods(authApi(), email)).to.have.members([
+      "emailLink",
+    ]);
   });
 
   it("should sign an existing account in and enable email-link sign-in for them", async () => {
@@ -116,7 +116,10 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
   });
 
   it("should error if email mismatches", async () => {
-    const { oobCode } = await createEmailSignInOob(authApi(), "alice@example.com");
+    const { oobCode } = await createEmailSignInOob(
+      authApi(),
+      "alice@example.com"
+    );
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink")
@@ -149,12 +152,18 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(res.body.email).to.equal(newEmail);
       });
 
-    expect(await getSigninMethods(authApi(), newEmail)).to.have.members(["password", "emailLink"]);
+    expect(await getSigninMethods(authApi(), newEmail)).to.have.members([
+      "password",
+      "emailLink",
+    ]);
     expect(await getSigninMethods(authApi(), oldEmail)).to.be.empty;
   });
 
   it("should link existing phone-auth account to new email", async () => {
-    const { localId, idToken } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
+    const { localId, idToken } = await signInWithPhoneNumber(
+      authApi(),
+      TEST_PHONE_NUMBER
+    );
     const email = "alice@example.com";
     const { oobCode } = await createEmailSignInOob(authApi(), email);
 
@@ -170,11 +179,16 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
 
     // Sign-in methods should not contain "phone", since phone sign-in is not
     // associated with an email address.
-    expect(await getSigninMethods(authApi(), email)).to.have.members(["emailLink"]);
+    expect(await getSigninMethods(authApi(), email)).to.have.members([
+      "emailLink",
+    ]);
   });
 
   it("should error when trying to link an email already used in another account", async () => {
-    const { idToken } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
+    const { idToken } = await signInWithPhoneNumber(
+      authApi(),
+      TEST_PHONE_NUMBER
+    );
     const email = "alice@example.com";
     await registerUser(authApi(), { email, password: "notasecret" });
     const { oobCode } = await createEmailSignInOob(authApi(), email);

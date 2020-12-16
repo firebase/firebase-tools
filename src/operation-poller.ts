@@ -31,16 +31,23 @@ export class OperationPoller<T> {
    * @param options poller options.
    */
   async poll(options: OperationPollerOptions): Promise<T> {
-    const queue: Queue<() => Promise<OperationResult<T>>, OperationResult<T>> = new Queue({
+    const queue: Queue<
+      () => Promise<OperationResult<T>>,
+      OperationResult<T>
+    > = new Queue({
       name: options.pollerName || "LRO Poller",
       concurrency: 1,
       retries: Number.MAX_SAFE_INTEGER,
       backoff: options.backoff || DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS,
     });
 
-    const masterTimeout = options.masterTimeout || DEFAULT_MASTER_TIMEOUT_MILLIS;
+    const masterTimeout =
+      options.masterTimeout || DEFAULT_MASTER_TIMEOUT_MILLIS;
 
-    const { response, error } = await queue.run(this.getPollingTask(options), masterTimeout);
+    const { response, error } = await queue.run(
+      this.getPollingTask(options),
+      masterTimeout
+    );
     queue.close();
     if (error) {
       throw error instanceof FirebaseError
@@ -51,7 +58,9 @@ export class OperationPoller<T> {
     return response!;
   }
 
-  private getPollingTask(options: OperationPollerOptions): () => Promise<OperationResult<T>> {
+  private getPollingTask(
+    options: OperationPollerOptions
+  ): () => Promise<OperationResult<T>> {
     const apiClient = new Client({
       urlPrefix: options.apiOrigin,
       apiVersion: options.apiVersion,
@@ -60,7 +69,9 @@ export class OperationPoller<T> {
     return async () => {
       let res;
       try {
-        res = await apiClient.get<OperationResult<T>>(options.operationResourceName);
+        res = await apiClient.get<OperationResult<T>>(
+          options.operationResourceName
+        );
       } catch (err) {
         // Responses with 500 or 503 status code are treated as retriable errors.
         if (err.status === 500 || err.status === 503) {
@@ -69,7 +80,9 @@ export class OperationPoller<T> {
         return { error: err };
       }
       if (!res.body.done) {
-        throw new Error("Polling incomplete, should trigger retry with backoff");
+        throw new Error(
+          "Polling incomplete, should trigger retry with backoff"
+        );
       }
       return res.body;
     };

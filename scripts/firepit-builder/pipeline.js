@@ -3,7 +3,20 @@ const shelljs = require("shelljs");
 const path = require("path");
 const fs = require("fs");
 const argv = require("yargs").argv;
-const { mkdir, cat, cd, rm, find, echo, exec, mv, ls, pwd, tempdir, cp } = shelljs;
+const {
+  mkdir,
+  cat,
+  cd,
+  rm,
+  find,
+  echo,
+  exec,
+  mv,
+  ls,
+  pwd,
+  tempdir,
+  cp,
+} = shelljs;
 
 const isPublishing = argv.publish;
 
@@ -47,7 +60,9 @@ if (fs.existsSync(firebaseToolsPackage)) {
 
 const packageJson = JSON.parse(cat("node_modules/firebase-tools/package.json"));
 const releaseTag = `v${packageJson.version}`;
-echo(`Installed firebase-tools@${packageJson.version}, using tag ${releaseTag}`);
+echo(
+  `Installed firebase-tools@${packageJson.version}, using tag ${releaseTag}`
+);
 
 echo("Attempting to use firebase-tools/standalone...");
 cp("-r", "node_modules/firebase-tools/standalone", "firepit");
@@ -64,7 +79,7 @@ mv("../../node_modules", ".");
 
 echo("-- Removing native platform addons (.node)");
 find(".")
-  .filter(function(file) {
+  .filter(function (file) {
     return file.match(/\.node$/);
   })
   .forEach((file) => {
@@ -74,7 +89,10 @@ find(".")
 cd("..");
 echo(pwd());
 
-const configTemplate = require(path.join(pwd().toString(), "config.template.js"));
+const configTemplate = require(path.join(
+  pwd().toString(),
+  "config.template.js"
+));
 configTemplate.firebase_tools_package = firebaseToolsPackage;
 
 if (styles.headless) {
@@ -84,7 +102,13 @@ if (styles.headless) {
   echo(`module.exports = ` + JSON.stringify(configTemplate)).to("config.js");
   npm("run", "pkg");
   ls("dist/firepit-*").forEach((file) => {
-    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools")));
+    mv(
+      file,
+      path.join(
+        "dist",
+        path.basename(file).replace("firepit", "firebase-tools")
+      )
+    );
   });
 }
 
@@ -96,7 +120,13 @@ if (styles.headful) {
   npm("run", "pkg");
 
   ls("dist/firepit-*").forEach((file) => {
-    mv(file, path.join("dist", path.basename(file).replace("firepit", "firebase-tools-instant")));
+    mv(
+      file,
+      path.join(
+        "dist",
+        path.basename(file).replace("firepit", "firebase-tools-instant")
+      )
+    );
   });
 }
 
@@ -115,7 +145,15 @@ if (isPublishing) {
   ls("../dist").forEach((filename) => {
     if (publishedFiles.indexOf(filename) === -1) return;
     echo(`Publishing ${filename}...`);
-    hub("release", "edit", "-m", '""', "-a", path.join("../dist", filename), releaseTag);
+    hub(
+      "release",
+      "edit",
+      "-m",
+      '""',
+      "-a",
+      path.join("../dist", filename),
+      releaseTag
+    );
   });
   cd("..");
 } else {

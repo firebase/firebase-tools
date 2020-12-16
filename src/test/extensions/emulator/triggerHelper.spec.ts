@@ -22,7 +22,9 @@ describe("triggerHelper", () => {
         timeout: "3s",
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource
+      );
 
       expect(result).to.eql(expected);
     });
@@ -41,7 +43,9 @@ describe("triggerHelper", () => {
         httpsTrigger: {},
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource
+      );
 
       expect(result).to.eql(expected);
     });
@@ -67,7 +71,9 @@ describe("triggerHelper", () => {
         },
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource
+      );
 
       expect(result).to.eql(expected);
     });
@@ -78,7 +84,8 @@ describe("triggerHelper", () => {
         entryPoint: "functionName",
         properties: {
           eventTrigger: {
-            eventType: "providers/google.firebase.database/eventTypes/ref.create",
+            eventType:
+              "providers/google.firebase.database/eventTypes/ref.create",
             resource: "myResource",
           },
         },
@@ -93,7 +100,9 @@ describe("triggerHelper", () => {
         },
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource
+      );
 
       expect(result).to.eql(expected);
     });
@@ -119,7 +128,9 @@ describe("triggerHelper", () => {
         },
       };
 
-      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(testResource);
+      const result = triggerHelper.functionResourceToEmulatedTriggerDefintion(
+        testResource
+      );
 
       expect(result).to.eql(expected);
     });

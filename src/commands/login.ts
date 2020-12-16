@@ -44,7 +44,8 @@ module.exports = new Command("login")
         {
           type: "confirm",
           name: "collectUsage",
-          message: "Allow Firebase to collect CLI usage and error reporting information?",
+          message:
+            "Allow Firebase to collect CLI usage and error reporting information?",
         },
       ]);
       configstore.set("usage", options.collectUsage);

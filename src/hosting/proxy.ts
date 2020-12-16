@@ -40,9 +40,18 @@ function makeVary(vary: string | null = ""): string {
  * cookies, and caching similar to the behavior of the production version of
  * the Firebase Hosting origin.
  */
-export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
-  return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
-    logger.info(`[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`);
+export function proxyRequestHandler(
+  url: string,
+  rewriteIdentifier: string
+): RequestHandler {
+  return async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    next: () => void
+  ): Promise<void> => {
+    logger.info(
+      `[hosting] Rewriting ${req.url} to ${url} for ${rewriteIdentifier}`
+    );
     // Extract the __session cookie from headers to forward it to the
     // functions cookie is not a string[].
     const cookie = (req.headers.cookie as string) || "";
@@ -100,7 +109,8 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     } catch (err) {
       clearTimeout(timer);
       const isAbortError =
-        err instanceof FirebaseError && err.original?.name.includes("AbortError");
+        err instanceof FirebaseError &&
+        err.original?.name.includes("AbortError");
       const isTimeoutError =
         err instanceof FirebaseError &&
         err.original instanceof FetchError &&
@@ -114,7 +124,9 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         return res.end("Timed out waiting for function to respond.\n");
       }
       res.statusCode = 500;
-      return res.end(`An internal error occurred while proxying for ${rewriteIdentifier}\n`);
+      return res.end(
+        `An internal error occurred while proxying for ${rewriteIdentifier}\n`
+      );
     }
 
     clearTimeout(timer);
@@ -137,9 +149,14 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       proxyRes.response.headers.delete("set-cookie");
     }
 
-    proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
+    proxyRes.response.headers.set(
+      "vary",
+      makeVary(proxyRes.response.headers.get("vary"))
+    );
 
-    for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
+    for (const [key, value] of Object.entries(
+      proxyRes.response.headers.raw()
+    )) {
       res.setHeader(key, value);
     }
     res.statusCode = proxyRes.status;

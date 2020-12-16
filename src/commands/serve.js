@@ -31,15 +31,27 @@ var filterOnly = (list, only) => {
 
 module.exports = new Command("serve")
   .description("start a local server for your static assets")
-  .option("-p, --port <port>", "the port on which to listen (default: 5000)", 5000)
-  .option("-o, --host <host>", "the host on which to listen (default: localhost)", "localhost")
+  .option(
+    "-p, --port <port>",
+    "the port on which to listen (default: 5000)",
+    5000
+  )
+  .option(
+    "-o, --host <host>",
+    "the host on which to listen (default: localhost)",
+    "localhost"
+  )
   .option(
     "--only <targets>",
-    "only serve specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
+    "only serve specified targets (valid targets are: " +
+      VALID_TARGETS.join(", ") +
+      ")"
   )
   .option(
     "--except <targets>",
-    "serve all except specified targets (valid targets are: " + VALID_TARGETS.join(", ") + ")"
+    "serve all except specified targets (valid targets are: " +
+      VALID_TARGETS.join(", ") +
+      ")"
   )
   .before((options) => {
     if (
@@ -55,7 +67,10 @@ module.exports = new Command("serve")
   })
   .action((options) => {
     options.targets = filterOnly(ALL_TARGETS, options.only);
-    if (options.targets.includes("database") || options.targets.includes("firestore")) {
+    if (
+      options.targets.includes("database") ||
+      options.targets.includes("firestore")
+    ) {
       throw new FirebaseError(
         `Please use ${clc.bold(
           "firebase emulators:start"
@@ -72,7 +87,12 @@ module.exports = new Command("serve")
     if (options.config) {
       logger.info();
       logger.info(
-        clc.bold(clc.white("===") + " Serving from '" + options.config.projectDir + "'...")
+        clc.bold(
+          clc.white("===") +
+            " Serving from '" +
+            options.config.projectDir +
+            "'..."
+        )
       );
       logger.info();
     } else {

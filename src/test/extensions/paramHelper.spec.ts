@@ -79,7 +79,9 @@ describe("paramHelper", () => {
     beforeEach(() => {
       sinon.stub(fs, "readFileSync").returns("");
       dotenvStub = sinon.stub(dotenv, "parse");
-      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
+      sinon
+        .stub(extensionsHelper, "getFirebaseProjectParams")
+        .resolves({ PROJECT_ID });
       promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
       loggerSpy = sinon.spy(logger, "info");
     });
@@ -94,7 +96,11 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: "value",
       });
 
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS,
+        "./a/path/to/a/file.env"
+      );
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -107,7 +113,11 @@ describe("paramHelper", () => {
         A_PARAMETER: "aValue",
       });
 
-      const params = await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      const params = await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS,
+        "./a/path/to/a/file.env"
+      );
 
       expect(params).to.eql({
         A_PARAMETER: "aValue",
@@ -136,7 +146,11 @@ describe("paramHelper", () => {
         A_THIRD_PARAMETER: "aValue",
         A_FOURTH_PARAMETER: "default",
       });
-      await paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env");
+      await paramHelper.getParams(
+        PROJECT_ID,
+        TEST_PARAMS,
+        "./a/path/to/a/file.env"
+      );
 
       expect(loggerSpy).to.have.been.calledWith(
         "Warning: The following params were specified in your env file but" +
@@ -149,7 +163,10 @@ describe("paramHelper", () => {
 
       await expect(
         paramHelper.getParams(PROJECT_ID, TEST_PARAMS, "./a/path/to/a/file.env")
-      ).to.be.rejectedWith(FirebaseError, "Error reading env file: Error during parsing");
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Error reading env file: Error during parsing"
+      );
     });
 
     it("should prompt the user for params if no env file is provided", async () => {
@@ -209,7 +226,9 @@ describe("paramHelper", () => {
       };
 
       it("should add defaults to params without them using the current state and leave other values unchanged", () => {
-        const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
+        const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(
+          testInstance
+        );
 
         expect(newParams).to.eql([
           {
@@ -236,7 +255,9 @@ describe("paramHelper", () => {
         type: ParamType.STRING,
       });
       testInstance.config.params.THIRD = "New Default";
-      const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(testInstance);
+      const newParams = paramHelper.getParamsWithCurrentValuesAsDefaults(
+        testInstance
+      );
 
       expect(newParams).to.eql([
         {
@@ -266,7 +287,9 @@ describe("paramHelper", () => {
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
+      sinon
+        .stub(extensionsHelper, "getFirebaseProjectParams")
+        .resolves({ PROJECT_ID });
     });
 
     afterEach(() => {

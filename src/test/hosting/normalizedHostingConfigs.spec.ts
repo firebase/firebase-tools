@@ -92,7 +92,8 @@ describe("normalizedHostingConfigs", () => {
         want: [Object.assign({}, baseConfig, { site: DEFAULT_SITE })],
       },
       {
-        desc: "a hosting config with multiple sites, no targets, specifying the second site",
+        desc:
+          "a hosting config with multiple sites, no targets, specifying the second site",
         cfg: [
           Object.assign({}, baseConfig, { site: DEFAULT_SITE }),
           Object.assign({}, baseConfig, { site: "different-site" }),
@@ -104,7 +105,12 @@ describe("normalizedHostingConfigs", () => {
         desc: "a normal hosting config with a target",
         cfg: Object.assign({}, baseConfig, { target: "main" }),
         only: "hosting:main",
-        want: [Object.assign({}, baseConfig, { target: "main", site: TARGETED_SITE })],
+        want: [
+          Object.assign({}, baseConfig, {
+            target: "main",
+            site: TARGETED_SITE,
+          }),
+        ],
       },
       {
         desc: "a hosting config with multiple targets, specifying one",
@@ -113,7 +119,12 @@ describe("normalizedHostingConfigs", () => {
           Object.assign({}, baseConfig, { target: "t-two" }),
         ],
         only: "hosting:t-two",
-        want: [Object.assign({}, baseConfig, { target: "t-two", site: TARGETED_SITE })],
+        want: [
+          Object.assign({}, baseConfig, {
+            target: "t-two",
+            site: TARGETED_SITE,
+          }),
+        ],
       },
       {
         desc: "a hosting config with multiple targets, specifying all hosting",
@@ -123,12 +134,19 @@ describe("normalizedHostingConfigs", () => {
         ],
         only: "hosting",
         want: [
-          Object.assign({}, baseConfig, { target: "t-one", site: TARGETED_SITE }),
-          Object.assign({}, baseConfig, { target: "t-two", site: TARGETED_SITE }),
+          Object.assign({}, baseConfig, {
+            target: "t-one",
+            site: TARGETED_SITE,
+          }),
+          Object.assign({}, baseConfig, {
+            target: "t-two",
+            site: TARGETED_SITE,
+          }),
         ],
       },
       {
-        desc: "a hosting config with multiple targets, specifying an invalid target",
+        desc:
+          "a hosting config with multiple targets, specifying an invalid target",
         cfg: [
           Object.assign({}, baseConfig, { target: "t-one" }),
           Object.assign({}, baseConfig, { target: "t-two" }),
@@ -137,7 +155,8 @@ describe("normalizedHostingConfigs", () => {
         wantErr: /Hosting site or target.+t-three.+not detected/,
       },
       {
-        desc: "a hosting config with multiple targets, with multiple matching targets",
+        desc:
+          "a hosting config with multiple targets, with multiple matching targets",
         cfg: [
           Object.assign({}, baseConfig, { target: "t-one" }),
           Object.assign({}, baseConfig, { target: "t-one" }),
@@ -147,13 +166,15 @@ describe("normalizedHostingConfigs", () => {
         wantErr: /Hosting target.+t-one.+linked to multiple sites/,
       },
       {
-        desc: "a hosting config with multiple sites but no targets, only all hosting",
+        desc:
+          "a hosting config with multiple sites but no targets, only all hosting",
         cfg: [Object.assign({}, baseConfig), Object.assign({}, baseConfig)],
         only: "hosting",
         wantErr: /Must supply either "site" or "target"/,
       },
       {
-        desc: "a hosting config with multiple sites but no targets, only an invalid target",
+        desc:
+          "a hosting config with multiple sites but no targets, only an invalid target",
         cfg: [Object.assign({}, baseConfig), Object.assign({}, baseConfig)],
         only: "hosting:t-one",
         wantErr: /Hosting site or target.+t-one.+not detected/,
@@ -173,12 +194,13 @@ describe("normalizedHostingConfigs", () => {
         };
 
         if (t.wantErr) {
-          expect(() => normalizedHostingConfigs(cmdConfig, { resolveTargets: true })).to.throw(
-            FirebaseError,
-            t.wantErr
-          );
+          expect(() =>
+            normalizedHostingConfigs(cmdConfig, { resolveTargets: true })
+          ).to.throw(FirebaseError, t.wantErr);
         } else {
-          const got = normalizedHostingConfigs(cmdConfig, { resolveTargets: true });
+          const got = normalizedHostingConfigs(cmdConfig, {
+            resolveTargets: true,
+          });
           expect(got).to.deep.equal(t.want);
         }
       });

@@ -117,8 +117,14 @@ function signUp(
     updates.photoUrl = reqBody.photoUrl;
     updates.emailVerified = reqBody.emailVerified || false;
     if (reqBody.phoneNumber) {
-      assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
-      assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+      assert(
+        isValidPhoneNumber(reqBody.phoneNumber),
+        "INVALID_PHONE_NUMBER : Invalid format."
+      );
+      assert(
+        !state.getUserByPhoneNumber(reqBody.phoneNumber),
+        "PHONE_NUMBER_EXISTS"
+      );
       updates.phoneNumber = reqBody.phoneNumber;
     }
     if (reqBody.disabled) {
@@ -190,7 +196,9 @@ function lookup(
   const users: UserInfo[] = [];
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
-      throw new NotImplementedError("Lookup by initialEmail is not implemented.");
+      throw new NotImplementedError(
+        "Lookup by initialEmail is not implemented."
+      );
     }
     if (reqBody.localId) {
       for (const localId of reqBody.localId) {
@@ -240,7 +248,11 @@ function batchGet(
 
   const users = state.queryUsers(
     {},
-    { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
+    {
+      sortByField: "localId",
+      order: "ASC",
+      startToken: ctx.params.query.nextPageToken,
+    }
   );
   let newPageToken: string | undefined = undefined;
   if (users.length > limit) {
@@ -539,24 +551,28 @@ function sendOobCode(
     );
   }
 
-  const { oobCode, oobLink } = state.createOob(email, reqBody.requestType, (oobCode) => {
-    // TODO: Support custom handler links.
-    const url = authEmulatorUrl(ctx.req as express.Request);
-    url.pathname = "/emulator/action";
-    url.searchParams.set("mode", mode);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("oobCode", oobCode);
+  const { oobCode, oobLink } = state.createOob(
+    email,
+    reqBody.requestType,
+    (oobCode) => {
+      // TODO: Support custom handler links.
+      const url = authEmulatorUrl(ctx.req as express.Request);
+      url.pathname = "/emulator/action";
+      url.searchParams.set("mode", mode);
+      url.searchParams.set("lang", "en");
+      url.searchParams.set("oobCode", oobCode);
 
-    // This doesn't matter for now, since any API key works for defaultProject.
-    // TODO: What if reqBody.targetProjectId is set?
-    url.searchParams.set("apiKey", "fake-api-key");
+      // This doesn't matter for now, since any API key works for defaultProject.
+      // TODO: What if reqBody.targetProjectId is set?
+      url.searchParams.set("apiKey", "fake-api-key");
 
-    if (reqBody.continueUrl) {
-      url.searchParams.set("continueUrl", reqBody.continueUrl);
+      if (reqBody.continueUrl) {
+        url.searchParams.set("continueUrl", reqBody.continueUrl);
+      }
+
+      return url.toString();
     }
-
-    return url.toString();
-  });
+  );
 
   if (reqBody.returnOobLink) {
     return {
@@ -604,7 +620,9 @@ function sendVerificationCode(
     "INVALID_PHONE_NUMBER : Invalid format."
   );
 
-  const { sessionInfo, phoneNumber, code } = state.createVerificationCode(reqBody.phoneNumber);
+  const { sessionInfo, phoneNumber, code } = state.createVerificationCode(
+    reqBody.phoneNumber
+  );
 
   // Print out a developer-friendly log containing the link, in lieu of sending
   // a real text message out to the phone number.
@@ -623,7 +641,9 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
-  return setAccountInfoImpl(state, reqBody, { privileged: !!ctx.security?.Oauth2 });
+  return setAccountInfoImpl(state, reqBody, {
+    privileged: !!ctx.security?.Oauth2,
+  });
 }
 
 /**
@@ -740,8 +760,14 @@ export function setAccountInfoImpl(
         updates.disabled = reqBody.disableUser;
       }
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
-        assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
-        assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+        assert(
+          isValidPhoneNumber(reqBody.phoneNumber),
+          "INVALID_PHONE_NUMBER : Invalid format."
+        );
+        assert(
+          !state.getUserByPhoneNumber(reqBody.phoneNumber),
+          "PHONE_NUMBER_EXISTS"
+        );
       }
       fieldsToCopy.push(
         "emailVerified",
@@ -806,7 +832,9 @@ export function setAccountInfoImpl(
     photoUrl: user.photoUrl,
     passwordHash: user.passwordHash,
 
-    ...(updates.validSince && signInProvider ? issueTokens(state, user, signInProvider) : {}),
+    ...(updates.validSince && signInProvider
+      ? issueTokens(state, user, signInProvider)
+      : {}),
   });
 }
 
@@ -817,7 +845,12 @@ function signInWithCustomToken(
   assert(reqBody.token, "MISSING_CUSTOM_TOKEN");
 
   // eslint-disable-next-line camelcase
-  let payload: { aud?: unknown; uid?: unknown; user_id?: unknown; claims?: unknown };
+  let payload: {
+    aud?: unknown;
+    uid?: unknown;
+    user_id?: unknown;
+    claims?: unknown;
+  };
   if (reqBody.token.startsWith("{")) {
     // In the emulator only, we allow plain JSON strings as custom tokens, to
     // simplify testing. This won't work in production.
@@ -856,7 +889,9 @@ function signInWithCustomToken(
     // developers can keep reusing the same token in their tests.
     payload = decoded.payload;
   }
-  const localId = coercePrimitiveToString(payload.uid) ?? coercePrimitiveToString(payload.user_id);
+  const localId =
+    coercePrimitiveToString(payload.uid) ??
+    coercePrimitiveToString(payload.user_id);
   assert(localId, "MISSING_IDENTIFIER");
 
   let claims: Record<string, unknown> = {};
@@ -879,7 +914,9 @@ function signInWithCustomToken(
   } else {
     user = state.createUserWithLocalId(localId, updates);
     if (!user) {
-      throw new Error(`Internal assertion error: trying to create duplicate localId: ${localId}`);
+      throw new Error(
+        `Internal assertion error: trying to create duplicate localId: ${localId}`
+      );
     }
   }
   return {
@@ -893,7 +930,9 @@ function signInWithEmailLink(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkRequest"]
 ): Schemas["GoogleCloudIdentitytoolkitV1SignInWithEmailLinkResponse"] {
-  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  const userFromIdToken = reqBody.idToken
+    ? parseIdToken(state, reqBody.idToken).user
+    : undefined;
   assert(reqBody.email, "MISSING_EMAIL");
   const email = canonicalizeEmailAddress(reqBody.email);
   assert(reqBody.oobCode, "MISSING_OOB_CODE");
@@ -923,7 +962,10 @@ function signInWithEmailLink(
     }
   } else {
     assert(!user.disabled, "USER_DISABLED");
-    assert(!userFromIdToken || userFromIdToken.localId === user.localId, "EMAIL_EXISTS");
+    assert(
+      !userFromIdToken || userFromIdToken.localId === user.localId,
+      "EMAIL_EXISTS"
+    );
     user = state.updateUserByLocalId(user.localId, updates);
   }
 
@@ -951,13 +993,16 @@ function signInWithIdp(
   }
 
   const normalizedUri = getNormalizedUri(reqBody);
-  const providerId = normalizedUri.searchParams.get("providerId")?.toLowerCase();
+  const providerId = normalizedUri.searchParams
+    .get("providerId")
+    ?.toLowerCase();
   assert(
     providerId,
     `INVALID_CREDENTIAL_OR_PROVIDER_ID : Invalid IdP response/credential: ${normalizedUri.toString()}`
   );
   const oauthIdToken = normalizedUri.searchParams.get("id_token") || undefined;
-  const oauthAccessToken = normalizedUri.searchParams.get("access_token") || undefined;
+  const oauthAccessToken =
+    normalizedUri.searchParams.get("access_token") || undefined;
 
   const claims = parseClaims(oauthIdToken) || parseClaims(oauthAccessToken);
   if (!claims) {
@@ -993,16 +1038,24 @@ function signInWithIdp(
   response.oauthIdToken = oauthIdToken;
   // What about response.refreshToken?
 
-  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  const userFromIdToken = reqBody.idToken
+    ? parseIdToken(state, reqBody.idToken).user
+    : undefined;
   const userMatchingProvider = state.getUserByProviderRawId(providerId, rawId);
 
   let accountUpdates: AccountUpdates;
   try {
     if (userFromIdToken) {
       assert(!userMatchingProvider, "FEDERATED_USER_ID_ALREADY_LINKED");
-      ({ accountUpdates, response } = handleLinkIdp(state, response, userFromIdToken));
+      ({ accountUpdates, response } = handleLinkIdp(
+        state,
+        response,
+        userFromIdToken
+      ));
     } else if (state.oneAccountPerEmail) {
-      const userMatchingEmail = response.email ? state.getUserByEmail(response.email) : undefined;
+      const userMatchingEmail = response.email
+        ? state.getUserByEmail(response.email)
+        : undefined;
       ({ accountUpdates, response } = handleIdpSigninEmailRequired(
         response,
         rawId,
@@ -1050,7 +1103,9 @@ function signInWithIdp(
     response.localId = user.localId;
   } else {
     if (!response.localId) {
-      throw new Error("Internal assertion error: localId not set for exising user.");
+      throw new Error(
+        "Internal assertion error: localId not set for exising user."
+      );
     }
     user = state.updateUserByLocalId(
       response.localId,
@@ -1091,7 +1146,10 @@ function signInWithPassword(
   assert(user, "EMAIL_NOT_FOUND");
   assert(!user.disabled, "USER_DISABLED");
   assert(user.passwordHash && user.salt, "INVALID_PASSWORD");
-  assert(user.passwordHash === hashPassword(reqBody.password, user.salt), "INVALID_PASSWORD");
+  assert(
+    user.passwordHash === hashPassword(reqBody.password, user.salt),
+    "INVALID_PASSWORD"
+  );
 
   const tokens = issueTokens(state, user, PROVIDER_PASSWORD);
 
@@ -1115,7 +1173,10 @@ function signInWithPhoneNumber(
   let phoneNumber: string;
   if (reqBody.temporaryProof) {
     assert(reqBody.phoneNumber, "MISSING_PHONE_NUMBER");
-    const proof = state.validateTemporaryProof(reqBody.temporaryProof, reqBody.phoneNumber);
+    const proof = state.validateTemporaryProof(
+      reqBody.temporaryProof,
+      reqBody.phoneNumber
+    );
     assert(proof, "INVALID_TEMPORARY_PROOF");
     ({ phoneNumber } = proof);
   } else {
@@ -1132,7 +1193,9 @@ function signInWithPhoneNumber(
     lastLoginAt: Date.now().toString(),
   };
 
-  const userFromIdToken = reqBody.idToken ? parseIdToken(state, reqBody.idToken).user : undefined;
+  const userFromIdToken = reqBody.idToken
+    ? parseIdToken(state, reqBody.idToken).user
+    : undefined;
   if (!user) {
     if (userFromIdToken) {
       user = state.updateUserByLocalId(userFromIdToken.localId, updates);
@@ -1205,7 +1268,9 @@ function deleteAllAccountsInProject(state: ProjectState): {} {
   return {};
 }
 
-function getEmulatorProjectConfig(state: ProjectState): Schemas["EmulatorV1ProjectsConfig"] {
+function getEmulatorProjectConfig(
+  state: ProjectState
+): Schemas["EmulatorV1ProjectsConfig"] {
   return {
     signIn: {
       allowDuplicateEmails: !state.oneAccountPerEmail,
@@ -1224,7 +1289,9 @@ function updateEmulatorProjectConfig(
   return getEmulatorProjectConfig(state);
 }
 
-function listOobCodesInProject(state: ProjectState): Schemas["EmulatorV1ProjectsOobCodes"] {
+function listOobCodesInProject(
+  state: ProjectState
+): Schemas["EmulatorV1ProjectsOobCodes"] {
   return {
     oobCodes: [...state.listOobCodes()],
   };
@@ -1282,8 +1349,18 @@ function issueTokens(
   extraClaims: Record<string, unknown> = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
   const expiresInSeconds = 60 * 60;
-  const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
-  const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
+  const idToken = generateJwt(
+    state.projectId,
+    user,
+    signInProvider,
+    expiresInSeconds,
+    extraClaims
+  );
+  const refreshToken = state.createRefreshTokenFor(
+    user,
+    signInProvider,
+    extraClaims
+  );
   return {
     idToken,
     refreshToken,
@@ -1317,7 +1394,10 @@ function parseIdToken(
   // TODO: Check JWT expiration here.
   const user = state.getUserByLocalId(decoded.payload.user_id);
   assert(user, "USER_NOT_FOUND");
-  assert(!user.validSince || decoded.payload.iat >= Number(user.validSince), "TOKEN_EXPIRED");
+  assert(
+    !user.validSince || decoded.payload.iat >= Number(user.validSince),
+    "TOKEN_EXPIRED"
+  );
   assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
@@ -1388,7 +1468,11 @@ function generateJwt(
   return jwtStr;
 }
 
-function verifyPhoneNumber(state: ProjectState, sessionInfo: string, code: string): string {
+function verifyPhoneNumber(
+  state: ProjectState,
+  sessionInfo: string,
+  code: string
+): string {
   const verification = state.getVerificationCodeBySessionInfo(sessionInfo);
   assert(verification, "INVALID_SESSION_INFO");
   assert(verification.code === code, "INVALID_CODE");
@@ -1431,9 +1515,14 @@ const FORBIDDEN_CUSTOM_CLAIMS = [
   "c_hash",
 ];
 
-function validateCustomClaims(claims: unknown): asserts claims is Record<string, unknown> {
+function validateCustomClaims(
+  claims: unknown
+): asserts claims is Record<string, unknown> {
   // Only JSON objects (maps) are valid. Others are not.
-  assert(typeof claims === "object" && claims != null && !Array.isArray(claims), "INVALID_CLAIMS");
+  assert(
+    typeof claims === "object" && claims != null && !Array.isArray(claims),
+    "INVALID_CLAIMS"
+  );
   for (const reservedField of FORBIDDEN_CUSTOM_CLAIMS) {
     assert(!(reservedField in claims), `FORBIDDEN_CLAIM : ${reservedField}`);
   }
@@ -1464,7 +1553,9 @@ function getNormalizedUri(reqBody: {
   return normalizedUri;
 }
 
-function parseClaims(idTokenOrJsonClaims: string | undefined): IdpJwtPayload | undefined {
+function parseClaims(
+  idTokenOrJsonClaims: string | undefined
+): IdpJwtPayload | undefined {
   if (!idTokenOrJsonClaims) {
     return undefined;
   }
@@ -1506,7 +1597,9 @@ function fakeFetchUserInfoFromIdp(
   const rawId = claims.sub;
 
   // Some common fields found in many IDPs.
-  const email = claims.email ? canonicalizeEmailAddress(claims.email) : undefined;
+  const email = claims.email
+    ? canonicalizeEmailAddress(claims.email)
+    : undefined;
   const emailVerified = !!claims.email_verified;
   const displayName = claims.name;
   const photoUrl = claims.picture;
@@ -1528,7 +1621,8 @@ function fakeFetchUserInfoFromIdp(
   switch (providerId) {
     case "google.com": {
       federatedId = `https://accounts.google.com/${rawId}`;
-      let granted_scopes = "openid https://www.googleapis.com/auth/userinfo.profile";
+      let granted_scopes =
+        "openid https://www.googleapis.com/auth/userinfo.profile";
       if (email) {
         granted_scopes += " https://www.googleapis.com/auth/userinfo.email";
       }
@@ -1574,7 +1668,8 @@ function handleLinkIdp(
   if (state.oneAccountPerEmail && response.email) {
     const userMatchingEmail = state.getUserByEmail(response.email);
     assert(
-      !userMatchingEmail || userMatchingEmail.localId === userFromIdToken.localId,
+      !userMatchingEmail ||
+        userMatchingEmail.localId === userFromIdToken.localId,
       "EMAIL_EXISTS"
     );
   }
@@ -1631,7 +1726,8 @@ function handleIdpSigninEmailRequired(
     if (response.emailVerified) {
       if (
         userMatchingEmail.providerUserInfo?.some(
-          (info) => info.providerId === response.providerId && info.rawId !== rawId
+          (info) =>
+            info.providerId === response.providerId && info.rawId !== rawId
         )
       ) {
         // b/6793858: An account exists with the same email but different rawId,
@@ -1649,7 +1745,9 @@ function handleIdpSigninEmailRequired(
         // password. Otherwise, keep them (since email ownership is verified).
         accountUpdates.fields.passwordHash = undefined;
         accountUpdates.fields.phoneNumber = undefined;
-        accountUpdates.fields.validSince = toUnixTimestamp(new Date()).toString();
+        accountUpdates.fields.validSince = toUnixTimestamp(
+          new Date()
+        ).toString();
         accountUpdates.deleteProviders = userMatchingEmail.providerUserInfo?.map(
           (info) => info.providerId
         );

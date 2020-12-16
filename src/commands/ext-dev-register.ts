@@ -5,7 +5,10 @@ import { Command } from "../command";
 import { registerPublisherProfile } from "../extensions/extensionsApi";
 import * as getProjectId from "../getProjectId";
 import { promptOnce } from "../prompt";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import {
+  ensureExtensionsApiEnabled,
+  logPrefix,
+} from "../extensions/extensionsHelper";
 import { promptForPublisherTOS } from "../extensions/askUserForConsent";
 import { requirePermissions } from "../requirePermissions";
 import { FirebaseError } from "../error";
@@ -15,7 +18,9 @@ import * as utils from "../utils";
  * Register a publisher ID; run this before publishing any extensions.
  */
 export default new Command("ext:dev:register")
-  .description("register a publisher ID; run this before publishing your first extension.")
+  .description(
+    "register a publisher ID; run this before publishing your first extension."
+  )
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsApiEnabled)
@@ -38,11 +43,13 @@ export default new Command("ext:dev:register")
     } catch (err) {
       if (err.status === 409) {
         const error =
-          `Couldn't register the publisher ID '${clc.bold(publisherId)}' to the project '${clc.bold(
-            projectId
-          )}'.` +
+          `Couldn't register the publisher ID '${clc.bold(
+            publisherId
+          )}' to the project '${clc.bold(projectId)}'.` +
           " This can happen for either of two reasons:\n\n" +
-          ` - Publisher ID '${clc.bold(publisherId)}' is registered to another project\n` +
+          ` - Publisher ID '${clc.bold(
+            publisherId
+          )}' is registered to another project\n` +
           ` - Project '${clc.bold(projectId)}' already has a publisher ID\n\n` +
           ` Try again with a unique publisher ID or a new project. If your business’s name has been registered to another project, contact Firebase support ${marked(
             "(https://firebase.google.com/support/troubleshooter/contact)."
@@ -50,16 +57,16 @@ export default new Command("ext:dev:register")
         throw new FirebaseError(error, { exit: 1 });
       }
       throw new FirebaseError(
-        `Failed to register publisher ID ${clc.bold(publisherId)} for project ${clc.bold(
-          projectId
-        )}: ${err.message}`,
+        `Failed to register publisher ID ${clc.bold(
+          publisherId
+        )} for project ${clc.bold(projectId)}: ${err.message}`,
         { exit: 1 }
       );
     }
     return utils.logLabeledSuccess(
       logPrefix,
-      `Publisher ID '${clc.bold(publisherId)}' has been registered to project ${clc.bold(
-        projectId
-      )}`
+      `Publisher ID '${clc.bold(
+        publisherId
+      )}' has been registered to project ${clc.bold(projectId)}`
     );
   });

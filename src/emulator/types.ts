@@ -26,7 +26,10 @@ export const DOWNLOADABLE_EMULATORS = [
 ];
 
 export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE;
-export const IMPORT_EXPORT_EMULATORS = [Emulators.FIRESTORE, Emulators.DATABASE];
+export const IMPORT_EXPORT_EMULATORS = [
+  Emulators.FIRESTORE,
+  Emulators.DATABASE,
+];
 
 export const ALL_SERVICE_EMULATORS = [
   Emulators.AUTH,
@@ -65,7 +68,9 @@ export const ALL_EMULATORS = [
   ...ALL_SERVICE_EMULATORS,
 ];
 
-export function isDownloadableEmulator(value: string): value is DownloadableEmulators {
+export function isDownloadableEmulator(
+  value: string
+): value is DownloadableEmulators {
   return isEmulator(value) && DOWNLOADABLE_EMULATORS.indexOf(value) >= 0;
 }
 
@@ -246,7 +251,15 @@ export class EmulatorLog {
   private static LOG_BUFFER: string[] = [];
 
   constructor(
-    public level: "DEBUG" | "INFO" | "WARN" | "WARN_ONCE" | "ERROR" | "FATAL" | "SYSTEM" | "USER",
+    public level:
+      | "DEBUG"
+      | "INFO"
+      | "WARN"
+      | "WARN_ONCE"
+      | "ERROR"
+      | "FATAL"
+      | "SYSTEM"
+      | "USER",
     public type: string,
     public text: string,
     public data?: any,

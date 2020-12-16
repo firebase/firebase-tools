@@ -106,7 +106,9 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
             `Please see this documentation for more details: https://firebase.google.com/docs/projects/locations.`
         );
       }
-      throw new FirebaseError(`Failed to create scheduler job ${job.name}: ${err.message}`);
+      throw new FirebaseError(
+        `Failed to create scheduler job ${job.name}: ${err.message}`
+      );
     }
     logLabeledSuccess("functions", `created scheduler job ${jobName}`);
     return newJob;
@@ -116,7 +118,10 @@ export async function createOrReplaceJob(job: Job): Promise<any> {
     job.timeZone = DEFAULT_TIME_ZONE;
   }
   if (isIdentical(existingJob.body, job)) {
-    logLabeledBullet("functions", `scheduler job ${jobName} is up to date, no changes required`);
+    logLabeledBullet(
+      "functions",
+      `scheduler job ${jobName} is up to date, no changes required`
+    );
     return;
   }
   const updatedJob = await updateJob(job);

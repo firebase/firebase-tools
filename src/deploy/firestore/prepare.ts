@@ -14,7 +14,10 @@ async function prepareRules(context: any, options: any): Promise<void> {
   const rulesFile = options.config.get("firestore.rules");
 
   if (context.firestoreRules && rulesFile) {
-    const rulesDeploy = new RulesDeploy(options, RulesetServiceType.CLOUD_FIRESTORE);
+    const rulesDeploy = new RulesDeploy(
+      options,
+      RulesetServiceType.CLOUD_FIRESTORE
+    );
     _.set(context, "firestore.rulesDeploy", rulesDeploy);
     rulesDeploy.addFile(rulesFile);
     await rulesDeploy.compile();
@@ -35,7 +38,9 @@ function prepareIndexes(context: any, options: any): void {
   const parsedSrc = loadCJSON(indexesPath);
 
   utils.logBullet(
-    `${clc.bold.cyan("firestore:")} reading indexes from ${clc.bold(indexesFileName)}...`
+    `${clc.bold.cyan("firestore:")} reading indexes from ${clc.bold(
+      indexesFileName
+    )}...`
   );
 
   context.firestore = context.firestore || {};
@@ -50,7 +55,7 @@ function prepareIndexes(context: any, options: any): void {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function(context: any, options: any): Promise<void> {
+export default async function (context: any, options: any): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
     const onlyIndexes = targets.indexOf("firestore:indexes") >= 0;

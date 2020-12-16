@@ -3,15 +3,18 @@
 "use strict";
 
 var extractTriggers = require("./extractTriggers");
-var EXIT = function() {
+var EXIT = function () {
   process.exit(0);
 };
 
-(function() {
+(function () {
   // wrap in function to allow return without exiting process
   var packageDir = process.argv[2];
   if (!packageDir) {
-    process.send({ error: "Must supply package directory for functions trigger parsing." }, EXIT);
+    process.send(
+      { error: "Must supply package directory for functions trigger parsing." },
+      EXIT
+    );
     return;
   }
 
@@ -47,7 +50,8 @@ var EXIT = function() {
 
     process.send(
       {
-        error: "Error occurred while parsing your function triggers.\n\n" + e.stack,
+        error:
+          "Error occurred while parsing your function triggers.\n\n" + e.stack,
       },
       EXIT
     );

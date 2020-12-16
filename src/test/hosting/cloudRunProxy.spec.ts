@@ -14,7 +14,9 @@ describe("cloudRunProxy", () => {
   const fakeOptions: CloudRunProxyOptions = {
     project: "project-foo",
   };
-  const fakeRewrite: CloudRunProxyRewrite = { run: { serviceId: "helloworld" } };
+  const fakeRewrite: CloudRunProxyRewrite = {
+    run: { serviceId: "helloworld" },
+  };
   const cloudRunServiceOrigin = "https://helloworld-hash-uc.a.run.app";
 
   afterEach(() => {
@@ -72,9 +74,7 @@ describe("cloudRunProxy", () => {
     nock(cloudRunApiOrigin)
       .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
       .reply(200, { status: { url: cloudRunServiceOrigin } });
-    nock(cloudRunServiceOrigin)
-      .get("/")
-      .reply(200, "live version");
+    nock(cloudRunServiceOrigin).get("/").reply(200, "live version");
 
     const mwGenerator = cloudRunProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
@@ -92,7 +92,9 @@ describe("cloudRunProxy", () => {
     nock(cloudRunApiOrigin)
       .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
       .reply(200, { status: { url: cloudRunServiceOrigin } });
-    nock(cloudRunServiceOrigin, { reqheaders: { "x-custom-header": "cooooookie-crisp" } })
+    nock(cloudRunServiceOrigin, {
+      reqheaders: { "x-custom-header": "cooooookie-crisp" },
+    })
       .get("/")
       .reply(200, "live version");
 
@@ -112,14 +114,16 @@ describe("cloudRunProxy", () => {
   it("should resolve to a live version in another region", async () => {
     const cloudRunServiceOriginAsia = "https://helloworld-hash-as.a.run.app";
     nock(cloudRunApiOrigin)
-      .get("/v1/projects/project-foo/locations/asia-southeast1/services/helloworld")
+      .get(
+        "/v1/projects/project-foo/locations/asia-southeast1/services/helloworld"
+      )
       .reply(200, { status: { url: cloudRunServiceOriginAsia } });
-    nock(cloudRunServiceOriginAsia)
-      .get("/")
-      .reply(200, "live version");
+    nock(cloudRunServiceOriginAsia).get("/").reply(200, "live version");
 
     const mwGenerator = cloudRunProxy(fakeOptions);
-    const mw = await mwGenerator({ run: { serviceId: "helloworld", region: "asia-southeast1" } });
+    const mw = await mwGenerator({
+      run: { serviceId: "helloworld", region: "asia-southeast1" },
+    });
     const spyMw = sinon.spy(mw);
 
     return supertest(spyMw)
@@ -133,7 +137,9 @@ describe("cloudRunProxy", () => {
   it("should cache calls to look up Cloud Run service URLs", async () => {
     const multiCallOrigin = "https://multiLookup-hash-uc.a.run.app";
     const multiNock = nock(cloudRunApiOrigin)
-      .get("/v1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .get(
+        "/v1/projects/project-foo/locations/us-central1/services/multiLookup"
+      )
       .reply(200, { status: { url: multiCallOrigin } });
     nock(multiCallOrigin)
       .persist() // Gets called multiple times
@@ -144,31 +150,27 @@ describe("cloudRunProxy", () => {
     const mw = await mwGenerator({ run: { serviceId: "multiLookup" } });
     const spyMw = sinon.spy(mw);
 
-    await supertest(spyMw)
-      .get("/")
-      .expect(200, "live version");
+    await supertest(spyMw).get("/").expect(200, "live version");
     expect(spyMw.calledOnce).to.be.true;
     expect(multiNock.isDone()).to.be.true;
 
     // New rewrite for the same Cloud Run service
     const failMultiNock = nock(cloudRunApiOrigin)
-      .get("/v1/projects/project-foo/locations/us-central1/services/multiLookup")
+      .get(
+        "/v1/projects/project-foo/locations/us-central1/services/multiLookup"
+      )
       .reply(500, "should not happen");
 
     const mw2Generator = cloudRunProxy(fakeOptions);
     const mw2 = await mw2Generator({ run: { serviceId: "multiLookup" } });
     const spyMw2 = sinon.spy(mw2);
 
-    await supertest(spyMw2)
-      .get("/")
-      .expect(200, "live version");
+    await supertest(spyMw2).get("/").expect(200, "live version");
     expect(spyMw2.calledOnce).to.be.true;
     expect(failMultiNock.isDone()).to.be.false;
 
     // Second hit to the same path
-    await supertest(spyMw2)
-      .get("/")
-      .expect(200, "live version");
+    await supertest(spyMw2).get("/").expect(200, "live version");
     expect(spyMw2.calledTwice).to.be.true;
     expect(failMultiNock.isDone()).to.be.false;
   });
@@ -177,9 +179,7 @@ describe("cloudRunProxy", () => {
     nock(cloudRunApiOrigin)
       .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
       .reply(200, { status: { url: cloudRunServiceOrigin } });
-    nock(cloudRunServiceOrigin)
-      .get("/404.html")
-      .reply(404, "normal 404");
+    nock(cloudRunServiceOrigin).get("/404.html").reply(404, "normal 404");
 
     const mwGenerator = cloudRunProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
@@ -224,9 +224,10 @@ describe("cloudRunProxy", () => {
     nock(cloudRunApiOrigin)
       .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
       .reply(200, { status: { url: cloudRunServiceOrigin } });
-    nock(cloudRunServiceOrigin)
-      .get("/cached")
-      .reply(200, "cached page", { "cache-control": "custom", "set-cookie": "nom" });
+    nock(cloudRunServiceOrigin).get("/cached").reply(200, "cached page", {
+      "cache-control": "custom",
+      "set-cookie": "nom",
+    });
 
     const mwGenerator = cloudRunProxy(fakeOptions);
     const mw = await mwGenerator(fakeRewrite);
@@ -258,7 +259,9 @@ describe("cloudRunProxy", () => {
       .expect(200, "live vary version")
       .then((res) => {
         expect(spyMw.calledOnce).to.be.true;
-        expect(res.header.vary).to.equal("Other, Authorization, Accept-Encoding, Cookie");
+        expect(res.header.vary).to.equal(
+          "Other, Authorization, Accept-Encoding, Cookie"
+        );
       });
   });
 

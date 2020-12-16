@@ -9,7 +9,10 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { displayNode10UpdateBillingNotice } from "../extensions/billingMigrationHelper";
-import { isBillingEnabled, enableBilling } from "../extensions/checkProjectBilling";
+import {
+  isBillingEnabled,
+  enableBilling,
+} from "../extensions/checkProjectBilling";
 import * as extensionsApi from "../extensions/extensionsApi";
 import {
   ensureExtensionsApiEnabled,
@@ -64,13 +67,16 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       const projectId = getProjectId(options, false);
       let existingInstance;
       try {
-        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(
+          projectId,
+          instanceId
+        );
       } catch (err) {
         if (err.status === 404) {
           throw new FirebaseError(
-            `Extension instance '${clc.bold(instanceId)}' not found in project '${clc.bold(
-              projectId
-            )}'.`
+            `Extension instance '${clc.bold(
+              instanceId
+            )}' not found in project '${clc.bold(projectId)}'.`
           );
         }
         throw err;
@@ -92,7 +98,10 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       // Infer updateSource if instance is from the registry
       if (existingInstance.config.extensionRef && !updateSource) {
         updateSource = `${existingInstance.config.extensionRef}@latest`;
-      } else if (existingInstance.config.extensionRef && semver.valid(updateSource)) {
+      } else if (
+        existingInstance.config.extensionRef &&
+        semver.valid(updateSource)
+      ) {
         updateSource = `${existingInstance.config.extensionRef}@${updateSource}`;
       }
 
@@ -223,7 +232,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
             break;
           }
         default:
-          throw new FirebaseError(`Unknown source '${clc.bold(updateSource)}.'`);
+          throw new FirebaseError(
+            `Unknown source '${clc.bold(updateSource)}.'`
+          );
       }
 
       // TODO(fix): currently exploiting an oversight in this method call to make calls to both
@@ -240,7 +251,9 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       ) {
         utils.logLabeledBullet(
           logPrefix,
-          `${clc.bold(instanceId)} is already up to date. Its version is ${clc.bold(
+          `${clc.bold(
+            instanceId
+          )} is already up to date. Its version is ${clc.bold(
             existingSpec.version
           )}.`
         );
@@ -273,9 +286,11 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         source: newSource,
       };
       if (newSourceName.includes("publisher")) {
-        const { publisherId, extensionId, version } = extensionsApi.parseExtensionVersionName(
-          newSourceName
-        );
+        const {
+          publisherId,
+          extensionId,
+          version,
+        } = extensionsApi.parseExtensionVersionName(newSourceName);
         updateOptions.extRef = `${publisherId}/${extensionId}@${version}`;
       } else {
         updateOptions.source = newSource;
@@ -285,7 +300,10 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
       }
       await update(updateOptions);
       spinner.stop();
-      utils.logLabeledSuccess(logPrefix, `successfully updated ${clc.bold(instanceId)}.`);
+      utils.logLabeledSuccess(
+        logPrefix,
+        `successfully updated ${clc.bold(instanceId)}.`
+      );
       utils.logLabeledBullet(
         logPrefix,
         marked(
@@ -300,9 +318,12 @@ export default new Command("ext:update <extensionInstanceId> [updateSource]")
         spinner.fail();
       }
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred while updating the instance: ${err.message}`, {
-          original: err,
-        });
+        throw new FirebaseError(
+          `Error occurred while updating the instance: ${err.message}`,
+          {
+            original: err,
+          }
+        );
       }
       throw err;
     }

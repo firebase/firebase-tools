@@ -2,7 +2,11 @@ import * as clc from "cli-color";
 import * as _ from "lodash";
 import * as utils from "../../utils";
 import { prompt } from "../../prompt";
-import { Emulators, ALL_SERVICE_EMULATORS, isDownloadableEmulator } from "../../emulator/types";
+import {
+  Emulators,
+  ALL_SERVICE_EMULATORS,
+  isDownloadableEmulator,
+} from "../../emulator/types";
 import { Constants } from "../../emulator/constants";
 import { downloadIfNecessary } from "../../emulator/downloadableEmulators";
 
@@ -42,13 +46,17 @@ export async function doSetup(setup: any, config: any) {
 
     const currentPort = setup.config.emulators[selected].port;
     if (currentPort) {
-      utils.logBullet(`Port for ${selected} already configured: ${clc.cyan(currentPort)}`);
+      utils.logBullet(
+        `Port for ${selected} already configured: ${clc.cyan(currentPort)}`
+      );
     } else {
       await prompt(setup.config.emulators[selected], [
         {
           type: "number",
           name: "port",
-          message: `Which port do you want to use for the ${clc.underline(selected)} emulator?`,
+          message: `Which port do you want to use for the ${clc.underline(
+            selected
+          )} emulator?`,
           default: Constants.getDefaultPort(selected as Emulators),
         },
       ]);
@@ -57,9 +65,14 @@ export async function doSetup(setup: any, config: any) {
 
   if (selections.emulators.length) {
     const uiDesc = Constants.description(Emulators.UI);
-    if (setup.config.emulators.ui && setup.config.emulators.ui.enabled !== false) {
+    if (
+      setup.config.emulators.ui &&
+      setup.config.emulators.ui.enabled !== false
+    ) {
       const currentPort = setup.config.emulators.ui.port || "(automatic)";
-      utils.logBullet(`${uiDesc} already enabled with port: ${clc.cyan(currentPort)}`);
+      utils.logBullet(
+        `${uiDesc} already enabled with port: ${clc.cyan(currentPort)}`
+      );
     } else {
       const ui = setup.config.emulators.ui || {};
       setup.config.emulators.ui = ui;

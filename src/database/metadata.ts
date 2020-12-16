@@ -30,35 +30,54 @@ export interface Ruleset {
   source: RulesetSource;
 }
 
-export async function listAllRulesets(databaseName: string): Promise<Ruleset[]> {
-  const response = await api.request("GET", `/namespaces/${databaseName}/rulesets`, {
-    auth: true,
-    origin: api.rtdbMetadataOrigin,
-    json: true,
-  });
+export async function listAllRulesets(
+  databaseName: string
+): Promise<Ruleset[]> {
+  const response = await api.request(
+    "GET",
+    `/namespaces/${databaseName}/rulesets`,
+    {
+      auth: true,
+      origin: api.rtdbMetadataOrigin,
+      json: true,
+    }
+  );
   if (response.status === 200) {
     return response.body.rulesets;
   }
   return handleErrorResponse(response);
 }
 
-export async function getRuleset(databaseName: string, rulesetId: string): Promise<Ruleset> {
-  const response = await api.request("GET", `/namespaces/${databaseName}/rulesets/${rulesetId}`, {
-    auth: true,
-    origin: api.rtdbMetadataOrigin,
-    json: true,
-  });
+export async function getRuleset(
+  databaseName: string,
+  rulesetId: string
+): Promise<Ruleset> {
+  const response = await api.request(
+    "GET",
+    `/namespaces/${databaseName}/rulesets/${rulesetId}`,
+    {
+      auth: true,
+      origin: api.rtdbMetadataOrigin,
+      json: true,
+    }
+  );
   if (response.status === 200) {
     return response.body;
   }
   return handleErrorResponse(response);
 }
 
-export async function getRulesetLabels(databaseName: string): Promise<LabelIds> {
-  const response = await api.request("GET", `/namespaces/${databaseName}/ruleset_labels`, {
-    auth: true,
-    origin: api.rtdbMetadataOrigin,
-  });
+export async function getRulesetLabels(
+  databaseName: string
+): Promise<LabelIds> {
+  const response = await api.request(
+    "GET",
+    `/namespaces/${databaseName}/ruleset_labels`,
+    {
+      auth: true,
+      origin: api.rtdbMetadataOrigin,
+    }
+  );
   if (response.status === 200) {
     return response.body;
   }
@@ -81,7 +100,10 @@ export async function createRuleset(
   return handleErrorResponse(response);
 }
 
-export async function setRulesetLabels(databaseName: string, labels: LabelIds): Promise<void> {
+export async function setRulesetLabels(
+  databaseName: string,
+  labels: LabelIds
+): Promise<void> {
   const response = await api.request("PUT", `/.settings/ruleset_labels.json`, {
     auth: true,
     origin: utils.addSubdomain(api.realtimeOrigin, databaseName),

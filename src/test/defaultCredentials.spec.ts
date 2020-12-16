@@ -81,6 +81,8 @@ describe("defaultCredentials", () => {
     const credPath = await defaultCredentials.getCredentialPathAsync();
     const baseName = path.basename(credPath!);
 
-    expect(baseName).to.eq("user_domain_com_application_default_credentials.json");
+    expect(baseName).to.eq(
+      "user_domain_com_application_default_credentials.json"
+    );
   });
 });

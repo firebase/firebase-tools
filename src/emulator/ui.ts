@@ -17,9 +17,9 @@ export class EmulatorUI implements EmulatorInstance {
   start(): Promise<void> {
     if (!EmulatorRegistry.isRunning(Emulators.HUB)) {
       throw new FirebaseError(
-        `Cannot start ${Constants.description(Emulators.UI)} without ${Constants.description(
-          Emulators.HUB
-        )}!`
+        `Cannot start ${Constants.description(
+          Emulators.UI
+        )} without ${Constants.description(Emulators.HUB)}!`
       );
     }
     const hubInfo = EmulatorRegistry.get(Emulators.HUB)!.getInfo();
@@ -28,7 +28,9 @@ export class EmulatorUI implements EmulatorInstance {
       HOST: host.toString(),
       PORT: port.toString(),
       GCLOUD_PROJECT: projectId,
-      [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(hubInfo),
+      [Constants.FIREBASE_EMULATOR_HUB]: EmulatorRegistry.getInfoHostString(
+        hubInfo
+      ),
     };
 
     return downloadableEmulators.start(Emulators.UI, { auto_download }, env);

@@ -7,11 +7,15 @@ import { configstore } from "./configstore";
 import { previews } from "./previews";
 
 function _errorOut(name) {
-  console.log(bold.red("Error:"), "Did not recognize preview feature", bold(name));
+  console.log(
+    bold.red("Error:"),
+    "Did not recognize preview feature",
+    bold(name)
+  );
   process.exit(1);
 }
 
-module.exports = function(args) {
+module.exports = function (args) {
   const isValidPreview = has(previews, args[1]);
   if (args[0] === "--open-sesame") {
     if (isValidPreview) {

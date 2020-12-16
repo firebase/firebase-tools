@@ -80,7 +80,9 @@ export function getAppPlatform(platform: string): AppPlatform {
     case "": // list all apps if platform is not provided
       return AppPlatform.ANY;
     default:
-      throw new FirebaseError("Unexpected platform. Only iOS, Android, and Web apps are supported");
+      throw new FirebaseError(
+        "Unexpected platform. Only iOS, Android, and Web apps are supported"
+      );
   }
 }
 
@@ -96,12 +98,16 @@ export async function createIosApp(
   options: { displayName?: string; appStoreId?: string; bundleId: string }
 ): Promise<IosAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/iosApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
-    });
+    const response = await api.request(
+      "POST",
+      `/v1beta1/projects/${projectId}/iosApps`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+        data: options,
+      }
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create iOS app Poller",
@@ -131,12 +137,16 @@ export async function createAndroidApp(
   options: { displayName?: string; packageName: string }
 ): Promise<AndroidAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/androidApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
-    });
+    const response = await api.request(
+      "POST",
+      `/v1beta1/projects/${projectId}/androidApps`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+        data: options,
+      }
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Android app Poller",
@@ -169,12 +179,16 @@ export async function createWebApp(
   options: { displayName?: string }
 ): Promise<WebAppMetadata> {
   try {
-    const response = await api.request("POST", `/v1beta1/projects/${projectId}/webApps`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
-      data: options,
-    });
+    const response = await api.request(
+      "POST",
+      `/v1beta1/projects/${projectId}/webApps`,
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: CREATE_APP_API_REQUEST_TIMEOUT_MILLIS,
+        data: options,
+      }
+    );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const appData = await pollOperation<any>({
       pollerName: "Create Web app Poller",
@@ -192,7 +206,10 @@ export async function createWebApp(
   }
 }
 
-function getListAppsResourceString(projectId: string, platform: AppPlatform): string {
+function getListAppsResourceString(
+  projectId: string,
+  platform: AppPlatform
+): string {
   let resourceSuffix;
   switch (platform) {
     case AppPlatform.IOS:
@@ -208,7 +225,9 @@ function getListAppsResourceString(projectId: string, platform: AppPlatform): st
       resourceSuffix = ":searchApps"; // List apps in any platform
       break;
     default:
-      throw new FirebaseError("Unexpected platform. Only support iOS, Android and Web apps");
+      throw new FirebaseError(
+        "Unexpected platform. Only support iOS, Android and Web apps"
+      );
   }
 
   return `/v1beta1/projects/${projectId}${resourceSuffix}`;
@@ -231,7 +250,9 @@ export async function listFirebaseApps(
   try {
     let nextPageToken = "";
     do {
-      const pageTokenQueryString = nextPageToken ? `&pageToken=${nextPageToken}` : "";
+      const pageTokenQueryString = nextPageToken
+        ? `&pageToken=${nextPageToken}`
+        : "";
       const response = await api.request(
         "GET",
         getListAppsResourceString(projectId, platform) +
@@ -257,8 +278,9 @@ export async function listFirebaseApps(
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
-      `Failed to list Firebase ${platform === AppPlatform.ANY ? "" : platform + " "}` +
-        "apps. See firebase-debug.log for more info.",
+      `Failed to list Firebase ${
+        platform === AppPlatform.ANY ? "" : platform + " "
+      }` + "apps. See firebase-debug.log for more info.",
       {
         exit: 2,
         original: err,
@@ -267,7 +289,10 @@ export async function listFirebaseApps(
   }
 }
 
-function getAppConfigResourceString(appId: string, platform: AppPlatform): string {
+function getAppConfigResourceString(
+  appId: string,
+  platform: AppPlatform
+): string {
   let platformResource;
   switch (platform) {
     case AppPlatform.IOS:
@@ -287,17 +312,29 @@ function getAppConfigResourceString(appId: string, platform: AppPlatform): strin
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppConfigurationData {
+function parseConfigFromResponse(
+  responseBody: any,
+  platform: AppPlatform
+): AppConfigurationData {
   if (platform === AppPlatform.WEB) {
-    const JS_TEMPLATE = fs.readFileSync(__dirname + "/../../templates/setup/web.js", "utf8");
+    const JS_TEMPLATE = fs.readFileSync(
+      __dirname + "/../../templates/setup/web.js",
+      "utf8"
+    );
     return {
       fileName: WEB_CONFIG_FILE_NAME,
-      fileContents: JS_TEMPLATE.replace("{/*--CONFIG--*/}", JSON.stringify(responseBody, null, 2)),
+      fileContents: JS_TEMPLATE.replace(
+        "{/*--CONFIG--*/}",
+        JSON.stringify(responseBody, null, 2)
+      ),
     };
   } else if (platform === AppPlatform.ANDROID || platform === AppPlatform.IOS) {
     return {
       fileName: responseBody.configFilename,
-      fileContents: Buffer.from(responseBody.configFileContents, "base64").toString("utf8"),
+      fileContents: Buffer.from(
+        responseBody.configFileContents,
+        "base64"
+      ).toString("utf8"),
     };
   }
   throw new FirebaseError("Unexpected app platform");
@@ -310,7 +347,10 @@ function parseConfigFromResponse(responseBody: any, platform: AppPlatform): AppC
  * @return the platform-specific file information (name and contents).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigurationData {
+export function getAppConfigFile(
+  config: any,
+  platform: AppPlatform
+): AppConfigurationData {
   return parseConfigFromResponse(config, platform);
 }
 
@@ -322,14 +362,21 @@ export function getAppConfigFile(config: any, platform: AppPlatform): AppConfigu
  *   base64-encoded content string.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getAppConfig(appId: string, platform: AppPlatform): Promise<any> {
+export async function getAppConfig(
+  appId: string,
+  platform: AppPlatform
+): Promise<any> {
   let response;
   try {
-    response = await api.request("GET", getAppConfigResourceString(appId, platform), {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: TIMEOUT_MILLIS,
-    });
+    response = await api.request(
+      "GET",
+      getAppConfigResourceString(appId, platform),
+      {
+        auth: true,
+        origin: api.firebaseApiOrigin,
+        timeout: TIMEOUT_MILLIS,
+      }
+    );
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(

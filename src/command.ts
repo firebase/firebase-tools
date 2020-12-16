@@ -159,7 +159,9 @@ export class Command {
       if (args.length - 1 > cmd._args.length) {
         client.errorOut(
           new FirebaseError(
-            `Too many arguments. Run ${bold("firebase help " + this.name)} for usage instructions`,
+            `Too many arguments. Run ${bold(
+              "firebase help " + this.name
+            )} for usage instructions`,
             { exit: 1 }
           )
         );
@@ -197,9 +199,13 @@ export class Command {
             );
           }
           const duration = Date.now() - start;
-          const errorEvent = err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
+          const errorEvent =
+            err.exit === 1 ? "Error (User)" : "Error (Unexpected)";
 
-          await Promise.all([track(this.name, "error", duration), track(errorEvent, "", duration)]);
+          await Promise.all([
+            track(this.name, "error", duration),
+            track(errorEvent, "", duration),
+          ]);
           client.errorOut(err);
         });
     });
@@ -260,7 +266,8 @@ export class Command {
     options.rc = rc;
 
     options.project =
-      options.project || (configstore.get("activeProjects") || {})[options.projectRoot];
+      options.project ||
+      (configstore.get("activeProjects") || {})[options.projectRoot];
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
       options.project = options.config.defaults.project;
@@ -327,7 +334,9 @@ export function validateProjectId(project: string): void {
   const invalidMessage = "Invalid project id: " + clc.bold(project) + ".";
   if (project.toLowerCase() !== project) {
     // Attempt to be more helpful in case uppercase letters are used.
-    throw new FirebaseError(invalidMessage + "\nNote: Project id must be all lowercase.");
+    throw new FirebaseError(
+      invalidMessage + "\nNote: Project id must be all lowercase."
+    );
   } else {
     throw new FirebaseError(invalidMessage);
   }

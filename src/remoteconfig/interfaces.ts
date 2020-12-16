@@ -22,7 +22,9 @@ export interface InAppDefaultValue {
   useInAppDefault: boolean;
 }
 
-export type RemoteConfigParameterValue = ExplicitParameterValue | InAppDefaultValue;
+export type RemoteConfigParameterValue =
+  | ExplicitParameterValue
+  | InAppDefaultValue;
 
 /** Interface representing a Remote Config parameter. */
 export interface RemoteConfigParameter {

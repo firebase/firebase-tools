@@ -1,4 +1,9 @@
-import { ALL_EMULATORS, EmulatorInstance, Emulators, EmulatorInfo } from "./types";
+import {
+  ALL_EMULATORS,
+  EmulatorInstance,
+  Emulators,
+  EmulatorInfo,
+} from "./types";
 import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";

@@ -1,5 +1,8 @@
 import * as path from "path";
-import { FunctionsEmulator, FunctionsEmulatorArgs } from "../emulator/functionsEmulator";
+import {
+  FunctionsEmulator,
+  FunctionsEmulatorArgs,
+} from "../emulator/functionsEmulator";
 import { EmulatorServer } from "../emulator/emulatorServer";
 import { parseRuntimeVersion } from "../emulator/functionsEmulatorUtils";
 import * as getProjectId from "../getProjectId";
@@ -22,7 +25,9 @@ module.exports = {
       // default values for those tests to work properly.
       projectId,
       functionsDir,
-      nodeMajorVersion: parseRuntimeVersion(options.config.get("functions.runtime")),
+      nodeMajorVersion: parseRuntimeVersion(
+        options.config.get("functions.runtime")
+      ),
 
       ...(args as object),
     };
@@ -35,7 +40,8 @@ module.exports = {
     // we can use the port argument. Otherwise it goes to hosting and
     // we use port + 1.
     if (options.port) {
-      const hostingRunning = options.targets && options.targets.indexOf("hosting") >= 0;
+      const hostingRunning =
+        options.targets && options.targets.indexOf("hosting") >= 0;
       if (hostingRunning) {
         args.port = options.port + 1;
       } else {

@@ -6,7 +6,7 @@ interface ReleaseContext {
   remoteconfigTemplate?: RemoteConfigTemplate;
 }
 
-module.exports = async function(context: ReleaseContext, options: any) {
+module.exports = async function (context: ReleaseContext, options: any) {
   if (!context?.remoteconfigTemplate) {
     return;
   }

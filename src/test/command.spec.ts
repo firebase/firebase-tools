@@ -101,17 +101,44 @@ describe("validateProjectId", () => {
   });
 
   it("should block invalid project ids", () => {
-    expect(() => validateProjectId("EXAMPLE")).to.throw(FirebaseError, /Invalid project id/);
-    expect(() => validateProjectId("!")).to.throw(FirebaseError, /Invalid project id/);
-    expect(() => validateProjectId("with space")).to.throw(FirebaseError, /Invalid project id/);
-    expect(() => validateProjectId(" leadingspace")).to.throw(FirebaseError, /Invalid project id/);
-    expect(() => validateProjectId("trailingspace ")).to.throw(FirebaseError, /Invalid project id/);
-    expect(() => validateProjectId("has.dot")).to.throw(FirebaseError, /Invalid project id/);
+    expect(() => validateProjectId("EXAMPLE")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
+    expect(() => validateProjectId("!")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
+    expect(() => validateProjectId("with space")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
+    expect(() => validateProjectId(" leadingspace")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
+    expect(() => validateProjectId("trailingspace ")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
+    expect(() => validateProjectId("has.dot")).to.throw(
+      FirebaseError,
+      /Invalid project id/
+    );
   });
 
   it("should error with additional note for uppercase project ids", () => {
-    expect(() => validateProjectId("EXAMPLE")).to.throw(FirebaseError, /lowercase/);
-    expect(() => validateProjectId("Example")).to.throw(FirebaseError, /lowercase/);
-    expect(() => validateProjectId("Example-Project")).to.throw(FirebaseError, /lowercase/);
+    expect(() => validateProjectId("EXAMPLE")).to.throw(
+      FirebaseError,
+      /lowercase/
+    );
+    expect(() => validateProjectId("Example")).to.throw(
+      FirebaseError,
+      /lowercase/
+    );
+    expect(() => validateProjectId("Example-Project")).to.throw(
+      FirebaseError,
+      /lowercase/
+    );
   });
 });

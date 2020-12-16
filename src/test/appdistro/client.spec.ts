@@ -65,7 +65,8 @@ describe("distribution", () => {
       nock(api.appDistributionOrigin)
         .post(`/app-binary-uploads?app_id=${appId}`)
         .reply(400, {});
-      return expect(appDistributionClient.uploadDistribution(mockDistribution)).to.be.rejected;
+      return expect(appDistributionClient.uploadDistribution(mockDistribution))
+        .to.be.rejected;
     });
 
     it("should return token if upload succeeds", () => {
@@ -73,9 +74,9 @@ describe("distribution", () => {
       nock(api.appDistributionOrigin)
         .post(`/app-binary-uploads?app_id=${appId}`)
         .reply(200, { token: fakeToken });
-      return expect(appDistributionClient.uploadDistribution(mockDistribution)).to.be.eventually.eq(
-        fakeToken
-      );
+      return expect(
+        appDistributionClient.uploadDistribution(mockDistribution)
+      ).to.be.eventually.eq(fakeToken);
     });
   });
 
@@ -121,10 +122,9 @@ describe("distribution", () => {
         .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
         .reply(400, {});
 
-      return expect(appDistributionClient.getUploadStatus(fakeHash)).to.be.rejectedWith(
-        FirebaseError,
-        "HTTP Error: 400"
-      );
+      return expect(
+        appDistributionClient.getUploadStatus(fakeHash)
+      ).to.be.rejectedWith(FirebaseError, "HTTP Error: 400");
     });
 
     describe("when request succeeds", () => {
@@ -143,9 +143,9 @@ describe("distribution", () => {
           .get(`/v1alpha/apps/${appId}/upload_status/${fakeHash}`)
           .reply(200, response);
 
-        return expect(appDistributionClient.getUploadStatus(fakeHash)).to.eventually.deep.eq(
-          response
-        );
+        return expect(
+          appDistributionClient.getUploadStatus(fakeHash)
+        ).to.eventually.deep.eq(response);
       });
     });
   });
@@ -153,8 +153,8 @@ describe("distribution", () => {
   describe("addReleaseNotes", () => {
     it("should return immediately when no release notes are specified", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(appDistributionClient.addReleaseNotes("fake-release-id", "")).to.eventually.be
-        .fulfilled;
+      await expect(appDistributionClient.addReleaseNotes("fake-release-id", ""))
+        .to.eventually.be.fulfilled;
       expect(apiSpy).to.not.be.called;
     });
 
@@ -173,16 +173,17 @@ describe("distribution", () => {
       nock(api.appDistributionOrigin)
         .post(`/v1alpha/apps/${appId}/releases/${releaseId}/notes`)
         .reply(200, {});
-      return expect(appDistributionClient.addReleaseNotes(releaseId, "release notes")).to.eventually
-        .be.fulfilled;
+      return expect(
+        appDistributionClient.addReleaseNotes(releaseId, "release notes")
+      ).to.eventually.be.fulfilled;
     });
   });
 
   describe("enableAccess", () => {
     it("should return immediately when testers and groups are empty", async () => {
       const apiSpy = sandbox.spy(api, "request");
-      await expect(appDistributionClient.enableAccess("fake-release-id")).to.eventually.be
-        .fulfilled;
+      await expect(appDistributionClient.enableAccess("fake-release-id")).to
+        .eventually.be.fulfilled;
       expect(apiSpy).to.not.be.called;
     });
 
@@ -191,8 +192,9 @@ describe("distribution", () => {
       nock(api.appDistributionOrigin)
         .post(`/v1alpha/apps/${appId}/releases/${releaseId}/enable_access`)
         .reply(200, {});
-      return expect(appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])).to.be
-        .fulfilled;
+      return expect(
+        appDistributionClient.enableAccess(releaseId, ["tester1"], ["group1"])
+      ).to.be.fulfilled;
     });
 
     describe("when request fails", () => {
@@ -213,7 +215,10 @@ describe("distribution", () => {
           .reply(412, { error: { status: "FAILED_PRECONDITION" } });
         return expect(
           appDistributionClient.enableAccess(releaseId, testers, groups)
-        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid testers");
+        ).to.be.rejectedWith(
+          FirebaseError,
+          "failed to add testers/groups: invalid testers"
+        );
       });
 
       it("should throw invalid groups error when status code is INVALID_ARGUMENT", () => {
@@ -226,7 +231,10 @@ describe("distribution", () => {
           .reply(412, { error: { status: "INVALID_ARGUMENT" } });
         return expect(
           appDistributionClient.enableAccess(releaseId, testers, groups)
-        ).to.be.rejectedWith(FirebaseError, "failed to add testers/groups: invalid groups");
+        ).to.be.rejectedWith(
+          FirebaseError,
+          "failed to add testers/groups: invalid groups"
+        );
       });
 
       it("should throw default error", () => {

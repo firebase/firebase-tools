@@ -10,7 +10,11 @@ module.exports = new Command("apps:android:sha:delete <appId> <shaId>")
   .description("delete a SHA certificate hash for a given app id.")
   .before(requireAuth)
   .action(
-    async (appId: string = "", shaId: string = "", options: any): Promise<void> => {
+    async (
+      appId: string = "",
+      shaId: string = "",
+      options: any
+    ): Promise<void> => {
       const projectId = getProjectId(options);
 
       await promiseWithSpinner<void>(

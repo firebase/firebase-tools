@@ -14,7 +14,9 @@ const MAX_DISPLAY_ITEMS = 50;
  * @return {string} Parses the template and returns a formatted string that concatenates items and limits the number of items outputted that is used in the table
  */
 export function parseTemplateForTable(
-  templateItems: RemoteConfigTemplate["parameters"] | RemoteConfigTemplate["parameterGroups"]
+  templateItems:
+    | RemoteConfigTemplate["parameters"]
+    | RemoteConfigTemplate["parameterGroups"]
 ): string {
   let outputStr = "";
   let counter = 0;

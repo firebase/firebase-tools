@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "../../../emulator/auth/state";
+import {
+  PROVIDER_PASSWORD,
+  SIGNIN_METHOD_EMAIL_LINK,
+} from "../../../emulator/auth/state";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -13,16 +16,15 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
   it("should report not registered user as not registered", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
-      .send({ continueUri: "http://example.com/", identifier: "notregistered@example.com" })
+      .send({
+        continueUri: "http://example.com/",
+        identifier: "notregistered@example.com",
+      })
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(false);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
 
@@ -35,18 +37,10 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("allProviders")
-          .eql(["password"]);
-        expect(res.body)
-          .to.have.property("signinMethods")
-          .eql(["password"]);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(true);
+        expect(res.body).to.have.property("allProviders").eql(["password"]);
+        expect(res.body).to.have.property("signinMethods").eql(["password"]);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
 
@@ -61,12 +55,8 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .equals("my-session-1");
+        expect(res.body).to.have.property("registered").equals(false);
+        expect(res.body).to.have.property("sessionId").equals("my-session-1");
       });
   });
 
@@ -75,7 +65,10 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
     await registerUser(authApi(), user);
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
-      .send({ continueUri: "http://example.com/", identifier: "AlIcE@exAMPle.COM" })
+      .send({
+        continueUri: "http://example.com/",
+        identifier: "AlIcE@exAMPle.COM",
+      })
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
@@ -101,8 +94,14 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.registered).to.equal(true);
-        expect(res.body.allProviders).to.have.members([PROVIDER_PASSWORD, providerId]);
-        expect(res.body.signinMethods).to.have.members([SIGNIN_METHOD_EMAIL_LINK, providerId]);
+        expect(res.body.allProviders).to.have.members([
+          PROVIDER_PASSWORD,
+          providerId,
+        ]);
+        expect(res.body.signinMethods).to.have.members([
+          SIGNIN_METHOD_EMAIL_LINK,
+          providerId,
+        ]);
       });
 
     await authApi()
@@ -112,8 +111,14 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.registered).to.equal(true);
-        expect(res.body.allProviders).to.have.members([PROVIDER_PASSWORD, providerId]);
-        expect(res.body.signinMethods).to.have.members([SIGNIN_METHOD_EMAIL_LINK, providerId]);
+        expect(res.body.allProviders).to.have.members([
+          PROVIDER_PASSWORD,
+          providerId,
+        ]);
+        expect(res.body.signinMethods).to.have.members([
+          SIGNIN_METHOD_EMAIL_LINK,
+          providerId,
+        ]);
       });
   });
 
@@ -128,7 +133,9 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
     });
     await signInWithEmailLink(authApi(), email, idToken);
 
-    await updateProjectConfig(authApi(), { signIn: { allowDuplicateEmails: true } });
+    await updateProjectConfig(authApi(), {
+      signIn: { allowDuplicateEmails: true },
+    });
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
@@ -138,7 +145,9 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.registered).to.equal(true);
         expect(res.body.allProviders).to.have.members([PROVIDER_PASSWORD]);
-        expect(res.body.signinMethods).to.have.members([SIGNIN_METHOD_EMAIL_LINK]);
+        expect(res.body.signinMethods).to.have.members([
+          SIGNIN_METHOD_EMAIL_LINK,
+        ]);
       });
 
     await authApi()
@@ -149,7 +158,9 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.registered).to.equal(true);
         expect(res.body.allProviders).to.have.members([PROVIDER_PASSWORD]);
-        expect(res.body.signinMethods).to.have.members([SIGNIN_METHOD_EMAIL_LINK]);
+        expect(res.body.signinMethods).to.have.members([
+          SIGNIN_METHOD_EMAIL_LINK,
+        ]);
       });
   });
 

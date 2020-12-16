@@ -227,10 +227,12 @@ export async function listChannels(
   let nextPageToken = "";
   for (;;) {
     try {
-      const res = await apiClient.get<{ nextPageToken?: string; channels: Channel[] }>(
-        `/projects/${project}/sites/${site}/channels`,
-        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
-      );
+      const res = await apiClient.get<{
+        nextPageToken?: string;
+        channels: Channel[];
+      }>(`/projects/${project}/sites/${site}/channels`, {
+        queryParams: { pageToken: nextPageToken, pageSize: 10 },
+      });
       const c = res.body?.channels;
       if (c) {
         channels.push(...c);
@@ -302,7 +304,9 @@ export async function deleteChannel(
   site: string,
   channelId: string
 ): Promise<void> {
-  await apiClient.delete(`/projects/${project}/sites/${site}/channels/${channelId}`);
+  await apiClient.delete(
+    `/projects/${project}/sites/${site}/channels/${channelId}`
+  );
 }
 
 /**
@@ -316,13 +320,13 @@ export async function cloneVersion(
   versionName: string,
   finalize = false
 ): Promise<Version> {
-  const res = await apiClient.post<CloneVersionRequest, LongRunningOperation<Version>>(
-    `/projects/-/sites/${site}/versions:clone`,
-    {
-      sourceVersion: versionName,
-      finalize,
-    }
-  );
+  const res = await apiClient.post<
+    CloneVersionRequest,
+    LongRunningOperation<Version>
+  >(`/projects/-/sites/${site}/versions:clone`, {
+    sourceVersion: versionName,
+    finalize,
+  });
   const { name: operationName } = res.body;
   const pollRes = await operationPoller.pollOperation<Version>({
     apiOrigin: hostingApiOrigin,
@@ -357,7 +361,10 @@ export async function createRelease(
  * @param project the project ID.
  * @param url the url of the channel.
  */
-export async function addAuthDomain(project: string, url: string): Promise<string[]> {
+export async function addAuthDomain(
+  project: string,
+  url: string
+): Promise<string[]> {
   const domains = await getAuthDomains(project);
   const domain = url.replace("https://", "");
   const authDomains = domains || [];
@@ -373,13 +380,18 @@ export async function addAuthDomain(project: string, url: string): Promise<strin
  * @param project the project ID.
  * @param url the url of the channel.
  */
-export async function removeAuthDomain(project: string, url: string): Promise<string[]> {
+export async function removeAuthDomain(
+  project: string,
+  url: string
+): Promise<string[]> {
   const domains = await getAuthDomains(project);
   if (!domains.length) {
     return domains;
   }
   const targetDomain = url.replace("https://", "");
-  const authDomains = domains.filter((domain: string) => domain != targetDomain);
+  const authDomains = domains.filter(
+    (domain: string) => domain != targetDomain
+  );
   return updateAuthDomains(project, authDomains);
 }
 
@@ -391,7 +403,10 @@ export async function removeAuthDomain(project: string, url: string): Promise<st
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function getCleanDomains(project: string, site: string): Promise<string[]> {
+export async function getCleanDomains(
+  project: string,
+  site: string
+): Promise<string[]> {
   const channels = await listChannels(project, site);
   // Create a map of channel domain names
   const channelMap = channels
@@ -434,7 +449,10 @@ export async function getCleanDomains(project: string, site: string): Promise<st
  * @param project the project ID.
  * @param site the site for the channel.
  */
-export async function cleanAuthState(project: string, site: string): Promise<string[]> {
+export async function cleanAuthState(
+  project: string,
+  site: string
+): Promise<string[]> {
   const authDomains = await getCleanDomains(project, site);
   return await updateAuthDomains(project, authDomains);
 }

@@ -29,11 +29,17 @@ export function normalizeRulesConfig(
   });
 }
 
-export function getRulesConfig(projectId: string, options: any): RulesInstanceConfig[] {
+export function getRulesConfig(
+  projectId: string,
+  options: any
+): RulesInstanceConfig[] {
   // TODO(samstern): Config should be typed
   const config = options.config as any;
 
-  const dbConfig: { rules?: string } | DatabaseConfig[] | undefined = config.get("database");
+  const dbConfig:
+    | { rules?: string }
+    | DatabaseConfig[]
+    | undefined = config.get("database");
 
   if (dbConfig === undefined) {
     return [];
@@ -41,9 +47,17 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
 
   if (!Array.isArray(dbConfig)) {
     if (dbConfig && dbConfig.rules) {
-      return [{ rules: dbConfig.rules, instance: options.instance || options.project }];
+      return [
+        {
+          rules: dbConfig.rules,
+          instance: options.instance || options.project,
+        },
+      ];
     } else {
-      logger.debug("Possibly invalid database config: ", JSON.stringify(dbConfig));
+      logger.debug(
+        "Possibly invalid database config: ",
+        JSON.stringify(dbConfig)
+      );
       return [];
     }
   }
@@ -55,14 +69,20 @@ export function getRulesConfig(projectId: string, options: any): RulesInstanceCo
       options.rc.requireTarget(projectId, "database", c.target);
 
       // Get a list of db instances the target maps to
-      const instances: string[] = options.rc.target(projectId, "database", c.target);
+      const instances: string[] = options.rc.target(
+        projectId,
+        "database",
+        c.target
+      );
       for (const i of instances) {
         results.push({ instance: i, rules: c.rules });
       }
     } else if (c.instance) {
       results.push(c as RulesInstanceConfig);
     } else {
-      throw new FirebaseError('Must supply either "target" or "instance" in database config');
+      throw new FirebaseError(
+        'Must supply either "target" or "instance" in database config'
+      );
     }
   }
 

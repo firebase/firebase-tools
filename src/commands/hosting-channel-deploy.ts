@@ -17,8 +17,16 @@ import * as deploy from "../deploy";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
 import * as requireConfig from "../requireConfig";
-import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import {
+  DEFAULT_DURATION,
+  calculateChannelExpireTTL,
+} from "../hosting/expireUtils";
+import {
+  logLabeledSuccess,
+  datetimeString,
+  logLabeledWarning,
+  consoleUrl,
+} from "../utils";
 import * as marked from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 
@@ -37,9 +45,15 @@ export default new Command("hosting:channel:deploy [channelId]")
     "-e, --expires <duration>",
     "duration string (e.g. 12h, 30d) for channel expiration, max 30d; defaults to 7d"
   )
-  .option("--only <target1,target2...>", "only create previews for specified targets")
+  .option(
+    "--only <target1,target2...>",
+    "only create previews for specified targets"
+  )
   .option("--open", "open a browser to the channel after deploying")
-  .option("--no-authorized-domains", "do not sync channel domains with Firebase Auth")
+  .option(
+    "--no-authorized-domains",
+    "do not sync channel domains with Firebase Auth"
+  )
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(requireHostingSite)
@@ -75,7 +89,9 @@ export default new Command("hosting:channel:deploy [channelId]")
       // Some normalizing to be very sure of this check.
       if (channelId.toLowerCase().trim() === "live") {
         throw new FirebaseError(
-          `Cannot deploy to the ${bold("live")} channel using this command. Please use ${bold(
+          `Cannot deploy to the ${bold(
+            "live"
+          )} channel using this command. Please use ${bold(
             yellow("firebase deploy")
           )} instead.`
         );
@@ -91,7 +107,12 @@ export default new Command("hosting:channel:deploy [channelId]")
 
       const sites: ChannelInfo[] = normalizedHostingConfigs(options, {
         resolveTargets: true,
-      }).map((cfg) => ({ site: cfg.site, target: cfg.target, url: "", expireTime: "" }));
+      }).map((cfg) => ({
+        site: cfg.site,
+        target: cfg.target,
+        url: "",
+        expireTime: "",
+      }));
 
       await Promise.all(
         sites.map(async (siteInfo) => {
@@ -103,14 +124,29 @@ export default new Command("hosting:channel:deploy [channelId]")
             const channelExpires = Boolean(chan.expireTime);
             if (!channelExpires && options.expires) {
               // If the channel doesn't expire, but the user provided a TTL, update the channel.
-              chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
+              chan = await updateChannelTtl(
+                projectId,
+                site,
+                channelId,
+                expireTTL
+              );
             } else if (channelExpires) {
               // If the channel expires, calculate the time remaining to maybe update the channel.
-              const channelTimeRemaining = new Date(chan.expireTime).getTime() - Date.now();
+              const channelTimeRemaining =
+                new Date(chan.expireTime).getTime() - Date.now();
               // If the user explicitly gave us a time OR the time remaining is less than the new TTL:
               if (options.expires || channelTimeRemaining < expireTTL) {
-                chan = await updateChannelTtl(projectId, site, channelId, expireTTL);
-                logger.debug("[hosting] updated TTL for existing channel for site", site, chan);
+                chan = await updateChannelTtl(
+                  projectId,
+                  site,
+                  channelId,
+                  expireTTL
+                );
+                logger.debug(
+                  "[hosting] updated TTL for existing channel for site",
+                  site,
+                  chan
+                );
               }
             }
           } else {
@@ -118,7 +154,9 @@ export default new Command("hosting:channel:deploy [channelId]")
             logger.debug("[hosting] created new channnel for site", site, chan);
             logLabeledSuccess(
               LOG_TAG,
-              `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
+              `Channel ${bold(channelId)} has been created on site ${bold(
+                site
+              )}.`
             );
             try {
               await addAuthDomain(projectId, chan.url);

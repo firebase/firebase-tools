@@ -15,7 +15,9 @@ import { requireAuth } from "../requireAuth";
  * List all published extensions associated with this publisher ID.
  */
 export default new Command("ext:dev:list <publisherId>")
-  .description("list all published extensions associated with this publisher ID")
+  .description(
+    "list all published extensions associated with this publisher ID"
+  )
   .before(requireAuth)
   .action(async (publisherId: string) => {
     let extensions;
@@ -46,7 +48,9 @@ export default new Command("ext:dev:list <publisherId>")
       table.push([
         _.last(extension.ref.split("/")),
         extension.latestVersion,
-        extension.createTime ? extensionsUtils.formatTimestamp(extension.createTime) : "",
+        extension.createTime
+          ? extensionsUtils.formatTimestamp(extension.createTime)
+          : "",
       ]);
     });
 

@@ -3,7 +3,7 @@ import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
 
-module.exports = async function(context: any, options: any): Promise<void> {
+module.exports = async function (context: any, options: any): Promise<void> {
   if (!context) {
     return;
   }

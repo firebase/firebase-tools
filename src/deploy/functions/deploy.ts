@@ -15,7 +15,10 @@ async function uploadSource(
   context: { projectId: string; uploadUrl?: string },
   source: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<void> {
-  const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(context.projectId, GCP_REGION);
+  const uploadUrl = await gcp.cloudfunctions.generateUploadUrl(
+    context.projectId,
+    GCP_REGION
+  );
   context.uploadUrl = uploadUrl;
   const apiUploadUrl = uploadUrl.replace("https://storage.googleapis.com", "");
   await gcp.storage.upload(source, apiUploadUrl);
@@ -28,7 +31,11 @@ async function uploadSource(
  * @param payload The deploy payload.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function deploy(context: any, options: any, payload: any): Promise<void> {
+export async function deploy(
+  context: any,
+  options: any,
+  payload: any
+): Promise<void> {
   if (options.config.get("functions")) {
     logBullet(
       clc.cyan.bold("functions:") +
@@ -38,7 +45,9 @@ export async function deploy(context: any, options: any, payload: any): Promise<
     );
 
     const source = await prepareFunctionsUpload(context, options);
-    context.existingFunctions = await gcp.cloudfunctions.listAll(context.projectId);
+    context.existingFunctions = await gcp.cloudfunctions.listAll(
+      context.projectId
+    );
     payload.functions = {
       triggers: options.config.get("functions.triggers"),
     };

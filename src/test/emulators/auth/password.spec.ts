@@ -2,7 +2,11 @@ import { expect } from "chai";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "../../../emulator/auth/operations";
 import { describeAuthEmulator } from "./setup";
-import { expectStatusCode, registerUser, updateAccountByLocalId } from "./helpers";
+import {
+  expectStatusCode,
+  registerUser,
+  updateAccountByLocalId,
+} from "./helpers";
 
 describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
   it("should issue tokens when email and password are valid", async () => {
@@ -17,12 +21,8 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.localId).equals(localId);
         expect(res.body.email).equals(user.email);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(true);
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {

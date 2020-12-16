@@ -38,22 +38,24 @@ export const RUNTIME_NOT_SET =
 
 export const UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG = clc.bold(
   `functions.runtime value is unsupported. ` +
-    `Valid choices are: ${clc.bold("nodejs10")}, ${clc.bold("nodejs12")}, and ${clc.bold(
-      "nodejs14"
-    )}.`
+    `Valid choices are: ${clc.bold("nodejs10")}, ${clc.bold(
+      "nodejs12"
+    )}, and ${clc.bold("nodejs14")}.`
 );
 
 export const UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG = clc.bold(
   `package.json in functions directory has an engines field which is unsupported. ` +
-    `Valid choices are: ${clc.bold('{"node": "10"}')}, ${clc.bold('{"node":"12"}')}, and ${clc.bold(
-      '{"node":"14"}'
-    )}.`
+    `Valid choices are: ${clc.bold('{"node": "10"}')}, ${clc.bold(
+      '{"node":"12"}'
+    )}, and ${clc.bold('{"node":"14"}')}.`
 );
 
 export const DEPRECATED_NODE_VERSION_INFO =
   `\n\nDeploys to runtimes below Node.js 10 are now disabled in the Firebase CLI. ` +
   `${clc.bold(
-    `Existing Node.js 8 functions ${clc.underline("will stop executing on 2021-03-15")}`
+    `Existing Node.js 8 functions ${clc.underline(
+      "will stop executing on 2021-03-15"
+    )}`
   )}. Update existing functions to Node.js 10 or greater as soon as possible.`;
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
@@ -67,7 +69,9 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
 function functionsSDKTooOld(sourceDir: string, minRange: string): boolean {
   const userVersion = getFunctionsSDKVersion(sourceDir);
   if (!userVersion) {
-    logger.debug("getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version");
+    logger.debug(
+      "getFunctionsSDKVersion was unable to retrieve 'firebase-functions' version"
+    );
     return false;
   }
   try {
@@ -111,12 +115,17 @@ function getRuntimeChoiceFromPackageJson(sourceDir: string): string {
  * @param runtimeFromConfig runtime from the `functions` section of firebase.json file (may be empty).
  * @return The runtime, e.g. `nodejs12`.
  */
-export function getRuntimeChoice(sourceDir: string, runtimeFromConfig?: string): string {
-  const runtime = runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
+export function getRuntimeChoice(
+  sourceDir: string,
+  runtimeFromConfig?: string
+): string {
+  const runtime =
+    runtimeFromConfig || getRuntimeChoiceFromPackageJson(sourceDir);
   const errorMessage =
     (runtimeFromConfig
       ? UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
-      : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) + DEPRECATED_NODE_VERSION_INFO;
+      : UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG) +
+    DEPRECATED_NODE_VERSION_INFO;
 
   if (!runtime || !ENGINE_RUNTIMES_NAMES.includes(runtime)) {
     track("functions_runtime_notices", "package_missing_runtime");

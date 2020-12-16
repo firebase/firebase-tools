@@ -14,10 +14,16 @@ const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
  * Retrieves and parses an ExtensionSpec from a local directory
  * @param directory the directory to look for extension.yaml and PRESINSTALL.md in
  */
-export async function getLocalExtensionSpec(directory: string): Promise<ExtensionSpec> {
-  const spec = await parseYAML(readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
+export async function getLocalExtensionSpec(
+  directory: string
+): Promise<ExtensionSpec> {
+  const spec = await parseYAML(
+    readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE))
+  );
   try {
-    const preinstall = readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
+    const preinstall = readFile(
+      path.resolve(directory, EXTENSIONS_PREINSTALL_FILE)
+    );
     spec.preinstallContent = preinstall;
   } catch (err) {
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
@@ -53,9 +59,13 @@ export function readFile(pathToFile: string): string {
     return fs.readFileSync(pathToFile, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") {
-      throw new FirebaseError(`Could not find "${pathToFile}""`, { original: err });
+      throw new FirebaseError(`Could not find "${pathToFile}""`, {
+        original: err,
+      });
     }
-    throw new FirebaseError(`Failed to read file at "${pathToFile}"`, { original: err });
+    throw new FirebaseError(`Failed to read file at "${pathToFile}"`, {
+      original: err,
+    });
   }
 }
 

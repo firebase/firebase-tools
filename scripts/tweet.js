@@ -42,7 +42,11 @@ const client = new Twitter(creds);
 
 client.post(
   "statuses/update",
-  { status: `v${version} of @Firebase CLI is available. Release notes: ${getUrl(version)}` },
+  {
+    status: `v${version} of @Firebase CLI is available. Release notes: ${getUrl(
+      version
+    )}`,
+  },
   (err) => {
     if (err) {
       console.error(err);

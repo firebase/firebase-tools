@@ -20,11 +20,16 @@ export async function buildOptions(options: any): Promise<any> {
   extensionsHelper.validateSpec(extensionYaml);
 
   const params = await paramHelper.readParamsFile(options.testParams);
-  extensionsHelper.validateCommandLineParams(params, extensionYaml.params || []);
+  extensionsHelper.validateCommandLineParams(
+    params,
+    extensionYaml.params || []
+  );
   params["PROJECT_ID"] = getProjectId(options, false);
   params["EXT_INSTANCE_ID"] = params["EXT_INSTANCE_ID"] || extensionYaml.name;
   params["DATABASE_INSTANCE"] = params["PROJECT_ID"];
-  params["DATABASE_URL"] = `https://${params["DATABASE_INSTANCE"]}.firebaseio.com`;
+  params[
+    "DATABASE_URL"
+  ] = `https://${params["DATABASE_INSTANCE"]}.firebaseio.com`;
   params["STORAGE_BUCKET"] = `${params["PROJECT_ID"]}.appspot.com`;
   const functionResources = specHelper.getFunctionResourcesWithParamSubstitution(
     extensionYaml,
@@ -49,7 +54,10 @@ export async function buildOptions(options: any): Promise<any> {
  * Checks and warns if the test config is missing fields
  * that are relevant for the extension being emulated.
  */
-function checkTestConfig(testConfig: { [key: string]: any }, functionResources: Resource[]) {
+function checkTestConfig(
+  testConfig: { [key: string]: any },
+  functionResources: Resource[]
+) {
   const logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   if (!testConfig.functions && functionResources.length) {
     logger.log(
@@ -88,9 +96,12 @@ function readTestConfigFile(testConfigPath: string): { [key: string]: any } {
     const buf = fs.readFileSync(path.resolve(testConfigPath));
     return JSON.parse(buf.toString());
   } catch (err) {
-    throw new FirebaseError(`Error reading --test-config file: ${err.message}\n`, {
-      original: err,
-    });
+    throw new FirebaseError(
+      `Error reading --test-config file: ${err.message}\n`,
+      {
+        original: err,
+      }
+    );
   }
 }
 
@@ -98,7 +109,10 @@ function buildConfig(
   functionResources: Resource[],
   testConfig?: { [key: string]: string }
 ): Config {
-  const config = new Config(testConfig || {}, { projectDir: process.cwd(), cwd: process.cwd() });
+  const config = new Config(testConfig || {}, {
+    projectDir: process.cwd(),
+    cwd: process.cwd(),
+  });
 
   const emulateFunctions = shouldEmulateFunctions(functionResources);
   if (!testConfig) {

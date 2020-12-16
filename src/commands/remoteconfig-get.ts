@@ -25,7 +25,10 @@ function checkValidNumber(versionNumber: string): string {
 
 module.exports = new Command("remoteconfig:get")
   .description("get a Firebase project's Remote Config template")
-  .option("-v, --version-number <versionNumber>", "grabs the specified version of the template")
+  .option(
+    "-v, --version-number <versionNumber>",
+    "grabs the specified version of the template"
+  )
   .option(
     "-o, --output [filename]",
     "write config output to a filename (if omitted, will use the default file path)"
@@ -51,14 +54,20 @@ module.exports = new Command("remoteconfig:get")
     const updatedParameters = parseTemplateForTable(template.parameters);
     table.push(["parameters", updatedParameters]);
 
-    const updatedParameterGroups = parseTemplateForTable(template.parameterGroups);
+    const updatedParameterGroups = parseTemplateForTable(
+      template.parameterGroups
+    );
     table.push(["parameterGroups", updatedParameterGroups]);
-    table.push(["version", util.inspect(template.version, { showHidden: false, depth: null })]);
+    table.push([
+      "version",
+      util.inspect(template.version, { showHidden: false, depth: null }),
+    ]);
 
     // Firebase remoteconfig:get --output implementation
     const fileOut = !!options.output;
     if (fileOut) {
-      const shouldUseDefaultFilename = options.output === true || options.output === "";
+      const shouldUseDefaultFilename =
+        options.output === true || options.output === "";
       const filename = shouldUseDefaultFilename
         ? options.config.get("remoteconfig.template")
         : options.output;

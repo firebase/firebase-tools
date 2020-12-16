@@ -40,7 +40,10 @@ export function extractParamsFromPath(
     }, {});
 }
 
-export function isValidWildcardMatch(wildcardPath: string, snapshotPath: string): boolean {
+export function isValidWildcardMatch(
+  wildcardPath: string,
+  snapshotPath: string
+): boolean {
   const wildcardChunks = trimSlashes(wildcardPath).split("/");
   const snapshotChunks = trimSlashes(snapshotPath).split("/");
 
@@ -48,9 +51,11 @@ export function isValidWildcardMatch(wildcardPath: string, snapshotPath: string)
     return false;
   }
 
-  const mismatchedChunks = wildcardChunks.slice(-snapshotChunks.length).filter((chunk, index) => {
-    return !(wildcardRegex.exec(chunk) || chunk === snapshotChunks[index]);
-  });
+  const mismatchedChunks = wildcardChunks
+    .slice(-snapshotChunks.length)
+    .filter((chunk, index) => {
+      return !(wildcardRegex.exec(chunk) || chunk === snapshotChunks[index]);
+    });
 
   return mismatchedChunks.length === 0;
 }
@@ -67,10 +72,7 @@ export function trimSlashes(str: string): string {
 }
 
 export function removePathSegments(path: string, count: number): string {
-  return trimSlashes(path)
-    .split("/")
-    .slice(count)
-    .join("/");
+  return trimSlashes(path).split("/").slice(count).join("/");
 }
 
 /**

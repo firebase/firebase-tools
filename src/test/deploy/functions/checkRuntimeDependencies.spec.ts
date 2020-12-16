@@ -40,13 +40,17 @@ describe("checkRuntimeDependencies()", () => {
 
   function mockServiceEnableSuccess(): void {
     nock(api.serviceUsageOrigin)
-      .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
+      .post(
+        "/v1/projects/test-project/services/cloudbuild.googleapis.com:enable"
+      )
       .reply(200, {});
   }
 
   function mockServiceEnableBillingError(): void {
     nock(api.serviceUsageOrigin)
-      .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
+      .post(
+        "/v1/projects/test-project/services/cloudbuild.googleapis.com:enable"
+      )
       .reply(403, {
         error: {
           details: [{ violations: [{ type: "serviceusage/billing-enabled" }] }],
@@ -56,7 +60,9 @@ describe("checkRuntimeDependencies()", () => {
 
   function mockServiceEnablePermissionError(): void {
     nock(api.serviceUsageOrigin)
-      .post("/v1/projects/test-project/services/cloudbuild.googleapis.com:enable")
+      .post(
+        "/v1/projects/test-project/services/cloudbuild.googleapis.com:enable"
+      )
       .reply(403, {
         error: {
           status: "PERMISSION_DENIED",
@@ -81,8 +87,8 @@ describe("checkRuntimeDependencies()", () => {
         it("should succeed", async () => {
           stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
-            .fulfilled;
+          await expect(checkRuntimeDependencies("test-project", runtime)).to
+            .eventually.be.fulfilled;
           expect(logStub?.callCount).to.eq(0);
         });
       });
@@ -97,8 +103,8 @@ describe("checkRuntimeDependencies()", () => {
         it("should succeed", async () => {
           stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be
-            .fulfilled;
+          await expect(checkRuntimeDependencies("test-project", runtime)).to
+            .eventually.be.fulfilled;
           expect(logStub?.callCount).to.eq(1); // enabling an api logs a warning
         });
       });
@@ -112,7 +118,8 @@ describe("checkRuntimeDependencies()", () => {
         it("should error", async () => {
           stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
+          await expect(checkRuntimeDependencies("test-project", runtime)).to
+            .eventually.be.rejected;
         });
       });
 
@@ -125,7 +132,8 @@ describe("checkRuntimeDependencies()", () => {
         it("should error", async () => {
           stubTimes(Date.now() - 10000, Date.now() - 5000);
 
-          await expect(checkRuntimeDependencies("test-project", runtime)).to.eventually.be.rejected;
+          await expect(checkRuntimeDependencies("test-project", runtime)).to
+            .eventually.be.rejected;
         });
       });
     });

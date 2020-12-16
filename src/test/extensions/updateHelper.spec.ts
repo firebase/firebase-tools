@@ -23,7 +23,11 @@ const SPEC = {
     { role: "role2", reason: "" },
   ],
   resources: [
-    { name: "resource1", type: "firebaseextensions.v1beta.function", description: "desc" },
+    {
+      name: "resource1",
+      type: "firebaseextensions.v1beta.function",
+      description: "desc",
+    },
     { name: "resource2", type: "other", description: "" },
   ],
   author: { authorName: "Tester" },
@@ -141,8 +145,13 @@ describe("updateHelper", () => {
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+      createSourceStub = sinon.stub(
+        extensionsHelper,
+        "createSourceFromLocation"
+      );
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(INSTANCE);
     });
 
     afterEach(() => {
@@ -168,7 +177,13 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       createSourceStub.throwsException("Invalid source");
       await expect(
-        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
+        updateHelper.updateFromLocalSource(
+          "test-project",
+          "test-instance",
+          ".",
+          SPEC,
+          SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Unable to update from the source");
     });
 
@@ -176,7 +191,13 @@ describe("updateHelper", () => {
       promptStub.resolves(false);
       createSourceStub.resolves(SOURCE);
       await expect(
-        updateHelper.updateFromLocalSource("test-project", "test-instance", ".", SPEC, SPEC.name)
+        updateHelper.updateFromLocalSource(
+          "test-project",
+          "test-instance",
+          ".",
+          SPEC,
+          SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });
@@ -188,8 +209,13 @@ describe("updateHelper", () => {
 
     beforeEach(() => {
       promptStub = sinon.stub(prompt, "promptOnce");
-      createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+      createSourceStub = sinon.stub(
+        extensionsHelper,
+        "createSourceFromLocation"
+      );
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(INSTANCE);
     });
 
     afterEach(() => {
@@ -256,7 +282,9 @@ describe("updateHelper", () => {
       registryStub.resolves(REGISTRY_ENTRY);
       isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(false);
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(REGISTRY_INSTANCE);
     });
 
     afterEach(() => {
@@ -329,7 +357,9 @@ describe("updateHelper", () => {
       registryStub.resolves(REGISTRY_ENTRY);
       isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(false);
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(REGISTRY_INSTANCE);
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(REGISTRY_INSTANCE);
     });
 
     afterEach(() => {
@@ -400,7 +430,9 @@ describe("updateHelper", () => {
       registryEntryStub.resolves(REGISTRY_ENTRY);
       isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(true);
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(INSTANCE);
     });
 
     afterEach(() => {
@@ -435,7 +467,10 @@ describe("updateHelper", () => {
           SPEC.name,
           "0.1.1"
         )
-      ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Cannot find the latest version of this extension."
+      );
     });
 
     it("should not update if the update warning is not confirmed", async () => {
@@ -460,7 +495,10 @@ describe("updateHelper", () => {
           SPEC.name,
           "0.1.0"
         )
-      ).to.be.rejectedWith(FirebaseError, "is less than the minimum version required");
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "is less than the minimum version required"
+      );
     });
   });
 
@@ -478,7 +516,9 @@ describe("updateHelper", () => {
       registryEntryStub.resolves(REGISTRY_ENTRY);
       isOfficialStub = sinon.stub(resolveSource, "isOfficialSource");
       isOfficialStub.returns(true);
-      getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+      getInstanceStub = sinon
+        .stub(extensionsApi, "getInstance")
+        .resolves(INSTANCE);
     });
 
     afterEach(() => {
@@ -504,15 +544,28 @@ describe("updateHelper", () => {
       promptStub.resolves(true);
       registryEntryStub.throws("Unable to find extension source");
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
-      ).to.be.rejectedWith(FirebaseError, "Cannot find the latest version of this extension.");
+        updateHelper.updateFromRegistry(
+          "test-project",
+          "test-instance",
+          SPEC,
+          SPEC.name
+        )
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Cannot find the latest version of this extension."
+      );
     });
 
     it("should not update if the update warning is not confirmed", async () => {
       promptStub.resolves(false);
       registryEntryStub.resolves(REGISTRY_ENTRY);
       await expect(
-        updateHelper.updateFromRegistry("test-project", "test-instance", SPEC, SPEC.name)
+        updateHelper.updateFromRegistry(
+          "test-project",
+          "test-instance",
+          SPEC,
+          SPEC.name
+        )
       ).to.be.rejectedWith(FirebaseError, "Update cancelled.");
     });
   });

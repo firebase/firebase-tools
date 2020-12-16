@@ -14,9 +14,12 @@ export function resolveProjectPath(
 ): string {
   const projectRoot = detectProjectRoot(options);
   if (!projectRoot) {
-    throw new FirebaseError("Expected to be in a project directory, but none was found.", {
-      exit: 2,
-    });
+    throw new FirebaseError(
+      "Expected to be in a project directory, but none was found.",
+      {
+        exit: 2,
+      }
+    );
   }
   return path.resolve(projectRoot, filePath);
 }

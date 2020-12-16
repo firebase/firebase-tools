@@ -16,7 +16,11 @@ import { FirebaseError } from "../../error";
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
 
-function progressMessage(message: string, current: number, total: number): string {
+function progressMessage(
+  message: string,
+  current: number,
+  total: number
+): string {
   current = Math.min(current, total);
   const percent = Math.floor(((current * 1.0) / total) * 100).toString();
   return `${message} [${current}/${total}] (${clc.bold.green(`${percent}%`)})`;
@@ -118,8 +122,14 @@ export class Uploader {
         return this.populateQueue.wait();
       })
       .then(() => {
-        logger.debug("[hosting][populate queue][FINAL]", this.populateQueue.stats());
-        logger.debug("[hosting] uploads queued:", this.uploadQueue.stats().total);
+        logger.debug(
+          "[hosting][populate queue][FINAL]",
+          this.populateQueue.stats()
+        );
+        logger.debug(
+          "[hosting] uploads queued:",
+          this.uploadQueue.stats().total
+        );
         this.uploadQueue.close();
       });
 
@@ -130,18 +140,24 @@ export class Uploader {
       }
     };
 
-    return this.wait()
-      .then(fin)
-      .catch(fin);
+    return this.wait().then(fin).catch(fin);
   }
 
   async wait(): Promise<void> {
-    await Promise.all([this.hashQueue.wait(), this.populateQueue.wait(), this.uploadQueue.wait()]);
+    await Promise.all([
+      this.hashQueue.wait(),
+      this.populateQueue.wait(),
+      this.uploadQueue.wait(),
+    ]);
   }
 
   statusMessage(): string {
     if (!this.hashQueue.finished) {
-      return progressMessage("hashing files", this.hashQueue.complete, this.fileCount);
+      return progressMessage(
+        "hashing files",
+        this.hashQueue.complete,
+        this.fileCount
+      );
     } else if (!this.populateQueue.finished) {
       return progressMessage(
         "adding files to version",
@@ -245,9 +261,9 @@ export class Uploader {
     }
     if (res.status !== 200) {
       logger.debug(
-        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${res.status}: ${
-          res.response.headers
-        } ${await res.response.text()}`
+        `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
+          res.status
+        }: ${res.response.headers} ${await res.response.text()}`
       );
       throw new Error("Unexpected error while uploading file.");
     }
@@ -262,6 +278,9 @@ export class Uploader {
   uploadTimeout(filePath: string): number {
     const size = this.sizeMap[filePath] || 0;
     // 20s per MB bounded to min/max timeouts
-    return Math.min(Math.max(Math.round(size / 1000) * 20, MIN_UPLOAD_TIMEOUT), MAX_UPLOAD_TIMEOUT);
+    return Math.min(
+      Math.max(Math.round(size / 1000) * 20, MIN_UPLOAD_TIMEOUT),
+      MAX_UPLOAD_TIMEOUT
+    );
   }
 }

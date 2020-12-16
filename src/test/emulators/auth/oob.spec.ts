@@ -56,7 +56,11 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
       .set("Authorization", "Bearer owner")
-      .send({ email: user.email, requestType: "PASSWORD_RESET", returnOobLink: true })
+      .send({
+        email: user.email,
+        requestType: "PASSWORD_RESET",
+        returnOobLink: true,
+      })
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.email).to.equal(user.email);
@@ -67,7 +71,11 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
       .set("Authorization", "Bearer owner")
-      .send({ email: user.email, requestType: "VERIFY_EMAIL", returnOobLink: true })
+      .send({
+        email: user.email,
+        requestType: "VERIFY_EMAIL",
+        returnOobLink: true,
+      })
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.email).to.equal(user.email);
@@ -148,7 +156,11 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
       .set("Authorization", "Bearer owner")
-      .send({ email: "nosuchuser@example.com", returnOobLink: true, requestType: "VERIFY_EMAIL" })
+      .send({
+        email: "nosuchuser@example.com",
+        returnOobLink: true,
+        requestType: "VERIFY_EMAIL",
+      })
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error)

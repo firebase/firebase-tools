@@ -20,24 +20,52 @@ interface Link {
 
 const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
-  { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
-  { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
+  {
+    name: "Authentication: Providers",
+    arg: "auth",
+    consolePath: "/authentication/providers",
+  },
+  {
+    name: "Authentication: Users",
+    arg: "auth:users",
+    consolePath: "/authentication/users",
+  },
   { name: "Crash Reporting", arg: "crash", consolePath: "/monitoring" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
-  { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
+  {
+    name: "Database: Rules",
+    arg: "database:rules",
+    consolePath: "/database/rules",
+  },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
-  { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
-  { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
-  { name: "Firestore: Usage", arg: "firestore:usage", consolePath: "/firestore/usage" },
+  {
+    name: "Firestore: Rules",
+    arg: "firestore:rules",
+    consolePath: "/firestore/rules",
+  },
+  {
+    name: "Firestore: Indexes",
+    arg: "firestore:indexes",
+    consolePath: "/firestore/indexes",
+  },
+  {
+    name: "Firestore: Usage",
+    arg: "firestore:usage",
+    consolePath: "/firestore/usage",
+  },
   { name: "Functions", arg: "functions", consolePath: "/functions/list" },
   { name: "Functions Log", arg: "functions:log" } /* Special Case */,
   { name: "Hosting: Deployed Site", arg: "hosting:site" } /* Special Case */,
   { name: "Hosting", arg: "hosting", consolePath: "/hosting/main" },
   { name: "Notifications", arg: "notifications", consolePath: "/notification" },
   { name: "Project Dashboard", arg: "dashboard", consolePath: "/overview" },
-  { name: "Project Settings", arg: "settings", consolePath: "/settings/general" },
+  {
+    name: "Project Settings",
+    arg: "settings",
+    consolePath: "/settings/general",
+  },
   {
     name: "Remote Config: Conditions",
     arg: "config:conditions",
@@ -45,7 +73,11 @@ const LINKS: Link[] = [
   },
   { name: "Remote Config", arg: "config", consolePath: "/config" },
   { name: "Storage: Files", arg: "storage", consolePath: "/storage/files" },
-  { name: "Storage: Rules", arg: "storage:rules", consolePath: "/storage/rules" },
+  {
+    name: "Storage: Rules",
+    arg: "storage:rules",
+    consolePath: "/storage/rules",
+  },
   { name: "Test Lab", arg: "testlab", consolePath: "/testlab/histories/" },
 ];
 
@@ -60,7 +92,8 @@ export default new Command("open [link]")
       let link = _.find(LINKS, { arg: linkName });
       if (linkName && !link) {
         throw new FirebaseError(
-          "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+          "Unrecognized link name. Valid links are:\n\n" +
+            _.map(LINKS, "arg").join("\n")
         );
       }
 
@@ -74,7 +107,8 @@ export default new Command("open [link]")
       }
       if (!link) {
         throw new FirebaseError(
-          "Unrecognized link name. Valid links are:\n\n" + _.map(LINKS, "arg").join("\n")
+          "Unrecognized link name. Valid links are:\n\n" +
+            _.map(LINKS, "arg").join("\n")
         );
       }
 
@@ -99,7 +133,9 @@ export default new Command("open [link]")
         );
         logger.info();
       }
-      logger.info(`Opening ${clc.bold(link.name)} link in your default browser:`);
+      logger.info(
+        `Opening ${clc.bold(link.name)} link in your default browser:`
+      );
       logger.info(clc.bold.underline(url));
 
       open(url);

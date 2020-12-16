@@ -87,7 +87,9 @@ export default class DatabaseRemove {
       // Narrow the batchSize range depending on whether the majority of the chunks are small.
       if (nSmallChunks > chunks.length / 2) {
         batchSizeLow = batchSize;
-        batchSize = Math.floor(Math.min(batchSize * 2, (batchSizeHigh + batchSize) / 2));
+        batchSize = Math.floor(
+          Math.min(batchSize * 2, (batchSizeHigh + batchSize) / 2)
+        );
       } else {
         batchSizeHigh = batchSize;
         batchSize = Math.floor((batchSizeLow + batchSize) / 2);
@@ -96,7 +98,8 @@ export default class DatabaseRemove {
       if (listNumSubPath * 2 <= MAX_LIST_NUM_SUB_PATH) {
         listNumSubPath = listNumSubPath * 2;
       } else {
-        listNumSubPath = Math.floor(MAX_LIST_NUM_SUB_PATH / batchSize) * batchSize;
+        listNumSubPath =
+          Math.floor(MAX_LIST_NUM_SUB_PATH / batchSize) * batchSize;
       }
     }
   }
@@ -108,14 +111,21 @@ export default class DatabaseRemove {
    *
    * @return true if the combined size is small (Does not exceed writeSizeLimit of tiny)
    */
-  private async deleteSubPath(path: string, subPaths: string[]): Promise<boolean> {
+  private async deleteSubPath(
+    path: string,
+    subPaths: string[]
+  ): Promise<boolean> {
     if (subPaths.length === 0) {
       throw new Error("deleteSubPath is called with empty subPaths list");
     }
     if (subPaths.length === 1) {
       return this.deletePath(pathLib.join(path, subPaths[0]));
     }
-    if (await this.deleteJobStack.run(() => this.remote.deleteSubPath(path, subPaths))) {
+    if (
+      await this.deleteJobStack.run(() =>
+        this.remote.deleteSubPath(path, subPaths)
+      )
+    ) {
       return true;
     }
     const mid = Math.floor(subPaths.length / 2);

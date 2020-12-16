@@ -2,7 +2,11 @@ import { URL } from "url";
 
 import { Client } from "../apiv2";
 import { Command } from "../command";
-import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
+import {
+  DATABASE_SETTINGS,
+  HELP_TEXT,
+  INVALID_PATH_ERROR,
+} from "../database/settings";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import { populateInstanceDetails } from "../management/database";
@@ -41,10 +45,13 @@ export default new Command("database:settings:get <path>")
       try {
         res = await c.get(u.pathname);
       } catch (err) {
-        throw new FirebaseError(`Unexpected error fetching configs at ${path}`, {
-          exit: 2,
-          original: err,
-        });
+        throw new FirebaseError(
+          `Unexpected error fetching configs at ${path}`,
+          {
+            exit: 2,
+            original: err,
+          }
+        );
       }
       // strictTriggerValidation returns an object, not a single string.
       // Check for an object and get the `value` from it.
@@ -52,6 +59,8 @@ export default new Command("database:settings:get <path>")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         res.body = (res.body as any).value;
       }
-      utils.logSuccess(`For database instance ${options.instance}\n\t ${path} = ${res.body}`);
+      utils.logSuccess(
+        `For database instance ${options.instance}\n\t ${path} = ${res.body}`
+      );
     }
   );

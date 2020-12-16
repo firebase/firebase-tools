@@ -36,11 +36,17 @@ export class FirestoreIndexes {
     const indexesToDeploy: Spec.Index[] = spec.indexes;
     const fieldOverridesToDeploy: Spec.FieldOverride[] = spec.fieldOverrides;
 
-    const existingIndexes: API.Index[] = await this.listIndexes(options.project);
-    const existingFieldOverrides: API.Field[] = await this.listFieldOverrides(options.project);
+    const existingIndexes: API.Index[] = await this.listIndexes(
+      options.project
+    );
+    const existingFieldOverrides: API.Field[] = await this.listFieldOverrides(
+      options.project
+    );
 
     const indexesToDelete = existingIndexes.filter((index) => {
-      return !indexesToDeploy.some((spec) => this.indexMatchesSpec(index, spec));
+      return !indexesToDeploy.some((spec) =>
+        this.indexMatchesSpec(index, spec)
+      );
     });
 
     // We only want to delete fields where there is nothing in the local file with the same
@@ -92,7 +98,9 @@ export class FirestoreIndexes {
     }
 
     for (const index of indexesToDeploy) {
-      const exists = existingIndexes.some((x) => this.indexMatchesSpec(x, index));
+      const exists = existingIndexes.some((x) =>
+        this.indexMatchesSpec(x, index)
+      );
       if (exists) {
         logger.debug(`Skipping existing index: ${JSON.stringify(index)}`);
       } else {
@@ -102,7 +110,10 @@ export class FirestoreIndexes {
     }
 
     if (shouldDeleteIndexes && indexesToDelete.length > 0) {
-      utils.logLabeledBullet("firestore", `Deleting ${indexesToDelete.length} indexes...`);
+      utils.logLabeledBullet(
+        "firestore",
+        `Deleting ${indexesToDelete.length} indexes...`
+      );
       for (const index of indexesToDelete) {
         await this.deleteIndex(index);
       }
@@ -138,9 +149,13 @@ export class FirestoreIndexes {
     }
 
     for (const field of fieldOverridesToDeploy) {
-      const exists = existingFieldOverrides.some((x) => this.fieldMatchesSpec(x, field));
+      const exists = existingFieldOverrides.some((x) =>
+        this.fieldMatchesSpec(x, field)
+      );
       if (exists) {
-        logger.debug(`Skipping existing field override: ${JSON.stringify(field)}`);
+        logger.debug(
+          `Skipping existing field override: ${JSON.stringify(field)}`
+        );
       } else {
         logger.debug(`Updating field override: ${JSON.stringify(field)}`);
         await this.patchField(options.project, field);
@@ -333,7 +348,11 @@ export class FirestoreIndexes {
       }
 
       if (field.arrayConfig) {
-        validator.assertEnum(field, "arrayConfig", Object.keys(API.ArrayConfig));
+        validator.assertEnum(
+          field,
+          "arrayConfig",
+          Object.keys(API.ArrayConfig)
+        );
       }
     });
   }
@@ -351,7 +370,11 @@ export class FirestoreIndexes {
       validator.assertHasOneOf(index, ["arrayConfig", "order"]);
 
       if (index.arrayConfig) {
-        validator.assertEnum(index, "arrayConfig", Object.keys(API.ArrayConfig));
+        validator.assertEnum(
+          index,
+          "arrayConfig",
+          Object.keys(API.ArrayConfig)
+        );
       }
 
       if (index.order) {
@@ -583,7 +606,10 @@ export class FirestoreIndexes {
   /**
    * Get a colored, pretty-printed representation of an index.
    */
-  private prettyIndexString(index: API.Index, includeState: boolean = true): string {
+  private prettyIndexString(
+    index: API.Index,
+    includeState: boolean = true
+  ): string {
     let result = "";
 
     if (index.state && includeState) {

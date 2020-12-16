@@ -35,10 +35,14 @@ export function getCachedWebSetup(options: any): WebConfig | undefined {
  */
 export async function fetchWebSetup(options: any): Promise<WebConfig> {
   const projectId = getProjectId(options, false);
-  const response = await api.request("GET", `/v1beta1/projects/${projectId}/webApps/-/config`, {
-    auth: true,
-    origin: api.firebaseApiOrigin,
-  });
+  const response = await api.request(
+    "GET",
+    `/v1beta1/projects/${projectId}/webApps/-/config`,
+    {
+      auth: true,
+      origin: api.firebaseApiOrigin,
+    }
+  );
   const config = response.body;
   setCachedWebSetup(config.projectId, config);
   return config;

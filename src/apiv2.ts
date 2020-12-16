@@ -80,11 +80,17 @@ export class Client {
       this.opts.auth = true;
     }
     if (this.opts.urlPrefix.endsWith("/")) {
-      this.opts.urlPrefix = this.opts.urlPrefix.substring(0, this.opts.urlPrefix.length - 1);
+      this.opts.urlPrefix = this.opts.urlPrefix.substring(
+        0,
+        this.opts.urlPrefix.length - 1
+      );
     }
   }
 
-  get<ResT>(path: string, options: ClientVerbOptions<unknown> = {}): Promise<ClientResponse<ResT>> {
+  get<ResT>(
+    path: string,
+    options: ClientVerbOptions<unknown> = {}
+  ): Promise<ClientResponse<ResT>> {
     const reqOptions: ClientRequestOptions<unknown> = Object.assign(options, {
       method: "GET",
       path,
@@ -159,7 +165,9 @@ export class Client {
    *
    * @param reqOptions request options.
    */
-  async request<ReqT, ResT>(reqOptions: ClientRequestOptions<ReqT>): Promise<ClientResponse<ResT>> {
+  async request<ReqT, ResT>(
+    reqOptions: ClientRequestOptions<ReqT>
+  ): Promise<ClientResponse<ResT>> {
     // All requests default to JSON content types.
     if (!reqOptions.responseType) {
       reqOptions.responseType = "json";
@@ -167,16 +175,22 @@ export class Client {
 
     // TODO(bkendall): stream + !resolveOnHTTPError makes for difficult handling.
     //   Figure out if there's a better way to handle streamed >=400 responses.
-    if (reqOptions.responseType === "stream" && !reqOptions.resolveOnHTTPError) {
+    if (
+      reqOptions.responseType === "stream" &&
+      !reqOptions.resolveOnHTTPError
+    ) {
       throw new FirebaseError(
         "apiv2 will not handle HTTP errors while streaming and you must set `resolveOnHTTPError` and check for res.status >= 400 on your own",
         { exit: 2 }
       );
     }
 
-    let internalReqOptions: InternalClientRequestOptions<ReqT> = Object.assign(reqOptions, {
-      headers: new Headers(reqOptions.headers),
-    });
+    let internalReqOptions: InternalClientRequestOptions<ReqT> = Object.assign(
+      reqOptions,
+      {
+        headers: new Headers(reqOptions.headers),
+      }
+    );
 
     internalReqOptions = this.addRequestHeaders(internalReqOptions);
 
@@ -189,7 +203,9 @@ export class Client {
       if (err instanceof FirebaseError) {
         throw err;
       }
-      throw new FirebaseError(`Failed to make request: ${err}`, { original: err });
+      throw new FirebaseError(`Failed to make request: ${err}`, {
+        original: err,
+      });
     }
   }
 
@@ -275,7 +291,9 @@ export class Client {
     try {
       res = await fetch(fetchURL, fetchOptions);
     } catch (err) {
-      throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
+      throw new FirebaseError(`Failed to make request to ${fetchURL}`, {
+        original: err,
+      });
     }
 
     let body: ResT;
@@ -289,9 +307,12 @@ export class Client {
     } else if (options.responseType === "stream") {
       body = (res.body as unknown) as ResT;
     } else {
-      throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
-        exit: 2,
-      });
+      throw new FirebaseError(
+        `Unable to interpret response. Please set responseType.`,
+        {
+          exit: 2,
+        }
+      );
     }
 
     this.logResponse(res, body, options);
@@ -321,7 +342,9 @@ export class Client {
       }
     }
     const logURL = this.requestURL(options);
-    logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
+    logger.debug(
+      `>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`
+    );
     if (options.body !== undefined) {
       let logBody = "[omitted]";
       if (!options.skipLog?.body) {
@@ -337,7 +360,9 @@ export class Client {
     options: InternalClientRequestOptions<unknown>
   ): void {
     const logURL = this.requestURL(options);
-    logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);
+    logger.debug(
+      `<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`
+    );
     let logBody = "[omitted]";
     if (!options.skipLog?.resBody) {
       logBody = bodyToString(body);

@@ -15,14 +15,19 @@ const BASE_PERMISSIONS = ["firebase.projects.get"];
  * @param permissions A list of IAM permissions to require.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
+export async function requirePermissions(
+  options: any,
+  permissions: string[] = []
+): Promise<void> {
   const projectId = getProjectId(options);
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
 
   await requireAuth(options);
 
   debug(
-    `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`
+    `[iam] checking project ${projectId} for permissions ${JSON.stringify(
+      requiredPermissions
+    )}`
   );
 
   try {

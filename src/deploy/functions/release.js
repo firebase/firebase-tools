@@ -13,10 +13,13 @@ var logger = require("../../logger");
 var track = require("../../track");
 var utils = require("../../utils");
 var helper = require("../../functionsDeployHelper");
-var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFriendlyRuntimeName;
+var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK")
+  .getHumanFriendlyRuntimeName;
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
-var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
+var {
+  createOrUpdateSchedulesAndTopics,
+} = require("./createOrUpdateSchedulesAndTopics");
 
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
@@ -57,12 +60,12 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
     // No HTTPS functions being deployed
     return Promise.resolve();
   }
-  return gcp.cloudfunctions.listAll(projectId).then(function(functions) {
+  return gcp.cloudfunctions.listAll(projectId).then(function (functions) {
     var httpFunctions = _.chain(functions)
       .filter({ sourceUploadUrl: sourceUrl })
       .filter("httpsTrigger")
       .value();
-    _.forEach(httpFunctions, function(httpFunc) {
+    _.forEach(httpFunctions, function (httpFunc) {
       _.chain(ops)
         .find({ func: httpFunc.name })
         .assign({ triggerUrl: httpFunc.httpsTrigger.url })
@@ -72,7 +75,7 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
   });
 }
 
-var printSuccess = function(op) {
+var printSuccess = function (op) {
   _endTimer(op.func);
   utils.logSuccess(
     clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
@@ -88,18 +91,21 @@ var printSuccess = function(op) {
     );
   }
 };
-var printFail = function(op) {
+var printFail = function (op) {
   _endTimer(op.func);
   failedDeployments.push(helper.getFunctionName(op.func));
   utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
+    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
+      "Deployment error."
   );
   if (op.error.code === 8) {
     logger.debug(op.error.message);
     logger.info(
       "You have exceeded your deployment quota, please deploy your functions in batches by using the --only flag, " +
         "and wait a few minutes before deploying again. Go to " +
-        clc.underline("https://firebase.google.com/docs/cli/#deploy_specific_functions") +
+        clc.underline(
+          "https://firebase.google.com/docs/cli/#deploy_specific_functions"
+        ) +
         " to learn more."
     );
   } else {
@@ -107,12 +113,14 @@ var printFail = function(op) {
   }
 };
 
-var printTooManyOps = function(projectId) {
+var printTooManyOps = function (projectId) {
   utils.logWarning(
-    clc.bold.yellow("functions:") + " too many functions are being deployed, cannot poll status."
+    clc.bold.yellow("functions:") +
+      " too many functions are being deployed, cannot poll status."
   );
   logger.info(
-    "In a few minutes, you can check status at " + utils.consoleUrl(projectId, "/functions/logs")
+    "In a few minutes, you can check status at " +
+      utils.consoleUrl(projectId, "/functions/logs")
   );
   logger.info(
     "You can use the --only flag to deploy only a portion of your functions in the future."
@@ -120,7 +128,7 @@ var printTooManyOps = function(projectId) {
   deployments = []; // prevents analytics tracking of deployments
 };
 
-module.exports = function(context, options, payload) {
+module.exports = function (context, options, payload) {
   if (!options.config.has("functions")) {
     return Promise.resolve();
   }
@@ -134,7 +142,10 @@ module.exports = function(context, options, payload) {
   failedDeployments = [];
 
   var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
-  var functionsInfo = helper.getFunctionsInfo(payload.functions.triggers, projectId);
+  var functionsInfo = helper.getFunctionsInfo(
+    payload.functions.triggers,
+    projectId
+  );
   functionsInfo = functionsInfo.map((fn) => {
     if (
       fn.eventTrigger &&
@@ -173,9 +184,12 @@ module.exports = function(context, options, payload) {
     utils.logLabeledWarning("functions", retryMessage);
 
     if (options.nonInteractive && !options.force) {
-      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
-        exit: 1,
-      });
+      throw new FirebaseError(
+        "Pass the --force option to deploy functions with a failure policy",
+        {
+          exit: 1,
+        }
+      );
     } else if (!options.nonInteractive) {
       proceedPrompt = promptOnce({
         type: "confirm",
@@ -196,22 +210,27 @@ module.exports = function(context, options, payload) {
 
       return Promise.resolve(context.existingFunctions);
     })
-    .then(function(existingFunctions) {
-      var pluckName = function(functionObject) {
+    .then(function (existingFunctions) {
+      var pluckName = function (functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
       };
 
       var existingNames = _.map(existingFunctions, pluckName);
-      var isScheduled = function(functionObject) {
+      var isScheduled = function (functionObject) {
         return _.get(functionObject, "labels.deployment-scheduled") === "true";
       };
       existingScheduledFunctions = _.chain(existingFunctions)
         .filter(isScheduled)
         .map(pluckName)
         .value();
-      var releaseNames = helper.getReleaseNames(uploadedNames, existingNames, functionFilterGroups);
+      var releaseNames = helper.getReleaseNames(
+        uploadedNames,
+        existingNames,
+        functionFilterGroups
+      );
       // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
-      deleteReleaseNames = functionFilterGroups.length > 0 ? releaseNames : existingNames;
+      deleteReleaseNames =
+        functionFilterGroups.length > 0 ? releaseNames : existingNames;
       helper.logFilters(existingNames, releaseNames, functionFilterGroups);
 
       const defaultEnvVariables = {
@@ -222,7 +241,7 @@ module.exports = function(context, options, payload) {
       _.chain(uploadedNames)
         .difference(existingNames)
         .intersection(releaseNames)
-        .forEach(function(name) {
+        .forEach(function (name) {
           var functionInfo = _.find(functionsInfo, { name: name });
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
@@ -252,7 +271,11 @@ module.exports = function(context, options, payload) {
                   functionName: functionName,
                   entryPoint: functionInfo.entryPoint,
                   trigger: functionTrigger,
-                  labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
+                  labels: _.assign(
+                    {},
+                    deploymentTool.labels,
+                    functionInfo.labels
+                  ),
                   sourceUploadUrl: sourceUrl,
                   runtime: runtime,
                   availableMemoryMb: functionInfo.availableMemoryMb,
@@ -260,12 +283,15 @@ module.exports = function(context, options, payload) {
                   maxInstances: functionInfo.maxInstances,
                   environmentVariables: defaultEnvVariables,
                   vpcConnector: functionInfo.vpcConnector,
-                  vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+                  vpcConnectorEgressSettings:
+                    functionInfo.vpcConnectorEgressSettings,
                   serviceAccountEmail: functionInfo.serviceAccountEmail,
                 })
                 .then((createRes) => {
                   if (_.has(functionTrigger, "httpsTrigger")) {
-                    logger.debug(`Setting public policy for function ${functionName}`);
+                    logger.debug(
+                      `Setting public policy for function ${functionName}`
+                    );
                     return gcp.cloudfunctions
                       .setIamPolicy({
                         functionName,
@@ -289,7 +315,7 @@ module.exports = function(context, options, payload) {
       _.chain(uploadedNames)
         .intersection(existingNames)
         .intersection(releaseNames)
-        .forEach(function(name) {
+        .forEach(function (name) {
           var functionInfo = _.find(functionsInfo, { name: name });
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
@@ -330,7 +356,7 @@ module.exports = function(context, options, payload) {
 
           deployments.push({
             name: name,
-            retryFunction: function() {
+            retryFunction: function () {
               return gcp.cloudfunctions.update(options);
             },
             trigger: functionTrigger,
@@ -340,7 +366,7 @@ module.exports = function(context, options, payload) {
 
       // Delete functions
       var functionsToDelete = _.chain(existingFunctions)
-        .filter(function(functionInfo) {
+        .filter(function (functionInfo) {
           return deploymentTool.check(functionInfo.labels);
         }) // only delete functions uploaded via firebase-tools
         .map(pluckName)
@@ -351,12 +377,12 @@ module.exports = function(context, options, payload) {
       if (functionsToDelete.length === 0) {
         return Promise.resolve();
       }
-      var deleteList = _.map(functionsToDelete, function(func) {
+      var deleteList = _.map(functionsToDelete, function (func) {
         return "\t" + helper.getFunctionLabel(func);
       }).join("\n");
 
       if (options.nonInteractive && !options.force) {
-        var deleteCommands = _.map(functionsToDelete, function(func) {
+        var deleteCommands = _.map(functionsToDelete, function (func) {
           return (
             "\tfirebase functions:delete " +
             helper.getFunctionName(func) +
@@ -378,7 +404,8 @@ module.exports = function(context, options, payload) {
             "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
             "function first before deleting the old one to prevent event loss. For more info, visit " +
             clc.underline(
-              "https://firebase.google.com/docs/functions/manage-functions#modify" + "\n"
+              "https://firebase.google.com/docs/functions/manage-functions#modify" +
+                "\n"
             )
         );
       }
@@ -393,14 +420,17 @@ module.exports = function(context, options, payload) {
               "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
           });
 
-      return next.then(function(proceed) {
+      return next.then(function (proceed) {
         if (!proceed) {
           if (deployments.length !== 0) {
-            utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
+            utils.logBullet(
+              clc.bold.cyan("functions: ") +
+                "continuing with other deployments."
+            );
           }
           return;
         }
-        functionsToDelete.forEach(function(name) {
+        functionsToDelete.forEach(function (name) {
           var functionName = helper.getFunctionName(name);
           var scheduleName = helper.getScheduleName(name, appEngineLocation);
           var topicName = helper.getTopicName(name);
@@ -414,9 +444,12 @@ module.exports = function(context, options, payload) {
           );
           _startTimer(name, "delete");
           var retryFunction;
-          var isScheduledFunction = _.includes(existingScheduledFunctions, name);
+          var isScheduledFunction = _.includes(
+            existingScheduledFunctions,
+            name
+          );
           if (isScheduledFunction) {
-            retryFunction = function() {
+            retryFunction = function () {
               return gcp.cloudscheduler
                 .deleteJob(scheduleName)
                 .catch((err) => {
@@ -458,7 +491,7 @@ module.exports = function(context, options, payload) {
                 });
             };
           } else {
-            retryFunction = function() {
+            retryFunction = function () {
               return gcp.cloudfunctions.delete({
                 projectId: projectId,
                 region: region,
@@ -473,7 +506,7 @@ module.exports = function(context, options, payload) {
         });
       });
     })
-    .then(function() {
+    .then(function () {
       // filter out functions that are excluded via --only and --except flags
       var functionsInDeploy = functionsInfo.filter((trigger) => {
         return functionFilterGroups.length > 0
@@ -487,16 +520,16 @@ module.exports = function(context, options, payload) {
         appEngineLocation
       );
     })
-    .then(function() {
+    .then(function () {
       return utils.promiseAllSettled(
-        _.map(deployments, function(op) {
-          return op.retryFunction().then(function(res) {
+        _.map(deployments, function (op) {
+          return op.retryFunction().then(function (res) {
             return _.merge(op, res);
           });
         })
       );
     })
-    .then(function(allOps) {
+    .then(function (allOps) {
       var failedCalls = _.chain(allOps)
         .filter({ state: "rejected" })
         .map("reason")
@@ -505,10 +538,12 @@ module.exports = function(context, options, payload) {
         .filter({ state: "fulfilled" })
         .map("value")
         .value();
-      failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
+      failedDeployments = failedCalls.map((error) =>
+        _.get(error, "context.function", "")
+      );
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
-        .then(function() {
+        .then(function () {
           return helper.pollDeploys(
             successfulCalls,
             printSuccess,
@@ -519,7 +554,11 @@ module.exports = function(context, options, payload) {
         })
         .then(() => {
           if (deployments.length > 0) {
-            track("Functions Deploy (Result)", "failure", failedDeployments.length);
+            track(
+              "Functions Deploy (Result)",
+              "failure",
+              failedDeployments.length
+            );
             track(
               "Functions Deploy (Result)",
               "success",
@@ -528,7 +567,9 @@ module.exports = function(context, options, payload) {
           }
 
           if (failedDeployments.length > 0) {
-            logger.info("\n\nFunctions deploy had errors with the following functions:");
+            logger.info(
+              "\n\nFunctions deploy had errors with the following functions:"
+            );
             const sortedFailedDeployments = failedDeployments.sort();
             for (let i = 0; i < sortedFailedDeployments.length; i++) {
               logger.info(`\t${sortedFailedDeployments[i]}`);
@@ -545,9 +586,15 @@ module.exports = function(context, options, payload) {
                 ) +
                 clc.bold('"')
             );
-            logger.info("\n\nTo continue deploying other features (such as database), run:");
-            logger.info("    " + clc.bold("firebase deploy --except functions"));
-            return Promise.reject(new FirebaseError("Functions did not deploy properly."));
+            logger.info(
+              "\n\nTo continue deploying other features (such as database), run:"
+            );
+            logger.info(
+              "    " + clc.bold("firebase deploy --except functions")
+            );
+            return Promise.reject(
+              new FirebaseError("Functions did not deploy properly.")
+            );
           }
         });
     });

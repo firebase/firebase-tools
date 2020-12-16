@@ -31,7 +31,9 @@ export default new Command("ext:dev:publish <extensionRef>")
       throw new FirebaseError(
         `Error parsing publisher ID and extension ID from extension reference '${clc.bold(
           extensionRef
-        )}'. Please use the format '${clc.bold("<publisherId>/<extensionId>")}'.`
+        )}'. Please use the format '${clc.bold(
+          "<publisherId>/<extensionId>"
+        )}'.`
       );
     }
     const extensionYamlDirectory = findExtensionYaml(process.cwd());

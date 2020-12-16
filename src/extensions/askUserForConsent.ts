@@ -20,7 +20,11 @@ marked.setOptions({
  * @param roles the role(s) we would like to grant to the service account managing the extension
  * @return {string} description of roles to prompt user for permission
  */
-export async function formatDescription(extensionName: string, projectId: string, roles: string[]) {
+export async function formatDescription(
+  extensionName: string,
+  projectId: string,
+  roles: string[]
+) {
   const question = `${clc.bold(
     extensionName
   )} will be granted the following access to project ${clc.bold(projectId)}`;
@@ -52,7 +56,11 @@ export async function retrieveRoleInfo(role: string) {
  * @param roles roles that require user approval
  * @return {Promise<?>} returns promise
  */
-export async function prompt(extensionName: string, projectId: string, roles: string[]) {
+export async function prompt(
+  extensionName: string,
+  projectId: string,
+  roles: string[]
+) {
   if (!roles || !roles.length) {
     return;
   }
@@ -96,8 +104,11 @@ export async function promptForPublisherTOS() {
   };
   const consented: boolean = await promptOnce(question);
   if (!consented) {
-    throw new FirebaseError("You must agree to the terms of service to register a publisher ID.", {
-      exit: 1,
-    });
+    throw new FirebaseError(
+      "You must agree to the terms of service to register a publisher ID.",
+      {
+        exit: 1,
+      }
+    );
   }
 }

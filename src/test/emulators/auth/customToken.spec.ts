@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
-import { FirebaseJwtPayload, CUSTOM_TOKEN_AUDIENCE } from "../../../emulator/auth/operations";
+import {
+  FirebaseJwtPayload,
+  CUSTOM_TOKEN_AUDIENCE,
+} from "../../../emulator/auth/operations";
 import { PROVIDER_CUSTOM } from "../../../emulator/auth/state";
 import { describeAuthEmulator } from "./setup";
 import {
@@ -29,9 +32,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -70,9 +71,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(false);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
         const decoded = decodeJwt(idToken, { complete: true }) as {

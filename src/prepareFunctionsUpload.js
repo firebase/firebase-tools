@@ -18,40 +18,43 @@ var fsAsync = require("./fsAsync");
 
 var CONFIG_DEST_FILE = ".runtimeconfig.json";
 
-var _getFunctionsConfig = function(context) {
+var _getFunctionsConfig = function (context) {
   var next = Promise.resolve({});
   if (context.runtimeConfigEnabled) {
-    next = functionsConfig.materializeAll(context.firebaseConfig.projectId).catch(function(err) {
-      logger.debug(err);
-      var errorCode = _.get(err, "context.response.statusCode");
-      if (errorCode === 500 || errorCode === 503) {
-        throw new FirebaseError(
-          "Cloud Runtime Config is currently experiencing issues, " +
-            "which is preventing your functions from being deployed. " +
-            "Please wait a few minutes and then try to deploy your functions again." +
-            "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
-        );
-      }
-    });
+    next = functionsConfig
+      .materializeAll(context.firebaseConfig.projectId)
+      .catch(function (err) {
+        logger.debug(err);
+        var errorCode = _.get(err, "context.response.statusCode");
+        if (errorCode === 500 || errorCode === 503) {
+          throw new FirebaseError(
+            "Cloud Runtime Config is currently experiencing issues, " +
+              "which is preventing your functions from being deployed. " +
+              "Please wait a few minutes and then try to deploy your functions again." +
+              "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
+          );
+        }
+      });
   }
 
-  return next.then(function(config) {
+  return next.then(function (config) {
     var firebaseConfig = _.get(context, "firebaseConfig");
     _.set(config, "firebase", firebaseConfig);
     return config;
   });
 };
 
-var _pipeAsync = function(from, to) {
-  return new Promise(function(resolve, reject) {
+var _pipeAsync = function (from, to) {
+  return new Promise(function (resolve, reject) {
     to.on("finish", resolve);
     to.on("error", reject);
     from.pipe(to);
   });
 };
 
-var _packageSource = function(options, sourceDir, configValues) {
-  var tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
+var _packageSource = function (options, sourceDir, configValues) {
+  var tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" })
+    .name;
   var fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     defaultEncoding: "binary",
@@ -71,8 +74,8 @@ var _packageSource = function(options, sourceDir, configValues) {
   );
   return fsAsync
     .readdirRecursive({ path: sourceDir, ignore: ignore })
-    .then(function(files) {
-      _.forEach(files, function(file) {
+    .then(function (files) {
+      _.forEach(files, function (file) {
         archive.file(file.name, {
           name: path.relative(sourceDir, file.name),
           mode: file.mode,
@@ -86,7 +89,7 @@ var _packageSource = function(options, sourceDir, configValues) {
       return archiveDone;
     })
     .then(
-      function() {
+      function () {
         utils.logBullet(
           clc.cyan.bold("functions:") +
             " packaged " +
@@ -101,7 +104,7 @@ var _packageSource = function(options, sourceDir, configValues) {
           size: archive.pointer(),
         };
       },
-      function(err) {
+      function (err) {
         throw new FirebaseError(
           "Could not read source directory. Remove links and shortcuts and try again.",
           {
@@ -113,16 +116,16 @@ var _packageSource = function(options, sourceDir, configValues) {
     );
 };
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   var configValues;
   var sourceDir = options.config.path(options.config.get("functions.source"));
 
   return _getFunctionsConfig(context)
-    .then(function(result) {
+    .then(function (result) {
       configValues = result;
       return parseTriggers(getProjectId(options), sourceDir, configValues);
     })
-    .then(function(triggers) {
+    .then(function (triggers) {
       options.config.set("functions.triggers", triggers);
       if (options.config.get("functions.triggers").length === 0) {
         return Promise.resolve(null);

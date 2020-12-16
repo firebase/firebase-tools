@@ -21,7 +21,10 @@ export type Question = inquirer.Question;
  * @param questions `Question`s to ask the user.
  * @return The answers, keyed by the `name` of the `Question`.
  */
-export async function prompt(options: { [key: string]: any }, questions: Question[]): Promise<any> {
+export async function prompt(
+  options: { [key: string]: any },
+  questions: Question[]
+): Promise<any> {
   const prompts = [];
   for (const question of questions) {
     if (question.name && options[question.name] === undefined) {

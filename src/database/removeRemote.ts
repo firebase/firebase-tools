@@ -45,7 +45,9 @@ export class RTDBRemoveRemote implements RemoveRemote {
 
   private async patch(path: string, body: any, note: string): Promise<boolean> {
     const t0 = Date.now();
-    const url = new URL(utils.getDatabaseUrl(this.host, this.instance, path + ".json"));
+    const url = new URL(
+      utils.getDatabaseUrl(this.host, this.instance, path + ".json")
+    );
     const queryParams = { print: "silent", writeSizeLimit: "tiny" };
     const res = await this.apiClient.request({
       method: "PATCH",
@@ -62,7 +64,9 @@ export class RTDBRemoveRemote implements RemoveRemote {
       );
       return false;
     }
-    logger.debug(`[database] Sucessfully removed ${note} at ${path} time: ${dt}ms`);
+    logger.debug(
+      `[database] Sucessfully removed ${note} at ${path} time: ${dt}ms`
+    );
     return true;
   }
 }

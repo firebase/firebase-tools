@@ -19,14 +19,14 @@ var TARGETS = {
   remoteconfig: require("./remoteconfig"),
 };
 
-var _noop = function() {
+var _noop = function () {
   return Promise.resolve();
 };
 
-var _chain = function(fns, context, options, payload) {
+var _chain = function (fns, context, options, payload) {
   var latest = (fns.shift() || _noop)(context, options, payload);
   if (fns.length) {
-    return latest.then(function() {
+    return latest.then(function () {
       return _chain(fns, context, options, payload);
     });
   }
@@ -39,7 +39,7 @@ var _chain = function(fns, context, options, payload) {
  * number of deploy targets. This allows deploys to be done all together or
  * for individual deployable elements to be deployed as such.
  */
-var deploy = function(targetNames, options, customContext = {}) {
+var deploy = function (targetNames, options, customContext = {}) {
   var projectId = getProjectId(options);
   var payload = {};
   // a shared context object for deploy targets to decorate as needed
@@ -56,7 +56,10 @@ var deploy = function(targetNames, options, customContext = {}) {
 
     if (!target) {
       return Promise.reject(
-        new FirebaseError(clc.bold(targetName) + " is not a valid deploy target", { exit: 1 })
+        new FirebaseError(
+          clc.bold(targetName) + " is not a valid deploy target",
+          { exit: 1 }
+        )
       );
     }
 
@@ -74,25 +77,27 @@ var deploy = function(targetNames, options, customContext = {}) {
   }
 
   logger.info();
-  logger.info(clc.bold(clc.white("===") + " Deploying to '" + projectId + "'..."));
+  logger.info(
+    clc.bold(clc.white("===") + " Deploying to '" + projectId + "'...")
+  );
   logger.info();
 
   utils.logBullet("deploying " + clc.bold(targetNames.join(", ")));
 
   return _chain(predeploys, context, options, payload)
-    .then(function() {
+    .then(function () {
       return _chain(prepares, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(deploys, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(releases, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       return _chain(postdeploys, context, options, payload);
     })
-    .then(function() {
+    .then(function () {
       if (_.has(options, "config.notes.databaseRules")) {
         track("Rules Deploy", options.config.notes.databaseRules);
       }
@@ -101,13 +106,23 @@ var deploy = function(targetNames, options, customContext = {}) {
       utils.logSuccess(clc.underline.bold("Deploy complete!"));
       logger.info();
       var deployedHosting = _.includes(targetNames, "hosting");
-      logger.info(clc.bold("Project Console:"), utils.consoleUrl(options.project, "/overview"));
+      logger.info(
+        clc.bold("Project Console:"),
+        utils.consoleUrl(options.project, "/overview")
+      );
       if (deployedHosting) {
-        _.each(context.hosting.deploys, function(deploy) {
-          logger.info(clc.bold("Hosting URL:"), utils.addSubdomain(api.hostingOrigin, deploy.site));
+        _.each(context.hosting.deploys, function (deploy) {
+          logger.info(
+            clc.bold("Hosting URL:"),
+            utils.addSubdomain(api.hostingOrigin, deploy.site)
+          );
         });
-        const versionNames = context.hosting.deploys.map((deploy) => deploy.version);
-        return { hosting: versionNames.length === 1 ? versionNames[0] : versionNames };
+        const versionNames = context.hosting.deploys.map(
+          (deploy) => deploy.version
+        );
+        return {
+          hosting: versionNames.length === 1 ? versionNames[0] : versionNames,
+        };
       }
     });
 };

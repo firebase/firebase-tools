@@ -12,7 +12,8 @@ const expectedProjectInfo: RemoteConfigTemplate = {
   conditions: [
     {
       name: "RCTestCondition",
-      expression: "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
+      expression:
+        "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
     },
   ],
   parameters: {
@@ -51,7 +52,8 @@ const projectInfoWithTwoParameters: RemoteConfigTemplate = {
   conditions: [
     {
       name: "RCTestCondition",
-      expression: "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
+      expression:
+        "dateTime < dateTime('2020-07-24T00:00:00', 'America/Los_Angeles')",
     },
   ],
   parameters: {
@@ -96,7 +98,9 @@ describe("Remote Config GET", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
   });
 
   afterEach(() => {
@@ -140,7 +144,9 @@ describe("Remote Config GET", () => {
 
     it("should return a correctly parsed entry value with one parameter", () => {
       const expectRCParameters = "RCTestkey\n";
-      const RCParameters = remoteconfig.parseTemplateForTable(expectedProjectInfo.parameters);
+      const RCParameters = remoteconfig.parseTemplateForTable(
+        expectedProjectInfo.parameters
+      );
 
       expect(RCParameters).to.deep.equal(expectRCParameters);
     });

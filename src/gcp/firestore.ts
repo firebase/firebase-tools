@@ -10,7 +10,10 @@ const _API_ROOT = "/v1beta1/";
  */
 export function listCollectionIds(project: string): Promise<string[]> {
   const url =
-    _API_ROOT + "projects/" + project + "/databases/(default)/documents:listCollectionIds";
+    _API_ROOT +
+    "projects/" +
+    project +
+    "/databases/(default)/documents:listCollectionIds";
   return api
     .request("POST", url, {
       auth: true,
@@ -51,8 +54,12 @@ export async function deleteDocument(doc: any): Promise<any> {
  * @param {object[]} docs an array of Document objects to delete.
  * @return {Promise<number>} a promise for the number of deleted documents.
  */
-export async function deleteDocuments(project: string, docs: any[]): Promise<number> {
-  const url = _API_ROOT + "projects/" + project + "/databases/(default)/documents:commit";
+export async function deleteDocuments(
+  project: string,
+  docs: any[]
+): Promise<number> {
+  const url =
+    _API_ROOT + "projects/" + project + "/databases/(default)/documents:commit";
 
   const writes = docs.map((doc) => {
     return { delete: doc.name };

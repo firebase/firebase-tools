@@ -9,13 +9,17 @@ var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
 var { requirePermissions } = require("../../../requirePermissions");
 
-module.exports = function(setup, config) {
+module.exports = function (setup, config) {
   logger.info();
   logger.info(
-    "A " + clc.bold("functions") + " directory will be created in your project with a Node.js"
+    "A " +
+      clc.bold("functions") +
+      " directory will be created in your project with a Node.js"
   );
   logger.info(
-    "package pre-configured. Functions can be deployed with " + clc.bold("firebase deploy") + "."
+    "package pre-configured. Functions can be deployed with " +
+      clc.bold("firebase deploy") +
+      "."
   );
   logger.info();
 
@@ -30,12 +34,13 @@ module.exports = function(setup, config) {
       ]);
     });
   }
-  return enableApis.then(function() {
+  return enableApis.then(function () {
     return prompt(setup.functions, [
       {
         type: "list",
         name: "language",
-        message: "What language would you like to use to write Cloud Functions?",
+        message:
+          "What language would you like to use to write Cloud Functions?",
         default: "javascript",
         choices: [
           {
@@ -48,7 +53,7 @@ module.exports = function(setup, config) {
           },
         ],
       },
-    ]).then(function() {
+    ]).then(function () {
       return require("./" + setup.functions.language)(setup, config);
     });
   });

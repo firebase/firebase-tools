@@ -24,10 +24,14 @@ export async function check(
   prefix: string,
   silent = false
 ): Promise<boolean> {
-  const response = await api.request("GET", `/v1/projects/${projectId}/services/${apiName}`, {
-    auth: true,
-    origin: api.serviceUsageOrigin,
-  });
+  const response = await api.request(
+    "GET",
+    `/v1/projects/${projectId}/services/${apiName}`,
+    {
+      auth: true,
+      origin: api.serviceUsageOrigin,
+    }
+  );
 
   const isEnabled = _.get(response.body, "state") === "ENABLED";
   if (isEnabled && !silent) {
@@ -42,12 +46,19 @@ export async function check(
  * @param projectId The project in which to enable the API.
  * @param apiName The name of the API e.g. `someapi.googleapis.com`.
  */
-export async function enable(projectId: string, apiName: string): Promise<void> {
+export async function enable(
+  projectId: string,
+  apiName: string
+): Promise<void> {
   try {
-    await api.request("POST", `/v1/projects/${projectId}/services/${apiName}:enable`, {
-      auth: true,
-      origin: api.serviceUsageOrigin,
-    });
+    await api.request(
+      "POST",
+      `/v1/projects/${projectId}/services/${apiName}:enable`,
+      {
+        auth: true,
+        origin: api.serviceUsageOrigin,
+      }
+    );
   } catch (err) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
@@ -72,7 +83,13 @@ async function pollCheckEnabled(
 ): Promise<void> {
   if (pollRetries > POLL_SETTINGS.pollsBeforeRetry) {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    return enableApiWithRetries(projectId, apiName, prefix, silent, enablementRetries + 1);
+    return enableApiWithRetries(
+      projectId,
+      apiName,
+      prefix,
+      silent,
+      enablementRetries + 1
+    );
   }
 
   await new Promise((resolve) => {
@@ -84,9 +101,19 @@ async function pollCheckEnabled(
     return;
   }
   if (!silent) {
-    utils.logLabeledBullet(prefix, `waiting for API ${bold(apiName)} to activate...`);
+    utils.logLabeledBullet(
+      prefix,
+      `waiting for API ${bold(apiName)} to activate...`
+    );
   }
-  return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries, pollRetries + 1);
+  return pollCheckEnabled(
+    projectId,
+    apiName,
+    prefix,
+    silent,
+    enablementRetries,
+    pollRetries + 1
+  );
 }
 
 async function enableApiWithRetries(
@@ -98,11 +125,19 @@ async function enableApiWithRetries(
 ): Promise<void> {
   if (enablementRetries > 1) {
     throw new FirebaseError(
-      `Timed out waiting for API ${bold(apiName)} to enable. Please try again in a few minutes.`
+      `Timed out waiting for API ${bold(
+        apiName
+      )} to enable. Please try again in a few minutes.`
     );
   }
   await enable(projectId, apiName);
-  return pollCheckEnabled(projectId, apiName, prefix, silent, enablementRetries);
+  return pollCheckEnabled(
+    projectId,
+    apiName,
+    prefix,
+    silent,
+    enablementRetries
+  );
 }
 
 /**
@@ -120,14 +155,20 @@ export async function ensure(
   silent = false
 ): Promise<void> {
   if (!silent) {
-    utils.logLabeledBullet(prefix, `ensuring required API ${bold(apiName)} is enabled...`);
+    utils.logLabeledBullet(
+      prefix,
+      `ensuring required API ${bold(apiName)} is enabled...`
+    );
   }
   const isEnabled = await check(projectId, apiName, prefix, silent);
   if (isEnabled) {
     return;
   }
   if (!silent) {
-    utils.logLabeledWarning(prefix, `missing required API ${bold(apiName)}. Enabling now...`);
+    utils.logLabeledWarning(
+      prefix,
+      `missing required API ${bold(apiName)}. Enabling now...`
+    );
   }
   return enableApiWithRetries(projectId, apiName, prefix, silent);
 }

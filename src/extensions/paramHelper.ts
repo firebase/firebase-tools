@@ -42,8 +42,12 @@ function setNewDefaults(
 export function getParamsWithCurrentValuesAsDefaults(
   extensionInstance: extensionsApi.ExtensionInstance
 ): extensionsApi.Param[] {
-  const specParams = _.cloneDeep(_.get(extensionInstance, "config.source.spec.params", []));
-  const currentParams = _.cloneDeep(_.get(extensionInstance, "config.params", {}));
+  const specParams = _.cloneDeep(
+    _.get(extensionInstance, "config.source.spec.params", [])
+  );
+  const currentParams = _.cloneDeep(
+    _.get(extensionInstance, "config.params", {})
+  );
   return setNewDefaults(specParams, currentParams);
 }
 
@@ -69,7 +73,9 @@ export async function getParams(
       track("Extension Env File", "Present");
     } catch (err) {
       track("Extension Env File", "Invalid");
-      throw new FirebaseError(`Error reading env file: ${err.message}\n`, { original: err });
+      throw new FirebaseError(`Error reading env file: ${err.message}\n`, {
+        original: err,
+      });
     }
   } else {
     track("Extension Env File", "Not Present");
@@ -82,7 +88,11 @@ export async function getParams(
   } else {
     params = await askUserForParam.ask(paramSpecs, firebaseProjectParams);
   }
-  track("Extension Params", _.isEmpty(params) ? "Not Present" : "Present", _.size(params));
+  track(
+    "Extension Params",
+    _.isEmpty(params) ? "Not Present" : "Present",
+    _.size(params)
+  );
   return params;
 }
 
@@ -101,24 +111,45 @@ export async function promptForNewParams(
   projectId: string
 ): Promise<any> {
   const firebaseProjectParams = await getFirebaseProjectParams(projectId);
-  const comparer = (param1: extensionsApi.Param, param2: extensionsApi.Param) => {
+  const comparer = (
+    param1: extensionsApi.Param,
+    param2: extensionsApi.Param
+  ) => {
     return param1.type === param2.type && param1.param === param2.param;
   };
-  let paramsDiffDeletions = _.differenceWith(spec.params, _.get(newSpec, "params", []), comparer);
-  paramsDiffDeletions = substituteParams(paramsDiffDeletions, firebaseProjectParams);
+  let paramsDiffDeletions = _.differenceWith(
+    spec.params,
+    _.get(newSpec, "params", []),
+    comparer
+  );
+  paramsDiffDeletions = substituteParams(
+    paramsDiffDeletions,
+    firebaseProjectParams
+  );
 
-  let paramsDiffAdditions = _.differenceWith(newSpec.params, _.get(spec, "params", []), comparer);
-  paramsDiffAdditions = substituteParams(paramsDiffAdditions, firebaseProjectParams);
+  let paramsDiffAdditions = _.differenceWith(
+    newSpec.params,
+    _.get(spec, "params", []),
+    comparer
+  );
+  paramsDiffAdditions = substituteParams(
+    paramsDiffAdditions,
+    firebaseProjectParams
+  );
 
   if (paramsDiffDeletions.length) {
     logger.info("The following params will no longer be used:");
     paramsDiffDeletions.forEach((param) => {
-      logger.info(clc.red(`- ${param.param}: ${currentParams[param.param.toUpperCase()]}`));
+      logger.info(
+        clc.red(`- ${param.param}: ${currentParams[param.param.toUpperCase()]}`)
+      );
       delete currentParams[param.param.toUpperCase()];
     });
   }
   if (paramsDiffAdditions.length) {
-    logger.info("To update this instance, configure the following new parameters:");
+    logger.info(
+      "To update this instance, configure the following new parameters:"
+    );
     for (const param of paramsDiffAdditions) {
       const chosenValue = await askUserForParam.askForParam(param);
       currentParams[param.param] = chosenValue;
@@ -132,8 +163,11 @@ export function readParamsFile(envFilePath: string): any {
     const buf = fs.readFileSync(path.resolve(envFilePath), "utf8");
     return dotenv.parse(buf.toString().trim(), { debug: true });
   } catch (err) {
-    throw new FirebaseError(`Error reading --test-params file: ${err.message}\n`, {
-      original: err,
-    });
+    throw new FirebaseError(
+      `Error reading --test-params file: ${err.message}\n`,
+      {
+        original: err,
+      }
+    );
   }
 }

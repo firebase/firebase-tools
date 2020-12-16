@@ -22,7 +22,7 @@ export interface FunctionProxyRewrite {
  * that resolves with a middleware-like function that proxies the request to a
  * hosted or live function.
  */
-export default function(
+export default function (
   options: FunctionsProxyOptions
 ): (r: FunctionProxyRewrite) => Promise<RequestHandler> {
   return (rewrite: FunctionProxyRewrite) => {
@@ -50,7 +50,9 @@ export default function(
         }
       }
 
-      resolve(proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`));
+      resolve(
+        proxyRequestHandler(url, `${destLabel} Function ${rewrite.function}`)
+      );
     });
   };
 }

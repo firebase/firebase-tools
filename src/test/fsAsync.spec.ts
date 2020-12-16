@@ -59,7 +59,10 @@ describe("fsAsync", () => {
     });
 
     it("can ignore directories", async () => {
-      const results = await fsAsync.readdirRecursive({ path: baseDir, ignore: ["node_modules"] });
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignore: ["node_modules"],
+      });
 
       const gotFileNames = results.map((r) => r.name).sort();
       const expectFiles = files
@@ -84,7 +87,10 @@ describe("fsAsync", () => {
     });
 
     it("should support negation rules", async () => {
-      const results = await fsAsync.readdirRecursive({ path: baseDir, ignore: ["!visible"] });
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignore: ["!visible"],
+      });
 
       const gotFileNames = results.map((r) => r.name).sort();
       const expectFiles = files

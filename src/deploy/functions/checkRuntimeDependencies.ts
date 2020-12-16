@@ -36,7 +36,9 @@ ${FAQ_URL}
 `);
 }
 
-function isPermissionError(e: { context?: { body?: { error?: { status?: string } } } }): boolean {
+function isPermissionError(e: {
+  context?: { body?: { error?: { status?: string } } };
+}): boolean {
   return e.context?.body?.error?.status === "PERMISSION_DENIED";
 }
 
@@ -47,7 +49,10 @@ function isPermissionError(e: { context?: { body?: { error?: { status?: string }
  * @param projectId Project ID upon which to check enablement.
  * @param runtime The runtime as declared in package.json, e.g. `nodejs10`.
  */
-export async function checkRuntimeDependencies(projectId: string, runtime: string): Promise<void> {
+export async function checkRuntimeDependencies(
+  projectId: string,
+  runtime: string
+): Promise<void> {
   try {
     await ensure(projectId, CLOUD_BUILD_API, "functions");
   } catch (e) {

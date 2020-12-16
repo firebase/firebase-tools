@@ -14,7 +14,10 @@ import {
   createServiceAccountKey,
   deleteServiceAccount,
 } from "../../../gcp/iam";
-import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
+import {
+  addServiceAccountToRoles,
+  firebaseRoles,
+} from "../../../gcp/resourceManager";
 import * as logger from "../../../logger";
 import { prompt } from "../../../prompt";
 import { logBullet, logLabeledBullet, logSuccess } from "../../../utils";
@@ -49,7 +52,11 @@ const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
  * @param config Configuration for the project.
  * @param options Command line options.
  */
-export async function initGitHub(setup: Setup, config: any, options: any): Promise<void> {
+export async function initGitHub(
+  setup: Setup,
+  config: any,
+  options: any
+): Promise<void> {
   logger.info();
 
   // Find existing Git/Github config
@@ -78,7 +85,10 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   // Prompt for repo and validate by getting the public key
   const { repo, key, keyId } = await promptForRepo(setup, ghAccessToken);
 
-  const { default_branch: defaultBranch, id: repoId } = await getRepoDetails(repo, ghAccessToken);
+  const { default_branch: defaultBranch, id: repoId } = await getRepoDetails(
+    repo,
+    ghAccessToken
+  );
 
   // Valid secret names:
   // https://docs.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets#naming-your-secrets
@@ -96,13 +106,20 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
 
   logger.info();
   logSuccess(
-    `Created service account ${bold(serviceAccountName)} with Firebase Hosting admin permissions.`
+    `Created service account ${bold(
+      serviceAccountName
+    )} with Firebase Hosting admin permissions.`
   );
 
-  const spinnerSecrets = ora.default(`Uploading service account secrets to repository: ${repo}`);
+  const spinnerSecrets = ora.default(
+    `Uploading service account secrets to repository: ${repo}`
+  );
   spinnerSecrets.start();
 
-  const encryptedServiceAccountJSON = encryptServiceAccountJSON(serviceAccountJSON, key);
+  const encryptedServiceAccountJSON = encryptServiceAccountJSON(
+    serviceAccountJSON,
+    key
+  );
 
   await uploadSecretToGitHub(
     repo,
@@ -113,8 +130,14 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
   );
   spinnerSecrets.stop();
 
-  logSuccess(`Uploaded service account JSON to GitHub as secret ${bold(githubSecretName)}.`);
-  logBullet(`You can manage your secrets at https://github.com/${repo}/settings/secrets.`);
+  logSuccess(
+    `Uploaded service account JSON to GitHub as secret ${bold(
+      githubSecretName
+    )}.`
+  );
+  logBullet(
+    `You can manage your secrets at https://github.com/${repo}/settings/secrets.`
+  );
   logger.info();
 
   // If the developer is using predeploy scripts in firebase.json,
@@ -151,7 +174,9 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
     logSuccess(`Created workflow file ${bold(YML_FULL_PATH_PULL_REQUEST)}`);
   }
 
-  const { setupDeploys, branch } = await promptToSetupDeploys(ymlDeployDoc.branch || defaultBranch);
+  const { setupDeploys, branch } = await promptToSetupDeploys(
+    ymlDeployDoc.branch || defaultBranch
+  );
 
   // If the user has an existing YML file for deploys to production, we need to
   // check the branch used in the file against the branch supplied by the user
@@ -192,9 +217,14 @@ export async function initGitHub(setup: Setup, config: any, options: any): Promi
     `Visit this URL to revoke authorization for the Firebase CLI GitHub OAuth App:`
   );
   logger.info(
-    bold.underline(`https://github.com/settings/connections/applications/${githubClientId}`)
+    bold.underline(
+      `https://github.com/settings/connections/applications/${githubClientId}`
+    )
   );
-  logLabeledBullet("Action required", `Push any new workflow file(s) to your repo`);
+  logLabeledBullet(
+    "Action required",
+    `Push any new workflow file(s) to your repo`
+  );
 }
 
 /**
@@ -216,7 +246,9 @@ function getGitFolderPath(): string {
 
     // Stop searching if we get to the root of the filesystem
     if (parentDir === projectRootDir) {
-      logBullet(`Didn't detect a .git folder. Assuming ${commandDir} is the project root.`);
+      logBullet(
+        `Didn't detect a .git folder. Assuming ${commandDir} is the project root.`
+      );
       return commandDir;
     }
     projectRootDir = parentDir;
@@ -379,7 +411,10 @@ async function uploadSecretToGitHub(
     ["encrypted_value"]: encryptedServiceAccountJSON,
     ["key_id"]: keyId,
   };
-  const headers = { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" };
+  const headers = {
+    Authorization: `token ${ghAccessToken}`,
+    "User-Agent": "Firebase CLI",
+  };
   return await githubApiClient.put<any, { status: any }>(
     `/repos/${repo}/actions/secrets/${secretName}`,
     data,
@@ -402,13 +437,16 @@ async function promptForRepo(
         "For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)",
       validate: async (repo: string) => {
         // eslint-disable-next-line camelcase
-        const { body } = await githubApiClient.get<{ key: string; key_id: string }>(
-          `/repos/${repo}/actions/secrets/public-key`,
-          {
-            headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-            queryParams: { type: "owner" },
-          }
-        );
+        const { body } = await githubApiClient.get<{
+          key: string;
+          key_id: string;
+        }>(`/repos/${repo}/actions/secrets/public-key`, {
+          headers: {
+            Authorization: `token ${ghAccessToken}`,
+            "User-Agent": "Firebase CLI",
+          },
+          queryParams: { type: "owner" },
+        });
         key = body.key;
         keyId = body.key_id;
         return true;
@@ -452,7 +490,8 @@ async function promptToSetupDeploys(
       type: "confirm",
       name: "setupDeploys",
       default: true,
-      message: "Set up automatic deployment to your site's live channel when a PR is merged?",
+      message:
+        "Set up automatic deployment to your site's live channel when a PR is merged?",
     },
   ]);
 
@@ -465,7 +504,8 @@ async function promptToSetupDeploys(
       type: "input",
       name: "branch",
       default: defaultBranch,
-      message: "What is the name of the GitHub branch associated with your site's live channel?",
+      message:
+        "What is the name of the GitHub branch associated with your site's live channel?",
     },
   ]);
   return { branch, setupDeploys };
@@ -482,22 +522,32 @@ async function promptForWriteYMLFile({ message }: { message: string }) {
   ]);
 }
 
-async function getGitHubUserDetails(ghAccessToken: any): Promise<Record<string, any>> {
+async function getGitHubUserDetails(
+  ghAccessToken: any
+): Promise<Record<string, any>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { body: ghUserDetails } = await githubApiClient.get<Record<string, any>>("/user", {
-    headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
+  const { body: ghUserDetails } = await githubApiClient.get<
+    Record<string, any>
+  >("/user", {
+    headers: {
+      Authorization: `token ${ghAccessToken}`,
+      "User-Agent": "Firebase CLI",
+    },
   });
   return ghUserDetails;
 }
 
 async function getRepoDetails(repo: string, ghAccessToken: string) {
   // eslint-disable-next-line camelcase
-  const { body } = await githubApiClient.get<{ default_branch: string; id: string }>(
-    `/repos/${repo}`,
-    {
-      headers: { Authorization: `token ${ghAccessToken}`, "User-Agent": "Firebase CLI" },
-    }
-  );
+  const { body } = await githubApiClient.get<{
+    default_branch: string;
+    id: string;
+  }>(`/repos/${repo}`, {
+    headers: {
+      Authorization: `token ${ghAccessToken}`,
+      "User-Agent": "Firebase CLI",
+    },
+  });
   return body;
 }
 
@@ -514,7 +564,11 @@ async function createServiceAccountAndKeyWithRetry(
   spinnerServiceAccount.start();
 
   try {
-    const serviceAccountJSON = await createServiceAccountAndKey(options, repo, accountId);
+    const serviceAccountJSON = await createServiceAccountAndKey(
+      options,
+      repo,
+      accountId
+    );
     spinnerServiceAccount.stop();
     return serviceAccountJSON;
   } catch (e) {
@@ -529,7 +583,11 @@ async function createServiceAccountAndKeyWithRetry(
       options.projectId,
       `${accountId}@${options.projectId}.iam.gserviceaccount.com`
     );
-    const serviceAccountJSON = await createServiceAccountAndKey(options, repo, accountId);
+    const serviceAccountJSON = await createServiceAccountAndKey(
+      options,
+      repo,
+      accountId
+    );
     spinnerServiceAccount.stop();
     return serviceAccountJSON;
   }
@@ -571,7 +629,10 @@ async function createServiceAccountAndKey(
   ];
   await addServiceAccountToRoles(options.projectId, accountId, requiredRoles);
 
-  const serviceAccountKey = await createServiceAccountKey(options.projectId, accountId);
+  const serviceAccountKey = await createServiceAccountKey(
+    options.projectId,
+    accountId
+  );
   const buf = Buffer.from(serviceAccountKey.privateKeyData, "base64");
   const serviceAccountJSON = buf.toString();
   return serviceAccountJSON;
@@ -595,7 +656,10 @@ async function createServiceAccountAndKey(
  *
  * @return {string} The encrypted service account key
  */
-function encryptServiceAccountJSON(serviceAccountJSON: string, key: string): string {
+function encryptServiceAccountJSON(
+  serviceAccountJSON: string,
+  key: string
+): string {
   const messageBytes = Buffer.from(serviceAccountJSON);
   const keyBytes = Buffer.from(key, "base64");
 

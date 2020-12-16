@@ -22,7 +22,9 @@ async function readdirRecursiveHelper(options: {
   const dirContents = readdirSync(options.path);
   const fullPaths = dirContents.map((n) => join(options.path, n));
   const filteredPaths = _.reject(fullPaths, options.filter);
-  const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
+  const filePromises: Array<
+    Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>
+  > = [];
   for (const p of filteredPaths) {
     const fstat = statSync(p);
     if (fstat.isFile()) {
@@ -31,7 +33,9 @@ async function readdirRecursiveHelper(options: {
     if (!fstat.isDirectory()) {
       continue;
     }
-    filePromises.push(readdirRecursiveHelper({ path: p, filter: options.filter }));
+    filePromises.push(
+      readdirRecursiveHelper({ path: p, filter: options.filter })
+    );
   }
 
   const files = await Promise.all(filePromises);

@@ -51,7 +51,11 @@ export class EmulatorHub implements EmulatorInstance {
     const locator = JSON.parse(data) as Locator;
 
     if (locator.version !== this.CLI_VERSION) {
-      logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
+      logger.debug(
+        `Found locator with mismatched version, ignoring: ${JSON.stringify(
+          locator
+        )}`
+      );
       return undefined;
     }
 
@@ -112,7 +116,9 @@ export class EmulatorHub implements EmulatorInstance {
 
       const instance = EmulatorRegistry.get(Emulators.FUNCTIONS);
       if (!instance) {
-        res.status(400).json({ error: "The Cloud Functions emulator is not running." });
+        res
+          .status(400)
+          .json({ error: "The Cloud Functions emulator is not running." });
         return;
       }
 

@@ -31,14 +31,18 @@ export default new Command("database:update <path> [infile]")
     if (!path.startsWith("/")) {
       throw new FirebaseError("Path must begin with /");
     }
-    const origin = realtimeOriginOrEmulatorOrCustomUrl(options.instanceDetails.databaseUrl);
+    const origin = realtimeOriginOrEmulatorOrCustomUrl(
+      options.instanceDetails.databaseUrl
+    );
     const url = utils.getDatabaseUrl(origin, options.instance, path);
     if (!options.confirm) {
       const confirmed = await promptOnce({
         type: "confirm",
         name: "confirm",
         default: false,
-        message: `You are about to modify data at ${clc.cyan(url)}. Are you sure?`,
+        message: `You are about to modify data at ${clc.cyan(
+          url
+        )}. Are you sure?`,
       });
       if (!confirmed) {
         throw new FirebaseError("Command aborted.");
@@ -49,7 +53,9 @@ export default new Command("database:update <path> [infile]")
       utils.stringToStream(options.data) ||
       (infile && fs.createReadStream(infile)) ||
       process.stdin;
-    const jsonUrl = new URL(utils.getDatabaseUrl(origin, options.instance, path + ".json"));
+    const jsonUrl = new URL(
+      utils.getDatabaseUrl(origin, options.instance, path + ".json")
+    );
 
     if (!infile && !options.data) {
       utils.explainStdin();
@@ -70,6 +76,11 @@ export default new Command("database:update <path> [infile]")
     logger.info();
     logger.info(
       clc.bold("View data at:"),
-      utils.getDatabaseViewDataUrl(origin, options.project, options.instance, path)
+      utils.getDatabaseViewDataUrl(
+        origin,
+        options.project,
+        options.instance,
+        path
+      )
     );
   });

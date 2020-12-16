@@ -3,13 +3,19 @@ import * as ora from "ora";
 import Table = require("cli-table");
 
 import { Command } from "../command";
-import { FirebaseProjectMetadata, listFirebaseProjects } from "../management/projects";
+import {
+  FirebaseProjectMetadata,
+  listFirebaseProjects,
+} from "../management/projects";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
 const NOT_SPECIFIED = clc.yellow("[Not specified]");
 
-function logProjectsList(projects: FirebaseProjectMetadata[], currentProjectId: string): void {
+function logProjectsList(
+  projects: FirebaseProjectMetadata[],
+  currentProjectId: string
+): void {
   if (!projects.length) {
     return;
   }
@@ -51,7 +57,9 @@ module.exports = new Command("projects:list")
   .action(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (options: any): Promise<FirebaseProjectMetadata[]> => {
-      const spinner = ora("Preparing the list of your Firebase projects").start();
+      const spinner = ora(
+        "Preparing the list of your Firebase projects"
+      ).start();
       let projects;
 
       try {

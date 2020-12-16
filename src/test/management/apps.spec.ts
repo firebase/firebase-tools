@@ -69,9 +69,15 @@ describe("App management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
-    pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
-    readFileSyncStub = sandbox.stub(fs, "readFileSync").throws("Unxpected readFileSync call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
+    pollOperationStub = sandbox
+      .stub(pollUtils, "pollOperation")
+      .throws("Unexpected poll call");
+    readFileSyncStub = sandbox
+      .stub(fs, "readFileSync")
+      .throws("Unxpected readFileSync call");
   });
 
   afterEach(() => {
@@ -117,7 +123,9 @@ describe("App management", () => {
         bundleId: IOS_APP_BUNDLE_ID,
         appStoreId: IOS_APP_STORE_ID,
       };
-      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
       const resultAppInfo = await createIosApp(PROJECT_ID, {
@@ -187,7 +195,9 @@ describe("App management", () => {
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
       pollOperationStub.onFirstCall().rejects(expectedError);
 
       let err;
@@ -235,7 +245,9 @@ describe("App management", () => {
         displayName: ANDROID_APP_DISPLAY_NAME,
         packageName: ANDROID_APP_PACKAGE_NAME,
       };
-      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
       const resultAppInfo = await createAndroidApp(PROJECT_ID, {
@@ -301,7 +313,9 @@ describe("App management", () => {
 
     it("should reject if polling throws error", async () => {
       const expectedError = new Error("Permission denied");
-      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
       pollOperationStub.onFirstCall().rejects(expectedError);
 
       let err;
@@ -346,10 +360,14 @@ describe("App management", () => {
         appId: APP_ID,
         displayName: WEB_APP_DISPLAY_NAME,
       };
-      apiRequestStub.onFirstCall().resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { name: OPERATION_RESOURCE_NAME_1 } });
       pollOperationStub.onFirstCall().resolves(expectedAppMetadata);
 
-      const resultAppInfo = await createWebApp(PROJECT_ID, { displayName: WEB_APP_DISPLAY_NAME });
+      const resultAppInfo = await createWebApp(PROJECT_ID, {
+        displayName: WEB_APP_DISPLAY_NAME,
+      });
 
       expect(resultAppInfo).to.equal(expectedAppMetadata);
       expect(apiRequestStub).to.be.calledOnceWith(
@@ -449,7 +467,9 @@ describe("App management", () => {
         ...generateAndroidAppList(appCountsPerPlatform),
         ...generateWebAppList(appCountsPerPlatform),
       ];
-      apiRequestStub.onFirstCall().resolves({ body: { apps: expectedAppList } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: expectedAppList } });
 
       const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANY);
 
@@ -473,7 +493,9 @@ describe("App management", () => {
         delete iosApp.platform;
         return iosApp;
       });
-      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: apiResponseAppList } });
 
       const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.IOS);
 
@@ -492,7 +514,9 @@ describe("App management", () => {
         delete androidApps.platform;
         return androidApps;
       });
-      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: apiResponseAppList } });
 
       const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANDROID);
 
@@ -511,7 +535,9 @@ describe("App management", () => {
         delete webApp.platform;
         return webApp;
       });
-      apiRequestStub.onFirstCall().resolves({ body: { apps: apiResponseAppList } });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: { apps: apiResponseAppList } });
 
       const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.WEB);
 
@@ -533,11 +559,21 @@ describe("App management", () => {
       ];
       apiRequestStub
         .onFirstCall()
-        .resolves({ body: { apps: expectedAppList.slice(0, pageSize), nextPageToken } })
+        .resolves({
+          body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
+        })
         .onSecondCall()
-        .resolves({ body: { apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3) } });
+        .resolves({
+          body: {
+            apps: expectedAppList.slice(pageSize, appCountsPerPlatform * 3),
+          },
+        });
 
-      const apps = await listFirebaseApps(PROJECT_ID, AppPlatform.ANY, pageSize);
+      const apps = await listFirebaseApps(
+        PROJECT_ID,
+        AppPlatform.ANY,
+        pageSize
+      );
 
       expect(apps).to.deep.equal(expectedAppList);
       expect(apiRequestStub.firstCall).to.be.calledWith(
@@ -579,7 +615,9 @@ describe("App management", () => {
       const expectedError = new Error("HTTP Error 400: unexpected error");
       apiRequestStub
         .onFirstCall()
-        .resolves({ body: { apps: expectedAppList.slice(0, pageSize), nextPageToken } })
+        .resolves({
+          body: { apps: expectedAppList.slice(0, pageSize), nextPageToken },
+        })
         .onSecondCall()
         .rejects(expectedError);
 
@@ -671,9 +709,14 @@ describe("App management", () => {
   describe("getAppConfigFile", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
       const expectedConfigFileContent = "test iOS configuration";
-      const mockBase64Content = Buffer.from(expectedConfigFileContent).toString("base64");
+      const mockBase64Content = Buffer.from(expectedConfigFileContent).toString(
+        "base64"
+      );
       apiRequestStub.onFirstCall().resolves({
-        body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
+        body: {
+          configFilename: "GoogleService-Info.plist",
+          configFileContents: mockBase64Content,
+        },
       });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
@@ -715,9 +758,14 @@ describe("App management", () => {
 
   describe("getAppConfig", () => {
     it("should resolve with iOS app configuration if it succeeds", async () => {
-      const mockBase64Content = Buffer.from("test iOS configuration").toString("base64");
+      const mockBase64Content = Buffer.from("test iOS configuration").toString(
+        "base64"
+      );
       apiRequestStub.onFirstCall().resolves({
-        body: { configFilename: "GoogleService-Info.plist", configFileContents: mockBase64Content },
+        body: {
+          configFilename: "GoogleService-Info.plist",
+          configFileContents: mockBase64Content,
+        },
       });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.IOS);
@@ -733,9 +781,14 @@ describe("App management", () => {
     });
 
     it("should resolve with Android app configuration if it succeeds", async () => {
-      const mockBase64Content = Buffer.from("test Android configuration").toString("base64");
+      const mockBase64Content = Buffer.from(
+        "test Android configuration"
+      ).toString("base64");
       apiRequestStub.onFirstCall().resolves({
-        body: { configFilename: "google-services.json", configFileContents: mockBase64Content },
+        body: {
+          configFilename: "google-services.json",
+          configFileContents: mockBase64Content,
+        },
       });
 
       const configData = await getAppConfig(APP_ID, AppPlatform.ANDROID);

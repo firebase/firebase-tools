@@ -34,7 +34,9 @@ describe("storage", () => {
 
       await doSetup(setup, new Config("/path/to/src", {}));
 
-      expect(_.get(setup, "config.storage.rules")).to.deep.equal("storage.rules");
+      expect(_.get(setup, "config.storage.rules")).to.deep.equal(
+        "storage.rules"
+      );
     });
 
     it("should error when cloud resource location is not set", async () => {
@@ -44,7 +46,9 @@ describe("storage", () => {
         projectId: "my-project-123",
       };
 
-      await expect(doSetup(setup, new Config("/path/to/src", {}))).to.eventually.be.rejectedWith(
+      await expect(
+        doSetup(setup, new Config("/path/to/src", {}))
+      ).to.eventually.be.rejectedWith(
         FirebaseError,
         "Cloud resource location is not set"
       );

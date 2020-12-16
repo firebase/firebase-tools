@@ -12,7 +12,7 @@ function _getDefaultBucket(projectId) {
       origin: api.appengineOrigin,
     })
     .then(
-      function(resp) {
+      function (resp) {
         if (resp.body.defaultBucket === "undefined") {
           logger.debug("Default storage bucket is undefined.");
           return Promise.reject(
@@ -23,7 +23,7 @@ function _getDefaultBucket(projectId) {
         }
         return Promise.resolve(resp.body.defaultBucket);
       },
-      function(err) {
+      function (err) {
         logger.info(
           "\n\nThere was an issue deploying your functions. Verify that your project has a Google App Engine instance setup at https://console.cloud.google.com/appengine and try again. If this issue persists, please contact support."
         );
@@ -54,7 +54,9 @@ function _uploadSource(source, uploadUrl) {
  */
 async function _uploadObject(source, bucketName) {
   if (path.extname(source.file) !== ".zip") {
-    throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
+    throw new FirebaseError(
+      `Expected a file name ending in .zip, got ${source.file}`
+    );
   }
   const location = `/${bucketName}/${path.basename(source.file)}`;
   await api.request("PUT", location, {

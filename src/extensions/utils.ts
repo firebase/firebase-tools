@@ -19,7 +19,9 @@ interface ListItem {
 }
 
 // Convert extension option to Inquirer-friendly list for the prompt, with all items unchecked.
-export function convertExtensionOptionToLabeledList(options: ParamOption[]): ListItem[] {
+export function convertExtensionOptionToLabeledList(
+  options: ParamOption[]
+): ListItem[] {
   return options.map(
     (option: ParamOption): ListItem => {
       return {
@@ -51,7 +53,9 @@ export function getRandomString(length: number): string {
   const SUFFIX_CHAR_SET = "abcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += SUFFIX_CHAR_SET.charAt(Math.floor(Math.random() * SUFFIX_CHAR_SET.length));
+    result += SUFFIX_CHAR_SET.charAt(
+      Math.floor(Math.random() * SUFFIX_CHAR_SET.length)
+    );
   }
   return result;
 }

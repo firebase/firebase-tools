@@ -19,7 +19,10 @@ module.exports = new Command("emulators:start")
   .before(commandUtils.beforeEmulatorCommand)
   .description("start the local Firebase emulators")
   .option(commandUtils.FLAG_ONLY, commandUtils.DESC_ONLY)
-  .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
+  .option(
+    commandUtils.FLAG_INSPECT_FUNCTIONS,
+    commandUtils.DESC_INSPECT_FUNCTIONS
+  )
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,7 +45,9 @@ module.exports = new Command("emulators:start")
     }
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
     const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
-    const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
+    const uiUrl = uiInfo
+      ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}`
+      : "unknown";
     const head = ["Emulator", "Host:Port"];
 
     if (uiInfo) {
@@ -54,7 +59,9 @@ module.exports = new Command("emulators:start")
       "All emulators ready! It is now safe to connect your app."
     )}`;
     if (uiInfo) {
-      successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(uiUrl)}`;
+      successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(
+        uiUrl
+      )}`;
     }
     successMessageTable.push([successMsg]);
 
@@ -70,7 +77,10 @@ module.exports = new Command("emulators:start")
         .filterEmulatorTargets(options)
         .map((emulator) => {
           const info = EmulatorRegistry.getInfo(emulator);
-          const emulatorName = Constants.description(emulator).replace(/ emulator/i, "");
+          const emulatorName = Constants.description(emulator).replace(
+            / emulator/i,
+            ""
+          );
           const isSupportedByUi = EMULATORS_SUPPORTED_BY_UI.includes(emulator);
 
           if (!info) {
@@ -94,7 +104,8 @@ module.exports = new Command("emulators:start")
 ${emulatorsTable}
 ${
   hubInfo
-    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
+    ? clc.blackBright("  Emulator Hub running at ") +
+      EmulatorRegistry.getInfoHostString(hubInfo)
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPorts.join(", ")}

@@ -142,7 +142,11 @@ export abstract class Throttler<T, R> {
   }
 
   process(): void {
-    if (this.finishIfIdle() || this.active >= this.concurrency || !this.hasWaitingTask()) {
+    if (
+      this.finishIfIdle() ||
+      this.active >= this.concurrency ||
+      !this.hasWaitingTask()
+    ) {
       return;
     }
 
@@ -196,7 +200,9 @@ export abstract class Throttler<T, R> {
     if (!taskData) {
       return "finished task";
     }
-    return typeof taskData.task === "string" ? taskData.task : `index ${cursorIndex}`;
+    return typeof taskData.task === "string"
+      ? taskData.task
+      : `index ${cursorIndex}`;
   }
 
   private addHelper(
@@ -261,11 +267,18 @@ export abstract class Throttler<T, R> {
       result = await this.handler(taskData.task);
     } catch (err) {
       if (taskData.retryCount === this.retries) {
-        throw new RetriesExhaustedError(this.taskName(cursorIndex), this.retries, err);
+        throw new RetriesExhaustedError(
+          this.taskName(cursorIndex),
+          this.retries,
+          err
+        );
       }
       await backoff(taskData.retryCount + 1, this.backoff);
       if (taskData.isTimedOut) {
-        throw new TimeoutError(this.taskName(cursorIndex), taskData.timeoutMillis!);
+        throw new TimeoutError(
+          this.taskName(cursorIndex),
+          taskData.timeoutMillis!
+        );
       }
       this.retried++;
       taskData.retryCount++;
@@ -274,7 +287,10 @@ export abstract class Throttler<T, R> {
     }
 
     if (taskData.isTimedOut) {
-      throw new TimeoutError(this.taskName(cursorIndex), taskData.timeoutMillis!);
+      throw new TimeoutError(
+        this.taskName(cursorIndex),
+        taskData.timeoutMillis!
+      );
     }
     const dt = Date.now() - t0;
     this.min = Math.min(dt, this.min);

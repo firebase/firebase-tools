@@ -49,10 +49,14 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
     const email = "alice@example.com";
     const providerId = "google.com";
     const sub = "12345";
-    const { localId, idToken } = await signInWithFakeClaims(authApi(), providerId, {
-      sub,
-      email,
-    });
+    const { localId, idToken } = await signInWithFakeClaims(
+      authApi(),
+      providerId,
+      {
+        sub,
+        email,
+      }
+    );
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:delete")

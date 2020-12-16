@@ -108,10 +108,9 @@ describe("cloudscheduler", () => {
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(404, { context: { response: { statusCode: 404 } } });
 
-      await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
-        FirebaseError,
-        "Cloud resource location is not set"
-      );
+      await expect(
+        cloudscheduler.createOrReplaceJob(TEST_JOB)
+      ).to.be.rejectedWith(FirebaseError, "Cloud resource location is not set");
 
       expect(nock.isDone()).to.be.true;
     });
@@ -124,7 +123,9 @@ describe("cloudscheduler", () => {
         .post(`/${VERSION}/projects/test-project/locations/us-east1/jobs`)
         .reply(400, { context: { response: { statusCode: 400 } } });
 
-      await expect(cloudscheduler.createOrReplaceJob(TEST_JOB)).to.be.rejectedWith(
+      await expect(
+        cloudscheduler.createOrReplaceJob(TEST_JOB)
+      ).to.be.rejectedWith(
         FirebaseError,
         "Failed to create scheduler job projects/test-project/locations/us-east1/jobs/test: HTTP Error: 400, Unknown Error"
       );

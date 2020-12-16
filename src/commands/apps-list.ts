@@ -4,7 +4,12 @@ import Table = require("cli-table");
 
 import { Command } from "../command";
 import * as getProjectId from "../getProjectId";
-import { AppMetadata, AppPlatform, getAppPlatform, listFirebaseApps } from "../management/apps";
+import {
+  AppMetadata,
+  AppPlatform,
+  getAppPlatform,
+  listFirebaseApps,
+} from "../management/apps";
 import { requireAuth } from "../requireAuth";
 import * as logger from "../logger";
 
@@ -39,7 +44,10 @@ module.exports = new Command("apps:list [platform]")
   )
   .before(requireAuth)
   .action(
-    async (platform: string | undefined, options: any): Promise<AppMetadata[]> => {
+    async (
+      platform: string | undefined,
+      options: any
+    ): Promise<AppMetadata[]> => {
       const projectId = getProjectId(options);
       const appPlatform = getAppPlatform(platform || "");
 

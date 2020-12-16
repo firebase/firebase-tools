@@ -2,8 +2,8 @@
 
 const previews = require("../previews").previews;
 
-module.exports = function(client) {
-  var loadCommand = function(name) {
+module.exports = function (client) {
+  var loadCommand = function (name) {
     var cmd = require("./" + name);
     // .ts commands export at .default.
     if (cmd.default) {
@@ -55,7 +55,9 @@ module.exports = function(client) {
   client.emulators.start = loadCommand("emulators-start");
   client.experimental = {};
   client.experimental.functions = {};
-  client.experimental.functions.shell = loadCommand("experimental-functions-shell");
+  client.experimental.functions.shell = loadCommand(
+    "experimental-functions-shell"
+  );
   client.ext = loadCommand("ext");
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");

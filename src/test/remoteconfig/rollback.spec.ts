@@ -30,8 +30,14 @@ function createTemplate(
   };
 }
 
-const latestTemplate: RemoteConfigTemplate = createTemplate("115", "2020-08-06T23:11:41.629Z");
-const rollbackTemplate: RemoteConfigTemplate = createTemplate("114", "2020-08-07T23:11:41.629Z");
+const latestTemplate: RemoteConfigTemplate = createTemplate(
+  "115",
+  "2020-08-06T23:11:41.629Z"
+);
+const rollbackTemplate: RemoteConfigTemplate = createTemplate(
+  "114",
+  "2020-08-07T23:11:41.629Z"
+);
 
 describe("RemoteConfig Rollback", () => {
   let sandbox: sinon.SinonSandbox;
@@ -39,7 +45,9 @@ describe("RemoteConfig Rollback", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
   });
 
   afterEach(() => {
@@ -72,7 +80,8 @@ describe("RemoteConfig Rollback", () => {
       expect(RCtemplate).to.deep.equal(latestTemplate);
       expect(apiRequestStub).to.be.calledOnceWith(
         "POST",
-        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` + 1000,
+        `/v1/projects/${PROJECT_ID}/remoteConfig:rollback?versionNumber=` +
+          1000,
         {
           auth: true,
           origin: api.remoteConfigApiOrigin,

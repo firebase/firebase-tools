@@ -36,9 +36,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ phoneNumber, recaptchaToken: "ignored" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("sessionInfo")
-          .that.is.a("string");
+        expect(res.body).to.have.property("sessionInfo").that.is.a("string");
         return res.body.sessionInfo;
       });
 
@@ -97,16 +95,10 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("isNewUser")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("isNewUser").equals(true);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
 
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -121,7 +113,9 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         expect(decoded!.payload.firebase)
           .to.have.property("sign_in_provider")
           .equals("phone");
-        expect(decoded!.payload.firebase.identities).to.eql({ phone: [phoneNumber] });
+        expect(decoded!.payload.firebase.identities).to.eql({
+          phone: [phoneNumber],
+        });
       });
   });
 
@@ -240,12 +234,8 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
       .send({ sessionInfo, code, idToken })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("isNewUser")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("isNewUser").equals(false);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
         expect(res.body.localId).to.equal(localId);
       });
   });
@@ -308,9 +298,7 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         // with a temporaryProof (so that clients may call this API again
         // without having to verify the phone number again).
         expect(res.body).not.to.have.property("idToken");
-        expect(res.body)
-          .to.have.property("phoneNumber")
-          .equals(phoneNumber);
+        expect(res.body).to.have.property("phoneNumber").equals(phoneNumber);
         expect(res.body.temporaryProof).to.be.a("string");
         return res.body.temporaryProof;
       });

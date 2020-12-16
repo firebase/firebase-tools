@@ -10,7 +10,9 @@ const cjson = require("cjson");
 
 describe("getHumanFriendlyRuntimeName", () => {
   it("should properly convert raw runtime to human friendly runtime", () => {
-    expect(runtime.getHumanFriendlyRuntimeName("nodejs6")).to.contain("Node.js");
+    expect(runtime.getHumanFriendlyRuntimeName("nodejs6")).to.contain(
+      "Node.js"
+    );
   });
 });
 
@@ -23,7 +25,10 @@ describe("getRuntimeChoice", () => {
   beforeEach(() => {
     cjsonStub = sandbox.stub(cjson, "load");
     warningSpy = sandbox.spy(utils, "logWarning");
-    SDKVersionStub = sandbox.stub(checkFirebaseSDKVersion, "getFunctionsSDKVersion");
+    SDKVersionStub = sandbox.stub(
+      checkFirebaseSDKVersion,
+      "getFunctionsSDKVersion"
+    );
   });
 
   afterEach(() => {
@@ -50,21 +55,27 @@ describe("getRuntimeChoice", () => {
     it("should return node 10 if runtime field is set to node 10", () => {
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "nodejs10")).to.equal("nodejs10");
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs10")).to.equal(
+        "nodejs10"
+      );
       expect(warningSpy).not.called;
     });
 
     it("should return node 12 if runtime field is set to node 12", () => {
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "nodejs12")).to.equal("nodejs12");
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs12")).to.equal(
+        "nodejs12"
+      );
       expect(warningSpy).not.called;
     });
 
     it("should return node 14 if runtime field is set to node 14", () => {
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal("nodejs14");
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal(
+        "nodejs14"
+      );
       expect(warningSpy).not.called;
     });
 
@@ -72,11 +83,15 @@ describe("getRuntimeChoice", () => {
       SDKVersionStub.returns("0.5.0");
 
       runtime.getRuntimeChoice("path/to/source", "nodejs10");
-      expect(warningSpy).calledWith(runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+      expect(warningSpy).calledWith(
+        runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING
+      );
     });
 
     it("should throw error if unsupported node version set", () => {
-      expect(() => runtime.getRuntimeChoice("path/to/source", "nodejs11")).to.throw(
+      expect(() =>
+        runtime.getRuntimeChoice("path/to/source", "nodejs11")
+      ).to.throw(
         FirebaseError,
         runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG
       );
@@ -106,7 +121,9 @@ describe("getRuntimeChoice", () => {
       cjsonStub.returns({ engines: { node: "10" } });
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs10");
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal(
+        "nodejs10"
+      );
       expect(warningSpy).not.called;
     });
 
@@ -114,7 +131,9 @@ describe("getRuntimeChoice", () => {
       cjsonStub.returns({ engines: { node: "12" } });
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs12");
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal(
+        "nodejs12"
+      );
       expect(warningSpy).not.called;
     });
 
@@ -122,7 +141,9 @@ describe("getRuntimeChoice", () => {
       cjsonStub.returns({ engines: { node: "14" } });
       SDKVersionStub.returns("3.4.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs14");
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal(
+        "nodejs14"
+      );
       expect(warningSpy).not.called;
     });
 
@@ -131,13 +152,17 @@ describe("getRuntimeChoice", () => {
       SDKVersionStub.returns("0.5.0");
 
       runtime.getRuntimeChoice("path/to/source", "");
-      expect(warningSpy).calledWith(runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
+      expect(warningSpy).calledWith(
+        runtime.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING
+      );
     });
 
     it("should not throw error if user's SDK version fails to be fetched", () => {
       cjsonStub.returns({ engines: { node: "10" } });
       // Intentionally not setting SDKVersionStub so it can fail to be fetched.
-      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs10");
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal(
+        "nodejs10"
+      );
       expect(warningSpy).not.called;
     });
 

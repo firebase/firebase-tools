@@ -22,7 +22,9 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
     if (match) {
       const version = match[1];
       const sdkName = match[2];
-      const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
+      const u = new url.URL(
+        `https://www.gstatic.com/firebasejs/${version}/${sdkName}`
+      );
       const c = new Client({ urlPrefix: u.origin, auth: false });
       c.request<unknown, NodeJS.ReadableStream>({
         method: "GET",

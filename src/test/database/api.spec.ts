@@ -1,7 +1,10 @@
 import { expect } from "chai";
 
 import * as utils from "../../utils";
-import { realtimeOriginOrEmulatorOrCustomUrl, realtimeOriginOrCustomUrl } from "../../database/api";
+import {
+  realtimeOriginOrEmulatorOrCustomUrl,
+  realtimeOriginOrCustomUrl,
+} from "../../database/api";
 
 describe("api", () => {
   afterEach(() => {
@@ -28,7 +31,9 @@ describe("api", () => {
 
   it("should override with FIREBASE_REALTIME_URL", () => {
     process.env.FIREBASE_REALTIME_URL = "http://foobar.com";
-    expect(realtimeOriginOrEmulatorOrCustomUrl("http://my-custom-url")).to.eq("http://foobar.com");
+    expect(realtimeOriginOrEmulatorOrCustomUrl("http://my-custom-url")).to.eq(
+      "http://foobar.com"
+    );
   });
 
   it("should prefer FIREBASE_DATABASE_EMULATOR_HOST to FIREBASE_REALTIME_URL", () => {
@@ -41,12 +46,16 @@ describe("api", () => {
 
   it("should prefer FIREBASE_REALTIME_URL when run without emulator", () => {
     process.env.FIREBASE_REALTIME_URL = "http://foobar.com";
-    expect(realtimeOriginOrCustomUrl("http://my-custom-url")).to.eq("http://foobar.com");
+    expect(realtimeOriginOrCustomUrl("http://my-custom-url")).to.eq(
+      "http://foobar.com"
+    );
   });
 
   it("should ignore FIREBASE_DATABASE_EMULATOR_HOST when run without emulator", () => {
     process.env.FIREBASE_DATABASE_EMULATOR_HOST = "localhost:8080";
     process.env.FIREBASE_REALTIME_URL = "http://foobar.com";
-    expect(realtimeOriginOrCustomUrl("http://my-custom-url")).to.eq("http://foobar.com");
+    expect(realtimeOriginOrCustomUrl("http://my-custom-url")).to.eq(
+      "http://foobar.com"
+    );
   });
 });

@@ -34,7 +34,9 @@ export default new Command("hosting:channel:list")
           channelId,
           datetimeString(new Date(channel.updateTime)),
           channel.url,
-          channel.expireTime ? datetimeString(new Date(channel.expireTime)) : "never",
+          channel.expireTime
+            ? datetimeString(new Date(channel.expireTime))
+            : "never",
         ]);
       }
 

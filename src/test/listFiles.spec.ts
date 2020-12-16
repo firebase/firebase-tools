@@ -12,7 +12,11 @@ describe("listFiles", () => {
       "ignored.txt",
       "ignored/**/*.txt",
     ]);
-    expect(fileNames).to.deep.equal(["index.html", "ignored/index.html", "present/index.html"]);
+    expect(fileNames).to.deep.equal([
+      "index.html",
+      "ignored/index.html",
+      "present/index.html",
+    ]);
   });
 
   it("should allow us to not specify additional ignores", () => {

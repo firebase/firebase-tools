@@ -24,9 +24,12 @@ const downloadEmulator = require("../emulator/download");
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
 const CACHE_DIR =
-  process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
+  process.env.FIREBASE_EMULATORS_PATH ||
+  path.join(os.homedir(), ".cache", "firebase", "emulators");
 
-const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
+const DownloadDetails: {
+  [s in DownloadableEmulators]: EmulatorDownloadDetails;
+} = {
   database: {
     downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.1.jar"),
     version: "4.7.1",
@@ -58,7 +61,8 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     binaryPath: path.join(CACHE_DIR, "ui-v1.4.0", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.0.zip",
+      remoteUrl:
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.0.zip",
       expectedSize: 3374019,
       expectedChecksum: "50a30d56d85d43ee37316a9a4ac71fc3",
       namePrefix: "ui",
@@ -71,7 +75,9 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     binaryPath: path.join(
       CACHE_DIR,
       "pubsub-emulator-0.1.0",
-      `pubsub-emulator/bin/cloud-pubsub-emulator${process.platform === "win32" ? ".bat" : ""}`
+      `pubsub-emulator/bin/cloud-pubsub-emulator${
+        process.platform === "win32" ? ".bat" : ""
+      }`
     ),
     opts: {
       cacheDir: CACHE_DIR,
@@ -84,7 +90,9 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
   },
 };
 
-const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
+const EmulatorDetails: {
+  [s in DownloadableEmulators]: DownloadableEmulatorDetails;
+} = {
   database: {
     name: Emulators.DATABASE,
     instance: null,
@@ -107,11 +115,18 @@ const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetai
   },
 };
 
-const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = {
+const Commands: {
+  [s in DownloadableEmulators]: DownloadableEmulatorCommand;
+} = {
   database: {
     binary: "java",
     args: ["-Duser.language=en", "-jar", getExecPath(Emulators.DATABASE)],
-    optionalArgs: ["port", "host", "functions_emulator_port", "functions_emulator_host"],
+    optionalArgs: [
+      "port",
+      "host",
+      "functions_emulator_port",
+      "functions_emulator_host",
+    ],
     joinArgs: false,
   },
   firestore: {
@@ -218,7 +233,10 @@ function _getCommand(
   };
 }
 
-async function _fatal(emulator: DownloadableEmulatorDetails, errorMsg: string): Promise<void> {
+async function _fatal(
+  emulator: DownloadableEmulatorDetails,
+  errorMsg: string
+): Promise<void> {
   // if we do not issue a stopAll here and _fatal is called during startup, we could leave emulators running
   // that did start already
   // for example: JAVA_HOME=/does/not/exist firebase emulators:start
@@ -269,7 +287,11 @@ async function _runBinary(
     const description = Constants.description(emulator.name);
 
     if (emulator.instance == null) {
-      logger.logLabeled("WARN", emulator.name, `Could not spawn child process for ${description}.`);
+      logger.logLabeled(
+        "WARN",
+        emulator.name,
+        `Could not spawn child process for ${description}.`
+      );
       return;
     }
 
@@ -308,7 +330,9 @@ async function _runBinary(
     });
     emulator.instance.once("exit", async (code, signal) => {
       if (signal) {
-        utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
+        utils.logWarning(
+          `${description} has exited upon receiving signal: ${signal}`
+        );
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
         await _fatal(emulator, `${description} has exited with code: ${code}`);
       }
@@ -320,14 +344,18 @@ async function _runBinary(
 /**
  * @param emulator
  */
-export function getDownloadDetails(emulator: DownloadableEmulators): EmulatorDownloadDetails {
+export function getDownloadDetails(
+  emulator: DownloadableEmulators
+): EmulatorDownloadDetails {
   return DownloadDetails[emulator];
 }
 
 /**
  * @param emulator
  */
-export function get(emulator: DownloadableEmulators): DownloadableEmulatorDetails {
+export function get(
+  emulator: DownloadableEmulators
+): DownloadableEmulatorDetails {
   return EmulatorDetails[emulator];
 }
 
@@ -351,7 +379,10 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
-          Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
+          Constants.description(emulator.name) +
+          ": Unable to terminate process (PID=" +
+          pid +
+          ")";
         logger.log("DEBUG", errorMsg);
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
@@ -370,7 +401,9 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
 /**
  * @param targetName
  */
-export async function downloadIfNecessary(targetName: DownloadableEmulators): Promise<void> {
+export async function downloadIfNecessary(
+  targetName: DownloadableEmulators
+): Promise<void> {
   const hasEmulator = fs.existsSync(getExecPath(targetName));
 
   if (hasEmulator) {
@@ -400,13 +433,17 @@ export async function start(
         utils.logWarning(
           `It appears you are running in a CI environment. You can avoid downloading the ${Constants.description(
             targetName
-          )} repeatedly by caching the ${downloadDetails.opts.cacheDir} directory.`
+          )} repeatedly by caching the ${
+            downloadDetails.opts.cacheDir
+          } directory.`
         );
       }
 
       await downloadEmulator(targetName);
     } else {
-      utils.logWarning("Setup required, please run: firebase setup:emulators:" + targetName);
+      utils.logWarning(
+        "Setup required, please run: firebase setup:emulators:" + targetName
+      );
       throw new FirebaseError("emulator not found");
     }
   }
@@ -415,7 +452,9 @@ export async function start(
 
   logger.log(
     "DEBUG",
-    `Starting ${Constants.description(targetName)} with command ${JSON.stringify(command)}`
+    `Starting ${Constants.description(
+      targetName
+    )} with command ${JSON.stringify(command)}`
   );
   return _runBinary(emulator, command, extraEnv);
 }

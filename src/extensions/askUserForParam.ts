@@ -14,7 +14,9 @@ export function checkResponse(response: string, spec: Param): boolean {
   let responses: string[];
 
   if (spec.required && !response) {
-    utils.logWarning(`Param ${spec.param} is required, but no value was provided.`);
+    utils.logWarning(
+      `Param ${spec.param} is required, but no value was provided.`
+    );
     return false;
   }
   if (spec.type === ParamType.MULTISELECT) {
@@ -38,7 +40,10 @@ export function checkResponse(response: string, spec: Param): boolean {
     });
   }
 
-  if (spec.type && (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)) {
+  if (
+    spec.type &&
+    (spec.type === ParamType.MULTISELECT || spec.type === ParamType.SELECT)
+  ) {
     _.forEach(responses, (r) => {
       // A choice is valid if it matches one of the option values.
       const validChoice = _.some(spec.options, (option: ParamOption) => {
@@ -59,9 +64,9 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   const description = paramSpec.description || "";
   const label = paramSpec.label.trim();
   logger.info(
-    `\n${clc.bold(label)}${clc.bold(paramSpec.required ? "" : " (Optional)")}: ${marked(
-      description
-    ).trim()}`
+    `\n${clc.bold(label)}${clc.bold(
+      paramSpec.required ? "" : " (Optional)"
+    )}: ${marked(description).trim()}`
   );
 
   while (!valid) {
@@ -72,14 +77,19 @@ export async function askForParam(paramSpec: Param): Promise<string> {
           type: "list",
           default: () => {
             if (paramSpec.default) {
-              return getInquirerDefault(_.get(paramSpec, "options", []), paramSpec.default);
+              return getInquirerDefault(
+                _.get(paramSpec, "options", []),
+                paramSpec.default
+              );
             }
           },
           message:
             "Which option do you want enabled for this parameter? " +
             "Select an option with the arrow keys, and use Enter to confirm your choice. " +
             "You may only select one option.",
-          choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
+          choices: convertExtensionOptionToLabeledList(
+            paramSpec.options as ParamOption[]
+          ),
         });
         break;
       case ParamType.MULTISELECT:
@@ -98,7 +108,9 @@ export async function askForParam(paramSpec: Param): Promise<string> {
             "Which options do you want enabled for this parameter? " +
             "Press Space to select, then Enter to confirm your choices. " +
             "You may select multiple options.",
-          choices: convertExtensionOptionToLabeledList(paramSpec.options as ParamOption[]),
+          choices: convertExtensionOptionToLabeledList(
+            paramSpec.options as ParamOption[]
+          ),
         });
         break;
       default:
@@ -116,7 +128,10 @@ export async function askForParam(paramSpec: Param): Promise<string> {
   return response;
 }
 
-export function getInquirerDefault(options: ParamOption[], def: string): string {
+export function getInquirerDefault(
+  options: ParamOption[],
+  def: string
+): string {
   const defaultOption = _.find(options, (option) => {
     return option.value === def;
   });
@@ -138,7 +153,10 @@ export async function ask(
     return {};
   }
 
-  utils.logLabeledBullet(logPrefix, "answer the questions below to configure your extension:");
+  utils.logLabeledBullet(
+    logPrefix,
+    "answer the questions below to configure your extension:"
+  );
   const substituted = substituteParams(paramSpecs, firebaseProjectParams);
   const result: any = {};
   const promises = _.map(substituted, (paramSpec: Param) => {
@@ -147,7 +165,10 @@ export async function ask(
     };
   });
   // chaining together the promises so they get executed one after another
-  await promises.reduce((prev, cur) => prev.then(cur as any), Promise.resolve());
+  await promises.reduce(
+    (prev, cur) => prev.then(cur as any),
+    Promise.resolve()
+  );
   logger.info();
   return result;
 }

@@ -8,14 +8,20 @@
  * @param {Array<EmulatedTriggerDefinition>} triggers array of definitions to extend (in-place).
  * @param {string|undefined} prefix optional function name prefix, for example when using grouped functions.
  */
-var extractTriggers = function(mod, triggers, prefix) {
+var extractTriggers = function (mod, triggers, prefix) {
   prefix = prefix || "";
   for (var funcName of Object.keys(mod)) {
     var child = mod[funcName];
-    if (typeof child === "function" && child.__trigger && typeof child.__trigger === "object") {
+    if (
+      typeof child === "function" &&
+      child.__trigger &&
+      typeof child.__trigger === "object"
+    ) {
       if (funcName.indexOf("-") >= 0) {
         throw new Error(
-          'Function name "' + funcName + '" is invalid. Function names cannot contain dashes.'
+          'Function name "' +
+            funcName +
+            '" is invalid. Function names cannot contain dashes.'
         );
       }
 

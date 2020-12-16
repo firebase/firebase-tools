@@ -34,7 +34,10 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param authScopes scopes to be obtained.
  */
 async function autoAuth(options: any, authScopes: string[]): Promise<void> {
-  const client = getAuthClient({ scopes: authScopes, projectId: options.project });
+  const client = getAuthClient({
+    scopes: authScopes,
+    projectId: options.project,
+  });
   const token = await client.getAccessToken();
   api.setAccessToken(token);
   token !== null ? apiv2.setAccessToken(token) : false;

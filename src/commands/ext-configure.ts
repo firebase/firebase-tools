@@ -32,13 +32,18 @@ export default new Command("ext:configure <extensionInstanceId>")
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (instanceId: string, options: any) => {
     const spinner = ora.default(
-      `Configuring ${clc.bold(instanceId)}. This usually takes 3 to 5 minutes...`
+      `Configuring ${clc.bold(
+        instanceId
+      )}. This usually takes 3 to 5 minutes...`
     );
     try {
       const projectId = getProjectId(options, false);
       let existingInstance: extensionsApi.ExtensionInstance;
       try {
-        existingInstance = await extensionsApi.getInstance(projectId, instanceId);
+        existingInstance = await extensionsApi.getInstance(
+          projectId,
+          instanceId
+        );
       } catch (err) {
         if (err.status === 404) {
           return utils.reject(
@@ -65,7 +70,9 @@ export default new Command("ext:configure <extensionInstanceId>")
       );
       if (immutableParams.length) {
         const plural = immutableParams.length > 1;
-        logger.info(`The following param${plural ? "s are" : " is"} immutable:`);
+        logger.info(
+          `The following param${plural ? "s are" : " is"} immutable:`
+        );
         for (const { param } of immutableParams) {
           const value = _.get(existingInstance, `config.params.${param}`);
           logger.info(`param: ${param}, value: ${value}`);
@@ -80,9 +87,16 @@ export default new Command("ext:configure <extensionInstanceId>")
       }
 
       spinner.start();
-      const res = await extensionsApi.configureInstance(projectId, instanceId, params);
+      const res = await extensionsApi.configureInstance(
+        projectId,
+        instanceId,
+        params
+      );
       spinner.stop();
-      utils.logLabeledSuccess(logPrefix, `successfully configured ${clc.bold(instanceId)}.`);
+      utils.logLabeledSuccess(
+        logPrefix,
+        `successfully configured ${clc.bold(instanceId)}.`
+      );
       utils.logLabeledBullet(
         logPrefix,
         marked(
@@ -98,9 +112,12 @@ export default new Command("ext:configure <extensionInstanceId>")
         spinner.fail();
       }
       if (!(err instanceof FirebaseError)) {
-        throw new FirebaseError(`Error occurred while configuring the instance: ${err.message}`, {
-          original: err,
-        });
+        throw new FirebaseError(
+          `Error occurred while configuring the instance: ${err.message}`,
+          {
+            original: err,
+          }
+        );
       }
       throw err;
     }

@@ -23,7 +23,12 @@ let destroyServer: undefined | (() => Promise<void>) = undefined;
 const logger = EmulatorLogger.forEmulator(Emulators.HOSTING);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function startServer(options: any, config: any, port: number, init: TemplateServerResponse): void {
+function startServer(
+  options: any,
+  config: any,
+  port: number,
+  init: TemplateServerResponse
+): void {
   const firebaseMiddleware = initMiddleware(init);
 
   const morganStream = new Writable();
@@ -71,12 +76,17 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
     const label = siteName ? "hosting[" + siteName + "]" : "hosting";
 
     if (config.public && config.public !== ".") {
-      logger.logLabeled("BULLET", label, "Serving hosting files from: " + clc.bold(config.public));
+      logger.logLabeled(
+        "BULLET",
+        label,
+        "Serving hosting files from: " + clc.bold(config.public)
+      );
     }
     logger.logLabeled(
       "SUCCESS",
       label,
-      "Local server: " + clc.underline(clc.bold("http://" + options.host + ":" + port))
+      "Local server: " +
+        clc.underline(clc.bold("http://" + options.host + ":" + port))
     );
   });
 
@@ -86,20 +96,27 @@ function startServer(options: any, config: any, port: number, init: TemplateServ
   server.on("error", (err: any) => {
     if (err.code === "EADDRINUSE") {
       const message = "Port " + options.port + " is not available.";
-      logger.log("WARN", clc.yellow("hosting: ") + message + " Trying another port...");
+      logger.log(
+        "WARN",
+        clc.yellow("hosting: ") + message + " Trying another port..."
+      );
       if (attempts < MAX_PORT_ATTEMPTS) {
         // Another project that's running takes up to 4 ports: 1 hosting port and 3 functions ports
         attempts++;
         startServer(options, config, port + 5, init);
       } else {
         logger.log("WARN", message);
-        throw new FirebaseError("Could not find an open port for hosting development server.", {
-          exit: 1,
-        });
+        throw new FirebaseError(
+          "Could not find an open port for hosting development server.",
+          {
+            exit: 1,
+          }
+        );
       }
     } else {
       throw new FirebaseError(
-        "An error occurred while starting the hosting development server:\n\n" + err.toString(),
+        "An error occurred while starting the hosting development server:\n\n" +
+          err.toString(),
         { exit: 1 }
       );
     }

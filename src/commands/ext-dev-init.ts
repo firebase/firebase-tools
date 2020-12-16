@@ -15,11 +15,23 @@ marked.setOptions({
 });
 
 const TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/extensions/");
-const FUNCTIONS_ROOT = path.resolve(__dirname, "../../templates/init/functions/");
+const FUNCTIONS_ROOT = path.resolve(
+  __dirname,
+  "../../templates/init/functions/"
+);
 
-const EXT_SPEC_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "extension.yaml"), "utf8");
-const PREINSTALL_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "PREINSTALL.md"), "utf8");
-const POSTINSTALL_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "POSTINSTALL.md"), "utf8");
+const EXT_SPEC_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_ROOT, "extension.yaml"),
+  "utf8"
+);
+const PREINSTALL_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_ROOT, "PREINSTALL.md"),
+  "utf8"
+);
+const POSTINSTALL_TEMPLATE = fs.readFileSync(
+  path.join(TEMPLATE_ROOT, "POSTINSTALL.md"),
+  "utf8"
+);
 
 /**
  * Sets up Typescript boilerplate code for new extension
@@ -38,7 +50,10 @@ async function typescriptSelected(config: Config): Promise<void> {
     path.join(TEMPLATE_ROOT, "typescript", "tsconfig.json"),
     "utf8"
   );
-  const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "typescript", "index.ts"), "utf8");
+  const indexTemplate = fs.readFileSync(
+    path.join(TEMPLATE_ROOT, "typescript", "index.ts"),
+    "utf8"
+  );
   const gitignoreTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "typescript", "_gitignore"),
     "utf8"
@@ -51,7 +66,8 @@ async function typescriptSelected(config: Config): Promise<void> {
   const lint = await promptOnce({
     name: "lint",
     type: "confirm",
-    message: "Do you want to use ESLint to catch probable bugs and enforce style?",
+    message:
+      "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: true,
   });
 
@@ -60,10 +76,16 @@ async function typescriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("POSTINSTALL.md", POSTINSTALL_TEMPLATE);
   await config.askWriteProjectFile("functions/src/index.ts", indexTemplate);
   if (lint) {
-    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
+    await config.askWriteProjectFile(
+      "functions/package.json",
+      packageLintingTemplate
+    );
     await config.askWriteProjectFile("functions/.eslintrc.js", eslintTemplate);
   } else {
-    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
+    await config.askWriteProjectFile(
+      "functions/package.json",
+      packageNoLintingTemplate
+    );
   }
   await config.askWriteProjectFile("functions/tsconfig.json", tsconfigTemplate);
   await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
@@ -74,7 +96,10 @@ async function typescriptSelected(config: Config): Promise<void> {
  * @param {Config} config configuration options
  */
 async function javascriptSelected(config: Config): Promise<void> {
-  const indexTemplate = fs.readFileSync(path.join(TEMPLATE_ROOT, "javascript", "index.js"), "utf8");
+  const indexTemplate = fs.readFileSync(
+    path.join(TEMPLATE_ROOT, "javascript", "index.js"),
+    "utf8"
+  );
   const packageLintingTemplate = fs.readFileSync(
     path.join(TEMPLATE_ROOT, "javascript", "package.lint.json"),
     "utf8"
@@ -95,7 +120,8 @@ async function javascriptSelected(config: Config): Promise<void> {
   const lint = await promptOnce({
     name: "lint",
     type: "confirm",
-    message: "Do you want to use ESLint to catch probable bugs and enforce style?",
+    message:
+      "Do you want to use ESLint to catch probable bugs and enforce style?",
     default: false,
   });
 
@@ -104,10 +130,19 @@ async function javascriptSelected(config: Config): Promise<void> {
   await config.askWriteProjectFile("POSTINSTALL.md", POSTINSTALL_TEMPLATE);
   await config.askWriteProjectFile("functions/index.js", indexTemplate);
   if (lint) {
-    await config.askWriteProjectFile("functions/package.json", packageLintingTemplate);
-    await config.askWriteProjectFile("functions/.eslintrc.json", eslintTemplate);
+    await config.askWriteProjectFile(
+      "functions/package.json",
+      packageLintingTemplate
+    );
+    await config.askWriteProjectFile(
+      "functions/.eslintrc.json",
+      eslintTemplate
+    );
   } else {
-    await config.askWriteProjectFile("functions/package.json", packageNoLintingTemplate);
+    await config.askWriteProjectFile(
+      "functions/package.json",
+      packageNoLintingTemplate
+    );
   }
   await config.askWriteProjectFile("functions/.gitignore", gitignoreTemplate);
 }
@@ -116,7 +151,9 @@ async function javascriptSelected(config: Config): Promise<void> {
  * Command for setting up boilerplate code for a new extension.
  */
 export default new Command("ext:dev:init")
-  .description("initialize files for writing an extension in the current directory")
+  .description(
+    "initialize files for writing an extension in the current directory"
+  )
   .before(checkMinRequiredVersion, "extDevMinVersion")
   .action(async (options: any) => {
     const cwd = options.cwd || process.cwd();
@@ -126,7 +163,8 @@ export default new Command("ext:dev:init")
       const lang = await promptOnce({
         type: "list",
         name: "language",
-        message: "In which language do you want to write the Cloud Functions for your extension?",
+        message:
+          "In which language do you want to write the Cloud Functions for your extension?",
         default: "javascript",
         choices: [
           {
@@ -155,7 +193,10 @@ export default new Command("ext:dev:init")
 
       await npmDependencies.askInstallDependencies({}, config);
 
-      const welcome = fs.readFileSync(path.join(TEMPLATE_ROOT, lang, "WELCOME.md"), "utf8");
+      const welcome = fs.readFileSync(
+        path.join(TEMPLATE_ROOT, lang, "WELCOME.md"),
+        "utf8"
+      );
       return logger.info("\n" + marked(welcome));
     } catch (err) {
       if (!(err instanceof FirebaseError)) {

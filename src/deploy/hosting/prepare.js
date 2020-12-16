@@ -10,14 +10,18 @@ const deploymentTool = require("../../deploymentTool");
 const { FirebaseError } = require("../../error");
 const utils = require("../../utils");
 const fsutils = require("../../fsutils");
-const { normalizedHostingConfigs } = require("../../hosting/normalizedHostingConfigs");
+const {
+  normalizedHostingConfigs,
+} = require("../../hosting/normalizedHostingConfigs");
 const { resolveProjectPath } = require("../../projectPath");
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   // Allow the public directory to be overridden by the --public flag
   if (options.public) {
     if (_.isArray(options.config.get("hosting"))) {
-      throw new FirebaseError("Cannot specify --public option with multi-site configuration.");
+      throw new FirebaseError(
+        "Cannot specify --public option with multi-site configuration."
+      );
     }
 
     options.config.set("hosting.public", options.public);
@@ -29,14 +33,14 @@ module.exports = function(context, options) {
   }
 
   context.hosting = {
-    deploys: configs.map(function(cfg) {
+    deploys: configs.map(function (cfg) {
       return { config: cfg, site: cfg.site };
     }),
   };
 
   const versionCreates = [];
 
-  _.each(context.hosting.deploys, function(deploy) {
+  _.each(context.hosting.deploys, function (deploy) {
     const cfg = deploy.config;
 
     if (!cfg.public) {
@@ -81,7 +85,7 @@ module.exports = function(context, options) {
           auth: true,
           data,
         })
-        .then(function(result) {
+        .then(function (result) {
           deploy.version = result.body.name;
         })
     );

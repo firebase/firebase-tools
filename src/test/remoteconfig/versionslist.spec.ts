@@ -52,7 +52,9 @@ describe("RemoteConfig ListVersions", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
+    apiRequestStub = sandbox
+      .stub(api, "request")
+      .throws("Unexpected API request call");
   });
 
   afterEach(() => {
@@ -78,7 +80,9 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should return all the versions when the limit is 0", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoNoLimit });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: expectedProjectInfoNoLimit });
 
       const RCtemplate = await remoteconfig.getVersions(PROJECT_ID, 0);
 
@@ -95,7 +99,9 @@ describe("RemoteConfig ListVersions", () => {
     });
 
     it("should return with default 10 versions when no limit is set", async () => {
-      apiRequestStub.onFirstCall().resolves({ body: expectedProjectInfoDefault });
+      apiRequestStub
+        .onFirstCall()
+        .resolves({ body: expectedProjectInfoDefault });
 
       const RCtemplateVersion = await remoteconfig.getVersions(PROJECT_ID);
 

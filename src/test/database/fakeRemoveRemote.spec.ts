@@ -114,13 +114,17 @@ describe("FakeRemoveRemote", () => {
   it("should failed to delete large paths /1/a /1/b", async () => {
     const data = { 1: { a: 3, b: 9, c: 2, d: 3 } };
     const fakeDb = new FakeRemoveRemote(data);
-    await expect(fakeDb.deleteSubPath("/1", ["a", "b"])).to.eventually.eql(false);
+    await expect(fakeDb.deleteSubPath("/1", ["a", "b"])).to.eventually.eql(
+      false
+    );
     expect(fakeDb.data).eql(data);
   });
 
   it("should successfully delete multi paths /1/c /1/d", async () => {
     const fakeDb = new FakeRemoveRemote({ 1: { a: 3, b: 9, c: 2, d: 3 } });
-    await expect(fakeDb.deleteSubPath("/1", ["c", "d"])).to.eventually.eql(true);
+    await expect(fakeDb.deleteSubPath("/1", ["c", "d"])).to.eventually.eql(
+      true
+    );
     expect(fakeDb.data).eql({ 1: { a: 3, b: 9 } });
   });
 });

@@ -10,9 +10,13 @@ import RetriesExhaustedError from "../../throttler/errors/retries-exhausted-erro
 
 const TEST_ERROR = new Error("foobar");
 
-type ThrottlerConstructorType = new <T, R>(options: ThrottlerOptions<T, R>) => Throttler<T, R>;
+type ThrottlerConstructorType = new <T, R>(
+  options: ThrottlerOptions<T, R>
+) => Throttler<T, R>;
 
-const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => {
+const throttlerTest = (
+  ThrottlerConstructor: ThrottlerConstructorType
+): void => {
   it("should have no waiting task after creation", () => {
     const queue = new ThrottlerConstructor({});
     expect(queue.hasWaitingTask()).to.equal(false);
@@ -109,7 +113,9 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 1 attempts");
+        expect(err.message).to.equal(
+          "Task index 0 failed: retries exhausted after 1 attempts"
+        );
       })
       .then(() => {
         expect(handler.callCount).to.equal(1);
@@ -140,7 +146,9 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       .catch((err: TaskError) => {
         expect(err).to.be.an.instanceof(RetriesExhaustedError);
         expect(err.original).to.equal(TEST_ERROR);
-        expect(err.message).to.equal("Task index 0 failed: retries exhausted after 4 attempts");
+        expect(err.message).to.equal(
+          "Task index 0 failed: retries exhausted after 4 attempts"
+        );
       })
       .then(() => {
         expect(handler.callCount).to.equal(4);
@@ -300,7 +308,9 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
     expect(err.original).to.equal(TEST_ERROR);
-    expect(err.message).to.equal("Task index 0 failed: retries exhausted after 3 attempts");
+    expect(err.message).to.equal(
+      "Task index 0 failed: retries exhausted after 3 attempts"
+    );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(1);
     expect(q.success).to.equal(0);
@@ -335,11 +345,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
   });
 
   it("should reject with TimeoutError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,
@@ -368,11 +374,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
   });
 
   it("should reject with RetriesExhaustedError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,
@@ -391,7 +393,9 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
       err = e;
     }
     expect(err).to.be.instanceOf(RetriesExhaustedError);
-    expect(err.message).to.equal("Task index 1 failed: retries exhausted after 2 attempts");
+    expect(err.message).to.equal(
+      "Task index 1 failed: retries exhausted after 2 attempts"
+    );
     expect(handler.callCount).to.equal(3);
     expect(q.complete).to.equal(2);
     expect(q.success).to.equal(1);

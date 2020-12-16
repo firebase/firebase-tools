@@ -36,7 +36,11 @@ describe("firestore", () => {
       const initIndexesStub = sandbox.stub(indexes, "initIndexes").resolves();
       const initRulesStub = sandbox.stub(rules, "initRules").resolves();
 
-      const setup = { config: {}, projectId: "my-project-123", projectLocation: "us-central1" };
+      const setup = {
+        config: {},
+        projectId: "my-project-123",
+        projectLocation: "us-central1",
+      };
 
       await firestore.doSetup(setup, {});
 

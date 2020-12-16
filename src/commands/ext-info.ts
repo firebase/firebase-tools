@@ -3,10 +3,19 @@ import * as _ from "lodash";
 
 import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
-import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
+import {
+  resolveRegistryEntry,
+  resolveSourceUrl,
+} from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
-import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
-import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
+import {
+  ensureExtensionsApiEnabled,
+  logPrefix,
+} from "../extensions/extensionsHelper";
+import {
+  isLocalExtension,
+  getLocalExtensionSpec,
+} from "../extensions/localHelper";
 import * as logger from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -19,13 +28,19 @@ export default new Command("ext:info <extensionName>")
   .description(
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
   )
-  .option("--markdown", "output info in Markdown suitable for constructing a README file")
+  .option(
+    "--markdown",
+    "output info in Markdown suitable for constructing a README file"
+  )
   .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
     let spec;
     if (isLocalExtension(extensionName)) {
       if (!options.markdown) {
-        utils.logLabeledBullet(logPrefix, `reading extension from directory: ${extensionName}`);
+        utils.logLabeledBullet(
+          logPrefix,
+          `reading extension from directory: ${extensionName}`
+        );
       }
       spec = await getLocalExtensionSpec(extensionName);
     } else {
@@ -40,7 +55,10 @@ export default new Command("ext:info <extensionName>")
     }
 
     if (!options.markdown) {
-      utils.logLabeledBullet(logPrefix, `information about ${extensionName}:\n`);
+      utils.logLabeledBullet(
+        logPrefix,
+        `information about ${extensionName}:\n`
+      );
     }
 
     const lines: string[] = [];
@@ -65,7 +83,10 @@ export default new Command("ext:info <extensionName>")
     if (spec.params && Array.isArray(spec.params) && spec.params.length > 0) {
       lines.push("", "**Configuration Parameters:**");
       _.forEach(spec.params, (param) => {
-        lines.push(`* ${param.label}` + (param.description ? `: ${param.description}` : ""));
+        lines.push(
+          `* ${param.label}` +
+            (param.description ? `: ${param.description}` : "")
+        );
       });
     }
 
@@ -94,14 +115,21 @@ export default new Command("ext:info <extensionName>")
     if (spec.apis) {
       lines.push("", "**APIs Used**:");
       _.forEach(spec.apis, (api) => {
-        lines.push(`* ${api.apiName}` + (api.reason ? ` (Reason: ${api.reason})` : ""));
+        lines.push(
+          `* ${api.apiName}` + (api.reason ? ` (Reason: ${api.reason})` : "")
+        );
       });
     }
     if (spec.roles) {
       lines.push("", "**Access Required**:");
-      lines.push("", "This extension will operate with the following project IAM roles:");
+      lines.push(
+        "",
+        "This extension will operate with the following project IAM roles:"
+      );
       _.forEach(spec.roles, (role) => {
-        lines.push(`* ${role.role}` + (role.reason ? ` (Reason: ${role.reason})` : ""));
+        lines.push(
+          `* ${role.role}` + (role.reason ? ` (Reason: ${role.reason})` : "")
+        );
       });
     }
 
@@ -116,7 +144,9 @@ export default new Command("ext:info <extensionName>")
       utils.logLabeledBullet(
         logPrefix,
         `to install this extension, type ` +
-          clc.bold(`firebase ext:install ${extensionName} --project=YOUR_PROJECT`)
+          clc.bold(
+            `firebase ext:install ${extensionName} --project=YOUR_PROJECT`
+          )
       );
     }
   });

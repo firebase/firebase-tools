@@ -6,7 +6,9 @@ import { ensureExtensionsApiEnabled } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
 
 module.exports = new Command("ext:list")
-  .description("list all the extensions that are installed in your Firebase project")
+  .description(
+    "list all the extensions that are installed in your Firebase project"
+  )
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")

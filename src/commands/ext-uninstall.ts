@@ -30,7 +30,10 @@ marked.setOptions({
  * @param instanceId ID of the extension instance
  * @return a void Promise
  */
-function consoleUninstallOnly(projectId: string, instanceId: string): Promise<void> {
+function consoleUninstallOnly(
+  projectId: string,
+  instanceId: string
+): Promise<void> {
   const instanceURL = `https://console.firebase.google.com/project/${projectId}/extensions/instances/${instanceId}`;
   const consoleUninstall =
     "This extension has additional uninstall checks that are not currently supported by the CLI, and can only be uninstalled through the Firebase Console. " +
@@ -41,8 +44,13 @@ function consoleUninstallOnly(projectId: string, instanceId: string): Promise<vo
 }
 
 export default new Command("ext:uninstall <extensionInstanceId>")
-  .description("uninstall an extension that is installed in your Firebase project by instance ID")
-  .option("-f, --force", "No confirmation. Otherwise, a confirmation prompt will appear.")
+  .description(
+    "uninstall an extension that is installed in your Firebase project by instance ID"
+  )
+  .option(
+    "-f, --force",
+    "No confirmation. Otherwise, a confirmation prompt will appear."
+  )
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
   .before(checkMinRequiredVersion, "extMinVersion")
@@ -54,15 +62,20 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       instance = await extensionsApi.getInstance(projectId, instanceId);
     } catch (err) {
       if (err.status === 404) {
-        return utils.reject(`No extension instance ${instanceId} in project ${projectId}.`, {
-          exit: 1,
-        });
+        return utils.reject(
+          `No extension instance ${instanceId} in project ${projectId}.`,
+          {
+            exit: 1,
+          }
+        );
       }
       throw err;
     }
 
     // Special case for pubsub-stream-bigquery extension
-    if (_.get(instance, "config.source.spec.name") === "pubsub-stream-bigquery") {
+    if (
+      _.get(instance, "config.source.spec.name") === "pubsub-stream-bigquery"
+    ) {
       return consoleUninstallOnly(projectId, instanceId);
     }
 
@@ -70,12 +83,18 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       const serviceAccountMessage = `Uninstalling deletes the service account used by this extension instance:\n${clc.bold(
         instance.serviceAccountEmail
       )}\n\n`;
-      const resourcesMessage = _.get(instance, "config.source.spec.resources", []).length
+      const resourcesMessage = _.get(
+        instance,
+        "config.source.spec.resources",
+        []
+      ).length
         ? "Uninstalling deletes all extension resources created for this extension instance:\n" +
           instance.config.source.spec.resources
             .map((resource: extensionsApi.Resource) =>
               clc.bold(
-                `- ${resourceTypeToNiceName[resource.type] || resource.type}: ${resource.name} \n`
+                `- ${resourceTypeToNiceName[resource.type] || resource.type}: ${
+                  resource.name
+                } \n`
               )
             )
             .join("") +
@@ -87,7 +106,9 @@ export default new Command("ext:uninstall <extensionInstanceId>")
         "Any other project resources with which this extension instance interacted.\n";
 
       const extensionDeletionMessage =
-        `Here's what will happen when you uninstall ${clc.bold(instanceId)} from project ${clc.bold(
+        `Here's what will happen when you uninstall ${clc.bold(
+          instanceId
+        )} from project ${clc.bold(
           projectId
         )}. Be aware that this cannot be undone.\n\n` +
         `${serviceAccountMessage}` +
@@ -113,11 +134,15 @@ export default new Command("ext:uninstall <extensionInstanceId>")
     spinner.start();
     try {
       spinner.info();
-      spinner.text = ` ${clc.green.bold(logPrefix)}: deleting your extension instance's resources.`;
+      spinner.text = ` ${clc.green.bold(
+        logPrefix
+      )}: deleting your extension instance's resources.`;
       spinner.start();
       await extensionsApi.deleteInstance(projectId, instanceId);
       spinner.succeed(
-        ` ${clc.green.bold(logPrefix)}: deleted your extension instance's resources.`
+        ` ${clc.green.bold(
+          logPrefix
+        )}: deleted your extension instance's resources.`
       );
     } catch (err) {
       if (spinner.isSpinning) {
@@ -126,7 +151,10 @@ export default new Command("ext:uninstall <extensionInstanceId>")
       if (err instanceof FirebaseError) {
         throw err;
       }
-      return utils.reject(`Error occurred uninstalling extension ${instanceId}`, { original: err });
+      return utils.reject(
+        `Error occurred uninstalling extension ${instanceId}`,
+        { original: err }
+      );
     }
     utils.logLabeledSuccess(logPrefix, `uninstalled ${clc.bold(instanceId)}`);
   });

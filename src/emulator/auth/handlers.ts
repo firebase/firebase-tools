@@ -15,7 +15,10 @@ export function registerHandlers(
   getProjectStateByApiKey: (apiKey: string) => ProjectState
 ): void {
   app.get(`/emulator/action`, (req, res) => {
-    const { mode, oobCode, continueUrl, apiKey } = req.query as Record<string, string | undefined>;
+    const { mode, oobCode, continueUrl, apiKey } = req.query as Record<
+      string,
+      string | undefined
+    >;
 
     if (!apiKey) {
       return res.status(400).json({
@@ -51,16 +54,20 @@ export function registerHandlers(
             authEmulator: {
               error: "missing newPassword query parameter",
               instructions: `To reset the password for ${oob.email}, send an HTTP GET request to the following URL.`,
-              instructions2: "You may use a web browser or any HTTP client, such as curl.",
+              instructions2:
+                "You may use a web browser or any HTTP client, such as curl.",
               urlTemplate: `${oob.oobLink}&newPassword=NEW_PASSWORD_HERE`,
             },
           });
         } else if (req.query.newPassword === "NEW_PASSWORD_HERE") {
           return res.status(400).json({
             authEmulator: {
-              error: "newPassword must be something other than 'NEW_PASSWORD_HERE'",
-              instructions: "The string 'NEW_PASSWORD_HERE' is just a placeholder.",
-              instructions2: "Please change the URL to specify a new password instead.",
+              error:
+                "newPassword must be something other than 'NEW_PASSWORD_HERE'",
+              instructions:
+                "The string 'NEW_PASSWORD_HERE' is just a placeholder.",
+              instructions2:
+                "Please change the URL to specify a new password instead.",
               urlTemplate: `${oob.oobLink}&newPassword=NEW_PASSWORD_HERE`,
             },
           });
@@ -74,7 +81,10 @@ export function registerHandlers(
           return res.redirect(303, continueUrl);
         } else {
           return res.status(200).json({
-            authEmulator: { success: `The password has been successfully updated.`, email },
+            authEmulator: {
+              success: `The password has been successfully updated.`,
+              email,
+            },
           });
         }
       }
@@ -85,7 +95,10 @@ export function registerHandlers(
             return res.redirect(303, continueUrl);
           } else {
             return res.status(200).json({
-              authEmulator: { success: `The email has been successfully verified.`, email },
+              authEmulator: {
+                success: `The email has been successfully verified.`,
+                email,
+              },
             });
           }
         } catch (e) {
@@ -125,7 +138,9 @@ export function registerHandlers(
         return res.redirect(303, redirectTo.toString());
       }
       default:
-        return res.status(400).json({ authEmulator: { error: "Invalid mode" } });
+        return res
+          .status(400)
+          .json({ authEmulator: { error: "Invalid mode" } });
     }
   });
 
@@ -161,7 +176,9 @@ export function registerHandlers(
           <span class="mdc-list-item__text"><span class="mdc-list-item__primary-text">${
             info.displayName
           }</span>
-          <span class="mdc-list-item__secondary-text fallback-secondary-text">${info.email}</span>
+          <span class="mdc-list-item__secondary-text fallback-secondary-text">${
+            info.email
+          }</span>
       </li>`
       )
       .join("\n");

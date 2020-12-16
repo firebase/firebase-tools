@@ -2,7 +2,11 @@ import { URL } from "url";
 
 import { Client } from "../apiv2";
 import { Command } from "../command";
-import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
+import {
+  DATABASE_SETTINGS,
+  HELP_TEXT,
+  INVALID_PATH_ERROR,
+} from "../database/settings";
 import { Emulators } from "../emulator/types";
 import { FirebaseError } from "../error";
 import { populateInstanceDetails } from "../management/database";
@@ -52,6 +56,8 @@ export default new Command("database:settings:set <path> <value>")
     }
     utils.logSuccess("Successfully set setting.");
     utils.logSuccess(
-      `For database instance ${options.instance}\n\t ${path} = ${JSON.stringify(parsedValue)}`
+      `For database instance ${options.instance}\n\t ${path} = ${JSON.stringify(
+        parsedValue
+      )}`
     );
   });

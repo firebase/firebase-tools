@@ -34,7 +34,9 @@ function wrappedSafeLoad(source: string): any {
  * Reads an extension.yaml and parses its contents into an ExtensionSpec.
  * @param directory the directory to look for a extensionYaml in.
  */
-export async function readExtensionYaml(directory: string): Promise<ExtensionSpec> {
+export async function readExtensionYaml(
+  directory: string
+): Promise<ExtensionSpec> {
   const extensionYaml = await readFileFromDirectory(directory, SPEC_FILE);
   const source = extensionYaml.source;
   return wrappedSafeLoad(source);
@@ -52,11 +54,15 @@ export function readFileFromDirectory(
       if (err) {
         if (err.code === "ENOENT") {
           return reject(
-            new FirebaseError(`Could not find "${file}" in "${directory}"`, { original: err })
+            new FirebaseError(`Could not find "${file}" in "${directory}"`, {
+              original: err,
+            })
           );
         }
         reject(
-          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, { original: err })
+          new FirebaseError(`Failed to read file "${file}" in "${directory}"`, {
+            original: err,
+          })
         );
       } else {
         resolve(data);

@@ -14,7 +14,10 @@ import * as downloadableEmulators from "./downloadableEmulators";
 
 tmp.setGracefulCleanup();
 
-type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
+type DownloadableEmulator =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.PUBSUB;
 
 module.exports = async (name: DownloadableEmulator) => {
   const emulator = downloadableEmulators.getDownloadDetails(name);
@@ -75,7 +78,8 @@ function removeOldFiles(
     }
 
     if (
-      (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
+      (fullFilePath !== currentLocalPath &&
+        fullFilePath !== currentUnzipPath) ||
       removeAllVersions
     ) {
       EmulatorLogger.forEmulator(name).logLabeled(
@@ -106,12 +110,17 @@ async function downloadToTmp(remoteUrl: string): Promise<string> {
     resolveOnHTTPError: true,
   });
   if (res.status !== 200) {
-    throw new FirebaseError(`download failed, status ${res.status}`, { exit: 1 });
+    throw new FirebaseError(`download failed, status ${res.status}`, {
+      exit: 1,
+    });
   }
 
   const total = parseInt(res.response.headers.get("content-length") || "0", 10);
   const totalMb = Math.ceil(total / 1000000);
-  const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
+  const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, {
+    total,
+    head: ">",
+  });
 
   res.body.on("data", (chunk) => {
     bar.tick(chunk.length);
@@ -145,7 +154,10 @@ function validateSize(filepath: string, expectedSize: number): Promise<void> {
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
+function validateChecksum(
+  filepath: string,
+  expectedChecksum: string
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);
