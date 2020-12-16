@@ -2,10 +2,12 @@ import * as clc from "cli-color";
 import * as ProgressBar from "progress";
 
 import * as api from "../api";
+import * as apiv2 from "../apiv2";
 import * as firestore from "../gcp/firestore";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
+import { firestoreOriginOrEmulator } from "../api";
 
 // Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
 // exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric
@@ -13,6 +15,7 @@ import * as utils from "../utils";
 const MIN_ID = "__id-9223372036854775808__";
 
 export class FirestoreDelete {
+  private apiClient: apiv2.Client;
   private progressBar: ProgressBar;
 
   public isDocumentPath: boolean;
@@ -86,9 +89,14 @@ export class FirestoreDelete {
     if (!options.allCollections) {
       this.validateOptions();
     }
- 
+
     this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
       total: Number.MAX_SAFE_INTEGER,
+    });
+
+    this.apiClient = new apiv2.Client({
+      auth: true,
+      urlPrefix: firestoreOriginOrEmulator,
     });
   }
 
@@ -267,23 +275,17 @@ export class FirestoreDelete {
       body = this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
     }
 
-    return api
-      .request("POST", "/v1/" + url, {
-        auth: true,
-        data: body,
-        origin: api.firestoreOriginOrEmulator,
-      })
-      .then((res) => {
-        // Return the 'document' property for each element in the response,
-        // where it exists.
-        return res.body
-          .filter((x: any) => {
-            return x.document;
-          })
-          .map((x: any) => {
-            return x.document;
-          });
-      });
+    return this.apiClient.post("/v1/" + url, body).then((res) => {
+      // Return the 'document' property for each element in the response,
+      // where it exists.
+      return (res.body as any[])
+        .filter((x: any) => {
+          return x.document;
+        })
+        .map((x: any) => {
+          return x.document;
+        });
+    });
   }
 
   /**
