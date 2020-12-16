@@ -17,9 +17,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as os from "os";
 import { EmulatorRegistry } from "./registry";
-
-// tslint:disable-next-line
-const downloadEmulator = require("../emulator/download");
+import { downloadEmulator } from "../emulator/download";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 

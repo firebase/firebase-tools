@@ -64,10 +64,10 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
       .filter("httpsTrigger")
       .value();
     _.forEach(httpFunctions, function(httpFunc) {
-      _.chain(ops)
-        .find({ func: httpFunc.name })
-        .assign({ triggerUrl: httpFunc.httpsTrigger.url })
-        .value();
+      const op = _.find(ops, { func: httpFunc.name });
+      if (op) {
+        op.triggerUrl = httpFunc.httpsTrigger.url;
+      }
     });
     return Promise.resolve();
   });

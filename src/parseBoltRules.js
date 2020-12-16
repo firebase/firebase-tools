@@ -4,6 +4,7 @@ var fs = require("fs");
 var spawn = require("cross-spawn");
 var { FirebaseError } = require("./error");
 var clc = require("cli-color");
+var _ = require("lodash");
 
 module.exports = function(filename) {
   var ruleSrc = fs.readFileSync(filename, "utf8");
@@ -14,7 +15,7 @@ module.exports = function(filename) {
     encoding: "utf-8",
   });
 
-  if (result.error && result.error.code === "ENOENT") {
+  if (result.error && _.get(result.error, "code") === "ENOENT") {
     throw new FirebaseError("Bolt not installed, run " + clc.bold("npm install -g firebase-bolt"), {
       exit: 1,
     });
@@ -22,8 +23,8 @@ module.exports = function(filename) {
     throw new FirebaseError("Unexpected error parsing Bolt rules file", {
       exit: 2,
     });
-  } else if (result.status > 0) {
-    throw new FirebaseError(result.stderr, { exit: 1 });
+  } else if (result.status != null && result.status > 0) {
+    throw new FirebaseError(result.stderr.toString(), { exit: 1 });
   }
 
   return result.stdout;

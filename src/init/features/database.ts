@@ -136,6 +136,7 @@ export async function doSetup(setup: DatabaseSetup, config: Config): Promise<voi
       instanceDetails = await createDefaultDatabaseInstance(setup.projectId);
     }
   }
+
   let filename = null;
 
   logger.info();

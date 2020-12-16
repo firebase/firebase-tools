@@ -15,6 +15,13 @@ var { promptOnce } = require("./prompt");
 var { resolveProjectPath } = require("./projectPath");
 var utils = require("./utils");
 
+/**
+ * @constructor
+ * @this Config
+ *
+ * @param {object} src
+ * @param {object=} options
+ */
 var Config = function(src, options) {
   this.options = options || {};
   this.projectDir = options.projectDir || detectProjectRoot(options);
@@ -38,11 +45,11 @@ var Config = function(src, options) {
     _.set(this._src, "database.rules", this._src.rules);
   }
 
-  Config.MATERIALIZE_TARGETS.forEach(function(target) {
+  Config.MATERIALIZE_TARGETS.forEach((target) => {
     if (_.get(this._src, target)) {
       _.set(this.data, target, this._materialize(target));
     }
-  }, this);
+  });
 
   // auto-detect functions from package.json in directory
   if (

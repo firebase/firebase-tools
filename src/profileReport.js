@@ -26,6 +26,10 @@ var SPEED_NOTE =
 var COLLAPSE_THRESHOLD = 25;
 var COLLAPSE_WILDCARD = ["$wildcard"];
 
+/**
+ * @constructor
+ * @this ProfileReport
+ */
 var ProfileReport = function(tmpFile, outStream, options) {
   this.tempFile = tmpFile;
   this.output = outStream;
@@ -573,11 +577,9 @@ ProfileReport.prototype.generate = function() {
   } else if (this.options.format === "JSON") {
     return this.generateJson();
   }
-  return utils.reject(
-    new FirebaseError('Invalid report format expected "TXT", "JSON", or "RAW"', {
-      exit: 1,
-    })
-  );
+  throw new FirebaseError('Invalid report format expected "TXT", "JSON", or "RAW"', {
+    exit: 1,
+  });
 };
 
 ProfileReport.prototype.generateRaw = function() {
@@ -647,6 +649,7 @@ ProfileReport.prototype.outputJson = function() {
       json.note = note;
     }
     table.forEach(function(row) {
+      // @ts-ignore
       json.data.push(row);
     });
     return json;

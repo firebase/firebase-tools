@@ -102,7 +102,7 @@ export class HubExport {
     const namespaces = inspectRes.body.map((instance: any) => instance.name);
 
     // Check each one for actual data
-    const namespacesToExport = [];
+    const namespacesToExport: string[] = [];
     for (const ns of namespaces) {
       const checkDataPath = `/.json?ns=${ns}&shallow=true&limitToFirst=1`;
       const checkDataRes = await api.request("GET", checkDataPath, {

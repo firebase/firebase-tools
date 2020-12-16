@@ -10,6 +10,10 @@ var utils = require("../../utils");
 var clc = require("cli-color");
 var SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+// Feature from cli-color 2.0.0 that we want to use:
+// See: https://github.com/medikoo/cli-color/blob/master/erase.js
+var _ERASE_LINE = "\x1b[2K";
+
 module.exports = function(context, options) {
   if (!context.hosting || !context.hosting.deploys) {
     return Promise.resolve();
@@ -21,7 +25,7 @@ module.exports = function(context, options) {
     if (debugging) {
       utils.logLabeledBullet("hosting", newMessage);
     } else {
-      process.stdout.write(clc.erase.line + clc.move.left(9999));
+      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
       process.stdout.write(
         clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
       );
@@ -62,7 +66,7 @@ module.exports = function(context, options) {
       .then(function() {
         clearInterval(progressInterval);
         if (!debugging) {
-          process.stdout.write(clc.erase.line + clc.move.left(9999));
+          process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
         }
         utils.logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
         var dt = Date.now() - t0;

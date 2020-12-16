@@ -20,9 +20,10 @@ var MIN_ID = "__id-9223372036854775808__";
  * @constructor
  * @param {string} project the Firestore project ID.
  * @param {string | undefined} path path to a document or collection.
- * @param {boolean} options.recursive true if the delete should be recursive.
- * @param {boolean} options.shallow true if the delete should be shallow (non-recursive).
- * @param {boolean} options.allCollections true if the delete should universally remove all collections and docs.
+ * @param {object} options
+ * @param {boolean=} options.recursive true if the delete should be recursive.
+ * @param {boolean=} options.shallow true if the delete should be shallow (non-recursive).
+ * @param {boolean=} options.allCollections true if the delete should universally remove all collections and docs.
  */
 function FirestoreDelete(project, path, options) {
   this.project = project;

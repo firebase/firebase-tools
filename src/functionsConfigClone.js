@@ -46,7 +46,7 @@ var _cloneConfig = function(configName, toProject) {
 
 var _cloneConfigOrVariable = function(key, fromProject, toProject) {
   var parts = key.split(".");
-  if (_.includes(exports.RESERVED_NAMESPACES, parts[0])) {
+  if (_.includes(functionsConfig.RESERVED_NAMESPACES, parts[0])) {
     throw new FirebaseError("Cannot clone reserved namespace " + clc.bold(parts[0]));
   }
   var configName = _.join(["projects", fromProject, "configs", parts[0]], "/");

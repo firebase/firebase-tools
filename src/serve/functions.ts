@@ -6,8 +6,14 @@ import * as getProjectId from "../getProjectId";
 
 // TODO(samstern): It would be better to convert this to an EmulatorServer
 // but we don't have the "options" object until start() is called.
-module.exports = {
-  emulatorServer: undefined,
+export class FunctionsServer {
+  emulatorServer: EmulatorServer | undefined = undefined;
+
+  private assertServer() {
+    if (!this.emulatorServer) {
+      throw new Error("Must call start() before calling any other operation!");
+    }
+  }
 
   async start(options: any, args: FunctionsEmulatorArgs): Promise<void> {
     const projectId = getProjectId(options, false);
@@ -45,17 +51,20 @@ module.exports = {
 
     this.emulatorServer = new EmulatorServer(new FunctionsEmulator(args));
     await this.emulatorServer.start();
-  },
+  }
 
   async connect(): Promise<void> {
-    await this.emulatorServer.connect();
-  },
+    this.assertServer();
+    await this.emulatorServer!.connect();
+  }
 
   async stop(): Promise<void> {
-    await this.emulatorServer.stop();
-  },
+    this.assertServer();
+    await this.emulatorServer!.stop();
+  }
 
   get(): FunctionsEmulator {
-    return this.emulatorServer.get() as FunctionsEmulator;
-  },
-};
+    this.assertServer();
+    return this.emulatorServer!.get() as FunctionsEmulator;
+  }
+}
