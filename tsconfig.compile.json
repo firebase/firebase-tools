@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowJs": true,
+    "noEmit": true, /* added: don't actually produce any compiled output */
     "checkJs": true, /* added: we want to do a pass on JS files */
     "resolveJsonModule": true, /* added: makes require(package.json) acceptable */
     "module": "commonjs",
