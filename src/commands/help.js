@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
 "use strict";
 
 var { Command } = require("../command");

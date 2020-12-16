@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
 "use strict";
 
 var clc = require("cli-color");
@@ -8,7 +9,6 @@ var readline = require("readline");
 
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
-var utils = require("./utils");
 
 var DATA_LINE_REGEX = /^data: /;
 
