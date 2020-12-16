@@ -1,5 +1,3 @@
-"use strict";
-
 import * as clc from "cli-color";
 import * as ProgressBar from "progress";
 
@@ -15,12 +13,7 @@ import * as utils from "../utils";
 const MIN_ID = "__id-9223372036854775808__";
 
 export class FirestoreDelete {
-  /**
-   * Progress bar shared by the class.
-   */
-  static progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
-    total: Number.MAX_SAFE_INTEGER,
-  });
+  private progressBar: ProgressBar;
 
   public isDocumentPath: boolean;
   public isCollectionPath: boolean;
@@ -38,12 +31,12 @@ export class FirestoreDelete {
   /**
    * Construct a new Firestore delete operation.
    *
-   * @constructor
-   * @param {string} project the Firestore project ID.
-   * @param {string | undefined} path path to a document or collection.
-   * @param {boolean} options.recursive true if the delete should be recursive.
-   * @param {boolean} options.shallow true if the delete should be shallow (non-recursive).
-   * @param {boolean} options.allCollections true if the delete should universally remove all collections and docs.
+   * @param project the Firestore project ID.
+   * @param path path to a document or collection.
+   * @param options options object with three optional parameters:
+   *                 - options.recursive true if the delete should be recursive.
+   *                 - options.shallow true if the delete should be shallow (non-recursive).
+   *                 - options.allCollections true if the delete should universally remove all collections and docs.
    */
   constructor(
     project: string,
@@ -80,14 +73,18 @@ export class FirestoreDelete {
 
     // When --all-collections is passed any other flags or arguments are ignored
     if (!options.allCollections) {
-      this._validateOptions();
+      this.validateOptions();
     }
+
+    this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
+      total: Number.MAX_SAFE_INTEGER,
+    });
   }
 
   /**
    * Validate all options, throwing an exception for any fatal errors.
    */
-  private _validateOptions() {
+  private validateOptions() {
     if (this.recursive && this.shallow) {
       throw new FirebaseError("Cannot pass recursive and shallow options together.");
     }
@@ -117,12 +114,12 @@ export class FirestoreDelete {
    * See:
    * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
    *
-   * @param {boolean} allDescendants true if subcollections should be included.
-   * @param {number} batchSize maximum number of documents to target (limit).
-   * @param {string=} startAfter document name to start after (optional).
-   * @return {object} a StructuredQuery.
+   * @param allDescendants true if subcollections should be included.
+   * @param batchSize maximum number of documents to target (limit).
+   * @param startAfter document name to start after (optional).
+   * @return a StructuredQuery.
    */
-  private _collectionDescendantsQuery(
+  private collectionDescendantsQuery(
     allDescendants: boolean,
     batchSize: number,
     startAfter?: string
@@ -196,12 +193,12 @@ export class FirestoreDelete {
    * See:
    * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
    *
-   * @param {boolean} allDescendants true if subcollections should be included.
-   * @param {number} batchSize maximum number of documents to target (limit).
-   * @param {string=} startAfter document name to start after (optional).
-   * @return {object} a StructuredQuery.
+   * @param allDescendants true if subcollections should be included.
+   * @param batchSize maximum number of documents to target (limit).
+   * @param startAfter document name to start after (optional).
+   * @return a StructuredQuery.
    */
-  private _docDescendantsQuery(allDescendants: boolean, batchSize: number, startAfter?: string) {
+  private docDescendantsQuery(allDescendants: boolean, batchSize: number, startAfter?: string) {
     const query: any = {
       structuredQuery: {
         limit: batchSize,
@@ -233,18 +230,18 @@ export class FirestoreDelete {
    * For document format see:
    * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/Document
    *
-   * @param {boolean} allDescendants true if subcollections should be included,
-   * @param {number} batchSize the maximum size of the batch.
-   * @param {string=} startAfter the name of the document to start after (optional).
-   * @return {Promise<object[]>} a promise for an array of documents.
+   * @param allDescendants true if subcollections should be included,
+   * @param batchSize the maximum size of the batch.
+   * @param startAfter the name of the document to start after (optional).
+   * @return a promise for an array of documents.
    */
-  private _getDescendantBatch(allDescendants: boolean, batchSize: number, startAfter?: string) {
+  private getDescendantBatch(allDescendants: boolean, batchSize: number, startAfter?: string): Promise<any[]> {
     const url = this.parent + ":runQuery";
     let body;
     if (this.isDocumentPath) {
-      body = this._docDescendantsQuery(allDescendants, batchSize, startAfter);
+      body = this.docDescendantsQuery(allDescendants, batchSize, startAfter);
     } else {
-      body = this._collectionDescendantsQuery(allDescendants, batchSize, startAfter);
+      body = this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
     }
 
     return api
@@ -270,9 +267,9 @@ export class FirestoreDelete {
    * Repeatedly query for descendants of a path and delete them in batches
    * until no documents remain.
    *
-   * @return {Promise} a promise for the entire operation.
+   * @return a promise for the entire operation.
    */
-  private _recursiveBatchDelete() {
+  private recursiveBatchDelete() {
     // Tunable deletion parameters
     const readBatchSize = 7500;
     const deleteBatchSize = 250;
@@ -303,7 +300,7 @@ export class FirestoreDelete {
       if (queue.length <= maxQueueSize && pagesRemaining && !pageIncoming) {
         pageIncoming = true;
 
-        this._getDescendantBatch(this.allDescendants, readBatchSize, lastDocName)
+        this.getDescendantBatch(this.allDescendants, readBatchSize, lastDocName)
           .then((docs) => {
             fetchFailures = 0;
             pageIncoming = false;
@@ -346,7 +343,7 @@ export class FirestoreDelete {
       firestore
         .deleteDocuments(this.project, toDelete)
         .then((numDeleted) => {
-          FirestoreDelete.progressBar.tick(numDeleted);
+          this.progressBar.tick(numDeleted);
           numPendingDeletes--;
         })
         .catch((e) => {
@@ -395,9 +392,9 @@ export class FirestoreDelete {
    * a document the document is deleted and then all descendants
    * are deleted.
    *
-   * @return {Promise} a promise for the entire operation.
+   * @return a promise for the entire operation.
    */
-  private _deletePath() {
+  private deletePath() {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
@@ -417,14 +414,14 @@ export class FirestoreDelete {
     }
 
     return initialDelete.then(() => {
-      return this._recursiveBatchDelete();
+      return this.recursiveBatchDelete();
     });
   }
 
   /**
    * Delete an entire database by finding and deleting each collection.
    *
-   * @return {Promise} a promise for all of the operations combined.
+   * @return a promise for all of the operations combined.
    */
   public deleteDatabase() {
     return firestore
@@ -459,7 +456,7 @@ export class FirestoreDelete {
    * children and false otherwise.
    */
   public checkHasChildren() {
-    return this._getDescendantBatch(true, 1).then((docs) => {
+    return this.getDescendantBatch(true, 1).then((docs) => {
       return docs.length > 0;
     });
   }
@@ -480,7 +477,7 @@ export class FirestoreDelete {
     }
 
     return verifyRecurseSafe.then(() => {
-      return this._deletePath();
+      return this.deletePath();
     });
   }
 }
