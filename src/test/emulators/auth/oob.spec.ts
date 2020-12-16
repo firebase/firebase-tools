@@ -63,22 +63,97 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
         expect(res.body.oobCode).to.be.a("string");
         expect(res.body.oobLink).to.be.a("string");
       });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      .send({ email: user.email, requestType: "VERIFY_EMAIL", returnOobLink: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(user.email);
+        expect(res.body.oobCode).to.be.a("string");
+        expect(res.body.oobLink).to.be.a("string");
+      });
   });
 
-  it("should error when trying to verify email without idToken", async () => {
+  it("should return OOB code by idToken for OAuth 2 requests as well", async () => {
+    const user = { email: "alice@example.com", password: "notasecret" };
+    const { idToken } = await registerUser(authApi(), user);
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      .send({ idToken, requestType: "VERIFY_EMAIL", returnOobLink: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.email).to.equal(user.email);
+        expect(res.body.oobCode).to.be.a("string");
+        expect(res.body.oobLink).to.be.a("string");
+      });
+  });
+
+  it("should error when trying to verify email without idToken or email", async () => {
     const user = { email: "alice@example.com", password: "notasecret" };
     await registerUser(authApi(), user);
 
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
       .query({ key: "fake-api-key" })
-      // Just email, no idToken. (It works for password reset but not verify.)
+      .send({ requestType: "VERIFY_EMAIL" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equal("INVALID_ID_TOKEN");
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      // This causes a different error message to be returned, see below.
+      .send({ returnOobLink: true, requestType: "VERIFY_EMAIL" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equal("MISSING_EMAIL");
+      });
+
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(0);
+  });
+
+  it("should error when trying to verify email without idToken if not returnOobLink", async () => {
+    const user = await registerUser(authApi(), {
+      email: "alice@example.com",
+      password: "notasecret",
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .query({ key: "fake-api-key" })
+      // email here is ignored because returnOobLink is not set.
       .send({ email: user.email, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error)
           .to.have.property("message")
           .equal("INVALID_ID_TOKEN");
+      });
+
+    const oobs = await inspectOobs(authApi());
+    expect(oobs).to.have.length(0);
+  });
+
+  it("should error when trying to verify email not associated with any user", async () => {
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:sendOobCode")
+      .set("Authorization", "Bearer owner")
+      .send({ email: "nosuchuser@example.com", returnOobLink: true, requestType: "VERIFY_EMAIL" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error)
+          .to.have.property("message")
+          .equal("USER_NOT_FOUND");
       });
 
     const oobs = await inspectOobs(authApi());
