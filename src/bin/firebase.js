@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-// Make check for Node 6, which is no longer supported by the CLI.
+// Make check for Node 8, which is no longer supported by the CLI.
 const semver = require("semver");
 const pkg = require("../../package.json");
 const nodeVersion = process.version;

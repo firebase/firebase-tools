@@ -1,3 +1,1 @@
-- Shows missing documents in Emulator UI Firestore viewer.
-- Better supports paths with special characters in Emulator UI Firestore viewer.
 - Better error handling behavior for `firestore:delete` when deleting very large documents.
