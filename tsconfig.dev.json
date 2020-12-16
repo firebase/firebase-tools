@@ -13,5 +13,8 @@
       "src/types"
     ]
   },
-  "include": ["scripts/**/*"]
+  "include": [
+    "scripts/**/*",
+    ".eslintrc.js",
+  ]
 }

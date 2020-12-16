@@ -17,7 +17,6 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
       .post("/securetoken.googleapis.com/v1/token")
       .type("form")
       // snake_case parameters also work, per OAuth 2.0 spec.
-      // eslint-disable-next-line @typescript-eslint/camelcase
       .send({ refresh_token: refreshToken, grantType: "refresh_token" })
       .query({ key: "fake-api-key" })
       .then((res) => {

@@ -14,9 +14,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
   getAccessToken: () => {
     return Promise.resolve({
-      // eslint-disable-next-line @typescript-eslint/camelcase
       expires_in: 1000000,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       access_token: "owner",
     });
   },
