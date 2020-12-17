@@ -382,7 +382,7 @@ export class FirestoreDelete {
           // If the transaction is too large, reduce the batch size
           if (
             e.status === 400 &&
-            e.message.indexOf("Transaction too big") !== -1 &&
+            e.message.includes("Transaction too big") &&
             this.deleteBatchSize >= 2
           ) {
             logger.debug("Transaction too big error deleting doc batch", e);
