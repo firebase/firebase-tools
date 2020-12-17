@@ -95,6 +95,7 @@ export class FirestoreDelete {
 
     this.apiClient = new apiv2.Client({
       auth: true,
+      apiVersion: "v1",
       urlPrefix: firestoreOriginOrEmulator,
     });
   }
@@ -138,7 +139,7 @@ export class FirestoreDelete {
    * Construct a StructuredQuery to find descendant documents of a collection.
    *
    * See:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/StructuredQuery
    *
    * @param allDescendants true if subcollections should be included.
    * @param batchSize maximum number of documents to target (limit).
@@ -217,7 +218,7 @@ export class FirestoreDelete {
    * among the results.
    *
    * See:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/StructuredQuery
    *
    * @param allDescendants true if subcollections should be included.
    * @param batchSize maximum number of documents to target (limit).
@@ -254,7 +255,7 @@ export class FirestoreDelete {
    * Query for a batch of 'descendants' of a given path.
    *
    * For document format see:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/Document
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/Document
    *
    * @param allDescendants true if subcollections should be included,
    * @param batchSize the maximum size of the batch.
@@ -267,21 +268,18 @@ export class FirestoreDelete {
     startAfter?: string
   ): Promise<any[]> {
     const url = this.parent + ":runQuery";
-    let body;
-    if (this.isDocumentPath) {
-      body = this.docDescendantsQuery(allDescendants, batchSize, startAfter);
-    } else {
-      body = this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
-    }
+    const body = this.isDocumentPath
+      ? this.docDescendantsQuery(allDescendants, batchSize, startAfter)
+      : this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
 
-    return this.apiClient.post("/v1/" + url, body).then((res) => {
+    return this.apiClient.post<any, Array<{ document?: any }>>(url, body).then((res) => {
       // Return the 'document' property for each element in the response,
       // where it exists.
-      return (res.body as any[])
-        .filter((x: any) => {
+      return res.body
+        .filter((x) => {
           return x.document;
         })
-        .map((x: any) => {
+        .map((x) => {
           return x.document;
         });
     });
