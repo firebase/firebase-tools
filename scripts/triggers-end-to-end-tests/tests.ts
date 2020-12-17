@@ -8,8 +8,6 @@ import * as path from "path";
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
-const NODE_VERSION = Number.parseInt(process.env.NODE_VERSION || "8");
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
   getAccessToken: () => {
@@ -227,23 +225,12 @@ describe("auth emulator function triggers", () => {
 
   it("should write to the auth emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
-
-    // This test only works on Node 10+
-    if (NODE_VERSION < 10) {
-      this.skip();
-    }
-
     const response = await test.writeToAuth();
     expect(response.status).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered cloud functions", function(this) {
-    // This test only works on Node 10+
-    if (NODE_VERSION < 10) {
-      this.skip();
-    }
-
+  it("should have have triggered cloud functions", () => {
     expect(test.authTriggerCount).to.equal(1);
   });
 });
