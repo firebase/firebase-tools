@@ -17,7 +17,6 @@ var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFr
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
-var { checkForNode8 } = require("./checkRuntimeDependencies");
 
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
@@ -527,7 +526,7 @@ module.exports = function(context, options, payload) {
               deployments.length - failedDeployments.length
             );
           }
-          checkForNode8(runtime);
+
           if (failedDeployments.length > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:");
             const sortedFailedDeployments = failedDeployments.sort();
