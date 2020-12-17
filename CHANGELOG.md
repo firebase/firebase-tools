@@ -1,0 +1,1 @@
+- Support batchCreate API in Auth Emulator.

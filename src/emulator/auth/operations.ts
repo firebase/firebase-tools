@@ -64,6 +64,7 @@ export const authOperations: AuthOps = {
         query: queryAccounts,
         sendOobCode,
         update: setAccountInfo,
+        batchCreate,
         batchGet,
       },
     },
@@ -227,6 +228,157 @@ function lookup(
     // Drop users property if no users are found. This is needed for Node.js
     // Admin SDK: https://github.com/firebase/firebase-admin-node/issues/1078
     users: users.length ? users : undefined,
+  };
+}
+
+function batchCreate(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
+  assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
+
+  if (reqBody.sanityCheck) {
+    if (state.oneAccountPerEmail) {
+      const existingEmails = new Set<string>();
+      for (const userInfo of reqBody.users) {
+        if (userInfo.email) {
+          assert(!existingEmails.has(userInfo.email), `DUPLICATE_EMAIL : ${userInfo.email}`);
+          existingEmails.add(userInfo.email);
+        }
+      }
+    }
+
+    // Check that there is no duplicate (providerId, rawId) tuple.
+    const existingProviderAccounts = new Set<string>();
+    for (const userInfo of reqBody.users) {
+      for (const { providerId, rawId } of userInfo.providerUserInfo ?? []) {
+        const key = `${providerId}:${rawId}`;
+        assert(
+          !existingProviderAccounts.has(key),
+          `DUPLICATE_RAW_ID : Provider id(${providerId}), Raw id(${rawId})`
+        );
+        existingProviderAccounts.add(key);
+      }
+    }
+  }
+
+  if (!reqBody.allowOverwrite) {
+    const existingLocalIds = new Set<string>();
+    for (const userInfo of reqBody.users) {
+      const localId = userInfo.localId || "";
+      assert(!existingLocalIds.has(localId), `DUPLICATE_LOCAL_ID : ${localId}`);
+      existingLocalIds.add(localId);
+    }
+  }
+
+  const errors: { index: number; message: string }[] = [];
+  for (let index = 0; index < reqBody.users.length; index++) {
+    const userInfo = reqBody.users[index];
+
+    try {
+      assert(userInfo.localId, "localId is missing");
+      const uploadTime = new Date();
+      const fields: Omit<Partial<UserInfo>, "localId"> = {
+        displayName: userInfo.displayName,
+        photoUrl: userInfo.photoUrl,
+        lastLoginAt: userInfo.lastLoginAt,
+      };
+
+      // password
+      if (userInfo.passwordHash) {
+        // TODO: Check and block non-emulator hashes.
+        fields.passwordHash = userInfo.passwordHash;
+        fields.salt = userInfo.salt;
+        fields.passwordUpdatedAt = uploadTime.getTime();
+      } else if (userInfo.rawPassword) {
+        fields.salt = userInfo.salt || "fakeSalt" + randomId(20);
+        fields.passwordHash = hashPassword(userInfo.rawPassword, fields.salt);
+        fields.passwordUpdatedAt = uploadTime.getTime();
+      }
+
+      // custom attrs
+      if (userInfo.customAttributes) {
+        validateSerializedCustomClaims(userInfo.customAttributes);
+        fields.customAttributes = userInfo.customAttributes;
+      }
+
+      // federated
+      if (userInfo.providerUserInfo) {
+        fields.providerUserInfo = [];
+        for (const providerUserInfo of userInfo.providerUserInfo) {
+          const { providerId, rawId } = providerUserInfo;
+          // These providers are handled automatically by create / update.
+          if (providerId !== PROVIDER_PASSWORD && providerId !== PROVIDER_PHONE) {
+            assert(
+              providerId && rawId,
+              "((Auth Emulator only supports providerUserInfo with providerId AND rawId))"
+            );
+            const existingUserWithProviderRawId = state.getUserByProviderRawId(providerId, rawId);
+            assert(
+              !existingUserWithProviderRawId,
+              `((Auth Emulator does not support importing duplicate Provider id(${providerId}), Raw id(${rawId})))`
+            );
+            // TODO: Populate providerId based on federatedId.
+            fields.providerUserInfo.push({ ...providerUserInfo, providerId, rawId });
+          }
+        }
+      }
+
+      // phone number
+      if (userInfo.phoneNumber) {
+        assert(isValidPhoneNumber(userInfo.phoneNumber), "phone number format is invalid");
+        fields.phoneNumber = userInfo.phoneNumber;
+      }
+      // TODO: Support MFA.
+
+      fields.validSince = toUnixTimestamp(uploadTime).toString();
+      fields.createdAt = uploadTime.toString();
+      if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
+        fields.createdAt = userInfo.createdAt;
+      }
+      if (userInfo.email) {
+        const email = userInfo.email;
+        assert(isValidEmailAddress(email), "email is invalid");
+        const existingUserWithEmail = state.getUserByEmail(email);
+        assert(
+          !existingUserWithEmail || existingUserWithEmail.localId === userInfo.localId,
+          `((Auth Emulator does not support importing duplicate email: ${email}))`
+        );
+        fields.email = canonicalizeEmailAddress(email);
+      }
+      fields.emailVerified = !!userInfo.emailVerified;
+      fields.disabled = !!userInfo.disabled;
+
+      if (!state.createUserWithLocalId(userInfo.localId, fields)) {
+        assert(
+          reqBody.allowOverwrite,
+          "localId belongs to an existing account - can not overwrite."
+        );
+        state.overwriteUserWithLocalId(userInfo.localId, fields);
+      }
+    } catch (e) {
+      if (e instanceof BadRequestError) {
+        // Use friendlier messages for some codes, consistent with production.
+        let message = e.message;
+        if (message === "INVALID_CLAIMS") {
+          message = "Invalid custom claims provided.";
+        } else if (message === "CLAIMS_TOO_LARGE") {
+          message = "Custom claims provided are too large.";
+        } else if (message.startsWith("FORBIDDEN_CLAIM")) {
+          message = "Custom claims provided include a reserved claim.";
+        }
+        errors.push({
+          index,
+          message,
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+  return {
+    kind: "identitytoolkit#UploadAccountResponse",
+    error: errors,
   };
 }
 
