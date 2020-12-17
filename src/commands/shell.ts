@@ -12,7 +12,6 @@ import { readFileSync, existsSync } from "fs";
 import fetch, { Response } from "node-fetch";
 import { DocumentSnapshot, Firestore, QuerySnapshot } from "@google-cloud/firestore";
 import api = require("../api");
-import { inspect } from "util";
 
 async function runScript(sandbox: Context, scriptPath: string) {
   if (!existsSync(scriptPath)) {
@@ -64,7 +63,7 @@ function runRepl(sandbox: Context) {
     // writer: replWriter,
   });
 
-  return new Promise(function (resolve) {
+  return new Promise((resolve) => {
     replServer.on("exit", resolve);
     process.on("SIGINT", resolve);
   });
