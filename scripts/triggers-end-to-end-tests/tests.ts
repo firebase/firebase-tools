@@ -1,3 +1,5 @@
+/* eslint-disable prefer-arrow-callback */
+
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import { Firestore } from "@google-cloud/firestore";
