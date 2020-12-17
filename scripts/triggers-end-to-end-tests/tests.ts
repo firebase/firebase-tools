@@ -1,5 +1,3 @@
-/* eslint-disable prefer-arrow-callback */
-
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import { Firestore } from "@google-cloud/firestore";
@@ -232,7 +230,7 @@ describe("auth emulator function triggers", () => {
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered cloud functions", function(this) {
+  it("should have have triggered cloud functions", () => {
     expect(test.authTriggerCount).to.equal(1);
   });
 });
