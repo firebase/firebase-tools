@@ -401,14 +401,15 @@ function batchGet(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
   const limit = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
-  assert(limit >= 0, "((Auth Emulator: maxResults must not be negative.))");
 
   const users = state.queryUsers(
     {},
     { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
   );
   let newPageToken: string | undefined = undefined;
-  if (users.length > limit) {
+
+  // As a non-standard behavior, passing in limit=-1 will return all users.
+  if (limit >= 0 && users.length > limit) {
     users.length = limit;
     if (users.length) {
       newPageToken = users[users.length - 1].localId;
