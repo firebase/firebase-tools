@@ -410,11 +410,39 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
         extensionsHelper.validateSpec(testSpec);
       }).not.to.throw();
+    });
+    it("should error if license is missing", () => {
+      const testSpec: extensionsApi.ExtensionSpec = {
+        name: "test",
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /license/);
+    });
+    it("should error if license is invalid", () => {
+      const testSpec: extensionsApi.ExtensionSpec = {
+        name: "test",
+        version: "0.1.0",
+        specVersion: "v1beta",
+        resources: [],
+        sourceUrl: "https://test-source.fake",
+        license: "invalid-license",
+      };
+
+      expect(() => {
+        extensionsHelper.validateSpec(testSpec);
+      }).to.throw(FirebaseError, /license/);
     });
     it("should error if name is missing", () => {
       const testSpec = {
@@ -422,6 +450,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -435,6 +464,7 @@ describe("extensionsHelper", () => {
         version: "0.1.0",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -448,6 +478,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -461,6 +492,7 @@ describe("extensionsHelper", () => {
         specVersion: "v1beta",
         resources: [{}],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -475,6 +507,7 @@ describe("extensionsHelper", () => {
         apis: [{}],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -489,6 +522,7 @@ describe("extensionsHelper", () => {
         params: [{}],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -503,6 +537,7 @@ describe("extensionsHelper", () => {
         params: [{ options: [] }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -517,6 +552,7 @@ describe("extensionsHelper", () => {
         params: [{ type: extensionsHelper.SpecParamType.SELECT, validationRegex: "test" }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -530,6 +566,7 @@ describe("extensionsHelper", () => {
         params: [{ type: "test-type", validationRegex: "test" }],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {
@@ -545,6 +582,7 @@ describe("extensionsHelper", () => {
         ],
         resources: [],
         sourceUrl: "https://test-source.fake",
+        license: "apache-2.0",
       };
 
       expect(() => {

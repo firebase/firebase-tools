@@ -1,1 +1,2 @@
-- Adds [i18n rewrites](https://firebase.google.com/docs/hosting/i18n-rewrites) to the Firebase Hosting emulator.
+- Improves error handling for `firestore:delete` when deleting very large documents.
+- Support batchCreate API in Auth Emulator (#2947).
