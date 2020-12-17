@@ -1,11 +1,12 @@
 import * as clc from "cli-color";
 import * as ProgressBar from "progress";
 
-import * as api from "../api";
+import * as apiv2 from "../apiv2";
 import * as firestore from "../gcp/firestore";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
+import { firestoreOriginOrEmulator } from "../api";
 
 // Datastore allowed numeric IDs where Firestore only allows strings. Numeric IDs are
 // exposed to Firestore as __idNUM__, so this is the lowest possible negative numeric
@@ -13,7 +14,15 @@ import * as utils from "../utils";
 const MIN_ID = "__id-9223372036854775808__";
 
 export class FirestoreDelete {
-  private progressBar: ProgressBar;
+  /**
+   * Progress bar shared among all instances of the class because when firestore:delete
+   * is run on the whole database we issue one delete per root-level collection.
+   */
+  static progressBar: ProgressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
+    total: Number.MAX_SAFE_INTEGER,
+  });
+
+  private apiClient: apiv2.Client;
 
   public isDocumentPath: boolean;
   public isCollectionPath: boolean;
@@ -23,6 +32,11 @@ export class FirestoreDelete {
   private recursive: boolean;
   private shallow: boolean;
   private allCollections: boolean;
+
+  private readBatchSize: number;
+  private maxPendingDeletes: number;
+  private deleteBatchSize: number;
+  private maxQueueSize: number;
 
   private allDescendants: boolean;
   private root: string;
@@ -48,6 +62,12 @@ export class FirestoreDelete {
     this.recursive = Boolean(options.recursive);
     this.shallow = Boolean(options.shallow);
     this.allCollections = Boolean(options.allCollections);
+
+    // Tunable deletion parameters
+    this.readBatchSize = 7500;
+    this.maxPendingDeletes = 15;
+    this.deleteBatchSize = 250;
+    this.maxQueueSize = this.deleteBatchSize * this.maxPendingDeletes * 2;
 
     // Remove any leading or trailing slashes from the path
     this.path = this.path.replace(/(^\/+|\/+$)/g, "");
@@ -76,15 +96,25 @@ export class FirestoreDelete {
       this.validateOptions();
     }
 
-    this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
-      total: Number.MAX_SAFE_INTEGER,
+    this.apiClient = new apiv2.Client({
+      auth: true,
+      apiVersion: "v1",
+      urlPrefix: firestoreOriginOrEmulator,
     });
+  }
+
+  /**
+   * Update the delete batch size and dependent properties.
+   */
+  private setDeleteBatchSize(size: number): void {
+    this.deleteBatchSize = size;
+    this.maxQueueSize = this.deleteBatchSize * this.maxPendingDeletes * 2;
   }
 
   /**
    * Validate all options, throwing an exception for any fatal errors.
    */
-  private validateOptions() {
+  private validateOptions(): void {
     if (this.recursive && this.shallow) {
       throw new FirebaseError("Cannot pass recursive and shallow options together.");
     }
@@ -112,7 +142,7 @@ export class FirestoreDelete {
    * Construct a StructuredQuery to find descendant documents of a collection.
    *
    * See:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/StructuredQuery
    *
    * @param allDescendants true if subcollections should be included.
    * @param batchSize maximum number of documents to target (limit).
@@ -191,7 +221,7 @@ export class FirestoreDelete {
    * among the results.
    *
    * See:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/StructuredQuery
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/StructuredQuery
    *
    * @param allDescendants true if subcollections should be included.
    * @param batchSize maximum number of documents to target (limit).
@@ -228,7 +258,7 @@ export class FirestoreDelete {
    * Query for a batch of 'descendants' of a given path.
    *
    * For document format see:
-   * https://firebase.google.com/docs/firestore/reference/rest/v1beta1/Document
+   * https://firebase.google.com/docs/firestore/reference/rest/v1/Document
    *
    * @param allDescendants true if subcollections should be included,
    * @param batchSize the maximum size of the batch.
@@ -241,30 +271,21 @@ export class FirestoreDelete {
     startAfter?: string
   ): Promise<any[]> {
     const url = this.parent + ":runQuery";
-    let body;
-    if (this.isDocumentPath) {
-      body = this.docDescendantsQuery(allDescendants, batchSize, startAfter);
-    } else {
-      body = this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
-    }
+    const body = this.isDocumentPath
+      ? this.docDescendantsQuery(allDescendants, batchSize, startAfter)
+      : this.collectionDescendantsQuery(allDescendants, batchSize, startAfter);
 
-    return api
-      .request("POST", "/v1beta1/" + url, {
-        auth: true,
-        data: body,
-        origin: api.firestoreOriginOrEmulator,
-      })
-      .then((res) => {
-        // Return the 'document' property for each element in the response,
-        // where it exists.
-        return res.body
-          .filter((x: any) => {
-            return x.document;
-          })
-          .map((x: any) => {
-            return x.document;
-          });
-      });
+    return this.apiClient.post<any, Array<{ document?: any }>>(url, body).then((res) => {
+      // Return the 'document' property for each element in the response,
+      // where it exists.
+      return res.body
+        .filter((x) => {
+          return x.document;
+        })
+        .map((x) => {
+          return x.document;
+        });
+    });
   }
 
   /**
@@ -274,14 +295,8 @@ export class FirestoreDelete {
    * @return a promise for the entire operation.
    */
   private recursiveBatchDelete() {
-    // Tunable deletion parameters
-    const readBatchSize = 7500;
-    const deleteBatchSize = 250;
-    const maxPendingDeletes = 15;
-    const maxQueueSize = deleteBatchSize * maxPendingDeletes * 2;
-
-    // All temporary variables for the deletion queue.
     let queue: any[] = [];
+    let numDocsDeleted = 0;
     let numPendingDeletes = 0;
     let pagesRemaining = true;
     let pageIncoming = false;
@@ -292,24 +307,28 @@ export class FirestoreDelete {
     let fetchFailures = 0;
 
     const queueLoop = () => {
-      if (queue.length == 0 && numPendingDeletes == 0 && !pagesRemaining) {
+      // No documents left to delete
+      if (queue.length === 0 && numPendingDeletes === 0 && !pagesRemaining) {
         return true;
       }
 
+      // Failure that can't be retried again
       if (failures.length > 0) {
         logger.debug("Found " + failures.length + " failed operations, failing.");
         return true;
       }
 
-      if (queue.length <= maxQueueSize && pagesRemaining && !pageIncoming) {
+      // We have room in the queue for more documents and more exist on the server,
+      // so fetch more.
+      if (queue.length <= this.maxQueueSize && pagesRemaining && !pageIncoming) {
         pageIncoming = true;
 
-        this.getDescendantBatch(this.allDescendants, readBatchSize, lastDocName)
-          .then((docs) => {
+        this.getDescendantBatch(this.allDescendants, this.readBatchSize, lastDocName)
+          .then((docs: any[]) => {
             fetchFailures = 0;
             pageIncoming = false;
 
-            if (docs.length == 0) {
+            if (docs.length === 0) {
               pagesRemaining = false;
               return;
             }
@@ -328,16 +347,25 @@ export class FirestoreDelete {
           });
       }
 
-      if (numPendingDeletes > maxPendingDeletes) {
+      // We want to see one batch succeed before we scale up, so this case
+      // limits parallelism until first success
+      if (numDocsDeleted === 0 && numPendingDeletes >= 1) {
         return false;
       }
 
-      if (queue.length == 0) {
+      // There are too many outstanding deletes alread
+      if (numPendingDeletes > this.maxPendingDeletes) {
         return false;
       }
 
+      // There are no documents to delete right now
+      if (queue.length === 0) {
+        return false;
+      }
+
+      // At this point we want to delete another batch
       const toDelete: any[] = [];
-      const numToDelete = Math.min(deleteBatchSize, queue.length);
+      const numToDelete = Math.min(this.deleteBatchSize, queue.length);
 
       for (let i = 0; i < numToDelete; i++) {
         toDelete.push(queue.shift());
@@ -347,12 +375,38 @@ export class FirestoreDelete {
       firestore
         .deleteDocuments(this.project, toDelete)
         .then((numDeleted) => {
-          this.progressBar.tick(numDeleted);
+          FirestoreDelete.progressBar.tick(numDeleted);
+          numDocsDeleted += numDeleted;
           numPendingDeletes--;
         })
         .catch((e) => {
-          // For server errors, retry if the document has not yet been retried.
-          if (e.status >= 500 && e.status < 600) {
+          // If the transaction is too large, reduce the batch size
+          if (
+            e.status === 400 &&
+            e.message.includes("Transaction too big") &&
+            this.deleteBatchSize >= 2
+          ) {
+            logger.debug("Transaction too big error deleting doc batch", e);
+
+            // Cut batch size way down. If one batch is over 10MB then we need to go much
+            // lower in order to keep the total I/O appropriately low.
+            //
+            // Note that we have multiple batches out at once so we need to account for multiple
+            // concurrent failures hitting this branch.
+            const newBatchSize = Math.floor(toDelete.length / 10);
+
+            if (newBatchSize < this.deleteBatchSize) {
+              utils.logLabeledWarning(
+                "firestore",
+                `delete transaction too large, reducing batch size from ${this.deleteBatchSize} to ${newBatchSize}`
+              );
+              this.setDeleteBatchSize(newBatchSize);
+            }
+
+            // Retry this batch
+            queue.unshift(...toDelete);
+          } else if (e.status >= 500 && e.status < 600) {
+            // For server errors, retry if the document has not yet been retried.
             logger.debug("Server error deleting doc batch", e);
 
             // Retry each doc up to one time
@@ -381,10 +435,11 @@ export class FirestoreDelete {
         if (queueLoop()) {
           clearInterval(intervalId);
 
-          if (failures.length == 0) {
+          if (failures.length === 0) {
             resolve();
           } else {
-            reject(new FirebaseError("Failed to delete documents " + failures, { exit: 1 }));
+            const docIds = failures.map((d) => d.name).join(", ");
+            reject(new FirebaseError("Failed to delete documents " + docIds, { exit: 1 }));
           }
         }
       }, 0);
@@ -398,7 +453,7 @@ export class FirestoreDelete {
    *
    * @return a promise for the entire operation.
    */
-  private deletePath() {
+  private deletePath(): Promise<any> {
     let initialDelete;
     if (this.isDocumentPath) {
       const doc = { name: this.root + "/" + this.path };
@@ -427,7 +482,7 @@ export class FirestoreDelete {
    *
    * @return a promise for all of the operations combined.
    */
-  public deleteDatabase() {
+  public deleteDatabase(): Promise<any[]> {
     return firestore
       .listCollectionIds(this.project)
       .catch((err) => {
@@ -456,11 +511,10 @@ export class FirestoreDelete {
    * Check if a path has any children. Useful for determining
    * if deleting a path will affect more than one document.
    *
-   * @return {Promise<boolean>} a promise that retruns true if the path has
-   * children and false otherwise.
+   * @return a promise that retruns true if the path has children and false otherwise.
    */
-  public checkHasChildren() {
-    return this.getDescendantBatch(true, 1).then((docs) => {
+  public checkHasChildren(): Promise<boolean> {
+    return this.getDescendantBatch(true, 1).then((docs: any[]) => {
       return docs.length > 0;
     });
   }
@@ -471,7 +525,7 @@ export class FirestoreDelete {
   public execute() {
     let verifyRecurseSafe;
     if (this.isDocumentPath && !this.recursive && !this.shallow) {
-      verifyRecurseSafe = this.checkHasChildren().then((multiple) => {
+      verifyRecurseSafe = this.checkHasChildren().then((multiple: boolean) => {
         if (multiple) {
           return utils.reject("Document has children, must specify -r or --shallow.", { exit: 1 });
         }

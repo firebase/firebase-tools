@@ -1,1 +1,2 @@
+- Improves error handling for `firestore:delete` when deleting very large documents.
 - Support batchCreate API in Auth Emulator (#2947).
