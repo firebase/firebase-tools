@@ -14,8 +14,15 @@ import { firestoreOriginOrEmulator } from "../api";
 const MIN_ID = "__id-9223372036854775808__";
 
 export class FirestoreDelete {
+  /**
+   * Progress bar shared among all instances of the class because when firestore:delete
+   * is run on the whole database we issue one delete per root-level collection.
+   */
+  static progressBar: ProgressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
+    total: Number.MAX_SAFE_INTEGER,
+  });
+
   private apiClient: apiv2.Client;
-  private progressBar: ProgressBar;
 
   public isDocumentPath: boolean;
   public isCollectionPath: boolean;
@@ -88,10 +95,6 @@ export class FirestoreDelete {
     if (!options.allCollections) {
       this.validateOptions();
     }
-
-    this.progressBar = new ProgressBar("Deleted :current docs (:rate docs/s)\n", {
-      total: Number.MAX_SAFE_INTEGER,
-    });
 
     this.apiClient = new apiv2.Client({
       auth: true,
@@ -372,7 +375,7 @@ export class FirestoreDelete {
       firestore
         .deleteDocuments(this.project, toDelete)
         .then((numDeleted) => {
-          this.progressBar.tick(numDeleted);
+          FirestoreDelete.progressBar.tick(numDeleted);
           numDocsDeleted += numDeleted;
           numPendingDeletes--;
         })
