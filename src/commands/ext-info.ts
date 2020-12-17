@@ -1,10 +1,12 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
+import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { Command } from "../command";
 import { resolveRegistryEntry, resolveSourceUrl } from "../extensions/resolveSource";
 import * as extensionsApi from "../extensions/extensionsApi";
 import { ensureExtensionsApiEnabled, logPrefix } from "../extensions/extensionsHelper";
+import { isLocalExtension, getLocalExtensionSpec } from "../extensions/localHelper";
 import * as logger from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";
@@ -13,20 +15,30 @@ import * as marked from "marked";
 import TerminalRenderer = require("marked-terminal");
 
 const FUNCTION_TYPE_REGEX = /\..+\.function/;
-
 export default new Command("ext:info <extensionName>")
   .description(
     "display information about an extension by name (extensionName@x.y.z for a specific version)"
   )
   .option("--markdown", "output info in Markdown suitable for constructing a README file")
-  .before(requirePermissions, ["firebasemods.sources.get"])
-  .before(ensureExtensionsApiEnabled)
+  .before(checkMinRequiredVersion, "extMinVersion")
   .action(async (extensionName: string, options: any) => {
-    const [name, version] = extensionName.split("@");
-    const registryEntry = await resolveRegistryEntry(name);
-    const sourceUrl = await resolveSourceUrl(registryEntry, version);
-    const source = await extensionsApi.getSource(sourceUrl);
-    const spec = source.spec;
+    let spec;
+    if (isLocalExtension(extensionName)) {
+      if (!options.markdown) {
+        utils.logLabeledBullet(logPrefix, `reading extension from directory: ${extensionName}`);
+      }
+      spec = await getLocalExtensionSpec(extensionName);
+    } else {
+      await requirePermissions(options, ["firebaseextensions.sources.get"]);
+      await ensureExtensionsApiEnabled(options);
+
+      const [name, version] = extensionName.split("@");
+      const registryEntry = await resolveRegistryEntry(name);
+      const sourceUrl = resolveSourceUrl(registryEntry, name, version);
+      const source = await extensionsApi.getSource(sourceUrl);
+      spec = source.spec;
+    }
+
     if (!options.markdown) {
       utils.logLabeledBullet(logPrefix, `information about ${extensionName}:\n`);
     }
@@ -37,6 +49,11 @@ export default new Command("ext:info <extensionName>")
     } else {
       lines.push(`**Name**: ${spec.displayName}`);
     }
+
+    const authorName = spec.author?.authorName;
+    const url = spec.author?.url;
+    const urlMarkdown = url ? `(**[${url}](${url})**)` : "";
+    lines.push(`**Author**: ${authorName} ${urlMarkdown}`);
 
     if (spec.description) {
       lines.push(`**Description**: ${spec.description}`);

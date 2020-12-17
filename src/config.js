@@ -6,7 +6,7 @@ var cjson = require("cjson");
 var fs = require("fs-extra");
 var path = require("path");
 
-var detectProjectRoot = require("./detectProjectRoot");
+var detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
 var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 var loadCJSON = require("./loadCJSON");
@@ -17,7 +17,7 @@ var utils = require("./utils");
 
 var Config = function(src, options) {
   this.options = options || {};
-  this.projectDir = options.projectDir || detectProjectRoot(options.cwd);
+  this.projectDir = options.projectDir || detectProjectRoot(options);
 
   this._src = src;
   this.data = {};
@@ -52,11 +52,6 @@ var Config = function(src, options) {
   ) {
     this.set("functions.source", "functions");
   }
-
-  // use 'public' as signal for legacy hosting since it's a required key
-  if (!this.data.hosting && this._src.public) {
-    this.importLegacyHostingKeys();
-  }
 };
 
 Config.FILENAME = "firebase.json";
@@ -67,31 +62,8 @@ Config.MATERIALIZE_TARGETS = [
   "functions",
   "hosting",
   "storage",
+  "remoteconfig",
 ];
-Config.LEGACY_HOSTING_KEYS = [
-  "public",
-  "rewrites",
-  "redirects",
-  "headers",
-  "ignore",
-  "cleanUrls",
-  "trailingSlash",
-];
-
-Config.prototype.importLegacyHostingKeys = function() {
-  var found = false;
-  Config.LEGACY_HOSTING_KEYS.forEach(function(key) {
-    if (_.has(this._src, key)) {
-      found = true;
-      this.set("hosting." + key, this._src[key]);
-    }
-  }, this);
-  if (found) {
-    utils.logWarning(
-      'Deprecation Warning: Firebase Hosting configuration should be moved under "hosting" key.'
-    );
-  }
-};
 
 Config.prototype._hasDeepKey = function(obj, key) {
   if (_.has(obj, key)) {
@@ -126,7 +98,7 @@ Config.prototype._materialize = function(target) {
 };
 
 Config.prototype._parseFile = function(target, filePath) {
-  var fullPath = resolveProjectPath(this.options.cwd, filePath);
+  var fullPath = resolveProjectPath(this.options, filePath);
   var ext = path.extname(filePath);
   if (!fsutils.fileExistsSync(fullPath)) {
     throw new FirebaseError("Parse Error: Imported file " + filePath + " does not exist", {
@@ -237,13 +209,15 @@ Config.prototype.askWriteProjectFile = function(p, content) {
 };
 
 Config.load = function(options, allowMissing) {
-  var pd = detectProjectRoot(options.cwd);
+  const pd = detectProjectRoot(options);
+  const filename = options.configPath || Config.FILENAME;
   if (pd) {
     try {
-      var data = cjson.load(path.join(pd, Config.FILENAME));
+      const filePath = path.resolve(pd, path.basename(filename));
+      const data = cjson.load(filePath);
       return new Config(data, options);
     } catch (e) {
-      throw new FirebaseError("There was an error loading firebase.json:\n\n" + e.message, {
+      throw new FirebaseError(`There was an error loading ${filename}:\n\n` + e.message, {
         exit: 1,
       });
     }

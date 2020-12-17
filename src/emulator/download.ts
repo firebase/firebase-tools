@@ -1,28 +1,39 @@
+import { URL } from "url";
 import * as crypto from "crypto";
-import * as request from "request";
-import * as ProgressBar from "progress";
-
-import { FirebaseError } from "../error";
-import * as utils from "../utils";
-import { Emulators, EmulatorDownloadDetails } from "./types";
-import * as javaEmulators from "../serve/javaEmulators";
-import * as tmp from "tmp";
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as ProgressBar from "progress";
+import * as tmp from "tmp";
 import * as unzipper from "unzipper";
+
+import { Client } from "../apiv2";
+import { EmulatorLogger } from "./emulatorLogger";
+import { Emulators, EmulatorDownloadDetails } from "./types";
+import { FirebaseError } from "../error";
+import * as downloadableEmulators from "./downloadableEmulators";
 
 tmp.setGracefulCleanup();
 
 type DownloadableEmulator = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.PUBSUB;
 
 module.exports = async (name: DownloadableEmulator) => {
-  const emulator = javaEmulators.getDownloadDetails(name);
-  utils.logLabeledBullet(name, `downloading ${path.basename(emulator.downloadPath)}...`);
+  const emulator = downloadableEmulators.getDownloadDetails(name);
+  EmulatorLogger.forEmulator(name).logLabeled(
+    "BULLET",
+    name,
+    `downloading ${path.basename(emulator.downloadPath)}...`
+  );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
   const tmpfile = await downloadToTmp(emulator.opts.remoteUrl);
-  await validateSize(tmpfile, emulator.opts.expectedSize);
-  await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+
+  if (!emulator.opts.skipChecksumAndSize) {
+    await validateSize(tmpfile, emulator.opts.expectedSize);
+    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+  }
+  if (emulator.opts.skipCache) {
+    removeOldFiles(name, emulator, true);
+  }
 
   fs.copySync(tmpfile, emulator.downloadPath);
 
@@ -33,19 +44,23 @@ module.exports = async (name: DownloadableEmulator) => {
   const executablePath = emulator.binaryPath || emulator.downloadPath;
   fs.chmodSync(executablePath, 0o755);
 
-  await removeOldFiles(name, emulator);
+  removeOldFiles(name, emulator);
 };
 
 function unzip(zipPath: string, unzipDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: unzipDir }))
+      .pipe(unzipper.Extract({ path: unzipDir })) // eslint-disable-line new-cap
       .on("error", reject)
       .on("finish", resolve);
   });
 }
 
-function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDetails): void {
+function removeOldFiles(
+  name: DownloadableEmulator,
+  emulator: EmulatorDownloadDetails,
+  removeAllVersions = false
+): void {
   const currentLocalPath = emulator.downloadPath;
   const currentUnzipPath = emulator.unzipDir;
   const files = fs.readdirSync(emulator.opts.cacheDir);
@@ -59,8 +74,15 @@ function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDe
       continue;
     }
 
-    if (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) {
-      utils.logLabeledBullet(name, `Removing outdated emulator files: ${file}`);
+    if (
+      (fullFilePath !== currentLocalPath && fullFilePath !== currentUnzipPath) ||
+      removeAllVersions
+    ) {
+      EmulatorLogger.forEmulator(name).logLabeled(
+        "BULLET",
+        name,
+        `Removing outdated emulator files: ${file}`
+      );
       fs.removeSync(fullFilePath);
     }
   }
@@ -69,43 +91,44 @@ function removeOldFiles(name: DownloadableEmulator, emulator: EmulatorDownloadDe
 /**
  * Downloads the resource at `remoteUrl` to a temporary file.
  * Resolves to the temporary file's name, rejects if there's any error.
+ * @param remoteUrl URL to download.
  */
-function downloadToTmp(remoteUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const tmpfile = tmp.fileSync();
-    const req = request.get(remoteUrl);
-    const writeStream = fs.createWriteStream(tmpfile.name);
-    req.on("error", (err: any) => reject(err));
+async function downloadToTmp(remoteUrl: string): Promise<string> {
+  const u = new URL(remoteUrl);
+  const c = new Client({ urlPrefix: u.origin, auth: false });
+  const tmpfile = tmp.fileSync();
+  const writeStream = fs.createWriteStream(tmpfile.name);
 
-    let bar: ProgressBar;
-
-    req.on("response", (response) => {
-      if (response.statusCode !== 200) {
-        reject(new FirebaseError(`download failed, status ${response.statusCode}`, { exit: 1 }));
-      }
-
-      const total = parseInt(response.headers["content-length"] || "0", 10);
-      const totalMb = Math.ceil(total / 1000000);
-      bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
-    });
-
-    req.on("data", (chunk) => {
-      if (bar) {
-        bar.tick(chunk.length);
-      }
-    });
-
-    writeStream.on("finish", () => {
-      resolve(tmpfile.name);
-    });
-    req.pipe(writeStream);
+  const res = await c.request<void, NodeJS.ReadableStream>({
+    method: "GET",
+    path: u.pathname,
+    responseType: "stream",
+    resolveOnHTTPError: true,
   });
+  if (res.status !== 200) {
+    throw new FirebaseError(`download failed, status ${res.status}`, { exit: 1 });
+  }
+
+  const total = parseInt(res.response.headers.get("content-length") || "0", 10);
+  const totalMb = Math.ceil(total / 1000000);
+  const bar = new ProgressBar(`Progress: :bar (:percent of ${totalMb}MB)`, { total, head: ">" });
+
+  res.body.on("data", (chunk) => {
+    bar.tick(chunk.length);
+  });
+
+  await new Promise((resolve) => {
+    writeStream.on("finish", resolve);
+    res.body.pipe(writeStream);
+  });
+
+  return tmpfile.name;
 }
 
 /**
  * Checks whether the file at `filepath` has the expected size.
  */
-async function validateSize(filepath: string, expectedSize: number): Promise<void> {
+function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const stat = fs.statSync(filepath);
     return stat.size === expectedSize
@@ -122,7 +145,7 @@ async function validateSize(filepath: string, expectedSize: number): Promise<voi
 /**
  * Checks whether the file at `filepath` has the expected checksum.
  */
-async function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
+function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("md5");
     const stream = fs.createReadStream(filepath);

@@ -124,7 +124,7 @@ async function CheckIsLoggedIn() {
     const finish = SimpleSpinner(
       `${chalk.cyan("~")} Checking your Firebase credentials`
     );
-    const listSpawn = fork(firebase_bin, ["list", "--json"], { silent: true });
+    const listSpawn = fork(firebase_bin, ["projects:list", "--json"], { silent: true });
     let listSpawnData = "";
 
     listSpawn.stdout.on("data", buf => {

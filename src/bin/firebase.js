@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
-// Make check for Node 6, which is no longer supported by the CLI.
-var semver = require("semver");
-var pkg = require("../../package.json");
-var nodeVersion = process.version;
+// Make check for Node 8, which is no longer supported by the CLI.
+const semver = require("semver");
+const pkg = require("../../package.json");
+const nodeVersion = process.version;
 if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   console.error(
     "Firebase CLI v" +
@@ -17,47 +17,82 @@ if (!semver.satisfies(nodeVersion, pkg.engines.node)) {
   process.exit(1);
 }
 
-var updateNotifier = require("update-notifier")({ pkg: pkg });
-updateNotifier.notify({ defer: true, isGlobal: true });
+const updateNotifier = require("update-notifier")({ pkg: pkg });
+const clc = require("cli-color");
+const TerminalRenderer = require("marked-terminal");
+const marked = require("marked");
+marked.setOptions({
+  renderer: new TerminalRenderer(),
+});
+const updateMessage =
+  `Update available ${clc.xterm(240)("{currentVersion}")} → ${clc.green("{latestVersion}")}\n` +
+  `To update to the latest version using npm, run ${clc.cyan("npm install -g firebase-tools")}\n` +
+  `For other CLI management options, visit the ${marked(
+    "[CLI documentation](https://firebase.google.com/docs/cli#update-cli)"
+  )}`;
+updateNotifier.notify({ defer: true, isGlobal: true, message: updateMessage });
 
-var client = require("..");
-var errorOut = require("../errorOut").errorOut;
-var winston = require("winston");
-var logger = require("../logger");
-var fs = require("fs");
-var fsutils = require("../fsutils");
-var path = require("path");
-var clc = require("cli-color");
-var ansiStrip = require("cli-color/strip");
-var configstore = require("../configstore");
-var _ = require("lodash");
-var args = process.argv.slice(2);
-var handlePreviewToggles = require("../handlePreviewToggles");
-var utils = require("../utils");
-var cmd;
+const client = require("..");
+const errorOut = require("../errorOut").errorOut;
+const winston = require("winston");
+const { SPLAT } = require("triple-beam");
+const logger = require("../logger");
+const fs = require("fs");
+const fsutils = require("../fsutils");
+const path = require("path");
+const ansiStrip = require("cli-color/strip");
+const { configstore } = require("../configstore");
+const _ = require("lodash");
+let args = process.argv.slice(2);
+const handlePreviewToggles = require("../handlePreviewToggles");
+const utils = require("../utils");
+let cmd;
 
-var logFilename = path.join(process.cwd(), "/firebase-debug.log");
-logger
-  .add(winston.transports.Console, {
-    level: process.env.DEBUG ? "debug" : "info",
-    showLevel: false,
-    colorize: true,
-  })
-  .add(winston.transports.File, {
+function findAvailableLogFile() {
+  const candidates = ["firebase-debug.log"];
+  for (let i = 1; i < 10; i++) {
+    candidates.push(`firebase-debug.${i}.log`);
+  }
+
+  for (const c of candidates) {
+    const logFilename = path.join(process.cwd(), c);
+
+    try {
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
+      return logFilename;
+    } catch (e) {
+      if (e.code === "ENOENT") {
+        // File does not exist, which is fine
+        return logFilename;
+      }
+
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
+    }
+  }
+
+  throw new Error("Unable to obtain permissions for firebase-debug.log");
+}
+
+const logFilename = findAvailableLogFile();
+
+if (!process.env.DEBUG && _.includes(args, "--debug")) {
+  process.env.DEBUG = true;
+}
+
+process.env.IS_FIREBASE_CLI = true;
+
+logger.add(
+  new winston.transports.File({
     level: "debug",
     filename: logFilename,
-    json: false,
-    formatter: function(input) {
-      input.message = ansiStrip(input.message);
-      return ["[" + input.level + "]", input.message].join(" ");
-    },
-  });
-
-var debugging = false;
-if (_.includes(args, "--debug")) {
-  logger.transports.console.level = "debug";
-  debugging = true;
-}
+    format: winston.format.printf((info) => {
+      const segments = [info.message, ...(info[SPLAT] || [])].map(utils.tryStringify);
+      return `[${info.level}] ${ansiStrip(segments.join(" "))}`;
+    }),
+  })
+);
 
 logger.debug(_.repeat("-", 70));
 logger.debug("Command:      ", process.argv.join(" "));
@@ -71,21 +106,21 @@ if (utils.envOverrides.length) {
 logger.debug(_.repeat("-", 70));
 logger.debug();
 
-require("../fetchMOTD")();
+require("../fetchMOTD").fetchMOTD();
 
 process.on("exit", function(code) {
   code = process.exitCode || code;
-  if (!debugging && code < 2 && fsutils.fileExistsSync(logFilename)) {
+  if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
     fs.unlinkSync(logFilename);
   }
 
   if (code > 0 && process.stdout.isTTY) {
-    var lastError = configstore.get("lastError") || 0;
-    var timestamp = Date.now();
+    const lastError = configstore.get("lastError") || 0;
+    const timestamp = Date.now();
     if (lastError > timestamp - 120000) {
-      var help;
+      let help;
       if (code === 1 && cmd) {
-        var commandName = _.get(_.last(cmd.args), "_name", "[command]");
+        const commandName = _.get(_.last(cmd.args), "_name", "[command]");
         help = "Having trouble? Try " + clc.bold("firebase " + commandName + " --help");
       } else {
         help = "Having trouble? Try again or contact support with contents of firebase-debug.log";
@@ -98,7 +133,7 @@ process.on("exit", function(code) {
     }
     configstore.set("lastError", timestamp);
   } else {
-    configstore.del("lastError");
+    configstore.delete("lastError");
   }
 });
 require("exit-code");

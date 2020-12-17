@@ -74,6 +74,24 @@ export function removePathSegments(path: string, count: number): string {
 }
 
 /**
+ * Parse a runtime string like "nodejs10" or "10" into a single number.
+ * Returns undefined if the string does not match the expected pattern.
+ */
+export function parseRuntimeVersion(runtime?: string): number | undefined {
+  if (!runtime) {
+    return undefined;
+  }
+
+  const runtimeRe = /(nodejs)?([0-9]+)/;
+  const match = runtime.match(runtimeRe);
+  if (match) {
+    return Number.parseInt(match[2]);
+  }
+
+  return undefined;
+}
+
+/**
  * Parse a semver version string into parts, filling in 0s where empty.
  */
 export function parseVersionString(version?: string): ModuleVersion {

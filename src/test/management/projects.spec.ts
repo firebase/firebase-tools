@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import * as api from "../../api";
 import * as projectManager from "../../management/projects";
 import * as pollUtils from "../../operation-poller";
-import { mockAuth } from "../helpers";
 import * as prompt from "../../prompt";
 
 const PROJECT_ID = "the-best-firebase-project";
@@ -86,7 +85,6 @@ describe("Project management", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    mockAuth(sandbox);
     apiRequestStub = sandbox.stub(api, "request").throws("Unexpected API request call");
     pollOperationStub = sandbox.stub(pollUtils, "pollOperation").throws("Unexpected poll call");
   });
@@ -97,10 +95,9 @@ describe("Project management", () => {
 
   describe("Interactive flows", () => {
     let promptOnceStub: sinon.SinonStub;
-    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
+      sandbox.stub(prompt, "prompt").throws("Unexpected prompt call");
       promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
     });
 
@@ -286,7 +283,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create Google Cloud project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
         expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {
@@ -314,7 +311,7 @@ describe("Project management", () => {
         }
 
         expect(err.message).to.equal(
-          "Failed to create Google Cloud project. See firebase-debug.log for more info."
+          "Failed to create project. See firebase-debug.log for more info."
         );
         expect(err.original).to.equal(expectedError);
         expect(apiRequestStub).to.be.calledOnceWith("POST", "/v1/projects", {

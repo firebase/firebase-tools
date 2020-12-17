@@ -6,7 +6,7 @@ var cjson = require("cjson");
 var fs = require("fs");
 var path = require("path");
 
-var detectProjectRoot = require("./detectProjectRoot");
+var detectProjectRoot = require("./detectProjectRoot").detectProjectRoot;
 var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 var utils = require("./utils");
@@ -201,10 +201,10 @@ RC.loadFile = function(rcpath) {
   return new RC(rcpath, data);
 };
 
-RC.load = function(cwd) {
-  cwd = cwd || process.cwd();
-  var dir = detectProjectRoot(cwd);
-  var potential = path.resolve(dir || cwd, "./.firebaserc");
+RC.load = function(options) {
+  const cwd = options.cwd || process.cwd();
+  const dir = detectProjectRoot(options);
+  const potential = path.resolve(dir || cwd, "./.firebaserc");
   return RC.loadFile(potential);
 };
 

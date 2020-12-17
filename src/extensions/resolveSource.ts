@@ -1,18 +1,32 @@
 import * as _ from "lodash";
 import * as clc from "cli-color";
+import * as marked from "marked";
 import * as semver from "semver";
 import * as api from "../api";
 import { FirebaseError } from "../error";
-import { confirmUpdateWarning } from "./updateHelper";
+import * as logger from "../logger";
+import { promptOnce } from "../prompt";
 
 const EXTENSIONS_REGISTRY_ENDPOINT = "/extensions.json";
+const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
+  "open-alpha": marked(
+    `${clc.bold("Important")}: This extension is part of the ${clc.bold(
+      "preliminary-release program"
+    )} for extensions.\n Its functionality might change in backward-incompatible ways before its official release. Learn more: https://github.com/firebase/extensions/tree/master/.preliminary-release-extensions`
+  ),
+  "closed-alpha": marked(
+    `${clc.yellow.bold("Important")}: This extension is part of the ${clc.bold(
+      "Firebase Alpha program"
+    )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
+  ),
+};
 
 export interface RegistryEntry {
-  name: string;
   icons?: { [key: string]: string };
   labels: { [key: string]: string };
   versions: { [key: string]: string };
   updateWarnings?: { [key: string]: UpdateWarning[] };
+  audience?: string;
 }
 
 export interface UpdateWarning {
@@ -22,23 +36,58 @@ export interface UpdateWarning {
 }
 
 /**
- * Gets the sourceUrl for a given extension name and version from the official extensions registry
+ * Displays an update warning as markdown, and prompts the user for confirmation.
+ * @param updateWarning The update warning to display and prompt for.
+ */
+export async function confirmUpdateWarning(updateWarning: UpdateWarning): Promise<void> {
+  logger.info(marked(updateWarning.description));
+  if (updateWarning.action) {
+    logger.info(marked(updateWarning.action));
+  }
+  const continueUpdate = await promptOnce({
+    type: "confirm",
+    message: "Do you wish to continue with this update?",
+    default: false,
+  });
+  if (!continueUpdate) {
+    throw new FirebaseError(`Update cancelled.`, { exit: 2 });
+  }
+}
+
+/**
+ * Gets the sourceUrl for a given extension name and version from a registry entry
+ * @param registryEntry the registry entry to look through.
  * @param name the name of the extension.
+ * @param version the version of the extension. Defaults to latest.
  * @returns the source corresponding to extensionName in the registry.
  */
-export function resolveSourceUrl(registryEntry: RegistryEntry, version: string): string {
+export function resolveSourceUrl(
+  registryEntry: RegistryEntry,
+  name: string,
+  version?: string
+): string {
   const targetVersion = getTargetVersion(registryEntry, version);
   const sourceUrl = _.get(registryEntry, ["versions", targetVersion]);
   if (!sourceUrl) {
     throw new FirebaseError(
-      `Could not resolve version ${clc.bold(version)} of extension ${clc.bold(registryEntry.name)}.`
+      `Could not find version ${clc.bold(version)} of extension ${clc.bold(name)}.`
     );
   }
   return sourceUrl;
 }
 
 /**
- * Looks up and returns a entry from the official extensions registry.
+ * Checks if the given source comes from an official extension.
+ * @param registryEntry the registry entry to look through.
+ * @param sourceUrl the source URL of the extension.
+ */
+export function isOfficialSource(registryEntry: RegistryEntry, sourceUrl: string): boolean {
+  const versions = _.get(registryEntry, "versions");
+  return _.includes(versions, sourceUrl);
+}
+
+/**
+ * Looks up and returns a entry from the published extensions registry.
  * @param name the name of the extension.
  */
 export async function resolveRegistryEntry(name: string): Promise<RegistryEntry> {
@@ -58,11 +107,13 @@ export async function resolveRegistryEntry(name: string): Promise<RegistryEntry>
 export function getTargetVersion(registryEntry: RegistryEntry, versionOrLabel?: string): string {
   // The version to search for when a user passes a version x.y.z or no version.
   const seekVersion = versionOrLabel || "latest";
-
   // The version to search for when a user passes a label like 'latest'.
   const versionFromLabel = _.get(registryEntry, ["labels", seekVersion]);
-
   return versionFromLabel || seekVersion;
+}
+
+export function getMinRequiredVersion(registryEntry: RegistryEntry): string {
+  return _.get(registryEntry, ["labels", "minRequired"]);
 }
 
 /**
@@ -83,7 +134,7 @@ export async function promptForUpdateWarnings(
         const updateWarnings = registryEntry.updateWarnings[targetRange];
         for (const updateWarning of updateWarnings) {
           if (semver.satisfies(startVersion, updateWarning.from)) {
-            await confirmUpdateWarning(updateWarning);
+            await module.exports.confirmUpdateWarning(updateWarning);
             break;
           }
         }
@@ -94,11 +145,39 @@ export async function promptForUpdateWarnings(
 }
 
 /**
- * Fetches the official extensions registry.
+ * Checks the audience field of a RegistryEntry, displays a warning text
+ * for closed and open alpha extensions, and prompts the user to accept.
  */
-async function getExtensionRegistry(): Promise<{ [key: string]: RegistryEntry }> {
+export async function promptForAudienceConsent(registryEntry: RegistryEntry): Promise<boolean> {
+  let consent = true;
+  if (registryEntry.audience && AUDIENCE_WARNING_MESSAGES[registryEntry.audience]) {
+    logger.info(AUDIENCE_WARNING_MESSAGES[registryEntry.audience]);
+    consent = await promptOnce({
+      type: "confirm",
+      message: "Do you acknowledge the status of this extension?",
+      default: true,
+    });
+  }
+  return consent;
+}
+
+/**
+ * Fetches the published extensions registry.
+ * @param onlyFeatured If true, only return the featured extensions.
+ */
+export async function getExtensionRegistry(
+  onlyFeatured?: boolean
+): Promise<{ [key: string]: RegistryEntry }> {
   const res = await api.request("GET", EXTENSIONS_REGISTRY_ENDPOINT, {
     origin: api.firebaseExtensionsRegistryOrigin,
   });
-  return res.body.mods;
+  const extensions = _.get(res, "body.mods") as { [key: string]: RegistryEntry };
+
+  if (onlyFeatured) {
+    const featuredList = _.get(res, "body.featured.discover");
+    return _.pickBy(extensions, (_entry, extensionName: string) => {
+      return _.includes(featuredList, extensionName);
+    });
+  }
+  return extensions;
 }

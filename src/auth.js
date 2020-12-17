@@ -11,7 +11,7 @@ var portfinder = require("portfinder");
 var url = require("url");
 
 var api = require("./api");
-var configstore = require("./configstore");
+var { configstore } = require("./configstore");
 var { FirebaseError } = require("./error");
 var logger = require("./logger");
 var { prompt } = require("./prompt");
@@ -56,19 +56,23 @@ var _getCallbackUrl = function(port) {
   return "http://localhost:" + port;
 };
 
-var _getLoginUrl = function(callbackUrl) {
+var _getLoginUrl = function(callbackUrl, userHint) {
   return (
     api.authOrigin +
     "/o/oauth2/auth?" +
-    _.map(
+    _.flatMap(
       {
         client_id: api.clientId,
         scope: SCOPES.join(" "),
         response_type: "code",
         state: _nonce,
         redirect_uri: callbackUrl,
+        login_hint: userHint,
       },
       function(v, k) {
+        if (!v) {
+          return [];
+        }
         return k + "=" + encodeURIComponent(v);
       }
     ).join("&")
@@ -108,6 +112,46 @@ var _getTokensFromAuthorizationCode = function(code, callbackUrl) {
     );
 };
 
+var GITHUB_SCOPES = ["read:user", "repo", "public_repo"];
+
+var _getGithubLoginUrl = function(callbackUrl) {
+  return (
+    api.githubOrigin +
+    "/login/oauth/authorize?" +
+    _.flatMap(
+      {
+        client_id: api.githubClientId,
+        state: _nonce,
+        redirect_uri: callbackUrl,
+        scope: GITHUB_SCOPES.join(" "),
+      },
+      function(v, k) {
+        if (!v) {
+          return [];
+        }
+        return k + "=" + encodeURIComponent(v);
+      }
+    ).join("&")
+  );
+};
+
+var _getGithubTokensFromAuthorizationCode = function(code, callbackUrl) {
+  return api
+    .request("POST", "/login/oauth/access_token", {
+      origin: api.githubOrigin,
+      form: {
+        client_id: api.githubClientId,
+        client_secret: api.githubClientSecret,
+        code,
+        redirect_uri: callbackUrl,
+        state: _nonce,
+      },
+    })
+    .then((res) => {
+      return res.body.access_token;
+    });
+};
+
 var _respondWithFile = function(req, res, statusCode, filename) {
   return new Promise(function(resolve, reject) {
     fs.readFile(path.join(__dirname, filename), function(err, response) {
@@ -125,9 +169,13 @@ var _respondWithFile = function(req, res, statusCode, filename) {
   });
 };
 
-var _loginWithoutLocalhost = function() {
+var _loginWithoutLocalhost = function(userHint, authProvider) {
+  if (authProvider === "GITHUB") {
+    throw new FirebaseError("GitHub integration currently requires localhost.", { exit: 1 });
+  }
+
   var callbackUrl = _getCallbackUrl();
-  var authUrl = _getLoginUrl(callbackUrl);
+  var authUrl = _getLoginUrl(callbackUrl, userHint);
 
   logger.info();
   logger.info("Visit this URL on any device to log in:");
@@ -155,31 +203,49 @@ var _loginWithoutLocalhost = function() {
     });
 };
 
-var _loginWithLocalhost = function(port) {
+var _loginWithLocalhost = function(port, userHint, authProvider) {
   return new Promise(function(resolve, reject) {
     var callbackUrl = _getCallbackUrl(port);
-    var authUrl = _getLoginUrl(callbackUrl);
+    var authUrl;
+    if (authProvider === "GITHUB") {
+      authUrl = _getGithubLoginUrl(callbackUrl);
+    } else {
+      authUrl = _getLoginUrl(callbackUrl, userHint);
+    }
 
     var server = http.createServer(function(req, res) {
       var tokens;
       var query = _.get(url.parse(req.url, true), "query", {});
 
       if (query.state === _nonce && _.isString(query.code)) {
-        return _getTokensFromAuthorizationCode(query.code, callbackUrl)
-          .then(function(result) {
-            tokens = result;
-            return _respondWithFile(req, res, 200, "../templates/loginSuccess.html");
-          })
-          .then(function() {
-            server.close();
-            return resolve({
-              user: jwt.decode(tokens.id_token),
-              tokens: tokens,
+        if (authProvider === "GITHUB") {
+          if (query.code) {
+            return _respondWithFile(req, res, 200, "../templates/loginSuccessGithub.html")
+              .then(() => {
+                server.close();
+                return _getGithubTokensFromAuthorizationCode(query.code, callbackUrl);
+              })
+              .then((ghAccessToken) => {
+                return resolve(ghAccessToken);
+              });
+          }
+        } else {
+          return _getTokensFromAuthorizationCode(query.code, callbackUrl)
+            .then(function(result) {
+              tokens = result;
+              return _respondWithFile(req, res, 200, "../templates/loginSuccess.html");
+            })
+            .then(function() {
+              server.close();
+              return resolve({
+                user: jwt.decode(tokens.id_token),
+                tokens: tokens,
+              });
+            })
+            .catch(function() {
+              return _respondWithFile(req, res, 400, "../templates/loginFailure.html");
             });
-          })
-          .catch(function() {
-            return _respondWithFile(req, res, 400, "../templates/loginFailure.html");
-          });
+        }
       }
       _respondWithFile(req, res, 400, "../templates/loginFailure.html");
     });
@@ -195,16 +261,23 @@ var _loginWithLocalhost = function(port) {
     });
 
     server.on("error", function() {
-      _loginWithoutLocalhost().then(resolve, reject);
+      _loginWithoutLocalhost(userHint, authProvider).then(resolve, reject);
     });
   });
 };
 
-var login = function(localhost) {
+var login = function(localhost, userHint, authProvider) {
   if (localhost) {
-    return _getPort().then(_loginWithLocalhost, _loginWithoutLocalhost);
+    return _getPort().then(
+      function(port) {
+        return _loginWithLocalhost(port, userHint, authProvider);
+      },
+      function() {
+        return _loginWithoutLocalhost(userHint, authProvider);
+      }
+    );
   }
-  return _loginWithoutLocalhost();
+  return _loginWithoutLocalhost(userHint, authProvider);
 };
 
 var _haveValidAccessToken = function(refreshToken, authScopes) {
@@ -229,10 +302,10 @@ var _logoutCurrentSession = function(refreshToken) {
   var tokens = configstore.get("tokens");
   var currentToken = _.get(tokens, "refresh_token");
   if (refreshToken === currentToken) {
-    configstore.del("user");
-    configstore.del("tokens");
-    configstore.del("usage");
-    configstore.del("analytics-uuid");
+    configstore.delete("user");
+    configstore.delete("tokens");
+    configstore.delete("usage");
+    configstore.delete("analytics-uuid");
   }
 };
 

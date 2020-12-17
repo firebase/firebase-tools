@@ -1,6 +1,8 @@
 import * as fs from "fs-extra";
 import { FirebaseError } from "../error";
 import * as crypto from "crypto";
+import { AppDistributionApp } from "./client";
+import * as logger from "../logger";
 
 export enum DistributionFileType {
   IPA = "ipa",
@@ -26,18 +28,17 @@ export class Distribution {
       throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
     }
 
-    if (!fs.existsSync(path)) {
+    try {
+      fs.ensureFileSync(path);
+    } catch (err) {
+      logger.info(err);
       throw new FirebaseError(
-        `File ${path} does not exist: verify that file points to a distribution`
+        `${path} is not a file. Verify that it points to a distribution binary.`
       );
     }
 
     this.path = path;
     this.fileType = distributionType;
-  }
-
-  fileSize(): number {
-    return fs.statSync(this.path).size;
   }
 
   readStream(): fs.ReadStream {
@@ -55,13 +56,23 @@ export class Distribution {
     }
   }
 
-  async releaseHash(): Promise<string> {
+  /**
+   * Returns the binary name in the format:
+   * projects/<project-number>/apps/<app-id>/releases/-/binaries/<sha-256-hash>
+   *
+   * This is used to check the distribution upload status.
+   */
+  binaryName(app: AppDistributionApp): Promise<string> {
     return new Promise<string>((resolve) => {
-      const hash = crypto.createHash("sha1");
+      const hash = crypto.createHash("sha256");
       const stream = this.readStream();
       stream.on("data", (data) => hash.update(data));
       stream.on("end", () => {
-        return resolve(hash.digest("hex"));
+        return resolve(
+          `projects/${app.projectNumber}/apps/${app.appId}/releases/-/binaries/${hash.digest(
+            "hex"
+          )}`
+        );
       });
     });
   }

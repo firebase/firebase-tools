@@ -1,7 +1,4 @@
 import * as _ from "lodash";
-import * as logger from "../logger";
-import * as parseTriggers from "../parseTriggers";
-import * as utils from "../utils";
 import { CloudFunction } from "firebase-functions";
 import * as os from "os";
 import * as path from "path";
@@ -22,6 +19,13 @@ export interface EmulatedTriggerDefinition {
   availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
+  schedule?: EventSchedule;
+  labels?: { [key: string]: any };
+}
+
+export interface EventSchedule {
+  schedule: string;
+  timeZone?: string;
 }
 
 export interface EventTrigger {
@@ -44,23 +48,32 @@ export interface FunctionsRuntimeBundle {
   proto?: any;
   triggerId?: string;
   triggerType?: EmulatedTriggerType;
-  ports: {
-    firestore?: number;
-    database?: number;
-    pubsub?: number;
+  emulators: {
+    firestore?: {
+      host: string;
+      port: number;
+    };
+    database?: {
+      host: string;
+      port: number;
+    };
+    pubsub?: {
+      host: string;
+      port: number;
+    };
+    auth?: {
+      host: string;
+      port: number;
+    };
   };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
+  nodeMajorVersion?: number;
   cwd: string;
 }
 
 export interface FunctionsRuntimeFeatures {
-  functions_config_helper?: boolean;
-  network_filtering?: boolean;
   timeout?: boolean;
-  memory_limiting?: boolean;
-  admin_stubs?: boolean;
-  pubsub_emulator?: boolean;
 }
 
 const memoryLookup = {
@@ -70,6 +83,11 @@ const memoryLookup = {
   "1GB": 1024,
   "2GB": 2048,
 };
+
+export class HttpConstants {
+  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
+  static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
+}
 
 export class EmulatedTrigger {
   /*
@@ -99,29 +117,6 @@ export class EmulatedTrigger {
     const func = _.get(this.module, this.definition.entryPoint);
     return func.__emulator_func || func;
   }
-}
-
-export async function getTriggersFromDirectory(
-  projectId: string,
-  functionsDir: string,
-  firebaseConfig: any
-): Promise<EmulatedTriggerMap> {
-  let triggerDefinitions;
-
-  try {
-    triggerDefinitions = await parseTriggers(
-      projectId,
-      functionsDir,
-      {},
-      JSON.stringify(firebaseConfig)
-    );
-  } catch (e) {
-    utils.logWarning(`Failed to load functions source code.`);
-    logger.info(e.message);
-    return {};
-  }
-
-  return getEmulatedTriggersFromDefinitions(triggerDefinitions, functionsDir);
 }
 
 export function getEmulatedTriggersFromDefinitions(
@@ -196,7 +191,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         chunks = hierarchy;
       }
       const packagePath = path.join(chunks.join(path.sep), "package.json");
-      const serializedPackage = fs.readFileSync(packagePath).toString();
+      const serializedPackage = fs.readFileSync(packagePath, "utf8").toString();
       if (JSON.parse(serializedPackage).name === moduleName) {
         return chunks.join("/");
       }

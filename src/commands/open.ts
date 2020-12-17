@@ -8,7 +8,7 @@ import { Command } from "../command";
 import * as logger from "../logger";
 import { promptOnce } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import * as requireInstance from "../requireInstance";
+import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 interface Link {
@@ -27,6 +27,10 @@ const LINKS: Link[] = [
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
+  { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
+  { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
+  { name: "Firestore: Usage", arg: "firestore:usage", consolePath: "/firestore/usage" },
   { name: "Functions", arg: "functions", consolePath: "/functions/list" },
   { name: "Functions Log", arg: "functions:log" } /* Special Case */,
   { name: "Hosting: Deployed Site", arg: "hosting:site" } /* Special Case */,
@@ -50,7 +54,7 @@ const CHOICES = _.map(LINKS, "name");
 export default new Command("open [link]")
   .description("quickly open a browser to relevant project resources")
   .before(requirePermissions)
-  .before(requireInstance)
+  .before(requireDatabaseInstance)
   .action(
     async (linkName: string, options: any): Promise<void> => {
       let link = _.find(LINKS, { arg: linkName });
@@ -82,9 +86,7 @@ export default new Command("open [link]")
       } else if (link.arg === "hosting:site") {
         url = utils.addSubdomain(api.hostingOrigin, options.instance);
       } else if (link.arg === "functions:log") {
-        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${
-          options.project
-        }`;
+        url = `https://console.developers.google.com/logs/viewer?resource=cloudfunctions.googleapis.com&project=${options.project}`;
       } else {
         throw new FirebaseError(`Unable to determine URL for link: ${link}`);
       }

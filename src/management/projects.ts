@@ -160,12 +160,14 @@ async function selectProjectByPrompting(): Promise<FirebaseProjectMetadata> {
 async function selectProjectFromList(
   projects: FirebaseProjectMetadata[] = []
 ): Promise<FirebaseProjectMetadata> {
-  let choices = projects.filter((p: FirebaseProjectMetadata) => !!p).map((p) => {
-    return {
-      name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
-      value: p.projectId,
-    };
-  });
+  let choices = projects
+    .filter((p: FirebaseProjectMetadata) => !!p)
+    .map((p) => {
+      return {
+        name: p.projectId + (p.displayName ? ` (${p.displayName})` : ""),
+        value: p.projectId,
+      };
+    });
   choices = _.orderBy(choices, ["name"], ["asc"]);
 
   if (choices.length >= 25) {
@@ -218,13 +220,15 @@ export async function promptAvailableProjectId(): Promise<string> {
       message: "Please input the ID of the Google Cloud Project you would like to add Firebase:",
     });
   } else {
-    let choices = projects.filter((p: CloudProjectInfo) => !!p).map((p) => {
-      const projectId = getProjectId(p);
-      return {
-        name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
-        value: projectId,
-      };
-    });
+    let choices = projects
+      .filter((p: CloudProjectInfo) => !!p)
+      .map((p) => {
+        const projectId = getProjectId(p);
+        return {
+          name: projectId + (p.displayName ? ` (${p.displayName})` : ""),
+          value: projectId,
+        };
+      });
     choices = _.orderBy(choices, ["name"], ["asc"]);
     return await promptOnce({
       type: "list",
@@ -260,11 +264,22 @@ export async function createCloudProject(
     });
     return projectInfo;
   } catch (err) {
-    logger.debug(err.message);
-    throw new FirebaseError(
-      "Failed to create Google Cloud project. See firebase-debug.log for more info.",
-      { exit: 2, original: err }
-    );
+    if (err.status === 409) {
+      throw new FirebaseError(
+        `Failed to create project because there is already a project with ID ${clc.bold(
+          projectId
+        )}. Please try again with a unique project ID.`,
+        {
+          exit: 2,
+          original: err,
+        }
+      );
+    } else {
+      throw new FirebaseError("Failed to create project. See firebase-debug.log for more info.", {
+        exit: 2,
+        original: err,
+      });
+    }
   }
 }
 
@@ -306,10 +321,9 @@ async function getProjectPage<T>(
     pageToken?: string;
   }
 ): Promise<ProjectPage<T>> {
-  let apiResponse;
   const { responseKey, pageToken, pageSize } = options;
   const pageTokenQueryString = pageToken ? `&pageToken=${pageToken}` : "";
-  apiResponse = await api.request(
+  const apiResponse = await api.request(
     "GET",
     `${apiResource}?pageSize=${pageSize}${pageTokenQueryString}`,
     {

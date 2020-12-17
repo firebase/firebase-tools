@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as uuid from "uuid";
 import { FunctionsEmulator } from "./functionsEmulator";
 import {
@@ -21,12 +20,11 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
   urls: { [name: string]: string } = {};
 
   constructor(private emu: FunctionsEmulator) {
-    this.triggers = emu.getTriggers();
-    this.emulatedFunctions = this.triggers.map((trigger) => {
-      return trigger.name;
-    });
+    this.triggers = emu.getTriggerDefinitions();
+    this.emulatedFunctions = this.triggers.map((t) => t.name);
 
-    utils.logLabeledBullet("functions", `Loaded functions: ${this.emulatedFunctions.join(", ")}`);
+    const entryPoints = this.triggers.map((t) => t.entryPoint);
+    utils.logLabeledBullet("functions", `Loaded functions: ${entryPoints.join(", ")}`);
 
     for (const trigger of this.triggers) {
       const name = trigger.name;
