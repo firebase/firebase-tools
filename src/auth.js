@@ -19,8 +19,8 @@ var scopes = require("./scopes");
 
 portfinder.basePort = 9005;
 
-var open = function(url) {
-  opn(url).catch(function(err) {
+var open = function (url) {
+  opn(url).catch(function (err) {
     logger.debug("Unable to open URL: " + err.stack);
   });
 };
@@ -49,14 +49,14 @@ var _getPort = portfinder.getPortPromise;
 // in-memory cache, so we have it for successive calls
 var lastAccessToken = {};
 
-var _getCallbackUrl = function(port) {
+var _getCallbackUrl = function (port) {
   if (_.isUndefined(port)) {
     return "urn:ietf:wg:oauth:2.0:oob";
   }
   return "http://localhost:" + port;
 };
 
-var _getLoginUrl = function(callbackUrl, userHint) {
+var _getLoginUrl = function (callbackUrl, userHint) {
   return (
     api.authOrigin +
     "/o/oauth2/auth?" +
@@ -69,7 +69,7 @@ var _getLoginUrl = function(callbackUrl, userHint) {
         redirect_uri: callbackUrl,
         login_hint: userHint,
       },
-      function(v, k) {
+      function (v, k) {
         if (!v) {
           return [];
         }
@@ -79,7 +79,7 @@ var _getLoginUrl = function(callbackUrl, userHint) {
   );
 };
 
-var _getTokensFromAuthorizationCode = function(code, callbackUrl) {
+var _getTokensFromAuthorizationCode = function (code, callbackUrl) {
   return api
     .request("POST", "/o/oauth2/token", {
       origin: api.authOrigin,
@@ -92,7 +92,7 @@ var _getTokensFromAuthorizationCode = function(code, callbackUrl) {
       },
     })
     .then(
-      function(res) {
+      function (res) {
         if (!_.has(res, "body.access_token") && !_.has(res, "body.refresh_token")) {
           logger.debug("Token Fetch Error:", res.statusCode, res.body);
           throw INVALID_CREDENTIAL_ERROR;
@@ -105,7 +105,7 @@ var _getTokensFromAuthorizationCode = function(code, callbackUrl) {
         );
         return lastAccessToken;
       },
-      function(err) {
+      function (err) {
         logger.debug("Token Fetch Error:", err.stack);
         throw INVALID_CREDENTIAL_ERROR;
       }
@@ -114,7 +114,7 @@ var _getTokensFromAuthorizationCode = function(code, callbackUrl) {
 
 var GITHUB_SCOPES = ["read:user", "repo", "public_repo"];
 
-var _getGithubLoginUrl = function(callbackUrl) {
+var _getGithubLoginUrl = function (callbackUrl) {
   return (
     api.githubOrigin +
     "/login/oauth/authorize?" +
@@ -125,7 +125,7 @@ var _getGithubLoginUrl = function(callbackUrl) {
         redirect_uri: callbackUrl,
         scope: GITHUB_SCOPES.join(" "),
       },
-      function(v, k) {
+      function (v, k) {
         if (!v) {
           return [];
         }
@@ -135,7 +135,7 @@ var _getGithubLoginUrl = function(callbackUrl) {
   );
 };
 
-var _getGithubTokensFromAuthorizationCode = function(code, callbackUrl) {
+var _getGithubTokensFromAuthorizationCode = function (code, callbackUrl) {
   return api
     .request("POST", "/login/oauth/access_token", {
       origin: api.githubOrigin,
@@ -152,9 +152,9 @@ var _getGithubTokensFromAuthorizationCode = function(code, callbackUrl) {
     });
 };
 
-var _respondWithFile = function(req, res, statusCode, filename) {
-  return new Promise(function(resolve, reject) {
-    fs.readFile(path.join(__dirname, filename), function(err, response) {
+var _respondWithFile = function (req, res, statusCode, filename) {
+  return new Promise(function (resolve, reject) {
+    fs.readFile(path.join(__dirname, filename), function (err, response) {
       if (err) {
         return reject(err);
       }
@@ -169,7 +169,7 @@ var _respondWithFile = function(req, res, statusCode, filename) {
   });
 };
 
-var _loginWithoutLocalhost = function(userHint, authProvider) {
+var _loginWithoutLocalhost = function (userHint, authProvider) {
   if (authProvider === "GITHUB") {
     throw new FirebaseError("GitHub integration currently requires localhost.", { exit: 1 });
   }
@@ -191,10 +191,10 @@ var _loginWithoutLocalhost = function(userHint, authProvider) {
       message: "Paste authorization code here:",
     },
   ])
-    .then(function(answers) {
+    .then(function (answers) {
       return _getTokensFromAuthorizationCode(answers.code, callbackUrl);
     })
-    .then(function(tokens) {
+    .then(function (tokens) {
       return {
         user: jwt.decode(tokens.id_token),
         tokens: tokens,
@@ -203,8 +203,8 @@ var _loginWithoutLocalhost = function(userHint, authProvider) {
     });
 };
 
-var _loginWithLocalhost = function(port, userHint, authProvider) {
-  return new Promise(function(resolve, reject) {
+var _loginWithLocalhost = function (port, userHint, authProvider) {
+  return new Promise(function (resolve, reject) {
     var callbackUrl = _getCallbackUrl(port);
     var authUrl;
     if (authProvider === "GITHUB") {
@@ -213,7 +213,7 @@ var _loginWithLocalhost = function(port, userHint, authProvider) {
       authUrl = _getLoginUrl(callbackUrl, userHint);
     }
 
-    var server = http.createServer(function(req, res) {
+    var server = http.createServer(function (req, res) {
       var tokens;
       var query = _.get(url.parse(req.url, true), "query", {});
 
@@ -231,18 +231,18 @@ var _loginWithLocalhost = function(port, userHint, authProvider) {
           }
         } else {
           return _getTokensFromAuthorizationCode(query.code, callbackUrl)
-            .then(function(result) {
+            .then(function (result) {
               tokens = result;
               return _respondWithFile(req, res, 200, "../templates/loginSuccess.html");
             })
-            .then(function() {
+            .then(function () {
               server.close();
               return resolve({
                 user: jwt.decode(tokens.id_token),
                 tokens: tokens,
               });
             })
-            .catch(function() {
+            .catch(function () {
               return _respondWithFile(req, res, 400, "../templates/loginFailure.html");
             });
         }
@@ -250,7 +250,7 @@ var _loginWithLocalhost = function(port, userHint, authProvider) {
       _respondWithFile(req, res, 400, "../templates/loginFailure.html");
     });
 
-    server.listen(port, function() {
+    server.listen(port, function () {
       logger.info();
       logger.info("Visit this URL on this device to log in:");
       logger.info(clc.bold.underline(authUrl));
@@ -260,19 +260,19 @@ var _loginWithLocalhost = function(port, userHint, authProvider) {
       open(authUrl);
     });
 
-    server.on("error", function() {
+    server.on("error", function () {
       _loginWithoutLocalhost(userHint, authProvider).then(resolve, reject);
     });
   });
 };
 
-var login = function(localhost, userHint, authProvider) {
+var login = function (localhost, userHint, authProvider) {
   if (localhost) {
     return _getPort().then(
-      function(port) {
+      function (port) {
         return _loginWithLocalhost(port, userHint, authProvider);
       },
-      function() {
+      function () {
         return _loginWithoutLocalhost(userHint, authProvider);
       }
     );
@@ -280,7 +280,7 @@ var login = function(localhost, userHint, authProvider) {
   return _loginWithoutLocalhost(userHint, authProvider);
 };
 
-var _haveValidAccessToken = function(refreshToken, authScopes) {
+var _haveValidAccessToken = function (refreshToken, authScopes) {
   if (_.isEmpty(lastAccessToken)) {
     var tokens = configstore.get("tokens");
     if (refreshToken === _.get(tokens, "refresh_token")) {
@@ -298,7 +298,7 @@ var _haveValidAccessToken = function(refreshToken, authScopes) {
   );
 };
 
-var _logoutCurrentSession = function(refreshToken) {
+var _logoutCurrentSession = function (refreshToken) {
   var tokens = configstore.get("tokens");
   var currentToken = _.get(tokens, "refresh_token");
   if (refreshToken === currentToken) {
@@ -309,7 +309,7 @@ var _logoutCurrentSession = function(refreshToken) {
   }
 };
 
-var _refreshAccessToken = function(refreshToken, authScopes) {
+var _refreshAccessToken = function (refreshToken, authScopes) {
   logger.debug("> refreshing access token with scopes:", JSON.stringify(authScopes));
   return api
     .request("POST", "/oauth2/v3/token", {
@@ -324,7 +324,7 @@ var _refreshAccessToken = function(refreshToken, authScopes) {
       logOptions: { skipRequestBody: true, skipQueryParams: true, skipResponseBody: true },
     })
     .then(
-      function(res) {
+      function (res) {
         if (res.status === 401 || res.status === 400) {
           return { access_token: refreshToken };
         }
@@ -348,7 +348,7 @@ var _refreshAccessToken = function(refreshToken, authScopes) {
 
         return lastAccessToken;
       },
-      function(err) {
+      function (err) {
         if (_.get(err, "context.body.error") === "invalid_scope") {
           throw new FirebaseError(
             "This command requires new authorization scopes not granted to your current session. Please run " +
@@ -365,7 +365,7 @@ var _refreshAccessToken = function(refreshToken, authScopes) {
     );
 };
 
-var getAccessToken = function(refreshToken, authScopes) {
+var getAccessToken = function (refreshToken, authScopes) {
   if (_haveValidAccessToken(refreshToken, authScopes)) {
     return Promise.resolve(lastAccessToken);
   }
@@ -373,7 +373,7 @@ var getAccessToken = function(refreshToken, authScopes) {
   return _refreshAccessToken(refreshToken, authScopes);
 };
 
-var logout = function(refreshToken) {
+var logout = function (refreshToken) {
   if (lastAccessToken.refresh_token === refreshToken) {
     lastAccessToken = {};
   }
@@ -387,7 +387,7 @@ var logout = function(refreshToken) {
         token: refreshToken,
       },
     },
-    function() {
+    function () {
       throw new FirebaseError("Authentication Error.", {
         exit: 1,
       });
@@ -395,9 +395,14 @@ var logout = function(refreshToken) {
   );
 };
 
+function getRefreshToken() {
+  return _.get(configstore.get("tokens"), "refresh_token");
+}
+
 var auth = {
   login: login,
   getAccessToken: getAccessToken,
+  getRefreshToken: getRefreshToken,
   logout: logout,
 };
 
