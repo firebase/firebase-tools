@@ -306,21 +306,28 @@ function batchCreate(
       if (userInfo.providerUserInfo) {
         fields.providerUserInfo = [];
         for (const providerUserInfo of userInfo.providerUserInfo) {
-          const { providerId, rawId } = providerUserInfo;
-          // These providers are handled automatically by create / update.
-          if (providerId !== PROVIDER_PASSWORD && providerId !== PROVIDER_PHONE) {
-            assert(
-              providerId && rawId,
-              "((Auth Emulator only supports providerUserInfo with providerId AND rawId))"
-            );
-            const existingUserWithProviderRawId = state.getUserByProviderRawId(providerId, rawId);
-            assert(
-              !existingUserWithProviderRawId,
-              `((Auth Emulator does not support importing duplicate Provider id(${providerId}), Raw id(${rawId})))`
-            );
-            // TODO: Populate providerId based on federatedId.
-            fields.providerUserInfo.push({ ...providerUserInfo, providerId, rawId });
+          const { providerId, rawId, federatedId } = providerUserInfo;
+          if (providerId === PROVIDER_PASSWORD || providerId === PROVIDER_PHONE) {
+            // These providers are handled automatically by create / update.
+            continue;
           }
+          if (!rawId || !providerId) {
+            if (!federatedId) {
+              assert(false, "federatedId or (providerId & rawId) is required");
+            } else {
+              // TODO
+              assert(
+                false,
+                "((Parsing federatedId is not implemented in Auth Emulator; please specify providerId AND rawId as a workaround.))"
+              );
+            }
+          }
+          const existingUserWithRawId = state.getUserByProviderRawId(providerId, rawId);
+          assert(
+            !existingUserWithRawId || existingUserWithRawId.localId === userInfo.localId,
+            "raw id exists in other account in database"
+          );
+          fields.providerUserInfo.push({ ...providerUserInfo, providerId, rawId });
         }
       }
 
@@ -339,23 +346,29 @@ function batchCreate(
       if (userInfo.email) {
         const email = userInfo.email;
         assert(isValidEmailAddress(email), "email is invalid");
+
+        // For simplicity, Auth Emulator performs this check in all cases
+        // (unlike production which checks only if (reqBody.sanityCheck && state.oneAccountPerEmail)).
+        // We return a non-standard error message in other cases to clarify.
         const existingUserWithEmail = state.getUserByEmail(email);
         assert(
           !existingUserWithEmail || existingUserWithEmail.localId === userInfo.localId,
-          `((Auth Emulator does not support importing duplicate email: ${email}))`
+          reqBody.sanityCheck && state.oneAccountPerEmail
+            ? "email exists in other account in database"
+            : `((Auth Emulator does not support importing duplicate email: ${email}))`
         );
         fields.email = canonicalizeEmailAddress(email);
       }
       fields.emailVerified = !!userInfo.emailVerified;
       fields.disabled = !!userInfo.disabled;
 
-      if (!state.createUserWithLocalId(userInfo.localId, fields)) {
+      if (state.getUserByLocalId(userInfo.localId)) {
         assert(
           reqBody.allowOverwrite,
           "localId belongs to an existing account - can not overwrite."
         );
-        state.overwriteUserWithLocalId(userInfo.localId, fields);
       }
+      state.overwriteUserWithLocalId(userInfo.localId, fields);
     } catch (e) {
       if (e instanceof BadRequestError) {
         // Use friendlier messages for some codes, consistent with production.

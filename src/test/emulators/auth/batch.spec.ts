@@ -9,6 +9,7 @@ import {
   PROJECT_ID,
   registerAnonUser,
   registerUser,
+  signInWithEmailLink,
   signInWithFakeClaims,
   signInWithPassword,
   signInWithPhoneNumber,
@@ -249,7 +250,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       });
   });
 
-  it("should check duplicate emails and duplicate providerId+rawIds when requested", async () => {
+  it("should error for duplicate emails in payload if sanityCheck is true", async () => {
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
       .set("Authorization", "Bearer owner")
@@ -266,7 +267,30 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
           .to.have.property("message")
           .equal("DUPLICATE_EMAIL : foo@example.com");
       });
+  });
 
+  it("should block reusing existing email if sanityCheck is true", async () => {
+    // Existing user:
+    const user = await signInWithEmailLink(authApi(), "bar@example.com");
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        sanityCheck: true,
+        users: [{ localId: "test1", email: user.email }],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).to.eql([
+          {
+            index: 0,
+            message: "email exists in other account in database",
+          },
+        ]);
+      });
+  });
+
+  it("should error for duplicate providerId+rawIds in payload if sanityCheck is true", async () => {
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
       .set("Authorization", "Bearer owner")
@@ -282,6 +306,29 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
         expect(res.body.error)
           .to.have.property("message")
           .equal("DUPLICATE_RAW_ID : Provider id(google.com), Raw id(dup)");
+      });
+  });
+
+  it("should block reusing exisiting providerId+rawIds if sanityCheck is true", async () => {
+    const providerId = "google.com";
+    const rawId = "0123456";
+    // Existing user:
+    await signInWithFakeClaims(authApi(), providerId, { sub: rawId });
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
+      .set("Authorization", "Bearer owner")
+      .send({
+        sanityCheck: true,
+        users: [{ localId: "test1", providerUserInfo: [{ providerId, rawId }] }],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.error).to.eql([
+          {
+            index: 0,
+            message: "raw id exists in other account in database",
+          },
+        ]);
       });
   });
 
@@ -335,6 +382,13 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
           { localId: "test4", customAttributes: "not#a$json%object" },
           { localId: "test5", customAttributes: '{"sub": "123"}' }, // sub field is forbidden
           { localId: "test6", customAttributes: `{"a":"${longString}"}` }, // too large
+          {
+            localId: "test7",
+            providerUserInfo: [{ providerId: "google.com" /* missing rawId */ }],
+          },
+          { localId: "test8", providerUserInfo: [{ rawId: "012345" /* missing providerId */ }] },
+          // federatedId without rawId / providerId is supported in production but not Auth Emulator.
+          { localId: "test9", providerUserInfo: [{ federatedId: "foo-bar" }] },
         ],
       })
       .then((res) => {
@@ -364,12 +418,25 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
             index: 6,
             message: "Custom claims provided are too large.",
           },
+          {
+            index: 7,
+            message: "federatedId or (providerId & rawId) is required",
+          },
+          {
+            index: 8,
+            message: "federatedId or (providerId & rawId) is required",
+          },
+          {
+            index: 9,
+            message:
+              "((Parsing federatedId is not implemented in Auth Emulator; please specify providerId AND rawId as a workaround.))",
+          },
         ]);
       });
   });
 
   it("should overwrite users with matching localIds if allowOverwrite", async () => {
-    const user1ToBeOverwvitten = await signInWithFakeClaims(authApi(), "google.com", {
+    const user1ToBeOverwritten = await signInWithFakeClaims(authApi(), "google.com", {
       sub: "doh",
     });
     const user2ToBeOverwritten = await registerUser(authApi(), {
@@ -379,7 +446,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     });
 
     const user1 = {
-      localId: user1ToBeOverwvitten.localId,
+      localId: user1ToBeOverwritten.localId,
       email: "foo@example.com",
       rawPassword: "notasecret",
     };

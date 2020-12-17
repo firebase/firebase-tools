@@ -71,10 +71,16 @@ export class ProjectState {
     return user;
   }
 
+  /**
+   * Create or overwrite the user with localId, never triggering functions.
+   * @param localId the ID of existing user to overwrite, or create otherwise
+   * @param props new properties of the user
+   * @return the hydrated UserInfo of the created/updated user in state
+   */
   overwriteUserWithLocalId(
     localId: string,
     props: Omit<UserInfo, "localId" | "lastRefreshAt">
-  ): UserInfo | undefined {
+  ): UserInfo {
     const userInfoBefore = this.users.get(localId);
     if (userInfoBefore) {
       // For consistency, nuke internal indexes for old fields (e.g. email).
