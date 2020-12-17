@@ -2,8 +2,8 @@
 
 const previews = require("../previews").previews;
 
-module.exports = function(client) {
-  var loadCommand = function(name) {
+module.exports = function (client) {
+  var loadCommand = function (name) {
     var cmd = require("./" + name);
     // .ts commands export at .default.
     if (cmd.default) {
@@ -120,7 +120,9 @@ module.exports = function(client) {
   client.setup.emulators.database = loadCommand("setup-emulators-database");
   client.setup.emulators.firestore = loadCommand("setup-emulators-firestore");
   client.setup.emulators.pubsub = loadCommand("setup-emulators-pubsub");
-  client.shell = loadCommand("shell");
+  if (previews.shell) {
+    client.shell = loadCommand("shell");
+  }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
