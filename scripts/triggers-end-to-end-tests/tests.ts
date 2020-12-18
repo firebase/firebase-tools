@@ -512,4 +512,63 @@ describe("import/export end to end", () => {
       delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
     }
   });
+
+  it("should be able to export / import auth data with no users", async function(this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const project = FIREBASE_PROJECT || "example";
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+
+    await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    // Ask for export (with no users)
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Confirm the data is exported as expected
+    const configPath = path.join(exportPath, "auth_export", "config.json");
+    const configData = JSON.parse(fs.readFileSync(configPath).toString());
+    expect(configData).to.deep.equal({
+      signIn: {
+        allowDuplicateEmails: false,
+      },
+    });
+
+    const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
+    const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
+    expect(accountsData.users).to.have.length(0);
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      project,
+      ["--only", "auth", "--import", exportPath],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    await importCLI.stop();
+  });
 });

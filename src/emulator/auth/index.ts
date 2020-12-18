@@ -91,15 +91,17 @@ export class AuthEmulator implements EmulatorInstance {
             "Content-Type": "application/json",
           },
         },
-        accountsPath
+        accountsPath,
+        // Ignore the error when there are no users. No action needed.
+        { ignoreErrors: ["MISSING_USER_ACCOUNT"] }
       );
     }
   }
 }
 
-function stat(configPath: string): Promise<fs.Stats> {
+function stat(path: fs.PathLike): Promise<fs.Stats> {
   return new Promise((resolve, reject) =>
-    fs.stat(configPath, (err, stats) => {
+    fs.stat(path, (err, stats) => {
       if (err) {
         reject(err);
       } else {
@@ -109,21 +111,41 @@ function stat(configPath: string): Promise<fs.Stats> {
   );
 }
 
-function importFromFile(options: http.RequestOptions, path: fs.PathLike): Promise<void> {
+function importFromFile(
+  reqOptions: http.RequestOptions,
+  path: fs.PathLike,
+  options: { ignoreErrors?: string[] } = {}
+): Promise<void> {
   const readStream = fs.createReadStream(path);
 
   return new Promise<void>((resolve, reject) => {
-    const req = http.request(options, (response) => {
+    const req = http.request(reqOptions, (response) => {
       if (response.statusCode === 200) {
         resolve();
       } else {
-        let data = `Received HTTP status code: ${response.statusCode}\n`;
+        let data = "";
         response
           .on("data", (d) => {
             data += d.toString();
           })
           .on("error", reject)
-          .on("end", () => reject(new FirebaseError(data)));
+          .on("end", () => {
+            const ignoreErrors = options?.ignoreErrors;
+            if (ignoreErrors?.length) {
+              let message;
+              try {
+                message = JSON.parse(data).error.message;
+              } catch {
+                message = undefined;
+              }
+              if (message && ignoreErrors.includes(message)) {
+                return resolve();
+              }
+            }
+            return reject(
+              new FirebaseError(`Received HTTP status code: ${response.statusCode}\n${data}`)
+            );
+          });
       }
     });
 
