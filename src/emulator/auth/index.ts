@@ -57,7 +57,7 @@ export class AuthEmulator implements EmulatorInstance {
 
     const configPath = path.join(authExportDir, "config.json");
     const configStat = await stat(configPath);
-    if (configStat.isFile()) {
+    if (configStat?.isFile()) {
       logger.logLabeled("BULLET", "auth", `Importing config from ${configPath}`);
 
       await importFromFile(
@@ -77,7 +77,7 @@ export class AuthEmulator implements EmulatorInstance {
 
     const accountsPath = path.join(authExportDir, "accounts.json");
     const accountsStat = await stat(accountsPath);
-    if (accountsStat.isFile()) {
+    if (accountsStat?.isFile()) {
       logger.logLabeled("BULLET", "auth", `Importing accounts from ${accountsPath}`);
 
       await importFromFile(
@@ -99,13 +99,16 @@ export class AuthEmulator implements EmulatorInstance {
   }
 }
 
-function stat(path: fs.PathLike): Promise<fs.Stats> {
+function stat(path: fs.PathLike): Promise<fs.Stats | undefined> {
   return new Promise((resolve, reject) =>
     fs.stat(path, (err, stats) => {
       if (err) {
-        reject(err);
+        if (err.code === "ENOENT") {
+          return resolve(undefined);
+        }
+        return reject(err);
       } else {
-        resolve(stats);
+        return resolve(stats);
       }
     })
   );
