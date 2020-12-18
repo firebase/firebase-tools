@@ -3,7 +3,7 @@ import { start } from "repl";
 import { yellow, red, bold } from "cli-color";
 import * as admin from "firebase-admin";
 import { getFirebaseConfig } from "../functionsConfig";
-import { getAccessToken } from "../api";
+import { getAccessToken, clientId, clientSecret } from "../api";
 import { getRefreshToken } from "../auth";
 import { requireAuth } from "../requireAuth";
 import { FirebaseError } from "../error";
@@ -11,9 +11,8 @@ import { createContext, runInContext, Context, Script } from "vm";
 import { readFileSync, existsSync } from "fs";
 import fetch, { Response } from "node-fetch";
 import { DocumentSnapshot, Firestore, QuerySnapshot } from "@google-cloud/firestore";
-import api = require("../api");
 
-async function runScript(sandbox: Context, scriptPath: string) {
+async function runScript(sandbox: Context, scriptPath: string): Promise<any> {
   if (!existsSync(scriptPath)) {
     throw new FirebaseError(`Script file ${bold(scriptPath)} does not exist.`);
   }
@@ -29,13 +28,16 @@ async function runScript(sandbox: Context, scriptPath: string) {
   }
 }
 
-function runRepl(sandbox: Context) {
-  async function shellEval(command: string, context: any, filename: string, callback: any) {
+function runRepl(sandbox: Context): Promise<any> {
+  async function shellEval(
+    command: string,
+    context: any,
+    filename: string,
+    callback: (err: Error | null, result?: any) => any
+  ): Promise<void> {
     try {
-      let result = await Promise.resolve(
-        // Wrap in an async function to allow top-level await.
-        runInContext(`(async function(){ return ${command}; })()`, sandbox)
-      );
+      // Wrap in an async function to allow top-level await.
+      let result = await runInContext(`(async function(){ return ${command}; })()`, sandbox);
 
       if (result instanceof QuerySnapshot) {
         result = result.docs.map((doc) => simpleDocSnapshot(doc));
@@ -60,7 +62,6 @@ function runRepl(sandbox: Context) {
   const replServer = start({
     prompt: `${yellow("firebase")}${red(">")} `,
     eval: shellEval,
-    // writer: replWriter,
   });
 
   return new Promise((resolve) => {
@@ -69,11 +70,11 @@ function runRepl(sandbox: Context) {
   });
 }
 
-function simpleDocSnapshot(snap: DocumentSnapshot) {
+function simpleDocSnapshot(snap: DocumentSnapshot): any {
   return Object.assign({ __id__: snap.id }, snap.data());
 }
 
-module.exports = new Command("shell [script_path]")
+export default new Command("shell [script_path]")
   .description("an interactive shell for admin project access")
   .before(requireAuth)
   .action(async (scriptPath: string, options: any) => {
@@ -81,12 +82,13 @@ module.exports = new Command("shell [script_path]")
     admin.initializeApp(Object.assign({}, sdkConfig, { credential: { getAccessToken } }));
     const accessToken = ((await getAccessToken()) as any).access_token;
 
+    // See https://github.com/googleapis/nodejs-firestore/issues/973 for why credentials is casted to `any`
     const firestoreConfig = {
       projectId: sdkConfig.projectId,
       credentials: {
         type: "authorized_user",
-        client_id: api.clientId,
-        client_secret: api.clientSecret,
+        client_id: clientId,
+        client_secret: clientSecret,
         refresh_token: getRefreshToken(),
       } as any,
     };
