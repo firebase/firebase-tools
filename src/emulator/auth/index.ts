@@ -55,7 +55,7 @@ export class AuthEmulator implements EmulatorInstance {
 
     // TODO: In the future when we support import on demand, clear data first.
 
-    const configPath = path.join(authExportDir, `${projectId}.config.json`);
+    const configPath = path.join(authExportDir, "config.json");
     const configStat = await stat(configPath);
     if (configStat.isFile()) {
       logger.logLabeled("BULLET", "auth", `Importing config from ${configPath}`);
@@ -75,7 +75,7 @@ export class AuthEmulator implements EmulatorInstance {
       );
     }
 
-    const accountsPath = path.join(authExportDir, `${projectId}.accounts.json`);
+    const accountsPath = path.join(authExportDir, "accounts.json");
     const accountsStat = await stat(accountsPath);
     if (accountsStat.isFile()) {
       logger.logLabeled("BULLET", "auth", `Importing accounts from ${accountsPath}`);

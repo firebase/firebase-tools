@@ -450,7 +450,7 @@ describe("import/export end to end", () => {
     await emulatorsCLI.stop();
 
     // Confirm the data is exported as expected
-    const configPath = path.join(exportPath, "auth_export", `${project}.config.json`);
+    const configPath = path.join(exportPath, "auth_export", "config.json");
     const configData = JSON.parse(fs.readFileSync(configPath).toString());
     expect(configData).to.deep.equal({
       signIn: {
@@ -458,7 +458,7 @@ describe("import/export end to end", () => {
       },
     });
 
-    const accountsPath = path.join(exportPath, "auth_export", `${project}.accounts.json`);
+    const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
     const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
     expect(accountsData.users).to.have.length(1);
     expect(accountsData.users[0]).to.deep.contain({

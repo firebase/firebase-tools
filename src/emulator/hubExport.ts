@@ -174,7 +174,9 @@ export class HubExport {
       fs.mkdirSync(authExportPath);
     }
 
-    const accountsFile = path.join(authExportPath, `${this.projectId}.accounts.json`);
+    // TODO: Shall we support exporting other projects too?
+
+    const accountsFile = path.join(authExportPath, "accounts.json");
     logger.debug(`Exporting auth users in Project ${this.projectId} to ${accountsFile}`);
     await fetchToFile(
       {
@@ -186,7 +188,7 @@ export class HubExport {
       accountsFile
     );
 
-    const configFile = path.join(authExportPath, `${this.projectId}.config.json`);
+    const configFile = path.join(authExportPath, "config.json");
     logger.debug(`Exporting project config in Project ${this.projectId} to ${accountsFile}`);
     await fetchToFile(
       {
