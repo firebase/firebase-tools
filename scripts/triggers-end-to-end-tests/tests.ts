@@ -422,77 +422,94 @@ describe("import/export end to end", () => {
       return data.includes(ALL_EMULATORS_STARTED_LOG);
     });
 
-    // Create an account to export:
+    // Create some accounts to export:
     const config = readConfig();
     const port = config.emulators!.auth.port;
-    process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
-    const adminApp = admin.initializeApp(
-      {
-        projectId: project,
-        credential: ADMIN_CREDENTIAL,
-      },
-      "admin-app"
-    );
-    await adminApp.auth().createUser({ email: "foo@example.com", password: "testing" });
-
-    // Ask for export
-    const exportCLI = new CLIProcess("2", __dirname);
-    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
-    await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
-      if (typeof data != "string" && !Buffer.isBuffer(data)) {
-        throw new Error(`data is not a string or buffer (${typeof data})`);
-      }
-      return data.includes("Export complete");
-    });
-    await exportCLI.stop();
-
-    // Stop the suite
-    await emulatorsCLI.stop();
-
-    // Confirm the data is exported as expected
-    const configPath = path.join(exportPath, "auth_export", "config.json");
-    const configData = JSON.parse(fs.readFileSync(configPath).toString());
-    expect(configData).to.deep.equal({
-      signIn: {
-        allowDuplicateEmails: false,
-      },
-    });
-
-    const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
-    const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
-    expect(accountsData.users).to.have.length(1);
-    expect(accountsData.users[0]).to.deep.contain({
-      email: "foo@example.com",
-      emailVerified: false,
-      providerUserInfo: [
+    try {
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      const adminApp = admin.initializeApp(
         {
-          email: "foo@example.com",
-          federatedId: "foo@example.com",
-          providerId: "password",
-          rawId: "foo@example.com",
+          projectId: project,
+          credential: ADMIN_CREDENTIAL,
         },
-      ],
-    });
-    expect(accountsData.users[0].passwordHash).to.match(/:password=testing$/);
+        "admin-app"
+      );
+      await adminApp
+        .auth()
+        .createUser({ uid: "123", email: "foo@example.com", password: "testing" });
+      await adminApp
+        .auth()
+        .createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
 
-    // Attempt to import
-    const importCLI = new CLIProcess("3", __dirname);
-    await importCLI.start(
-      "emulators:start",
-      project,
-      ["--only", "auth", "--import", exportPath],
-      (data: unknown) => {
+      // Ask for export
+      const exportCLI = new CLIProcess("2", __dirname);
+      const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+      await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
         if (typeof data != "string" && !Buffer.isBuffer(data)) {
           throw new Error(`data is not a string or buffer (${typeof data})`);
         }
-        return data.includes(ALL_EMULATORS_STARTED_LOG);
-      }
-    );
+        return data.includes("Export complete");
+      });
+      await exportCLI.stop();
 
-    // Check user is indeed imported correctly
-    const user = await adminApp.auth().getUserByEmail("foo@example.com");
-    expect(user.passwordHash).to.match(/:password=testing$/);
+      // Stop the suite
+      await emulatorsCLI.stop();
 
-    await importCLI.stop();
+      // Confirm the data is exported as expected
+      const configPath = path.join(exportPath, "auth_export", "config.json");
+      const configData = JSON.parse(fs.readFileSync(configPath).toString());
+      expect(configData).to.deep.equal({
+        signIn: {
+          allowDuplicateEmails: false,
+        },
+      });
+
+      const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
+      const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
+      expect(accountsData.users).to.have.length(2);
+      expect(accountsData.users[0]).to.deep.contain({
+        localId: "123",
+        email: "foo@example.com",
+        emailVerified: false,
+        providerUserInfo: [
+          {
+            email: "foo@example.com",
+            federatedId: "foo@example.com",
+            providerId: "password",
+            rawId: "foo@example.com",
+          },
+        ],
+      });
+      expect(accountsData.users[0].passwordHash).to.match(/:password=testing$/);
+      expect(accountsData.users[1]).to.deep.contain({
+        localId: "456",
+        email: "bar@example.com",
+        emailVerified: true,
+      });
+
+      // Attempt to import
+      const importCLI = new CLIProcess("3", __dirname);
+      await importCLI.start(
+        "emulators:start",
+        project,
+        ["--only", "auth", "--import", exportPath],
+        (data: unknown) => {
+          if (typeof data != "string" && !Buffer.isBuffer(data)) {
+            throw new Error(`data is not a string or buffer (${typeof data})`);
+          }
+          return data.includes(ALL_EMULATORS_STARTED_LOG);
+        }
+      );
+
+      // Check users are indeed imported correctly
+      const user1 = await adminApp.auth().getUserByEmail("foo@example.com");
+      expect(user1.passwordHash).to.match(/:password=testing$/);
+      const user2 = await adminApp.auth().getUser("456");
+      expect(user2.emailVerified).to.be.true;
+
+      await importCLI.stop();
+    } finally {
+      delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    }
   });
 });

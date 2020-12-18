@@ -91,7 +91,7 @@ export class HubExport {
   }
 
   private async exportFirestore(metadata: ExportMetadata): Promise<void> {
-    const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!!.getInfo();
+    const firestoreInfo = EmulatorRegistry.get(Emulators.FIRESTORE)!.getInfo();
     const firestoreHost = `http://${EmulatorRegistry.getInfoHostString(firestoreInfo)}`;
 
     const firestoreExportBody = {
@@ -167,7 +167,7 @@ export class HubExport {
   }
 
   private async exportAuth(metadata: ExportMetadata): Promise<void> {
-    const { host, port } = EmulatorRegistry.get(Emulators.AUTH)!!.getInfo();
+    const { host, port } = EmulatorRegistry.get(Emulators.AUTH)!.getInfo();
 
     const authExportPath = path.join(this.exportPath, metadata.auth!.path);
     if (!fs.existsSync(authExportPath)) {
