@@ -11,6 +11,7 @@ import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
+import * as parseBoltRules from "../parseBoltRules";
 
 export interface DatabaseEmulatorArgs {
   port?: number;
@@ -47,8 +48,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           continue;
         }
 
-        const rulesPath = c.rules;
-        this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+        this.rulesWatcher = chokidar.watch(c.rules, { persistent: true, ignoreInitial: true });
         this.rulesWatcher.on("change", async (event, stats) => {
           // There have been some race conditions reported (on Windows) where reading the
           // file too quickly after the watcher fires results in an empty file being read.
@@ -60,12 +60,12 @@ export class DatabaseEmulator implements EmulatorInstance {
             "database",
             `Change detected, updating rules for ${c.instance}...`
           );
-          const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+
           try {
-            await this.updateRules(c.instance, newContent);
+            await this.updateRules(c.instance, c.rules);
             this.logger.logLabeled("SUCCESS", "database", "Rules updated.");
           } catch (e) {
-            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(rulesPath, e));
+            this.logger.logLabeled("WARN", "database", this.prettyPrintRulesError(c.rules, e));
             this.logger.logLabeled("WARN", "database", "Failed to update rules");
           }
         });
@@ -84,7 +84,7 @@ export class DatabaseEmulator implements EmulatorInstance {
           continue;
         }
 
-        await this.updateRules(c.instance, fs.readFileSync(c.rules, "utf8").toString());
+        await this.updateRules(c.instance, c.rules);
       }
     }
   }
@@ -153,7 +153,13 @@ export class DatabaseEmulator implements EmulatorInstance {
     });
   }
 
-  private async updateRules(instance: string, content: string): Promise<any> {
+  private async updateRules(instance: string, rulesPath: string): Promise<any> {
+    const rulesExt = path.extname(rulesPath);
+    const content =
+      rulesExt === ".bolt"
+        ? parseBoltRules(rulesPath).toString()
+        : fs.readFileSync(rulesPath, "utf8").toString();
+
     const info = this.getInfo();
     try {
       await api.request("PUT", `/.settings/rules.json?ns=${instance}`, {
