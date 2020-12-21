@@ -2,3 +2,4 @@
 - Support batchCreate API in Auth Emulator (#2947).
 - Support emulators:export and import for Auth Emulator (#2955).
 - Fixes issue with `firebase init database` populating wrong key for `database.rules`.
+- Fixes Emulator UI failing to load Firestore listening on 0.0.0.0.
