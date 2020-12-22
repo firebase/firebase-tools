@@ -1,1 +1,1 @@
-- Releases RTDB emulator v4.7.2: Emulator namespace created on the metered plan by default.
+- Allow more than 100 concurrent connections to the Realtime Database emulator.
