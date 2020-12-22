@@ -184,6 +184,7 @@ describe("paramHelper", () => {
       testInstance = {
         config: {
           source: {
+            state: "ACTIVE",
             name: "",
             packageUri: "",
             hash: "",

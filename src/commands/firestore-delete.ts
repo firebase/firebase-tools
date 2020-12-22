@@ -4,7 +4,7 @@ import * as clc from "cli-color";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import * as FirestoreDelete from "../firestore/delete";
+import { FirestoreDelete } from "../firestore/delete";
 import { prompt } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import * as utils from "../utils";

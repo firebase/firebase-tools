@@ -635,8 +635,15 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   try {
     const configContent = fs.readFileSync(configPath, "utf8");
     if (configContent) {
-      logDebug(`Found local functions config: ${configPath}`);
-      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
+      try {
+        JSON.parse(configContent.toString());
+
+        logDebug(`Found local functions config: ${configPath}`);
+        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      } catch (e) {
+        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+      }
     }
   } catch (e) {
     // Ignore, config is optional

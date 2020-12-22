@@ -549,6 +549,13 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
       projectId,
     });
     await startEmulator(authEmulator);
+
+    if (exportMetadata.auth) {
+      const importDirAbsPath = path.resolve(options.import);
+      const authExportDir = path.resolve(importDirAbsPath, exportMetadata.auth.path);
+
+      await authEmulator.importData(authExportDir, projectId);
+    }
   }
 
   if (shouldStart(options, Emulators.PUBSUB)) {

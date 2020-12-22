@@ -1,4 +1,4 @@
-import fetch, { Response, RequestInit } from "node-fetch";
+import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 import { URLSearchParams } from "url";
@@ -22,7 +22,7 @@ interface RequestOptions<T> extends VerbOptions<T> {
 
 interface VerbOptions<T> {
   method?: HttpMethod;
-  headers?: { [key: string]: string };
+  headers?: HeadersInit;
   queryParams?: URLSearchParams | { [key: string]: string | number };
 }
 
@@ -36,6 +36,10 @@ interface ClientHandlingOptions {
 }
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions<T>;
+
+interface InternalClientRequestOptions<T> extends ClientRequestOptions<T> {
+  headers?: Headers;
+}
 
 export type ClientVerbOptions<T> = VerbOptions<T> & ClientHandlingOptions;
 
@@ -170,13 +174,17 @@ export class Client {
       );
     }
 
-    reqOptions = this.addRequestHeaders(reqOptions);
+    let internalReqOptions: InternalClientRequestOptions<ReqT> = Object.assign(reqOptions, {
+      headers: new Headers(reqOptions.headers),
+    });
+
+    internalReqOptions = this.addRequestHeaders(internalReqOptions);
 
     if (this.opts.auth) {
-      reqOptions = await this.addAuthHeader(reqOptions);
+      internalReqOptions = await this.addAuthHeader(internalReqOptions);
     }
     try {
-      return await this.doRequest<ReqT, ResT>(reqOptions);
+      return await this.doRequest<ReqT, ResT>(internalReqOptions);
     } catch (err) {
       if (err instanceof FirebaseError) {
         throw err;
@@ -185,27 +193,29 @@ export class Client {
     }
   }
 
-  private addRequestHeaders<T>(reqOptions: ClientRequestOptions<T>): ClientRequestOptions<T> {
+  private addRequestHeaders<T>(
+    reqOptions: InternalClientRequestOptions<T>
+  ): InternalClientRequestOptions<T> {
     if (!reqOptions.headers) {
-      reqOptions.headers = {};
+      reqOptions.headers = new Headers();
     }
-    reqOptions.headers["Connection"] = "keep-alive";
-    reqOptions.headers["User-Agent"] = `FirebaseCLI/${CLI_VERSION}`;
-    reqOptions.headers["X-Client-Version"] = `FirebaseCLI/${CLI_VERSION}`;
+    reqOptions.headers.set("Connection", "keep-alive");
+    reqOptions.headers.set("User-Agent", `FirebaseCLI/${CLI_VERSION}`);
+    reqOptions.headers.set("X-Client-Version", `FirebaseCLI/${CLI_VERSION}`);
     if (reqOptions.responseType === "json") {
-      reqOptions.headers["Content-Type"] = "application/json";
+      reqOptions.headers.set("Content-Type", "application/json");
     }
     return reqOptions;
   }
 
   private async addAuthHeader<T>(
-    reqOptions: ClientRequestOptions<T>
-  ): Promise<ClientRequestOptions<T>> {
+    reqOptions: InternalClientRequestOptions<T>
+  ): Promise<InternalClientRequestOptions<T>> {
     if (!reqOptions.headers) {
-      reqOptions.headers = {};
+      reqOptions.headers = new Headers();
     }
     const token = await this.getAccessToken();
-    reqOptions.headers["Authorization"] = `Bearer ${token}`;
+    reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }
 
@@ -218,13 +228,13 @@ export class Client {
     return data.access_token;
   }
 
-  private requestURL(options: ClientRequestOptions<unknown>): string {
+  private requestURL(options: InternalClientRequestOptions<unknown>): string {
     const versionPath = this.opts.apiVersion ? `/${this.opts.apiVersion}` : "";
     return `${this.opts.urlPrefix}${versionPath}${options.path}`;
   }
 
   private async doRequest<ReqT, ResT>(
-    options: ClientRequestOptions<ReqT>
+    options: InternalClientRequestOptions<ReqT>
   ): Promise<ClientResponse<ResT>> {
     if (!options.path.startsWith("/")) {
       options.path = "/" + options.path;
@@ -299,7 +309,7 @@ export class Client {
     };
   }
 
-  private logRequest(options: ClientRequestOptions<unknown>): void {
+  private logRequest(options: InternalClientRequestOptions<unknown>): void {
     let queryParamsLog = "[none]";
     if (options.queryParams) {
       queryParamsLog = "[omitted]";
@@ -321,7 +331,11 @@ export class Client {
     }
   }
 
-  private logResponse(res: Response, body: unknown, options: ClientRequestOptions<unknown>): void {
+  private logResponse(
+    res: Response,
+    body: unknown,
+    options: InternalClientRequestOptions<unknown>
+  ): void {
     const logURL = this.requestURL(options);
     logger.debug(`<<< [apiv2][status] ${options.method} ${logURL} ${res.status}`);
     let logBody = "[omitted]";

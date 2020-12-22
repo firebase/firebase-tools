@@ -40,27 +40,27 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.9.jar"),
-    version: "1.11.9",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.11.jar"),
+    version: "1.11.11",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.9.jar",
-      expectedSize: 64448827,
-      expectedChecksum: "0b841d928e1d0877e789010301b265a4",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.11.jar",
+      expectedSize: 63886307,
+      expectedChecksum: "398782f4108360434ef9e7cc86df50f6",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   ui: {
-    version: "1.3.0",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.3.0.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.3.0"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.3.0", "server.bundle.js"),
+    version: "1.4.1",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.4.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.4.1"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.4.1", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.3.0.zip",
-      expectedSize: 3317323,
-      expectedChecksum: "00ef95b3d9f790367e0db5efe80b51ec",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.1.zip",
+      expectedSize: 3374020,
+      expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
       namePrefix: "ui",
     },
   },
@@ -116,7 +116,12 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
+    args: [
+      "-Dgoogle.cloud_firestore.debug_log_level=FINE",
+      "-Duser.language=en",
+      "-jar",
+      getExecPath(Emulators.FIRESTORE),
+    ],
     optionalArgs: [
       "port",
       "webchannel_port",

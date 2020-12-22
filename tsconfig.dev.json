@@ -6,7 +6,7 @@
     "strict": true,
     "outDir": "dev",
     "removeComments": false,
-    "target": "es2015",
+    "target": "es2017",
     "sourceMap": true,
     "typeRoots": [
       "node_modules/@types",
