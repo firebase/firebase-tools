@@ -8,8 +8,6 @@ import * as path from "path";
 import { CLIProcess } from "../integration-helpers/cli";
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
 
-const NODE_VERSION = Number.parseInt(process.env.NODE_VERSION || "8");
-
 const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
   getAccessToken: () => {
@@ -227,23 +225,12 @@ describe("auth emulator function triggers", () => {
 
   it("should write to the auth emulator", async function(this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
-
-    // This test only works on Node 10+
-    if (NODE_VERSION < 10) {
-      this.skip();
-    }
-
     const response = await test.writeToAuth();
     expect(response.status).to.equal(200);
     await new Promise((resolve) => setTimeout(resolve, EMULATORS_WRITE_DELAY_MS));
   });
 
-  it("should have have triggered cloud functions", function(this) {
-    // This test only works on Node 10+
-    if (NODE_VERSION < 10) {
-      this.skip();
-    }
-
+  it("should have have triggered cloud functions", () => {
     expect(test.authTriggerCount).to.equal(1);
   });
 });
@@ -418,5 +405,170 @@ describe("import/export end to end", () => {
     const bPath = path.join(dbExportPath, "namespace-b.json");
     const bData = JSON.parse(fs.readFileSync(bPath).toString());
     expect(bData).to.equal(null);
+  });
+
+  it("should be able to import/export auth data", async function(this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const project = FIREBASE_PROJECT || "example";
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+
+    await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    // Create some accounts to export:
+    const config = readConfig();
+    const port = config.emulators!.auth.port;
+    try {
+      process.env.FIREBASE_AUTH_EMULATOR_HOST = `localhost:${port}`;
+      const adminApp = admin.initializeApp(
+        {
+          projectId: project,
+          credential: ADMIN_CREDENTIAL,
+        },
+        "admin-app"
+      );
+      await adminApp
+        .auth()
+        .createUser({ uid: "123", email: "foo@example.com", password: "testing" });
+      await adminApp
+        .auth()
+        .createUser({ uid: "456", email: "bar@example.com", emailVerified: true });
+
+      // Ask for export
+      const exportCLI = new CLIProcess("2", __dirname);
+      const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+      await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes("Export complete");
+      });
+      await exportCLI.stop();
+
+      // Stop the suite
+      await emulatorsCLI.stop();
+
+      // Confirm the data is exported as expected
+      const configPath = path.join(exportPath, "auth_export", "config.json");
+      const configData = JSON.parse(fs.readFileSync(configPath).toString());
+      expect(configData).to.deep.equal({
+        signIn: {
+          allowDuplicateEmails: false,
+        },
+      });
+
+      const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
+      const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
+      expect(accountsData.users).to.have.length(2);
+      expect(accountsData.users[0]).to.deep.contain({
+        localId: "123",
+        email: "foo@example.com",
+        emailVerified: false,
+        providerUserInfo: [
+          {
+            email: "foo@example.com",
+            federatedId: "foo@example.com",
+            providerId: "password",
+            rawId: "foo@example.com",
+          },
+        ],
+      });
+      expect(accountsData.users[0].passwordHash).to.match(/:password=testing$/);
+      expect(accountsData.users[1]).to.deep.contain({
+        localId: "456",
+        email: "bar@example.com",
+        emailVerified: true,
+      });
+
+      // Attempt to import
+      const importCLI = new CLIProcess("3", __dirname);
+      await importCLI.start(
+        "emulators:start",
+        project,
+        ["--only", "auth", "--import", exportPath],
+        (data: unknown) => {
+          if (typeof data != "string" && !Buffer.isBuffer(data)) {
+            throw new Error(`data is not a string or buffer (${typeof data})`);
+          }
+          return data.includes(ALL_EMULATORS_STARTED_LOG);
+        }
+      );
+
+      // Check users are indeed imported correctly
+      const user1 = await adminApp.auth().getUserByEmail("foo@example.com");
+      expect(user1.passwordHash).to.match(/:password=testing$/);
+      const user2 = await adminApp.auth().getUser("456");
+      expect(user2.emailVerified).to.be.true;
+
+      await importCLI.stop();
+    } finally {
+      delete process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    }
+  });
+
+  it("should be able to export / import auth data with no users", async function(this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const project = FIREBASE_PROJECT || "example";
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+
+    await emulatorsCLI.start("emulators:start", project, ["--only", "auth"], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes(ALL_EMULATORS_STARTED_LOG);
+    });
+
+    // Ask for export (with no users)
+    const exportCLI = new CLIProcess("2", __dirname);
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    await exportCLI.start("emulators:export", project, [exportPath], (data: unknown) => {
+      if (typeof data != "string" && !Buffer.isBuffer(data)) {
+        throw new Error(`data is not a string or buffer (${typeof data})`);
+      }
+      return data.includes("Export complete");
+    });
+    await exportCLI.stop();
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+
+    // Confirm the data is exported as expected
+    const configPath = path.join(exportPath, "auth_export", "config.json");
+    const configData = JSON.parse(fs.readFileSync(configPath).toString());
+    expect(configData).to.deep.equal({
+      signIn: {
+        allowDuplicateEmails: false,
+      },
+    });
+
+    const accountsPath = path.join(exportPath, "auth_export", "accounts.json");
+    const accountsData = JSON.parse(fs.readFileSync(accountsPath).toString());
+    expect(accountsData.users).to.have.length(0);
+
+    // Attempt to import
+    const importCLI = new CLIProcess("3", __dirname);
+    await importCLI.start(
+      "emulators:start",
+      project,
+      ["--only", "auth", "--import", exportPath],
+      (data: unknown) => {
+        if (typeof data != "string" && !Buffer.isBuffer(data)) {
+          throw new Error(`data is not a string or buffer (${typeof data})`);
+        }
+        return data.includes(ALL_EMULATORS_STARTED_LOG);
+      }
+    );
+
+    await importCLI.stop();
   });
 });

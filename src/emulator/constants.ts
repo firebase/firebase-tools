@@ -52,6 +52,9 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
 
+  // Environment variable to discover the Emulator HUB
+  static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
+
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";
   static SERVICE_PUBSUB = "pubsub.googleapis.com";

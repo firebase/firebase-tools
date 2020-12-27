@@ -52,7 +52,7 @@ export class ProjectState {
 
   createUserWithLocalId(
     localId: string,
-    props: Omit<UserInfo, "localId" | "createdAt" | "lastRefreshAt">
+    props: Omit<UserInfo, "localId" | "lastRefreshAt">
   ): UserInfo | undefined {
     if (this.users.has(localId)) {
       return undefined;
@@ -60,7 +60,7 @@ export class ProjectState {
     const timestamp = new Date();
     this.users.set(localId, {
       localId,
-      createdAt: timestamp.getTime().toString(),
+      createdAt: props.createdAt || timestamp.getTime().toString(),
       lastLoginAt: timestamp.getTime().toString(),
     });
 
@@ -71,28 +71,43 @@ export class ProjectState {
     return user;
   }
 
+  /**
+   * Create or overwrite the user with localId, never triggering functions.
+   * @param localId the ID of existing user to overwrite, or create otherwise
+   * @param props new properties of the user
+   * @return the hydrated UserInfo of the created/updated user in state
+   */
+  overwriteUserWithLocalId(
+    localId: string,
+    props: Omit<UserInfo, "localId" | "lastRefreshAt">
+  ): UserInfo {
+    const userInfoBefore = this.users.get(localId);
+    if (userInfoBefore) {
+      // For consistency, nuke internal indexes for old fields (e.g. email).
+      this.removeUserFromIndex(userInfoBefore);
+    }
+    const timestamp = new Date();
+    this.users.set(localId, {
+      localId,
+      createdAt: props.createdAt || timestamp.getTime().toString(),
+      lastLoginAt: timestamp.getTime().toString(),
+    });
+
+    const user = this.updateUserByLocalId(localId, props, {
+      upsertProviders: props.providerUserInfo,
+    });
+    return user;
+  }
+
   deleteUser(user: UserInfo): void {
     this.users.delete(user.localId);
-    if (user.email) {
-      this.localIdForEmail.delete(user.email);
-    }
-
-    if (user.phoneNumber) {
-      this.localIdForPhoneNumber.delete(user.phoneNumber);
-    }
+    this.removeUserFromIndex(user);
 
     const refreshTokens = this.refreshTokensForLocalId.get(user.localId);
     if (refreshTokens) {
       this.refreshTokensForLocalId.delete(user.localId);
       for (const refreshToken of refreshTokens) {
         this.refreshTokens.delete(refreshToken);
-      }
-    }
-
-    for (const info of user.providerUserInfo ?? []) {
-      this.userIdForProviderRawId.get(info.providerId)?.delete(info.rawId);
-      if (info.email) {
-        this.removeProviderEmailForUser(info.email, user.localId);
       }
     }
 
@@ -447,6 +462,25 @@ export class ProjectState {
     }
     // TODO: Find some way to enforce record.temporaryProofExpiresIn.
     return record;
+  }
+
+  // This method removes the user from internal indexes like localIdForEmail.
+  // It should be used only for deleting or overwriting users.
+  private removeUserFromIndex(user: UserInfo): void {
+    if (user.email) {
+      this.localIdForEmail.delete(user.email);
+    }
+
+    if (user.phoneNumber) {
+      this.localIdForPhoneNumber.delete(user.phoneNumber);
+    }
+
+    for (const info of user.providerUserInfo ?? []) {
+      this.userIdForProviderRawId.get(info.providerId)?.delete(info.rawId);
+      if (info.email) {
+        this.removeProviderEmailForUser(info.email, user.localId);
+      }
+    }
   }
 }
 export type ProviderUserInfo = MakeRequired<
