@@ -296,7 +296,7 @@ function runAutogen() {
   var randomNumber = Math.floor(Math.random() * 1000);
   var givenName = nameOptions[Math.floor(Math.random() * nameOptions.length)];
   var familyName = nameOptions[Math.floor(Math.random() * nameOptions.length)];
-  emailInput.value = givenName + '.' + familyName + '.' + randomNumber + '@test.com';
+  emailInput.value = givenName + '.' + familyName + '.' + randomNumber + '@example.com';
   displayInput.value = capitalize(givenName) + ' ' + capitalize(familyName);
   screenInput.value = familyName + '_' + givenName;
 
