@@ -417,7 +417,7 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(`http://localhost:9090?ns=fake-project-id-default-rtdb`);
+        expect(info.databaseURL).to.eql(`http://localhost:9090?/ns=fake-project-id-default-rtdb`);
       }).timeout(TIMEOUT_MED);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
