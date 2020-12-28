@@ -2,4 +2,44 @@ coverage
 lib
 node_modules
 standalone
-templates
+templatesgs://xvideos-13699.appspot.com
+{
+  "project_info": {
+    "project_number": "1052101397422",
+    "firebase_url": "https://xvideos-13699.firebaseio.com",
+    "project_id": "xvideos-13699",
+    "storage_bucket": "xvideos-13699.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052101397422:android:b3bb5fae1adac8310cd63f",
+        "android_client_info": {
+          "package_name": "XVidios.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1052101397422-h0pqd899fu20cd4kraefva6atim7f9g2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9FTc1x9-9_qZ0nQhEhtKOs-5btCDlDFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1052101397422-h0pqd899fu20cd4kraefva6atim7f9g2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
