@@ -663,7 +663,7 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
       ns = asUrl.hostname.split(".")[0];
     }
 
-    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}?ns=${ns}`;
+    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}/?ns=${ns}`;
   }
 
   process.env.FIREBASE_CONFIG = JSON.stringify({
