@@ -40,6 +40,12 @@ functionsEmulator.setTriggersForTesting([
       "deployment-callable": "true",
     },
   },
+  {
+    name: "nested-function_id",
+    entryPoint: "nested.function_id",
+    httpsTrigger: {},
+    labels: {},
+  },
 ]);
 
 // TODO(samstern): This is an ugly way to just override the InvokeRuntimeOpts on each call
@@ -96,6 +102,45 @@ describe("FunctionsEmulator-Hub", () => {
 
     await supertest(functionsEmulator.createHubServer())
       .get("/fake-project-id/us-central1/function_id/")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.path).to.deep.equal("/");
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should 404 when a function does not exist", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({ path: req.path });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/us-central1/function_dne")
+      .expect(404);
+  }).timeout(TIMEOUT_LONG);
+
+  it("should properly route to a namespaced/grouped HTTPs function", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        nested: {
+          function_id: require("firebase-functions").https.onRequest(
+            (req: express.Request, res: express.Response) => {
+              res.json({ path: req.path });
+            }
+          ),
+        },
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/us-central1/nested-function_id")
       .expect(200)
       .then((res) => {
         expect(res.body.path).to.deep.equal("/");

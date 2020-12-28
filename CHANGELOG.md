@@ -1,1 +1,2 @@
 - Allow more than 100 concurrent connections to the Realtime Database emulator.
+- Fixes function URLs when emulating namespaced/grouped Cloud Functions (#2966).

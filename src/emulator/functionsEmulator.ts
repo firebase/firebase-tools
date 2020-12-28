@@ -421,7 +421,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           host,
           port,
           this.args.projectId,
-          definition.entryPoint,
+          definition.name,
           region
         );
       } else if (definition.eventTrigger) {
@@ -956,8 +956,19 @@ export class FunctionsEmulator implements EmulatorInstance {
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
-    const trigger = this.getTriggerDefinitionByKey(triggerId);
 
+    if (!this.triggers[triggerId]) {
+      res
+        .status(404)
+        .send(
+          `Function ${triggerId} does not exist, valid triggers are: ${Object.keys(
+            this.triggers
+          ).join(", ")}`
+        );
+      return;
+    }
+
+    const trigger = this.getTriggerDefinitionByKey(triggerId);
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;
