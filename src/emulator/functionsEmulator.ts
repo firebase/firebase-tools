@@ -42,6 +42,11 @@ import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
 import { createDestroyer } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
+import {
+  getProjectAdminSdkConfigOrCached,
+  AdminSdkConfig,
+  constructDefaultAdminSdkConfig,
+} from "./adminSdkConfig";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -128,8 +133,9 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-
   private multicastTriggers: { [s: string]: string[] } = {};
+
+  private adminSdkConfig: AdminSdkConfig;
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
@@ -140,6 +146,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
     }
+
+    this.adminSdkConfig = {
+      projectId: this.args.projectId,
+    };
 
     const mode = this.args.debugPort
       ? FunctionsExecutionMode.SEQUENTIAL
@@ -316,6 +326,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...credentialEnv,
       ...this.args.env,
     };
+
+    const adminSdkConfig = await getProjectAdminSdkConfigOrCached(this.args.projectId);
+    if (adminSdkConfig) {
+      this.adminSdkConfig = adminSdkConfig;
+    } else {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect."
+      );
+      this.adminSdkConfig = constructDefaultAdminSdkConfig(this.args.projectId);
+    }
 
     const { host, port } = this.getInfo();
     this.workQueue.start();
@@ -684,6 +706,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
         auth: EmulatorRegistry.getInfo(Emulators.AUTH),
+      },
+      adminSdkConfig: {
+        databaseURL: this.adminSdkConfig.databaseURL,
+        storageBucket: this.adminSdkConfig.storageBucket,
       },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
