@@ -57,7 +57,7 @@ function invokeRuntimeWithFunctions(
 async function callHTTPSFunction(
   worker: RuntimeWorker,
   frb: FunctionsRuntimeBundle,
-  options: { headers?: { [key: string]: string } } = {},
+  options: { path?: string, headers?: { [key: string]: string } } = {},
   requestData?: string
 ): Promise<string> {
   await worker.waitForSocketReady();
@@ -67,7 +67,7 @@ async function callHTTPSFunction(
   }
 
   const socketPath = worker.lastArgs.frb.socketPath;
-  const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
+  const path = options.path || '/';
 
   const res = await new Promise<IncomingMessage>((resolve, reject) => {
     const req = request(
