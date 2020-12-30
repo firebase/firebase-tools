@@ -223,7 +223,7 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central1/function_id")
       .expect(200)
       .then((res) => {
-        expect(res.body.url).to.eq("");
+        expect(res.body.url).to.eq("/");
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/");
       });

@@ -1047,17 +1047,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     // To match production behavior we need to drop the path prefix
-    // req.path = /:projectId/:region/:trigger_name/*
-    let path = "/";
-    const segments = req.path.split("/").filter((segment) => segment.length > 0);
-    if (segments.length > 3) {
-      path = "/" + segments.slice(3).join("/");
-    }
+    // req.url = /:projectId/:region/:trigger_name/*
+    const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
+    const path = `${url.pathname}${url.search}`.replace(
+      `/${this.args.projectId}/us-central1/${triggerId}`,
+      ""
+    );
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
     // cause unexpected situations - not to mention CORS troubles and this enables us to use
     // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
-    this.logger.log("DEBUG", `[functions] Got req.path=${req.path}, mapping to path=${path}`);
+    this.logger.log("DEBUG", `[functions] Got req.url=${req.url}, mapping to path=${path}`);
     const runtimeReq = http.request(
       {
         method,
