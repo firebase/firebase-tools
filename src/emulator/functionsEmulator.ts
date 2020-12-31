@@ -419,11 +419,10 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // We want to add a trigger if we don't already have an enabled trigger
       // with the same entryPoint.
-      const matchingTriggers = Object.values(this.triggers)
-        .filter(record => {
-          return record.def.entryPoint === definition.entryPoint;
-        })
-      const anyEnabledMatch = matchingTriggers.some(def => def.enabled);
+      const matchingTriggers = Object.values(this.triggers).filter((record) => {
+        return record.def.entryPoint === definition.entryPoint;
+      });
+      const anyEnabledMatch = matchingTriggers.some((def) => def.enabled);
       return !anyEnabledMatch;
     });
 
