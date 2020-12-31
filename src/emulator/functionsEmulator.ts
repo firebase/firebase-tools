@@ -223,15 +223,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
 
-      // When background triggers are disabled just ignore the request and respond
-      // with 204 "No Content"
-      const record = this.triggers[triggerId];
-      if (record && !record.enabled) {
-        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
-        res.status(204).send();
-        return;
-      }
-
       this.workQueue.submit(() => {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
 
@@ -426,7 +417,14 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       }
 
-      return this.getTriggerDefinitionByName(definition.name) === undefined;
+      // We want to add a trigger if we don't already have an enabled trigger
+      // with the same entryPoint.
+      const matchingTriggers = Object.values(this.triggers)
+        .filter(record => {
+          return record.def.entryPoint === definition.entryPoint;
+        })
+      const anyEnabledMatch = matchingTriggers.some(def => def.enabled);
+      return !anyEnabledMatch;
     });
 
     for (const definition of toSetup) {
@@ -877,12 +875,31 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
+  enableBackgroundTriggers() {
+    let hasDisabledTrigger = false;
+    Object.values(this.triggers).forEach((record) => {
+      if (record.def.eventTrigger) {
+        hasDisabledTrigger = hasDisabledTrigger || !record.enabled;
+      }
+    });
+
+    if (hasDisabledTrigger) {
+      return this.reloadTriggers();
+    }
+  }
+
   async reloadTriggers() {
     this.triggerGeneration++;
-    return this.loadTriggers(true);
+    return this.loadTriggers(false);
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
+    // If background triggers are disabled, exit early
+    const record = this.triggers[triggerKey];
+    if (record && !record.enabled) {
+      return Promise.reject({ code: 204, body: "Background triggers are curently disabled." });
+    }
+
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
     const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.BACKGROUND, proto);
