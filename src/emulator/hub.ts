@@ -134,7 +134,7 @@ export class EmulatorHub implements EmulatorInstance {
       }
 
       const emu = instance as FunctionsEmulator;
-      await emu.enableBackgroundTriggers();
+      await emu.reloadTriggers();
       res.status(200).json({ enabled: true });
     });
   }

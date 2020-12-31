@@ -875,19 +875,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
   }
 
-  enableBackgroundTriggers() {
-    let hasDisabledTrigger = false;
-    Object.values(this.triggers).forEach((record) => {
-      if (record.def.eventTrigger) {
-        hasDisabledTrigger = hasDisabledTrigger || !record.enabled;
-      }
-    });
-
-    if (hasDisabledTrigger) {
-      return this.reloadTriggers();
-    }
-  }
-
   async reloadTriggers() {
     this.triggerGeneration++;
     return this.loadTriggers(false);
