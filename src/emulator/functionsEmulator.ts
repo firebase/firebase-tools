@@ -359,7 +359,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return debouncedLoadTriggers();
     });
 
-    return this.loadTriggers(true);
+    return this.loadTriggers(/* force= */true);
   }
 
   async stop(): Promise<void> {
@@ -419,10 +419,9 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       // We want to add a trigger if we don't already have an enabled trigger
       // with the same entryPoint.
-      const matchingTriggers = Object.values(this.triggers).filter((record) => {
-        return record.def.entryPoint === definition.entryPoint;
+      const anyEnabledMatch = Object.values(this.triggers).some((record) => {
+        return record.def.entryPoint === definition.entryPoint && record.enabled;
       });
-      const anyEnabledMatch = matchingTriggers.some((def) => def.enabled);
       return !anyEnabledMatch;
     });
 
@@ -876,7 +875,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
-    return this.loadTriggers(false);
+    return this.loadTriggers();
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
