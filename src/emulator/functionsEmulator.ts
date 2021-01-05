@@ -359,7 +359,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return debouncedLoadTriggers();
     });
 
-    return this.loadTriggers(/* force= */true);
+    return this.loadTriggers(/* force= */ true);
   }
 
   async stop(): Promise<void> {
