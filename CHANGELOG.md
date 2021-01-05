@@ -1,3 +1,4 @@
 - Allow more than 100 concurrent connections to the Realtime Database emulator.
 - Fixes incorrect `databaseURL` inside the Cloud Functions emulator for new projects (#2965).
 - Fixes function URLs when emulating namespaced/grouped Cloud Functions (#2966).
+- Support using `firebase-bolt` installed in local `node_modules` (#767).
