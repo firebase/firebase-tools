@@ -158,7 +158,7 @@ export class DatabaseEmulator implements EmulatorInstance {
     const content =
       rulesExt === ".bolt"
         ? parseBoltRules(rulesPath).toString()
-        : fs.readFileSync(rulesPath, "utf8").toString();
+        : fs.readFileSync(rulesPath, "utf8");
 
     const info = this.getInfo();
     try {
