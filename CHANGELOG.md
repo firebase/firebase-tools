@@ -1,7 +1,4 @@
-- Improves error handling for `firestore:delete` when deleting very large documents.
-- Support batchCreate API in Auth Emulator (#2947).
-- Support emulators:export and import for Auth Emulator (#2955).
-- Fixes issue with `firebase init database` populating wrong key for `database.rules`.
-- Fixes Emulator UI failing to load Firestore listening on 0.0.0.0.
-- Fixes Realtime Database emulator crash when using `.bolt` rules (#2782).
+- Allow more than 100 concurrent connections to the Realtime Database emulator.
+- Fixes incorrect `databaseURL` inside the Cloud Functions emulator for new projects (#2965).
+- Fixes function URLs when emulating namespaced/grouped Cloud Functions (#2966).
 - Support using `firebase-bolt` installed in local `node_modules` (#767).
