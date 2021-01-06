@@ -70,9 +70,13 @@ module.exports = function(client) {
   if (previews.extdev) {
     client.ext.dev = {};
     client.ext.dev.init = loadCommand("ext-dev-init");
+    client.ext.dev.list = loadCommand("ext-dev-list");
+    client.ext.dev.register = loadCommand("ext-dev-register");
     client.ext.dev.emulators = {};
     client.ext.dev.emulators.start = loadCommand("ext-dev-emulators-start");
     client.ext.dev.emulators.exec = loadCommand("ext-dev-emulators-exec");
+    client.ext.dev.unpublish = loadCommand("ext-dev-unpublish");
+    client.ext.dev.publish = loadCommand("ext-dev-publish");
   }
   client.firestore = {};
   client.firestore.delete = loadCommand("firestore-delete");
@@ -88,6 +92,13 @@ module.exports = function(client) {
   client.functions.shell = loadCommand("functions-shell");
   client.help = loadCommand("help");
   client.hosting = {};
+  client.hosting.channel = {};
+  client.hosting.channel.create = loadCommand("hosting-channel-create");
+  client.hosting.channel.delete = loadCommand("hosting-channel-delete");
+  client.hosting.channel.deploy = loadCommand("hosting-channel-deploy");
+  client.hosting.channel.list = loadCommand("hosting-channel-list");
+  client.hosting.channel.open = loadCommand("hosting-channel-open");
+  client.hosting.clone = loadCommand("hosting-clone");
   client.hosting.disable = loadCommand("hosting-disable");
   client.init = loadCommand("init");
   client.login = loadCommand("login");
@@ -98,6 +109,11 @@ module.exports = function(client) {
   client.projects.addfirebase = loadCommand("projects-addfirebase");
   client.projects.create = loadCommand("projects-create");
   client.projects.list = loadCommand("projects-list");
+  client.remoteconfig = {};
+  client.remoteconfig.get = loadCommand("remoteconfig-get");
+  client.remoteconfig.rollback = loadCommand("remoteconfig-rollback");
+  client.remoteconfig.versions = {};
+  client.remoteconfig.versions.list = loadCommand("remoteconfig-versions-list");
   client.serve = loadCommand("serve");
   client.setup = {};
   client.setup.emulators = {};
@@ -109,6 +125,5 @@ module.exports = function(client) {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-
   return client;
 };

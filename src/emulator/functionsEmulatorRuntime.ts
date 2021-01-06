@@ -25,10 +25,6 @@ import * as _ from "lodash";
 const nativeModule = require("module");
 
 let triggers: EmulatedTriggerMap | undefined;
-
-let hasAccessedFirestore = false;
-let hasAccessedDatabase = false;
-
 let developerPkgJSON: PackageJSON | undefined;
 
 function isFeatureEnabled(
@@ -573,19 +569,39 @@ async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promis
       // Tell the Firebase Functions SDK to use the proxied app so that things like "change.after.ref"
       // point to the right place.
       localFunctionsModule.app.setEmulatedAdminApp(defaultApp);
+
+      // When the auth emulator is running, try to disable JWT verification.
+      if (frb.emulators.auth) {
+        if (compareVersionStrings(adminResolution.version, "9.3.0") < 0) {
+          new EmulatorLog(
+            "WARN_ONCE",
+            "runtime-status",
+            "The Firebase Authentication emulator is running, but your 'firebase-admin' dependency is below version 9.3.0, so calls to Firebase Authentication will affect production."
+          ).log();
+        }
+
+        const auth = defaultApp.auth();
+        if (typeof (auth as any).setJwtVerificationEnabled === "function") {
+          logDebug("auth.setJwtVerificationEnabled(false)", {});
+          (auth as any).setJwtVerificationEnabled(false);
+        } else {
+          logDebug("auth.setJwtVerificationEnabled not available", {});
+        }
+      }
+
       return defaultApp;
     })
     .when("firestore", (target) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 
@@ -606,36 +622,34 @@ function makeProxiedFirebaseApp(
   const appProxy = new Proxied<admin.app.App>(original);
   return appProxy
     .when("firestore", (target: any) => {
-      if (!frb.emulators.firestore) {
-        warnAboutFirestoreProd();
-      }
+      warnAboutFirestoreProd(frb);
       return Proxied.getOriginal(target, "firestore");
     })
     .when("database", (target: any) => {
-      if (!frb.emulators.database) {
-        warnAboutDatabaseProd();
-      }
+      warnAboutDatabaseProd(frb);
       return Proxied.getOriginal(target, "database");
+    })
+    .when("auth", (target: any) => {
+      warnAboutAuthProd(frb);
+      return Proxied.getOriginal(target, "auth");
     })
     .finalize();
 }
 
-function warnAboutFirestoreProd(): void {
-  if (hasAccessedFirestore) {
+function warnAboutFirestoreProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.firestore) {
     return;
   }
 
   new EmulatorLog(
-    "WARN",
+    "WARN_ONCE",
     "runtime-status",
     "The Cloud Firestore emulator is not running, so calls to Firestore will affect production."
   ).log();
-
-  hasAccessedFirestore = true;
 }
 
-function warnAboutDatabaseProd(): void {
-  if (hasAccessedDatabase) {
+function warnAboutDatabaseProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.database) {
     return;
   }
 
@@ -644,8 +658,18 @@ function warnAboutDatabaseProd(): void {
     "runtime-status",
     "The Realtime Database emulator is not running, so calls to Realtime Database will affect production."
   ).log();
+}
 
-  hasAccessedDatabase = true;
+function warnAboutAuthProd(frb: FunctionsRuntimeBundle): void {
+  if (frb.emulators.auth) {
+    return;
+  }
+
+  new EmulatorLog(
+    "WARN_ONCE",
+    "runtime-status",
+    "The Firebase Authentication emulator is not running, so calls to Firebase Authentication will affect production."
+  ).log();
 }
 
 async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Promise<void> {
@@ -658,8 +682,15 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   try {
     const configContent = fs.readFileSync(configPath, "utf8");
     if (configContent) {
-      logDebug(`Found local functions config: ${configPath}`);
-      process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      // try JSON.parse for .runtimeconfig.json and notice if parsing is failed
+      try {
+        JSON.parse(configContent.toString());
+
+        logDebug(`Found local functions config: ${configPath}`);
+        process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
+      } catch (e) {
+        new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
+      }
     }
   } catch (e) {
     // Ignore, config is optional
@@ -670,18 +701,22 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
   let emulatedDatabaseURL = undefined;
   if (frb.emulators.database && functionsGt380) {
-    emulatedDatabaseURL = `http://${frb.emulators.database.host}:${frb.emulators.database.port}?ns=${process.env.GCLOUD_PROJECT}`;
+    // Database URL will look like one of:
+    //  - https://${namespace}.firebaseio.com
+    //  - https://${namespace}.${location}.firebasedatabase.app
+    let ns = frb.projectId;
+    if (frb.adminSdkConfig.databaseURL) {
+      const asUrl = new URL(frb.adminSdkConfig.databaseURL);
+      ns = asUrl.hostname.split(".")[0];
+    }
+
+    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}/?ns=${ns}`;
   }
 
-  // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
-  // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL:
-      process.env.DATABASE_URL ||
-      emulatedDatabaseURL ||
-      `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
-    storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
-    projectId: process.env.GCLOUD_PROJECT,
+    storageBucket: frb.adminSdkConfig.storageBucket,
+    databaseURL: emulatedDatabaseURL || frb.adminSdkConfig.databaseURL,
+    projectId: frb.projectId,
   });
 
   if (frb.triggerId) {
@@ -712,22 +747,33 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
 
   // Make firebase-admin point at the Firestore emulator
   if (frb.emulators.firestore) {
-    process.env[
-      Constants.FIRESTORE_EMULATOR_HOST
-    ] = `${frb.emulators.firestore.host}:${frb.emulators.firestore.port}`;
+    process.env[Constants.FIRESTORE_EMULATOR_HOST] = formatHost(frb.emulators.firestore);
   }
 
   // Make firebase-admin point at the Database emulator
   if (frb.emulators.database) {
-    process.env[
-      Constants.FIREBASE_DATABASE_EMULATOR_HOST
-    ] = `${frb.emulators.database.host}:${frb.emulators.database.port}`;
+    process.env[Constants.FIREBASE_DATABASE_EMULATOR_HOST] = formatHost(frb.emulators.database);
+  }
+
+  // Make firebase-admin point at the Auth emulator
+  if (frb.emulators.auth) {
+    process.env[Constants.FIREBASE_AUTH_EMULATOR_HOST] = formatHost(frb.emulators.auth);
   }
 
   if (frb.emulators.pubsub) {
-    const pubsubHost = `${frb.emulators.pubsub.host}:${frb.emulators.pubsub.port}`;
+    const pubsubHost = formatHost(frb.emulators.pubsub);
     process.env.PUBSUB_EMULATOR_HOST = pubsubHost;
     logDebug(`Set PUBSUB_EMULATOR_HOST to ${pubsubHost}`);
+  }
+}
+
+// This is a duplicate of the helper we use elsewhere but it's important not to
+// add dependencies to this runtime.
+function formatHost(info: { host: string; port: number }) {
+  if (info.host.includes(":")) {
+    return `[${info.host}]:${info.port}`;
+  } else {
+    return `${info.host}:${info.port}`;
   }
 }
 
@@ -1042,7 +1088,6 @@ async function initializeRuntime(
   await initializeFirebaseFunctionsStubs(frb);
   await initializeFirebaseAdminStubs(frb);
 
-  let triggers: EmulatedTriggerMap;
   let triggerDefinitions: EmulatedTriggerDefinition[] = [];
   let triggerModule;
 
@@ -1063,7 +1108,7 @@ async function initializeRuntime(
     require("../extractTriggers")(triggerModule, triggerDefinitions);
   }
 
-  triggers = await getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
+  const triggers = getEmulatedTriggersFromDefinitions(triggerDefinitions, triggerModule);
 
   new EmulatorLog("SYSTEM", "triggers-parsed", "", { triggers, triggerDefinitions }).log();
   return triggers;
@@ -1134,7 +1179,26 @@ async function handleMessage(message: string) {
   }
 }
 
-async function main(): Promise<void> {
+function main(): void {
+  // Since the functions run as attached processes they naturally inherit SIGINT
+  // sent to the functions emulator. We want them to ignore the first signal
+  // to allow for a clean shutdown.
+  let lastSignal = new Date().getTime();
+  let signalCount = 0;
+  process.on("SIGINT", () => {
+    const now = new Date().getTime();
+    if (now - lastSignal < 100) {
+      return;
+    }
+
+    signalCount = signalCount + 1;
+    lastSignal = now;
+
+    if (signalCount >= 2) {
+      process.exit(1);
+    }
+  });
+
   logDebug("Functions runtime initialized.", {
     cwd: process.cwd(),
     node_version: process.versions.node,

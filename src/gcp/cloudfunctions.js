@@ -65,6 +65,7 @@ function _createFunction(options) {
   const location = "projects/" + options.projectId + "/locations/" + options.region;
   const func = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + location + "/functions";
+
   const data = {
     sourceUploadUrl: options.sourceUploadUrl,
     name: func,
@@ -72,6 +73,17 @@ function _createFunction(options) {
     labels: options.labels,
     runtime: options.runtime,
   };
+
+  if (options.vpcConnector) {
+    data.vpcConnector = options.vpcConnector;
+    // use implied project/location if only given connector id
+    if (!data.vpcConnector.includes("/")) {
+      data.vpcConnector = `${location}/connectors/${data.vpcConnector}`;
+    }
+  }
+  if (options.vpcConnectorEgressSettings) {
+    data.vpcConnectorEgressSettings = options.vpcConnectorEgressSettings;
+  }
   if (options.availableMemoryMb) {
     data.availableMemoryMb = options.availableMemoryMb;
   }
@@ -83,6 +95,9 @@ function _createFunction(options) {
   }
   if (options.environmentVariables) {
     data.environmentVariables = options.environmentVariables;
+  }
+  if (options.serviceAccountEmail) {
+    data.serviceAccountEmail = options.serviceAccountEmail;
   }
 
   return api
@@ -143,6 +158,7 @@ function _updateFunction(options) {
   const location = "projects/" + options.projectId + "/locations/" + options.region;
   const func = location + "/functions/" + options.functionName;
   const endpoint = "/" + API_VERSION + "/" + func;
+
   const data = _.assign(
     {
       sourceUploadUrl: options.sourceUploadUrl,
@@ -153,6 +169,18 @@ function _updateFunction(options) {
   );
   let masks = ["sourceUploadUrl", "name", "labels"];
 
+  if (options.vpcConnector) {
+    data.vpcConnector = options.vpcConnector;
+    // use implied project/location if only given connector id
+    if (!data.vpcConnector.includes("/")) {
+      data.vpcConnector = `${location}/connectors/${data.vpcConnector}`;
+    }
+    masks.push("vpcConnector");
+  }
+  if (options.vpcConnectorEgressSettings) {
+    data.vpcConnectorEgressSettings = options.vpcConnectorEgressSettings;
+    masks.push("vpcConnectorEgressSettings");
+  }
   if (options.runtime) {
     data.runtime = options.runtime;
     masks = _.concat(masks, "runtime");
@@ -172,6 +200,10 @@ function _updateFunction(options) {
   if (options.environmentVariables) {
     data.environmentVariables = options.environmentVariables;
     masks.push("environmentVariables");
+  }
+  if (options.serviceAccountEmail) {
+    data.serviceAccountEmail = options.serviceAccountEmail;
+    masks.push("serviceAccountEmail");
   }
   if (options.trigger.eventTrigger) {
     masks = _.concat(
@@ -307,7 +339,6 @@ function _checkOperation(operation) {
 }
 
 module.exports = {
-  DEFAULT_REGION: "us-central1",
   generateUploadUrl: _generateUploadUrl,
   create: _createFunction,
   update: _updateFunction,

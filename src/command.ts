@@ -34,10 +34,13 @@ export class Command {
   private descriptionText = "";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private options: any[][] = [];
-  private actionFn: ActionFunction = (): void => {};
+  private actionFn: ActionFunction = (): void => {
+    // noop by default, unless overwritten by `.action(fn)`.
+  };
   private befores: BeforeFunction[] = [];
   private helpText = "";
   private client?: CLIClient;
+  private positionalArgs: { name: string; required: boolean }[] = [];
 
   /**
    * @param cmd the command to create.
@@ -132,6 +135,9 @@ export class Command {
       });
     }
 
+    // See below about using this private property
+    this.positionalArgs = cmd._args;
+
     // args is an array of all the arguments provided for the command PLUS the
     // options object as provided by Commander (on the end).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,7 +181,7 @@ export class Command {
             );
           }
           const duration = new Date().getTime() - start;
-          track(this.name, "success", duration).then(process.exit);
+          track(this.name, "success", duration).then(() => process.exit());
         })
         .catch(async (err) => {
           if (getInheritedOption(options, "json")) {
@@ -280,10 +286,18 @@ export class Command {
   runner(): (...a: any[]) => Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return async (...args: any[]) => {
-      // always provide at least an empty object for options
-      if (args.length === 0) {
+      // Make sure the last argument is an object for options, add {} if none
+      if (typeof last(args) !== "object" || last(args) === null) {
         args.push({});
       }
+
+      // Args should have one entry for each positional arg (even the optional
+      // ones) and end with options.
+      while (args.length < this.positionalArgs.length + 1) {
+        // Add "" for missing args while keeping options at the end
+        args.splice(args.length - 1, 0, "");
+      }
+
       const options = last(args);
       this.prepare(options);
       for (const before of this.befores) {

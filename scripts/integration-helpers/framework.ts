@@ -1,4 +1,4 @@
-import * as request from "request";
+import fetch, { Response } from "node-fetch";
 
 import { CLIProcess } from "./cli";
 
@@ -11,6 +11,7 @@ const FIREBASE_PROJECT_ZONE = "us-central1";
 const RTDB_FUNCTION_LOG = "========== RTDB FUNCTION ==========";
 const FIRESTORE_FUNCTION_LOG = "========== FIRESTORE FUNCTION ==========";
 const PUBSUB_FUNCTION_LOG = "========== PUBSUB FUNCTION ==========";
+const AUTH_FUNCTION_LOG = "========== AUTH FUNCTION ==========";
 const ALL_EMULATORS_STARTED_LOG = "All emulators ready";
 
 interface ConnectionInfo {
@@ -24,6 +25,7 @@ export interface FrameworkOptions {
     firestore: ConnectionInfo;
     functions: ConnectionInfo;
     pubsub: ConnectionInfo;
+    auth: ConnectionInfo;
   };
 }
 
@@ -36,10 +38,13 @@ export class TriggerEndToEndTest {
   functionsEmulatorPort = 0;
   pubsubEmulatorHost = "localhost";
   pubsubEmulatorPort = 0;
+  authEmulatorHost = "localhost";
+  authEmulatorPort = 0;
   allEmulatorsStarted = false;
   rtdbTriggerCount = 0;
   firestoreTriggerCount = 0;
   pubsubTriggerCount = 0;
+  authTriggerCount = 0;
   rtdbFromFirestore = false;
   firestoreFromRtdb = false;
   rtdbFromRtdb = false;
@@ -52,6 +57,7 @@ export class TriggerEndToEndTest {
       this.firestoreEmulatorPort = config.emulators.firestore?.port;
       this.functionsEmulatorPort = config.emulators.functions?.port;
       this.pubsubEmulatorPort = config.emulators.pubsub?.port;
+      this.authEmulatorPort = config.emulators.auth?.port;
     }
   }
 
@@ -87,6 +93,9 @@ export class TriggerEndToEndTest {
       if (data.includes(PUBSUB_FUNCTION_LOG)) {
         this.pubsubTriggerCount++;
       }
+      if (data.includes(AUTH_FUNCTION_LOG)) {
+        this.authTriggerCount++;
+      }
     });
 
     this.cliProcess = cli;
@@ -115,31 +124,30 @@ export class TriggerEndToEndTest {
     return this.cliProcess ? this.cliProcess.stop() : Promise.resolve();
   }
 
-  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<request.Response> {
+  invokeHttpFunction(name: string, zone = FIREBASE_PROJECT_ZONE): Promise<Response> {
     const url = `http://localhost:${[this.functionsEmulatorPort, this.project, zone, name].join(
       "/"
     )}`;
-    return new Promise((resolve, reject) => {
-      request.get(url, {}, (err, res) => {
-        if (err) return reject(err);
-        resolve(res);
-      });
-    });
+    return fetch(url);
   }
 
-  writeToRtdb(): Promise<request.Response> {
+  writeToRtdb(): Promise<Response> {
     return this.invokeHttpFunction("writeToRtdb");
   }
 
-  writeToFirestore(): Promise<request.Response> {
+  writeToFirestore(): Promise<Response> {
     return this.invokeHttpFunction("writeToFirestore");
   }
 
-  writeToPubsub(): Promise<request.Response> {
+  writeToPubsub(): Promise<Response> {
     return this.invokeHttpFunction("writeToPubsub");
   }
 
-  writeToScheduledPubsub(): Promise<request.Response> {
+  writeToAuth(): Promise<Response> {
+    return this.invokeHttpFunction("writeToAuth");
+  }
+
+  writeToScheduledPubsub(): Promise<Response> {
     return this.invokeHttpFunction("writeToScheduledPubsub");
   }
 

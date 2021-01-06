@@ -1,6 +1,7 @@
 "use strict";
 
-const Uploader = require("./uploader");
+const { Uploader } = require("./uploader");
+const { detectProjectRoot } = require("../../detectProjectRoot");
 var { listFiles } = require("../../listFiles");
 var logger = require("../../logger");
 var track = require("../../track");
@@ -46,6 +47,7 @@ module.exports = function(context, options) {
       files: files,
       public: options.config.path(deploy.config.public),
       cwd: options.cwd,
+      projectRoot: detectProjectRoot(options),
     });
 
     var progressInterval = setInterval(

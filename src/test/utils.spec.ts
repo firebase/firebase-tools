@@ -80,6 +80,20 @@ describe("utils", () => {
       expect(utils.getDatabaseUrl("https://firebaseio.com", "fir-proj", "/foo/bar.json")).to.equal(
         "https://fir-proj.firebaseio.com/foo/bar.json"
       );
+      expect(
+        utils.getDatabaseUrl(
+          "https://some-namespace.europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
+      expect(
+        utils.getDatabaseUrl(
+          "https://europe-west1.firebasedatabase.app",
+          "some-namespace",
+          "/foo/bar.json"
+        )
+      ).to.equal("https://some-namespace.europe-west1.firebasedatabase.app/foo/bar.json");
     });
 
     it("should create a url for the emulator", () => {
@@ -96,16 +110,31 @@ describe("utils", () => {
   });
 
   describe("getDatabaseViewDataUrl", () => {
-    it("should get a view data url for prod", () => {
+    it("should get a view data url for legacy prod URL", () => {
       expect(
-        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "/foo/bar")
-      ).to.equal("https://console.firebase.google.com/project/fir-proj/database/data/foo/bar");
+        utils.getDatabaseViewDataUrl("https://firebaseio.com", "fir-proj", "fir-ns", "/foo/bar")
+      ).to.equal(
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar"
+      );
+    });
+
+    it("should get a view data url for new prod URL", () => {
+      expect(
+        utils.getDatabaseViewDataUrl(
+          "https://firebasedatabase.app",
+          "fir-proj",
+          "fir-ns",
+          "/foo/bar"
+        )
+      ).to.equal(
+        "https://console.firebase.google.com/project/fir-proj/database/fir-ns/data/foo/bar"
+      );
     });
 
     it("should get a view data url for the emulator", () => {
       expect(
-        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "/foo/bar")
-      ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-proj");
+        utils.getDatabaseViewDataUrl("http://localhost:9000", "fir-proj", "fir-ns", "/foo/bar")
+      ).to.equal("http://localhost:9000/foo/bar.json?ns=fir-ns");
     });
   });
 
@@ -202,6 +231,31 @@ describe("utils", () => {
       };
 
       return expect(utils.promiseProps(o)).to.eventually.be.rejected;
+    });
+  });
+
+  describe("datetimeString", () => {
+    it("should output the date in the correct format", () => {
+      // Don't worry about the hour since timezones screw everything up.
+      expect(utils.datetimeString(new Date("February 22, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-22 \d\d:35:45$/
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 11:35:45-07:00"))).to.match(
+        /^2020-02-07 \d\d:35:45$/
+      );
+      expect(utils.datetimeString(new Date("February 7, 2020 8:01:01-07:00"))).to.match(
+        /^2020-02-07 \d\d:01:01$/
+      );
+    });
+  });
+
+  describe("streamToString/stringToStream", () => {
+    it("should be able to create and read streams", async () => {
+      const stream = utils.stringToStream("hello world");
+      if (!stream) {
+        throw new Error("stream came back undefined");
+      }
+      await expect(utils.streamToString(stream)).to.eventually.equal("hello world");
     });
   });
 });

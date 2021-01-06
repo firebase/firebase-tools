@@ -71,16 +71,7 @@ describe("checkRuntimeDependencies()", () => {
     timeStub.withArgs("motd.cloudBuildErrorAfter").returns(errorAfter);
   }
 
-  describe("with nodejs8", () => {
-    it("should print warning", async () => {
-      stubTimes(Date.now() - 10000, Date.now() - 5000);
-
-      await expect(checkRuntimeDependencies("test-project", "nodejs8")).to.eventually.be.fulfilled;
-      expect(logStub?.callCount).to.be.gt(0);
-    });
-  });
-
-  ["nodejs10", "nodejs12"].forEach((runtime) => {
+  ["nodejs10", "nodejs12", "nodejs14"].forEach((runtime) => {
     describe(`with ${runtime}`, () => {
       describe("with cloudbuild service enabled", () => {
         beforeEach(() => {

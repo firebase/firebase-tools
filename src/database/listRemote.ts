@@ -1,10 +1,7 @@
-import * as request from "request";
-import { Response } from "request";
-import * as responseToError from "../responseToError";
-import * as utils from "../utils";
-import { FirebaseError } from "../error";
+import { Client } from "../apiv2";
+import { URL } from "url";
 import * as logger from "../logger";
-import * as api from "../api";
+import * as utils from "../utils";
 
 export interface ListRemote {
   /**
@@ -24,7 +21,12 @@ export interface ListRemote {
 }
 
 export class RTDBListRemote implements ListRemote {
-  constructor(private instance: string) {}
+  private apiClient: Client;
+
+  constructor(private instance: string, private host: string) {
+    const url = new URL(`${utils.addSubdomain(this.host, this.instance)}`);
+    this.apiClient = new Client({ urlPrefix: url.origin, auth: true });
+  }
 
   async listPath(
     path: string,
@@ -32,7 +34,7 @@ export class RTDBListRemote implements ListRemote {
     startAfter?: string,
     timeout?: number
   ): Promise<string[]> {
-    const url = `${utils.addSubdomain(api.realtimeOrigin, this.instance)}${path}.json`;
+    const url = new URL(`${utils.addSubdomain(this.host, this.instance)}${path}.json`);
 
     const params: any = {
       shallow: true,
@@ -46,37 +48,10 @@ export class RTDBListRemote implements ListRemote {
     }
 
     const t0 = Date.now();
-    const reqOptionsWithToken = await api.addRequestHeaders({ url });
-    reqOptionsWithToken.qs = params;
-    const paths = await new Promise<string[]>((resolve, reject) => {
-      request.get(reqOptionsWithToken, (err: Error, res: Response, body: any) => {
-        if (err) {
-          return reject(
-            new FirebaseError("Unexpected error while listing subtrees", {
-              exit: 2,
-              original: err,
-            })
-          );
-        } else if (res.statusCode >= 400) {
-          return reject(responseToError(res, body));
-        }
-        let data;
-        try {
-          data = JSON.parse(body);
-        } catch (e) {
-          return reject(
-            new FirebaseError("Malformed JSON response in shallow get ", {
-              exit: 2,
-              original: e,
-            })
-          );
-        }
-        if (data) {
-          return resolve(Object.keys(data));
-        }
-        return resolve([]);
-      });
+    const res = await this.apiClient.get<{ [key: string]: unknown }>(url.pathname, {
+      queryParams: params,
     });
+    const paths = Object.keys(res.body);
     const dt = Date.now() - t0;
     logger.debug(`[database] sucessfully fetched ${paths.length} path at ${path} ${dt}`);
     return paths;

@@ -7,9 +7,10 @@ import { Emulators, EMULATORS_SUPPORTED_BY_UI } from "../emulator/types";
 import * as clc from "cli-color";
 import { Constants } from "../emulator/constants";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const Table = require("cli-table");
 
-function stylizeLink(url: String) {
+function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
 }
 
@@ -21,6 +22,7 @@ module.exports = new Command("emulators:start")
   .option(commandUtils.FLAG_INSPECT_FUNCTIONS, commandUtils.DESC_INSPECT_FUNCTIONS)
   .option(commandUtils.FLAG_IMPORT, commandUtils.DESC_IMPORT)
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (options: any) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
 
@@ -32,14 +34,15 @@ module.exports = new Command("emulators:start")
     }
 
     const reservedPorts = [] as number[];
-    for (const internalEmulator of [Emulators.HUB, Emulators.LOGGING]) {
+    for (const internalEmulator of [Emulators.LOGGING]) {
       const info = EmulatorRegistry.getInfo(internalEmulator);
       if (info) {
         reservedPorts.push(info.port);
       }
     }
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
-    const uiUrl = `http://${uiInfo?.host}:${uiInfo?.port}`;
+    const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
+    const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
     const head = ["Emulator", "Host:Port"];
 
     if (uiInfo) {
@@ -47,12 +50,13 @@ module.exports = new Command("emulators:start")
     }
 
     const successMessageTable = new Table();
-    successMessageTable.push([
-      `${clc.green("✔")}  All emulators ready! ` +
-        (uiInfo
-          ? `View status and logs at ${stylizeLink(uiUrl)}`
-          : `It is now safe to connect your apps.`),
-    ]);
+    let successMsg = `${clc.green("✔")}  ${clc.bold(
+      "All emulators ready! It is now safe to connect your app."
+    )}`;
+    if (uiInfo) {
+      successMsg += `\n${clc.cyan("i")}  View Emulator UI at ${stylizeLink(uiUrl)}`;
+    }
+    successMessageTable.push([successMsg]);
 
     const emulatorsTable = new Table({
       head: head,
@@ -75,7 +79,7 @@ module.exports = new Command("emulators:start")
 
           return [
             emulatorName,
-            `${info?.host}:${info?.port}`,
+            EmulatorRegistry.getInfoHostString(info),
             isSupportedByUi && uiInfo
               ? stylizeLink(`${uiUrl}/${emulator}`)
               : clc.blackBright("n/a"),
@@ -88,6 +92,11 @@ module.exports = new Command("emulators:start")
     logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
+${
+  hubInfo
+    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
+    : clc.blackBright("  Emulator Hub not running.")
+}
 ${clc.blackBright("  Other reserved ports:")} ${reservedPorts.join(", ")}
 
 Issues? Report them at ${stylizeLink(

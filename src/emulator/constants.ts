@@ -9,8 +9,9 @@ const DEFAULT_PORTS: { [s in Emulators]: number } = {
   hosting: 5000,
   functions: 5001,
   firestore: 8080,
-  database: 9000,
   pubsub: 8085,
+  database: 9000,
+  auth: 9099,
 };
 
 export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
@@ -22,6 +23,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   firestore: false,
   database: false,
   pubsub: false,
+  auth: false,
 };
 
 export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
@@ -33,6 +35,7 @@ export const EMULATOR_DESCRIPTION: Record<Emulators, string> = {
   firestore: "Firestore Emulator",
   database: "Database Emulator",
   pubsub: "Pub/Sub Emulator",
+  auth: "Authentication Emulator",
 };
 
 const DEFAULT_HOST = "localhost";
@@ -43,8 +46,14 @@ export class Constants {
   // Environment variable to override SDK/CLI to point at the Firestore emulator.
   static FIRESTORE_EMULATOR_HOST = "FIRESTORE_EMULATOR_HOST";
 
-  // Environment variable tok override SDK/CLI to point at the Realtime Database emulator.
+  // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
+
+  // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
+  static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
+
+  // Environment variable to discover the Emulator HUB
+  static FIREBASE_EMULATOR_HUB = "FIREBASE_EMULATOR_HUB";
 
   static SERVICE_FIRESTORE = "firestore.googleapis.com";
   static SERVICE_REALTIME_DATABASE = "firebaseio.com";

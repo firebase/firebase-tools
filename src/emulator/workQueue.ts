@@ -24,9 +24,13 @@ export class WorkQueue {
 
   private queue: Array<Work> = [];
   private workRunningCount: number = 0;
-  private notifyQueue: () => void = () => {};
-  private notifyWorkFinish: () => void = () => {};
-  private stopped: boolean = true;
+  private notifyQueue: () => void = () => {
+    // Noop by default, will be set by .start() when queue is empty.
+  };
+  private notifyWorkFinish: () => void = () => {
+    // Noop by default, will be set by .start() when there are too many jobs.
+  };
+  private stopped = true;
 
   constructor(
     private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO,
@@ -95,11 +99,40 @@ export class WorkQueue {
     this.stopped = true;
   }
 
+  async flush(timeoutMs: number = 60000) {
+    if (!this.isWorking()) {
+      return;
+    }
+
+    this.logger.logLabeled("BULLET", "functions", "Waiting for all functions to finish...");
+    return new Promise((res, rej) => {
+      const delta = 100;
+      let elapsed = 0;
+
+      const interval = setInterval(() => {
+        elapsed += delta;
+        if (elapsed >= timeoutMs) {
+          rej(new Error(`Functions work queue not empty after ${timeoutMs}ms`));
+        }
+
+        if (!this.isWorking()) {
+          clearInterval(interval);
+          res();
+        }
+      }, delta);
+    });
+  }
+
   getState() {
     return {
       queueLength: this.queue.length,
       workRunningCount: this.workRunningCount,
     };
+  }
+
+  private isWorking() {
+    const state = this.getState();
+    return state.queueLength > 0 || state.workRunningCount > 0;
   }
 
   private async runNext() {
@@ -111,7 +144,7 @@ export class WorkQueue {
       try {
         await next();
       } catch (e) {
-        EmulatorLogger.forEmulator(Emulators.FUNCTIONS).log("DEBUG", e);
+        this.logger.log("DEBUG", e);
       } finally {
         this.workRunningCount--;
         this.notifyWorkFinish();

@@ -28,39 +28,39 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.5.0.jar"),
-    version: "4.5.0",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.2.jar"),
+    version: "4.7.2",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.5.0.jar",
-      expectedSize: 28311004,
-      expectedChecksum: "1723857023077462f4b807922b1342f2",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.2.jar",
+      expectedSize: 28910604,
+      expectedChecksum: "264e5df0c0661c064ef7dc9ce8179aba",
       namePrefix: "firebase-database-emulator",
     },
   },
   firestore: {
-    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.7.jar"),
-    version: "1.11.7",
+    downloadPath: path.join(CACHE_DIR, "cloud-firestore-emulator-v1.11.11.jar"),
+    version: "1.11.11",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.7.jar",
-      expectedSize: 63857175,
-      expectedChecksum: "fd8577f82d42ee1c03ae9d12b888049c",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.11.11.jar",
+      expectedSize: 63886307,
+      expectedChecksum: "398782f4108360434ef9e7cc86df50f6",
       namePrefix: "cloud-firestore-emulator",
     },
   },
   ui: {
-    version: "1.1.1",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.1.1.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.1.1"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.1.1", "server.bundle.js"),
+    version: "1.4.1",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.4.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.4.1"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.4.1", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.1.1.zip",
-      expectedSize: 3248195,
-      expectedChecksum: "098821e328ea98c2180d4d71f3a75381",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.1.zip",
+      expectedSize: 3374020,
+      expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
       namePrefix: "ui",
     },
   },
@@ -116,7 +116,12 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
   },
   firestore: {
     binary: "java",
-    args: ["-Duser.language=en", "-jar", getExecPath(Emulators.FIRESTORE)],
+    args: [
+      "-Dgoogle.cloud_firestore.debug_log_level=FINE",
+      "-Duser.language=en",
+      "-jar",
+      getExecPath(Emulators.FIRESTORE),
+    ],
     optionalArgs: [
       "port",
       "webchannel_port",
@@ -167,6 +172,20 @@ function _getCommand(
   }
 
   const cmdLineArgs = baseCmd.args.slice();
+
+  if (
+    baseCmd.binary === "java" &&
+    utils.isRunningInWSL() &&
+    (!args.host || !args.host.includes(":"))
+  ) {
+    // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Force
+    // Java to use IPv4 sockets in WSL (unless IPv6 address explicitly used).
+    // Otherwise, Java will open a tcp6 socket (even if IPv4 address is used),
+    // which handles both 4/6 on Linux but NOT IPv4 from the host to WSL.
+    // This is a hack because it breaks all IPv6 connections as a side effect.
+    // See: https://docs.oracle.com/javase/8/docs/api/java/net/doc-files/net-properties.html
+    cmdLineArgs.unshift("-Djava.net.preferIPv4Stack=true"); // first argument
+  }
 
   const logger = EmulatorLogger.forEmulator(emulator);
   Object.keys(args).forEach((key) => {
