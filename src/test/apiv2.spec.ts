@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as nock from "nock";
+import { createServer, Server } from "http";
+import proxySetup = require("proxy");
 
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
@@ -289,6 +291,46 @@ describe("apiv2", () => {
       });
       expect(r.body).to.deep.equal({ success: true });
       expect(nock.isDone()).to.be.true;
+    });
+
+    describe("with a proxy", () => {
+      let proxyServer: Server;
+      let targetServer: Server;
+      before(async () => {
+        proxyServer = proxySetup(createServer());
+        targetServer = createServer((req, res) => {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ proxied: true }));
+        });
+        await Promise.all([
+          new Promise((resolve) => {
+            proxyServer.listen(52672, resolve);
+          }),
+          new Promise((resolve) => {
+            targetServer.listen(52673, resolve);
+          }),
+        ]);
+      });
+
+      after(async () => {
+        await Promise.all([
+          new Promise((resolve) => proxyServer.close(resolve)),
+          new Promise((resolve) => targetServer.close(resolve)),
+        ]);
+      });
+
+      it.only("should be able to make a basic GET request", async () => {
+        const c = new Client({
+          urlPrefix: "http://127.0.0.1:52673",
+          proxy: "http://127.0.0.1:52672",
+        });
+        const r = await c.request({
+          method: "GET",
+          path: "/path/to/foo",
+        });
+        expect(r.body).to.deep.equal({ proxied: true });
+        expect(nock.isDone()).to.be.true;
+      });
     });
   });
 

@@ -6,6 +6,7 @@
     "strict": true,
     "outDir": "dev",
     "removeComments": false,
+    "allowSyntheticDefaultImports": true,
     "target": "es2017",
     "sourceMap": true,
     "typeRoots": [

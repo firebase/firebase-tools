@@ -1,7 +1,8 @@
-import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 import { URLSearchParams } from "url";
+import * as ProxyAgent from "proxy-agent";
+import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -68,10 +69,21 @@ export function setAccessToken(token = ""): void {
   accessToken = token;
 }
 
+function proxyURIFromEnv(): string | undefined {
+  return (
+    process.env.HTTPS_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTP_PROXY ||
+    process.env.http_proxy ||
+    undefined
+  );
+}
+
 export type ClientOptions = {
   urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
+  proxy?: string;
 };
 
 export class Client {
@@ -262,6 +274,14 @@ export class Client {
       redirect: options.redirect,
       signal: options.signal,
     };
+
+    if (this.opts.proxy) {
+      fetchOptions.agent = new ProxyAgent(this.opts.proxy);
+    }
+    const envProxy = proxyURIFromEnv();
+    if (envProxy) {
+      fetchOptions.agent = new ProxyAgent(envProxy);
+    }
 
     if (typeof options.body === "string" || isStream(options.body)) {
       fetchOptions.body = options.body;
