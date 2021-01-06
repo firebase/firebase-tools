@@ -17,7 +17,7 @@ var PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
   path.join(TEMPLATE_ROOT, "package.nolint.json"),
   "utf8"
 );
-var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "eslint.json"), "utf8");
+var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
 module.exports = function(setup, config) {
@@ -35,7 +35,7 @@ module.exports = function(setup, config) {
         return config
           .askWriteProjectFile("functions/package.json", PACKAGE_LINTING_TEMPLATE)
           .then(function() {
-            config.askWriteProjectFile("functions/.eslintrc.json", ESLINT_TEMPLATE);
+            config.askWriteProjectFile("functions/.eslintrc.js", ESLINT_TEMPLATE);
           });
       }
       return config.askWriteProjectFile("functions/package.json", PACKAGE_NO_LINTING_TEMPLATE);
