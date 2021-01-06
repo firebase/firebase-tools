@@ -43,6 +43,7 @@ var deploy = function(targetNames, options, customContext = {}) {
   var projectId = getProjectId(options);
   var payload = {};
   // a shared context object for deploy targets to decorate as needed
+  /** @type {object} */
   var context = Object.assign({ projectId }, customContext);
   var predeploys = [];
   var prepares = [];

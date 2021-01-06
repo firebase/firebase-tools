@@ -64,6 +64,7 @@ export const authOperations: AuthOps = {
         query: queryAccounts,
         sendOobCode,
         update: setAccountInfo,
+        batchCreate,
         batchGet,
       },
     },
@@ -230,20 +231,185 @@ function lookup(
   };
 }
 
+function batchCreate(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1UploadAccountRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV1UploadAccountResponse"] {
+  assert(reqBody.users?.length, "MISSING_USER_ACCOUNT");
+
+  if (reqBody.sanityCheck) {
+    if (state.oneAccountPerEmail) {
+      const existingEmails = new Set<string>();
+      for (const userInfo of reqBody.users) {
+        if (userInfo.email) {
+          assert(!existingEmails.has(userInfo.email), `DUPLICATE_EMAIL : ${userInfo.email}`);
+          existingEmails.add(userInfo.email);
+        }
+      }
+    }
+
+    // Check that there is no duplicate (providerId, rawId) tuple.
+    const existingProviderAccounts = new Set<string>();
+    for (const userInfo of reqBody.users) {
+      for (const { providerId, rawId } of userInfo.providerUserInfo ?? []) {
+        const key = `${providerId}:${rawId}`;
+        assert(
+          !existingProviderAccounts.has(key),
+          `DUPLICATE_RAW_ID : Provider id(${providerId}), Raw id(${rawId})`
+        );
+        existingProviderAccounts.add(key);
+      }
+    }
+  }
+
+  if (!reqBody.allowOverwrite) {
+    const existingLocalIds = new Set<string>();
+    for (const userInfo of reqBody.users) {
+      const localId = userInfo.localId || "";
+      assert(!existingLocalIds.has(localId), `DUPLICATE_LOCAL_ID : ${localId}`);
+      existingLocalIds.add(localId);
+    }
+  }
+
+  const errors: { index: number; message: string }[] = [];
+  for (let index = 0; index < reqBody.users.length; index++) {
+    const userInfo = reqBody.users[index];
+
+    try {
+      assert(userInfo.localId, "localId is missing");
+      const uploadTime = new Date();
+      const fields: Omit<Partial<UserInfo>, "localId"> = {
+        displayName: userInfo.displayName,
+        photoUrl: userInfo.photoUrl,
+        lastLoginAt: userInfo.lastLoginAt,
+      };
+
+      // password
+      if (userInfo.passwordHash) {
+        // TODO: Check and block non-emulator hashes.
+        fields.passwordHash = userInfo.passwordHash;
+        fields.salt = userInfo.salt;
+        fields.passwordUpdatedAt = uploadTime.getTime();
+      } else if (userInfo.rawPassword) {
+        fields.salt = userInfo.salt || "fakeSalt" + randomId(20);
+        fields.passwordHash = hashPassword(userInfo.rawPassword, fields.salt);
+        fields.passwordUpdatedAt = uploadTime.getTime();
+      }
+
+      // custom attrs
+      if (userInfo.customAttributes) {
+        validateSerializedCustomClaims(userInfo.customAttributes);
+        fields.customAttributes = userInfo.customAttributes;
+      }
+
+      // federated
+      if (userInfo.providerUserInfo) {
+        fields.providerUserInfo = [];
+        for (const providerUserInfo of userInfo.providerUserInfo) {
+          const { providerId, rawId, federatedId } = providerUserInfo;
+          if (providerId === PROVIDER_PASSWORD || providerId === PROVIDER_PHONE) {
+            // These providers are handled automatically by create / update.
+            continue;
+          }
+          if (!rawId || !providerId) {
+            if (!federatedId) {
+              assert(false, "federatedId or (providerId & rawId) is required");
+            } else {
+              // TODO
+              assert(
+                false,
+                "((Parsing federatedId is not implemented in Auth Emulator; please specify providerId AND rawId as a workaround.))"
+              );
+            }
+          }
+          const existingUserWithRawId = state.getUserByProviderRawId(providerId, rawId);
+          assert(
+            !existingUserWithRawId || existingUserWithRawId.localId === userInfo.localId,
+            "raw id exists in other account in database"
+          );
+          fields.providerUserInfo.push({ ...providerUserInfo, providerId, rawId });
+        }
+      }
+
+      // phone number
+      if (userInfo.phoneNumber) {
+        assert(isValidPhoneNumber(userInfo.phoneNumber), "phone number format is invalid");
+        fields.phoneNumber = userInfo.phoneNumber;
+      }
+      // TODO: Support MFA.
+
+      fields.validSince = toUnixTimestamp(uploadTime).toString();
+      fields.createdAt = uploadTime.toString();
+      if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
+        fields.createdAt = userInfo.createdAt;
+      }
+      if (userInfo.email) {
+        const email = userInfo.email;
+        assert(isValidEmailAddress(email), "email is invalid");
+
+        // For simplicity, Auth Emulator performs this check in all cases
+        // (unlike production which checks only if (reqBody.sanityCheck && state.oneAccountPerEmail)).
+        // We return a non-standard error message in other cases to clarify.
+        const existingUserWithEmail = state.getUserByEmail(email);
+        assert(
+          !existingUserWithEmail || existingUserWithEmail.localId === userInfo.localId,
+          reqBody.sanityCheck && state.oneAccountPerEmail
+            ? "email exists in other account in database"
+            : `((Auth Emulator does not support importing duplicate email: ${email}))`
+        );
+        fields.email = canonicalizeEmailAddress(email);
+      }
+      fields.emailVerified = !!userInfo.emailVerified;
+      fields.disabled = !!userInfo.disabled;
+
+      if (state.getUserByLocalId(userInfo.localId)) {
+        assert(
+          reqBody.allowOverwrite,
+          "localId belongs to an existing account - can not overwrite."
+        );
+      }
+      state.overwriteUserWithLocalId(userInfo.localId, fields);
+    } catch (e) {
+      if (e instanceof BadRequestError) {
+        // Use friendlier messages for some codes, consistent with production.
+        let message = e.message;
+        if (message === "INVALID_CLAIMS") {
+          message = "Invalid custom claims provided.";
+        } else if (message === "CLAIMS_TOO_LARGE") {
+          message = "Custom claims provided are too large.";
+        } else if (message.startsWith("FORBIDDEN_CLAIM")) {
+          message = "Custom claims provided include a reserved claim.";
+        }
+        errors.push({
+          index,
+          message,
+        });
+      } else {
+        throw e;
+      }
+    }
+  }
+  return {
+    kind: "identitytoolkit#UploadAccountResponse",
+    error: errors,
+  };
+}
+
 function batchGet(
   state: ProjectState,
   reqBody: unknown,
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
   const limit = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
-  assert(limit >= 0, "((Auth Emulator: maxResults must not be negative.))");
 
   const users = state.queryUsers(
     {},
     { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken }
   );
   let newPageToken: string | undefined = undefined;
-  if (users.length > limit) {
+
+  // As a non-standard behavior, passing in limit=-1 will return all users.
+  if (limit >= 0 && users.length > limit) {
     users.length = limit;
     if (users.length) {
       newPageToken = users[users.length - 1].localId;
@@ -495,7 +661,6 @@ function sendOobCode(
     );
   }
 
-  let user: UserInfo | undefined;
   let email: string;
   let mode: string;
 
@@ -509,15 +674,24 @@ function sendOobCode(
       mode = "resetPassword";
       assert(reqBody.email, "MISSING_EMAIL");
       email = canonicalizeEmailAddress(reqBody.email);
-      user = state.getUserByEmail(email);
-      assert(user, "EMAIL_NOT_FOUND");
+      assert(state.getUserByEmail(email), "EMAIL_NOT_FOUND");
       break;
     case "VERIFY_EMAIL":
       mode = "verifyEmail";
-      // Get the user from idToken, reqBody.email is ignored.
-      user = parseIdToken(state, reqBody.idToken || "").user;
-      assert(user.email, "MISSING_EMAIL");
-      email = user.email;
+
+      // Matching production behavior, reqBody.returnOobLink is used as a signal
+      // for Admin usage (instead of whether request is OAuth 2 authenticated.)
+      if (reqBody.returnOobLink && !reqBody.idToken) {
+        assert(reqBody.email, "MISSING_EMAIL");
+        email = canonicalizeEmailAddress(reqBody.email);
+        const maybeUser = state.getUserByEmail(email);
+        assert(maybeUser, "USER_NOT_FOUND");
+      } else {
+        // Get the user from idToken, reqBody.email is ignored.
+        const user = parseIdToken(state, reqBody.idToken || "").user;
+        assert(user.email, "MISSING_EMAIL");
+        email = user.email;
+      }
       break;
 
     default:

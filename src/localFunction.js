@@ -6,6 +6,14 @@ var request = require("request");
 var { encodeFirestoreValue } = require("./firestore/encodeFirestoreValue");
 var utils = require("./utils");
 
+/**
+ * @constructor
+ * @this LocalFunction
+ *
+ * @param {object} trigger
+ * @param {object=} urls
+ * @param {object=} controller
+ */
 var LocalFunction = function(trigger, urls, controller) {
   const isCallable = _.get(trigger, ["labels", "deployment-callable"], "false");
 
@@ -51,7 +59,7 @@ LocalFunction.prototype._constructCallableFunc = function(data, opts) {
   opts = opts || {};
 
   var headers = {};
-  if (_.has(opts.instanceIdToken)) {
+  if (_.has(opts, "instanceIdToken")) {
     headers["Firebase-Instance-ID-Token"] = opts.instanceIdToken;
   }
 

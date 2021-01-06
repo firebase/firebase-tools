@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "8.18.1",
+  "version": "9.1.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "bin": {
@@ -21,7 +21,8 @@
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha": "nyc mocha 'src/test/**/*.{ts,js}'",
     "prepare": "npm run clean && npm run build -- --build tsconfig.publish.json",
-    "test": "npm run lint:quiet && npm run mocha",
+    "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
+    "test:compile": "tsc --project tsconfig.compile.json",
     "test:client-integration": "./scripts/client-integration-tests/run.sh",
     "test:extensions-emulator": "./scripts/extensions-emulator-tests/run.sh",
     "test:hosting": "./scripts/hosting-tests/run.sh",
@@ -49,7 +50,7 @@
   ],
   "preferGlobal": true,
   "engines": {
-    "node": ">= 8.6.0"
+    "node": ">= 10.13"
   },
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
@@ -73,7 +74,7 @@
     ]
   },
   "dependencies": {
-    "@google-cloud/pubsub": "^1.7.0",
+    "@google-cloud/pubsub": "^2.7.0",
     "JSONStream": "^1.2.1",
     "abort-controller": "^3.0.0",
     "archiver": "^3.0.0",
@@ -94,8 +95,7 @@
     "filesize": "^3.1.3",
     "fs-extra": "^0.23.1",
     "glob": "^7.1.2",
-    "google-auth-library": "^5.5.0",
-    "google-gax": "~1.12.0",
+    "google-auth-library": "^6.1.3",
     "inquirer": "~6.3.1",
     "js-yaml": "^3.13.1",
     "jsonschema": "^1.0.2",
@@ -112,6 +112,7 @@
     "plist": "^3.0.1",
     "portfinder": "^1.0.23",
     "progress": "^2.0.3",
+    "proxy-agent": "^4.0.0",
     "request": "^2.87.0",
     "rimraf": "^3.0.0",
     "semver": "^5.7.1",
@@ -130,10 +131,9 @@
   },
   "devDependencies": {
     "@manifoldco/swagger-to-ts": "^2.0.0",
-    "@types/async": "^3.0.8",
     "@types/body-parser": "^1.17.0",
-    "@types/chai": "^4.1.6",
-    "@types/chai-as-promised": "^7.1.0",
+    "@types/chai": "^4.2.12",
+    "@types/chai-as-promised": "^7.1.3",
     "@types/cli-color": "^0.3.29",
     "@types/cli-table": "^0.3.0",
     "@types/configstore": "^4.0.0",
@@ -148,10 +148,10 @@
     "@types/jsonwebtoken": "^8.3.8",
     "@types/lodash": "^4.14.149",
     "@types/marked": "^0.6.5",
-    "@types/mocha": "^7.0.2",
+    "@types/mocha": "^8.2.0",
     "@types/multer": "^1.4.3",
     "@types/nock": "^9.3.0",
-    "@types/node": "^10.12.0",
+    "@types/node": "^10.17.50",
     "@types/node-fetch": "^2.5.7",
     "@types/plist": "^3.0.1",
     "@types/progress": "^2.0.3",
@@ -179,21 +179,24 @@
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-jsdoc": "^22.1.0",
     "eslint-plugin-prettier": "^3.1.0",
+    "exegesis": "^2.5.6",
     "firebase": "^7.24.0",
-    "firebase-admin": "^8.9.0",
+    "firebase-admin": "^9.4.2",
     "firebase-functions": "^3.11.0",
     "google-discovery-to-swagger": "^2.1.0",
-    "mocha": "^7.1.1",
+    "mocha": "^8.2.1",
     "nock": "^9.3.3",
-    "nyc": "^15.0.1",
+    "nyc": "^15.1.0",
     "openapi-merge": "^1.0.23",
     "prettier": "^1.19.0",
+    "proxy": "^1.0.2",
     "sinon": "^6.3.4",
     "sinon-chai": "^3.2.0",
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
     "ts-node": "^7.0.1",
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.5",
+    "winston-transport": "^4.4.0"
   }
 }

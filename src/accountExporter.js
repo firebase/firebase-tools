@@ -6,6 +6,7 @@ var _ = require("lodash");
 
 var api = require("./api");
 var utils = require("./utils");
+var { FirebaseError } = require("./error");
 
 var EXPORTED_JSON_KEYS = [
   "localId",
@@ -101,7 +102,7 @@ var _transUserJson = function(user) {
 var validateOptions = function(options, fileName) {
   var exportOptions = {};
   if (fileName === undefined) {
-    return utils.reject("Must specify data file", { exit: 1 });
+    throw new FirebaseError("Must specify data file", { exit: 1 });
   }
   var extName = path.extname(fileName.toLowerCase());
   if (extName === ".csv") {
@@ -113,12 +114,15 @@ var validateOptions = function(options, fileName) {
     if (format === "csv" || format === "json") {
       exportOptions.format = format;
     } else {
-      return utils.reject("Unsupported data file format, should be csv or json", { exit: 1 });
+      throw new FirebaseError("Unsupported data file format, should be csv or json", { exit: 1 });
     }
   } else {
-    return utils.reject("Please specify data file format in file name, or use `format` parameter", {
-      exit: 1,
-    });
+    throw new FirebaseError(
+      "Please specify data file format in file name, or use `format` parameter",
+      {
+        exit: 1,
+      }
+    );
   }
   return exportOptions;
 };

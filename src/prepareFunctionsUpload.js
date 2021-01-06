@@ -32,6 +32,8 @@ var _getFunctionsConfig = function(context) {
             "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project."
         );
       }
+
+      return {};
     });
   }
 
@@ -54,7 +56,7 @@ var _packageSource = function(options, sourceDir, configValues) {
   var tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
   var fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
-    defaultEncoding: "binary",
+    encoding: "binary",
   });
   var archive = archiver("zip");
   var archiveDone = _pipeAsync(archive, fileStream);

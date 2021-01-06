@@ -139,8 +139,8 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 
     proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
 
-    for (const [key, value] of proxyRes.response.headers) {
-      res.setHeader(key, value);
+    for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
+      res.setHeader(key, value as string[]);
     }
     res.statusCode = proxyRes.status;
     proxyRes.response.body.pipe(res);

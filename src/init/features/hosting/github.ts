@@ -17,7 +17,7 @@ import {
 import { addServiceAccountToRoles, firebaseRoles } from "../../../gcp/resourceManager";
 import * as logger from "../../../logger";
 import { prompt } from "../../../prompt";
-import { logBullet, logLabeledBullet, logSuccess } from "../../../utils";
+import { logBullet, logLabeledBullet, logSuccess, reject } from "../../../utils";
 import { githubApiOrigin, githubClientId } from "../../../api";
 import { Client } from "../../../apiv2";
 
@@ -50,6 +50,10 @@ const githubApiClient = new Client({ urlPrefix: githubApiOrigin, auth: false });
  * @param options Command line options.
  */
 export async function initGitHub(setup: Setup, config: any, options: any): Promise<void> {
+  if (!setup.projectId) {
+    return reject("Could not determine Project ID, can't set up GitHub workflow.", { exit: 1 });
+  }
+
   logger.info();
 
   // Find existing Git/Github config

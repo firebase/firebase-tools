@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
+
 "use strict";
 
 var clc = require("cli-color");
@@ -7,7 +9,7 @@ var _ = require("lodash");
 var request = require("request");
 var util = require("util");
 
-var serveFunctions = require("./serve/functions");
+var { FunctionsServer } = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var utils = require("./utils");
 var logger = require("./logger");
@@ -15,6 +17,8 @@ var shell = require("./emulator/functionsEmulatorShell");
 var commandUtils = require("./emulator/commandUtils");
 var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
 var { EmulatorHubClient } = require("./emulator/hubClient");
+
+const serveFunctions = new FunctionsServer();
 
 module.exports = async function(options) {
   options.port = parseInt(options.port, 10);
@@ -25,6 +29,7 @@ module.exports = async function(options) {
   }
 
   const hubClient = new EmulatorHubClient(options.project);
+  /** @type {Record<string,object>} */
   let remoteEmulators = {};
   if (hubClient.foundHub()) {
     remoteEmulators = await hubClient.getEmulators();
@@ -40,9 +45,6 @@ module.exports = async function(options) {
 
   return serveFunctions
     .start(options, {
-      // TODO(samstern): Note that these are not acctually valid FunctionsEmulatorArgs
-      // and when we eventually move to all TypeScript we'll have to start adding
-      // projectId and functionsDir here.
       quiet: true,
       remoteEmulators,
       debugPort,
@@ -90,6 +92,7 @@ module.exports = async function(options) {
 
       var writer = function(output) {
         // Prevent full print out of Request object when a request is made
+        // @ts-ignore
         if (output instanceof request.Request) {
           return "Sent request to function.";
         }

@@ -17,7 +17,6 @@ var friendlyRuntimeName = require("../../parseRuntimeAndValidateSDK").getHumanFr
 var { getAppEngineLocation } = require("../../functionsConfig");
 var { promptOnce } = require("../../prompt");
 var { createOrUpdateSchedulesAndTopics } = require("./createOrUpdateSchedulesAndTopics");
-var { checkForNode8 } = require("./checkRuntimeDependencies");
 
 var deploymentTool = require("../../deploymentTool");
 var timings = {};
@@ -64,10 +63,10 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
       .filter("httpsTrigger")
       .value();
     _.forEach(httpFunctions, function(httpFunc) {
-      _.chain(ops)
-        .find({ func: httpFunc.name })
-        .assign({ triggerUrl: httpFunc.httpsTrigger.url })
-        .value();
+      const op = _.find(ops, { func: httpFunc.name });
+      if (op) {
+        op.triggerUrl = httpFunc.httpsTrigger.url;
+      }
     });
     return Promise.resolve();
   });
@@ -135,11 +134,6 @@ module.exports = function(context, options, payload) {
   failedDeployments = [];
 
   var appEngineLocation = getAppEngineLocation(context.firebaseConfig);
-  // Used in CLI releases v3.4.0 to v3.17.6
-  var legacySourceUrlTwo =
-    "gs://" + "staging." + context.firebaseConfig.storageBucket + "/firebase-functions-source";
-  // Used in CLI releases v3.3.0 and prior
-  var legacySourceUrlOne = "gs://" + projectId + "-gcf/" + projectId;
   var functionsInfo = helper.getFunctionsInfo(payload.functions.triggers, projectId);
   functionsInfo = functionsInfo.map((fn) => {
     if (
@@ -300,89 +294,53 @@ module.exports = function(context, options, payload) {
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
           var region = helper.getRegion(name);
-
-          var eventType = functionTrigger.eventTrigger
-            ? functionTrigger.eventTrigger.eventType
-            : "https";
           var existingFunction = _.find(existingFunctions, {
             name: name,
           });
-          var existingEventType = _.get(existingFunction, "eventTrigger.eventType");
-          var migratingTrigger = false;
-          if (
-            eventType.match(/google.storage.object./) &&
-            existingEventType === "providers/cloud.storage/eventTypes/object.change"
-          ) {
-            migratingTrigger = true;
-          } else if (
-            eventType === "google.pubsub.topic.publish" &&
-            existingEventType === "providers/cloud.pubsub/eventTypes/topic.publish"
-          ) {
-            migratingTrigger = true;
-          }
-          if (migratingTrigger) {
-            throw new FirebaseError(
-              "Function " +
-                clc.bold(functionName) +
-                " was deployed using a legacy trigger type and cannot be updated without deleting " +
-                "the previous function. Follow the instructions on " +
-                clc.underline(
-                  "https://firebase.google.com/docs/functions/manage-functions#modify-trigger"
-                ) +
-                " for how to change the trigger without losing events.\n"
-            );
-          } else {
-            var options = {
-              projectId: projectId,
-              region: region,
-              functionName: functionName,
-              trigger: functionTrigger,
-              sourceUploadUrl: sourceUrl,
-              labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
-              availableMemoryMb: functionInfo.availableMemoryMb,
-              timeout: functionInfo.timeout,
-              runtime: runtime,
-              maxInstances: functionInfo.maxInstances,
-              vpcConnector: functionInfo.vpcConnector,
-              vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
-              serviceAccountEmail: functionInfo.serviceAccountEmail,
-              environmentVariables: _.assign(
-                {},
-                existingFunction.environmentVariables,
-                defaultEnvVariables
-              ),
-            };
-            utils.logBullet(
-              clc.bold.cyan("functions: ") +
-                "updating " +
-                friendlyRuntimeName(runtime) +
-                " function " +
-                clc.bold(helper.getFunctionLabel(name)) +
-                "..."
-            );
-            logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
-            _startTimer(name, "update");
+          var options = {
+            projectId: projectId,
+            region: region,
+            functionName: functionName,
+            trigger: functionTrigger,
+            sourceUploadUrl: sourceUrl,
+            labels: _.assign({}, deploymentTool.labels, functionInfo.labels),
+            availableMemoryMb: functionInfo.availableMemoryMb,
+            timeout: functionInfo.timeout,
+            runtime: runtime,
+            maxInstances: functionInfo.maxInstances,
+            vpcConnector: functionInfo.vpcConnector,
+            vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+            serviceAccountEmail: functionInfo.serviceAccountEmail,
+            environmentVariables: _.assign(
+              {},
+              existingFunction.environmentVariables,
+              defaultEnvVariables
+            ),
+          };
+          utils.logBullet(
+            clc.bold.cyan("functions: ") +
+              "updating " +
+              friendlyRuntimeName(runtime) +
+              " function " +
+              clc.bold(helper.getFunctionLabel(name)) +
+              "..."
+          );
+          logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
+          _startTimer(name, "update");
 
-            deployments.push({
-              name: name,
-              retryFunction: function() {
-                return gcp.cloudfunctions.update(options);
-              },
-              trigger: functionTrigger,
-            });
-          }
+          deployments.push({
+            name: name,
+            retryFunction: function() {
+              return gcp.cloudfunctions.update(options);
+            },
+            trigger: functionTrigger,
+          });
         })
         .value();
 
       // Delete functions
       var functionsToDelete = _.chain(existingFunctions)
         .filter(function(functionInfo) {
-          if (typeof functionInfo.labels === "undefined") {
-            return (
-              functionInfo.sourceArchiveUrl === legacySourceUrlOne ||
-              functionInfo.sourceArchiveUrl === legacySourceUrlTwo
-            );
-          }
           return deploymentTool.check(functionInfo.labels);
         }) // only delete functions uploaded via firebase-tools
         .map(pluckName)
@@ -568,7 +526,7 @@ module.exports = function(context, options, payload) {
               deployments.length - failedDeployments.length
             );
           }
-          checkForNode8(runtime);
+
           if (failedDeployments.length > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:");
             const sortedFailedDeployments = failedDeployments.sort();

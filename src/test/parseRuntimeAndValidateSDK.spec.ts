@@ -39,10 +39,12 @@ describe("getRuntimeChoice", () => {
       }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG);
     });
 
-    it("should return node 8 if runtime field is set to node 8", () => {
+    it("should error if runtime field is set to node 8", () => {
       SDKVersionStub.returns("2.0.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "nodejs8")).to.equal("nodejs8");
+      expect(() => {
+        runtime.getRuntimeChoice("path/to/source", "nodejs8");
+      }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_FIREBASE_JSON_MSG);
     });
 
     it("should return node 10 if runtime field is set to node 10", () => {
@@ -56,6 +58,13 @@ describe("getRuntimeChoice", () => {
       SDKVersionStub.returns("3.4.0");
 
       expect(runtime.getRuntimeChoice("path/to/source", "nodejs12")).to.equal("nodejs12");
+      expect(warningSpy).not.called;
+    });
+
+    it("should return node 14 if runtime field is set to node 14", () => {
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "nodejs14")).to.equal("nodejs14");
       expect(warningSpy).not.called;
     });
 
@@ -84,11 +93,13 @@ describe("getRuntimeChoice", () => {
       }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG);
     });
 
-    it("should return node 8 if engines field is set to node 8", () => {
+    it("should error if engines field is set to node 8", () => {
       cjsonStub.returns({ engines: { node: "8" } });
       SDKVersionStub.returns("2.0.0");
 
-      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs8");
+      expect(() => {
+        runtime.getRuntimeChoice("path/to/source", "");
+      }).to.throw(runtime.UNSUPPORTED_NODE_VERSION_PACKAGE_JSON_MSG);
     });
 
     it("should return node 10 if engines field is set to node 10", () => {
@@ -104,6 +115,14 @@ describe("getRuntimeChoice", () => {
       SDKVersionStub.returns("3.4.0");
 
       expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs12");
+      expect(warningSpy).not.called;
+    });
+
+    it("should return node 14 if engines field is set to node 12", () => {
+      cjsonStub.returns({ engines: { node: "14" } });
+      SDKVersionStub.returns("3.4.0");
+
+      expect(runtime.getRuntimeChoice("path/to/source", "")).to.equal("nodejs14");
       expect(warningSpy).not.called;
     });
 
