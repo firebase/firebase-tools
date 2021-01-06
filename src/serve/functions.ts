@@ -15,22 +15,22 @@ export class FunctionsServer {
     }
   }
 
-  async start(options: any, args: FunctionsEmulatorArgs): Promise<void> {
+  async start(options: any, partialArgs: Partial<FunctionsEmulatorArgs>): Promise<void> {
     const projectId = getProjectId(options, false);
     const functionsDir = path.join(
       options.config.projectDir,
       options.config.get("functions.source")
     );
+    const nodeMajorVersion = parseRuntimeVersion(options.config.get("functions.runtime"));
 
-    args = {
-      // Normally, these two fields are included in args (and typed as such).
-      // However, some poorly-typed tests may not have them and we need to provide
-      // default values for those tests to work properly.
+    // Normally, these two fields are included in args (and typed as such).
+    // However, some poorly-typed tests may not have them and we need to provide
+    // default values for those tests to work properly.
+    const args: FunctionsEmulatorArgs = {
       projectId,
       functionsDir,
-      nodeMajorVersion: parseRuntimeVersion(options.config.get("functions.runtime")),
-
-      ...(args as object),
+      nodeMajorVersion,
+      ...partialArgs,
     };
 
     if (options.host) {
