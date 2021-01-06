@@ -6,6 +6,7 @@ var _ = require("lodash");
 var api = require("./api");
 var logger = require("./logger");
 var utils = require("./utils");
+var { FirebaseError } = require("./error");
 
 var ALLOWED_JSON_KEYS = [
   "localId",
@@ -151,7 +152,7 @@ var validateOptions = function(options) {
   var hashInputOrder = options.hashInputOrder ? options.hashInputOrder.toUpperCase() : undefined;
   if (hashInputOrder) {
     if (hashInputOrder != "SALT_FIRST" && hashInputOrder != "PASSWORD_FIRST") {
-      return utils.reject("Unknown password hash order flag", { exit: 1 });
+      throw new FirebaseError("Unknown password hash order flag", { exit: 1 });
     } else {
       hashOptions["passwordHashOrder"] =
         hashInputOrder == "SALT_FIRST" ? "SALT_AND_PASSWORD" : "PASSWORD_AND_SALT";
@@ -173,7 +174,7 @@ var _validateRequiredParameters = function(options) {
     case "HMAC_SHA1":
     case "HMAC_MD5":
       if (!options.hashKey || options.hashKey === "") {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -187,7 +188,7 @@ var _validateRequiredParameters = function(options) {
       roundsNum = parseInt(options.rounds, 10);
       var minRounds = hashAlgo === "MD5" ? 0 : 1;
       if (isNaN(roundsNum) || roundsNum < minRounds || roundsNum > 8192) {
-        return utils.reject(
+        throw new FirebaseError(
           `Must provide valid rounds(${minRounds}..8192) for hash algorithm ${options.hashAlgo}`,
           { exit: 1 }
         );
@@ -197,7 +198,7 @@ var _validateRequiredParameters = function(options) {
     case "PBKDF2_SHA256":
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum < 0 || roundsNum > 120000) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid rounds(0..120000) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -205,21 +206,21 @@ var _validateRequiredParameters = function(options) {
       return { hashAlgo: hashAlgo, rounds: options.rounds, valid: true };
     case "SCRYPT":
       if (!options.hashKey || options.hashKey === "") {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide hash key(base64 encoded) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
       }
       roundsNum = parseInt(options.rounds, 10);
       if (isNaN(roundsNum) || roundsNum <= 0 || roundsNum > 8) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid rounds(1..8) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
       }
       var memCost = parseInt(options.memCost, 10);
       if (isNaN(memCost) || memCost <= 0 || memCost > 14) {
-        return utils.reject(
+        throw new FirebaseError(
           "Must provide valid memory cost(1..14) for hash algorithm " + options.hashAlgo,
           { exit: 1 }
         );
@@ -252,7 +253,7 @@ var _validateRequiredParameters = function(options) {
         dkLen: dkLen,
       };
     default:
-      return utils.reject("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
+      throw new FirebaseError("Unsupported hash algorithm " + clc.bold(options.hashAlgo));
   }
 };
 

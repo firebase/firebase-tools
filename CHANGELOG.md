@@ -1,2 +1,6 @@
-- Improves error handling for `firestore:delete` when deleting very large documents.
-- Support batchCreate API in Auth Emulator (#2947).
+- Allows more than 100 concurrent connections to the Realtime Database emulator.
+- Fixes incorrect `databaseURL` inside the Cloud Functions emulator for new projects (#2965).
+- Fixes function URLs when emulating namespaced/grouped Cloud Functions (#2966).
+- Supports using `firebase-bolt` installed in local `node_modules` (#767).
+- Fixes issue where Auth triggers were not disabled when background trigges were disabled.
+- Re-adds support for proxying HTTP requests in a new underlying library (#2927).

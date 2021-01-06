@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true, // Don't actually produce any compiled output.
+    "checkJs": true, // We want to do a pass on JS files.
+    "resolveJsonModule": true, // Makes require(package.json) acceptable (added).
+    "strict": false, // Need to relax some strictness to check JS (changed).
+    "strictBindCallApply": true, // This is part of "strict: true" (added).
+    "strictFunctionTypes": true, // This is part of "strict: true" (added).
+    "noImplicitThis": true, // This is part of "strict: true" (added).
+  }
+}

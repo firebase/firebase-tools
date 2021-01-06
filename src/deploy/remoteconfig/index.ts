@@ -1,4 +1,4 @@
-module.exports = {
-  prepare: require("./prepare"),
-  release: require("./release"),
-};
+import prepare from "./prepare";
+import release from "./release";
+
+export { prepare, release };

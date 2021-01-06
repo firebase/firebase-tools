@@ -42,6 +42,11 @@ import { FirebaseError } from "../error";
 import { WorkQueue } from "./workQueue";
 import { createDestroyer } from "../utils";
 import { getCredentialPathAsync } from "../defaultCredentials";
+import {
+  getProjectAdminSdkConfigOrCached,
+  AdminSdkConfig,
+  constructDefaultAdminSdkConfig,
+} from "./adminSdkConfig";
 
 const EVENT_INVOKE = "functions:invoke";
 
@@ -128,8 +133,9 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workerPool: RuntimeWorkerPool;
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
-
   private multicastTriggers: { [s: string]: string[] } = {};
+
+  private adminSdkConfig: AdminSdkConfig;
 
   constructor(private args: FunctionsEmulatorArgs) {
     // TODO: Would prefer not to have static state but here we are!
@@ -140,6 +146,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       this.args.disabledRuntimeFeatures = this.args.disabledRuntimeFeatures || {};
       this.args.disabledRuntimeFeatures.timeout = true;
     }
+
+    this.adminSdkConfig = {
+      projectId: this.args.projectId,
+    };
 
     const mode = this.args.debugPort
       ? FunctionsExecutionMode.SEQUENTIAL
@@ -212,15 +222,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       const projectId = req.params.project_id;
       const reqBody = (req as RequestWithRawBody).rawBody;
       const proto = JSON.parse(reqBody.toString());
-
-      // When background triggers are disabled just ignore the request and respond
-      // with 204 "No Content"
-      const record = this.triggers[triggerId];
-      if (record && !record.enabled) {
-        this.logger.log("DEBUG", `Ignoring background trigger: ${req.url}`);
-        res.status(204).send();
-        return;
-      }
 
       this.workQueue.submit(() => {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
@@ -317,6 +318,18 @@ export class FunctionsEmulator implements EmulatorInstance {
       ...this.args.env,
     };
 
+    const adminSdkConfig = await getProjectAdminSdkConfigOrCached(this.args.projectId);
+    if (adminSdkConfig) {
+      this.adminSdkConfig = adminSdkConfig;
+    } else {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        "Unable to fetch project Admin SDK configuration, Admin SDK behavior in Cloud Functions emulator may be incorrect."
+      );
+      this.adminSdkConfig = constructDefaultAdminSdkConfig(this.args.projectId);
+    }
+
     const { host, port } = this.getInfo();
     this.workQueue.start();
     const server = this.createHubServer().listen(port, host);
@@ -346,7 +359,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return debouncedLoadTriggers();
     });
 
-    return this.loadTriggers(true);
+    return this.loadTriggers(/* force= */ true);
   }
 
   async stop(): Promise<void> {
@@ -404,7 +417,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true;
       }
 
-      return this.getTriggerDefinitionByName(definition.name) === undefined;
+      // We want to add a trigger if we don't already have an enabled trigger
+      // with the same entryPoint.
+      const anyEnabledMatch = Object.values(this.triggers).some((record) => {
+        return record.def.entryPoint === definition.entryPoint && record.enabled;
+      });
+      return !anyEnabledMatch;
     });
 
     for (const definition of toSetup) {
@@ -421,7 +439,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           host,
           port,
           this.args.projectId,
-          definition.entryPoint,
+          definition.name,
           region
         );
       } else if (definition.eventTrigger) {
@@ -685,6 +703,10 @@ export class FunctionsEmulator implements EmulatorInstance {
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
         auth: EmulatorRegistry.getInfo(Emulators.AUTH),
       },
+      adminSdkConfig: {
+        databaseURL: this.adminSdkConfig.databaseURL,
+        storageBucket: this.adminSdkConfig.storageBucket,
+      },
       disabled_features: this.args.disabledRuntimeFeatures,
     };
   }
@@ -853,10 +875,16 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   async reloadTriggers() {
     this.triggerGeneration++;
-    return this.loadTriggers(true);
+    return this.loadTriggers();
   }
 
   private async handleBackgroundTrigger(projectId: string, triggerKey: string, proto: any) {
+    // If background triggers are disabled, exit early
+    const record = this.triggers[triggerKey];
+    if (record && !record.enabled) {
+      return Promise.reject({ code: 204, body: "Background triggers are curently disabled." });
+    }
+
     const trigger = this.getTriggerDefinitionByKey(triggerKey);
     const service = getFunctionService(trigger);
     const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.BACKGROUND, proto);
@@ -956,8 +984,19 @@ export class FunctionsEmulator implements EmulatorInstance {
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
     const method = req.method;
     const triggerId = req.params.trigger_name;
-    const trigger = this.getTriggerDefinitionByKey(triggerId);
 
+    if (!this.triggers[triggerId]) {
+      res
+        .status(404)
+        .send(
+          `Function ${triggerId} does not exist, valid triggers are: ${Object.keys(
+            this.triggers
+          ).join(", ")}`
+        );
+      return;
+    }
+
+    const trigger = this.getTriggerDefinitionByKey(triggerId);
     logger.debug(`Accepted request ${method} ${req.url} --> ${triggerId}`);
 
     const reqBody = (req as RequestWithRawBody).rawBody;

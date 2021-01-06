@@ -66,6 +66,10 @@ export interface FunctionsRuntimeBundle {
       port: number;
     };
   };
+  adminSdkConfig: {
+    databaseURL?: string;
+    storageBucket?: string;
+  };
   socketPath?: string;
   disabled_features?: FunctionsRuntimeFeatures;
   nodeMajorVersion?: number;
