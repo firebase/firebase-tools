@@ -4,3 +4,4 @@
 - Supports using `firebase-bolt` installed in local `node_modules` (#767).
 - Fixes issue where Auth triggers were not disabled when background trigges were disabled.
 - Re-adds support for proxying HTTP requests in a new underlying library (#2927).
+- Updates the Cloud Functions for Firebase templates used in initialization (#2919).
