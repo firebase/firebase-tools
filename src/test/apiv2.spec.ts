@@ -319,7 +319,7 @@ describe("apiv2", () => {
         ]);
       });
 
-      it.only("should be able to make a basic GET request", async () => {
+      it("should be able to make a basic GET request", async () => {
         const c = new Client({
           urlPrefix: "http://127.0.0.1:52673",
           proxy: "http://127.0.0.1:52672",
