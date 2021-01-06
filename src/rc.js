@@ -18,6 +18,13 @@ var TARGET_TYPES = {
   hosting: { resource: "site", exclusive: true },
 };
 
+/**
+ * @constructor
+ * @this RC
+ *
+ * @param {string=} rcpath
+ * @param {object=} data
+ */
 var RC = function(rcpath, data) {
   this.path = rcpath;
   this.data = data || {};
@@ -69,7 +76,7 @@ RC.prototype = {
           clc.bold(type) +
           ". Must be one of " +
           _.keys(TARGET_TYPES).join(", "),
-        { code: 1 }
+        { exit: 1 }
       );
     }
 
@@ -80,15 +87,13 @@ RC.prototype = {
     var changed = [];
 
     // remove resources from existing targets
-    resources.forEach(
-      function(resource) {
-        var cur = this.findTarget(project, type, resource);
-        if (cur && cur !== targetName) {
-          this.unsetTargetResource(project, type, cur, resource);
-          changed.push({ resource: resource, target: cur });
-        }
-      }.bind(this)
-    );
+    resources.forEach((resource) => {
+      var cur = this.findTarget(project, type, resource);
+      if (cur && cur !== targetName) {
+        this.unsetTargetResource(project, type, cur, resource);
+        changed.push({ resource: resource, target: cur });
+      }
+    });
 
     // apply resources to new target
     var existing = this.get(["targets", project, type, targetName], []);

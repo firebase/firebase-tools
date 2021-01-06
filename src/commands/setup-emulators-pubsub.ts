@@ -1,5 +1,5 @@
 import { Command } from "../command";
-const downloadEmulator = require("../emulator/download");
+const { downloadEmulator } = require("../emulator/download");
 
 const EMULATOR_NAME = "pubsub";
 

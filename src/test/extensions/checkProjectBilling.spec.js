@@ -11,25 +11,43 @@ const cloudbilling = require("../../gcp/cloudbilling");
 const expect = chai.expect;
 
 describe("checkProjectBilling", function() {
+  /** @type {sinon.SinonStub} */
+  let promptOnceStub;
+
+  /** @type {sinon.SinonStub} */
+  let checkBillingEnabledStub;
+
+  /** @type {sinon.SinonStub} */
+  let listBillingAccountsStub;
+
+  /** @type {sinon.SinonStub} */
+  let setBillingAccountStub;
+
   beforeEach(function() {
-    sinon.stub(prompt, "promptOnce");
-    sinon.stub(cloudbilling, "checkBillingEnabled").resolves();
-    sinon.stub(cloudbilling, "listBillingAccounts").resolves();
-    sinon.stub(cloudbilling, "setBillingAccount").resolves();
+    promptOnceStub = sinon.stub(prompt, "promptOnce");
+
+    checkBillingEnabledStub = sinon.stub(cloudbilling, "checkBillingEnabled");
+    checkBillingEnabledStub.resolves();
+
+    listBillingAccountsStub = sinon.stub(cloudbilling, "listBillingAccounts");
+    listBillingAccountsStub.resolves();
+
+    setBillingAccountStub = sinon.stub(cloudbilling, "setBillingAccount");
+    setBillingAccountStub.resolves();
   });
 
   afterEach(function() {
-    prompt.promptOnce.restore();
-    cloudbilling.checkBillingEnabled.restore();
-    cloudbilling.listBillingAccounts.restore();
-    cloudbilling.setBillingAccount.restore();
+    promptOnceStub.restore();
+    checkBillingEnabledStub.restore();
+    listBillingAccountsStub.restore();
+    setBillingAccountStub.restore();
   });
 
   it("should resolve if billing enabled.", function() {
     const projectId = "already enabled";
     const extensionName = "test extension";
 
-    cloudbilling.checkBillingEnabled.resolves(true);
+    checkBillingEnabledStub.resolves(true);
 
     return checkProjectBilling
       .isBillingEnabled(projectId)
@@ -39,10 +57,10 @@ describe("checkProjectBilling", function() {
         }
       })
       .then(() => {
-        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-        expect(cloudbilling.listBillingAccounts.notCalled);
-        expect(cloudbilling.setBillingAccount.notCalled);
-        expect(prompt.promptOnce.notCalled);
+        expect(checkBillingEnabledStub.calledWith(projectId));
+        expect(listBillingAccountsStub.notCalled);
+        expect(setBillingAccountStub.notCalled);
+        expect(promptOnceStub.notCalled);
       });
   });
 
@@ -57,10 +75,10 @@ describe("checkProjectBilling", function() {
       },
     ];
 
-    cloudbilling.checkBillingEnabled.resolves(false);
-    cloudbilling.listBillingAccounts.resolves(accounts);
-    cloudbilling.setBillingAccount.resolves(true);
-    prompt.promptOnce.resolves("test-account");
+    checkBillingEnabledStub.resolves(false);
+    listBillingAccountsStub.resolves(accounts);
+    setBillingAccountStub.resolves(true);
+    promptOnceStub.resolves("test-account");
 
     return checkProjectBilling
       .isBillingEnabled(projectId)
@@ -70,12 +88,10 @@ describe("checkProjectBilling", function() {
         }
       })
       .then(() => {
-        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-        expect(cloudbilling.listBillingAccounts.calledOnce);
-        expect(cloudbilling.setBillingAccount.calledOnce);
-        expect(
-          cloudbilling.setBillingAccount.calledWith(projectId, "test-cloud-billing-account-name")
-        );
+        expect(checkBillingEnabledStub.calledWith(projectId));
+        expect(listBillingAccountsStub.calledOnce);
+        expect(setBillingAccountStub.calledOnce);
+        expect(setBillingAccountStub.calledWith(projectId, "test-cloud-billing-account-name"));
       });
   });
 
@@ -84,10 +100,10 @@ describe("checkProjectBilling", function() {
     const extensionName = "test extension 3";
     const accounts = [];
 
-    cloudbilling.checkBillingEnabled.onCall(0).resolves(false);
-    cloudbilling.checkBillingEnabled.onCall(1).resolves(true);
-    cloudbilling.listBillingAccounts.resolves(accounts);
-    prompt.promptOnce.resolves();
+    checkBillingEnabledStub.onCall(0).resolves(false);
+    checkBillingEnabledStub.onCall(1).resolves(true);
+    listBillingAccountsStub.resolves(accounts);
+    promptOnceStub.resolves();
 
     return checkProjectBilling
       .isBillingEnabled(projectId)
@@ -97,10 +113,10 @@ describe("checkProjectBilling", function() {
         }
       })
       .then(() => {
-        expect(cloudbilling.checkBillingEnabled.calledWith(projectId));
-        expect(cloudbilling.listBillingAccounts.calledOnce);
-        expect(cloudbilling.setBillingAccount.notCalled);
-        expect(cloudbilling.checkBillingEnabled.callCount).to.equal(2);
+        expect(checkBillingEnabledStub.calledWith(projectId));
+        expect(listBillingAccountsStub.calledOnce);
+        expect(setBillingAccountStub.notCalled);
+        expect(checkBillingEnabledStub.callCount).to.equal(2);
       });
   });
 });

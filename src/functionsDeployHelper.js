@@ -105,14 +105,18 @@ function getFunctionsInfo(parsedTriggers, projectId) {
     // to functionsInfo for each region.
     _.forEach(trigger.regions, function(region) {
       var triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
-      functionsInfo.push(
-        _.chain(triggerDeepCopy)
-          .omit("regions")
-          .assign({
-            name: ["projects", projectId, "locations", region, "functions", trigger.name].join("/"),
-          })
-          .value()
-      );
+      if (triggerDeepCopy.regions) {
+        delete triggerDeepCopy.regions;
+      }
+      triggerDeepCopy.name = [
+        "projects",
+        projectId,
+        "locations",
+        region,
+        "functions",
+        trigger.name,
+      ].join("/");
+      functionsInfo.push(triggerDeepCopy);
     });
   });
   return functionsInfo;
@@ -120,7 +124,7 @@ function getFunctionsInfo(parsedTriggers, projectId) {
 
 function getFunctionTrigger(functionInfo) {
   if (functionInfo.httpsTrigger) {
-    return _.pick(functionInfo, "httpsTrigger");
+    return { httpsTrigger: functionInfo.httpsTrigger };
   } else if (functionInfo.eventTrigger) {
     var trigger = functionInfo.eventTrigger;
     trigger.failurePolicy = functionInfo.failurePolicy;
@@ -128,7 +132,7 @@ function getFunctionTrigger(functionInfo) {
   }
 
   logger.debug("Unknown trigger type found in:", functionInfo);
-  return new FirebaseError("Could not parse function trigger, unknown trigger type.");
+  throw new FirebaseError("Could not parse function trigger, unknown trigger type.");
 }
 
 function getFunctionName(fullName) {
@@ -173,7 +177,7 @@ function pollDeploys(operations, printSuccess, printFail, printTooManyOps, proje
   // See "Read requests" quota at https://cloud.google.com/console/apis/api/cloudfunctions/quotas
   if (_.size(operations) > 90) {
     printTooManyOps(projectId);
-    return Promise.resolve();
+    return Promise.resolve([]);
   } else if (_.size(operations) > 40) {
     interval = 10 * 1000;
   } else if (_.size(operations) > 15) {

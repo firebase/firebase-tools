@@ -44,7 +44,7 @@ const ansiStrip = require("cli-color/strip");
 const { configstore } = require("../configstore");
 const _ = require("lodash");
 let args = process.argv.slice(2);
-const handlePreviewToggles = require("../handlePreviewToggles");
+const { handlePreviewToggles } = require("../handlePreviewToggles");
 const utils = require("../utils");
 let cmd;
 
@@ -78,10 +78,10 @@ function findAvailableLogFile() {
 const logFilename = findAvailableLogFile();
 
 if (!process.env.DEBUG && _.includes(args, "--debug")) {
-  process.env.DEBUG = true;
+  process.env.DEBUG = "true";
 }
 
-process.env.IS_FIREBASE_CLI = true;
+process.env.IS_FIREBASE_CLI = "true";
 
 logger.add(
   new winston.transports.File({
