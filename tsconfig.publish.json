@@ -1,19 +1,7 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
-    "module": "commonjs",
-    "strict": true,
-    "outDir": "lib",
-    "removeComments": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "es2017",
     "sourceMap": false,
-    "typeRoots": [
-      "node_modules/@types",
-      "src/types"
-    ]
   },
-  "include": ["src/**/*"],
   "exclude": ["src/test/**/*"]
 }
