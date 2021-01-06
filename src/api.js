@@ -51,7 +51,7 @@ var _request = function(options, logOptions) {
       if (response.statusCode >= 400 && !logOptions.skipResponseBody) {
         logger.debug("<<< HTTP RESPONSE BODY", response.body);
         if (!options.resolveOnHTTPError) {
-          return reject(responseToError(response, body, options));
+          return reject(responseToError(response, body));
         }
       }
 

@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "noEmit": true, /* added: don't actually produce any compiled output */
+    "checkJs": true, /* added: we want to do a pass on JS files */
+    "resolveJsonModule": true, /* added: makes require(package.json) acceptable */
+    "module": "commonjs",
+    "strict": false, /* changed: need to relax some strictness to check JS  */
+    "strictBindCallApply": true, /* added: this is part of "strict: true" */
+    "strictFunctionTypes": true, /* added: this is part of "strict: true" */
+    "noImplicitThis": true, /* added: this is part of "strict: true" */
+    "outDir": "lib",
+    "removeComments": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "typeRoots": [
+      "node_modules/@types",
+      "src/types"
+    ]
+  },
+  "include": ["src/**/*"]
+}

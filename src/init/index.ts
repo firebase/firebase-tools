@@ -13,11 +13,11 @@ export interface RCFile {
 export interface Setup {
   config: Indexable;
   rcfile: RCFile;
-  featureArg: boolean;
   features: string[];
-  project: Indexable;
-  projectId: string;
-  projectLocation: string;
+  featureArg?: boolean;
+  project?: Indexable;
+  projectId?: string;
+  projectLocation?: string;
 }
 
 // TODO: Convert features/index.js to TypeScript so it exports

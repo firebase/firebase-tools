@@ -215,22 +215,26 @@ var _loginWithLocalhost = function(port, userHint, authProvider) {
 
     var server = http.createServer(function(req, res) {
       var tokens;
-      var query = _.get(url.parse(req.url, true), "query", {});
+      var query = _.get(url.parse(`${req.url}`, true), "query", {});
 
-      if (query.state === _nonce && _.isString(query.code)) {
+      var queryState = _.get(query, "state");
+      var queryCode = _.get(query, "code");
+
+      if (queryState === _nonce && _.isString(queryCode)) {
         if (authProvider === "GITHUB") {
-          if (query.code) {
+          var code = _.get(query, "code");
+          if (code) {
             return _respondWithFile(req, res, 200, "../templates/loginSuccessGithub.html")
               .then(() => {
                 server.close();
-                return _getGithubTokensFromAuthorizationCode(query.code, callbackUrl);
+                return _getGithubTokensFromAuthorizationCode(code, callbackUrl);
               })
               .then((ghAccessToken) => {
                 return resolve(ghAccessToken);
               });
           }
         } else {
-          return _getTokensFromAuthorizationCode(query.code, callbackUrl)
+          return _getTokensFromAuthorizationCode(queryCode, callbackUrl)
             .then(function(result) {
               tokens = result;
               return _respondWithFile(req, res, 200, "../templates/loginSuccess.html");
@@ -378,21 +382,19 @@ var logout = function(refreshToken) {
     lastAccessToken = {};
   }
   _logoutCurrentSession(refreshToken);
-  return api.request(
-    "GET",
-    "/o/oauth2/revoke",
-    {
+  return api
+    .request("GET", "/o/oauth2/revoke", {
       origin: api.authOrigin,
       data: {
         token: refreshToken,
       },
-    },
-    function() {
+    })
+    .catch((e) => {
       throw new FirebaseError("Authentication Error.", {
         exit: 1,
+        original: e,
       });
-    }
-  );
+    });
 };
 
 var auth = {
