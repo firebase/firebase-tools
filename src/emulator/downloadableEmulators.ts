@@ -26,14 +26,14 @@ const CACHE_DIR =
 
 const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails } = {
   database: {
-    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.1.jar"),
-    version: "4.7.1",
+    downloadPath: path.join(CACHE_DIR, "firebase-database-emulator-v4.7.2.jar"),
+    version: "4.7.2",
     opts: {
       cacheDir: CACHE_DIR,
       remoteUrl:
-        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.1.jar",
-      expectedSize: 28926787,
-      expectedChecksum: "2985623323b74e23955915b918a11b1e",
+        "https://storage.googleapis.com/firebase-preview-drop/emulator/firebase-database-emulator-v4.7.2.jar",
+      expectedSize: 28910604,
+      expectedChecksum: "264e5df0c0661c064ef7dc9ce8179aba",
       namePrefix: "firebase-database-emulator",
     },
   },
@@ -50,15 +50,15 @@ const DownloadDetails: { [s in DownloadableEmulators]: EmulatorDownloadDetails }
     },
   },
   ui: {
-    version: "1.4.0",
-    downloadPath: path.join(CACHE_DIR, "ui-v1.4.0.zip"),
-    unzipDir: path.join(CACHE_DIR, "ui-v1.4.0"),
-    binaryPath: path.join(CACHE_DIR, "ui-v1.4.0", "server.bundle.js"),
+    version: "1.4.1",
+    downloadPath: path.join(CACHE_DIR, "ui-v1.4.1.zip"),
+    unzipDir: path.join(CACHE_DIR, "ui-v1.4.1"),
+    binaryPath: path.join(CACHE_DIR, "ui-v1.4.1", "server.bundle.js"),
     opts: {
       cacheDir: CACHE_DIR,
-      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.0.zip",
-      expectedSize: 3374019,
-      expectedChecksum: "50a30d56d85d43ee37316a9a4ac71fc3",
+      remoteUrl: "https://storage.googleapis.com/firebase-preview-drop/emulator/ui-v1.4.1.zip",
+      expectedSize: 3374020,
+      expectedChecksum: "7a82fed575a2b9a008d96080a7dcccdb",
       namePrefix: "ui",
     },
   },

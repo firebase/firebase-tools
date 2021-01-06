@@ -9,7 +9,9 @@ var _ = require("lodash");
 module.exports = function(filename) {
   var ruleSrc = fs.readFileSync(filename, "utf8");
 
-  var result = spawn.sync("firebase-bolt", {
+  // Use 'npx' to spawn 'firebase-bolt' so that it can be picked up
+  // from either a global install or from local ./node_modules/
+  var result = spawn.sync("npx", ["--no-install", "firebase-bolt"], {
     input: ruleSrc,
     timeout: 10000,
     encoding: "utf-8",

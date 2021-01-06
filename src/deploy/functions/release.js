@@ -526,6 +526,7 @@ module.exports = function(context, options, payload) {
               deployments.length - failedDeployments.length
             );
           }
+
           if (failedDeployments.length > 0) {
             logger.info("\n\nFunctions deploy had errors with the following functions:");
             const sortedFailedDeployments = failedDeployments.sort();

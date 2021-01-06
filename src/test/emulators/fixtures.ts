@@ -4,8 +4,12 @@ export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;
 
 export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
-export const FunctionRuntimeBundles = {
+export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } = {
   onCreate: {
+    adminSdkConfig: {
+      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+      storageBucket: "fake-project-id.appspot.com",
+    },
     emulators: {
       firestore: {
         host: "localhost",
@@ -39,9 +43,12 @@ export const FunctionRuntimeBundles = {
     },
     triggerId: "function_id",
     projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-
+  },
   onWrite: {
+    adminSdkConfig: {
+      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+      storageBucket: "fake-project-id.appspot.com",
+    },
     emulators: {
       firestore: {
         host: "localhost",
@@ -75,9 +82,12 @@ export const FunctionRuntimeBundles = {
     },
     triggerId: "function_id",
     projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-
+  },
   onDelete: {
+    adminSdkConfig: {
+      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+      storageBucket: "fake-project-id.appspot.com",
+    },
     emulators: {
       firestore: {
         host: "localhost",
@@ -111,9 +121,12 @@ export const FunctionRuntimeBundles = {
     },
     triggerId: "function_id",
     projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-
+  },
   onUpdate: {
+    adminSdkConfig: {
+      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+      storageBucket: "fake-project-id.appspot.com",
+    },
     emulators: {
       firestore: {
         host: "localhost",
@@ -159,9 +172,12 @@ export const FunctionRuntimeBundles = {
     },
     triggerId: "function_id",
     projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
-
+  },
   onRequest: {
+    adminSdkConfig: {
+      databaseURL: "https://fake-project-id-default-rtdb.firebaseio.com",
+      storageBucket: "fake-project-id.appspot.com",
+    },
     emulators: {
       firestore: {
         host: "localhost",
@@ -171,5 +187,5 @@ export const FunctionRuntimeBundles = {
     cwd: MODULE_ROOT,
     triggerId: "function_id",
     projectId: "fake-project-id",
-  } as FunctionsRuntimeBundle,
+  },
 };
