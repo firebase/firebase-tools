@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-ts-ignore */	
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
+
 "use strict";
 
 var clc = require("cli-color");
