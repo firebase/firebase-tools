@@ -1,0 +1,1 @@
+- Fixes `firebase init` error when no arguments pased (#3000)
