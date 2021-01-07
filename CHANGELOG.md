@@ -1,0 +1,1 @@
+- Updates underlying timeout handler when proxying through the Hosting emulator.

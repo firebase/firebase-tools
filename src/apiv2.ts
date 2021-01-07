@@ -2,6 +2,7 @@ import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 import { URLSearchParams } from "url";
 import * as ProxyAgent from "proxy-agent";
+import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 
 import { FirebaseError } from "./error";
@@ -18,7 +19,10 @@ interface RequestOptions<T> extends VerbOptions<T> {
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
   redirect?: "error" | "follow" | "manual";
+  // Deprecated. Use `timeout`.
   signal?: AbortSignal;
+  // Timeout, in ms. 0 is no timeout.
+  timeout?: number;
 }
 
 interface VerbOptions<T> {
@@ -272,7 +276,6 @@ export class Client {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
-      signal: options.signal,
     };
 
     if (this.opts.proxy) {
@@ -281,6 +284,15 @@ export class Client {
     const envProxy = proxyURIFromEnv();
     if (envProxy) {
       fetchOptions.agent = new ProxyAgent(envProxy);
+    }
+
+    let reqTimeout: NodeJS.Timeout | undefined;
+    if (options.timeout) {
+      const controller = new AbortController();
+      reqTimeout = setTimeout(() => {
+        controller.abort();
+      }, options.timeout);
+      fetchOptions.signal = controller.signal;
     }
 
     if (typeof options.body === "string" || isStream(options.body)) {
@@ -295,7 +307,16 @@ export class Client {
     try {
       res = await fetch(fetchURL, fetchOptions);
     } catch (err) {
+      const isAbortError = err.name.includes("AbortError");
+      if (isAbortError) {
+        throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, { original: err });
+      }
       throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
+    } finally {
+      // If we succeed or failed, clear the timeout.
+      if (reqTimeout) {
+        clearTimeout(reqTimeout);
+      }
     }
 
     let body: ResT;

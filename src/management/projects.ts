@@ -1,18 +1,19 @@
-import * as api from "../api";
+import * as _ from "lodash";
 import * as clc from "cli-color";
 import * as ora from "ora";
-import * as _ from "lodash";
 
-import * as logger from "../logger";
+import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
 import { pollOperation } from "../operation-poller";
-import { Question } from "inquirer";
 import { promptOnce } from "../prompt";
+import { Question } from "inquirer";
+import * as api from "../api";
+import * as logger from "../logger";
 import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
-const PROJECT_LIST_PAGE_SIZE = 1000;
+const PROJECT_LIST_PAGE_SIZE = 500;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export interface CloudProjectInfo {
@@ -67,6 +68,12 @@ export const PROJECTS_CREATE_QUESTIONS: Question[] = [
     message: "What would you like to call your project? (defaults to your project ID)",
   },
 ];
+
+const firebaseAPIClient = new Client({
+  urlPrefix: api.firebaseApiOrigin,
+  auth: true,
+  apiVersion: "v1beta1",
+});
 
 export async function createFirebaseProjectAndLog(
   projectId: string,
@@ -321,20 +328,24 @@ async function getProjectPage<T>(
     pageToken?: string;
   }
 ): Promise<ProjectPage<T>> {
-  const { responseKey, pageToken, pageSize } = options;
-  const pageTokenQueryString = pageToken ? `&pageToken=${pageToken}` : "";
-  const apiResponse = await api.request(
-    "GET",
-    `${apiResource}?pageSize=${pageSize}${pageTokenQueryString}`,
-    {
-      auth: true,
-      origin: api.firebaseApiOrigin,
-      timeout: TIMEOUT_MILLIS,
-    }
-  );
+  const queryParams: { [key: string]: string } = {
+    pageSize: `${options.pageSize}`,
+  };
+  if (options.pageToken) {
+    queryParams.pageToken = options.pageToken;
+  }
+  const res = await firebaseAPIClient.request<void, { [key: string]: T[] | string | undefined }>({
+    method: "GET",
+    path: apiResource,
+    queryParams,
+    timeout: TIMEOUT_MILLIS,
+    skipLog: { resBody: true },
+  });
+  const projects = res.body[options.responseKey];
+  const token = res.body.nextPageToken;
   return {
-    projects: apiResponse.body[responseKey] || [],
-    nextPageToken: apiResponse.body.nextPageToken,
+    projects: Array.isArray(projects) ? projects : [],
+    nextPageToken: typeof token === "string" ? token : undefined,
   };
 }
 
@@ -349,7 +360,7 @@ export async function getFirebaseProjectPage(
   let projectPage;
 
   try {
-    projectPage = await getProjectPage<FirebaseProjectMetadata>("/v1beta1/projects", {
+    projectPage = await getProjectPage<FirebaseProjectMetadata>("/projects", {
       responseKey: "results",
       pageSize,
       pageToken,
@@ -374,7 +385,7 @@ export async function getAvailableCloudProjectPage(
   pageToken?: string
 ): Promise<ProjectPage<CloudProjectInfo>> {
   try {
-    return await getProjectPage<CloudProjectInfo>("/v1beta1/availableProjects", {
+    return await getProjectPage<CloudProjectInfo>("/availableProjects", {
       responseKey: "projectInfo",
       pageSize,
       pageToken,
