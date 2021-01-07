@@ -1,0 +1,2 @@
+- Fixes `firebase init` error when no arguments pased (#3000)
+- Fixes `firebase serve` error when serving Functions (#3000)
