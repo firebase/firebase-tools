@@ -66,7 +66,7 @@ module.exports = new Command("init [feature]")
       rcfile: config.readProjectFile(".firebaserc", {
         json: true,
         fallback: {},
-      })
+      }),
     };
 
     var choices = [
@@ -137,7 +137,7 @@ module.exports = new Command("init [feature]")
             message:
               "Which Firebase CLI features do you want to set up for this folder? " +
               "Press Space to select features, then Enter to confirm your choices.",
-            choices: choices
+            choices: choices,
           },
         ]);
       })
