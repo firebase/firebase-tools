@@ -67,7 +67,6 @@ module.exports = new Command("init [feature]")
         json: true,
         fallback: {},
       }),
-      features: [],
     };
 
     var choices = [

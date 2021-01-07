@@ -13,7 +13,7 @@ export interface RCFile {
 export interface Setup {
   config: Indexable;
   rcfile: RCFile;
-  features: string[];
+  features?: string[];
   featureArg?: boolean;
   project?: Indexable;
   projectId?: string;
@@ -25,7 +25,7 @@ export interface Setup {
 const features = _features as Indexable;
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
-  const nextFeature = setup.features.shift();
+  const nextFeature = setup.features ? setup.features.shift() : undefined;
   if (nextFeature) {
     if (!features[nextFeature]) {
       return utils.reject(
