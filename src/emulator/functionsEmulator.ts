@@ -824,8 +824,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
-    logger.debug(`Spawning "${opts.nodeBinary} ${args.join(" ")}`);
-    logger.debug(`CWD: ${frb.cwd}`);
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
