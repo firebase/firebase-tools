@@ -1,1 +1,2 @@
+- Add warning when a developer is using yarn@2 PnP (#2198)
 - Fixes incorrect URLs reported inside emulated HTTPS functions (#1862).
