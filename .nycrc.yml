@@ -1,0 +1,11 @@
+require:
+  - ts-node/register
+extension:
+  - .js
+  - .ts
+reporter:
+  - lcovonly
+  - text
+report-dir: ./.coverage
+exclude:
+  - src/test/**/*"
