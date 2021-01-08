@@ -71,7 +71,7 @@ module.exports = function(context, options) {
 
     const data = {
       config: convertConfig(cfg),
-      labels: deploymentTool.labels,
+      labels: deploymentTool.labels(),
     };
 
     versionCreates.push(
