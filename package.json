@@ -65,6 +65,10 @@
     "require": [
       "ts-node/register"
     ],
+    "reporter": [
+      "lcovonly",
+      "text"
+    ],
     "report-dir": "./.coverage",
     "extension": [
       ".js",
