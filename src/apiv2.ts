@@ -13,17 +13,27 @@ const CLI_VERSION = require("../package.json").version;
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
-interface RequestOptions<T> extends VerbOptions<T> {
+interface BaseRequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
   redirect?: "error" | "follow" | "manual";
-  // Deprecated. Use `timeout`.
+}
+
+interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
+  // Signal is used to cancel a request. Cannot be used with `timeout`.
   signal?: AbortSignal;
-  // Timeout, in ms. 0 is no timeout.
+  timeout?: never;
+}
+
+interface RequestOptionsWithTimeout<T> extends BaseRequestOptions<T> {
+  signal?: never;
+  // Timeout, in ms. 0 is no timeout. Cannot be used with `signal`.
   timeout?: number;
 }
+
+type RequestOptions<T> = RequestOptionsWithSignal<T> | RequestOptionsWithTimeout<T>;
 
 interface VerbOptions<T> {
   method?: HttpMethod;
@@ -42,9 +52,12 @@ interface ClientHandlingOptions {
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions<T>;
 
-interface InternalClientRequestOptions<T> extends ClientRequestOptions<T> {
+interface BaseInternalClientRequestOptions<T> {
   headers?: Headers;
 }
+
+type InternalClientRequestOptions<T> = BaseInternalClientRequestOptions<T> &
+  ClientRequestOptions<T>;
 
 export type ClientVerbOptions<T> = VerbOptions<T> & ClientHandlingOptions;
 
