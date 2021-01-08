@@ -4,5 +4,8 @@
     "noEmit": true,
     "removeComments": false,
   },
-  "include": ["scripts/**/*"]
+  "include": [
+    "scripts/**/*",
+    ".eslintrc.js",
+  ]
 }
