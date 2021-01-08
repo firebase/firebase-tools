@@ -1,4 +1,4 @@
-import getProjectNumber = require("../../getProjectNumber");
+import { getProjectNumber } from "../../getProjectNumber";
 import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";

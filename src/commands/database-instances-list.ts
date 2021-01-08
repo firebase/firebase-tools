@@ -5,7 +5,7 @@ import * as ora from "ora";
 
 import logger = require("../logger");
 import { requirePermissions } from "../requirePermissions";
-import getProjectNumber = require("../getProjectNumber");
+import { getProjectNumber } from "../getProjectNumber";
 import firedata = require("../gcp/firedata");
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
