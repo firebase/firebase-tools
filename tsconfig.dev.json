@@ -7,5 +7,6 @@
   "include": [
     "scripts/**/*",
     ".eslintrc.js",
+    ".prettierrc.js",
   ]
 }
