@@ -1,2 +1,3 @@
-- Add warning when a developer is using yarn@2 PnP (#2198)
+- Add warning when a developer is using yarn@2 PnP (#2198).
 - Fixes incorrect URLs reported inside emulated HTTPS functions (#1862).
+- Updates underlying timeout handler when proxying through the Hosting emulator.
