@@ -13,7 +13,7 @@ import * as utils from "../utils";
 
 const TIMEOUT_MILLIS = 30000;
 const MAXIMUM_PROMPT_LIST = 100;
-const PROJECT_LIST_PAGE_SIZE = 500;
+const PROJECT_LIST_PAGE_SIZE = 1000;
 const CREATE_PROJECT_API_REQUEST_TIMEOUT_MILLIS = 15000;
 
 export interface CloudProjectInfo {
@@ -425,12 +425,12 @@ export async function listFirebaseProjects(pageSize?: number): Promise<FirebaseP
  */
 export async function getFirebaseProject(projectId: string): Promise<FirebaseProjectMetadata> {
   try {
-    const response = await api.request("GET", `/v1beta1/projects/${projectId}`, {
-      auth: true,
-      origin: api.firebaseApiOrigin,
+    const res = await firebaseAPIClient.request<void, FirebaseProjectMetadata>({
+      method: "GET",
+      path: `/projects/${projectId}`,
       timeout: TIMEOUT_MILLIS,
     });
-    return response.body;
+    return res.body;
   } catch (err) {
     logger.debug(err.message);
     throw new FirebaseError(
