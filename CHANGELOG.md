@@ -1,1 +1,1 @@
-- Add experimental support for yarn@2 (#2198)
+- Add warning when a developer is using yarn@2 PnP (#2198)

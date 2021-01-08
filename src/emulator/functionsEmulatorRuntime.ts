@@ -22,8 +22,6 @@ import * as fs from "fs";
 import { URL } from "url";
 import * as _ from "lodash";
 
-const nativeModule = require("module");
-
 let triggers: EmulatedTriggerMap | undefined;
 let developerPkgJSON: PackageJSON | undefined;
 
@@ -38,64 +36,20 @@ function noOp(): false {
   return false;
 }
 
-/**
- * When using yarn2, PnP tells us where the package is located but a regular "require()"
- * call won't work, at least not on Node 8/10/12. This function creates a function
- * which can be used like "require()" but with support for PnP.
- *
- * This hack is stolen from a Nuxt library which was recommended to me by the yarn2 team:
- * https://github.com/nuxt-contrib/create-require/blob/master/create-require.js
- */
-function createRequire(filename: string): Function {
-  const mod = new nativeModule.Module(filename, null);
-  mod.filename = filename;
-  mod.paths = nativeModule.Module._nodeModulePaths(path.dirname(filename));
-  mod._compile("module.exports = require;", filename);
-  return mod.exports;
-}
-
-/**
- * Require a node module from a developer's workspace in a way that is yarn2 safe.
- */
-function safeRequire(frb: FunctionsRuntimeBundle, name: string): any {
-  // eslint-disable-next-line
-  // @ts-ignore
-  if (process.env.USE_YARN_TWO && process.versions.pnp) {
-    // This module is available to use whenever process.versions.pnp is set.
-    // This is one of the only places in this codebase where we can/should use
-    // a native "require()" call.
-    const pnpapi = require(require.resolve("pnpapi", {
-      paths: [frb.cwd],
-    }));
-
-    // PnP tells us where the module is and then we use the "createRequire"
-    // hack to actually load it. Normally this is done automatically by "yarn node"
-    // but we have to do it ourselves.
-    const resolved = pnpapi.resolveRequest(name, frb.cwd);
-    return createRequire(frb.cwd)(resolved);
-  }
-
-  return require(require.resolve(name, { paths: [frb.cwd] }));
-}
-
-function requireAsync(frb: FunctionsRuntimeBundle, moduleName: string): Promise<any> {
+function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<any> {
   return new Promise((res, rej) => {
     try {
-      res(safeRequire(frb, moduleName));
+      res(require(require.resolve(moduleName, opts)));
     } catch (e) {
       rej(e);
     }
   });
 }
 
-function requireResolveAsync(frb: FunctionsRuntimeBundle, moduleName: string): Promise<string> {
+function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Promise<string> {
   return new Promise((res, rej) => {
     try {
-      res(
-        require.resolve(moduleName, {
-          paths: [frb.cwd],
-        })
-      );
+      res(require.resolve(moduleName, opts));
     } catch (e) {
       rej(e);
     }
@@ -259,13 +213,12 @@ async function resolveDeveloperNodeModule(
   }
 
   // Once we know it's in the package.json, make sure it's actually `npm install`ed
-  const resolveResult = await requireResolveAsync(frb, name).catch(noOp);
+  const resolveResult = await requireResolveAsync(name, { paths: [frb.cwd] }).catch(noOp);
   if (!resolveResult) {
     return { declared: true, installed: false };
   }
 
-  const modPath = path.join(findModuleRoot(name, resolveResult), "package.json");
-  const modPackageJSON = JSON.parse(fs.readFileSync(modPath).toString());
+  const modPackageJSON = require(path.join(findModuleRoot(name, resolveResult), "package.json"));
 
   const moduleResolution: ModuleResolution = {
     declared: true,
@@ -453,7 +406,7 @@ async function initializeFirebaseFunctionsStubs(frb: FunctionsRuntimeBundle): Pr
     firebaseFunctionsResolution.resolution
   );
   const httpsProviderResolution = path.join(firebaseFunctionsRoot, "lib/providers/https");
-  const httpsProvider = safeRequire(frb, httpsProviderResolution);
+  const httpsProvider = require(httpsProviderResolution);
 
   // TODO: Remove this logic and stop relying on internal APIs.  See #1480 for reasoning.
   const onRequestInnerMethodName = "_onRequestWithOptions";
@@ -537,10 +490,10 @@ function getDefaultConfig(): any {
  */
 async function initializeFirebaseAdminStubs(frb: FunctionsRuntimeBundle): Promise<void> {
   const adminResolution = await assertResolveDeveloperNodeModule(frb, "firebase-admin");
-  const localAdminModule = safeRequire(frb, adminResolution.resolution);
+  const localAdminModule = require(adminResolution.resolution);
 
   const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
-  const localFunctionsModule = safeRequire(frb, functionsResolution.resolution);
+  const localFunctionsModule = require(functionsResolution.resolution);
 
   // Configuration from the environment
   const defaultConfig = getDefaultConfig();
@@ -779,7 +732,7 @@ function formatHost(info: { host: string; port: number }) {
 
 async function initializeFunctionsConfigHelper(frb: FunctionsRuntimeBundle): Promise<void> {
   const functionsResolution = await assertResolveDeveloperNodeModule(frb, "firebase-functions");
-  const localFunctionsModule = safeRequire(frb, functionsResolution.resolution);
+  const localFunctionsModule = require(functionsResolution.resolution);
 
   logDebug("Checked functions.config()", {
     config: localFunctionsModule.config(),
@@ -982,8 +935,8 @@ async function moduleResolutionDetective(frb: FunctionsRuntimeBundle, error: Err
   falsey, so we just catch to keep from throwing.
    */
   const clues = {
-    tsconfigJSON: await requireAsync(frb, "./tsconfig.json").catch(noOp),
-    packageJSON: await requireAsync(frb, "./package.json").catch(noOp),
+    tsconfigJSON: await requireAsync("./tsconfig.json", { paths: [frb.cwd] }).catch(noOp),
+    packageJSON: await requireAsync("./package.json", { paths: [frb.cwd] }).catch(noOp),
   };
 
   const isPotentially = {

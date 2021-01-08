@@ -809,26 +809,19 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
-    // See: https://classic.yarnpkg.com/en/docs/pnp/
     // Yarn 2 has a new feature called PnP (Plug N Play) which aims to completely take over
-    // module resolution. Instead of node just searching up the tree for a node_modules
-    // directory with a certain subdirectory, yarn tells node where the modules can be found.
-    // We can look for a ".pnp.js" file at the project root to determine if this is in use.
+    // module resolution. This feature is mostly incompatible with CF3 (prod or emulated) so
+    // if we detect it we should warn the developer.
+    // See: https://classic.yarnpkg.com/en/docs/pnp/
     const pnpPath = path.join(frb.cwd, ".pnp.js");
     if (fs.existsSync(pnpPath)) {
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
         "WARN_ONCE",
         "functions",
-        "Detected yarn@2 with pnp. Note that yarn suport is experimental and some things may break."
+        "Detected yarn@2 with PnP. " +
+          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
       );
-
-      // See: https://classic.yarnpkg.com/en/docs/pnp/troubleshooting/
-      // Since we don't want to use "yarn node" as our executable, this is how we tell
-      // the Node runtime we want PnP to be available.
-      args.unshift(`--require=${pnpPath}`);
-
-      opts.env = opts.env || {};
-      opts.env.USE_YARN_TWO = "true";
     }
 
     logger.debug(`Spawning "${opts.nodeBinary} ${args.join(" ")}`);
