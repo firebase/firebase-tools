@@ -299,6 +299,10 @@ export class Client {
       fetchOptions.agent = new ProxyAgent(envProxy);
     }
 
+    if (options.signal) {
+      fetchOptions.signal = options.signal;
+    }
+
     let reqTimeout: NodeJS.Timeout | undefined;
     if (options.timeout) {
       const controller = new AbortController();

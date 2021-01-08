@@ -1,6 +1,7 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as nock from "nock";
+import AbortController from "abort-controller";
 import proxySetup = require("proxy");
 
 import { Client } from "../apiv2";
@@ -274,6 +275,25 @@ describe("apiv2", () => {
           method: "GET",
           path: "/path/to/foo",
           timeout: 10,
+        })
+      ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should be able to be killed by a signal", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .delay(200)
+        .reply(200, { foo: "bar" });
+
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 10);
+      const c = new Client({ urlPrefix: "https://example.com/" });
+      await expect(
+        c.request({
+          method: "GET",
+          path: "/path/to/foo",
+          signal: controller.signal,
         })
       ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
       expect(nock.isDone()).to.be.true;
