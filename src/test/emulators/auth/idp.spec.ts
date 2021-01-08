@@ -19,7 +19,6 @@ import {
 } from "./helpers";
 
 // Many JWT fields from IDPs use snake_case and we need to match that.
-/* eslint-disable @typescript-eslint/camelcase */
 
 describeAuthEmulator("sign-in with credential", ({ authApi }) => {
   it("should create new account with IDP from unsigned ID token", async () => {

@@ -264,10 +264,8 @@ function createFakeClaims(info: ProviderUserInfo): string {
     exp: 0,
     iat: 0,
     name: info.displayName,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     screen_name: info.screenName,
     email: info.email,
-    // eslint-disable-next-line @typescript-eslint/camelcase
     email_verified: true, // TODO: Shall we allow changing this?
     picture: info.photoUrl,
   };
