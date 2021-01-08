@@ -61,6 +61,19 @@
   "publishConfig": {
     "registry": "https://wombat-dressing-room.appspot.com"
   },
+  "nyc": {
+    "require": [
+      "ts-node/register"
+    ],
+    "report-dir": "./.coverage",
+    "extension": [
+      ".js",
+      ".ts"
+    ],
+    "exclude": [
+      "src/test/**/*"
+    ]
+  },
   "dependencies": {
     "@google-cloud/pubsub": "^2.7.0",
     "JSONStream": "^1.2.1",
