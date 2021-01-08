@@ -33,7 +33,7 @@ var PROVIDER_ID_INDEX_MAP = {
   "github.com": 19,
 };
 
-var _escapeComma = function(str) {
+var _escapeComma = function (str) {
   if (str.indexOf(",") !== -1) {
     // Encapsulate the string with quotes if it contains a comma.
     return `"${str}"`;
@@ -41,18 +41,18 @@ var _escapeComma = function(str) {
   return str;
 };
 
-var _convertToNormalBase64 = function(data) {
+var _convertToNormalBase64 = function (data) {
   return data.replace(/_/g, "/").replace(/-/g, "+");
 };
 
-var _addProviderUserInfo = function(providerInfo, arr, startPos) {
+var _addProviderUserInfo = function (providerInfo, arr, startPos) {
   arr[startPos] = providerInfo.rawId;
   arr[startPos + 1] = providerInfo.email || "";
   arr[startPos + 2] = _escapeComma(providerInfo.displayName || "");
   arr[startPos + 3] = providerInfo.photoUrl || "";
 };
 
-var _transUserToArray = function(user) {
+var _transUserToArray = function (user) {
   var arr = Array(27).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
@@ -75,9 +75,9 @@ var _transUserToArray = function(user) {
   return arr;
 };
 
-var _transUserJson = function(user) {
+var _transUserJson = function (user) {
   var newUser = {};
-  _.each(_.pick(user, EXPORTED_JSON_KEYS), function(value, key) {
+  _.each(_.pick(user, EXPORTED_JSON_KEYS), function (value, key) {
     var newKey = EXPORTED_JSON_KEYS_RENAMING[key] || key;
     newUser[newKey] = value;
   });
@@ -89,7 +89,7 @@ var _transUserJson = function(user) {
   }
   if (user.providerUserInfo) {
     newUser.providerUserInfo = [];
-    user.providerUserInfo.forEach(function(providerInfo) {
+    user.providerUserInfo.forEach(function (providerInfo) {
       if (!_.includes(Object.keys(PROVIDER_ID_INDEX_MAP), providerInfo.providerId)) {
         return;
       }
@@ -99,7 +99,7 @@ var _transUserJson = function(user) {
   return newUser;
 };
 
-var validateOptions = function(options, fileName) {
+var validateOptions = function (options, fileName) {
   var exportOptions = {};
   if (fileName === undefined) {
     throw new FirebaseError("Must specify data file", { exit: 1 });
@@ -127,10 +127,10 @@ var validateOptions = function(options, fileName) {
   return exportOptions;
 };
 
-var _createWriteUsersToFile = function() {
+var _createWriteUsersToFile = function () {
   var jsonSep = "";
-  return function(userList, format, writeStream) {
-    userList.map(function(user) {
+  return function (userList, format, writeStream) {
+    userList.map(function (user) {
       if (user.passwordHash && user.version !== 0) {
         // Password isn't hashed by default Scrypt.
         delete user.passwordHash;
@@ -146,7 +146,7 @@ var _createWriteUsersToFile = function() {
   };
 };
 
-var serialExportUsers = function(projectId, options) {
+var serialExportUsers = function (projectId, options) {
   if (!options.writeUsersToFile) {
     options.writeUsersToFile = _createWriteUsersToFile();
   }
@@ -167,7 +167,7 @@ var serialExportUsers = function(projectId, options) {
       data: postBody,
       origin: api.googleOrigin,
     })
-    .then(function(ret) {
+    .then(function (ret) {
       options.timeoutRetryCount = 0;
       var userList = ret.body.users;
       if (userList && userList.length > 0) {

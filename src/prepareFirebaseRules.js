@@ -6,7 +6,7 @@ var fs = require("fs");
 var api = require("./api");
 var utils = require("./utils");
 
-var prepareFirebaseRules = function(component, options, payload) {
+var prepareFirebaseRules = function (component, options, payload) {
   var rulesFileName = component + ".rules";
   var rulesPath = options.config.get(rulesFileName);
   if (rulesPath) {
@@ -28,7 +28,7 @@ var prepareFirebaseRules = function(component, options, payload) {
         },
         auth: true,
       })
-      .then(function(response) {
+      .then(function (response) {
         if (response.body && response.body.issues && response.body.issues.length > 0) {
           var add = response.body.issues.length === 1 ? "" : "s";
           var message =
@@ -37,7 +37,7 @@ var prepareFirebaseRules = function(component, options, payload) {
             " in " +
             clc.bold(options.config.get(rulesFileName)) +
             ":\n";
-          response.body.issues.forEach(function(issue) {
+          response.body.issues.forEach(function (issue) {
             message +=
               "\n[" +
               issue.severity.substring(0, 1) +

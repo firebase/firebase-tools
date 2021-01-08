@@ -9,7 +9,7 @@ var { prompt } = require("../../../prompt");
 var enableApi = require("../../../ensureApiEnabled").enable;
 var { requirePermissions } = require("../../../requirePermissions");
 
-module.exports = function(setup, config) {
+module.exports = function (setup, config) {
   logger.info();
   logger.info(
     "A " + clc.bold("functions") + " directory will be created in your project with a Node.js"
@@ -31,7 +31,7 @@ module.exports = function(setup, config) {
       ]);
     });
   }
-  return enableApis.then(function() {
+  return enableApis.then(function () {
     return prompt(setup.functions, [
       {
         type: "list",
@@ -49,7 +49,7 @@ module.exports = function(setup, config) {
           },
         ],
       },
-    ]).then(function() {
+    ]).then(function () {
       return require("./" + setup.functions.language)(setup, config);
     });
   });

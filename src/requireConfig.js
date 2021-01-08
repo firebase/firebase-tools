@@ -2,7 +2,7 @@
 
 var { FirebaseError } = require("./error");
 
-module.exports = function(options) {
+module.exports = function (options) {
   if (options.config) {
     return Promise.resolve();
   }

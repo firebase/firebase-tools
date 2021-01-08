@@ -2,8 +2,8 @@
 
 const previews = require("../previews").previews;
 
-module.exports = function(client) {
-  var loadCommand = function(name) {
+module.exports = function (client) {
+  var loadCommand = function (name) {
     var cmd = require("./" + name);
     // .ts commands export at .default.
     if (cmd.default) {

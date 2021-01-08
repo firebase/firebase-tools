@@ -14,7 +14,7 @@ var SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "�
 // See: https://github.com/medikoo/cli-color/blob/master/erase.js
 var _ERASE_LINE = "\x1b[2K";
 
-module.exports = function(context, options) {
+module.exports = function (context, options) {
   if (!context.hosting || !context.hosting.deploys) {
     return Promise.resolve();
   }
@@ -55,7 +55,7 @@ module.exports = function(context, options) {
     });
 
     var progressInterval = setInterval(
-      function() {
+      function () {
         _updateSpinner(uploader.statusMessage());
       },
       debugging ? 2000 : 200
@@ -63,7 +63,7 @@ module.exports = function(context, options) {
 
     return uploader
       .start()
-      .then(function() {
+      .then(function () {
         clearInterval(progressInterval);
         if (!debugging) {
           process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
@@ -73,11 +73,11 @@ module.exports = function(context, options) {
         logger.debug("[hosting] deploy completed after " + dt + "ms");
         return track("Hosting Deploy", "success", dt);
       })
-      .catch(function(err) {
+      .catch(function (err) {
         clearInterval(progressInterval);
         return Promise.reject(err);
       })
-      .then(function() {
+      .then(function () {
         if (deploys.length) {
           return _runDeploys(deploys);
         }

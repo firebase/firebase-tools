@@ -23,7 +23,7 @@ var client = {};
 client.cli = program;
 client.logger = require("./logger");
 client.errorOut = require("./errorOut").errorOut;
-client.getCommand = function(name) {
+client.getCommand = function (name) {
   for (var i = 0; i < client.cli.commands.length; i++) {
     if (client.cli.commands[i]._name === name) {
       return client.cli.commands[i];
@@ -42,7 +42,7 @@ require("./commands")(client);
  * @return {string|undefined} Returns the suggested command; undefined if none.
  */
 function suggestCommands(cmd, cmdList) {
-  var suggestion = cmdList.find(function(c) {
+  var suggestion = cmdList.find(function (c) {
     return leven(c, cmd) < c.length * 0.4;
   });
   if (suggestion) {
@@ -52,7 +52,7 @@ function suggestCommands(cmd, cmdList) {
   }
 }
 
-var commandNames = program.commands.map(function(cmd) {
+var commandNames = program.commands.map(function (cmd) {
   return cmd._name;
 });
 
@@ -70,7 +70,7 @@ var RENAMED_COMMANDS = {
 };
 
 // Default handler, this is called when no other command action matches.
-program.action(function(_, args) {
+program.action(function (_, args) {
   setupLoggers();
 
   var cmd = args[0];

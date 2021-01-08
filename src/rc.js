@@ -25,30 +25,30 @@ var TARGET_TYPES = {
  * @param {string=} rcpath
  * @param {object=} data
  */
-var RC = function(rcpath, data) {
+var RC = function (rcpath, data) {
   this.path = rcpath;
   this.data = data || {};
 };
 
 RC.prototype = {
-  set: function(key, value) {
+  set: function (key, value) {
     return _.set(this.data, key, value);
   },
 
-  unset: function(key) {
+  unset: function (key) {
     return _.unset(this.data, key);
   },
 
-  get: function(key, fallback) {
+  get: function (key, fallback) {
     return _.get(this.data, key, fallback);
   },
 
-  addProjectAlias: function(alias, project) {
+  addProjectAlias: function (alias, project) {
     this.set(["projects", alias], project);
     return this.save();
   },
 
-  removeProjectAlias: function(alias) {
+  removeProjectAlias: function (alias) {
     this.unset(["projects", alias]);
     return this.save();
   },
@@ -61,15 +61,15 @@ RC.prototype = {
     return this.get("projects", {});
   },
 
-  targets: function(project, type) {
+  targets: function (project, type) {
     return this.get(["targets", project, type], {});
   },
 
-  target: function(project, type, name) {
+  target: function (project, type, name) {
     return this.get(["targets", project, type, name], []);
   },
 
-  applyTarget: function(project, type, targetName, resources) {
+  applyTarget: function (project, type, targetName, resources) {
     if (!TARGET_TYPES[type]) {
       throw new FirebaseError(
         "Unrecognized target type " +
@@ -104,7 +104,7 @@ RC.prototype = {
     return changed;
   },
 
-  removeTarget: function(project, type, resource) {
+  removeTarget: function (project, type, resource) {
     var name = this.findTarget(project, type, resource);
     if (!name) {
       return null;
@@ -115,7 +115,7 @@ RC.prototype = {
     return name;
   },
 
-  clearTarget: function(project, type, name) {
+  clearTarget: function (project, type, name) {
     var exists = this.target(project, type, name).length > 0;
     if (!exists) {
       return false;
@@ -128,7 +128,7 @@ RC.prototype = {
   /**
    * Finds a target name for the specified type and resource.
    */
-  findTarget: function(project, type, resource) {
+  findTarget: function (project, type, resource) {
     var targets = this.get(["targets", project, type]);
     for (var targetName in targets) {
       if (_.includes(targets[targetName], resource)) {
@@ -142,9 +142,9 @@ RC.prototype = {
    * Removes a specific resource from a specified target. Does
    * not persist the result.
    */
-  unsetTargetResource: function(project, type, name, resource) {
+  unsetTargetResource: function (project, type, name, resource) {
     var targetPath = ["targets", project, type, name];
-    var updatedResources = this.get(targetPath, []).filter(function(r) {
+    var updatedResources = this.get(targetPath, []).filter(function (r) {
       return r !== resource;
     });
 
@@ -159,7 +159,7 @@ RC.prototype = {
    * Throws an error if the specified target is not configured for
    * the specified project.
    */
-  requireTarget: function(project, type, name) {
+  requireTarget: function (project, type, name) {
     var target = this.target(project, type, name);
     if (!target.length) {
       throw new FirebaseError(
@@ -182,7 +182,7 @@ RC.prototype = {
   /**
    * Persists the RC file to disk, or returns false if no path on the instance.
    */
-  save: function() {
+  save: function () {
     if (this.path) {
       fs.writeFileSync(this.path, JSON.stringify(this.data, null, 2), {
         encoding: "utf8",
@@ -193,7 +193,7 @@ RC.prototype = {
   },
 };
 
-RC.loadFile = function(rcpath) {
+RC.loadFile = function (rcpath) {
   var data = {};
   if (fsutils.fileExistsSync(rcpath)) {
     try {
@@ -206,7 +206,7 @@ RC.loadFile = function(rcpath) {
   return new RC(rcpath, data);
 };
 
-RC.load = function(options) {
+RC.load = function (options) {
   const cwd = options.cwd || process.cwd();
   const dir = detectProjectRoot(options);
   const potential = path.resolve(dir || cwd, "./.firebaserc");

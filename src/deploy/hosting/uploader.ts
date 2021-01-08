@@ -130,9 +130,7 @@ export class Uploader {
       }
     };
 
-    return this.wait()
-      .then(fin)
-      .catch(fin);
+    return this.wait().then(fin).catch(fin);
   }
 
   async wait(): Promise<void> {

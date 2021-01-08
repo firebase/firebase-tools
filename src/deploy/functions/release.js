@@ -57,12 +57,12 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
     // No HTTPS functions being deployed
     return Promise.resolve();
   }
-  return gcp.cloudfunctions.listAll(projectId).then(function(functions) {
+  return gcp.cloudfunctions.listAll(projectId).then(function (functions) {
     var httpFunctions = _.chain(functions)
       .filter({ sourceUploadUrl: sourceUrl })
       .filter("httpsTrigger")
       .value();
-    _.forEach(httpFunctions, function(httpFunc) {
+    _.forEach(httpFunctions, function (httpFunc) {
       const op = _.find(ops, { func: httpFunc.name });
       if (op) {
         op.triggerUrl = httpFunc.httpsTrigger.url;
@@ -72,7 +72,7 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
   });
 }
 
-var printSuccess = function(op) {
+var printSuccess = function (op) {
   _endTimer(op.func);
   utils.logSuccess(
     clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
@@ -88,7 +88,7 @@ var printSuccess = function(op) {
     );
   }
 };
-var printFail = function(op) {
+var printFail = function (op) {
   _endTimer(op.func);
   failedDeployments.push(helper.getFunctionName(op.func));
   utils.logWarning(
@@ -107,7 +107,7 @@ var printFail = function(op) {
   }
 };
 
-var printTooManyOps = function(projectId) {
+var printTooManyOps = function (projectId) {
   utils.logWarning(
     clc.bold.yellow("functions:") + " too many functions are being deployed, cannot poll status."
   );
@@ -120,7 +120,7 @@ var printTooManyOps = function(projectId) {
   deployments = []; // prevents analytics tracking of deployments
 };
 
-module.exports = function(context, options, payload) {
+module.exports = function (context, options, payload) {
   if (!options.config.has("functions")) {
     return Promise.resolve();
   }
@@ -196,13 +196,13 @@ module.exports = function(context, options, payload) {
 
       return Promise.resolve(context.existingFunctions);
     })
-    .then(function(existingFunctions) {
-      var pluckName = function(functionObject) {
+    .then(function (existingFunctions) {
+      var pluckName = function (functionObject) {
         return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
       };
 
       var existingNames = _.map(existingFunctions, pluckName);
-      var isScheduled = function(functionObject) {
+      var isScheduled = function (functionObject) {
         return _.get(functionObject, "labels.deployment-scheduled") === "true";
       };
       existingScheduledFunctions = _.chain(existingFunctions)
@@ -222,7 +222,7 @@ module.exports = function(context, options, payload) {
       _.chain(uploadedNames)
         .difference(existingNames)
         .intersection(releaseNames)
-        .forEach(function(name) {
+        .forEach(function (name) {
           var functionInfo = _.find(functionsInfo, { name: name });
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
@@ -289,7 +289,7 @@ module.exports = function(context, options, payload) {
       _.chain(uploadedNames)
         .intersection(existingNames)
         .intersection(releaseNames)
-        .forEach(function(name) {
+        .forEach(function (name) {
           var functionInfo = _.find(functionsInfo, { name: name });
           var functionTrigger = helper.getFunctionTrigger(functionInfo);
           var functionName = helper.getFunctionName(name);
@@ -330,7 +330,7 @@ module.exports = function(context, options, payload) {
 
           deployments.push({
             name: name,
-            retryFunction: function() {
+            retryFunction: function () {
               return gcp.cloudfunctions.update(options);
             },
             trigger: functionTrigger,
@@ -340,7 +340,7 @@ module.exports = function(context, options, payload) {
 
       // Delete functions
       var functionsToDelete = _.chain(existingFunctions)
-        .filter(function(functionInfo) {
+        .filter(function (functionInfo) {
           return deploymentTool.check(functionInfo.labels);
         }) // only delete functions uploaded via firebase-tools
         .map(pluckName)
@@ -351,12 +351,12 @@ module.exports = function(context, options, payload) {
       if (functionsToDelete.length === 0) {
         return Promise.resolve();
       }
-      var deleteList = _.map(functionsToDelete, function(func) {
+      var deleteList = _.map(functionsToDelete, function (func) {
         return "\t" + helper.getFunctionLabel(func);
       }).join("\n");
 
       if (options.nonInteractive && !options.force) {
-        var deleteCommands = _.map(functionsToDelete, function(func) {
+        var deleteCommands = _.map(functionsToDelete, function (func) {
           return (
             "\tfirebase functions:delete " +
             helper.getFunctionName(func) +
@@ -393,14 +393,14 @@ module.exports = function(context, options, payload) {
               "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
           });
 
-      return next.then(function(proceed) {
+      return next.then(function (proceed) {
         if (!proceed) {
           if (deployments.length !== 0) {
             utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
           }
           return;
         }
-        functionsToDelete.forEach(function(name) {
+        functionsToDelete.forEach(function (name) {
           var functionName = helper.getFunctionName(name);
           var scheduleName = helper.getScheduleName(name, appEngineLocation);
           var topicName = helper.getTopicName(name);
@@ -416,7 +416,7 @@ module.exports = function(context, options, payload) {
           var retryFunction;
           var isScheduledFunction = _.includes(existingScheduledFunctions, name);
           if (isScheduledFunction) {
-            retryFunction = function() {
+            retryFunction = function () {
               return gcp.cloudscheduler
                 .deleteJob(scheduleName)
                 .catch((err) => {
@@ -458,7 +458,7 @@ module.exports = function(context, options, payload) {
                 });
             };
           } else {
-            retryFunction = function() {
+            retryFunction = function () {
               return gcp.cloudfunctions.delete({
                 projectId: projectId,
                 region: region,
@@ -473,7 +473,7 @@ module.exports = function(context, options, payload) {
         });
       });
     })
-    .then(function() {
+    .then(function () {
       // filter out functions that are excluded via --only and --except flags
       var functionsInDeploy = functionsInfo.filter((trigger) => {
         return functionFilterGroups.length > 0
@@ -487,28 +487,22 @@ module.exports = function(context, options, payload) {
         appEngineLocation
       );
     })
-    .then(function() {
+    .then(function () {
       return utils.promiseAllSettled(
-        _.map(deployments, function(op) {
-          return op.retryFunction().then(function(res) {
+        _.map(deployments, function (op) {
+          return op.retryFunction().then(function (res) {
             return _.merge(op, res);
           });
         })
       );
     })
-    .then(function(allOps) {
-      var failedCalls = _.chain(allOps)
-        .filter({ state: "rejected" })
-        .map("reason")
-        .value();
-      var successfulCalls = _.chain(allOps)
-        .filter({ state: "fulfilled" })
-        .map("value")
-        .value();
+    .then(function (allOps) {
+      var failedCalls = _.chain(allOps).filter({ state: "rejected" }).map("reason").value();
+      var successfulCalls = _.chain(allOps).filter({ state: "fulfilled" }).map("value").value();
       failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
 
       return _fetchTriggerUrls(projectId, successfulCalls, sourceUrl)
-        .then(function() {
+        .then(function () {
           return helper.pollDeploys(
             successfulCalls,
             printSuccess,

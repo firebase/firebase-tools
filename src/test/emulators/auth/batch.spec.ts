@@ -74,9 +74,7 @@ describeAuthEmulator("accounts:batchGet", ({ authApi }) => {
           user1.localId < user2.localId ? user1.localId : user2.localId
         );
 
-        expect(res.body)
-          .to.have.property("nextPageToken")
-          .which.is.a("string");
+        expect(res.body).to.have.property("nextPageToken").which.is.a("string");
         return res.body.nextPageToken as string;
       });
 
@@ -136,9 +134,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     const user2SignIn = await signInWithPhoneNumber(authApi(), user2.phoneNumber);
     expect(user2SignIn.localId).to.equal(user2.localId);
 
-    expect(decodeJwt(user2SignIn.idToken))
-      .to.have.property("hello")
-      .equal("world");
+    expect(decodeJwt(user2SignIn.idToken)).to.have.property("hello").equal("world");
   });
 
   it("should create specified accounts via legacy endpoint", async () => {
@@ -167,9 +163,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       .send({ users: [] })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_USER_ACCOUNT");
+        expect(res.body.error).to.have.property("message").equals("MISSING_USER_ACCOUNT");
       });
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
@@ -179,9 +173,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_USER_ACCOUNT");
+        expect(res.body.error).to.have.property("message").equals("MISSING_USER_ACCOUNT");
       });
   });
 
@@ -344,9 +336,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("DUPLICATE_LOCAL_ID : test1");
+        expect(res.body.error).to.have.property("message").equal("DUPLICATE_LOCAL_ID : test1");
       });
 
     const { localId } = await registerAnonUser(authApi());

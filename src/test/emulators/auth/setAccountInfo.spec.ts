@@ -59,9 +59,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Updating password causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -70,9 +68,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.equal(localId);
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
       });
 
     // New password now works.
@@ -98,9 +94,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Adding password causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -109,9 +103,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.equal(localId);
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
       });
 
     // New password now works.
@@ -138,9 +130,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Setting email causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -150,9 +140,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.equal(localId);
         // This remains the same as provider used by the previous idToken.
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("anonymous");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("anonymous");
       });
 
     expect(await getSigninMethods(authApi(), email)).not.to.contain(["password"]);
@@ -171,9 +159,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .then((res) => {
         expectStatusCode(200, res);
         // Changing email causes new tokens to be issued.
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
           header: JwtHeader;
@@ -183,9 +169,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.equal(localId);
         expect(decoded!.payload.email).to.equal(newEmail);
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
       });
 
     // New email now works.
@@ -220,9 +204,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
 
     await authApi()
@@ -232,9 +214,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
   });
 
@@ -263,9 +243,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({ localId, phoneNumber })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("PHONE_NUMBER_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("PHONE_NUMBER_EXISTS");
       });
   });
 
@@ -294,9 +272,7 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       .send({ idToken, displayName: "Foo" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
       });
   });
 
@@ -444,12 +420,8 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       payload: FirebaseJwtPayload;
     } | null;
     expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-    expect(decoded!.payload)
-      .to.have.property("foo")
-      .to.eql(attrs.foo);
-    expect(decoded!.payload)
-      .to.have.property("baz")
-      .to.eql(attrs.baz);
+    expect(decoded!.payload).to.have.property("foo").to.eql(attrs.foo);
+    expect(decoded!.payload).to.have.property("baz").to.eql(attrs.baz);
   });
 
   it("should error if customAttributes are invalid", async () => {

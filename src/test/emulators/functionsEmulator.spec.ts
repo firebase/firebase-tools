@@ -178,9 +178,7 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/foo/bar/baz")
-      .expect(404);
+    await supertest(functionsEmulator.createHubServer()).get("/foo/bar/baz").expect(404);
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {

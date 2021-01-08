@@ -30,9 +30,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .send({ oobCode: oobs[0].oobCode, email })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("idToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("idToken").that.is.a("string");
         expect(res.body.email).to.equal(email);
         expect(res.body.isNewUser).to.equal(true);
 
@@ -45,9 +43,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.be.a("string");
         expect(decoded!.payload).not.to.have.property("provider_id");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password"); // The provider name is (confusingly) "password".
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password"); // The provider name is (confusingly) "password".
       });
 
     expect(await getSigninMethods(authApi(), email)).to.have.members(["emailLink"]);
@@ -74,9 +70,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
-        expect(res.body.users[0])
-          .to.have.property("emailLinkSignin")
-          .equal(true);
+        expect(res.body.users[0]).to.have.property("emailLinkSignin").equal(true);
       });
 
     expect(await getSigninMethods(authApi(), user.email)).to.have.members([
@@ -185,9 +179,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .send({ email, oobCode, idToken })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
   });
 
@@ -206,9 +198,7 @@ describeAuthEmulator("email link sign-in", ({ authApi }) => {
       .send({ email, oobCode, idToken })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
       });
   });
 });

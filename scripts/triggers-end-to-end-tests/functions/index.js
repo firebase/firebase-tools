@@ -27,18 +27,12 @@ const pubsub = new PubSub();
 admin.initializeApp();
 
 exports.deleteFromFirestore = functions.https.onRequest(async (req, res) => {
-  await admin
-    .firestore()
-    .doc(START_DOCUMENT_NAME)
-    .delete();
+  await admin.firestore().doc(START_DOCUMENT_NAME).delete();
   res.json({ deleted: true });
 });
 
 exports.deleteFromRtdb = functions.https.onRequest(async (req, res) => {
-  await admin
-    .database()
-    .ref(START_DOCUMENT_NAME)
-    .remove();
+  await admin.database().ref(START_DOCUMENT_NAME).remove();
   res.json({ deleted: true });
 });
 
