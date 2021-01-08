@@ -37,13 +37,13 @@ module.exports = new Command("init [feature]")
       warnings.push("You are initializing your home directory as a Firebase project");
     }
 
-    var config = Config.load(options, true);
-    var existingConfig = !!config;
-    if (!existingConfig) {
-      config = new Config({}, { projectDir: cwd, cwd: cwd });
-    } else {
+    var existingConfig = Config.load(options, true);
+    if (existingConfig) {
       warnings.push("You are initializing in an existing Firebase project directory");
     }
+
+    var config =
+      existingConfig !== null ? existingConfig : new Config({}, { projectDir: cwd, cwd: cwd });
 
     if (warnings.length) {
       warningText =

@@ -251,7 +251,7 @@ export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
 /**
  * Sets the active project alias or id in the specified directory.
  */
-export function makeActiveProject(projectDir: string, newActive: string): void {
+export function makeActiveProject(projectDir: string, newActive: string | null): void {
   const activeProjects = configstore.get("activeProjects") || {};
   if (newActive) {
     activeProjects[projectDir] = newActive;

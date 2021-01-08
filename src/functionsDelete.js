@@ -5,7 +5,7 @@ var clc = require("cli-color");
 
 var cloudfunctions = require("./gcp/cloudfunctions");
 var cloudscheduler = require("./gcp/cloudscheduler");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var helper = require("./functionsDeployHelper");
 var logger = require("./logger");
 var pubsub = require("./gcp/pubsub");

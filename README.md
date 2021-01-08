@@ -185,6 +185,12 @@ that we pass into the emulator through `GOOGLE_APPLICATION_CREDENTIALS`. We **on
 if you have not already set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
 yourself.
 
+## Using behind a proxy
+
+The CLI supports HTTP(S) proxies via environment variables. To use a proxy, set the `HTTPS_PROXY`
+or `HTTP_PROXY` value in your environment to the URL of your proxy (e.g.
+`HTTP_PROXY=http://127.0.0.1:12345`).
+
 ## Using with CI Systems
 
 The Firebase CLI requires a browser to complete authentication, but is fully

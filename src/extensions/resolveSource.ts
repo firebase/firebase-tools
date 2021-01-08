@@ -19,6 +19,11 @@ const AUDIENCE_WARNING_MESSAGES: { [key: string]: string } = {
       "Firebase Alpha program"
     )}.\n This extension is strictly confidential, and its functionality might change in backward-incompatible ways before its official, public release. Learn more: https://dev-partners.googlesource.com/samples/firebase/extensions-alpha/+/refs/heads/master/README.md`
   ),
+  experimental: marked(
+    `${clc.yellow.bold("Important")}: This extension is ${clc.bold(
+      "experimental"
+    )} and may not be production-ready. Its functionality might change in backward-incompatible ways before its official release, or it may be discontinued. Learn more: https://github.com/FirebaseExtended/experimental-extensions`
+  ),
 };
 
 export interface RegistryEntry {

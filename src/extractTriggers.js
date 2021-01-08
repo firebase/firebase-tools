@@ -5,8 +5,8 @@
 
 /**
  * @param {Object} mod module, usually the result of require(functions/index.js)
- * @param {Array<EmulatedTriggerDefinition>} triggers array of definitions to extend (in-place).
- * @param {string|undefined} prefix optional function name prefix, for example when using grouped functions.
+ * @param {Array<object>} triggers array of EmulatedTriggerDefinitions to extend (in-place).
+ * @param {string=} prefix optional function name prefix, for example when using grouped functions.
  */
 var extractTriggers = function(mod, triggers, prefix) {
   prefix = prefix || "";

@@ -18,6 +18,7 @@ var PACKAGE_NO_LINTING_TEMPLATE = fs.readFileSync(
 );
 var ESLINT_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_eslintrc"), "utf8");
 var TSCONFIG_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.json"), "utf8");
+var TSCONFIG_DEV_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "tsconfig.dev.json"), "utf8");
 var INDEX_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "index.ts"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
@@ -47,6 +48,11 @@ module.exports = function(setup, config) {
     })
     .then(function() {
       return config.askWriteProjectFile("functions/tsconfig.json", TSCONFIG_TEMPLATE);
+    })
+    .then(function() {
+      if (setup.functions.lint) {
+        return config.askWriteProjectFile("functions/tsconfig.dev.json", TSCONFIG_DEV_TEMPLATE);
+      }
     })
     .then(function() {
       return config.askWriteProjectFile("functions/src/index.ts", INDEX_TEMPLATE);

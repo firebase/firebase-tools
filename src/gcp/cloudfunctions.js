@@ -124,11 +124,11 @@ function _createFunction(options) {
 
 /**
  * Sets the IAM policy of a Google Cloud Function.
- * @param {*} options Options object.
+ * @param {object} options Options object.
  * @param {string} options.projectId Project that owns the Function.
  * @param {string} options.region Region in which the Function exists.
  * @param {string} options.functionName Name of the Function.
- * @param {*} options.policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
+ * @param {object} options.policy The [policy](https://cloud.google.com/functions/docs/reference/rest/v1/projects.locations.functions/setIamPolicy) to set.
  */
 async function _setIamPolicy(options) {
   const name = `projects/${options.projectId}/locations/${options.region}/functions/${options.functionName}`;

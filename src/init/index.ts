@@ -13,11 +13,11 @@ export interface RCFile {
 export interface Setup {
   config: Indexable;
   rcfile: RCFile;
-  featureArg: boolean;
-  features: string[];
-  project: Indexable;
-  projectId: string;
-  projectLocation: string;
+  features?: string[];
+  featureArg?: boolean;
+  project?: Indexable;
+  projectId?: string;
+  projectLocation?: string;
 }
 
 // TODO: Convert features/index.js to TypeScript so it exports
@@ -25,7 +25,7 @@ export interface Setup {
 const features = _features as Indexable;
 
 export async function init(setup: Setup, config: any, options: any): Promise<any> {
-  const nextFeature = setup.features.shift();
+  const nextFeature = setup.features ? setup.features.shift() : undefined;
   if (nextFeature) {
     if (!features[nextFeature]) {
       return utils.reject(
