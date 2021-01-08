@@ -65,6 +65,11 @@
     "require": [
       "ts-node/register"
     ],
+    "reporter": [
+      "lcovonly",
+      "text"
+    ],
+    "report-dir": "./.coverage",
     "extension": [
       ".js",
       ".ts"
@@ -172,7 +177,7 @@
     "@typescript-eslint/parser": "^2.34.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "coveralls": "^3.0.1",
+    "coveralls": "^3.1.0",
     "eslint": "^6.8.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^6.10.0",
