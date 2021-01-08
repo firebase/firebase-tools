@@ -262,6 +262,23 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should be able to time out if the request takes too long", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .delay(200)
+        .reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com/" });
+      await expect(
+        c.request({
+          method: "GET",
+          path: "/path/to/foo",
+          timeout: 10,
+        })
+      ).to.eventually.be.rejectedWith(FirebaseError, "Timeout reached making request");
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should make a basic POST request", async () => {
       const POST_DATA = { post: "data" };
       nock("https://example.com")
