@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
@@ -806,6 +807,21 @@ export class FunctionsEmulator implements EmulatorInstance {
         const { host } = this.getInfo();
         args.unshift(`--inspect=${host}:${this.args.debugPort}`);
       }
+    }
+
+    // Yarn 2 has a new feature called PnP (Plug N Play) which aims to completely take over
+    // module resolution. This feature is mostly incompatible with CF3 (prod or emulated) so
+    // if we detect it we should warn the developer.
+    // See: https://classic.yarnpkg.com/en/docs/pnp/
+    const pnpPath = path.join(frb.cwd, ".pnp.js");
+    if (fs.existsSync(pnpPath)) {
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN_ONCE",
+        "functions",
+        "Detected yarn@2 with PnP. " +
+          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
+      );
     }
 
     const childProcess = spawn(opts.nodeBinary, args, {
