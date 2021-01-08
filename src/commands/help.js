@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-ignore */
 "use strict";
 
 var { Command } = require("../command");
@@ -9,6 +10,7 @@ var utils = require("../utils");
 module.exports = new Command("help [command]")
   .description("display help information")
   .action(function(commandName) {
+    // @ts-ignore
     var client = this.client; // eslint-disable-line no-invalid-this
     var cmd = client.getCommand(commandName);
     if (cmd) {

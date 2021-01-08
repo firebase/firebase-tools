@@ -41,9 +41,8 @@ export async function prompt(options: { [key: string]: any }, questions: Questio
   }
 
   const answers = await inquirer.prompt(prompts);
-  // lodash's forEach's call back is (value, key); this is not a typo.
-  _.forEach(answers, (v, k) => {
-    options[k] = v;
+  Object.keys(answers).forEach((k) => {
+    options[k] = answers[k];
   });
   return answers;
 }

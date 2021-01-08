@@ -21,6 +21,7 @@ module.exports = function(setup, config) {
 
   setup.functions = {};
   var projectId = _.get(setup, "rcfile.projects.default");
+  /** @type {Promise<*>} */
   var enableApis = Promise.resolve();
   if (projectId) {
     enableApis = requirePermissions({ project: projectId }).then(() => {

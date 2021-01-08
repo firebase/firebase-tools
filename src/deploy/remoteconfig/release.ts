@@ -6,7 +6,7 @@ interface ReleaseContext {
   remoteconfigTemplate?: RemoteConfigTemplate;
 }
 
-module.exports = async function(context: ReleaseContext, options: any) {
+export default async function(context: ReleaseContext, options: any) {
   if (!context?.remoteconfigTemplate) {
     return;
   }
@@ -14,4 +14,4 @@ module.exports = async function(context: ReleaseContext, options: any) {
   const projectNumber = await getProjectNumber(options);
   const etag = await getEtag(projectNumber);
   return publishTemplate(projectNumber, template, etag, options);
-};
+}

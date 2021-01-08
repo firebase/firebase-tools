@@ -36,7 +36,7 @@ function _logBillingStatus(enabled, projectId) {
  * @param {string} projectId
  * @param {string} url
  * @param {boolean} open
- * @return {Promise<undefined>}
+ * @return {Promise<boolean>}
  */
 function _openBillingAccount(projectId, url, open) {
   if (open) {
@@ -62,25 +62,23 @@ function _openBillingAccount(projectId, url, open) {
  * Question prompts user to select billing account for project.
  * @param {string} projectId
  * @param {string} extensionName
- * @param {Object<string, string>} accounts
- * @return {Promise<undefined>}
+ * @param {Object<string, *>} accounts
+ * @return {Promise<void | undefined>}
  */
 function _chooseBillingAccount(projectId, extensionName, accounts) {
   const choices = _.map(accounts, "displayName");
   choices.push("Add new billing account");
 
-  const question = {
-    name: "billing",
-    type: "list",
-    message: `The extension ${clc.underline(
-      extensionName
-    )} requires your project to be upgraded to the Blaze plan. You have access to the following billing accounts.
-Please select the one that you would like to associate with this project:`,
-    choices: choices,
-  };
-
   return prompt
-    .promptOnce(question)
+    .promptOnce({
+      name: "billing",
+      type: "list",
+      message: `The extension ${clc.underline(
+        extensionName
+      )} requires your project to be upgraded to the Blaze plan. You have access to the following billing accounts.
+  Please select the one that you would like to associate with this project:`,
+      choices: choices,
+    })
     .then((answer) => {
       if (answer === "Add new billing account") {
         const billingURL = `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`;
@@ -100,7 +98,7 @@ Please select the one that you would like to associate with this project:`,
  * user responds.
  * @param {string} projectId
  * @param {string} extensionName
- * @return {Promise<undefined>}
+ * @return {Promise<void | undefined>}
  */
 function _setUpBillingAccount(projectId, extensionName) {
   const billingURL = `https://console.cloud.google.com/billing/linkedaccount?project=${projectId}`;
@@ -132,7 +130,7 @@ function _setUpBillingAccount(projectId, extensionName) {
 
 /**
  * Checks whether billing is enabled on the given project.
- * @param {projectId} projectId
+ * @param {string} projectId
  * @returns {Promise<boolean>} True if billing is enabled
  */
 export function isBillingEnabled(projectId) {
@@ -143,7 +141,7 @@ export function isBillingEnabled(projectId) {
  * Sets up billing for the given project.
  * @param {string} projectId
  * @param {string} extensionName
- * @return {Promise<undefined>}
+ * @return {Promise<void | undefined>}
  */
 export function enableBilling(projectId, extensionName) {
   return cloudbilling.listBillingAccounts().then((billingAccounts) => {
