@@ -29,9 +29,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(true);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -70,9 +68,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.isNewUser).to.equal(false);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken as string;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -232,9 +228,7 @@ describeAuthEmulator("sign-in with custom token", ({ authApi }) => {
       .send({ token })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equal("USER_DISABLED");
       });
   });
 });

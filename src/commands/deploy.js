@@ -56,7 +56,7 @@ module.exports = new Command("deploy")
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
   .before(requireConfig)
-  .before(function(options) {
+  .before(function (options) {
     options.filteredTargets = filterTargets(options, VALID_TARGETS);
     const permissions = options.filteredTargets.reduce((perms, target) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
@@ -68,7 +68,7 @@ module.exports = new Command("deploy")
       return checkServiceAccountIam(options.project);
     }
   })
-  .before(async function(options) {
+  .before(async function (options) {
     // only fetch the default instance for hosting or database deploys
     if (_.includes(options.filteredTargets, "database")) {
       await requireDatabaseInstance(options);
@@ -80,6 +80,6 @@ module.exports = new Command("deploy")
   })
   .before(checkValidTargetFilters)
   .before(checkFunctionsSDKVersion)
-  .action(function(options) {
+  .action(function (options) {
     return deploy(options.filteredTargets, options);
   });

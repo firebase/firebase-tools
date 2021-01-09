@@ -221,9 +221,7 @@ export async function expectUserNotExistsForIdToken(
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(400, res);
-      expect(res.body.error)
-        .to.have.property("message")
-        .equals("USER_NOT_FOUND");
+      expect(res.body.error).to.have.property("message").equals("USER_NOT_FOUND");
     });
 }
 
@@ -234,9 +232,7 @@ export async function expectIdTokenExpired(testAgent: TestAgent, idToken: string
     .query({ key: "fake-api-key" })
     .then((res) => {
       expectStatusCode(400, res);
-      expect(res.body.error)
-        .to.have.property("message")
-        .equals("TOKEN_EXPIRED");
+      expect(res.body.error).to.have.property("message").equals("TOKEN_EXPIRED");
     });
 }
 

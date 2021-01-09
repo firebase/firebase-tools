@@ -16,14 +16,11 @@ describe("ListRemote", () => {
   });
 
   it("should return subpaths from shallow get request", async () => {
-    nock(serverUrl)
-      .get("/.json")
-      .query({ shallow: true, limitToFirst: "1234" })
-      .reply(200, {
-        a: true,
-        x: true,
-        f: true,
-      });
+    nock(serverUrl).get("/.json").query({ shallow: true, limitToFirst: "1234" }).reply(200, {
+      a: true,
+      x: true,
+      f: true,
+    });
     await expect(remote.listPath("/", 1234)).to.eventually.eql(["a", "x", "f"]);
   });
 });

@@ -4,7 +4,7 @@ var api = require("../api");
 
 var version = "v2beta1";
 
-var _listEntries = function(projectId, filter, pageSize, order) {
+var _listEntries = function (projectId, filter, pageSize, order) {
   return api
     .request("POST", "/" + version + "/entries:list", {
       auth: true,
@@ -16,7 +16,7 @@ var _listEntries = function(projectId, filter, pageSize, order) {
       },
       origin: api.cloudloggingOrigin,
     })
-    .then(function(result) {
+    .then(function (result) {
       return Promise.resolve(result.body.entries);
     });
 };

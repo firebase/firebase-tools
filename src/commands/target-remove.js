@@ -9,7 +9,7 @@ var utils = require("../utils");
 module.exports = new Command("target:remove <type> <resource>")
   .description("remove a resource target")
   .before(requireConfig)
-  .action(function(type, resource, options) {
+  .action(function (type, resource, options) {
     var name = options.rc.removeTarget(options.project, type, resource);
     if (name) {
       utils.logSuccess(

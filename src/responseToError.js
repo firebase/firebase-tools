@@ -3,7 +3,7 @@
 const _ = require("lodash");
 const { FirebaseError } = require("./error");
 
-module.exports = function(response, body) {
+module.exports = function (response, body) {
   if (typeof body === "string" && response.statusCode === 404) {
     body = {
       error: {

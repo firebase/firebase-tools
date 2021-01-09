@@ -9,7 +9,7 @@ var utils = require("../utils");
 
 module.exports = new Command("help [command]")
   .description("display help information")
-  .action(function(commandName) {
+  .action(function (commandName) {
     // @ts-ignore
     var client = this.client; // eslint-disable-line no-invalid-this
     var cmd = client.getCommand(commandName);

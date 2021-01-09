@@ -17,12 +17,8 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.localId).equals(localId);
         expect(res.body.email).equals(user.email);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(true);
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -33,9 +29,7 @@ describeAuthEmulator("accounts:signInWithPassword", ({ authApi }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.equal(localId);
         expect(decoded!.payload).not.to.have.property("provider_id");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
       });
   });
 

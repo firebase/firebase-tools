@@ -142,12 +142,9 @@ describe("Project management", () => {
       });
 
       it("should throw if there's no project", async () => {
-        nock(api.firebaseApiOrigin)
-          .get("/v1beta1/projects")
-          .query({ pageSize: 100 })
-          .reply(200, {
-            results: [],
-          });
+        nock(api.firebaseApiOrigin).get("/v1beta1/projects").query({ pageSize: 100 }).reply(200, {
+          results: [],
+        });
 
         let err;
         try {

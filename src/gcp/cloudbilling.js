@@ -17,7 +17,7 @@ function _checkBillingEnabled(projectId) {
       origin: api.cloudbillingOrigin,
       retryCodes: [500, 503],
     })
-    .then(function(response) {
+    .then(function (response) {
       return response.body.billingEnabled;
     });
 }
@@ -37,7 +37,7 @@ function _setBillingAccount(projectId, billingAccount) {
         billingAccountName: billingAccount,
       },
     })
-    .then(function(response) {
+    .then(function (response) {
       return response.body.billingEnabled;
     });
 }
@@ -53,7 +53,7 @@ function _listBillingAccounts() {
       origin: api.cloudbillingOrigin,
       retryCodes: [500, 503],
     })
-    .then(function(response) {
+    .then(function (response) {
       return response.body.billingAccounts || [];
     });
 }

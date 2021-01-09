@@ -325,10 +325,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
+                url: admin.database().ref().toString(),
               });
               return Promise.resolve();
             }),
@@ -381,10 +378,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
+                url: admin.database().ref().toString(),
               });
             }),
           };

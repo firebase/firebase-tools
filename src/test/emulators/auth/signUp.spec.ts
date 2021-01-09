@@ -22,9 +22,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_EMAIL");
+        expect(res.body.error).to.have.property("message").equals("MISSING_EMAIL");
       });
   });
 
@@ -35,9 +33,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -48,9 +44,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.be.a("string");
         expect(decoded!.payload.provider_id).equals("anonymous");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("anonymous");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("anonymous");
       });
   });
 
@@ -62,9 +56,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("refreshToken")
-          .that.is.a("string");
+        expect(res.body).to.have.property("refreshToken").that.is.a("string");
 
         const idToken = res.body.idToken;
         const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -75,9 +67,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
         expect(decoded!.header.alg).to.eql("none");
         expect(decoded!.payload.user_id).to.be.a("string");
         expect(decoded!.payload).not.to.have.property("provider_id");
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
         expect(decoded!.payload.firebase.identities).to.eql({
           email: [email],
         });
@@ -135,9 +125,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
 
     await authApi()
@@ -147,9 +135,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
   });
 
@@ -163,9 +149,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("EMAIL_EXISTS");
+        expect(res.body.error).to.have.property("message").equals("EMAIL_EXISTS");
       });
   });
 
@@ -176,9 +160,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("INVALID_EMAIL");
+        expect(res.body.error).to.have.property("message").equals("INVALID_EMAIL");
       });
   });
 
@@ -214,9 +196,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_EMAIL");
+        expect(res.body.error).to.have.property("message").equals("MISSING_EMAIL");
       });
 
     await authApi()
@@ -225,9 +205,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_PASSWORD");
+        expect(res.body.error).to.have.property("message").equals("MISSING_PASSWORD");
       });
   });
 
@@ -246,9 +224,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
       });
   });
 
@@ -270,9 +246,7 @@ describeAuthEmulator("accounts:signUp", ({ authApi }) => {
           payload: FirebaseJwtPayload;
         } | null;
         expect(decoded, "JWT returned by emulator is invalid").not.to.be.null;
-        expect(decoded!.payload.firebase)
-          .to.have.property("sign_in_provider")
-          .equals("password");
+        expect(decoded!.payload.firebase).to.have.property("sign_in_provider").equals("password");
 
         // The result account should have both phone and email.
         expect(decoded!.payload.firebase.identities).to.eql({

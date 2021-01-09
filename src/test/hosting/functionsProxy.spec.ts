@@ -50,9 +50,7 @@ describe("functionsProxy", () => {
   });
 
   it("should resolve a function that returns middleware that proxies to a local version", async () => {
-    nock("http://localhost:7778")
-      .get("/project-foo/us-central1/bar/")
-      .reply(200, "local version");
+    nock("http://localhost:7778").get("/project-foo/us-central1/bar/").reply(200, "local version");
 
     const options = cloneDeep(fakeOptions);
     options.targets = ["functions"];

@@ -25,8 +25,9 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
     return Promise.resolve(alreadyFetched);
   }
 
-  const path = `/v1/projects/${projectId}/locations/${rewrite.run.region ||
-    "us-central1"}/services/${rewrite.run.serviceId}`;
+  const path = `/v1/projects/${projectId}/locations/${
+    rewrite.run.region || "us-central1"
+  }/services/${rewrite.run.serviceId}`;
   logger.info(`[hosting] Looking up Cloud Run service "${path}" for its URL`);
   return apiRequest("GET", path, { origin: cloudRunApiOrigin, auth: true })
     .then((res) => {
@@ -49,7 +50,7 @@ function getCloudRunUrl(rewrite: CloudRunProxyRewrite, projectId: string): Promi
  * that resolves with a middleware-like function that proxies the request to
  * the live Cloud Run service running within the given project.
  */
-export default function(
+export default function (
   options: CloudRunProxyOptions
 ): (r: CloudRunProxyRewrite) => Promise<RequestHandler> {
   return async (rewrite: CloudRunProxyRewrite) => {

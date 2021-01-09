@@ -3,11 +3,11 @@
 "use strict";
 
 var extractTriggers = require("./extractTriggers");
-var EXIT = function() {
+var EXIT = function () {
   process.exit(0);
 };
 
-(function() {
+(function () {
   if (!process.send) {
     console.warn("Could not parse function triggers (process.send === undefined).");
     process.exit(1);

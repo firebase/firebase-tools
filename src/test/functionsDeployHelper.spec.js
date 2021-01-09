@@ -5,15 +5,15 @@ var expect = chai.expect;
 
 var helper = require("../functionsDeployHelper");
 
-describe("functionsDeployHelper", function() {
-  describe("getFilterGroups", function() {
-    it("should parse multiple filters", function() {
+describe("functionsDeployHelper", function () {
+  describe("getFilterGroups", function () {
+    it("should parse multiple filters", function () {
       var options = {
         only: "functions:myFunc,functions:myOtherFunc",
       };
       expect(helper.getFilterGroups(options)).to.deep.equal([["myFunc"], ["myOtherFunc"]]);
     });
-    it("should parse nested filters", function() {
+    it("should parse nested filters", function () {
       var options = {
         only: "functions:groupA.myFunc",
       };
@@ -21,8 +21,8 @@ describe("functionsDeployHelper", function() {
     });
   });
 
-  describe("getReleaseNames", function() {
-    it("should handle function update", function() {
+  describe("getReleaseNames", function () {
+    it("should handle function update", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
       var filter = [["myFunc"]];
@@ -32,7 +32,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle function deletion", function() {
+    it("should handle function deletion", function () {
       var uploadNames = [];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
       var filter = [["myFunc"]];
@@ -42,7 +42,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle function creation", function() {
+    it("should handle function creation", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
       var existingNames = [];
       var filter = [["myFunc"]];
@@ -52,7 +52,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle existing function not being in filter", function() {
+    it("should handle existing function not being in filter", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc"];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc2"];
       var filter = [["myFunc"]];
@@ -62,7 +62,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle no functions satisfying filter", function() {
+    it("should handle no functions satisfying filter", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myFunc2"];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myFunc3"];
       var filter = [["myFunc"]];
@@ -70,7 +70,7 @@ describe("functionsDeployHelper", function() {
       expect(helper.getReleaseNames(uploadNames, existingNames, filter)).to.deep.equal([]);
     });
 
-    it("should handle entire function groups", function() {
+    it("should handle entire function groups", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myGroup-func1"];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myGroup-func2"];
       var filter = [["myGroup"]];
@@ -81,7 +81,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle functions within groups", function() {
+    it("should handle functions within groups", function () {
       var uploadNames = ["projects/myProject/locations/us-central1/functions/myGroup-func1"];
       var existingNames = ["projects/myProject/locations/us-central1/functions/myGroup-func2"];
       var filter = [["myGroup", "func1"]];
@@ -92,8 +92,8 @@ describe("functionsDeployHelper", function() {
     });
   });
 
-  describe("getFunctionsInfo", function() {
-    it("should handle default region", function() {
+  describe("getFunctionsInfo", function () {
+    it("should handle default region", function () {
       var triggers = [
         {
           name: "myFunc",
@@ -113,7 +113,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle customized region", function() {
+    it("should handle customized region", function () {
       var triggers = [
         {
           name: "myFunc",
@@ -134,7 +134,7 @@ describe("functionsDeployHelper", function() {
       ]);
     });
 
-    it("should handle multiple customized region for a function", function() {
+    it("should handle multiple customized region for a function", function () {
       var triggers = [
         {
           name: "myFunc",

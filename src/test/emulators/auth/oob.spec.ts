@@ -101,9 +101,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("INVALID_ID_TOKEN");
+        expect(res.body.error).to.have.property("message").equal("INVALID_ID_TOKEN");
       });
 
     await authApi()
@@ -113,9 +111,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ returnOobLink: true, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("MISSING_EMAIL");
+        expect(res.body.error).to.have.property("message").equal("MISSING_EMAIL");
       });
 
     const oobs = await inspectOobs(authApi());
@@ -135,9 +131,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ email: user.email, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("INVALID_ID_TOKEN");
+        expect(res.body.error).to.have.property("message").equal("INVALID_ID_TOKEN");
       });
 
     const oobs = await inspectOobs(authApi());
@@ -151,9 +145,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ email: "nosuchuser@example.com", returnOobLink: true, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("USER_NOT_FOUND");
+        expect(res.body.error).to.have.property("message").equal("USER_NOT_FOUND");
       });
 
     const oobs = await inspectOobs(authApi());
@@ -169,9 +161,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ idToken, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equal("MISSING_EMAIL");
+        expect(res.body.error).to.have.property("message").equal("MISSING_EMAIL");
       });
 
     const oobs = await inspectOobs(authApi());
@@ -191,9 +181,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       .send({ email, idToken, requestType: "VERIFY_EMAIL" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("USER_DISABLED");
+        expect(res.body.error).to.have.property("message").equals("USER_DISABLED");
       });
   });
 
@@ -213,9 +201,7 @@ describeAuthEmulator("accounts:sendOobCode", ({ authApi, getClock }) => {
       })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .contain("INVALID_CONTINUE_URI");
+        expect(res.body.error).to.have.property("message").contain("INVALID_CONTINUE_URI");
       });
 
     const oobs = await inspectOobs(authApi());

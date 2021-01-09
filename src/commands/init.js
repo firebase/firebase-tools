@@ -18,14 +18,14 @@ var TEMPLATE_ROOT = path.resolve(__dirname, "../../templates/");
 var BANNER_TEXT = fs.readFileSync(path.join(TEMPLATE_ROOT, "banner.txt"), "utf8");
 var GITIGNORE_TEMPLATE = fs.readFileSync(path.join(TEMPLATE_ROOT, "_gitignore"), "utf8");
 
-var _isOutside = function(from, to) {
+var _isOutside = function (from, to) {
   return path.relative(from, to).match(/^\.\./);
 };
 
 module.exports = new Command("init [feature]")
   .description("setup a Firebase project in the current directory")
   .before(requireAuth)
-  .action(function(feature, options) {
+  .action(function (feature, options) {
     var cwd = options.cwd || process.cwd();
 
     var warnings = [];
@@ -120,7 +120,7 @@ module.exports = new Command("init [feature]")
     }
 
     return next
-      .then(function(proceed) {
+      .then(function (proceed) {
         if (!proceed) {
           return utils.reject("Aborted by user.", { exit: 1 });
         }
@@ -141,7 +141,7 @@ module.exports = new Command("init [feature]")
           },
         ]);
       })
-      .then(function() {
+      .then(function () {
         if (setup.features.length === 0) {
           return utils.reject(
             "Must select at least one feature. Use " +
@@ -153,7 +153,7 @@ module.exports = new Command("init [feature]")
         setup.features.unshift("project");
         return init(setup, config, options);
       })
-      .then(function() {
+      .then(function () {
         logger.info();
         utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
         config.writeProjectFile("firebase.json", setup.config);

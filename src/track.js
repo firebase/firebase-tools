@@ -23,8 +23,8 @@ visitor.set("cd1", process.platform); // Platform
 visitor.set("cd2", process.version); // NodeVersion
 visitor.set("cd3", process.env.FIREPIT_VERSION || "none"); // FirepitVersion
 
-module.exports = function(action, label, duration) {
-  return new Promise(function(resolve) {
+module.exports = function (action, label, duration) {
+  return new Promise(function (resolve) {
     if (!_.isString(action) || !_.isString(label)) {
       logger.debug("track received non-string arguments:", action, label);
       resolve();
@@ -32,7 +32,7 @@ module.exports = function(action, label, duration) {
     duration = duration || 0;
 
     if (configstore.get("tokens") && configstore.get("usage")) {
-      visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(function() {
+      visitor.event("Firebase CLI " + pkg.version, action, label, duration).send(function () {
         // we could handle errors here, but we won't
         resolve();
       });
