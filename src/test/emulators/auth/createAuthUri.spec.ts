@@ -17,12 +17,8 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(false);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
 
@@ -35,18 +31,10 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(true);
-        expect(res.body)
-          .to.have.property("allProviders")
-          .eql(["password"]);
-        expect(res.body)
-          .to.have.property("signinMethods")
-          .eql(["password"]);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .that.is.a("string");
+        expect(res.body).to.have.property("registered").equals(true);
+        expect(res.body).to.have.property("allProviders").eql(["password"]);
+        expect(res.body).to.have.property("signinMethods").eql(["password"]);
+        expect(res.body).to.have.property("sessionId").that.is.a("string");
       });
   });
 
@@ -61,12 +49,8 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("registered")
-          .equals(false);
-        expect(res.body)
-          .to.have.property("sessionId")
-          .equals("my-session-1");
+        expect(res.body).to.have.property("registered").equals(false);
+        expect(res.body).to.have.property("sessionId").equals("my-session-1");
       });
   });
 
@@ -163,9 +147,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_IDENTIFIER");
+        expect(res.body.error).to.have.property("message").equals("MISSING_IDENTIFIER");
       });
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:createAuthUri")
@@ -175,9 +157,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_CONTINUE_URI");
+        expect(res.body.error).to.have.property("message").equals("MISSING_CONTINUE_URI");
       });
   });
 
@@ -188,9 +168,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("INVALID_IDENTIFIER");
+        expect(res.body.error).to.have.property("message").equals("INVALID_IDENTIFIER");
       });
   });
 
@@ -201,9 +179,7 @@ describeAuthEmulator("accounts:createAuthUri", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("INVALID_CONTINUE_URI");
+        expect(res.body.error).to.have.property("message").equals("INVALID_CONTINUE_URI");
       });
   });
 });

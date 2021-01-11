@@ -74,11 +74,7 @@ describe("RulesDeploy", () => {
     });
 
     it("should succeed if there are multiple files to compile", async () => {
-      (gcp.rules.testRuleset as sinon.SinonStub)
-        .onFirstCall()
-        .resolves()
-        .onSecondCall()
-        .resolves();
+      (gcp.rules.testRuleset as sinon.SinonStub).onFirstCall().resolves().onSecondCall().resolves();
       rd.addFile("firestore.rules");
       rd.addFile("storage.rules");
 

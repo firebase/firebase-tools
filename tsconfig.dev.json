@@ -1,17 +1,12 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
-    "module": "commonjs",
-    "strict": true,
-    "outDir": "dev",
+    "noEmit": true,
     "removeComments": false,
-    "target": "es2017",
-    "sourceMap": true,
-    "typeRoots": [
-      "node_modules/@types",
-      "src/types"
-    ]
   },
-  "include": ["scripts/**/*"]
+  "include": [
+    "scripts/**/*",
+    ".eslintrc.js",
+    ".prettierrc.js",
+  ]
 }

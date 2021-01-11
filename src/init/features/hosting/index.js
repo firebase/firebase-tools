@@ -18,7 +18,7 @@ const MISSING_TEMPLATE = fs.readFileSync(
 );
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-module.exports = function(setup, config, options) {
+module.exports = function (setup, config, options) {
   setup.hosting = {};
 
   logger.info();
@@ -52,7 +52,7 @@ module.exports = function(setup, config, options) {
       default: false,
       message: "Set up automatic builds and deploys with GitHub?",
     },
-  ]).then(function() {
+  ]).then(function () {
     setup.config.hosting = {
       public: setup.hosting.public,
       ignore: DEFAULT_IGNORES,

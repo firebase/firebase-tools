@@ -333,7 +333,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
-    obj[method] = function(...args: any[]): any {
+    obj[method] = function (...args: any[]): any {
       const hrefs = args
         .map((arg) => {
           if (typeof arg === "string") {
@@ -654,20 +654,22 @@ async function initializeEnvironmentalVariables(frb: FunctionsRuntimeBundle): Pr
   const functionsGt380 = compareVersionStrings(functionsResolution.version, "3.8.0") >= 0;
   let emulatedDatabaseURL = undefined;
   if (frb.emulators.database && functionsGt380) {
-    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}?ns=${
-      process.env.GCLOUD_PROJECT
-    }`;
+    // Database URL will look like one of:
+    //  - https://${namespace}.firebaseio.com
+    //  - https://${namespace}.${location}.firebasedatabase.app
+    let ns = frb.projectId;
+    if (frb.adminSdkConfig.databaseURL) {
+      const asUrl = new URL(frb.adminSdkConfig.databaseURL);
+      ns = asUrl.hostname.split(".")[0];
+    }
+
+    emulatedDatabaseURL = `http://${formatHost(frb.emulators.database)}/?ns=${ns}`;
   }
 
-  // Do our best to provide reasonable FIREBASE_CONFIG, based on firebase-functions implementation
-  // https://github.com/firebase/firebase-functions/blob/59d6a7e056a7244e700dc7b6a180e25b38b647fd/src/setup.ts#L45
   process.env.FIREBASE_CONFIG = JSON.stringify({
-    databaseURL:
-      process.env.DATABASE_URL ||
-      emulatedDatabaseURL ||
-      `https://${process.env.GCLOUD_PROJECT}.firebaseio.com`,
-    storageBucket: process.env.STORAGE_BUCKET_URL || `${process.env.GCLOUD_PROJECT}.appspot.com`,
-    projectId: process.env.GCLOUD_PROJECT,
+    storageBucket: frb.adminSdkConfig.storageBucket,
+    databaseURL: emulatedDatabaseURL || frb.adminSdkConfig.databaseURL,
+    projectId: frb.projectId,
   });
 
   if (frb.triggerId) {
@@ -848,10 +850,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
     functionRouter.all("*", handler);
 
-    ephemeralServer.use(
-      [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
-      functionRouter
-    );
+    ephemeralServer.use([`/`, `/*`], functionRouter);
 
     logDebug(`Attempting to listen to socketPath: ${socketPath}`);
     const instance = ephemeralServer.listen(socketPath, () => {
@@ -986,8 +985,9 @@ async function invokeTrigger(
       new EmulatorLog(
         "WARN",
         "runtime-status",
-        `Your function timed out after ~${trigger.definition.timeout ||
-          "60s"}. To configure this timeout, see
+        `Your function timed out after ~${
+          trigger.definition.timeout || "60s"
+        }. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");

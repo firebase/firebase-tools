@@ -12,9 +12,7 @@ const FIREBASE_PROJECT = process.env.FBTOOLS_TARGET_PROJECT || "";
 const ADMIN_CREDENTIAL = {
   getAccessToken: () => {
     return Promise.resolve({
-      // eslint-disable-next-line @typescript-eslint/camelcase
       expires_in: 1000000,
-      // eslint-disable-next-line @typescript-eslint/camelcase
       access_token: "owner",
     });
   },
@@ -50,7 +48,7 @@ describe("database and firestore emulator function triggers", () => {
   let firestore: admin.firestore.Firestore | undefined;
   const firestoreUnsub: Array<() => void> = [];
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -120,7 +118,7 @@ describe("database and firestore emulator function triggers", () => {
     firestoreUnsub.push(unsub);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     database?.goOffline();
     for (const fn of firestoreUnsub) fn();
@@ -128,14 +126,14 @@ describe("database and firestore emulator function triggers", () => {
     await test.stopEmulators();
   });
 
-  it("should write to the database emulator", async function(this) {
+  it("should write to the database emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToRtdb();
     expect(response.status).to.equal(200);
   });
 
-  it("should write to the firestore emulator", async function(this) {
+  it("should write to the firestore emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToFirestore();
@@ -165,7 +163,7 @@ describe("database and firestore emulator function triggers", () => {
 describe("pubsub emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -175,12 +173,12 @@ describe("pubsub emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,pubsub"]);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the pubsub emulator", async function(this) {
+  it("should write to the pubsub emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToPubsub();
@@ -192,7 +190,7 @@ describe("pubsub emulator function triggers", () => {
     expect(test.pubsubTriggerCount).to.equal(1);
   });
 
-  it("should write to the scheduled pubsub emulator", async function(this) {
+  it("should write to the scheduled pubsub emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
 
     const response = await test.writeToScheduledPubsub();
@@ -208,7 +206,7 @@ describe("pubsub emulator function triggers", () => {
 describe("auth emulator function triggers", () => {
   let test: TriggerEndToEndTest;
 
-  before(async function(this) {
+  before(async function (this) {
     this.timeout(TEST_SETUP_TIMEOUT);
 
     expect(FIREBASE_PROJECT).to.exist.and.not.be.empty;
@@ -218,12 +216,12 @@ describe("auth emulator function triggers", () => {
     await test.startEmulators(["--only", "functions,auth"]);
   });
 
-  after(async function(this) {
+  after(async function (this) {
     this.timeout(EMULATORS_SHUTDOWN_DELAY_MS);
     await test.stopEmulators();
   });
 
-  it("should write to the auth emulator", async function(this) {
+  it("should write to the auth emulator", async function (this) {
     this.timeout(EMULATOR_TEST_TIMEOUT);
     const response = await test.writeToAuth();
     expect(response.status).to.equal(200);
@@ -236,7 +234,7 @@ describe("auth emulator function triggers", () => {
 });
 
 describe("import/export end to end", () => {
-  it("should be able to import/export firestore data", async function(this) {
+  it("should be able to import/export firestore data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -287,7 +285,7 @@ describe("import/export end to end", () => {
     expect(true).to.be.true;
   });
 
-  it("should be able to import/export rtdb data", async function(this) {
+  it("should be able to import/export rtdb data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -389,10 +387,7 @@ describe("import/export end to end", () => {
     }
 
     // Delete all the data in one namespace
-    await bApp
-      .database()
-      .ref()
-      .set(null);
+    await bApp.database().ref().set(null);
 
     // Stop the CLI (which will export on exit)
     await importCLI.stop();
@@ -407,7 +402,7 @@ describe("import/export end to end", () => {
     expect(bData).to.equal(null);
   });
 
-  it("should be able to import/export auth data", async function(this) {
+  it("should be able to import/export auth data", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -513,7 +508,7 @@ describe("import/export end to end", () => {
     }
   });
 
-  it("should be able to export / import auth data with no users", async function(this) {
+  it("should be able to export / import auth data with no users", async function (this) {
     this.timeout(2 * TEST_SETUP_TIMEOUT);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 

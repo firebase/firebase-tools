@@ -251,7 +251,7 @@ export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
 /**
  * Sets the active project alias or id in the specified directory.
  */
-export function makeActiveProject(projectDir: string, newActive: string): void {
+export function makeActiveProject(projectDir: string, newActive: string | null): void {
   const activeProjects = configstore.get("activeProjects") || {};
   if (newActive) {
     activeProjects[projectDir] = newActive;
@@ -476,20 +476,13 @@ export function createDestroyer(server: http.Server): () => Promise<void> {
  * @return the formatted date.
  */
 export function datetimeString(d: Date): string {
-  const day = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d
-    .getDate()
+  const day = `${d.getFullYear()}-${(d.getMonth() + 1)
     .toString()
-    .padStart(2, "0")}`;
-  const time = `${d
-    .getHours()
-    .toString()
-    .padStart(2, "0")}:${d
+    .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+  const time = `${d.getHours().toString().padStart(2, "0")}:${d
     .getMinutes()
     .toString()
-    .padStart(2, "0")}:${d
-    .getSeconds()
-    .toString()
-    .padStart(2, "0")}`;
+    .padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
   return `${day} ${time}`;
 }
 

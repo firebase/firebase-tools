@@ -34,23 +34,23 @@ function _isReservedNamespace(id) {
   });
 }
 
-exports.ensureApi = function(options) {
+exports.ensureApi = function (options) {
   var projectId = getProjectId(options);
   return ensureApiEnabled(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true);
 };
 
-exports.varNameToIds = function(varName) {
+exports.varNameToIds = function (varName) {
   return {
     config: varName.match(new RegExp("/configs/(.+)/variables/"))[1],
     variable: varName.match(new RegExp("/variables/(.+)"))[1],
   };
 };
 
-exports.idsToVarName = function(projectId, configId, varId) {
+exports.idsToVarName = function (projectId, configId, varId) {
   return _.join(["projects", projectId, "configs", configId, "variables", varId], "/");
 };
 
-exports.getAppEngineLocation = function(config) {
+exports.getAppEngineLocation = function (config) {
   var appEngineLocation = config.locationId;
   if (appEngineLocation && appEngineLocation.match(/[^\d]$/)) {
     // For some regions, such as us-central1, the locationId has the trailing digit cut off
@@ -59,7 +59,7 @@ exports.getAppEngineLocation = function(config) {
   return appEngineLocation || "us-central1";
 };
 
-exports.getFirebaseConfig = function(options) {
+exports.getFirebaseConfig = function (options) {
   const projectId = getProjectId(options, false);
   return api
     .request("GET", "/v1beta1/projects/" + projectId + "/adminSdkConfig", {
@@ -71,7 +71,7 @@ exports.getFirebaseConfig = function(options) {
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"
 // to ensure that nothing broke.
-exports.setVariablesRecursive = function(projectId, configId, varPath, val) {
+exports.setVariablesRecursive = function (projectId, configId, varPath, val) {
   var parsed = val;
   if (_.isString(val)) {
     try {
@@ -84,7 +84,7 @@ exports.setVariablesRecursive = function(projectId, configId, varPath, val) {
   // If 'parsed' is object, call again
   if (_.isPlainObject(parsed)) {
     return Promise.all(
-      _.map(parsed, function(item, key) {
+      _.map(parsed, function (item, key) {
         var newVarPath = varPath ? _.join([varPath, key], "/") : key;
         return exports.setVariablesRecursive(projectId, configId, newVarPath, item);
       })
@@ -95,18 +95,18 @@ exports.setVariablesRecursive = function(projectId, configId, varPath, val) {
   return _setVariable(projectId, configId, varPath, val);
 };
 
-exports.materializeConfig = function(configName, output) {
-  var _materializeVariable = function(varName) {
-    return runtimeconfig.variables.get(varName).then(function(variable) {
+exports.materializeConfig = function (configName, output) {
+  var _materializeVariable = function (varName) {
+    return runtimeconfig.variables.get(varName).then(function (variable) {
       var id = exports.varNameToIds(variable.name);
       var key = id.config + "." + id.variable.split("/").join(".");
       _.set(output, key, variable.text);
     });
   };
 
-  var _traverseVariables = function(variables) {
+  var _traverseVariables = function (variables) {
     return Promise.all(
-      _.map(variables, function(variable) {
+      _.map(variables, function (variable) {
         return _materializeVariable(variable.name);
       })
     );
@@ -114,34 +114,34 @@ exports.materializeConfig = function(configName, output) {
 
   return runtimeconfig.variables
     .list(configName)
-    .then(function(variables) {
+    .then(function (variables) {
       return _traverseVariables(variables);
     })
-    .then(function() {
+    .then(function () {
       return output;
     });
 };
 
-exports.materializeAll = function(projectId) {
+exports.materializeAll = function (projectId) {
   var output = {};
-  return runtimeconfig.configs.list(projectId).then(function(configs) {
+  return runtimeconfig.configs.list(projectId).then(function (configs) {
     return Promise.all(
-      _.map(configs, function(config) {
+      _.map(configs, function (config) {
         if (config.name.match(new RegExp("configs/firebase"))) {
           // ignore firebase config
           return Promise.resolve();
         }
         return exports.materializeConfig(config.name, output);
       })
-    ).then(function() {
+    ).then(function () {
       return output;
     });
   });
 };
 
-exports.parseSetArgs = function(args) {
+exports.parseSetArgs = function (args) {
   var parsed = [];
-  _.forEach(args, function(arg) {
+  _.forEach(args, function (arg) {
     var parts = arg.split("=");
     var key = parts[0];
     if (parts.length < 2) {
@@ -166,14 +166,14 @@ exports.parseSetArgs = function(args) {
   return parsed;
 };
 
-exports.parseUnsetArgs = function(args) {
+exports.parseUnsetArgs = function (args) {
   var parsed = [];
   var splitArgs = [];
-  _.forEach(args, function(arg) {
+  _.forEach(args, function (arg) {
     splitArgs = _.union(splitArgs, arg.split(","));
   });
 
-  _.forEach(splitArgs, function(key) {
+  _.forEach(splitArgs, function (key) {
     var id = _keyToIds(key);
     if (_isReservedNamespace(id)) {
       throw new FirebaseError("Cannot unset reserved namespace " + clc.bold(id.config));

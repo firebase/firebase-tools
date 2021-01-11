@@ -15,7 +15,7 @@ var { FirebaseError } = require("./error");
  * is required
  * @returns {String} The firebase name
  */
-module.exports = function(options, allowNull = false) {
+module.exports = function (options, allowNull = false) {
   if (!options.project && !allowNull) {
     var aliases = _.get(options, "rc.projects", {});
     var aliasCount = _.size(aliases);
@@ -41,7 +41,7 @@ module.exports = function(options, allowNull = false) {
         }
       );
     } else {
-      var aliasList = _.map(aliases, function(projectId, aname) {
+      var aliasList = _.map(aliases, function (projectId, aname) {
         return "  " + aname + " (" + projectId + ")";
       }).join("\n");
 

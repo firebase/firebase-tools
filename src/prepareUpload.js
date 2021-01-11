@@ -10,7 +10,7 @@ var { listFiles } = require("./listFiles");
 var { FirebaseError } = require("./error");
 var fsutils = require("./fsutils");
 
-module.exports = function(options) {
+module.exports = function (options) {
   var hostingConfig = options.config.get("hosting");
   var publicDir = options.config.path(hostingConfig.public);
   var indexPath = path.join(publicDir, "index.html");
@@ -34,7 +34,7 @@ module.exports = function(options) {
       },
       manifest.slice(0)
     )
-    .then(function() {
+    .then(function () {
       var stats = fs.statSync(tmpFile.name);
       return {
         file: tmpFile.name,
@@ -44,7 +44,7 @@ module.exports = function(options) {
         size: stats.size,
       };
     })
-    .catch(function(err) {
+    .catch(function (err) {
       return Promise.reject(
         new FirebaseError("There was an issue preparing Hosting files for upload.", {
           original: err,

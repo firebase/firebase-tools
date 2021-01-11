@@ -3,14 +3,14 @@
 var _ = require("lodash");
 var { FirebaseError } = require("./error");
 
-module.exports = function(options, validTargets) {
-  var targets = validTargets.filter(function(t) {
+module.exports = function (options, validTargets) {
+  var targets = validTargets.filter(function (t) {
     return options.config.has(t);
   });
   if (options.only) {
     targets = _.intersection(
       targets,
-      options.only.split(",").map(function(opt) {
+      options.only.split(",").map(function (opt) {
         return opt.split(":")[0];
       })
     );

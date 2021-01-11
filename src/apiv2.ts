@@ -1,7 +1,9 @@
-import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
 import { URLSearchParams } from "url";
+import * as ProxyAgent from "proxy-agent";
+import AbortController from "abort-controller";
+import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 
 import { FirebaseError } from "./error";
 import * as logger from "./logger";
@@ -11,14 +13,27 @@ const CLI_VERSION = require("../package.json").version;
 
 export type HttpMethod = "GET" | "PUT" | "POST" | "DELETE" | "PATCH";
 
-interface RequestOptions<T> extends VerbOptions<T> {
+interface BaseRequestOptions<T> extends VerbOptions<T> {
   method: HttpMethod;
   path: string;
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
   redirect?: "error" | "follow" | "manual";
-  signal?: AbortSignal;
 }
+
+interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
+  // Signal is used to cancel a request. Cannot be used with `timeout`.
+  signal?: AbortSignal;
+  timeout?: never;
+}
+
+interface RequestOptionsWithTimeout<T> extends BaseRequestOptions<T> {
+  signal?: never;
+  // Timeout, in ms. 0 is no timeout. Cannot be used with `signal`.
+  timeout?: number;
+}
+
+type RequestOptions<T> = RequestOptionsWithSignal<T> | RequestOptionsWithTimeout<T>;
 
 interface VerbOptions<T> {
   method?: HttpMethod;
@@ -37,9 +52,12 @@ interface ClientHandlingOptions {
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions<T>;
 
-interface InternalClientRequestOptions<T> extends ClientRequestOptions<T> {
+interface BaseInternalClientRequestOptions<T> {
   headers?: Headers;
 }
+
+type InternalClientRequestOptions<T> = BaseInternalClientRequestOptions<T> &
+  ClientRequestOptions<T>;
 
 export type ClientVerbOptions<T> = VerbOptions<T> & ClientHandlingOptions;
 
@@ -68,10 +86,21 @@ export function setAccessToken(token = ""): void {
   accessToken = token;
 }
 
+function proxyURIFromEnv(): string | undefined {
+  return (
+    process.env.HTTPS_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTP_PROXY ||
+    process.env.http_proxy ||
+    undefined
+  );
+}
+
 export type ClientOptions = {
   urlPrefix: string;
   apiVersion?: string;
   auth?: boolean;
+  proxy?: string;
 };
 
 export class Client {
@@ -260,8 +289,28 @@ export class Client {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
-      signal: options.signal,
     };
+
+    if (this.opts.proxy) {
+      fetchOptions.agent = new ProxyAgent(this.opts.proxy);
+    }
+    const envProxy = proxyURIFromEnv();
+    if (envProxy) {
+      fetchOptions.agent = new ProxyAgent(envProxy);
+    }
+
+    if (options.signal) {
+      fetchOptions.signal = options.signal;
+    }
+
+    let reqTimeout: NodeJS.Timeout | undefined;
+    if (options.timeout) {
+      const controller = new AbortController();
+      reqTimeout = setTimeout(() => {
+        controller.abort();
+      }, options.timeout);
+      fetchOptions.signal = controller.signal;
+    }
 
     if (typeof options.body === "string" || isStream(options.body)) {
       fetchOptions.body = options.body;
@@ -275,7 +324,16 @@ export class Client {
     try {
       res = await fetch(fetchURL, fetchOptions);
     } catch (err) {
+      const isAbortError = err.name.includes("AbortError");
+      if (isAbortError) {
+        throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, { original: err });
+      }
       throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
+    } finally {
+      // If we succeed or failed, clear the timeout.
+      if (reqTimeout) {
+        clearTimeout(reqTimeout);
+      }
     }
 
     let body: ResT;

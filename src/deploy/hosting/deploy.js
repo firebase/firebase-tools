@@ -10,7 +10,11 @@ var utils = require("../../utils");
 var clc = require("cli-color");
 var SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-module.exports = function(context, options) {
+// Feature from cli-color 2.0.0 that we want to use:
+// See: https://github.com/medikoo/cli-color/blob/master/erase.js
+var _ERASE_LINE = "\x1b[2K";
+
+module.exports = function (context, options) {
   if (!context.hosting || !context.hosting.deploys) {
     return Promise.resolve();
   }
@@ -21,7 +25,7 @@ module.exports = function(context, options) {
     if (debugging) {
       utils.logLabeledBullet("hosting", newMessage);
     } else {
-      process.stdout.write(clc.erase.line + clc.move.left(9999));
+      process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
       process.stdout.write(
         clc.bold.cyan(SPINNER[spins % SPINNER.length] + "  hosting: ") + newMessage
       );
@@ -51,7 +55,7 @@ module.exports = function(context, options) {
     });
 
     var progressInterval = setInterval(
-      function() {
+      function () {
         _updateSpinner(uploader.statusMessage());
       },
       debugging ? 2000 : 200
@@ -59,21 +63,21 @@ module.exports = function(context, options) {
 
     return uploader
       .start()
-      .then(function() {
+      .then(function () {
         clearInterval(progressInterval);
         if (!debugging) {
-          process.stdout.write(clc.erase.line + clc.move.left(9999));
+          process.stdout.write(_ERASE_LINE + clc.move(-9999, 0));
         }
         utils.logLabeledSuccess("hosting[" + deploy.site + "]", "file upload complete");
         var dt = Date.now() - t0;
         logger.debug("[hosting] deploy completed after " + dt + "ms");
         return track("Hosting Deploy", "success", dt);
       })
-      .catch(function(err) {
+      .catch(function (err) {
         clearInterval(progressInterval);
         return Promise.reject(err);
       })
-      .then(function() {
+      .then(function () {
         if (deploys.length) {
           return _runDeploys(deploys);
         }

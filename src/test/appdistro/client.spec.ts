@@ -39,32 +39,24 @@ describe("distribution", () => {
 
   describe("getApp", () => {
     it("should throw error when app does not exist", () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .reply(404, {});
+      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(404, {});
       return expect(appDistributionClient.getApp()).to.be.rejected;
     });
 
     it("should resolve when request succeeds", () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .reply(200, {});
+      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(200, {});
       return expect(appDistributionClient.getApp()).to.be.fulfilled;
     });
 
     it("should throw an error when the request fails", () => {
-      nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
-        .reply(404, {});
+      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(404, {});
       return expect(appDistributionClient.getApp()).to.be.rejected;
     });
   });
 
   describe("uploadDistribution", () => {
     it("should throw error if upload fails", () => {
-      nock(api.appDistributionOrigin)
-        .post(`/app-binary-uploads?app_id=${appId}`)
-        .reply(400, {});
+      nock(api.appDistributionOrigin).post(`/app-binary-uploads?app_id=${appId}`).reply(400, {});
       return expect(appDistributionClient.uploadDistribution(mockDistribution)).to.be.rejected;
     });
 

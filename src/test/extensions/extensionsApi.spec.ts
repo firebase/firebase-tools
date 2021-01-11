@@ -214,9 +214,7 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.createInstanceFromSource(
         PROJECT_ID,
@@ -237,9 +235,7 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.createInstanceFromExtensionVersion(
         PROJECT_ID,
@@ -256,9 +252,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
-        .reply(500);
+      nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/instances/`).reply(500);
 
       await expect(
         extensionsApi.createInstanceFromSource(
@@ -289,9 +283,7 @@ describe("extensions", () => {
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({ updateMask: "config.extension_ref,config.extension_version" })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstanceFromRegistry(
         PROJECT_ID,
@@ -306,9 +298,7 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/instances/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(502, {});
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
       await expect(
         extensionsApi.createInstance(PROJECT_ID, INSTANCE_ID, {
@@ -371,9 +361,7 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .delete(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.deleteInstance(PROJECT_ID, INSTANCE_ID);
       expect(nock.isDone()).to.be.true;
@@ -413,9 +401,7 @@ describe("extensions", () => {
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({ updateMask: "config.source.name,config.params" })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource, {
         MY_PARAM: "value",
@@ -429,9 +415,7 @@ describe("extensions", () => {
         .patch(`/${VERSION}/projects/${PROJECT_ID}/instances/${INSTANCE_ID}`)
         .query({ updateMask: "config.source.name" })
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(200, { done: true });
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, { done: true });
 
       await extensionsApi.updateInstance(PROJECT_ID, INSTANCE_ID, testSource);
 
@@ -484,9 +468,7 @@ describe("extensions", () => {
     });
 
     it("should make a GET call to the correct endpoint", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/${SOURCE_NAME}`)
-        .reply(200, TEST_SOURCE);
+      nock(api.extensionsOrigin).get(`/${VERSION}/${SOURCE_NAME}`).reply(200, TEST_SOURCE);
 
       const source = await extensionsApi.getSource(SOURCE_NAME);
       expect(nock.isDone()).to.be.true;
@@ -495,9 +477,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if the endpoint returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/${SOURCE_NAME}`)
-        .reply(404);
+      nock(api.extensionsOrigin).get(`/${VERSION}/${SOURCE_NAME}`).reply(404);
 
       await expect(extensionsApi.getSource(SOURCE_NAME)).to.be.rejectedWith(FirebaseError);
       expect(nock.isDone()).to.be.true;
@@ -524,9 +504,7 @@ describe("extensions", () => {
     });
 
     it("should throw a FirebaseError if create returns an error response", async () => {
-      nock(api.extensionsOrigin)
-        .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
-        .reply(500);
+      nock(api.extensionsOrigin).post(`/${VERSION}/projects/${PROJECT_ID}/sources/`).reply(500);
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
@@ -539,9 +517,7 @@ describe("extensions", () => {
       nock(api.extensionsOrigin)
         .post(`/${VERSION}/projects/${PROJECT_ID}/sources/`)
         .reply(200, { name: "operations/abc123" });
-      nock(api.extensionsOrigin)
-        .get(`/${VERSION}/operations/abc123`)
-        .reply(502, {});
+      nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
       await expect(extensionsApi.createSource(PROJECT_ID, PACKAGE_URI, "./")).to.be.rejectedWith(
         FirebaseError,
@@ -561,12 +537,10 @@ describe("publishExtensionVersion", () => {
     nock(api.extensionsOrigin)
       .post(`/${VERSION}/publishers/test-pub/extensions/ext-one/versions:publish`)
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsOrigin)
-      .get(`/${VERSION}/operations/abc123`)
-      .reply(200, {
-        done: true,
-        response: TEST_EXT_VERSION_3,
-      });
+    nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(200, {
+      done: true,
+      response: TEST_EXT_VERSION_3,
+    });
 
     const res = await extensionsApi.publishExtensionVersion(
       TEST_EXT_VERSION_3.ref,
@@ -595,9 +569,7 @@ describe("publishExtensionVersion", () => {
     nock(api.extensionsOrigin)
       .post(`/${VERSION}/publishers/${PUBLISHER_ID}/extensions/${EXTENSION_ID}/versions:publish`)
       .reply(200, { name: "operations/abc123" });
-    nock(api.extensionsOrigin)
-      .get(`/${VERSION}/operations/abc123`)
-      .reply(502, {});
+    nock(api.extensionsOrigin).get(`/${VERSION}/operations/abc123`).reply(502, {});
 
     await expect(
       extensionsApi.publishExtensionVersion(

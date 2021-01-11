@@ -36,24 +36,24 @@ var TIMEOUT = 40000;
 var tmpDir;
 var app;
 
-var deleteAllFunctions = function() {
-  var toDelete = _.map(parseFunctionsList(), function(funcName) {
+var deleteAllFunctions = function () {
+  var toDelete = _.map(parseFunctionsList(), function (funcName) {
     return funcName.replace("-", ".");
   });
   return localFirebase + ` functions:delete ${toDelete.join(" ")} -f --project=${projectId}`;
 };
 
-var parseFunctionsList = function() {
+var parseFunctionsList = function () {
   var triggers = [];
   extractTriggers(require(functionsSource), triggers);
   return _.map(triggers, "name");
 };
 
-var getUuid = function() {
+var getUuid = function () {
   return Math.floor(Math.random() * 100000000000).toString();
 };
 
-var preTest = async function() {
+var preTest = async function () {
   var dir = tmp.dirSync({ prefix: "fntest_" });
   tmpDir = dir.name;
   fs.copySync(projectDir, tmpDir);
@@ -63,7 +63,7 @@ var preTest = async function() {
   var accessToken = (await api.getAccessToken()).access_token;
   api.setAccessToken(accessToken);
 
-  return functionsConfig.getFirebaseConfig({ project: projectId }).then(function(config) {
+  return functionsConfig.getFirebaseConfig({ project: projectId }).then(function (config) {
     process.env.GCLOUD_PROJECT = projectId;
     process.env.FIREBASE_CONFIG = JSON.stringify(config);
     app = firebase.initializeApp(config);
@@ -75,7 +75,7 @@ var preTest = async function() {
   });
 };
 
-var postTest = function(errored) {
+var postTest = function (errored) {
   fs.remove(tmpDir);
   delete process.env.GCLOUD_PROJECT;
   delete process.env.FIREBASE_CONFIG;
@@ -92,16 +92,16 @@ var postTest = function(errored) {
   process.exit();
 };
 
-var checkFunctionsListMatch = function(expectedFunctions) {
+var checkFunctionsListMatch = function (expectedFunctions) {
   var deployedFunctions;
   return cloudfunctions
     .list(projectId, region)
-    .then(function(result) {
+    .then(function (result) {
       deployedFunctions = _.map(result, "functionName");
       expect(_.isEmpty(_.xor(expectedFunctions, deployedFunctions))).to.be.true;
       return true;
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.log(clc.red("Deployed functions do not match expected functions"));
       console.log("Expected functions are: ", expectedFunctions);
       console.log("Deployed functions are: ", deployedFunctions);
@@ -109,10 +109,10 @@ var checkFunctionsListMatch = function(expectedFunctions) {
     });
 };
 
-var testCreateUpdate = function() {
+var testCreateUpdate = function () {
   fs.copySync(functionsSource, tmpDir + "/functions/index.js");
-  return new Promise(function(resolve) {
-    exec(`${localFirebase} deploy --project=${projectId}`, { cwd: tmpDir }, function(err, stdout) {
+  return new Promise(function (resolve) {
+    exec(`${localFirebase} deploy --project=${projectId}`, { cwd: tmpDir }, function (err, stdout) {
       console.log(stdout);
       expect(err).to.be.null;
       resolve(checkFunctionsListMatch(parseFunctionsList()));
@@ -120,13 +120,13 @@ var testCreateUpdate = function() {
   });
 };
 
-var testCreateUpdateWithFilter = function() {
+var testCreateUpdateWithFilter = function () {
   fs.copySync(functionsSource, tmpDir + "/functions/index.js");
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     exec(
       `${localFirebase} deploy --only functions:nested,functions:httpsAction --project=${projectId}`,
       { cwd: tmpDir },
-      function(err, stdout) {
+      function (err, stdout) {
         console.log(stdout);
         expect(err).to.be.null;
         resolve(checkFunctionsListMatch(["nested-dbAction", "httpsAction"]));
@@ -135,9 +135,9 @@ var testCreateUpdateWithFilter = function() {
   });
 };
 
-var testDelete = function() {
-  return new Promise(function(resolve) {
-    exec(deleteAllFunctions(), { cwd: tmpDir }, function(err, stdout) {
+var testDelete = function () {
+  return new Promise(function (resolve) {
+    exec(deleteAllFunctions(), { cwd: tmpDir }, function (err, stdout) {
       console.log(stdout);
       expect(err).to.be.null;
       resolve(checkFunctionsListMatch([]));
@@ -145,12 +145,12 @@ var testDelete = function() {
   });
 };
 
-var testDeleteWithFilter = function() {
-  return new Promise(function(resolve) {
+var testDeleteWithFilter = function () {
+  return new Promise(function (resolve) {
     exec(
       `${localFirebase} functions:delete nested -f --project=${projectId}`,
       { cwd: tmpDir },
-      function(err, stdout) {
+      function (err, stdout) {
         console.log(stdout);
         expect(err).to.be.null;
         resolve(checkFunctionsListMatch(["httpsAction"]));
@@ -159,13 +159,13 @@ var testDeleteWithFilter = function() {
   });
 };
 
-var testUnknownFilter = function() {
-  return new Promise(function(resolve) {
+var testUnknownFilter = function () {
+  return new Promise(function (resolve) {
     exec(
       "> functions/index.js &&" +
         `${localFirebase} deploy --only functions:unknownFilter --project=${projectId}`,
       { cwd: tmpDir },
-      function(err, stdout) {
+      function (err, stdout) {
         console.log(stdout);
         expect(stdout).to.contain(
           "the following filters were specified but do not match any functions in the project: unknownFilter"
@@ -177,53 +177,50 @@ var testUnknownFilter = function() {
   });
 };
 
-var waitForAck = function(uuid, testDescription) {
+var waitForAck = function (uuid, testDescription) {
   return Promise.race([
-    new Promise(function(resolve) {
-      var ref = firebase
-        .database()
-        .ref("output")
-        .child(uuid);
-      var listener = ref.on("value", function(snap) {
+    new Promise(function (resolve) {
+      var ref = firebase.database().ref("output").child(uuid);
+      var listener = ref.on("value", function (snap) {
         if (snap.exists()) {
           ref.off("value", listener);
           resolve();
         }
       });
     }),
-    new Promise(function(resolve, reject) {
-      setTimeout(function() {
+    new Promise(function (resolve, reject) {
+      setTimeout(function () {
         reject("Timed out while waiting for output from " + testDescription);
       }, TIMEOUT);
     }),
   ]);
 };
 
-var writeToDB = function(path) {
+var writeToDB = function (path) {
   var uuid = getUuid();
   return app
     .database()
     .ref(path)
     .child(uuid)
     .set({ foo: "bar" })
-    .then(function() {
+    .then(function () {
       return Promise.resolve(uuid);
     });
 };
 
-var sendHttpRequest = function(message) {
+var sendHttpRequest = function (message) {
   return api
     .request("POST", httpsTrigger, {
       data: message,
       origin: "",
     })
-    .then(function(resp) {
+    .then(function (resp) {
       expect(resp.status).to.equal(200);
       expect(resp.body).to.deep.equal(message);
     });
 };
 
-var publishPubsub = function(topic) {
+var publishPubsub = function (topic) {
   var uuid = getUuid();
   var message = new Buffer(uuid).toString("base64");
   return api
@@ -234,13 +231,13 @@ var publishPubsub = function(topic) {
       },
       origin: "https://pubsub.googleapis.com",
     })
-    .then(function(resp) {
+    .then(function (resp) {
       expect(resp.status).to.equal(200);
       return Promise.resolve(uuid);
     });
 };
 
-var triggerSchedule = function(job) {
+var triggerSchedule = function (job) {
   // we can't pass along a uuid thru scheduler to test the full trigger,
   // so instead we run the job to make sure that the scheduler job and pub sub topic were created correctly
   return api
@@ -249,13 +246,13 @@ var triggerSchedule = function(job) {
       data: {},
       origin: "https://cloudscheduler.googleapis.com",
     })
-    .then(function(resp) {
+    .then(function (resp) {
       expect(resp.status).to.equal(200);
       return Promise.resolve();
     });
 };
 
-var saveToStorage = function() {
+var saveToStorage = function () {
   var uuid = getUuid();
   var contentLength = Buffer.byteLength(uuid, "utf8");
   var resource = ["b", projectId + ".appspot.com", "o"].join("/");
@@ -271,29 +268,29 @@ var saveToStorage = function() {
       json: false,
       origin: api.googleOrigin,
     })
-    .then(function(resp) {
+    .then(function (resp) {
       expect(resp.status).to.equal(200);
       return Promise.resolve(uuid);
     });
 };
 
-var testFunctionsTrigger = function() {
-  var checkDbAction = writeToDB("input").then(function(uuid) {
+var testFunctionsTrigger = function () {
+  var checkDbAction = writeToDB("input").then(function (uuid) {
     return waitForAck(uuid, "database triggered function");
   });
-  var checkNestedDbAction = writeToDB("inputNested").then(function(uuid) {
+  var checkNestedDbAction = writeToDB("inputNested").then(function (uuid) {
     return waitForAck(uuid, "nested database triggered function");
   });
   var checkHttpsAction = sendHttpRequest({ message: "hello" });
-  var checkPubsubAction = publishPubsub("topic1").then(function(uuid) {
+  var checkPubsubAction = publishPubsub("topic1").then(function (uuid) {
     return waitForAck(uuid, "pubsub triggered function");
   });
-  var checkGcsAction = saveToStorage().then(function(uuid) {
+  var checkGcsAction = saveToStorage().then(function (uuid) {
     return waitForAck(uuid, "storage triggered function");
   });
   var checkScheduleAction = triggerSchedule(
     "firebase-schedule-pubsubScheduleAction-us-central1"
-  ).then(function(/* uuid */) {
+  ).then(function (/* uuid */) {
     return true;
   });
   return Promise.all([
@@ -306,46 +303,46 @@ var testFunctionsTrigger = function() {
   ]);
 };
 
-var main = function() {
+var main = function () {
   preTest()
-    .then(function() {
+    .then(function () {
       console.log("Done pretest prep.");
       return testCreateUpdate();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: creating functions"));
       return testCreateUpdate();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: updating functions"));
       return testFunctionsTrigger();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: triggering functions"));
       return testDelete();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: deleting functions"));
       return testCreateUpdateWithFilter();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: creating functions with filters"));
       return testDeleteWithFilter();
     })
-    .then(function() {
+    .then(function () {
       console.log(clc.green("\u2713 Test passed: deleting functions with filters"));
       return testUnknownFilter();
     })
-    .then(function() {
+    .then(function () {
       console.log(
         clc.green("\u2713 Test passed: threw warning when passing filter with unknown identifier")
       );
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.log(clc.red("Error while running tests: "), err);
       return Promise.resolve(err);
     })
-    .then(function(err) {
+    .then(function (err) {
       postTest(!!err);
     });
 };

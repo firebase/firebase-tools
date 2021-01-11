@@ -57,7 +57,7 @@ function invokeRuntimeWithFunctions(
 async function callHTTPSFunction(
   worker: RuntimeWorker,
   frb: FunctionsRuntimeBundle,
-  options: { headers?: { [key: string]: string } } = {},
+  options: { path?: string; headers?: { [key: string]: string } } = {},
   requestData?: string
 ): Promise<string> {
   await worker.waitForSocketReady();
@@ -67,7 +67,7 @@ async function callHTTPSFunction(
   }
 
   const socketPath = worker.lastArgs.frb.socketPath;
-  const path = `/${frb.projectId}/us-central1/${frb.triggerId}`;
+  const path = options.path || "/";
 
   const res = await new Promise<IncomingMessage>((resolve, reject) => {
     const req = request(
@@ -236,7 +236,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose Firestore prod when the emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {};
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
@@ -260,7 +260,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should set FIRESTORE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
           firestore: {
             host: "localhost",
@@ -286,7 +286,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed Firestore when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
           firestore: {
             host: "localhost",
@@ -315,7 +315,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose RTDB prod when the emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {};
 
         const worker = invokeRuntimeWithFunctions(frb, () => {
@@ -325,10 +325,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
+                url: admin.database().ref().toString(),
               });
               return Promise.resolve();
             }),
@@ -337,11 +334,11 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.url).to.eql("https://fake-project-id.firebaseio.com/");
+        expect(info.url).to.eql("https://fake-project-id-default-rtdb.firebaseio.com/");
       }).timeout(TIMEOUT_MED);
 
       it("should set FIREBASE_DATABASE_EMULATOR_HOST when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
           database: {
             host: "localhost",
@@ -366,7 +363,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should expose a stubbed RTDB when the emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
           database: {
             host: "localhost",
@@ -381,10 +378,7 @@ describe("FunctionsEmulator-Runtime", () => {
           return {
             function_id: require("firebase-functions").https.onRequest((req: any, res: any) => {
               res.json({
-                url: admin
-                  .database()
-                  .ref()
-                  .toString(),
+                url: admin.database().ref().toString(),
               });
             }),
           };
@@ -396,7 +390,7 @@ describe("FunctionsEmulator-Runtime", () => {
       }).timeout(TIMEOUT_MED);
 
       it("should return an emulated databaseURL when RTDB emulator is running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         frb.emulators = {
           database: {
             host: "localhost",
@@ -417,11 +411,11 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(`http://localhost:9090?ns=${frb.projectId}`);
+        expect(info.databaseURL).to.eql(`http://localhost:9090/?ns=fake-project-id-default-rtdb`);
       }).timeout(TIMEOUT_MED);
 
       it("should return a real databaseURL when RTDB emulator is not running", async () => {
-        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+        const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
         const worker = invokeRuntimeWithFunctions(frb, () => {
           const admin = require("firebase-admin");
           admin.initializeApp();
@@ -435,12 +429,12 @@ describe("FunctionsEmulator-Runtime", () => {
 
         const data = await callHTTPSFunction(worker, frb);
         const info = JSON.parse(data);
-        expect(info.databaseURL).to.eql(`https://${frb.projectId}.firebaseio.com`);
+        expect(info.databaseURL).to.eql(frb.adminSdkConfig.databaseURL!);
       }).timeout(TIMEOUT_MED);
     });
 
     it("should set FIREBASE_AUTH_EMULATOR_HOST when the emulator is running", async () => {
-      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest) as FunctionsRuntimeBundle;
+      const frb = _.cloneDeep(FunctionRuntimeBundles.onRequest);
       frb.emulators = {
         auth: {
           host: "localhost",

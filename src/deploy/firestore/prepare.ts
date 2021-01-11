@@ -50,7 +50,7 @@ function prepareIndexes(context: any, options: any): void {
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function(context: any, options: any): Promise<void> {
+export default async function (context: any, options: any): Promise<void> {
   if (options.only) {
     const targets = options.only.split(",");
     const onlyIndexes = targets.indexOf("firestore:indexes") >= 0;

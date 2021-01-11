@@ -6,13 +6,13 @@ function cachePath(cwd, name) {
   return path.resolve(cwd, ".firebase/hosting." + name + ".cache");
 }
 
-exports.load = function(cwd, name) {
+exports.load = function (cwd, name) {
   try {
     const out = {};
     const lines = fs.readFileSync(cachePath(cwd, name), {
       encoding: "utf8",
     });
-    lines.split("\n").forEach(function(line) {
+    lines.split("\n").forEach(function (line) {
       const d = line.split(",");
       if (d.length === 3) {
         out[d[0]] = { mtime: parseInt(d[1]), hash: d[2] };
@@ -29,7 +29,7 @@ exports.load = function(cwd, name) {
   }
 };
 
-exports.dump = function(cwd, name, data) {
+exports.dump = function (cwd, name, data) {
   let st = "";
   let count = 0;
   for (const [path, d] of data) {

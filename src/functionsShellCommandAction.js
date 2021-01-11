@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 "use strict";
 
 var clc = require("cli-color");
@@ -7,7 +9,7 @@ var _ = require("lodash");
 var request = require("request");
 var util = require("util");
 
-var serveFunctions = require("./serve/functions");
+var { FunctionsServer } = require("./serve/functions");
 var LocalFunction = require("./localFunction");
 var utils = require("./utils");
 var logger = require("./logger");
@@ -16,7 +18,9 @@ var commandUtils = require("./emulator/commandUtils");
 var { EMULATORS_SUPPORTED_BY_FUNCTIONS } = require("./emulator/types");
 var { EmulatorHubClient } = require("./emulator/hubClient");
 
-module.exports = async function(options) {
+const serveFunctions = new FunctionsServer();
+
+module.exports = async function (options) {
   options.port = parseInt(options.port, 10);
 
   let debugPort = undefined;
@@ -25,6 +29,7 @@ module.exports = async function(options) {
   }
 
   const hubClient = new EmulatorHubClient(options.project);
+  /** @type {Record<string,object>} */
   let remoteEmulators = {};
   if (hubClient.foundHub()) {
     remoteEmulators = await hubClient.getEmulators();
@@ -40,17 +45,14 @@ module.exports = async function(options) {
 
   return serveFunctions
     .start(options, {
-      // TODO(samstern): Note that these are not acctually valid FunctionsEmulatorArgs
-      // and when we eventually move to all TypeScript we'll have to start adding
-      // projectId and functionsDir here.
       quiet: true,
       remoteEmulators,
       debugPort,
     })
-    .then(function() {
+    .then(function () {
       return serveFunctions.connect();
     })
-    .then(function() {
+    .then(function () {
       const instance = serveFunctions.get();
       const emulator = new shell.FunctionsEmulatorShell(instance);
 
@@ -59,8 +61,8 @@ module.exports = async function(options) {
         process.exit();
       }
 
-      var initializeContext = function(context) {
-        _.forEach(emulator.triggers, function(trigger) {
+      var initializeContext = function (context) {
+        _.forEach(emulator.triggers, function (trigger) {
           if (_.includes(emulator.emulatedFunctions, trigger.name)) {
             var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
@@ -88,8 +90,9 @@ module.exports = async function(options) {
         )}`
       );
 
-      var writer = function(output) {
+      var writer = function (output) {
         // Prevent full print out of Request object when a request is made
+        // @ts-ignore
         if (output instanceof request.Request) {
           return "Sent request to function.";
         }
@@ -106,12 +109,9 @@ module.exports = async function(options) {
       initializeContext(replServer.context);
       replServer.on("reset", initializeContext);
 
-      return new Promise(function(resolve) {
-        replServer.on("exit", function() {
-          return serveFunctions
-            .stop()
-            .then(resolve)
-            .catch(resolve);
+      return new Promise(function (resolve) {
+        replServer.on("exit", function () {
+          return serveFunctions.stop().then(resolve).catch(resolve);
         });
       });
     });

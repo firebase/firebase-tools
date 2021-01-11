@@ -5,7 +5,7 @@ var clc = require("cli-color");
 
 var cloudfunctions = require("./gcp/cloudfunctions");
 var cloudscheduler = require("./gcp/cloudscheduler");
-var FirebaseError = require("./error");
+var { FirebaseError } = require("./error");
 var helper = require("./functionsDeployHelper");
 var logger = require("./logger");
 var pubsub = require("./gcp/pubsub");
@@ -15,14 +15,14 @@ var utils = require("./utils");
 var deletes = [];
 var failedDeployments = 0;
 
-var printSuccess = function(op) {
+var printSuccess = function (op) {
   utils.logSuccess(
     clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
       "Successful deletion. "
   );
 };
 
-var printFail = function(op) {
+var printFail = function (op) {
   failedDeployments += 1;
   utils.logWarning(
     clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
@@ -38,7 +38,7 @@ var printFail = function(op) {
   }
 };
 
-var printTooManyOps = function(projectId) {
+var printTooManyOps = function (projectId) {
   utils.logWarning(
     clc.bold.yellow("functions:") +
       " too many functions are being deleted at once, cannot poll status."
@@ -49,14 +49,14 @@ var printTooManyOps = function(projectId) {
   deletes = []; // prevents analytics tracking of deployments
 };
 
-module.exports = function(functionsToDelete, projectId, appEngineLocation) {
-  deletes = _.map(functionsToDelete, function(name) {
+module.exports = function (functionsToDelete, projectId, appEngineLocation) {
+  deletes = _.map(functionsToDelete, function (name) {
     const scheduleName = helper.getScheduleName(name, appEngineLocation);
     const topicName = helper.getTopicName(name);
     const functionName = helper.getFunctionName(name);
     return {
       name: name,
-      retryFunction: function() {
+      retryFunction: function () {
         return cloudscheduler
           .deleteJob(scheduleName)
           .catch((err) => {
@@ -95,28 +95,22 @@ module.exports = function(functionsToDelete, projectId, appEngineLocation) {
 
   return utils
     .promiseAllSettled(
-      _.map(deletes, function(op) {
-        return op.retryFunction().then(function(res) {
+      _.map(deletes, function (op) {
+        return op.retryFunction().then(function (res) {
           return _.merge(op, res);
         });
       })
     )
-    .then(function(operations) {
-      var successfulCalls = _.chain(operations)
-        .filter({ state: "fulfilled" })
-        .map("value")
-        .value();
+    .then(function (operations) {
+      var successfulCalls = _.chain(operations).filter({ state: "fulfilled" }).map("value").value();
 
-      var failedCalls = _.chain(operations)
-        .filter({ state: "rejected" })
-        .map("reason")
-        .value();
+      var failedCalls = _.chain(operations).filter({ state: "rejected" }).map("reason").value();
 
       failedDeployments += failedCalls.length;
 
       return helper
         .pollDeploys(successfulCalls, printSuccess, printFail, printTooManyOps, projectId)
-        .then(function() {
+        .then(function () {
           if (deletes.length > 0) {
             track("Functions Deploy (Result)", "failure", failedDeployments);
             track("Functions Deploy (Result)", "success", deletes.length - failedDeployments);

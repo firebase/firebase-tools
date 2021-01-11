@@ -17,7 +17,6 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
       .post("/securetoken.googleapis.com/v1/token")
       .type("form")
       // snake_case parameters also work, per OAuth 2.0 spec.
-      // eslint-disable-next-line @typescript-eslint/camelcase
       .send({ refresh_token: refreshToken, grantType: "refresh_token" })
       .query({ key: "fake-api-key" })
       .then((res) => {
@@ -107,9 +106,7 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.recordsCount).to.equal("2"); // string (int64 format)
-        expect(res.body.userInfo)
-          .to.be.an.instanceof(Array)
-          .with.lengthOf(2);
+        expect(res.body.userInfo).to.be.an.instanceof(Array).with.lengthOf(2);
 
         const users = res.body.userInfo as UserInfo[];
         expect(users[0].localId < users[1].localId, "users are not sorted by ID ASC").to.be.true;
@@ -160,9 +157,7 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       .set("Authorization", "Bearer owner")
       .send({ signIn: { allowDuplicateEmails: true } })
       .then((res) => {
-        expect(res.body)
-          .to.have.property("signIn")
-          .eql({ allowDuplicateEmails: true });
+        expect(res.body).to.have.property("signIn").eql({ allowDuplicateEmails: true });
       });
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
@@ -170,9 +165,7 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
       .send({ signIn: { allowDuplicateEmails: false } })
       .then((res) => {
         expectStatusCode(200, res);
-        expect(res.body)
-          .to.have.property("signIn")
-          .eql({ allowDuplicateEmails: false });
+        expect(res.body).to.have.property("signIn").eql({ allowDuplicateEmails: false });
       });
   });
 });

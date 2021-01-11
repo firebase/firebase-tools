@@ -49,9 +49,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .send({ returnSecureToken: true })
       .then((res) => {
         expectStatusCode(403, res);
-        expect(res.body.error)
-          .to.have.property("status")
-          .equal("PERMISSION_DENIED");
+        expect(res.body.error).to.have.property("status").equal("PERMISSION_DENIED");
       });
   });
   it("should ignore non-Bearer Authorization headers", async () => {
@@ -65,9 +63,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .send({ returnSecureToken: true })
       .then((res) => {
         expectStatusCode(403, res);
-        expect(res.body.error)
-          .to.have.property("status")
-          .equal("PERMISSION_DENIED");
+        expect(res.body.error).to.have.property("status").equal("PERMISSION_DENIED");
       });
   });
 
