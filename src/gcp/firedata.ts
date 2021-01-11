@@ -46,7 +46,7 @@ export async function createDatabaseInstance(
  * @param projectId Project from which you want to get the ruleset.
  * @param instanceName The name for the new Realtime Database instance.
  */
-export async function listDatabaseInstances(projectNumber: number): Promise<DatabaseInstance[]> {
+export async function listDatabaseInstances(projectNumber: string): Promise<DatabaseInstance[]> {
   const response = await api.request("GET", `/v1/projects/${projectNumber}/databases`, {
     auth: true,
     origin: api.firedataOrigin,
