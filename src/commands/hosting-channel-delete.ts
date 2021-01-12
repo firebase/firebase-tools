@@ -1,20 +1,15 @@
 import { bold, underline } from "cli-color";
+import marked from "marked";
 
 import { Command } from "../command";
+import { consoleUrl, logLabeledSuccess, logLabeledWarning } from "../utils";
 import { deleteChannel, normalizeName, getChannel, removeAuthDomain } from "../hosting/api";
+import { promptOnce } from "../prompt";
+import { requireHostingSite } from "../requireHostingSite";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as requireConfig from "../requireConfig";
-import { logLabeledSuccess } from "../utils";
-import { promptOnce } from "../prompt";
-import { requireHostingSite } from "../requireHostingSite";
-
-interface ChannelInfo {
-  target: string | null;
-  site: string;
-  url: string;
-  expireTime: string;
-}
+import logger from "../logger";
 
 export default new Command("hosting:channel:delete <channelId>")
   .description("delete a Firebase Hosting channel")
@@ -51,7 +46,20 @@ export default new Command("hosting:channel:delete <channelId>")
 
       await deleteChannel(projectId, siteId, channelId);
       if (channel) {
-        await removeAuthDomain(projectId, channel.url);
+        try {
+          await removeAuthDomain(projectId, channel.url);
+        } catch (e) {
+          logLabeledWarning(
+            "hosting:channel",
+            marked(
+              `Unable to remove channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+                projectId,
+                "/authentication/providers"
+              )}`
+            )
+          );
+          logger.debug("[hosting] unable to remove auth domain", e);
+        }
       }
 
       logLabeledSuccess(
