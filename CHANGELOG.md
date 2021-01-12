@@ -1,0 +1,1 @@
+- Fixes issue where `host` header was being incorrectly set when proxying to Cloud Run or Cloud Functions for Firebase from the Hosting emulator. (#3012)
