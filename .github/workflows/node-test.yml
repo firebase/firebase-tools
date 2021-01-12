@@ -16,13 +16,13 @@ jobs:
         node-version:
           - 10.x
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
@@ -39,13 +39,13 @@ jobs:
           - 12.x
           - 14.x
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
@@ -94,19 +94,19 @@ jobs:
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Cache npm
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Cache firebase emulators
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -129,7 +129,7 @@ jobs:
           - 12.x
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
