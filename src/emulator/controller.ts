@@ -291,7 +291,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
   }
 }
 
-export async function startAll(options: any, noUi: boolean = false): Promise<void> {
+export async function startAll(options: any, showUI: boolean = true): Promise<void> {
   // Emulators config is specified in firebase.json as:
   // "emulators": {
   //   "firestore": {
@@ -308,6 +308,12 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
   options.targets = targets;
 
   const projectId: string | undefined = getProjectId(options, true);
+
+  if (targets.length === 0) {
+    throw new FirebaseError(
+      `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`
+    );
+  }
 
   EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
     "BULLET",
@@ -588,7 +594,15 @@ export async function startAll(options: any, noUi: boolean = false): Promise<voi
     await startEmulator(hostingEmulator);
   }
 
-  if (!noUi && shouldStart(options, Emulators.UI)) {
+  if (showUI && !shouldStart(options, Emulators.UI)) {
+    EmulatorLogger.forEmulator(Emulators.HUB).logLabeled(
+      "WARN",
+      "emulators",
+      "The Emulator UI requires a project ID to start. Configure your default project with 'firebase use' or pass the ---project flag."
+    );
+  }
+
+  if (showUI && shouldStart(options, Emulators.UI)) {
     const loggingAddr = await getAndCheckAddress(Emulators.LOGGING, options);
     const loggingEmulator = new LoggingEmulator({
       host: loggingAddr.host,

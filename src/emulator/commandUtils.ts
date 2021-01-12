@@ -405,8 +405,8 @@ export async function emulatorExec(script: string, options: any) {
   }
   let exitCode = 0;
   try {
-    const excludeUi = !options.ui;
-    await controller.startAll(options, excludeUi);
+    const showUI = !!options.ui;
+    await controller.startAll(options, showUI);
     exitCode = await runScript(script, extraEnv);
     await onExit(options);
   } finally {
