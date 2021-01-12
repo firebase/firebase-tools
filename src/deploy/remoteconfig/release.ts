@@ -1,12 +1,12 @@
 import { publishTemplate, getEtag } from "./functions";
-import getProjectNumber = require("../../getProjectNumber");
+import { getProjectNumber } from "../../getProjectNumber";
 import { RemoteConfigTemplate } from "../../remoteconfig/interfaces";
 
 interface ReleaseContext {
   remoteconfigTemplate?: RemoteConfigTemplate;
 }
 
-export default async function(context: ReleaseContext, options: any) {
+export default async function (context: ReleaseContext, options: any) {
   if (!context?.remoteconfigTemplate) {
     return;
   }

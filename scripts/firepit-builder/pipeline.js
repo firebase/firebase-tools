@@ -64,7 +64,7 @@ mv("../../node_modules", ".");
 
 echo("-- Removing native platform addons (.node)");
 find(".")
-  .filter(function(file) {
+  .filter(function (file) {
     return file.match(/\.node$/);
   })
   .forEach((file) => {

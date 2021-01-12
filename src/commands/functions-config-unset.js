@@ -26,20 +26,20 @@ module.exports = new Command("functions:config:unset [keys...]")
     "runtimeconfig.variables.delete",
   ])
   .before(functionsConfig.ensureApi)
-  .action(function(args, options) {
+  .action(function (args, options) {
     if (!args.length) {
       return utils.reject("Must supply at least one key");
     }
     var projectId = getProjectId(options);
     var parsed = functionsConfig.parseUnsetArgs(args);
     return Promise.all(
-      _.map(parsed, function(item) {
+      _.map(parsed, function (item) {
         if (item.varId === "") {
           return runtimeconfig.configs.delete(projectId, item.configId);
         }
         return runtimeconfig.variables.delete(projectId, item.configId, item.varId);
       })
-    ).then(function() {
+    ).then(function () {
       utils.logSuccess("Environment updated.");
       logger.info(
         "\nPlease deploy your functions for the change to take effect by running " +

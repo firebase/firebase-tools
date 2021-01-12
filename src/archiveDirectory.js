@@ -136,8 +136,8 @@ const _zipDirectory = (sourceDirectory, tempFile, options) => {
       }
       throw err;
     })
-    .then(function(files) {
-      _.forEach(files, function(file) {
+    .then(function (files) {
+      _.forEach(files, function (file) {
         const name = path.relative(sourceDirectory, file.name);
         allFiles.push(name);
         archive.file(file.name, {
@@ -167,8 +167,8 @@ const _zipDirectory = (sourceDirectory, tempFile, options) => {
  * @param {!*} to a Stream
  * @return {!Promise<void>}
  */
-const _pipeAsync = function(from, to) {
-  return new Promise(function(resolve, reject) {
+const _pipeAsync = function (from, to) {
+  return new Promise(function (resolve, reject) {
     to.on("finish", resolve);
     to.on("error", reject);
     from.pipe(to);

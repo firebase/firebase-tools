@@ -335,11 +335,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
   });
 
   it("should reject with TimeoutError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,
@@ -368,11 +364,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
   });
 
   it("should reject with RetriesExhaustedError when waiting", async () => {
-    const handler = sinon
-      .stub()
-      .rejects(TEST_ERROR)
-      .onFirstCall()
-      .resolves(0);
+    const handler = sinon.stub().rejects(TEST_ERROR).onFirstCall().resolves(0);
 
     const q = new Queue({
       handler,

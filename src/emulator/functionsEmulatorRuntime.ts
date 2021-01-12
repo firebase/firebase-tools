@@ -333,7 +333,7 @@ function initializeNetworkFiltering(frb: FunctionsRuntimeBundle): void {
 
     /* tslint:disable:only-arrow-functions */
     // This can't be an arrow function because it needs to be new'able
-    obj[method] = function(...args: any[]): any {
+    obj[method] = function (...args: any[]): any {
       const hrefs = args
         .map((arg) => {
           if (typeof arg === "string") {
@@ -850,10 +850,7 @@ async function processHTTPS(frb: FunctionsRuntimeBundle, trigger: EmulatedTrigge
 
     functionRouter.all("*", handler);
 
-    ephemeralServer.use(
-      [`/${frb.projectId}/${frb.triggerId}`, `/${frb.projectId}/:region/${frb.triggerId}`],
-      functionRouter
-    );
+    ephemeralServer.use([`/`, `/*`], functionRouter);
 
     logDebug(`Attempting to listen to socketPath: ${socketPath}`);
     const instance = ephemeralServer.listen(socketPath, () => {
@@ -988,8 +985,9 @@ async function invokeTrigger(
       new EmulatorLog(
         "WARN",
         "runtime-status",
-        `Your function timed out after ~${trigger.definition.timeout ||
-          "60s"}. To configure this timeout, see
+        `Your function timed out after ~${
+          trigger.definition.timeout || "60s"
+        }. To configure this timeout, see
       https://firebase.google.com/docs/functions/manage-functions#set_timeout_and_memory_allocation.`
       ).log();
       throw new Error("Function timed out.");

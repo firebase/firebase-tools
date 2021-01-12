@@ -6,7 +6,7 @@ var { FirebaseError } = require("./error");
 var clc = require("cli-color");
 var _ = require("lodash");
 
-module.exports = function(filename) {
+module.exports = function (filename) {
   var ruleSrc = fs.readFileSync(filename, "utf8");
 
   // Use 'npx' to spawn 'firebase-bolt' so that it can be picked up

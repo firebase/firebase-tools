@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-ignore */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
 "use strict";
 
@@ -20,7 +20,7 @@ var { EmulatorHubClient } = require("./emulator/hubClient");
 
 const serveFunctions = new FunctionsServer();
 
-module.exports = async function(options) {
+module.exports = async function (options) {
   options.port = parseInt(options.port, 10);
 
   let debugPort = undefined;
@@ -49,10 +49,10 @@ module.exports = async function(options) {
       remoteEmulators,
       debugPort,
     })
-    .then(function() {
+    .then(function () {
       return serveFunctions.connect();
     })
-    .then(function() {
+    .then(function () {
       const instance = serveFunctions.get();
       const emulator = new shell.FunctionsEmulatorShell(instance);
 
@@ -61,8 +61,8 @@ module.exports = async function(options) {
         process.exit();
       }
 
-      var initializeContext = function(context) {
-        _.forEach(emulator.triggers, function(trigger) {
+      var initializeContext = function (context) {
+        _.forEach(emulator.triggers, function (trigger) {
           if (_.includes(emulator.emulatedFunctions, trigger.name)) {
             var localFunction = new LocalFunction(trigger, emulator.urls, emulator);
             var triggerNameDotNotation = trigger.name.replace(/-/g, ".");
@@ -90,7 +90,7 @@ module.exports = async function(options) {
         )}`
       );
 
-      var writer = function(output) {
+      var writer = function (output) {
         // Prevent full print out of Request object when a request is made
         // @ts-ignore
         if (output instanceof request.Request) {
@@ -109,12 +109,9 @@ module.exports = async function(options) {
       initializeContext(replServer.context);
       replServer.on("reset", initializeContext);
 
-      return new Promise(function(resolve) {
-        replServer.on("exit", function() {
-          return serveFunctions
-            .stop()
-            .then(resolve)
-            .catch(resolve);
+      return new Promise(function (resolve) {
+        replServer.on("exit", function () {
+          return serveFunctions.stop().then(resolve).catch(resolve);
         });
       });
     });

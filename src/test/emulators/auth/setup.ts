@@ -16,9 +16,9 @@ export function describeAuthEmulator(
   title: string,
   fn: (this: Suite, utils: AuthTestUtils) => void
 ): Suite {
-  return describe(`Auth Emulator: ${title}`, function(this) {
+  return describe(`Auth Emulator: ${title}`, function (this) {
     let authApp: Express.Application;
-    beforeEach("setup or reuse auth server", async function(this) {
+    beforeEach("setup or reuse auth server", async function (this) {
       this.timeout(10000);
       authApp = await createOrReuseApp();
     });

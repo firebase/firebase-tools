@@ -1,9 +1,9 @@
-import getProjectNumber = require("../../getProjectNumber");
+import { getProjectNumber } from "../../getProjectNumber";
 import loadCJSON = require("../../loadCJSON");
 import { getEtag } from "./functions";
 import { validateInputRemoteConfigTemplate } from "./functions";
 
-export default async function(context: any, options: any): Promise<void> {
+export default async function (context: any, options: any): Promise<void> {
   if (!context) {
     return;
   }

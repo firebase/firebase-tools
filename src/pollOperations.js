@@ -6,17 +6,17 @@ var MAX_POLL_RETRIES = 2;
 
 function pollOperation(op, pollFunction, interval, pollFailCount) {
   pollFailCount = pollFailCount || 0;
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     function poll() {
       pollFunction(op)
-        .then(function(result) {
+        .then(function (result) {
           if (result.done) {
             resolve(result);
           } else {
             setTimeout(poll, interval);
           }
         })
-        .catch(function() {
+        .catch(function () {
           if (pollFailCount < MAX_POLL_RETRIES) {
             pollFailCount += 1;
             setTimeout(poll, interval * 2);
@@ -39,8 +39,8 @@ function pollAndRetryOperations(
 ) {
   // This function assumes that a Google.LongRunning operation is being polled
   return Promise.all(
-    _.map(operations, function(op) {
-      return pollOperation(op, pollFunction, interval).then(function(result) {
+    _.map(operations, function (op) {
+      return pollOperation(op, pollFunction, interval).then(function (result) {
         if (!result.error) {
           return printSuccess(op);
         }
@@ -50,10 +50,10 @@ function pollAndRetryOperations(
 
         return op
           .retryFunction()
-          .then(function(retriedOperation) {
+          .then(function (retriedOperation) {
             return pollOperation(retriedOperation, pollFunction, interval);
           })
-          .then(function(retriedResult) {
+          .then(function (retriedResult) {
             if (retriedResult.error) {
               return printFail(op);
             }

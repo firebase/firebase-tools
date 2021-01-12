@@ -13,7 +13,7 @@ var { clearCredentials } = require("../defaultCredentials");
 
 module.exports = new Command("logout")
   .description("log the CLI out of Firebase")
-  .action(function(options) {
+  .action(function (options) {
     var user = configstore.get("user");
     var tokens = configstore.get("tokens");
     var currentToken = _.get(tokens, "refresh_token");
@@ -27,7 +27,7 @@ module.exports = new Command("logout")
       next = Promise.resolve();
     }
 
-    var cleanup = function() {
+    var cleanup = function () {
       if (token || user || tokens) {
         var msg = "Logged out";
         if (token === currentToken) {
@@ -43,7 +43,7 @@ module.exports = new Command("logout")
       }
     };
 
-    return next.then(cleanup, function() {
+    return next.then(cleanup, function () {
       utils.logWarning("Invalid refresh token, did not need to deauthorize");
       cleanup();
     });

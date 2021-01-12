@@ -1353,7 +1353,7 @@ function grantToken(
     refreshTokenRecord.extraClaims
   );
   return {
-    /* eslint-disable camelcase, @typescript-eslint/camelcase */
+    /* eslint-disable camelcase */
     id_token: tokens.idToken,
     access_token: tokens.idToken,
     expires_in: tokens.expiresIn,
@@ -1364,7 +1364,7 @@ function grantToken(
     // According to API docs (and production behavior), this should be the
     // automatically generated number, not the customizable alphanumeric ID.
     project_id: state.projectNumber,
-    /* eslint-enable camelcase, @typescript-eslint/camelcase */
+    /* eslint-enable camelcase */
   };
 }
 
@@ -1518,7 +1518,7 @@ function generateJwt(
   }
 
   const customAttributes = JSON.parse(user.customAttributes || "{}");
-  /* eslint-disable camelcase, @typescript-eslint/camelcase */
+  /* eslint-disable camelcase */
   const customPayloadFields: FirebaseJwtPayload = {
     // Non-reserved fields (set before custom attributes):
     name: user.displayName,
@@ -1541,7 +1541,7 @@ function generateJwt(
       sign_in_provider: signInProvider,
     },
   };
-  /* eslint-enable camelcase, @typescript-eslint/camelcase */
+  /* eslint-enable camelcase */
 
   const jwtStr = signJwt(customPayloadFields, "", {
     // Generate a unsigned (insecure) JWT. This is accepted by many other
@@ -1695,7 +1695,7 @@ function fakeFetchUserInfoFromIdp(
   };
 
   let federatedId: string;
-  /* eslint-disable camelcase, @typescript-eslint/camelcase */
+  /* eslint-disable camelcase */
   switch (providerId) {
     case "google.com": {
       federatedId = `https://accounts.google.com/${rawId}`;
@@ -1879,7 +1879,7 @@ function handleIdpSignUp(
   };
 }
 
-/* eslint-disable camelcase, @typescript-eslint/camelcase */
+/* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
   iat: number;
@@ -1995,4 +1995,4 @@ export interface IdpJwtPayload {
   locale?: string;
   hd?: string;
 }
-/* eslint-enable camelcase, @typescript-eslint/camelcase */
+/* eslint-enable camelcase */

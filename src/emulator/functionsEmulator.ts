@@ -1,4 +1,5 @@
 import * as _ from "lodash";
+import * as fs from "fs";
 import * as path from "path";
 import * as express from "express";
 import * as clc from "cli-color";
@@ -808,6 +809,21 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
+    // Yarn 2 has a new feature called PnP (Plug N Play) which aims to completely take over
+    // module resolution. This feature is mostly incompatible with CF3 (prod or emulated) so
+    // if we detect it we should warn the developer.
+    // See: https://classic.yarnpkg.com/en/docs/pnp/
+    const pnpPath = path.join(frb.cwd, ".pnp.js");
+    if (fs.existsSync(pnpPath)) {
+      EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
+        "WARN_ONCE",
+        "functions",
+        "Detected yarn@2 with PnP. " +
+          "Cloud Functions for Firebase requires a node_modules folder to work correctly and is therefore incompatible with PnP. " +
+          "See https://yarnpkg.com/getting-started/migration#step-by-step for more information."
+      );
+    }
+
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
@@ -1048,13 +1064,22 @@ export class FunctionsEmulator implements EmulatorInstance {
       );
     }
 
+    // To match production behavior we need to drop the path prefix
+    // req.url = /:projectId/:region/:trigger_name/*
+    const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
+    const path = `${url.pathname}${url.search}`.replace(
+      `/${this.args.projectId}/us-central1/${triggerId}`,
+      ""
+    );
+
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
     // cause unexpected situations - not to mention CORS troubles and this enables us to use
     // a socketPath (IPC socket) instead of consuming yet another port which is probably faster as well.
+    this.logger.log("DEBUG", `[functions] Got req.url=${req.url}, mapping to path=${path}`);
     const runtimeReq = http.request(
       {
         method,
-        path: req.url || "/",
+        path,
         headers: req.headers,
         socketPath: worker.lastArgs.frb.socketPath,
       },

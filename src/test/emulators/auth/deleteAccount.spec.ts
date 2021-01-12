@@ -39,9 +39,7 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       .query({ key: "fake-api-key" })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_ID_TOKEN");
+        expect(res.body.error).to.have.property("message").equals("MISSING_ID_TOKEN");
       });
   });
 
@@ -102,9 +100,7 @@ describeAuthEmulator("accounts:delete", ({ authApi }) => {
       .send({ idToken /* no localId */ })
       .then((res) => {
         expectStatusCode(400, res);
-        expect(res.body.error)
-          .to.have.property("message")
-          .equals("MISSING_LOCAL_ID");
+        expect(res.body.error).to.have.property("message").equals("MISSING_LOCAL_ID");
       });
   });
 });

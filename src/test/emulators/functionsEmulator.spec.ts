@@ -178,9 +178,7 @@ describe("FunctionsEmulator-Hub", () => {
       };
     });
 
-    await supertest(functionsEmulator.createHubServer())
-      .get("/foo/bar/baz")
-      .expect(404);
+    await supertest(functionsEmulator.createHubServer()).get("/foo/bar/baz").expect(404);
   }).timeout(TIMEOUT_LONG);
 
   it("should rewrite req.path to hide /:project_id/:region/:trigger_id", async () => {
@@ -203,13 +201,43 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
-  it("should rewrite req.baseUrl to show /:project_id/:region/:trigger_id", async () => {
+  it("should return the correct url, baseUrl, originalUrl for the root route", async () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
         function_id: require("firebase-functions").https.onRequest(
           (req: express.Request, res: express.Response) => {
-            res.json({ baseUrl: req.baseUrl });
+            res.json({
+              url: req.url,
+              baseUrl: req.baseUrl,
+              originalUrl: req.originalUrl,
+            });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/us-central1/function_id")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.url).to.eq("/");
+        expect(res.body.baseUrl).to.eq("");
+        expect(res.body.originalUrl).to.eq("/");
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should return the correct url, baseUrl, originalUrl for a subroute", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({
+              url: req.url,
+              baseUrl: req.baseUrl,
+              originalUrl: req.originalUrl,
+            });
           }
         ),
       };
@@ -219,7 +247,9 @@ describe("FunctionsEmulator-Hub", () => {
       .get("/fake-project-id/us-central1/function_id/sub/route/a")
       .expect(200)
       .then((res) => {
-        expect(res.body.baseUrl).to.eq("/fake-project-id/us-central1/function_id");
+        expect(res.body.url).to.eq("/sub/route/a");
+        expect(res.body.baseUrl).to.eq("");
+        expect(res.body.originalUrl).to.eq("/sub/route/a");
       });
   }).timeout(TIMEOUT_LONG);
 

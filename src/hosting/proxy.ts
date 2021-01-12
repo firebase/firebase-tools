@@ -1,14 +1,13 @@
 import { capitalize, includes } from "lodash";
+import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
 import { URL } from "url";
-import AbortController from "abort-controller";
 
 import { Client, HttpMethod } from "../apiv2";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
-import { FetchError, Headers } from "node-fetch";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
@@ -53,8 +52,6 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     // req.url is just the full path (e.g. /foo?key=value; no origin).
     const u = new URL(url + req.url);
     const c = new Client({ urlPrefix: u.origin, auth: false });
-    const controller = new AbortController();
-    const timer: NodeJS.Timeout = setTimeout(() => controller.abort(), 60000);
 
     let passThrough: PassThrough | undefined;
     if (req.method && !["GET", "HEAD"].includes(req.method)) {
@@ -95,10 +92,9 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         responseType: "stream",
         redirect: "manual",
         body: passThrough,
-        signal: controller.signal,
+        timeout: 60000,
       });
     } catch (err) {
-      clearTimeout(timer);
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
@@ -117,7 +113,6 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       return res.end(`An internal error occurred while proxying for ${rewriteIdentifier}\n`);
     }
 
-    clearTimeout(timer);
     if (proxyRes.status === 404) {
       // x-cascade is not a string[].
       const cascade = proxyRes.response.headers.get("x-cascade");

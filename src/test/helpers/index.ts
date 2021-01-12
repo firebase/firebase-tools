@@ -7,9 +7,5 @@ import * as auth from "../../auth";
  */
 export function mockAuth(sandbox: sinon.SinonSandbox): void {
   const authMock = sandbox.mock(auth);
-  authMock
-    .expects("getAccessToken")
-    .atLeast(1)
-    // eslint-disable-next-line @typescript-eslint/camelcase
-    .resolves({ access_token: "an_access_token" });
+  authMock.expects("getAccessToken").atLeast(1).resolves({ access_token: "an_access_token" });
 }

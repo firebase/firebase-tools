@@ -9,7 +9,7 @@ var getRuntimeChoice = require("../../parseRuntimeAndValidateSDK").getRuntimeCho
 var validator = require("./validate");
 var checkRuntimeDependencies = require("./checkRuntimeDependencies").checkRuntimeDependencies;
 
-module.exports = function(context, options, payload) {
+module.exports = function (context, options, payload) {
   if (!options.config.has("functions")) {
     return Promise.resolve();
   }
@@ -39,11 +39,11 @@ module.exports = function(context, options, payload) {
     ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ])
-    .then(function(results) {
+    .then(function (results) {
       _.set(context, "runtimeConfigEnabled", results[1]);
       return functionsConfig.getFirebaseConfig(options);
     })
-    .then(function(result) {
+    .then(function (result) {
       _.set(context, "firebaseConfig", result);
     });
 };

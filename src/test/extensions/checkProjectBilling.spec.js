@@ -10,7 +10,7 @@ const cloudbilling = require("../../gcp/cloudbilling");
 
 const expect = chai.expect;
 
-describe("checkProjectBilling", function() {
+describe("checkProjectBilling", function () {
   /** @type {sinon.SinonStub} */
   let promptOnceStub;
 
@@ -23,7 +23,7 @@ describe("checkProjectBilling", function() {
   /** @type {sinon.SinonStub} */
   let setBillingAccountStub;
 
-  beforeEach(function() {
+  beforeEach(function () {
     promptOnceStub = sinon.stub(prompt, "promptOnce");
 
     checkBillingEnabledStub = sinon.stub(cloudbilling, "checkBillingEnabled");
@@ -36,14 +36,14 @@ describe("checkProjectBilling", function() {
     setBillingAccountStub.resolves();
   });
 
-  afterEach(function() {
+  afterEach(function () {
     promptOnceStub.restore();
     checkBillingEnabledStub.restore();
     listBillingAccountsStub.restore();
     setBillingAccountStub.restore();
   });
 
-  it("should resolve if billing enabled.", function() {
+  it("should resolve if billing enabled.", function () {
     const projectId = "already enabled";
     const extensionName = "test extension";
 
@@ -64,7 +64,7 @@ describe("checkProjectBilling", function() {
       });
   });
 
-  it("should list accounts if no billing account set, but accounts available.", function() {
+  it("should list accounts if no billing account set, but accounts available.", function () {
     const projectId = "not set, but have list";
     const extensionName = "test extension 2";
     const accounts = [
@@ -95,7 +95,7 @@ describe("checkProjectBilling", function() {
       });
   });
 
-  it("should not list accounts if no billing accounts set or available.", function() {
+  it("should not list accounts if no billing accounts set or available.", function () {
     const projectId = "not set, not available";
     const extensionName = "test extension 3";
     const accounts = [];
