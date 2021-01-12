@@ -68,6 +68,11 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       Cookie: sessionCookie || "",
     });
     for (const key of Object.keys(req.headers)) {
+      // Skip particular header keys:
+      // - using x-forwarded-host, don't need to keep `host` in the headers.
+      if (["host"].includes(key)) {
+        continue;
+      }
       const value = req.headers[key];
       if (value == undefined) {
         headers.delete(key);
@@ -80,9 +85,6 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         headers.set(key, value);
       }
     }
-
-    // Using x-forwarded-host, don't need to keep `host` in the headers.
-    headers.delete("host");
 
     let proxyRes;
     try {
