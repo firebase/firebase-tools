@@ -83,7 +83,7 @@ module.exports = function(functionsToDelete, projectId, appEngineLocation) {
             }
           })
           .then(() => {
-            return cloudfunctions.delete({
+            return cloudfunctions.deleteFunction({
               projectId: projectId,
               region: helper.getRegion(name),
               functionName,

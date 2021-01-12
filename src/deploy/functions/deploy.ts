@@ -4,7 +4,7 @@ import { setGracefulCleanup } from "tmp";
 import { functionsUploadRegion } from "../../api";
 import * as gcp from "../../gcp";
 import { logBullet, logSuccess, logWarning } from "../../utils";
-import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
+import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
 import { checkHttpIam } from "./checkIam";
 
 const GCP_REGION = functionsUploadRegion;
@@ -38,7 +38,7 @@ export async function deploy(context: any, options: any, payload: any): Promise<
     );
 
     const source = await prepareFunctionsUpload(context, options);
-    context.existingFunctions = await gcp.cloudfunctions.listAll(context.projectId);
+    context.existingFunctions = await gcp.cloudfunctions.listAllFunctions(context.projectId);
     payload.functions = {
       triggers: options.config.get("functions.triggers"),
     };

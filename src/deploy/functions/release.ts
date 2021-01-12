@@ -4,7 +4,7 @@
 import * as clc from "cli-color";
 import * as _ from "lodash";
 
-import * as gcp from "../../gcp";
+import { cloudfunctions, cloudscheduler, pubsub } from "../../gcp";
 import * as logger from "../../logger";
 import * as deploymentTool from "../../deploymentTool";
 import * as track from "../../track";
@@ -16,16 +16,42 @@ import { getAppEngineLocation } from "../../functionsConfig";
 import { promptOnce } from "../../prompt";
 import { createOrUpdateSchedulesAndTopics } from "./createOrUpdateSchedulesAndTopics";
 
+// TODO: Move this somewhere more appropriate/get rid of it when switching to use poller.
+export interface Operation {
+  name: string;
+  type: string;
+  funcName: string;
+  eventType: string;
+  done: boolean;
+  triggerUrl?: string;
+  error?: { code: number; message: string };
+}
+
+// TODO: Move this somewhere more appropriate.
+export interface CloudFunction {
+  name: string;
+  sourceUploadUrl?: string;
+  entryPoint?: string;
+  labels?: { [key: string]: string };
+  runtime?: string;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: string;
+  availableMemoryMb?: number;
+  timeout?: number;
+  maxInstances?: number;
+  environmentVariables?: { [key: string]: string };
+  serviceAccountEmail?: string;
+  httpsTrigger?: any;
+  eventTrigger?: any;
+  failurePolicy?: {};
+  schedule?: object;
+  timeZone?: string;
+  regions?: string[];
+}
+
 interface Timing {
   type?: string;
   t0?: [number, number]; // [seconds, nanos]
-}
-
-interface Operation {
-  func: any;
-  type: string;
-  triggerUrl?: string;
-  error?: { code: number; message: string };
 }
 
 interface Deployment {
@@ -73,13 +99,13 @@ async function fetchTriggerUrls(projectId: string, ops: Operation[], sourceUrl: 
     return;
   }
 
-  const functions = await gcp.cloudfunctions.listAll(projectId);
+  const functions = await cloudfunctions.listAllFunctions(projectId);
   const httpFunctions = _.chain(functions)
     .filter({ sourceUploadUrl: sourceUrl })
     .filter("httpsTrigger")
     .value();
   _.forEach(httpFunctions, (httpFunc) => {
-    const op = _.find(ops, { func: httpFunc.name });
+    const op = _.find(ops, { funcName: httpFunc.name });
     if (op) {
       op.triggerUrl = httpFunc.httpsTrigger.url;
     }
@@ -88,9 +114,9 @@ async function fetchTriggerUrls(projectId: string, ops: Operation[], sourceUrl: 
 }
 
 function printSuccess(op: Operation) {
-  endTimer(op.func);
+  endTimer(op.funcName);
   utils.logSuccess(
-    clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
+    clc.bold.green("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
       "Successful " +
       op.type +
       " operation. "
@@ -98,17 +124,18 @@ function printSuccess(op: Operation) {
   if (op.triggerUrl && op.type !== "delete") {
     logger.info(
       clc.bold("Function URL"),
-      "(" + helper.getFunctionName(op.func) + "):",
+      "(" + helper.getFunctionName(op.funcName) + "):",
       op.triggerUrl
     );
   }
 }
 
 function printFail(op: Operation) {
-  endTimer(op.func);
-  failedDeployments.push(helper.getFunctionName(op.func));
+  endTimer(op.funcName);
+  failedDeployments.push(helper.getFunctionName(op.funcName));
   utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
+    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
+      "Deployment error."
   );
   if (op.error?.code === 8) {
     logger.debug(op.error.message);
@@ -234,7 +261,7 @@ export async function release(context: any, options: any, payload: any): Promise
     .difference(existingNames)
     .intersection(releaseNames)
     .forEach((name) => {
-      const functionInfo = _.find(functionsInfo, { name: name });
+      const functionInfo = _.find(functionsInfo, { name: name })!;
       const functionTrigger = helper.getFunctionTrigger(functionInfo);
       const functionName = helper.getFunctionName(name);
       const region = helper.getRegion(name);
@@ -252,7 +279,7 @@ export async function release(context: any, options: any, payload: any): Promise
         : "https";
       startTimer(name, "create");
       const retryFunction = async () => {
-        const createRes = await gcp.cloudfunctions.create({
+        const createRes = await cloudfunctions.createFunction({
           projectId: projectId,
           region: region,
           eventType: eventType,
@@ -272,7 +299,7 @@ export async function release(context: any, options: any, payload: any): Promise
         });
         if (_.has(functionTrigger, "httpsTrigger")) {
           logger.debug(`Setting public policy for function ${functionName}`);
-          await gcp.cloudfunctions.setIamPolicy({
+          await cloudfunctions.setIamPolicy({
             functionName,
             projectId,
             region,
@@ -295,7 +322,7 @@ export async function release(context: any, options: any, payload: any): Promise
     .intersection(existingNames)
     .intersection(releaseNames)
     .forEach((name) => {
-      const functionInfo = _.find(functionsInfo, { name: name });
+      const functionInfo = _.find(functionsInfo, { name: name })!;
       const functionTrigger = helper.getFunctionTrigger(functionInfo);
       const functionName = helper.getFunctionName(name);
       const region = helper.getRegion(name);
@@ -335,8 +362,8 @@ export async function release(context: any, options: any, payload: any): Promise
       };
       deployments.push({
         name: name,
-        retryFunction: function() {
-          return gcp.cloudfunctions.update(options);
+        retryFunction: async function() {
+          return cloudfunctions.updateFunction(options);
         },
         trigger: functionTrigger,
       });
@@ -413,12 +440,15 @@ export async function release(context: any, options: any, payload: any): Promise
         if (isScheduledFunction) {
           retryFunction = async function() {
             try {
-              await gcp.cloudscheduler.deleteJob(scheduleName);
+              await cloudscheduler.deleteJob(scheduleName);
             } catch (err) {
               // if err.status is 404, the schedule doesnt exist, so catch the error
               // if err.status is 403, the project doesnt have the api enabled and there are no schedules to delete, so catch the error
               logger.debug(err);
-              if (err.context.response.statusCode != 404 && err.context.response.statusCode != 403) {
+              if (
+                err.context.response.statusCode != 404 &&
+                err.context.response.statusCode != 403
+              ) {
                 throw new FirebaseError(
                   `Failed to delete schedule for ${functionName} with status ${err.status}`,
                   err
@@ -426,26 +456,29 @@ export async function release(context: any, options: any, payload: any): Promise
               }
             }
             try {
-              await gcp.pubsub.deleteTopic(topicName);
+              await pubsub.deleteTopic(topicName);
             } catch (err) {
               // if err.status is 404, the topic doesnt exist, so catch the error
               // if err.status is 403, the project doesnt have the api enabled and there are no topics to delete, so catch the error
-              if (err.context.response.statusCode != 404 && err.context.response.statusCode != 403) {
+              if (
+                err.context.response.statusCode != 404 &&
+                err.context.response.statusCode != 403
+              ) {
                 throw new FirebaseError(
                   `Failed to delete topic for ${functionName} with status ${err.status}`,
                   err
                 );
               }
             }
-            return gcp.cloudfunctions.delete({
+            return cloudfunctions.deleteFunction({
               projectId: projectId,
               region: region,
               functionName: functionName,
             });
           };
         } else {
-          retryFunction = function() {
-            return gcp.cloudfunctions.delete({
+          retryFunction = async function() {
+            return cloudfunctions.deleteFunction({
               projectId: projectId,
               region: region,
               functionName: functionName,
