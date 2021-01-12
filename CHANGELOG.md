@@ -1,0 +1,1 @@
+- Catches errors while updating authorized domains when deleting channels, printing a warning instead of failing.
