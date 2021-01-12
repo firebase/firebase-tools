@@ -40,6 +40,8 @@ module.exports = new Command("emulators:start")
         reservedPorts.push(info.port);
       }
     }
+    const reservedPortsString = reservedPorts.length > 0 ? reservedPorts.join(", ") : "None";
+
     const uiInfo = EmulatorRegistry.getInfo(Emulators.UI);
     const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
     const uiUrl = uiInfo ? `http://${EmulatorRegistry.getInfoHostString(uiInfo)}` : "unknown";
@@ -97,7 +99,7 @@ ${
     ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.getInfoHostString(hubInfo)
     : clc.blackBright("  Emulator Hub not running.")
 }
-${clc.blackBright("  Other reserved ports:")} ${reservedPorts.join(", ")}
+${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}
 
 Issues? Report them at ${stylizeLink(
       "https://github.com/firebase/firebase-tools/issues"
