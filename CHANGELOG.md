@@ -1,6 +1,0 @@
-- Improves logging for `emulators:start` and `emulators:exec` (#3020).
-- Add warning when a developer is using yarn@2 PnP (#2198).
-- Fixes incorrect URLs reported inside emulated HTTPS functions (#1862).
-- Updates underlying timeout handler when proxying through the Hosting emulator.
-- Adds support for installing [experimental extensions](https://github.com/FirebaseExtended/experimental-extensions) (#2830).
-- Adds support for setting ingressSettings when deploying Cloud Functions (#2924).
