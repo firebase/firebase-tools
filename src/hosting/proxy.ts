@@ -81,6 +81,9 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       }
     }
 
+    // Using x-forwarded-host, don't need to keep `host` in the headers.
+    headers.delete("host");
+
     let proxyRes;
     try {
       proxyRes = await c.request<unknown, NodeJS.ReadableStream>({

@@ -107,6 +107,32 @@ describe("cloudRunProxy", () => {
       });
   });
 
+  it("should not send the `host` header if it's provided", async () => {
+    nock(cloudRunApiOrigin)
+      .get("/v1/projects/project-foo/locations/us-central1/services/helloworld")
+      .reply(200, { status: { url: cloudRunServiceOrigin } });
+    nock(cloudRunServiceOrigin, {
+      reqheaders: {
+        host: "helloworld-hash-uc.a.run.app:443",
+        "x-forwarded-host": "localhost:3333",
+      },
+    })
+      .get("/")
+      .reply(200, "live version");
+
+    const mwGenerator = cloudRunProxy(fakeOptions);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .set("host", "localhost:3333")
+      .expect(200, "live version")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
   it("should resolve to a live version in another region", async () => {
     const cloudRunServiceOriginAsia = "https://helloworld-hash-as.a.run.app";
     nock(cloudRunApiOrigin)
