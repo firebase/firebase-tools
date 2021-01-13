@@ -56,7 +56,6 @@ async function packageSource(options: any, sourceDir: string, configValues: any)
     encoding: "binary",
   });
   const archive = archiver("zip");
-  await pipeAsync(archive, fileStream);
 
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
@@ -81,6 +80,7 @@ async function packageSource(options: any, sourceDir: string, configValues: any)
       mode: 420 /* 0o644 */,
     });
     archive.finalize();
+    await pipeAsync(archive, fileStream);
   } catch (err) {
     throw new FirebaseError(
       "Could not read source directory. Remove links and shortcuts and try again.",
