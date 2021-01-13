@@ -120,26 +120,6 @@ export default new Command("hosting:channel:deploy [channelId]")
               LOG_TAG,
               `Channel ${bold(channelId)} has been created on site ${bold(site)}.`
             );
-            try {
-              await addAuthDomain(projectId, chan.url);
-            } catch (e) {
-              logLabeledWarning(
-                LOG_TAG,
-                marked(
-                  `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
-                    projectId,
-                    "/authentication/providers"
-                  )}`
-                )
-              );
-              logger.debug("[hosting] unable to add auth domain", e);
-            }
-          }
-          try {
-            await cleanAuthState(projectId, site);
-          } catch (e) {
-            logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
-            logger.debug("[hosting] unable to sync auth domain", e);
           }
           siteInfo.url = chan.url;
           siteInfo.expireTime = chan.expireTime;
@@ -151,17 +131,29 @@ export default new Command("hosting:channel:deploy [channelId]")
 
       logger.info();
       const deploys: { [key: string]: ChannelInfo } = {};
-      sites.forEach((d) => {
+      for (const d of sites) {
+        try {
+          await addAuthDomain(projectId, d.url);
+          logger.debug("[hosting] added auth domain for site", d.site, channelId);
+        }
+        catch (e) {
+          logLabeledWarning(LOG_TAG, marked(`Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(projectId, "/authentication/providers")}`));
+          logger.debug("[hosting] unable to add auth domain", e);
+        }
+        try {
+          await cleanAuthState(projectId, d.site);
+        }
+        catch (e) {
+          logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+          logger.debug("[hosting] unable to sync auth domain", e);
+        }
         deploys[d.target || d.site] = d;
         let expires = "";
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
-        logLabeledSuccess(
-          LOG_TAG,
-          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
-        );
-      });
+        logLabeledSuccess(LOG_TAG, `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`);
+      }
 
       return deploys;
     }
