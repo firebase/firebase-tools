@@ -1,2 +1,3 @@
 - Catches errors while updating authorized domains when deleting channels, printing a warning instead of failing.
 - Fixes issue where `host` header was being incorrectly set when proxying to Cloud Run or Cloud Functions for Firebase from the Hosting emulator. (#3012)
+- Fixed domain authorization to be synchronous in hosting channel deploy.
