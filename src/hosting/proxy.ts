@@ -67,10 +67,11 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       // forward the parsed __session cookie if any
       Cookie: sessionCookie || "",
     });
+    // Skip particular header keys:
+    // - using x-forwarded-host, don't need to keep `host` in the headers.
+    const headersToSkip = new Set(["host"]);
     for (const key of Object.keys(req.headers)) {
-      // Skip particular header keys:
-      // - using x-forwarded-host, don't need to keep `host` in the headers.
-      if (["host"].includes(key)) {
+      if (headersToSkip.has(key)) {
         continue;
       }
       const value = req.headers[key];
