@@ -135,15 +135,21 @@ export default new Command("hosting:channel:deploy [channelId]")
         try {
           await addAuthDomain(projectId, d.url);
           logger.debug("[hosting] added auth domain for site", d.site, channelId);
-        }
-        catch (e) {
-          logLabeledWarning(LOG_TAG, marked(`Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(projectId, "/authentication/providers")}`));
+        } catch (e) {
+          logLabeledWarning(
+            LOG_TAG,
+            marked(
+              `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+                projectId,
+                "/authentication/providers"
+              )}`
+            )
+          );
           logger.debug("[hosting] unable to add auth domain", e);
         }
         try {
           await cleanAuthState(projectId, d.site);
-        }
-        catch (e) {
+        } catch (e) {
           logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
           logger.debug("[hosting] unable to sync auth domain", e);
         }
@@ -152,7 +158,10 @@ export default new Command("hosting:channel:deploy [channelId]")
         if (d.expireTime) {
           expires = `[expires ${bold(datetimeString(new Date(d.expireTime)))}]`;
         }
-        logLabeledSuccess(LOG_TAG, `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`);
+        logLabeledSuccess(
+          LOG_TAG,
+          `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
+        );
       }
 
       return deploys;
