@@ -353,18 +353,21 @@ export async function createRelease(
 }
 
 /**
- * Adds channel domain to Firebase Auth list.
+ * Adds list of channel domains to Firebase Auth list.
  * @param project the project ID.
- * @param url the url of the channel.
+ * @param urls the list of urls of the channel.
  */
-export async function addAuthDomain(project: string, url: string): Promise<string[]> {
+export async function addAuthDomains(project: string, urls: string[]): Promise<string[]> {
   const domains = await getAuthDomains(project);
-  const domain = url.replace("https://", "");
   const authDomains = domains || [];
-  if (authDomains.includes(domain)) {
-    return authDomains;
+
+  for (let url of urls) {
+    const domain = url.replace("https://", "");
+    if (authDomains.includes(domain)) {
+      continue;
+    }
+    authDomains.push(domain);
   }
-  authDomains.push(domain);
   return await updateAuthDomains(project, authDomains);
 }
 
@@ -432,9 +435,17 @@ export async function getCleanDomains(project: string, site: string): Promise<st
  * updates Firebase Auth Api with aforementioned
  * list.
  * @param project the project ID.
- * @param site the site for the channel.
+ * @param sites the list of sites for the channel.
  */
-export async function cleanAuthState(project: string, site: string): Promise<string[]> {
-  const authDomains = await getCleanDomains(project, site);
-  return await updateAuthDomains(project, authDomains);
+export async function cleanAuthState(
+  project: string,
+  sites: string[]
+): Promise<Map<string, Array<string>>> {
+  let siteDomainMap = new Map();
+  for (const site of sites) {
+    const authDomains = await getCleanDomains(project, site);
+    const updatedDomains = await updateAuthDomains(project, authDomains);
+    siteDomainMap.set(site, updatedDomains);
+  }
+  return siteDomainMap;
 }

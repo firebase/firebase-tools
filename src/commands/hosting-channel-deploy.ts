@@ -7,7 +7,7 @@ import {
   getChannel,
   createChannel,
   updateChannelTtl,
-  addAuthDomain,
+  addAuthDomains,
   cleanAuthState,
   normalizeName,
 } from "../hosting/api";
@@ -130,29 +130,9 @@ export default new Command("hosting:channel:deploy [channelId]")
       await deploy(["hosting"], options, { hostingChannel: channelId });
 
       logger.info();
+      await syncAuthState(projectId, sites);
       const deploys: { [key: string]: ChannelInfo } = {};
-      for (const d of sites) {
-        try {
-          await addAuthDomain(projectId, d.url);
-          logger.debug("[hosting] added auth domain for site", d.site, channelId);
-        } catch (e) {
-          logLabeledWarning(
-            LOG_TAG,
-            marked(
-              `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
-                projectId,
-                "/authentication/providers"
-              )}`
-            )
-          );
-          logger.debug("[hosting] unable to add auth domain", e);
-        }
-        try {
-          await cleanAuthState(projectId, d.site);
-        } catch (e) {
-          logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
-          logger.debug("[hosting] unable to sync auth domain", e);
-        }
+      sites.forEach((d) => {
         deploys[d.target || d.site] = d;
         let expires = "";
         if (d.expireTime) {
@@ -162,8 +142,40 @@ export default new Command("hosting:channel:deploy [channelId]")
           LOG_TAG,
           `Channel URL (${bold(d.site || d.target)}): ${d.url} ${expires}`
         );
-      }
-
+      });
       return deploys;
     }
   );
+
+/**
+ * Helper function to sync authorized domains for deployed sites.
+ * @param projectId the project id.
+ * @param sites list of sites & url to sync auth state for.
+ */
+async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
+  logger.debug("list of sites");
+  logger.debug(JSON.stringify(sites));
+  const siteNames = sites.map((d) => d.site);
+  const urlNames = sites.map((d) => d.url);
+  try {
+    await addAuthDomains(projectId, urlNames);
+    logger.debug("[hosting] added auth domain for urls", urlNames);
+  } catch (e) {
+    logLabeledWarning(
+      LOG_TAG,
+      marked(
+        `Unable to add channel domain to Firebase Auth. Visit the Firebase Console at ${consoleUrl(
+          projectId,
+          "/authentication/providers"
+        )}`
+      )
+    );
+    logger.debug("[hosting] unable to add auth domain", e);
+  }
+  try {
+    await cleanAuthState(projectId, siteNames);
+  } catch (e) {
+    logLabeledWarning(LOG_TAG, "Unable to sync Firebase Auth state.");
+    logger.debug("[hosting] unable to sync auth domain", e);
+  }
+}
