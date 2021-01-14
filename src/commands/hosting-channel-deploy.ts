@@ -153,8 +153,6 @@ export default new Command("hosting:channel:deploy [channelId]")
  * @param sites list of sites & url to sync auth state for.
  */
 async function syncAuthState(projectId: string, sites: ChannelInfo[]) {
-  logger.debug("list of sites");
-  logger.debug(JSON.stringify(sites));
   const siteNames = sites.map((d) => d.site);
   const urlNames = sites.map((d) => d.url);
   try {

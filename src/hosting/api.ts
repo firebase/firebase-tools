@@ -360,7 +360,6 @@ export async function createRelease(
 export async function addAuthDomains(project: string, urls: string[]): Promise<string[]> {
   const domains = await getAuthDomains(project);
   const authDomains = domains || [];
-
   for (let url of urls) {
     const domain = url.replace("https://", "");
     if (authDomains.includes(domain)) {
