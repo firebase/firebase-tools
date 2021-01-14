@@ -1,3 +1,5 @@
 - Catches errors while updating authorized domains when deleting channels, printing a warning instead of failing.
 - Fixes issue where `host` header was being incorrectly set when proxying to Cloud Run or Cloud Functions for Firebase from the Hosting emulator. (#3012)
 - Adds support for setting availableMemoryMb to 4GB in the Cloud Functions for Firebase emulator. (#3026)
+- Fixes issue where emulated HTTP functions would crash when the URL contained query parameters (#3032)
+- Fixes issue with routing to emulated HTTP functions in regions outside of `us-central1` (#3031)
