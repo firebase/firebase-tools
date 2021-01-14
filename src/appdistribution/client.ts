@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as api from "../api";
 import * as utils from "../utils";
-import { Distribution } from "./distribution";
+import { Distribution, DistributionFileType } from "./distribution";
 import { FirebaseError } from "../error";
 
 // tslint:disable-next-line:no-var-requires
@@ -16,6 +16,7 @@ export interface AppDistributionApp {
   platform: string;
   bundleId: string;
   contactEmail: string;
+  aabState: AabState;
 }
 
 export enum UploadStatus {
@@ -23,6 +24,17 @@ export enum UploadStatus {
   IN_PROGRESS = "IN_PROGRESS",
   ERROR = "ERROR",
 }
+
+/** Enumn representing the App Bundles state for the App */
+export enum AabState {
+  AAB_STATE_UNSPECIFIED = 1,
+  ACTIVE,
+  PLAY_ACCOUNT_NOT_LINKED,
+  NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT,
+  APP_NOT_PUBLISHED,
+  AAB_STATE_UNAVAILABLE
+}
+
 
 export interface UploadStatusResponse {
   status: UploadStatus;
@@ -42,10 +54,10 @@ export class AppDistributionClient {
 
   constructor(private readonly appId: string) {}
 
-  async getApp(): Promise<AppDistributionApp> {
-    utils.logBullet("getting app details...");
-
-    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}`, {
+  async getApp(distributionFileType: DistributionFileType = DistributionFileType.APK): Promise<AppDistributionApp> {
+    utils.logBullet(`getting app details (Distribution type: ${distributionFileType})...`);
+    const appView = distributionFileType == DistributionFileType.AAB ? 'FULL' : 'BASIC'
+    const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,
       auth: true,
     });
@@ -70,6 +82,8 @@ export class AppDistributionClient {
         "X-APP-DISTRO-API-CLIENT-ID": pkg.name,
         "X-APP-DISTRO-API-CLIENT-TYPE": distribution.platform(),
         "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
+        "X_GOOG_UPLOAD_FILE_NAME": distribution.getFileName()
+
       },
       files: {
         file: {
