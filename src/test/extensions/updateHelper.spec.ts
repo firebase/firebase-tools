@@ -135,7 +135,7 @@ const REGISTRY_INSTANCE = {
   },
 };
 
-describe.only("updateHelper", () => {
+describe("updateHelper", () => {
   describe("updateFromLocalSource", () => {
     let promptStub: sinon.SinonStub;
     let createSourceStub: sinon.SinonStub;
