@@ -1,2 +1,3 @@
 - Catches errors while updating authorized domains when deleting channels, printing a warning instead of failing.
 - Fixes issue where `host` header was being incorrectly set when proxying to Cloud Run or Cloud Functions for Firebase from the Hosting emulator. (#3012)
+- Fixes issue where emulated HTTP functions would crash when the URL contained query parameters (#3032)

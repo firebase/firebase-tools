@@ -15,7 +15,7 @@ import {
   EmulatorInstance,
   EmulatorLog,
   Emulators,
-  FunctionsExecutionMode,
+  FunctionsExecutionMode
 } from "./types";
 import * as chokidar from "chokidar";
 
@@ -31,7 +31,7 @@ import {
   getFunctionService,
   HttpConstants,
   EventTrigger,
-  EventSchedule,
+  EventSchedule
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EventEmitter } from "events";
@@ -46,7 +46,7 @@ import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   getProjectAdminSdkConfigOrCached,
   AdminSdkConfig,
-  constructDefaultAdminSdkConfig,
+  constructDefaultAdminSdkConfig
 } from "./adminSdkConfig";
 
 const EVENT_INVOKE = "functions:invoke";
@@ -149,7 +149,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
 
     this.adminSdkConfig = {
-      projectId: this.args.projectId,
+      projectId: this.args.projectId
     };
 
     const mode = this.args.debugPort
@@ -228,7 +228,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.logger.log("DEBUG", `Accepted request ${req.method} ${req.url} --> ${triggerId}`);
 
         return this.handleBackgroundTrigger(projectId, triggerId, proto)
-          .then((x) => res.json(x))
+          .then(x => res.json(x))
           .catch((errorBundle: { code: number; body?: string }) => {
             if (errorBundle.body) {
               res.status(errorBundle.code).send(errorBundle.body);
@@ -251,7 +251,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       const triggers = this.multicastTriggers[`${this.args.projectId}:${proto.eventType}`] || [];
       const projectId = req.params.project_id;
 
-      triggers.forEach((triggerId) => {
+      triggers.forEach(triggerId => {
         this.workQueue.submit(() => {
           this.logger.log(
             "DEBUG",
@@ -291,17 +291,17 @@ export class FunctionsEmulator implements EmulatorInstance {
         firestore: this.getEmulatorInfo(Emulators.FIRESTORE),
         database: this.getEmulatorInfo(Emulators.DATABASE),
         pubsub: this.getEmulatorInfo(Emulators.PUBSUB),
-        auth: this.getEmulatorInfo(Emulators.AUTH),
+        auth: this.getEmulatorInfo(Emulators.AUTH)
       },
       nodeMajorVersion: this.args.nodeMajorVersion,
       proto,
       triggerId,
-      triggerType,
+      triggerType
     };
     const opts = runtimeOpts || {
       nodeBinary: this.nodeBinary,
       env: this.args.env,
-      extensionTriggers: this.args.predefinedTriggers,
+      extensionTriggers: this.args.predefinedTriggers
     };
     const worker = this.invokeRuntime(runtimeBundle, opts);
     return worker;
@@ -316,7 +316,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const credentialEnv = await this.getCredentialsEnvironment();
     this.args.env = {
       ...credentialEnv,
-      ...this.args.env,
+      ...this.args.env
     };
 
     const adminSdkConfig = await getProjectAdminSdkConfigOrCached(this.args.projectId);
@@ -349,13 +349,13 @@ export class FunctionsEmulator implements EmulatorInstance {
       ignored: [
         /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
         /(^|[\/\\])\../, // Ignore files which begin the a period
-        /.+\.log/, // Ignore files which have a .log extension
+        /.+\.log/ // Ignore files which have a .log extension
       ],
-      persistent: true,
+      persistent: true
     });
 
     const debouncedLoadTriggers = _.debounce(() => this.loadTriggers(), 1000);
-    watcher.on("change", (filePath) => {
+    watcher.on("change", filePath => {
       this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
       return debouncedLoadTriggers();
     });
@@ -400,7 +400,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const worker = this.invokeRuntime(this.getBaseBundle(), {
       nodeBinary: this.nodeBinary,
       env: this.args.env,
-      extensionTriggers: this.args.predefinedTriggers,
+      extensionTriggers: this.args.predefinedTriggers
     });
 
     const triggerParseEvent = await EmulatorLog.waitForLog(
@@ -413,14 +413,14 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // When force is true we set up all triggers, otherwise we only set up
     // triggers which have a unique function name
-    const toSetup = triggerDefinitions.filter((definition) => {
+    const toSetup = triggerDefinitions.filter(definition => {
       if (force) {
         return true;
       }
 
       // We want to add a trigger if we don't already have an enabled trigger
       // with the same entryPoint.
-      const anyEnabledMatch = Object.values(this.triggers).some((record) => {
+      const anyEnabledMatch = Object.values(this.triggers).some(record => {
         return record.def.entryPoint === definition.entryPoint && record.enabled;
       });
       return !anyEnabledMatch;
@@ -527,7 +527,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       name: `projects/${projectId}/locations/_/functions/${key}`,
       path: result[2], // path stored in the second capture group
       event: eventTrigger.eventType,
-      topic: `projects/${projectId}/topics/${key}`,
+      topic: `projects/${projectId}/topics/${key}`
     });
 
     logger.debug(`addRealtimeDatabaseTrigger[${instance}]`, JSON.stringify(bundle));
@@ -546,15 +546,15 @@ export class FunctionsEmulator implements EmulatorInstance {
       .request("POST", setTriggersPath, {
         origin: `http://${EmulatorRegistry.getInfoHostString(databaseEmu.getInfo())}`,
         headers: {
-          Authorization: "Bearer owner",
+          Authorization: "Bearer owner"
         },
         data: bundle,
-        json: false,
+        json: false
       })
       .then(() => {
         return true;
       })
-      .catch((err) => {
+      .catch(err => {
         this.logger.log("WARN", "Error adding trigger: " + err);
         throw err;
       });
@@ -577,12 +577,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       .request("PUT", `/emulator/v1/projects/${projectId}/triggers/${key}`, {
         origin: `http://${EmulatorRegistry.getInfoHostString(firestoreEmu.getInfo())}`,
         data: bundle,
-        json: false,
+        json: false
       })
       .then(() => {
         return true;
       })
-      .catch((err) => {
+      .catch(err => {
         this.logger.log("WARN", "Error adding trigger: " + err);
         throw err;
       });
@@ -645,7 +645,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     return {
       name: this.getName(),
       host,
-      port,
+      port
     };
   }
 
@@ -654,7 +654,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getTriggerDefinitions(): EmulatedTriggerDefinition[] {
-    return Object.values(this.triggers).map((record) => record.def);
+    return Object.values(this.triggers).map(record => record.def);
   }
 
   getTriggerDefinitionByKey(triggerKey: string): EmulatedTriggerDefinition {
@@ -668,7 +668,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getTriggerDefinitionByName(triggerName: string): EmulatedTriggerDefinition | undefined {
-    const record = Object.values(this.triggers).find((r) => r.def.name === triggerName);
+    const record = Object.values(this.triggers).find(r => r.def.name === triggerName);
     return record?.def;
   }
 
@@ -689,7 +689,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[]) {
-    triggers.forEach((def) => this.addTriggerRecord(def, { ignored: false }));
+    triggers.forEach(def => this.addTriggerRecord(def, { ignored: false }));
   }
 
   getBaseBundle(): FunctionsRuntimeBundle {
@@ -702,13 +702,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         firestore: EmulatorRegistry.getInfo(Emulators.FIRESTORE),
         database: EmulatorRegistry.getInfo(Emulators.DATABASE),
         pubsub: EmulatorRegistry.getInfo(Emulators.PUBSUB),
-        auth: EmulatorRegistry.getInfo(Emulators.AUTH),
+        auth: EmulatorRegistry.getInfo(Emulators.AUTH)
       },
       adminSdkConfig: {
         databaseURL: this.adminSdkConfig.databaseURL,
-        storageBucket: this.adminSdkConfig.storageBucket,
+        storageBucket: this.adminSdkConfig.storageBucket
       },
-      disabled_features: this.args.disabledRuntimeFeatures,
+      disabled_features: this.args.disabledRuntimeFeatures
     };
   }
   /**
@@ -827,7 +827,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const childProcess = spawn(opts.nodeBinary, args, {
       env: { node: opts.nodeBinary, ...opts.env, ...process.env },
       cwd: frb.cwd,
-      stdio: ["pipe", "pipe", "pipe", "ipc"],
+      stdio: ["pipe", "pipe", "pipe", "ipc"]
     });
 
     const buffers: {
@@ -837,7 +837,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       };
     } = {
       stderr: { pipe: childProcess.stderr, value: "" },
-      stdout: { pipe: childProcess.stdout, value: "" },
+      stdout: { pipe: childProcess.stdout, value: "" }
     };
 
     const ipcBuffer = { value: "" };
@@ -856,7 +856,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const runtime: FunctionsRuntimeInstance = {
       pid: childProcess.pid,
-      exit: new Promise<number>((resolve) => {
+      exit: new Promise<number>(resolve => {
         childProcess.on("exit", resolve);
       }),
       events: emitter,
@@ -869,7 +869,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       send: (args: FunctionsRuntimeArgs) => {
         return childProcess.send(JSON.stringify(args));
-      },
+      }
     };
 
     this.workerPool.addWorker(frb.triggerId, runtime);
@@ -877,7 +877,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   disableBackgroundTriggers() {
-    Object.values(this.triggers).forEach((record) => {
+    Object.values(this.triggers).forEach(record => {
       if (record.def.eventTrigger) {
         this.logger.logLabeled(
           "BULLET",
@@ -1025,7 +1025,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       if (token) {
         const contextAuth = {
           uid: token.uid,
-          token: token,
+          token: token
         };
 
         // Stash the "Authorization" header in a temporary place, we will replace it
@@ -1068,8 +1068,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     const path = `${url.pathname}${url.search}`.replace(
-      `/${this.args.projectId}/us-central1/${triggerId}`,
-      ""
+      new RegExp(`\/${this.args.projectId}\/us-central1/${triggerId}\/?`),
+      "/"
     );
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
@@ -1081,13 +1081,13 @@ export class FunctionsEmulator implements EmulatorInstance {
         method,
         path,
         headers: req.headers,
-        socketPath: worker.lastArgs.frb.socketPath,
+        socketPath: worker.lastArgs.frb.socketPath
       },
       (runtimeRes: http.IncomingMessage) => {
         function forwardStatusAndHeaders(): void {
           res.status(runtimeRes.statusCode || 200);
           if (!res.headersSent) {
-            Object.keys(runtimeRes.headers).forEach((key) => {
+            Object.keys(runtimeRes.headers).forEach(key => {
               const val = runtimeRes.headers[key];
               if (val) {
                 res.setHeader(key, val);
@@ -1096,7 +1096,7 @@ export class FunctionsEmulator implements EmulatorInstance {
           }
         }
 
-        runtimeRes.on("data", (buf) => {
+        runtimeRes.on("data", buf => {
           forwardStatusAndHeaders();
           res.write(buf);
         });
