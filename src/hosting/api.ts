@@ -360,7 +360,7 @@ export async function createRelease(
 export async function addAuthDomains(project: string, urls: string[]): Promise<string[]> {
   const domains = await getAuthDomains(project);
   const authDomains = domains || [];
-  for (let url of urls) {
+  for (const url of urls) {
     const domain = url.replace("https://", "");
     if (authDomains.includes(domain)) {
       continue;
@@ -440,7 +440,7 @@ export async function cleanAuthState(
   project: string,
   sites: string[]
 ): Promise<Map<string, Array<string>>> {
-  let siteDomainMap = new Map();
+  const siteDomainMap = new Map();
   for (const site of sites) {
     const authDomains = await getCleanDomains(project, site);
     const updatedDomains = await updateAuthDomains(project, authDomains);
