@@ -200,7 +200,7 @@
     "source-map-support": "^0.5.9",
     "supertest": "^3.3.0",
     "swagger2openapi": "^6.0.3",
-    "ts-node": "^7.0.1",
+    "ts-node": "^9.1.1",
     "typescript": "^3.9.5",
     "winston-transport": "^4.4.0"
   }
