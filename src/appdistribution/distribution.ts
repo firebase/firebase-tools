@@ -3,10 +3,12 @@ import { FirebaseError } from "../error";
 import * as crypto from "crypto";
 import { AppDistributionApp } from "./client";
 import * as logger from "../logger";
+import * as pathUtil from "path";
 
 export enum DistributionFileType {
   IPA = "ipa",
   APK = "apk",
+  AAB = "aab"
 }
 
 /**
@@ -14,6 +16,7 @@ export enum DistributionFileType {
  */
 export class Distribution {
   private readonly fileType: DistributionFileType;
+  private readonly fileName: string;
 
   constructor(private readonly path: string) {
     if (!path) {
@@ -23,7 +26,8 @@ export class Distribution {
     const distributionType = path.split(".").pop();
     if (
       distributionType !== DistributionFileType.IPA &&
-      distributionType !== DistributionFileType.APK
+      distributionType !== DistributionFileType.APK &&
+      distributionType !== DistributionFileType.AAB
     ) {
       throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
     }
@@ -39,6 +43,11 @@ export class Distribution {
 
     this.path = path;
     this.fileType = distributionType;
+    this.fileName = pathUtil.basename(path);
+  }
+
+  distributionFileType(): DistributionFileType {
+    return this.fileType;
   }
 
   readStream(): fs.ReadStream {
@@ -49,11 +58,16 @@ export class Distribution {
     switch (this.fileType) {
       case DistributionFileType.IPA:
         return "ios";
+      case DistributionFileType.AAB:
       case DistributionFileType.APK:
         return "android";
       default:
         throw new FirebaseError("Unsupported distribution file format, should be .ipa or .apk");
     }
+  }
+
+  getFileName(): string {
+    return this.fileName;
   }
 
   /**
