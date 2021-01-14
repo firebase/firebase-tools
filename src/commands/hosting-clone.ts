@@ -8,7 +8,7 @@ import {
   createChannel,
   cloneVersion,
   createRelease,
-  addAuthDomain,
+  addAuthDomains,
   normalizeName,
 } from "../hosting/api";
 import * as utils from "../utils";
@@ -87,7 +87,7 @@ export default new Command("hosting:clone <source> <targetChannel>")
       utils.logSuccess(`Created new channel ${targetChannelId}`);
       try {
         const tProjectId = getProjectId(tChannel.name);
-        await addAuthDomain(tProjectId, tChannel.url);
+        await addAuthDomains(tProjectId, [tChannel.url]);
       } catch (e) {
         utils.logLabeledWarning(
           "hosting:clone",
