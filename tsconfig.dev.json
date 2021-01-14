@@ -1,8 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "sourceMap": false,
-    "outDir": "dev",
+    "noEmit": true,
     "removeComments": false,
   },
   "include": [
