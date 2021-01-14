@@ -1,4 +1,4 @@
-import { findModuleRoot, FunctionsRuntimeBundle } from "../../emulator/functionsEmulatorShared";
+import { findModuleRoot, FunctionsRuntimeBundle } from "../../src/emulator/functionsEmulatorShared";
 
 export const TIMEOUT_LONG = 10000;
 export const TIMEOUT_MED = 5000;
