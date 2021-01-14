@@ -237,17 +237,17 @@ describe("FunctionsEmulator-Hub", () => {
               url: req.url,
               baseUrl: req.baseUrl,
               originalUrl: req.originalUrl,
-              query: req.query
+              query: req.query,
             });
           }
-        )
+        ),
       };
     });
 
     await supertest(functionsEmulator.createHubServer())
       .get("/fake-project-id/us-central1/function_id?a=1&b=2")
       .expect(200)
-      .then(res => {
+      .then((res) => {
         expect(res.body.url).to.eq("/?a=1&b=2");
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/?a=1&b=2");
