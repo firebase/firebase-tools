@@ -1068,7 +1068,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // req.url = /:projectId/:region/:trigger_name/*
     const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
     const path = `${url.pathname}${url.search}`.replace(
-      new RegExp(`\/${this.args.projectId}\/us-central1/${triggerId}\/?`),
+      new RegExp(`\/${this.args.projectId}\/[^\/]*\/${triggerId}\/?`),
       "/"
     );
 

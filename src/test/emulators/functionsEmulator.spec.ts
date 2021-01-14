@@ -281,6 +281,32 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
+  it("should return the correct url, baseUrl, originalUrl for any region", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").region('europe-west3').https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({
+              url: req.url,
+              baseUrl: req.baseUrl,
+              originalUrl: req.originalUrl,
+            });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/europe-west3/function_id")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.url).to.eq("/");
+        expect(res.body.baseUrl).to.eq("");
+        expect(res.body.originalUrl).to.eq("/");
+      });
+  }).timeout(TIMEOUT_LONG);
+
   it("should route request body", async () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
