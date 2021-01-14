@@ -1,12 +1,14 @@
 import { expect } from "chai";
+import * as nock from "nock";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "../../error";
-import * as updateHelper from "../../extensions/updateHelper";
-import * as prompt from "../../prompt";
-import * as extensionsHelper from "../../extensions/extensionsHelper";
-import * as resolveSource from "../../extensions/resolveSource";
+import { firebaseExtensionsRegistryOrigin } from "../../api";
 import * as extensionsApi from "../../extensions/extensionsApi";
+import * as extensionsHelper from "../../extensions/extensionsHelper";
+import * as prompt from "../../prompt";
+import * as resolveSource from "../../extensions/resolveSource";
+import * as updateHelper from "../../extensions/updateHelper";
 
 const SPEC = {
   name: "test",
@@ -143,12 +145,17 @@ describe("updateHelper", () => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+
+      // The logic will fetch the extensions registry, but it doesn't need to receive anything.
+      nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
 
     afterEach(() => {
       promptStub.restore();
       createSourceStub.restore();
       getInstanceStub.restore();
+
+      nock.cleanAll();
     });
 
     it("should return the correct source name for a valid local source", async () => {
@@ -190,12 +197,17 @@ describe("updateHelper", () => {
       promptStub = sinon.stub(prompt, "promptOnce");
       createSourceStub = sinon.stub(extensionsHelper, "createSourceFromLocation");
       getInstanceStub = sinon.stub(extensionsApi, "getInstance").resolves(INSTANCE);
+
+      // The logic will fetch the extensions registry, but it doesn't need to receive anything.
+      nock(firebaseExtensionsRegistryOrigin).get("/extensions.json").reply(200, {});
     });
 
     afterEach(() => {
       promptStub.restore();
       createSourceStub.restore();
       getInstanceStub.restore();
+
+      nock.cleanAll();
     });
 
     it("should return the correct source name for a valid url source", async () => {
