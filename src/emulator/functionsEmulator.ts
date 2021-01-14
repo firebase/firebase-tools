@@ -1041,6 +1041,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const worker = this.startFunctionRuntime(trigger.name, EmulatedTriggerType.HTTPS, undefined);
 
+
     worker.onLogs((el: EmulatorLog) => {
       if (el.level === "FATAL") {
         res.status(500).send(el.text);
@@ -1063,6 +1064,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         `Cannot execute on a worker without a socketPath: ${JSON.stringify(worker.lastArgs)}`
       );
     }
+
 
     // To match production behavior we need to drop the path prefix
     // req.url = /:projectId/:region/:trigger_name/*

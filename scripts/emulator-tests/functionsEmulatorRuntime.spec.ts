@@ -92,7 +92,7 @@ async function callHTTPSFunction(
   return result;
 }
 
-describe.skip("FunctionsEmulator-Runtime", () => {
+describe("FunctionsEmulator-Runtime", () => {
   describe("Stubs, Mocks, and Helpers (aka Magic, Glee, and Awesomeness)", () => {
     describe("_InitializeNetworkFiltering(...)", () => {
       it("should log outgoing unknown HTTP requests via 'http'", async () => {
