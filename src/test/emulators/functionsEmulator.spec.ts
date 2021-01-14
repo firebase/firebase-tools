@@ -285,15 +285,15 @@ describe("FunctionsEmulator-Hub", () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
       return {
-        function_id: require("firebase-functions").region('europe-west3').https.onRequest(
-          (req: express.Request, res: express.Response) => {
+        function_id: require("firebase-functions")
+          .region("europe-west3")
+          .https.onRequest((req: express.Request, res: express.Response) => {
             res.json({
               url: req.url,
               baseUrl: req.baseUrl,
               originalUrl: req.originalUrl,
             });
-          }
-        ),
+          }),
       };
     });
 
