@@ -55,24 +55,6 @@ jobs:
       - run: npm ci
       - run: npm test
 
-      - name: Coveralls (in parallel)
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ matrix.node-version }}
-          path-to-lcov: "./.coverage/lcov.info"
-          parallel: true
-
-  finish-coverage:
-    needs: unit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls finalization
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.github_token }}
-          parallel-finished: true
-
   integration:
     needs: unit
     if: github.event_name == 'push'
