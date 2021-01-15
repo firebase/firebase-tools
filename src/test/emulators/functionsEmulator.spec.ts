@@ -227,6 +227,34 @@ describe("FunctionsEmulator-Hub", () => {
       });
   }).timeout(TIMEOUT_LONG);
 
+  it("should return the correct url, baseUrl, originalUrl with query params", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions").https.onRequest(
+          (req: express.Request, res: express.Response) => {
+            res.json({
+              url: req.url,
+              baseUrl: req.baseUrl,
+              originalUrl: req.originalUrl,
+              query: req.query,
+            });
+          }
+        ),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/us-central1/function_id?a=1&b=2")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.url).to.eq("/?a=1&b=2");
+        expect(res.body.baseUrl).to.eq("");
+        expect(res.body.originalUrl).to.eq("/?a=1&b=2");
+        expect(res.body.query).to.deep.eq({ a: "1", b: "2" });
+      });
+  }).timeout(TIMEOUT_LONG);
+
   it("should return the correct url, baseUrl, originalUrl for a subroute", async () => {
     useFunctions(() => {
       require("firebase-admin").initializeApp();
@@ -250,6 +278,32 @@ describe("FunctionsEmulator-Hub", () => {
         expect(res.body.url).to.eq("/sub/route/a");
         expect(res.body.baseUrl).to.eq("");
         expect(res.body.originalUrl).to.eq("/sub/route/a");
+      });
+  }).timeout(TIMEOUT_LONG);
+
+  it("should return the correct url, baseUrl, originalUrl for any region", async () => {
+    useFunctions(() => {
+      require("firebase-admin").initializeApp();
+      return {
+        function_id: require("firebase-functions")
+          .region("europe-west3")
+          .https.onRequest((req: express.Request, res: express.Response) => {
+            res.json({
+              url: req.url,
+              baseUrl: req.baseUrl,
+              originalUrl: req.originalUrl,
+            });
+          }),
+      };
+    });
+
+    await supertest(functionsEmulator.createHubServer())
+      .get("/fake-project-id/europe-west3/function_id")
+      .expect(200)
+      .then((res) => {
+        expect(res.body.url).to.eq("/");
+        expect(res.body.baseUrl).to.eq("");
+        expect(res.body.originalUrl).to.eq("/");
       });
   }).timeout(TIMEOUT_LONG);
 

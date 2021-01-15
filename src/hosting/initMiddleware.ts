@@ -34,6 +34,9 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
           if (sdkRes.status === 404) {
             return next();
           }
+          for (const [key, value] of Object.entries(sdkRes.response.headers.raw())) {
+            res.setHeader(key, value);
+          }
           sdkRes.body.pipe(res);
         })
         .catch((e) => {
