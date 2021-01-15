@@ -7,3 +7,4 @@
 - Fixes issue where the User-Agent was being overridden when proxying through the Hosting emulator. (#2970)
 - Fixes issue where Firestore Emulator wrongly triggers events on deleting an nonexistent document (#3043).
 - Adds `root: true` to lint configurations for newly initialized functions directories to prevent it being combined with a higher level config. (#2925)
+- Fixes issue where Auth emulator APIs require Oauth security for incoming requests. (#3044)
