@@ -3,4 +3,5 @@
 - Fixes issue where emulated HTTP functions would crash when the URL contained query parameters (#3032)
 - Fixes issue with routing to emulated HTTP functions in regions outside of `us-central1` (#3031)
 - Fixes issue where authorized domains were not being correctly updated when deploying to Hosting channels. (#3002)
-- Fixes issue where Firestore Emulator wrongly triggers events on deleting an nonexistent document.
+- Fixes issue where the User-Agent was being overridden when proxying through the Hosting emulator. (#2970)
+- Fixes issue where Firestore Emulator wrongly triggers events on deleting an nonexistent document (#3043).

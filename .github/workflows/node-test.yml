@@ -75,6 +75,7 @@ jobs:
         script:
           - npm run test:hosting
           - npm run test:client-integration
+          - npm run test:emulator
           - npm run test:extensions-emulator
           - npm run test:triggers-end-to-end
     steps:
