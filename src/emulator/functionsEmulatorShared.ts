@@ -16,7 +16,7 @@ export interface EmulatedTriggerDefinition {
   name: string;
   timeout?: string | number; // Can be "3s" for some reason lol
   regions?: string[];
-  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB";
+  availableMemoryMb?: "128MB" | "256MB" | "512MB" | "1GB" | "2GB" | "4GB";
   httpsTrigger?: any;
   eventTrigger?: EventTrigger;
   schedule?: EventSchedule;
@@ -86,6 +86,7 @@ const memoryLookup = {
   "512MB": 512,
   "1GB": 1024,
   "2GB": 2048,
+  "4GB": 4096,
 };
 
 export class HttpConstants {
