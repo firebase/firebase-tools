@@ -1,11 +1,12 @@
 import { expect } from "chai";
-import { FunctionsEmulator, InvokeRuntimeOpts } from "../../emulator/functionsEmulator";
-import * as supertest from "supertest";
-import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
-import * as logger from "../../logger";
-import { EmulatedTriggerType } from "../../emulator/functionsEmulatorShared";
 import * as express from "express";
-import { RuntimeWorker } from "../../emulator/functionsRuntimeWorker";
+import * as supertest from "supertest";
+
+import { EmulatedTriggerType } from "../../src/emulator/functionsEmulatorShared";
+import { FunctionsEmulator, InvokeRuntimeOpts } from "../../src/emulator/functionsEmulator";
+import { RuntimeWorker } from "../../src/emulator/functionsRuntimeWorker";
+import { TIMEOUT_LONG, MODULE_ROOT } from "./fixtures";
+import * as logger from "../../src/logger";
 
 if ((process.env.DEBUG || "").toLowerCase().indexOf("spec") >= 0) {
   // tslint:disable-next-line:no-var-requires
