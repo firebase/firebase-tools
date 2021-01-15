@@ -1,6 +1,6 @@
 import { bold, yellow } from "cli-color";
 
-import { Channel, createChannel, addAuthDomain, normalizeName } from "../hosting/api";
+import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
 import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
@@ -74,7 +74,7 @@ export default new Command("hosting:channel:create [channelId]")
       }
 
       try {
-        await addAuthDomain(projectId, channel.url);
+        await addAuthDomains(projectId, [channel.url]);
       } catch (e) {
         logLabeledWarning(
           LOG_TAG,
