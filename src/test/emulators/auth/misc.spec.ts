@@ -132,7 +132,6 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
     });
     await authApi()
       .delete(`/emulator/v1/projects/${PROJECT_ID}/accounts`)
-      .set("Authorization", "Bearer owner")
       .send()
       .then((res) => expectStatusCode(200, res));
 
@@ -154,14 +153,12 @@ describeAuthEmulator("emulator utility APIs", ({ authApi }) => {
   it("should update config on PATCH /emulator/v1/projects/{PROJECT_ID}/config", async () => {
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .set("Authorization", "Bearer owner")
       .send({ signIn: { allowDuplicateEmails: true } })
       .then((res) => {
         expect(res.body).to.have.property("signIn").eql({ allowDuplicateEmails: true });
       });
     await authApi()
       .patch(`/emulator/v1/projects/${PROJECT_ID}/config`)
-      .set("Authorization", "Bearer owner")
       .send({ signIn: { allowDuplicateEmails: false } })
       .then((res) => {
         expectStatusCode(200, res);
