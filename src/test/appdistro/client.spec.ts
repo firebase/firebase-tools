@@ -76,6 +76,9 @@ describe("distribution", () => {
       it("should throw error when retry count >= AppDistributionClient.MAX_POLLING_RETRIES", () => {
         sandbox.stub(appDistributionClient, "getUploadStatus").resolves({
           status: UploadStatus.IN_PROGRESS,
+          message: "",
+          errorCode: "",
+          release: { id: "" },
         });
         return expect(
           appDistributionClient.pollUploadStatus(
@@ -93,6 +96,8 @@ describe("distribution", () => {
       const releaseId = "fake-release-id";
       sandbox.stub(appDistributionClient, "getUploadStatus").resolves({
         status: UploadStatus.SUCCESS,
+        message: "",
+        errorCode: "",
         release: {
           id: releaseId,
         },

@@ -225,7 +225,7 @@ function addEmulatorOperations(openapi3: any): void {
           },
         },
       },
-      security: [{ Oauth2: [] }],
+      security: [],
       tags: ["emulator"],
     },
   };
@@ -284,7 +284,7 @@ function addEmulatorOperations(openapi3: any): void {
           },
         },
       },
-      security: [{ Oauth2: [] }],
+      security: [],
       tags: ["emulator"],
     },
   };

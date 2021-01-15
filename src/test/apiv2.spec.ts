@@ -223,6 +223,22 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should make a basic GET request and not override the user-agent", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .matchHeader("user-agent", "unit tests, silly")
+        .reply(200, { success: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        headers: { "user-agent": "unit tests, silly" },
+      });
+      expect(r.body).to.deep.equal({ success: true });
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should handle a 204 response with no data", async () => {
       nock("https://example.com").get("/path/to/foo").reply(204);
 

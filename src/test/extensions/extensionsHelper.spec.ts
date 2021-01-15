@@ -8,6 +8,7 @@ import * as resolveSource from "../../extensions/resolveSource";
 import { storage } from "../../gcp";
 import * as archiveDirectory from "../../archiveDirectory";
 import * as prompt from "../../prompt";
+import { ExtensionSource } from "../../extensions/extensionsApi";
 
 describe("extensionsHelper", () => {
   describe("substituteParams", () => {
@@ -687,12 +688,14 @@ describe("extensionsHelper", () => {
     let createSourceStub: sinon.SinonStub;
     let deleteStub: sinon.SinonStub;
     const testUrl = "https://storage.googleapis.com/firebase-ext-eap-uploads/object.zip";
-    const testSource = {
+    const testSource: ExtensionSource = {
       name: "test",
       packageUri: testUrl,
       hash: "abc123",
+      state: "ACTIVE",
       spec: {
         name: "projects/test-proj/sources/abc123",
+        version: "0.0.0",
         sourceUrl: testUrl,
         resources: [],
       },
@@ -775,12 +778,14 @@ describe("extensionsHelper", () => {
         "0.1.1": testOnePlatformSourceName,
       },
     };
-    const testSource = {
+    const testSource: ExtensionSource = {
       name: "test",
       packageUri: "",
       hash: "abc123",
+      state: "ACTIVE",
       spec: {
         name: "",
+        version: "0.0.0",
         sourceUrl: "",
         resources: [],
       },
