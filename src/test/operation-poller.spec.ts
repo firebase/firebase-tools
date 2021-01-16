@@ -11,7 +11,7 @@ const VERSION = "v1";
 const LRO_RESOURCE_NAME = "operations/cp.3322442424242444";
 const FULL_RESOURCE_NAME = `/${VERSION}/${LRO_RESOURCE_NAME}`;
 
-describe.only("OperationPoller", () => {
+describe("OperationPoller", () => {
   describe("poll", () => {
     let sandbox: sinon.SinonSandbox;
     let pollerOptions: OperationPollerOptions;
@@ -102,9 +102,7 @@ describe.only("OperationPoller", () => {
 
     it("should call onPoll each time the operation is polled", async () => {
       const opResult = { done: true, response: "completed" };
-      nock(TEST_ORIGIN)
-        .get(FULL_RESOURCE_NAME)
-        .reply(200, opResult);
+      nock(TEST_ORIGIN).get(FULL_RESOURCE_NAME).reply(200, opResult);
       const onPollSpy = sinon.spy((op: any) => {
         expect(op.response).to.equal("completed");
       });
