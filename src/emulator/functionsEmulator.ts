@@ -121,7 +121,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     name: string,
     region: string
   ): string {
-    return `http://${host}:${port}/${projectId}/${region}/${name}`;
+    return `http://${host}:${port}/${projectId}/${region}/${name.replace(".", "-")}`;
   }
 
   nodeBinary = "";
