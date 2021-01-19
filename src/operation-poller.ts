@@ -9,6 +9,7 @@ export interface OperationPollerOptions {
   operationResourceName: string;
   backoff?: number;
   masterTimeout?: number;
+  onPoll?: (operation: OperationResult<any>) => any;
 }
 
 const DEFAULT_INITIAL_BACKOFF_DELAY_MILLIS = 250;
@@ -67,6 +68,9 @@ export class OperationPoller<T> {
           throw err;
         }
         return { error: err };
+      }
+      if (options.onPoll) {
+        options.onPoll(res.body);
       }
       if (!res.body.done) {
         throw new Error("Polling incomplete, should trigger retry with backoff");
