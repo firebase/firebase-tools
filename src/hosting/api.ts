@@ -171,6 +171,17 @@ interface LongRunningOperation<T> {
   readonly metadata: T | undefined;
 }
 
+export type Site = {
+  // Fully qualified name of the site.
+  name: string;
+
+  readonly defaultUrl: string;
+
+  readonly appId: string;
+
+  labels: { [key: string]: string };
+};
+
 /**
  * normalizeName normalizes a name given to it. Most useful for normalizing
  * user provided names. This removes any `/`, ':', '_', or '#' characters and
@@ -350,6 +361,37 @@ export async function createRelease(
     queryParams: { versionName: version },
   });
   return res.body;
+}
+
+/**
+ * @param project
+ */
+export async function listSites(project: string): Promise<Site[]> {
+  const sites: Site[] = [];
+  let nextPageToken = "";
+  for (;;) {
+    try {
+      const res = await apiClient.get<{ sites: Site[]; nextPageToken?: string }>(
+        `/projects/${project}/sites`,
+        { queryParams: { pageToken: nextPageToken, pageSize: 10 } }
+      );
+      const c = res.body?.sites;
+      if (c) {
+        sites.push(...c);
+      }
+      nextPageToken = res.body?.nextPageToken || "";
+      if (!nextPageToken) {
+        return sites;
+      }
+    } catch (e) {
+      if (e.status === 404) {
+        throw new FirebaseError(`could not find sites for project "${project}"`, {
+          original: e,
+        });
+      }
+      throw e;
+    }
+  }
 }
 
 /**
