@@ -5,10 +5,40 @@ import { FirebaseError } from "./error";
 import * as logger from "./logger";
 import * as track from "./track";
 import * as utils from "./utils";
-import { CloudFunction, Operation } from "./deploy/functions/release";
 import * as cloudfunctions from "./gcp/cloudfunctions";
 import * as pollOperations from "./pollOperations";
 
+// TODO: Get rid of this when switching to use poller.
+export interface Operation {
+  name: string;
+  type: string;
+  funcName: string;
+  eventType: string;
+  done: boolean;
+  triggerUrl?: string;
+  error?: { code: number; message: string };
+}
+
+export interface CloudFunction {
+  name: string;
+  sourceUploadUrl?: string;
+  labels: { [key: string]: string };
+  environmentVariables: { [key: string]: string };
+  entryPoint?: string;
+  runtime?: string;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: string;
+  availableMemoryMb?: number;
+  timeout?: number;
+  maxInstances?: number;
+  serviceAccountEmail?: string;
+  httpsTrigger?: any;
+  eventTrigger?: any;
+  failurePolicy?: {};
+  schedule?: object;
+  timeZone?: string;
+  regions?: string[];
+}
 export function functionMatchesGroup(functionName: string, groupChunks: string[]): boolean {
   const last = _.last(functionName.split("/"));
   if (!last) {

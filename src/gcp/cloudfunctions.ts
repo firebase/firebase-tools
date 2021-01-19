@@ -5,9 +5,7 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
-
-// TODO: TS module weirdness prevented me from putting Operation in gcp/cloudfunctions.ts. Find a cleaner place to put this/get rid of it when switching to poller.
-import { CloudFunction, Operation } from "../deploy/functions/release";
+import { CloudFunction, Operation } from "../functionsDeployHelper";
 
 const API_VERSION = "v1";
 
@@ -76,6 +74,7 @@ export async function createFunction(options: any): Promise<Operation> {
     entryPoint: options.entryPoint,
     labels: options.labels,
     runtime: options.runtime,
+    environmentVariables: options.environmentVariables,
   };
 
   if (options.vpcConnector) {
@@ -96,9 +95,6 @@ export async function createFunction(options: any): Promise<Operation> {
   }
   if (options.maxInstances) {
     data.maxInstances = Number(options.maxInstances);
-  }
-  if (options.environmentVariables) {
-    data.environmentVariables = options.environmentVariables;
   }
   if (options.serviceAccountEmail) {
     data.serviceAccountEmail = options.serviceAccountEmail;
@@ -276,8 +272,7 @@ export async function deleteFunction(options: any): Promise<Operation> {
  * @param projectId the Id of the project to check.
  * @param region the region to check in.
  */
-export async function listFunctions(projectId: string, region: string): Promise<any[]> {
-  // TODO: type this
+export async function listFunctions(projectId: string, region: string): Promise<CloudFunction[]> {
   const endpoint =
     "/" + API_VERSION + "/projects/" + projectId + "/locations/" + region + "/functions";
   try {
@@ -308,7 +303,7 @@ export async function listFunctions(projectId: string, region: string): Promise<
  * List all existing Cloud Functions in a project.
  * @param projectId the Id of the project to check.
  */
-export async function listAllFunctions(projectId: string) {
+export async function listAllFunctions(projectId: string): Promise<CloudFunction[]> {
   // "-" instead of a region string lists functions in all regions
   return listFunctions(projectId, "-");
 }

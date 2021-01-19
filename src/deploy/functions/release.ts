@@ -16,39 +16,6 @@ import { getAppEngineLocation } from "../../functionsConfig";
 import { promptOnce } from "../../prompt";
 import { createOrUpdateSchedulesAndTopics } from "./createOrUpdateSchedulesAndTopics";
 
-// TODO: Move this somewhere more appropriate/get rid of it when switching to use poller.
-export interface Operation {
-  name: string;
-  type: string;
-  funcName: string;
-  eventType: string;
-  done: boolean;
-  triggerUrl?: string;
-  error?: { code: number; message: string };
-}
-
-// TODO: Move this somewhere more appropriate.
-export interface CloudFunction {
-  name: string;
-  sourceUploadUrl?: string;
-  entryPoint?: string;
-  labels?: { [key: string]: string };
-  runtime?: string;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: string;
-  availableMemoryMb?: number;
-  timeout?: number;
-  maxInstances?: number;
-  environmentVariables?: { [key: string]: string };
-  serviceAccountEmail?: string;
-  httpsTrigger?: any;
-  eventTrigger?: any;
-  failurePolicy?: {};
-  schedule?: object;
-  timeZone?: string;
-  regions?: string[];
-}
-
 interface Timing {
   type?: string;
   t0?: [number, number]; // [seconds, nanos]
@@ -74,11 +41,11 @@ const DEFAULT_PUBLIC_POLICY = {
   ],
 };
 
-function startTimer(name: string, type: string) {
+function startTimer(name: string, type: string): void {
   timings[name] = { type: type, t0: process.hrtime() };
 }
 
-function endTimer(name: string) {
+function endTimer(name: string): void {
   if (!timings[name]) {
     logger.debug("[functions] no timer initialized for", name);
     return;
@@ -93,7 +60,11 @@ function endTimer(name: string) {
   );
 }
 
-async function fetchTriggerUrls(projectId: string, ops: Operation[], sourceUrl: string) {
+async function setTriggerUrls(
+  projectId: string,
+  ops: helper.Operation[],
+  sourceUrl: string
+): Promise<void> {
   if (!_.find(ops, ["trigger.httpsTrigger", {}])) {
     // No HTTPS functions being deployed
     return;
@@ -113,7 +84,7 @@ async function fetchTriggerUrls(projectId: string, ops: Operation[], sourceUrl: 
   return;
 }
 
-function printSuccess(op: Operation) {
+function printSuccess(op: helper.Operation): void {
   endTimer(op.funcName);
   utils.logSuccess(
     clc.bold.green("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
@@ -130,7 +101,7 @@ function printSuccess(op: Operation) {
   }
 }
 
-function printFail(op: Operation) {
+function printFail(op: helper.Operation): void {
   endTimer(op.funcName);
   failedDeployments.push(helper.getFunctionName(op.funcName));
   utils.logWarning(
@@ -150,7 +121,7 @@ function printFail(op: Operation) {
   }
 }
 
-function printTooManyOps(projectId: string) {
+function printTooManyOps(projectId: string): void {
   utils.logWarning(
     clc.bold.yellow("functions:") + " too many functions are being deployed, cannot poll status."
   );
@@ -163,14 +134,12 @@ function printTooManyOps(projectId: string) {
   deployments = []; // prevents analytics tracking of deployments
 }
 
-function pluckName(functionObject: any) {
-  // TODO; make a function type
-  return _.get(functionObject, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
+function pluckName(func: helper.CloudFunction): string {
+  return _.get(func, "name"); // e.g.'projects/proj1/locations/us-central1/functions/func'
 }
 
-function isScheduled(functionObject: any) {
-  // TODO; make a function type
-  return _.get(functionObject, "labels.deployment-scheduled") === "true";
+function isScheduled(func: helper.CloudFunction): boolean {
+  return _.get(func, "labels.deployment-scheduled") === "true";
 }
 
 export async function release(context: any, options: any, payload: any): Promise<void> {
@@ -241,7 +210,7 @@ export async function release(context: any, options: any, payload: any): Promise
 
   delete payload.functions;
 
-  const existingFunctions = context.existingFunctions;
+  const existingFunctions: helper.CloudFunction[] = context.existingFunctions;
   const existingNames = _.map(existingFunctions, pluckName);
   const existingScheduledFunctions = _.chain(existingFunctions)
     .filter(isScheduled)
@@ -328,7 +297,7 @@ export async function release(context: any, options: any, payload: any): Promise
       const region = helper.getRegion(name);
       const existingFunction = _.find(existingFunctions, {
         name: name,
-      });
+      })!;
 
       utils.logBullet(
         clc.bold.cyan("functions: ") +
@@ -522,7 +491,7 @@ export async function release(context: any, options: any, payload: any): Promise
     .value();
   failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
 
-  await fetchTriggerUrls(projectId, successfulCalls, sourceUrl);
+  await setTriggerUrls(projectId, successfulCalls, sourceUrl);
 
   await helper.pollDeploys(successfulCalls, printSuccess, printFail, printTooManyOps, projectId);
   if (deployments.length > 0) {
