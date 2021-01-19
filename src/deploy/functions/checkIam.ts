@@ -50,11 +50,7 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
  * @param options The command-wide options object.
  * @param payload The deploy payload.
  */
-export async function checkHttpIam(
-  context: { projectId: string; existingFunctions: { name: string }[] },
-  options: unknown,
-  payload: { functions: { triggers: { name: string; httpsTrigger?: {} }[] } }
-): Promise<void> {
+export async function checkHttpIam(context: any, options: any, payload: any): Promise<void> {
   const triggers = payload.functions.triggers;
   const functionsInfo = getFunctionsInfo(triggers, context.projectId);
   const filterGroups = getFilterGroups(options);

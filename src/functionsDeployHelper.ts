@@ -1,55 +1,96 @@
-"use strict";
+import * as _ from "lodash";
+import * as clc from "cli-color";
 
-var _ = require("lodash");
-var clc = require("cli-color");
+import { FirebaseError } from "./error";
+import * as logger from "./logger";
+import * as track from "./track";
+import * as utils from "./utils";
+import * as cloudfunctions from "./gcp/cloudfunctions";
+import * as pollOperations from "./pollOperations";
 
-var { FirebaseError } = require("./error");
-var logger = require("./logger");
-var track = require("./track");
-var utils = require("./utils");
-var cloudfunctions = require("./gcp/cloudfunctions");
-var pollOperations = require("./pollOperations");
-
-function functionMatchesGroup(functionName, groupChunks) {
-  return _.isEqual(
-    groupChunks,
-    _.last(functionName.split("/")).split("-").slice(0, groupChunks.length)
-  );
+// TODO: Get rid of this when switching to use operation-poller.
+export interface Operation {
+  name: string;
+  type: string;
+  funcName: string;
+  eventType: string;
+  done: boolean;
+  triggerUrl?: string;
+  error?: { code: number; message: string };
 }
 
-function getFilterGroups(options) {
+export interface CloudFunctionTrigger {
+  name: string;
+  sourceUploadUrl?: string;
+  labels: { [key: string]: string };
+  environmentVariables: { [key: string]: string };
+  entryPoint: string;
+  runtime?: string;
+  vpcConnector?: string;
+  vpcConnectorEgressSettings?: string;
+  ingressSettings?: string;
+  availableMemoryMb?: number;
+  timeout?: number;
+  maxInstances?: number;
+  serviceAccountEmail?: string;
+  httpsTrigger?: any;
+  eventTrigger?: any;
+  failurePolicy?: {};
+  schedule?: object;
+  timeZone?: string;
+  regions?: string[];
+}
+
+export function functionMatchesGroup(functionName: string, groupChunks: string[]): boolean {
+  const last = _.last(functionName.split("/"));
+  if (!last) {
+    return false;
+  }
+  const functionNameChunks = last.split("-").slice(0, groupChunks.length);
+  return _.isEqual(groupChunks, functionNameChunks);
+}
+
+export function getFilterGroups(options: any): string[][] {
   if (!options.only) {
     return [];
   }
 
-  var opts;
+  let opts;
   return _.chain(options.only.split(","))
-    .filter(function (filter) {
+    .filter((filter) => {
       opts = filter.split(":");
       return opts[0] === "functions" && opts[1];
     })
-    .map(function (filter) {
+    .map((filter) => {
       return filter.split(":")[1].split(/[.-]/);
     })
     .value();
 }
 
-function getReleaseNames(uploadNames, existingNames, functionFilterGroups) {
+export function getReleaseNames(
+  uploadNames: string[],
+  existingNames: string[],
+  functionFilterGroups: string[][]
+): string[] {
   if (functionFilterGroups.length === 0) {
     return uploadNames;
   }
 
-  var allFunctions = _.union(uploadNames, existingNames);
-  return _.filter(allFunctions, function (functionName) {
+  const allFunctions = _.union(uploadNames, existingNames);
+  return _.filter(allFunctions, (functionName) => {
     return _.some(
-      _.map(functionFilterGroups, function (groupChunks) {
+      _.map(functionFilterGroups, (groupChunks) => {
         return functionMatchesGroup(functionName, groupChunks);
       })
     );
   });
 }
 
-function logFilters(existingNames, releaseNames, functionFilterGroups) {
+export function logFilters(
+  existingNames: string[],
+  releaseNames: string[],
+  functionFilterGroups: string[][]
+): void {
   if (functionFilterGroups.length === 0) {
     return;
   }
@@ -59,28 +100,28 @@ function logFilters(existingNames, releaseNames, functionFilterGroups) {
 
   let list;
   if (existingNames.length > 0) {
-    list = _.map(existingNames, function (name) {
+    list = _.map(existingNames, (name) => {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "current functions in project: " + list);
   }
   if (releaseNames.length > 0) {
-    list = _.map(releaseNames, function (name) {
+    list = _.map(releaseNames, (name) => {
       return getFunctionName(name) + "(" + getRegion(name) + ")";
     }).join(", ");
     utils.logBullet(clc.bold.cyan("functions: ") + "uploading functions in project: " + list);
   }
 
-  var allFunctions = _.union(releaseNames, existingNames);
-  var unmatchedFilters = _.chain(functionFilterGroups)
-    .filter(function (filterGroup) {
+  const allFunctions = _.union(releaseNames, existingNames);
+  const unmatchedFilters = _.chain(functionFilterGroups)
+    .filter((filterGroup) => {
       return !_.some(
-        _.map(allFunctions, function (functionName) {
+        _.map(allFunctions, (functionName) => {
           return functionMatchesGroup(functionName, filterGroup);
         })
       );
     })
-    .map(function (group) {
+    .map((group) => {
       return group.join("-");
     })
     .value();
@@ -93,16 +134,16 @@ function logFilters(existingNames, releaseNames, functionFilterGroups) {
   }
 }
 
-function getFunctionsInfo(parsedTriggers, projectId) {
-  var functionsInfo = [];
-  _.forEach(parsedTriggers, function (trigger) {
+export function getFunctionsInfo(parsedTriggers: CloudFunctionTrigger[], projectId: string) {
+  const functionsInfo: CloudFunctionTrigger[] = [];
+  _.forEach(parsedTriggers, (trigger) => {
     if (!trigger.regions) {
       trigger.regions = ["us-central1"];
     }
     // SDK exports list of regions for each function to be deployed to, need to add a new entry
     // to functionsInfo for each region.
-    _.forEach(trigger.regions, function (region) {
-      var triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
+    _.forEach(trigger.regions, (region) => {
+      const triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
       if (triggerDeepCopy.regions) {
         delete triggerDeepCopy.regions;
       }
@@ -120,11 +161,11 @@ function getFunctionsInfo(parsedTriggers, projectId) {
   return functionsInfo;
 }
 
-function getFunctionTrigger(functionInfo) {
+export function getFunctionTrigger(functionInfo: CloudFunctionTrigger) {
   if (functionInfo.httpsTrigger) {
     return { httpsTrigger: functionInfo.httpsTrigger };
   } else if (functionInfo.eventTrigger) {
-    var trigger = functionInfo.eventTrigger;
+    const trigger = functionInfo.eventTrigger;
     trigger.failurePolicy = functionInfo.failurePolicy;
     return { eventTrigger: trigger };
   }
@@ -133,7 +174,7 @@ function getFunctionTrigger(functionInfo) {
   throw new FirebaseError("Could not parse function trigger, unknown trigger type.");
 }
 
-function getFunctionName(fullName) {
+export function getFunctionName(fullName: string): string {
   return fullName.split("/")[5];
 }
 
@@ -145,8 +186,8 @@ function getFunctionName(fullName) {
  ** If you change this pattern, Firebase console will stop displaying schedule descriptions
  ** and schedules created under the old pattern will no longer be cleaned up correctly
  */
-function getScheduleName(fullName, appEngineLocation) {
-  var [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
+export function getScheduleName(fullName: string, appEngineLocation: string): string {
+  const [projectsPrefix, project, regionsPrefix, region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/${regionsPrefix}/${appEngineLocation}/jobs/firebase-schedule-${functionName}-${region}`;
 }
 
@@ -156,21 +197,27 @@ function getScheduleName(fullName, appEngineLocation) {
  ** DANGER: We use the pattern defined here to deploy and delete topics
  ** If you change this pattern, topics created under the old pattern will no longer be cleaned up correctly
  */
-function getTopicName(fullName) {
-  var [projectsPrefix, project, , region, , functionName] = fullName.split("/");
+export function getTopicName(fullName: string): string {
+  const [projectsPrefix, project, , region, , functionName] = fullName.split("/");
   return `${projectsPrefix}/${project}/topics/firebase-schedule-${functionName}-${region}`;
 }
 
-function getRegion(fullName) {
+export function getRegion(fullName: string): string {
   return fullName.split("/")[3];
 }
 
-function getFunctionLabel(fullName) {
+export function getFunctionLabel(fullName: string): string {
   return getFunctionName(fullName) + "(" + getRegion(fullName) + ")";
 }
 
-function pollDeploys(operations, printSuccess, printFail, printTooManyOps, projectId) {
-  var interval;
+export function pollDeploys(
+  operations: Operation[],
+  printSuccess: (op: Operation) => void,
+  printFail: (op: Operation) => void,
+  printTooManyOps: (projectId: string) => void,
+  projectId: string
+) {
+  let interval;
   // Poll less frequently when there are many operations to avoid hitting read quota.
   // See "Read requests" quota at https://cloud.google.com/console/apis/api/cloudfunctions/quotas
   if (_.size(operations) > 90) {
@@ -183,47 +230,40 @@ function pollDeploys(operations, printSuccess, printFail, printTooManyOps, proje
   } else {
     interval = 2 * 1000;
   }
-  var pollFunction = cloudfunctions.check;
+  const pollFunction = cloudfunctions.check;
 
-  var retryCondition = function (result) {
+  const retryCondition = function (result: Operation) {
     // The error codes from a Google.LongRunning operation follow google.rpc.Code format.
 
-    var retryableCodes = [
+    const retryableCodes = [
       1, // cancelled by client
       4, // deadline exceeded
       10, // aborted (typically due to concurrency issue)
       14, // unavailable
     ];
 
-    if (_.includes(retryableCodes, result.error.code)) {
+    if (_.includes(retryableCodes, result.error?.code)) {
       return true;
     }
     return false;
   };
-  return pollOperations
-    .pollAndRetry(operations, pollFunction, interval, printSuccess, printFail, retryCondition)
-    .catch(function () {
-      utils.logWarning(
-        clc.bold.yellow("functions:") + " failed to get status of all the deployments"
-      );
-      logger.info(
-        "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
-      );
-      return Promise.reject(new FirebaseError("Failed to get status of functions deployments."));
-    });
-}
 
-module.exports = {
-  getFilterGroups: getFilterGroups,
-  getReleaseNames: getReleaseNames,
-  logFilters: logFilters,
-  getFunctionsInfo: getFunctionsInfo,
-  getFunctionTrigger: getFunctionTrigger,
-  getFunctionName: getFunctionName,
-  getRegion: getRegion,
-  getScheduleName: getScheduleName,
-  getTopicName: getTopicName,
-  functionMatchesGroup: functionMatchesGroup,
-  getFunctionLabel: getFunctionLabel,
-  pollDeploys: pollDeploys,
-};
+  try {
+    return pollOperations.pollAndRetry(
+      operations,
+      pollFunction,
+      interval,
+      printSuccess,
+      printFail,
+      retryCondition
+    );
+  } catch (err) {
+    utils.logWarning(
+      clc.bold.yellow("functions:") + " failed to get status of all the deployments"
+    );
+    logger.info(
+      "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
+    );
+    throw new FirebaseError("Failed to get status of functions deployments.");
+  }
+}
