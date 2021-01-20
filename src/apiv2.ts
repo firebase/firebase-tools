@@ -19,6 +19,7 @@ interface BaseRequestOptions<T> extends VerbOptions<T> {
   body?: T | string | NodeJS.ReadableStream;
   responseType?: "json" | "stream";
   redirect?: "error" | "follow" | "manual";
+  compress?: boolean;
 }
 
 interface RequestOptionsWithSignal<T> extends BaseRequestOptions<T> {
@@ -291,6 +292,7 @@ export class Client {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
+      compress: options.compress,
     };
 
     if (this.opts.proxy) {

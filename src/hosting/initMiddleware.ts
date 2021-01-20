@@ -29,6 +29,7 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
         path: u.pathname,
         responseType: "stream",
         resolveOnHTTPError: true,
+        compress: false,
       })
         .then((sdkRes) => {
           if (sdkRes.status === 404) {

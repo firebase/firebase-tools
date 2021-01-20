@@ -1,0 +1,1 @@
+- Improves handling of compressed content when proxying through the Hosting emulator. (#3052, #3055)
