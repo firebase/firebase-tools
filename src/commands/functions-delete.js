@@ -42,7 +42,7 @@ module.exports = new Command("functions:delete [filters...]")
       })
       .then(() => {
         return cloudfunctions
-          .listAll(projectId)
+          .listAllFunctions(projectId)
           .then(function (result) {
             var allFunctions = _.map(result, "name");
             return _.filter(allFunctions, function (name) {

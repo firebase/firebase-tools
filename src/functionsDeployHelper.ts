@@ -230,7 +230,7 @@ export function pollDeploys(
   } else {
     interval = 2 * 1000;
   }
-  const pollFunction = cloudfunctions.check;
+  const pollFunction = cloudfunctions.checkOperation;
 
   const retryCondition = function (result: Operation) {
     // The error codes from a Google.LongRunning operation follow google.rpc.Code format.
