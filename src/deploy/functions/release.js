@@ -73,9 +73,9 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
 }
 
 var printSuccess = function (op) {
-  _endTimer(op.func);
+  _endTimer(op.funcName);
   utils.logSuccess(
-    clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
+    clc.bold.green("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
       "Successful " +
       op.type +
       " operation. "
@@ -83,16 +83,17 @@ var printSuccess = function (op) {
   if (op.triggerUrl && op.type !== "delete") {
     logger.info(
       clc.bold("Function URL"),
-      "(" + helper.getFunctionName(op.func) + "):",
+      "(" + helper.getFunctionName(op.funcName) + "):",
       op.triggerUrl
     );
   }
 };
 var printFail = function (op) {
-  _endTimer(op.func);
-  failedDeployments.push(helper.getFunctionName(op.func));
+  _endTimer(op.funcName);
+  failedDeployments.push(helper.getFunctionName(op.funcName));
   utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
+    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
+      "Deployment error."
   );
   if (op.error.code === 8) {
     logger.debug(op.error.message);
