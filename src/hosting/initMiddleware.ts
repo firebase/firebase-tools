@@ -24,9 +24,15 @@ export function initMiddleware(init: TemplateServerResponse): RequestHandler {
       const sdkName = match[2];
       const u = new url.URL(`https://www.gstatic.com/firebasejs/${version}/${sdkName}`);
       const c = new Client({ urlPrefix: u.origin, auth: false });
+      const headers: { [key: string]: string } = {};
+      const acceptEncoding = req.headers["accept-encoding"];
+      if (typeof acceptEncoding === "string" && acceptEncoding) {
+        headers["accept-encoding"] = acceptEncoding;
+      }
       c.request<unknown, NodeJS.ReadableStream>({
         method: "GET",
         path: u.pathname,
+        headers,
         responseType: "stream",
         resolveOnHTTPError: true,
         compress: false,

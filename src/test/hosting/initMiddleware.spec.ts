@@ -31,6 +31,24 @@ describe("initMiddleware", () => {
       });
   });
 
+  it("should be able to proxy with the correct accept-encoding", async () => {
+    nock("https://www.gstatic.com")
+      .get("/firebasejs/v2.2.2/sample-sdk.js")
+      .matchHeader("accept-encoding", "brrr")
+      .reply(200, "content");
+
+    const mw = initMiddleware(templateServerRes);
+
+    await supertest(mw)
+      .get("/__/firebase/v2.2.2/sample-sdk.js")
+      .set("accept-encoding", "brrr")
+      .expect(200)
+      .then((res) => {
+        expect(res.text).to.equal("content");
+        expect(nock.isDone()).to.be.true;
+      });
+  });
+
   it("should provide the init.js file", async () => {
     const mw = initMiddleware(templateServerRes);
 
