@@ -92,7 +92,8 @@ var printFail = function (op) {
   _endTimer(op.funcName);
   failedDeployments.push(helper.getFunctionName(op.funcName));
   utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") + "Deployment error."
+    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
+      "Deployment error."
   );
   if (op.error.code === 8) {
     logger.debug(op.error.message);
