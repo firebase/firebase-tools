@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { join } from "path";
-import * as nock from "nock";
 import * as rimraf from "rimraf";
 import * as sinon from "sinon";
 import * as tmp from "tmp";
@@ -12,7 +11,8 @@ import {
 } from "../../appdistribution/client";
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
-import { Distribution } from "../../appdistribution/distribution";
+import * as nock from "nock";
+import { Distribution, DistributionFileType } from "../../appdistribution/distribution";
 
 tmp.setGracefulCleanup();
 
@@ -21,6 +21,8 @@ describe("distribution", () => {
   const appId = "1:12345789:ios:abc123def456";
   const mockDistribution = new Distribution(join(tempdir.name, "app.ipa"));
   const appDistributionClient = new AppDistributionClient(appId);
+  const appViewBasic = "BASIC";
+  const appViewFull = "FULL";
 
   let sandbox: sinon.SinonSandbox;
 
@@ -39,17 +41,44 @@ describe("distribution", () => {
 
   describe("getApp", () => {
     it("should throw error when app does not exist", () => {
-      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(404, {});
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(404, {});
       return expect(appDistributionClient.getApp()).to.be.rejected;
     });
 
     it("should resolve when request succeeds", () => {
-      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(200, {});
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(200, {});
       return expect(appDistributionClient.getApp()).to.be.fulfilled;
     });
 
+    it("requests basic appView when the distribution is an APK", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(200, {});
+      return expect(appDistributionClient.getApp(DistributionFileType.APK)).to.be.fulfilled;
+    });
+
+    it("requests basic appView when the distribution is an IPA", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(200, {});
+      return expect(appDistributionClient.getApp(DistributionFileType.IPA)).to.be.fulfilled;
+    });
+
+    it("requests full appView when the distribution is an AAB", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewFull}`)
+        .reply(200, {});
+      return expect(appDistributionClient.getApp(DistributionFileType.AAB)).to.be.fulfilled;
+    });
+
     it("should throw an error when the request fails", () => {
-      nock(api.appDistributionOrigin).get(`/v1alpha/apps/${appId}`).reply(404, {});
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(404, {});
       return expect(appDistributionClient.getApp()).to.be.rejected;
     });
   });
