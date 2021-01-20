@@ -6,7 +6,7 @@ import * as pathUtil from "path";
 export enum DistributionFileType {
   IPA = "ipa",
   APK = "apk",
-  AAB = "aab"
+  AAB = "aab",
 }
 
 /**

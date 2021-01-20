@@ -3,7 +3,12 @@ import * as fs from "fs-extra";
 import { Command } from "../command";
 import * as utils from "../utils";
 import * as requireAuth from "../requireAuth";
-import { AabState, AppDistributionApp, AppDistributionClient, UploadStatus } from "../appdistribution/client";
+import {
+  AabState,
+  AppDistributionApp,
+  AppDistributionClient,
+  UploadStatus,
+} from "../appdistribution/client";
 import { FirebaseError } from "../error";
 import { Distribution, DistributionFileType } from "../appdistribution/distribution";
 import ensureDefaultCredentials = require("../ensureDefaultCredentials");
@@ -99,24 +104,32 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
       );
     }
 
-    if (distribution.distributionFileType() === DistributionFileType.AAB &&
-          app.aabState !== AabState.ACTIVE &&
-          app.aabState !== AabState.AAB_STATE_UNAVAILABLE) {
-            switch(app.aabState) {
-              case AabState.PLAY_ACCOUNT_NOT_LINKED: {
-                throw new FirebaseError('This project is not linked to a GooglePlay account.',  { exit: 1 });
-              }
-              case AabState.APP_NOT_PUBLISHED: {
-                throw new FirebaseError('"This app is not published in the Google Play console.',  { exit: 1 });
-              }
-              case AabState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
-                throw new FirebaseError('App with matching package name does not exist in Google Play.',  { exit: 1 });
-              }
-              default: {
-                throw new FirebaseError('App Distribution failed to process the AAB.',  { exit: 1 });
-              }
-            }
+    if (
+      distribution.distributionFileType() === DistributionFileType.AAB &&
+      app.aabState !== AabState.ACTIVE &&
+      app.aabState !== AabState.AAB_STATE_UNAVAILABLE
+    ) {
+      switch (app.aabState) {
+        case AabState.PLAY_ACCOUNT_NOT_LINKED: {
+          throw new FirebaseError("This project is not linked to a GooglePlay account.", {
+            exit: 1,
+          });
         }
+        case AabState.APP_NOT_PUBLISHED: {
+          throw new FirebaseError('"This app is not published in the Google Play console.', {
+            exit: 1,
+          });
+        }
+        case AabState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
+          throw new FirebaseError("App with matching package name does not exist in Google Play.", {
+            exit: 1,
+          });
+        }
+        default: {
+          throw new FirebaseError("App Distribution failed to process the AAB.", { exit: 1 });
+        }
+      }
+    }
 
     const releaseHash = await distribution.releaseHash();
 
