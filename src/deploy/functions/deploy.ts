@@ -4,7 +4,7 @@ import { setGracefulCleanup } from "tmp";
 import { functionsUploadRegion } from "../../api";
 import * as gcp from "../../gcp";
 import { logBullet, logSuccess, logWarning } from "../../utils";
-import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
+import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
 import { checkHttpIam } from "./checkIam";
 
 const GCP_REGION = functionsUploadRegion;
