@@ -8,10 +8,13 @@ import {
 import { FirebaseError } from "../../error";
 import * as api from "../../api";
 import * as nock from "nock";
+import { Distribution, DistributionFileType } from "../../appdistribution/distribution";
 
 describe("distribution", () => {
   const appId = "1:12345789:ios:abc123def456";
   const distribution = new AppDistributionClient(appId);
+  const appViewBasic = "BASIC";
+  const appViewFull = "FULL";
 
   let sandbox: sinon.SinonSandbox;
 
@@ -27,21 +30,42 @@ describe("distribution", () => {
   describe("getApp", () => {
     it("should throw error when app does not exist", () => {
       nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
         .reply(404, {});
       return expect(distribution.getApp()).to.be.rejected;
     });
 
     it("should resolve when request succeeds", () => {
       nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
         .reply(200, {});
       return expect(distribution.getApp()).to.be.fulfilled;
     });
 
+    it("requests basic appView when the distribution is an APK", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(200, {});
+      return expect(distribution.getApp(DistributionFileType.APK)).to.be.fulfilled;
+    });
+
+    it("requests basic appView when the distribution is an IPA", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
+        .reply(200, {});
+      return expect(distribution.getApp(DistributionFileType.IPA)).to.be.fulfilled;
+    });
+
+    it("requests full appView when the distribution is an AAB", () => {
+      nock(api.appDistributionOrigin)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewFull}`)
+        .reply(200, {});
+      return expect(distribution.getApp(DistributionFileType.AAB)).to.be.fulfilled;
+    });
+
     it("should throw an error when the request fails", () => {
       nock(api.appDistributionOrigin)
-        .get(`/v1alpha/apps/${appId}`)
+        .get(`/v1alpha/apps/${appId}?appView=${appViewBasic}`)
         .reply(404, {});
       return expect(distribution.getApp()).to.be.rejected;
     });
