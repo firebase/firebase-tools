@@ -57,7 +57,7 @@ function _fetchTriggerUrls(projectId, ops, sourceUrl) {
     // No HTTPS functions being deployed
     return Promise.resolve();
   }
-  return gcp.cloudfunctions.listAll(projectId).then(function (functions) {
+  return gcp.cloudfunctions.listAllFunctions(projectId).then(function (functions) {
     var httpFunctions = _.chain(functions)
       .filter({ sourceUploadUrl: sourceUrl })
       .filter("httpsTrigger")
@@ -246,7 +246,7 @@ module.exports = function (context, options, payload) {
             name: name,
             retryFunction: () => {
               return gcp.cloudfunctions
-                .create({
+                .createFunction({
                   projectId: projectId,
                   region: region,
                   eventType: eventType,
@@ -334,7 +334,7 @@ module.exports = function (context, options, payload) {
           deployments.push({
             name: name,
             retryFunction: function () {
-              return gcp.cloudfunctions.update(options);
+              return gcp.cloudfunctions.updateFunction(options);
             },
             trigger: functionTrigger,
           });
@@ -453,7 +453,7 @@ module.exports = function (context, options, payload) {
                   }
                 })
                 .then(() => {
-                  return gcp.cloudfunctions.delete({
+                  return gcp.cloudfunctions.deleteFunction({
                     projectId: projectId,
                     region: region,
                     functionName: functionName,
@@ -462,7 +462,7 @@ module.exports = function (context, options, payload) {
             };
           } else {
             retryFunction = function () {
-              return gcp.cloudfunctions.delete({
+              return gcp.cloudfunctions.deleteFunction({
                 projectId: projectId,
                 region: region,
                 functionName: functionName,
