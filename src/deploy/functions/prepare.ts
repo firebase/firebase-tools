@@ -21,7 +21,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const projectDir = options.config.projectDir;
   const projectId = getProjectId(options);
 
-  // Check what runtime to use, first in firebase.json then in 'engines' field.
+  // Check what runtime to use, first in firebase.json, then in 'engines' field.
   const runtimeFromConfig = options.config.get("functions.runtime");
   context.runtimeChoice = getRuntimeChoice(sourceDir, runtimeFromConfig);
 
@@ -37,7 +37,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   _.set(context, "firebaseConfig", firebaseConfig);
 
-  // Prepare the functions directory for upload, and set context.triggers
+  // Prepare the functions directory for upload, and set context.triggers.
   logBullet(
     clc.cyan.bold("functions:") +
       " preparing " +
@@ -47,7 +47,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const source = await prepareFunctionsUpload(context, options);
   _.set(context, "functionsSource", source);
 
-  // Get a list of CloudFunctioTriggers, with duplicates for each region.
+  // Get a list of CloudFunctionTriggers, with duplicates for each region.
   payload.functions = {};
   payload.functions.triggers = getFunctionsInfo(
     options.config.get("functions.triggers"),
@@ -56,7 +56,8 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
-  validate.functionNamesAreValid(options); // TODO: define function names
+  // validate.functionNamesAreValid(payload.functionNames); 
+  // TODO: This doesn't do anything meaningful right now because payload.functions is not defined
   validate.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
 
   // Display a warning and prompt if any functions have failurePolicies.
