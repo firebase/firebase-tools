@@ -56,7 +56,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
-  // validate.functionNamesAreValid(payload.functionNames); 
+  // validate.functionNamesAreValid(payload.functionNames);
   // TODO: This doesn't do anything meaningful right now because payload.functions is not defined
   validate.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
 
