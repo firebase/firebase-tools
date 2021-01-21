@@ -15,5 +15,5 @@ export function labels() {
 }
 
 export function check(labels: { [key: string]: any }) {
-  return labels && labels["deployment-tool"] && labels["deployment-tool"].indexOf(BASE) === 0;
+  return labels?.["deployment-tool"]?.startsWith(BASE);
 }
