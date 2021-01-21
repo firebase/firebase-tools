@@ -99,6 +99,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
         redirect: "manual",
         body: passThrough,
         timeout: 60000,
+        compress: false,
       });
     } catch (err) {
       const isAbortError =
