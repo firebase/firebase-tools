@@ -77,7 +77,7 @@ export class AuthEmulator implements EmulatorInstance {
       logger.logLabeled(
         "WARN",
         "auth",
-        `Error importing config from ${configPath}. Skipping config import`
+        `Skipped importing config because ${configPath} does not exist.`
       );
     }
 
@@ -105,7 +105,7 @@ export class AuthEmulator implements EmulatorInstance {
       logger.logLabeled(
         "WARN",
         "auth",
-        `Error importing accounts from ${accountsPath}. Skipping accounts import`
+        `Skipped importing accounts because ${accountsPath} does not exist.`
       );
     }
   }
