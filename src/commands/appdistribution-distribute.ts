@@ -110,22 +110,21 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
     ) {
       switch (app.aabState) {
         case AabState.PLAY_ACCOUNT_NOT_LINKED: {
-          throw new FirebaseError("This project is not linked to a GooglePlay account.", {
-            exit: 1,
-          });
+          throw new FirebaseError("This project is not linked to a Google Play account.");
         }
         case AabState.APP_NOT_PUBLISHED: {
-          throw new FirebaseError('"This app is not published in the Google Play console.', {
-            exit: 1,
-          });
+          throw new FirebaseError('"This app is not published in the Google Play console.');
         }
         case AabState.NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT: {
-          throw new FirebaseError("App with matching package name does not exist in Google Play.", {
-            exit: 1,
-          });
+          throw new FirebaseError("App with matching package name does not exist in Google Play.");
+        }
+        case AabState.PLAY_IAS_TERMS_NOT_ACCEPTED: {
+          throw new FirebaseError(
+            "You must accept the Play Internal App Sharing (IAS) terms to upload AABs."
+          );
         }
         default: {
-          throw new FirebaseError("App Distribution failed to process the AAB.", { exit: 1 });
+          throw new FirebaseError("App Distribution failed to process the AAB.");
         }
       }
     }

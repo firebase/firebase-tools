@@ -33,6 +33,7 @@ export enum AabState {
   NO_APP_WITH_GIVEN_BUNDLE_ID_IN_PLAY_ACCOUNT,
   APP_NOT_PUBLISHED,
   AAB_STATE_UNAVAILABLE,
+  PLAY_IAS_TERMS_NOT_ACCEPTED,
 }
 
 export interface UploadStatusResponse {
@@ -56,7 +57,7 @@ export class AppDistributionClient {
   async getApp(
     distributionFileType: DistributionFileType = DistributionFileType.APK
   ): Promise<AppDistributionApp> {
-    utils.logBullet(`getting app details (Distribution type: ${distributionFileType})...`);
+    utils.logBullet(`Getting app details (Distribution type: ${distributionFileType})...`);
     const appView = distributionFileType == DistributionFileType.AAB ? "FULL" : "BASIC";
     const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,

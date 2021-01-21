@@ -29,7 +29,7 @@ export class Distribution {
       distributionType !== DistributionFileType.APK &&
       distributionType !== DistributionFileType.AAB
     ) {
-      throw new FirebaseError("unsupported distribution file format, should be .ipa or .apk");
+      throw new FirebaseError("Unsupported distribution file format, should be .ipa, .apk or .aab");
     }
 
     try {
@@ -62,7 +62,9 @@ export class Distribution {
       case DistributionFileType.APK:
         return "android";
       default:
-        throw new FirebaseError("Unsupported distribution file format, should be .ipa or .apk");
+        throw new FirebaseError(
+          "Unsupported distribution file format, should be .ipa, .apk or .aab"
+        );
     }
   }
 
