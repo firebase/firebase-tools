@@ -14,8 +14,13 @@ export interface Operation {
   name: string;
   type: string;
   funcName: string;
-  eventType: string;
   done: boolean;
+  eventType?: string;
+  trigger?: {
+    eventTrigger?: any;
+    httpsTrigger?: any;
+  };
+  retryFunction?: () => Promise<any>;
   triggerUrl?: string;
   error?: { code: number; message: string };
 }
