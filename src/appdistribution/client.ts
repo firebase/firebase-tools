@@ -77,6 +77,7 @@ export class AppDistributionClient {
         "X-APP-DISTRO-API-CLIENT-VERSION": pkg.version,
         "Content-Type": "application/octet-stream",
         "X-GOOG-UPLOAD-FILE-NAME": distribution.getFileName(),
+        "X-GOOG-UPLOAD-PROTOCOL": "raw",
       },
       data: distribution.readStream(),
       json: false,
