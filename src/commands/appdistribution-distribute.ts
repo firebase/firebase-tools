@@ -124,7 +124,7 @@ module.exports = new Command("appdistribution:distribute <distribution-file>")
           );
         }
         default: {
-          throw new FirebaseError("App Distribution failed to process the AAB.");
+          throw new FirebaseError("App Distribution failed to process the AAB: " + app.aabState);
         }
       }
     }
