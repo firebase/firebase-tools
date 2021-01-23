@@ -364,7 +364,9 @@ export async function createRelease(
 }
 
 /**
- * @param project
+ * List the Hosting sites for a given project.
+ * @param project project name or number.
+ * @return list of Sites.
  */
 export async function listSites(project: string): Promise<Site[]> {
   const sites: Site[] = [];
@@ -392,6 +394,66 @@ export async function listSites(project: string): Promise<Site[]> {
       throw e;
     }
   }
+}
+
+/**
+ * Get a Hosting site.
+ * @param project project name or number.
+ * @param site site name.
+ * @return site information.
+ */
+export async function getSite(project: string, site: string): Promise<Site> {
+  try {
+    const res = await apiClient.get<Site>(`/projects/${project}/sites/${site}`);
+    return res.body;
+  } catch (e) {
+    if (e.status === 404) {
+      throw new FirebaseError(`could not find site "${site}" for project "${project}"`, {
+        original: e,
+      });
+    }
+    throw e;
+  }
+}
+
+/**
+ * Create a Hosting site.
+ * @param project project name or number.
+ * @param site the site name to create.
+ * @return site information.
+ */
+export async function createSite(project: string, site: string): Promise<Site> {
+  console.error(site);
+  const res = await apiClient.post<unknown, Site>(
+    `/projects/${project}/sites`,
+    {},
+    { queryParams: { siteId: site } }
+  );
+  return res.body;
+}
+
+/**
+ * Update a Hosting site.
+ * @param project project name or number.
+ * @param site the site to update.
+ * @param fields the fields to update.
+ * @return site information.
+ */
+export async function updateSite(project: string, site: Site, fields: string[]): Promise<Site> {
+  const res = await apiClient.patch<Site, Site>(`/projects/${project}/sites/${site.name}`, site, {
+    queryParams: { updateMask: fields.join(",") },
+  });
+  return res.body;
+}
+
+/**
+ * Delete a Hosting site.
+ * @param project project name or number.
+ * @param site the site to update.
+ * @return nothing.
+ */
+export async function deleteSite(project: string, site: string): Promise<void> {
+  await apiClient.delete<void>(`/projects/${project}/sites/${site}`);
 }
 
 /**

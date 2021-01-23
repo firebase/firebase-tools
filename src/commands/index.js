@@ -100,8 +100,13 @@ module.exports = function (client) {
   client.hosting.channel.open = loadCommand("hosting-channel-open");
   client.hosting.clone = loadCommand("hosting-clone");
   client.hosting.disable = loadCommand("hosting-disable");
-  client.hosting.site = {};
-  client.hosting.site.list = loadCommand("hosting-site-list");
+  if (previews.hostingsites) {
+    client.hosting.site = {};
+    client.hosting.site.create = loadCommand("hosting-site-create");
+    client.hosting.site.delete = loadCommand("hosting-site-delete");
+    client.hosting.site.get = loadCommand("hosting-site-get");
+    client.hosting.site.list = loadCommand("hosting-site-list");
+  }
   client.init = loadCommand("init");
   client.login = loadCommand("login");
   client.login.ci = loadCommand("login-ci");
