@@ -6,7 +6,14 @@ import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
-import { getFunctionsInfo, promptForFailurePolicies } from "../../functionsDeployHelper";
+import {
+  CloudFunctionTrigger,
+  createFunctionRegionMap,
+  flattenRegionMap,
+  functionMatchesAnyGroup,
+  getFilterGroups,
+  promptForFailurePolicies,
+} from "../../functionsDeployHelper";
 import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
@@ -49,10 +56,11 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Get a list of CloudFunctionTriggers, with duplicates for each region.
   payload.functions = {};
-  payload.functions.triggers = getFunctionsInfo(
-    options.config.get("functions.triggers"),
-    projectId
+  payload.functions.regionMap = createFunctionRegionMap(
+    projectId,
+    options.config.get("functions.triggers")
   );
+  payload.functions.triggers = flattenRegionMap(payload.functions.regionMap);
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
@@ -60,6 +68,12 @@ export async function prepare(context: any, options: any, payload: any): Promise
   // TODO: This doesn't do anything meaningful right now because payload.functions is not defined
   validate.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
 
-  // Display a warning and prompt if any functions have failurePolicies.
-  await promptForFailurePolicies(options, payload.functions.triggers);
+  // Check what --only filters have been passed in.
+  context.filters = getFilterGroups(options);
+
+  // Display a warning and prompt if any functions in the release have failurePolicies.
+  const localFnsInRelease = payload.functions.triggers.filter((fn: CloudFunctionTrigger) => {
+    return functionMatchesAnyGroup(fn.name, context.filters);
+  });
+  await promptForFailurePolicies(options, localFnsInRelease);
 }

@@ -47,6 +47,15 @@ export interface CloudFunctionTrigger {
   regions?: string[];
 }
 
+export function functionMatchesAnyGroup(fnName: string, filterGroups: string[][]) {
+  if (!filterGroups.length) {
+    return true;
+  }
+  return _.some(filterGroups, (groupChunks) => {
+    return functionMatchesGroup(fnName, groupChunks);
+  });
+}
+
 export function functionMatchesGroup(functionName: string, groupChunks: string[]): boolean {
   const last = _.last(functionName.split("/"));
   if (!last) {
@@ -140,14 +149,27 @@ export function logFilters(
   }
 }
 
-export function getFunctionsInfo(parsedTriggers: CloudFunctionTrigger[], projectId: string) {
-  const functionsInfo: CloudFunctionTrigger[] = [];
+interface RegionMap {
+  [region: string]: CloudFunctionTrigger[];
+}
+
+/**
+ * Creates a map of regions to all the CloudFunctions being deployed
+ * to that region.
+ * @param projectId The project in use.
+ * @param parsedTriggers A list of all CloudFunctions in the deployment.
+ */
+export function createFunctionRegionMap(
+  projectId: string,
+  parsedTriggers: CloudFunctionTrigger[]
+): RegionMap {
+  const regionMap: RegionMap = {};
   _.forEach(parsedTriggers, (trigger) => {
     if (!trigger.regions) {
       trigger.regions = ["us-central1"];
     }
-    // SDK exports list of regions for each function to be deployed to, need to add a new entry
-    // to functionsInfo for each region.
+    // Create a separate CloudFunction for
+    // each region we deploy a function to
     _.forEach(trigger.regions, (region) => {
       const triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
       if (triggerDeepCopy.regions) {
@@ -161,10 +183,107 @@ export function getFunctionsInfo(parsedTriggers: CloudFunctionTrigger[], project
         "functions",
         trigger.name,
       ].join("/");
-      functionsInfo.push(triggerDeepCopy);
+      if (!_.get(regionMap, region)) {
+        regionMap[region] = [];
+      }
+      regionMap[region].push(triggerDeepCopy);
     });
   });
-  return functionsInfo;
+  return regionMap;
+}
+
+/**
+ * Helper method to turn a RegionMap into a flat list of all functions in a deployment.
+ * @param regionMap A RegionMap for the deployment.
+ */
+export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
+  return _.chain(regionMap)
+    .map((value: CloudFunctionTrigger[]) => {
+      return value;
+    })
+    .flatten()
+    .value();
+}
+
+export interface RegionalDeployment {
+  region: string;
+  sourceToken?: string;
+  firstFunctionDeployment?: CloudFunctionTrigger;
+  functionsToCreate: CloudFunctionTrigger[];
+  functionsToUpdate: CloudFunctionTrigger[];
+  functionsToDelete: string[];
+  schedulesToCreateOrUpdate: CloudFunctionTrigger[];
+  schedulesToDelete: string[];
+}
+
+/**
+ * Create a plan for deploying all functions in one region.
+ * @param region The region of this deployment
+ * @param functionsInLocalSource The functions present in the code currently being deployed.
+ * @param existingFunctionNames The names of all functions that already exist.
+ * @param existingScheduledFunctionNames The names of all schedules functions that already exist.
+ * @param filters The filters, passed in by the user via  `--only functions:`
+ */
+export function createRegionalDeployment(
+  region: string,
+  functionsInLocalSource: CloudFunctionTrigger[],
+  existingFunctionNames: string[],
+  existingScheduledFunctionNames: string[],
+  filters: string[][]
+) {
+  const deployment: RegionalDeployment = {
+    region,
+    functionsToCreate: [],
+    functionsToUpdate: [],
+    functionsToDelete: [],
+    schedulesToCreateOrUpdate: [],
+    schedulesToDelete: [],
+  };
+  // Sort functions
+  for (const fn of functionsInLocalSource) {
+    if (!_.includes(existingFunctionNames, fn.name)) {
+      deployment.functionsToCreate.push(fn);
+    } else {
+      deployment.functionsToUpdate.push(fn);
+      _.remove(existingFunctionNames, (val: string) => {
+        return val === fn.name;
+      });
+    }
+    // Check for schedules.
+    if (_.get(fn, "schedule")) {
+      deployment.schedulesToCreateOrUpdate.push(fn);
+      if (_.includes(existingScheduledFunctionNames, fn.name)) {
+        _.remove(existingScheduledFunctionNames, (val: string) => {
+          return val === fn.name;
+        });
+      }
+    }
+  }
+
+  deployment.functionsToDelete = existingFunctionNames;
+  deployment.schedulesToDelete = existingScheduledFunctionNames;
+
+  // Apply  --only filters
+  if (filters.length) {
+    deployment.functionsToCreate = deployment.functionsToCreate.filter(
+      (fn: CloudFunctionTrigger) => {
+        return functionMatchesAnyGroup(fn.name, filters);
+      }
+    );
+    deployment.functionsToUpdate = deployment.functionsToUpdate.filter(
+      (fn: CloudFunctionTrigger) => {
+        return functionMatchesAnyGroup(fn.name, filters);
+      }
+    );
+    deployment.functionsToDelete = deployment.functionsToDelete.filter((fnName: string) => {
+      return functionMatchesAnyGroup(fnName, filters);
+    });
+    deployment.schedulesToDelete = deployment.schedulesToDelete.filter((fnName: string) => {
+      return functionMatchesAnyGroup(fnName, filters);
+    });
+  }
+
+  return deployment;
 }
 
 export function getFunctionTrigger(functionInfo: CloudFunctionTrigger) {

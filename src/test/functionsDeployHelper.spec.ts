@@ -92,7 +92,7 @@ describe("functionsDeployHelper", () => {
     });
   });
 
-  describe("getFunctionsInfo", () => {
+  describe("createFunctionRegionMap", () => {
     it("should handle default region", () => {
       const triggers = [
         {
@@ -109,20 +109,22 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-central1/functions/myFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-        {
-          name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-      ]);
+      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+        "us-central1": [
+          {
+            name: "projects/myProject/locations/us-central1/functions/myFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+          {
+            name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      });
     });
 
     it("should handle customized region", () => {
@@ -142,20 +144,24 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-east1/functions/myFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-        {
-          name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-      ]);
+      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+        "us-east1": [
+          {
+            name: "projects/myProject/locations/us-east1/functions/myFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        "us-central1": [
+          {
+            name: "projects/myProject/locations/us-central1/functions/myOtherFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      });
     });
 
     it("should handle multiple customized region for a function", () => {
@@ -169,22 +175,27 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.getFunctionsInfo(triggers, "myProject")).to.deep.equal([
-        {
-          name: "projects/myProject/locations/us-east1/functions/myFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-        {
-          name: "projects/myProject/locations/eu-west1/functions/myFunc",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-      ]);
+      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+        "eu-west1": [
+          {
+            name: "projects/myProject/locations/eu-west1/functions/myFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        "us-east1": [
+          {
+            name: "projects/myProject/locations/us-east1/functions/myFunc",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      });
     });
   });
+
   describe("promptForFailurePolicies", () => {
     let promptStub: sinon.SinonStub;
 
@@ -282,6 +293,287 @@ describe("functionsDeployHelper", () => {
 
       expect(async () => await helper.promptForFailurePolicies(options, funcs)).not.to.throw();
       expect(promptStub).not.to.have.been.called;
+    });
+  });
+
+  describe("createRegionalDeployment", () => {
+    const region = "us-east1";
+    it("should put new functions into functionsToCreate", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const existingFunctionNames: string[] = [];
+      const existingScheduledFunctionNames: string[] = [];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [
+          {
+            name: "projects/a/locations/us-east1/functions/c",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        functionsToUpdate: [],
+        functionsToDelete: [],
+        schedulesToCreateOrUpdate: [],
+        schedulesToDelete: [],
+      });
+    });
+
+    it("should put exisitng functions into functionsToUpdate", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const existingFunctionNames: string[] = [
+        "projects/a/locations/us-east1/functions/c",
+        "projects/a/locations/us-east1/functions/d",
+      ];
+      const existingScheduledFunctionNames: string[] = [];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [],
+        functionsToUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/c",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToCreateOrUpdate: [],
+        schedulesToDelete: [],
+      });
+    });
+
+    it("should put exisitng functions not in local functions into functionsToDelete", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const existingFunctionNames: string[] = [
+        "projects/a/locations/us-east1/functions/c",
+        "projects/a/locations/us-east1/functions/d",
+      ];
+      const existingScheduledFunctionNames: string[] = [];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [],
+        functionsToUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        functionsToDelete: ["projects/a/locations/us-east1/functions/c"],
+        schedulesToCreateOrUpdate: [],
+        schedulesToDelete: [],
+      });
+    });
+
+    it("should put newly scheduled functions into schedulesToCreateOrUpdate", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+          schedule: { schedule: "every 5 minutes" },
+        },
+      ];
+      const existingFunctionNames: string[] = ["projects/a/locations/us-east1/functions/d"];
+      const existingScheduledFunctionNames: string[] = [];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [],
+        functionsToUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToCreateOrUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+        schedulesToDelete: [],
+      });
+    });
+
+    it("should put new functions that are scheduled functions into schedulesToCreateOrUpdate", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+          schedule: { schedule: "every 5 minutes" },
+        },
+      ];
+      const existingFunctionNames: string[] = [];
+      const existingScheduledFunctionNames: string[] = [];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+        functionsToUpdate: [],
+        functionsToDelete: [],
+        schedulesToCreateOrUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+        schedulesToDelete: [],
+      });
+    });
+
+    it("should put functions that are no longer scheduled functions into schedulesToDelete", () => {
+      const localFns: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const existingFunctionNames = ["projects/a/locations/us-east1/functions/d"];
+      const existingScheduledFunctionNames = ["projects/a/locations/us-east1/functions/d"];
+      const filters: string[][] = [];
+
+      const regionalDeployment = helper.createRegionalDeployment(
+        region,
+        localFns,
+        existingFunctionNames,
+        existingScheduledFunctionNames,
+        filters
+      );
+
+      expect(regionalDeployment).to.deep.equal({
+        region,
+        functionsToCreate: [],
+        functionsToUpdate: [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToCreateOrUpdate: [],
+        schedulesToDelete: ["projects/a/locations/us-east1/functions/d"],
+      });
     });
   });
 });
