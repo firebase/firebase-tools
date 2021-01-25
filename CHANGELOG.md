@@ -1,1 +1,1 @@
-- Adds support for uploading AABs to App Distribution
+- Adds support for uploading Android App Bundles (AABs) to App Distribution.
