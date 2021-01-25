@@ -301,7 +301,7 @@ function requirePackageJson(frb: FunctionsRuntimeBundle): PackageJSON | undefine
 
 /**
  * We mock out a ton of different paths that we can take to network I/O. It doesn't matter if they
- * overlap (like TLS and HTTPS) because the dev will either whitelist, block, or allow for one
+ * overlap (like TLS and HTTPS) because the dev will either allowlist, block, or allow for one
  * invocation on the first prompt, so we can be aggressive here.
  *
  * Sadly, these vary a lot between Node versions and it will always be possible to route around
