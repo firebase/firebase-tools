@@ -57,7 +57,7 @@ export class AppDistributionClient {
   async getApp(
     distributionFileType: DistributionFileType = DistributionFileType.APK
   ): Promise<AppDistributionApp> {
-    utils.logBullet(`Getting app details (Distribution type: ${distributionFileType})...`);
+    utils.logBullet(`getting app details (Distribution type: ${distributionFileType})...`);
     const appView = distributionFileType == DistributionFileType.AAB ? "FULL" : "BASIC";
     const apiResponse = await api.request("GET", `/v1alpha/apps/${this.appId}?appView=${appView}`, {
       origin: api.appDistributionOrigin,
