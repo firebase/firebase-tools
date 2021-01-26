@@ -296,38 +296,10 @@ describe("functionsDeployHelper", () => {
     });
   });
 
-  describe("createRegionalDeployment", () => {
-    const region = "us-east1";
+  describe("createDeploymentPlan", () => {
     it("should put new functions into functionsToCreate", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
-        {
-          name: "projects/a/locations/us-east1/functions/c",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-        {
-          name: "projects/a/locations/us-east1/functions/d",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-      ];
-      const existingFunctionNames: string[] = [];
-      const existingScheduledFunctionNames: string[] = [];
-      const filters: string[][] = [];
-
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
-
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [
+      const regionMap: helper.RegionMap = {
+        "us-east1": [
           {
             name: "projects/a/locations/us-east1/functions/c",
             labels: {},
@@ -341,47 +313,64 @@ describe("functionsDeployHelper", () => {
             entryPoint: "",
           },
         ],
-        functionsToUpdate: [],
-        functionsToDelete: [],
-        schedulesToCreateOrUpdate: [],
-        schedulesToDelete: [],
-      });
-    });
-
-    it("should put exisitng functions into functionsToUpdate", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
-        {
-          name: "projects/a/locations/us-east1/functions/c",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-        {
-          name: "projects/a/locations/us-east1/functions/d",
-          labels: {},
-          environmentVariables: {},
-          entryPoint: "",
-        },
-      ];
-      const existingFunctionNames: string[] = [
-        "projects/a/locations/us-east1/functions/c",
-        "projects/a/locations/us-east1/functions/d",
-      ];
-      const existingScheduledFunctionNames: string[] = [];
+        "us-west1": [
+          {
+            name: "projects/a/locations/us-west1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      };
+      const existingFunctions: helper.CloudFunctionTrigger[] = [];
       const filters: string[][] = [];
 
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
 
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [],
-        functionsToUpdate: [
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [
+          {
+            region: "us-east1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-east1/functions/c",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+              {
+                name: "projects/a/locations/us-east1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            functionsToUpdate: [],
+            schedulesToCreateOrUpdate: [],
+          },
+          {
+            region: "us-west1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-west1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            functionsToUpdate: [],
+            schedulesToCreateOrUpdate: [],
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should put existing functions being deployed into functionsToUpdate", () => {
+      const regionMap: helper.RegionMap = {
+        "us-east1": [
           {
             name: "projects/a/locations/us-east1/functions/c",
             labels: {},
@@ -395,185 +384,364 @@ describe("functionsDeployHelper", () => {
             entryPoint: "",
           },
         ],
-        functionsToDelete: [],
-        schedulesToCreateOrUpdate: [],
-        schedulesToDelete: [],
-      });
-    });
-
-    it("should put exisitng functions not in local functions into functionsToDelete", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
+        "us-west1": [
+          {
+            name: "projects/a/locations/us-west1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      };
+      const existingFunctions: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
         {
           name: "projects/a/locations/us-east1/functions/d",
           labels: {},
           environmentVariables: {},
           entryPoint: "",
         },
+        {
+          name: "projects/a/locations/us-west1/functions/d",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
       ];
-      const existingFunctionNames: string[] = [
-        "projects/a/locations/us-east1/functions/c",
-        "projects/a/locations/us-east1/functions/d",
-      ];
-      const existingScheduledFunctionNames: string[] = [];
       const filters: string[][] = [];
 
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
 
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [],
-        functionsToUpdate: [
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [
+          {
+            region: "us-east1",
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-east1/functions/c",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+              {
+                name: "projects/a/locations/us-east1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            schedulesToCreateOrUpdate: [],
+          },
+          {
+            region: "us-west1",
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-west1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            schedulesToCreateOrUpdate: [],
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should delete existing functions not in local code, only if they were deployed via CLI", () => {
+      const regionMap: helper.RegionMap = {};
+      const existingFunctions: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {
+            "deployment-tool": "cli-firebase",
+          },
+          environmentVariables: {},
+          entryPoint: "",
+        },
+        {
+          name: "projects/a/locations/us-west1/functions/d",
+          labels: {
+            "deployment-tool": "cli-firebase",
+          },
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const filters: string[][] = [];
+
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
+
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [],
+        functionsToDelete: [
+          "projects/a/locations/us-east1/functions/d",
+          "projects/a/locations/us-west1/functions/d",
+        ],
+        schedulesToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should create schedules for new or updated scheduled functions", () => {
+      const regionMap: helper.RegionMap = {
+        "us-east1": [
+          {
+            name: "projects/a/locations/us-east1/functions/c",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 20 minutes" },
+          },
           {
             name: "projects/a/locations/us-east1/functions/d",
             labels: {},
             environmentVariables: {},
             entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+        "us-west1": [
+          {
+            name: "projects/a/locations/us-west1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+            schedule: { schedule: "every 5 minutes" },
+          },
+        ],
+      };
+      const existingFunctions: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {},
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const filters: string[][] = [];
+
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
+
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [
+          {
+            region: "us-east1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-east1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 5 minutes" },
+              },
+            ],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-east1/functions/c",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 20 minutes" },
+              },
+            ],
+            schedulesToCreateOrUpdate: [
+              {
+                name: "projects/a/locations/us-east1/functions/c",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 20 minutes" },
+              },
+              {
+                name: "projects/a/locations/us-east1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 5 minutes" },
+              },
+            ],
+          },
+          {
+            region: "us-west1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-west1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 5 minutes" },
+              },
+            ],
+            functionsToUpdate: [],
+            schedulesToCreateOrUpdate: [
+              {
+                name: "projects/a/locations/us-west1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+                schedule: { schedule: "every 5 minutes" },
+              },
+            ],
+          },
+        ],
+        functionsToDelete: [],
+        schedulesToDelete: [],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
+    });
+
+    it("should delete schedules if the function is deleted or updated to another type", () => {
+      const regionMap: helper.RegionMap = {
+        "us-east1": [
+          {
+            name: "projects/a/locations/us-east1/functions/d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      };
+      const existingFunctions: helper.CloudFunctionTrigger[] = [
+        {
+          name: "projects/a/locations/us-east1/functions/c",
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "deployment-scheduled": "true",
+          },
+          environmentVariables: {},
+          entryPoint: "",
+        },
+        {
+          name: "projects/a/locations/us-east1/functions/d",
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "deployment-scheduled": "true",
+          },
+          environmentVariables: {},
+          entryPoint: "",
+        },
+      ];
+      const filters: string[][] = [];
+
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
+
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [
+          {
+            region: "us-east1",
+            functionsToCreate: [],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-east1/functions/d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            schedulesToCreateOrUpdate: [],
           },
         ],
         functionsToDelete: ["projects/a/locations/us-east1/functions/c"],
-        schedulesToCreateOrUpdate: [],
-        schedulesToDelete: [],
-      });
+        schedulesToDelete: [
+          "projects/a/locations/us-east1/functions/d",
+          "projects/a/locations/us-east1/functions/c",
+        ],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
     });
-
-    it("should put newly scheduled functions into schedulesToCreateOrUpdate", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
+    it("should only create, update, and delete matching functions if filters are passed in.", () => {
+      const regionMap: helper.RegionMap = {
+        "us-east1": [
+          {
+            name: "projects/a/locations/us-east1/functions/group-d",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+          {
+            name: "projects/a/locations/us-east1/functions/group-a",
+            labels: {},
+            environmentVariables: {},
+            entryPoint: "",
+          },
+        ],
+      };
+      const existingFunctions: helper.CloudFunctionTrigger[] = [
         {
-          name: "projects/a/locations/us-east1/functions/d",
-          labels: {},
+          name: "projects/a/locations/us-east1/functions/group-c",
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "deployment-scheduled": "true",
+          },
           environmentVariables: {},
           entryPoint: "",
-          schedule: { schedule: "every 5 minutes" },
         },
-      ];
-      const existingFunctionNames: string[] = ["projects/a/locations/us-east1/functions/d"];
-      const existingScheduledFunctionNames: string[] = [];
-      const filters: string[][] = [];
-
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
-
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [],
-        functionsToUpdate: [
-          {
-            name: "projects/a/locations/us-east1/functions/d",
-            labels: {},
-            environmentVariables: {},
-            entryPoint: "",
-            schedule: { schedule: "every 5 minutes" },
-          },
-        ],
-        functionsToDelete: [],
-        schedulesToCreateOrUpdate: [
-          {
-            name: "projects/a/locations/us-east1/functions/d",
-            labels: {},
-            environmentVariables: {},
-            entryPoint: "",
-            schedule: { schedule: "every 5 minutes" },
-          },
-        ],
-        schedulesToDelete: [],
-      });
-    });
-
-    it("should put new functions that are scheduled functions into schedulesToCreateOrUpdate", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
         {
-          name: "projects/a/locations/us-east1/functions/d",
-          labels: {},
+          name: "projects/a/locations/us-east1/functions/group-d",
+          labels: {
+            "deployment-tool": "cli-firebase",
+          },
           environmentVariables: {},
           entryPoint: "",
-          schedule: { schedule: "every 5 minutes" },
         },
-      ];
-      const existingFunctionNames: string[] = [];
-      const existingScheduledFunctionNames: string[] = [];
-      const filters: string[][] = [];
-
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
-
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [
-          {
-            name: "projects/a/locations/us-east1/functions/d",
-            labels: {},
-            environmentVariables: {},
-            entryPoint: "",
-            schedule: { schedule: "every 5 minutes" },
-          },
-        ],
-        functionsToUpdate: [],
-        functionsToDelete: [],
-        schedulesToCreateOrUpdate: [
-          {
-            name: "projects/a/locations/us-east1/functions/d",
-            labels: {},
-            environmentVariables: {},
-            entryPoint: "",
-            schedule: { schedule: "every 5 minutes" },
-          },
-        ],
-        schedulesToDelete: [],
-      });
-    });
-
-    it("should put functions that are no longer scheduled functions into schedulesToDelete", () => {
-      const localFns: helper.CloudFunctionTrigger[] = [
         {
-          name: "projects/a/locations/us-east1/functions/d",
-          labels: {},
+          name: "projects/a/locations/us-east1/functions/differentGroup-a",
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "deployment-scheduled": "true",
+          },
           environmentVariables: {},
           entryPoint: "",
         },
       ];
-      const existingFunctionNames = ["projects/a/locations/us-east1/functions/d"];
-      const existingScheduledFunctionNames = ["projects/a/locations/us-east1/functions/d"];
-      const filters: string[][] = [];
+      const filters: string[][] = [["group"]];
 
-      const regionalDeployment = helper.createRegionalDeployment(
-        region,
-        localFns,
-        existingFunctionNames,
-        existingScheduledFunctionNames,
-        filters
-      );
+      const deploymentPlan = helper.createDeploymentPlan(regionMap, existingFunctions, filters);
 
-      expect(regionalDeployment).to.deep.equal({
-        region,
-        functionsToCreate: [],
-        functionsToUpdate: [
+      const expected: helper.DeploymentPlan = {
+        regionalDeployments: [
           {
-            name: "projects/a/locations/us-east1/functions/d",
-            labels: {},
-            environmentVariables: {},
-            entryPoint: "",
+            region: "us-east1",
+            functionsToCreate: [
+              {
+                name: "projects/a/locations/us-east1/functions/group-a",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            functionsToUpdate: [
+              {
+                name: "projects/a/locations/us-east1/functions/group-d",
+                labels: {},
+                environmentVariables: {},
+                entryPoint: "",
+              },
+            ],
+            schedulesToCreateOrUpdate: [],
           },
         ],
-        functionsToDelete: [],
-        schedulesToCreateOrUpdate: [],
-        schedulesToDelete: ["projects/a/locations/us-east1/functions/d"],
-      });
+        functionsToDelete: ["projects/a/locations/us-east1/functions/group-c"],
+        schedulesToDelete: ["projects/a/locations/us-east1/functions/group-c"],
+      };
+      expect(deploymentPlan).to.deep.equal(expected);
     });
   });
 });

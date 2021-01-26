@@ -8,6 +8,7 @@ import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
 import * as pollOperations from "./pollOperations";
 import { promptOnce } from "./prompt";
+import * as deploymentTool from "./deploymentTool";
 
 // TODO: Get rid of this when switching to use operation-poller.
 export interface Operation {
@@ -149,7 +150,7 @@ export function logFilters(
   }
 }
 
-interface RegionMap {
+export interface RegionMap {
   [region: string]: CloudFunctionTrigger[];
 }
 
@@ -211,8 +212,12 @@ export interface RegionalDeployment {
   firstFunctionDeployment?: CloudFunctionTrigger;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
-  functionsToDelete: string[];
   schedulesToCreateOrUpdate: CloudFunctionTrigger[];
+}
+
+export interface DeploymentPlan {
+  regionalDeployments: RegionalDeployment[];
+  functionsToDelete: string[];
   schedulesToDelete: string[];
 }
 
@@ -224,65 +229,78 @@ export interface RegionalDeployment {
  * @param existingScheduledFunctionNames The names of all schedules functions that already exist.
  * @param filters The filters, passed in by the user via  `--only functions:`
  */
-export function createRegionalDeployment(
-  region: string,
-  functionsInLocalSource: CloudFunctionTrigger[],
-  existingFunctionNames: string[],
-  existingScheduledFunctionNames: string[],
+export function createDeploymentPlan(
+  functionsInLocalSource: RegionMap,
+  existingFunctions: CloudFunctionTrigger[],
   filters: string[][]
-) {
-  const deployment: RegionalDeployment = {
-    region,
-    functionsToCreate: [],
-    functionsToUpdate: [],
+): DeploymentPlan {
+  const deployment: DeploymentPlan = {
+    regionalDeployments: [],
     functionsToDelete: [],
-    schedulesToCreateOrUpdate: [],
     schedulesToDelete: [],
   };
-  // Sort functions
-  for (const fn of functionsInLocalSource) {
-    if (!_.includes(existingFunctionNames, fn.name)) {
-      deployment.functionsToCreate.push(fn);
-    } else {
-      deployment.functionsToUpdate.push(fn);
-      _.remove(existingFunctionNames, (val: string) => {
-        return val === fn.name;
-      });
-    }
-    // Check for schedules.
-    if (_.get(fn, "schedule")) {
-      deployment.schedulesToCreateOrUpdate.push(fn);
-      if (_.includes(existingScheduledFunctionNames, fn.name)) {
-        _.remove(existingScheduledFunctionNames, (val: string) => {
-          return val === fn.name;
+  for (const region of Object.keys(functionsInLocalSource)) {
+    const regionalDeployment: RegionalDeployment = {
+      region,
+      functionsToCreate: [],
+      functionsToUpdate: [],
+      schedulesToCreateOrUpdate: [],
+    };
+    const localFunctionsInRegion = functionsInLocalSource[region];
+    for (const fn of localFunctionsInRegion) {
+      // Check if this function matches the --only filters
+      if (functionMatchesAnyGroup(fn.name, filters)) {
+        // Check if this local function has the same name as an exisiting one.
+        const matchingExistingFunction = _.find(existingFunctions, (exFn) => {
+          return exFn.name === fn.name;
         });
+        // Check if the matching exisitng function is scheduled
+        const isMatchingExisitingFnScheduled =
+          _.get(matchingExistingFunction, "labels.deployment-scheduled") === "true";
+        // Check if the local function is a scheduled function
+        const isScheduled = _.has(fn, "schedule");
+
+        if (!matchingExistingFunction) {
+          regionalDeployment.functionsToCreate.push(fn);
+        } else {
+          regionalDeployment.functionsToUpdate.push(fn);
+          _.remove(existingFunctions, (exFn: CloudFunctionTrigger) => {
+            return exFn.name === fn.name;
+          });
+        }
+        // Check for schedules.
+        if (isScheduled) {
+          // If the local function is scheduled, create or update a schedule.
+          regionalDeployment.schedulesToCreateOrUpdate.push(fn);
+        } else if (!isScheduled && isMatchingExisitingFnScheduled) {
+          // If the local function isn't scheduled but the existing one is, delete the schedule.
+          deployment.schedulesToDelete.push(matchingExistingFunction!.name);
+        }
       }
     }
+    deployment.regionalDeployments.push(regionalDeployment);
   }
 
-  deployment.functionsToDelete = existingFunctionNames;
-  deployment.schedulesToDelete = existingScheduledFunctionNames;
-
-  // Apply  --only filters
-  if (filters.length) {
-    deployment.functionsToCreate = deployment.functionsToCreate.filter(
-      (fn: CloudFunctionTrigger) => {
-        return functionMatchesAnyGroup(fn.name, filters);
-      }
-    );
-    deployment.functionsToUpdate = deployment.functionsToUpdate.filter(
-      (fn: CloudFunctionTrigger) => {
-        return functionMatchesAnyGroup(fn.name, filters);
-      }
-    );
-    deployment.functionsToDelete = deployment.functionsToDelete.filter((fnName: string) => {
-      return functionMatchesAnyGroup(fnName, filters);
-    });
-    deployment.schedulesToDelete = deployment.schedulesToDelete.filter((fnName: string) => {
-      return functionMatchesAnyGroup(fnName, filters);
-    });
-  }
-
+  // Delete any remaining existing functions that:
+  // 1 - Have the deployment-tool: 'firebase-cli' label and
+  // 2 - Match the --only filters, if any are provided.
+  const functionsToDelete = _.chain(existingFunctions)
+    .filter((fn) => {
+      return deploymentTool.check(fn.labels);
+    })
+    .filter((fn) => {
+      return filters.length ? functionMatchesAnyGroup(fn.name, filters) : true;
+    })
+    .value();
+  deployment.functionsToDelete = _.map(functionsToDelete, (fn) => {
+    return fn.name;
+  });
+  // Also delete any schedules for functions that we are deleting.
+  _.forEach(functionsToDelete, (fn) => {
+    if (_.get(fn, "labels.deployment-scheduled") === "true") {
+      deployment.schedulesToDelete.push(fn.name);
+    }
+  });
   return deployment;
 }
 
