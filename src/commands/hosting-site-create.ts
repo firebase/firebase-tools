@@ -6,11 +6,9 @@ import { FirebaseError } from "../error";
 import { requirePermissions } from "../requirePermissions";
 import * as getProjectId from "../getProjectId";
 import * as logger from "../logger";
-import * as requireConfig from "../requireConfig";
 
 export default new Command("hosting:site:create <siteName>")
   .description("create a Firebase Hosting site")
-  .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .action(async (siteName: string, options) => {
     const projectId = getProjectId(options);

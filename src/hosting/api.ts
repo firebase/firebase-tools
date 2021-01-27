@@ -423,11 +423,10 @@ export async function getSite(project: string, site: string): Promise<Site> {
  * @return site information.
  */
 export async function createSite(project: string, site: string): Promise<Site> {
-  console.error(site);
   const res = await apiClient.post<unknown, Site>(
     `/projects/${project}/sites`,
     {},
-    { queryParams: { siteId: site } }
+    { queryParams: { site_id: site } }
   );
   return res.body;
 }
