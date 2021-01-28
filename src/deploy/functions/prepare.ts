@@ -8,7 +8,7 @@ import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import {
   CloudFunctionTrigger,
-  createFunctionRegionMap,
+  createFunctionsByRegionMap,
   flattenRegionMap,
   functionMatchesAnyGroup,
   getFilterGroups,
@@ -56,11 +56,11 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Get a list of CloudFunctionTriggers, with duplicates for each region.
   payload.functions = {};
-  payload.functions.regionMap = createFunctionRegionMap(
+  payload.functions.byRegion = createFunctionsByRegionMap(
     projectId,
     options.config.get("functions.triggers")
   );
-  payload.functions.triggers = flattenRegionMap(payload.functions.regionMap);
+  payload.functions.triggers = flattenRegionMap(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);

@@ -92,7 +92,7 @@ describe("functionsDeployHelper", () => {
     });
   });
 
-  describe("createFunctionRegionMap", () => {
+  describe("createFunctionsByRegionMap", () => {
     it("should handle default region", () => {
       const triggers = [
         {
@@ -109,7 +109,7 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+      expect(helper.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
         "us-central1": [
           {
             name: "projects/myProject/locations/us-central1/functions/myFunc",
@@ -144,7 +144,7 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+      expect(helper.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
         "us-east1": [
           {
             name: "projects/myProject/locations/us-east1/functions/myFunc",
@@ -175,7 +175,7 @@ describe("functionsDeployHelper", () => {
         },
       ];
 
-      expect(helper.createFunctionRegionMap("myProject", triggers)).to.deep.equal({
+      expect(helper.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
         "eu-west1": [
           {
             name: "projects/myProject/locations/eu-west1/functions/myFunc",
