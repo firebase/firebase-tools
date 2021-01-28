@@ -65,6 +65,7 @@ export const authOperations: AuthOps = {
         sendOobCode,
         update: setAccountInfo,
         batchCreate,
+        batchDelete,
         batchGet,
       },
     },
@@ -393,6 +394,35 @@ function batchCreate(
     kind: "identitytoolkit#UploadAccountResponse",
     error: errors,
   };
+}
+
+function batchDelete(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"] {
+  const errors: Required<
+    Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"]["errors"]
+  > = [];
+  const localIds = reqBody.localIds ?? [];
+  assert(localIds.length > 0 && localIds.length <= 1000, "LOCAL_ID_LIST_EXCEEDS_LIMIT");
+
+  for (let index = 0; index < localIds.length; index++) {
+    const localId = localIds[index];
+    const user = state.getUserByLocalId(localId);
+    if (!user) {
+      continue;
+    } else if (!user.disabled && !reqBody.force) {
+      errors.push({
+        index,
+        localId,
+        message: "NOT_DISABLED : Disable the account before batch deletion.",
+      });
+    } else {
+      state.deleteUser(user);
+    }
+  }
+
+  return { errors: errors.length ? errors : undefined };
 }
 
 function batchGet(
