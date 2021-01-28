@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { UserInfo } from "../../../emulator/auth/state";
-import { PROJECT_ID } from "./helpers";
+import { PROJECT_ID, signInWithPhoneNumber, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -61,6 +61,40 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
         expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
+  it("should deduplicate users", async () => {
+    const { localId } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId, localId] /* two with the same id */ })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
+  it("should return providerUserInfo for phone auth users", async () => {
+    const { localId } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].providerUserInfo).to.eql([
+          {
+            phoneNumber: TEST_PHONE_NUMBER,
+            rawId: TEST_PHONE_NUMBER,
+            providerId: "phone",
+          },
+        ]);
       });
   });
 

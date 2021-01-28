@@ -115,6 +115,11 @@ function signUp(
     if (reqBody.idToken) {
       assert(!reqBody.localId, "UNEXPECTED_PARAMETER : User ID");
     }
+    if (reqBody.localId) {
+      // Fail fast if localId is taken (matching production behavior).
+      assert(!state.getUserByLocalId(reqBody.localId), "DUPLICATE_LOCAL_ID");
+    }
+
     updates.displayName = reqBody.displayName;
     updates.photoUrl = reqBody.photoUrl;
     updates.emailVerified = reqBody.emailVerified || false;
@@ -189,34 +194,33 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
+  function tryAddUser(maybeUser: UserInfo | undefined): void {
+    if (maybeUser && !seenLocalIds.has(maybeUser.localId)) {
+      users.push(maybeUser);
+      seenLocalIds.add(maybeUser.localId);
+    }
+  }
+
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
-    if (reqBody.localId) {
-      for (const localId of reqBody.localId) {
-        const maybeUser = state.getUserByLocalId(localId);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const localId of reqBody.localId ?? []) {
+      tryAddUser(state.getUserByLocalId(localId));
     }
-    if (reqBody.email) {
-      for (const email of reqBody.email) {
-        const maybeUser = state.getUserByEmail(email);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const email of reqBody.email ?? []) {
+      tryAddUser(state.getUserByEmail(email));
     }
-    if (reqBody.phoneNumber) {
-      for (const phoneNumber of reqBody.phoneNumber) {
-        const maybeUser = state.getUserByPhoneNumber(phoneNumber);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
+    for (const phoneNumber of reqBody.phoneNumber ?? []) {
+      tryAddUser(state.getUserByPhoneNumber(phoneNumber));
+    }
+    for (const { providerId, rawId } of reqBody.federatedUserId ?? []) {
+      if (!providerId || !rawId) {
+        continue;
       }
+      tryAddUser(state.getUserByProviderRawId(providerId, rawId));
     }
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
@@ -340,7 +344,7 @@ function batchCreate(
       // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
-      fields.createdAt = uploadTime.toString();
+      fields.createdAt = uploadTime.getTime().toString();
       if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
         fields.createdAt = userInfo.createdAt;
       }
@@ -938,6 +942,7 @@ export function setAccountInfoImpl(
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
         assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+        updates.phoneNumber = reqBody.phoneNumber;
       }
       fieldsToCopy.push(
         "emailVerified",
@@ -1479,6 +1484,8 @@ function issueTokens(
   signInProvider: string,
   extraClaims: Record<string, unknown> = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
+  state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
   const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
