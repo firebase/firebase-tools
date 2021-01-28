@@ -1,6 +1,7 @@
 import * as clc from "cli-color";
 
-import { CloudFunctionTrigger, getFunctionLabel } from "../../functionsDeployHelper";
+import { getFunctionLabel } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as utils from "../../utils";
@@ -22,7 +23,7 @@ export async function promptForFailurePolicies(
 
   if (failurePolicyFunctions.length) {
     const failurePolicyFunctionLabels = failurePolicyFunctions.map((fn: CloudFunctionTrigger) => {
-      return getFunctionLabel(_.get(fn, "name"));
+      return getFunctionLabel(fn.name);
     });
     const retryMessage =
       "The following functions will be retried in case of failure: " +

@@ -3,11 +3,8 @@ import { bold } from "cli-color";
 
 import { debug } from "../../logger";
 import * as track from "../../track";
-import {
-  getReleaseNames,
-  getFilterGroups,
-  CloudFunctionTrigger,
-} from "../../functionsDeployHelper";
+import { getReleaseNames, getFilterGroups } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { testIamPermissions, testResourceIamPermissions } from "../../gcp/iam";
 

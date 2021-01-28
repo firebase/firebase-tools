@@ -3,8 +3,8 @@ import * as sinon from "sinon";
 
 import * as prompt from "../../../prompt";
 import * as functionPrompts from "../../../deploy/functions/prompts";
-import { FirebaseError} from "../../../error";
-import { CloudFunctionTrigger } from "../../../functionsDeployHelper";
+import { FirebaseError } from "../../../error";
+import { CloudFunctionTrigger } from "../../../deploy/functions/deploymentPlanner";
 
 describe("promptForFailurePolicies", () => {
   let promptStub: sinon.SinonStub;
@@ -30,7 +30,9 @@ describe("promptForFailurePolicies", () => {
     const options = {};
     promptStub.resolves(true);
 
-    expect(async () => await functionPrompts.promptForFailurePolicies(options, funcs)).not.to.throw();
+    expect(
+      async () => await functionPrompts.promptForFailurePolicies(options, funcs)
+    ).not.to.throw();
     expect(promptStub).to.have.been.calledOnce;
   });
 
@@ -66,7 +68,9 @@ describe("promptForFailurePolicies", () => {
     const options = {};
     promptStub.resolves();
 
-    expect(async () => await functionPrompts.promptForFailurePolicies(options, funcs)).not.to.throw();
+    expect(
+      async () => await functionPrompts.promptForFailurePolicies(options, funcs)
+    ).not.to.throw();
     expect(promptStub).not.to.have.been.called;
   });
 
@@ -101,7 +105,9 @@ describe("promptForFailurePolicies", () => {
     ];
     const options = { nonInteractive: true, force: true };
 
-    expect(async () => await functionPrompts.promptForFailurePolicies(options, funcs)).not.to.throw();
+    expect(
+      async () => await functionPrompts.promptForFailurePolicies(options, funcs)
+    ).not.to.throw();
     expect(promptStub).not.to.have.been.called;
   });
 });

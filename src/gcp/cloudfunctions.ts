@@ -5,7 +5,8 @@ import * as api from "../api";
 import { FirebaseError } from "../error";
 import * as logger from "../logger";
 import * as utils from "../utils";
-import { CloudFunctionTrigger, Operation } from "../functionsDeployHelper";
+import { Operation } from "../functionsDeployHelper";
+import { CloudFunctionTrigger } from "../deploy/functions/deploymentPlanner";
 
 const API_VERSION = "v1";
 

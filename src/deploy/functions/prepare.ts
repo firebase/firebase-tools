@@ -6,13 +6,12 @@ import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
+import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
 import {
   CloudFunctionTrigger,
   createFunctionsByRegionMap,
   flattenRegionMap,
-  functionMatchesAnyGroup,
-  getFilterGroups,
-} from "../../functionsDeployHelper";
+} from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
 import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
 import * as validate from "./validate";
