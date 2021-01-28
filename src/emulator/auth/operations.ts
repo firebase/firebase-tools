@@ -114,6 +114,11 @@ function signUp(
     if (reqBody.idToken) {
       assert(!reqBody.localId, "UNEXPECTED_PARAMETER : User ID");
     }
+    if (reqBody.localId) {
+      // Fail fast if localId is taken (matching production behavior).
+      assert(!state.getUserByLocalId(reqBody.localId), "DUPLICATE_LOCAL_ID");
+    }
+
     updates.displayName = reqBody.displayName;
     updates.photoUrl = reqBody.photoUrl;
     updates.emailVerified = reqBody.emailVerified || false;
@@ -339,7 +344,7 @@ function batchCreate(
       // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
-      fields.createdAt = uploadTime.toString();
+      fields.createdAt = uploadTime.getTime().toString();
       if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
         fields.createdAt = userInfo.createdAt;
       }
@@ -908,6 +913,7 @@ export function setAccountInfoImpl(
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
         assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+        updates.phoneNumber = reqBody.phoneNumber;
       }
       fieldsToCopy.push(
         "emailVerified",
