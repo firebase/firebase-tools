@@ -39,7 +39,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   ]);
   _.set(context, "runtimeConfigEnabled", checkAPIsEnabled[1]);
 
-  // Get the Firebase Config.
+  // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
   _.set(context, "firebaseConfig", firebaseConfig);
 
@@ -53,11 +53,20 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const source = await prepareFunctionsUpload(context, options);
   _.set(context, "functionsSource", source);
 
-  // Get a list of CloudFunctionTriggers, with duplicates for each region.
+  // Get a list of CloudFunctionTriggers, and set default environemnt variables on each.
+  const defaultEnvVariables = {
+    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
+  };
+  const functions = options.config.get("functions.triggers");
+  _.forEach(functions, (fn: CloudFunctionTrigger) => {
+    fn.environmentVariables = defaultEnvVariables;
+  })
+
+  // Build a regionMap, and duplicate functions for each region they are being deployed to.
   payload.functions = {};
   payload.functions.byRegion = createFunctionsByRegionMap(
     projectId,
-    options.config.get("functions.triggers")
+    functions,
   );
   payload.functions.triggers = flattenRegionMap(payload.functions.byRegion);
 

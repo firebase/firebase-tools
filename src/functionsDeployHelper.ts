@@ -6,6 +6,7 @@ import * as logger from "./logger";
 import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
+import { Job } from "./gcp/cloudscheduler";
 import * as pollOperations from "./pollOperations";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 
@@ -178,6 +179,19 @@ export function getRegion(fullName: string): string {
 export function getFunctionLabel(fullName: string): string {
   return getFunctionName(fullName) + "(" + getRegion(fullName) + ")";
 }
+
+export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, projectId: string): Job {
+  return Object.assign(fn.schedule as { schedule: string }, {
+    name: getScheduleName(fn.name, appEngineLocation),
+    pubsubTarget: {
+      topicName: getTopicName(fn.name),
+      attributes: {
+        scheduled: "true",
+      },
+    },
+  })
+}
+
 
 export function pollDeploys(
   operations: Operation[],

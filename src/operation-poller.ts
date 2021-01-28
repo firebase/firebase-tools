@@ -22,6 +22,9 @@ interface OperationResult<T> {
     message: string;
     code: number;
   };
+  metadata?: {
+    [key: string]: any,
+  }
 }
 
 export class OperationPoller<T> {

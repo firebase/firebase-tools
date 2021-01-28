@@ -8,7 +8,16 @@ import * as utils from "../utils";
 import { Operation } from "../functionsDeployHelper";
 import { CloudFunctionTrigger } from "../deploy/functions/deploymentPlanner";
 
-const API_VERSION = "v1";
+export const API_VERSION = "v1";
+export const DEFAULT_PUBLIC_POLICY = {
+  version: 3,
+  bindings: [
+    {
+      role: "roles/cloudfunctions.invoker",
+      members: ["allUsers"],
+    },
+  ],
+};
 
 /**
  * Logs an error from a failed function deployment.
@@ -78,6 +87,9 @@ export async function createFunction(options: any): Promise<Operation> {
     environmentVariables: options.environmentVariables,
   };
 
+  if (options.sourceToken) {
+    data.sourceToken = options.sourceToken;
+  }
   if (options.vpcConnector) {
     data.vpcConnector = options.vpcConnector;
     // use implied project/location if only given connector id
@@ -248,16 +260,14 @@ export async function updateFunction(options: any): Promise<Operation> {
  * @param options the Cloud Function to delete.
  */
 export async function deleteFunction(options: any): Promise<Operation> {
-  const location = "projects/" + options.projectId + "/locations/" + options.region;
-  const fullFuncName = location + "/functions/" + options.functionName;
-  const endpoint = "/" + API_VERSION + "/" + fullFuncName;
+  const endpoint = "/" + API_VERSION + "/" + options.functionName;
   try {
     const res = await api.request("DELETE", endpoint, {
       auth: true,
       origin: api.functionsOrigin,
     });
     return {
-      funcName: fullFuncName,
+      funcName: options.functionName,
       eventType: options.eventType,
       done: false,
       name: res.body.name,

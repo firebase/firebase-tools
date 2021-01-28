@@ -4,6 +4,7 @@ import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelp
 export interface CloudFunctionTrigger {
   name: string;
   sourceUploadUrl?: string;
+  sourceToken?: string;
   labels: { [key: string]: string };
   environmentVariables: { [key: string]: string };
   entryPoint: string;
@@ -30,7 +31,7 @@ export interface RegionMap {
 export interface RegionalDeployment {
   region: string;
   sourceToken?: string;
-  firstFunctionDeployment?: CloudFunctionTrigger;
+  firstFunctionDeployment?: () => any;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
   schedulesToCreateOrUpdate: CloudFunctionTrigger[];

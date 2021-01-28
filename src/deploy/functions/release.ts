@@ -10,12 +10,15 @@ import * as deploymentTool from "../../deploymentTool";
 import * as track from "../../track";
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
-import { CloudFunctionTrigger } from "./deploymentPlanner";
+import { CloudFunctionTrigger, createDeploymentPlan } from "./deploymentPlanner";
+import * as retryFunctions from "./retryFunctions";
 import { FirebaseError } from "../../error";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptOnce } from "../../prompt";
 import { createOrUpdateSchedulesAndTopics } from "./createOrUpdateSchedulesAndTopics";
+import Queue from "../../throttler/queue";
+import { region } from "firebase-functions";
 
 interface Timing {
   type?: string;
@@ -131,348 +134,391 @@ function printTooManyOps(projectId: string) {
   deployments = []; // prevents analytics tracking of deployments
 }
 
-export async function release(context: any, options: any, payload: any): Promise<void> {
+export async function release(context: any, options: any, payload: any) {
   if (!options.config.has("functions")) {
     return;
   }
 
   const projectId = context.projectId;
   const sourceUrl = context.uploadUrl;
+  const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
 
   // Reset module-level variables to prevent duplicate deploys when using firebase-tools as an import.
   timings = {};
   deployments = [];
   failedDeployments = [];
 
-  const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
-  let functionsInfo = payload.functions.triggers;
-  functionsInfo = functionsInfo.map((fn: CloudFunctionTrigger) => {
-    if (
-      fn.eventTrigger &&
-      fn.schedule &&
-      fn.eventTrigger.eventType === "google.pubsub.topic.publish"
-    ) {
-      const [, , , region, , funcName] = fn.name.split("/");
-      const newResource = `${fn.eventTrigger.resource}/firebase-schedule-${funcName}-${region}`;
-      fn.eventTrigger.resource = newResource;
+  const fullDeployment = createDeploymentPlan(
+    payload.functions.regionMap,
+    context.existingFunctions,
+    context.filters
+  );
+  const cloudFunctionsQueue = new Queue<() => any, any>({})
+  const schedulerQueue = new Queue<() => any, any>({})
+  const regionPromises = []
+
+  for (const regionalDeployment of fullDeployment.regionalDeployments) {
+    const retryFuncParams: retryFunctions.RetryFunctionParams = {
+      projectId,
+      sourceUrl,
+      region: regionalDeployment.region,
+      runtime: context.runtimeChoice,
     }
-    return fn;
-  });
-  const uploadedNames = _.map(functionsInfo, "name");
-  const runtime = context.runtimeChoice;
-  const functionFilterGroups = helper.getFilterGroups(options);
-
-  delete payload.functions;
-
-  const existingFunctions = context.existingFunctions;
-  const existingNames = _.map(existingFunctions, (fn) => {
-    return _.get(fn, "name");
-  });
-  const existingScheduledFunctions = _.chain(existingFunctions)
-    .filter((fn) => {
-      return _.get(fn, "labels.deployment-scheduled") === "true";
-    })
-    .map((fn) => {
-      return _.get(fn, "name");
-    })
-    .value();
-  const releaseNames = helper.getReleaseNames(uploadedNames, existingNames, functionFilterGroups);
-  // If not using function filters, then `deleteReleaseNames` should be equivalent to existingNames so that intersection is a noop
-  const deleteReleaseNames = functionFilterGroups.length ? releaseNames : existingNames;
-  helper.logFilters(existingNames, releaseNames, functionFilterGroups);
-
-  const defaultEnvVariables = {
-    FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
-  };
-
-  // Create functions
-  _.chain(uploadedNames)
-    .difference(existingNames)
-    .intersection(releaseNames)
-    .forEach((name) => {
-      const functionInfo = _.find(functionsInfo, { name: name })!;
-      const functionTrigger = helper.getFunctionTrigger(functionInfo);
-      const functionName = helper.getFunctionName(name);
-      const region = helper.getRegion(name);
-      utils.logBullet(
-        clc.bold.cyan("functions: ") +
-          "creating " +
-          getHumanFriendlyRuntimeName(runtime) +
-          " function " +
-          clc.bold(helper.getFunctionLabel(name)) +
-          "..."
-      );
-      logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
-      const eventType = functionTrigger.eventTrigger
-        ? functionTrigger.eventTrigger.eventType
-        : "https";
-      startTimer(name, "create");
-      const retryFunction = async () => {
-        const createRes = await cloudfunctions.createFunction({
-          projectId: projectId,
-          region: region,
-          eventType: eventType,
-          functionName: functionName,
-          entryPoint: functionInfo.entryPoint,
-          trigger: functionTrigger,
-          labels: _.assign({}, deploymentTool.labels(), functionInfo.labels),
-          sourceUploadUrl: sourceUrl,
-          runtime: runtime,
-          availableMemoryMb: functionInfo.availableMemoryMb,
-          timeout: functionInfo.timeout,
-          maxInstances: functionInfo.maxInstances,
-          environmentVariables: defaultEnvVariables,
-          vpcConnector: functionInfo.vpcConnector,
-          vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
-          serviceAccountEmail: functionInfo.serviceAccountEmail,
-        });
-        if (_.has(functionTrigger, "httpsTrigger")) {
-          logger.debug(`Setting public policy for function ${functionName}`);
-          await cloudfunctions.setIamPolicy({
-            functionName,
-            projectId,
-            region,
-            policy: DEFAULT_PUBLIC_POLICY,
-          });
-        }
-        return createRes;
-      };
-
-      deployments.push({
-        name,
-        retryFunction,
-        trigger: functionTrigger,
-      });
-    })
-    .value();
-
-  // Update functions
-  _.chain(uploadedNames)
-    .intersection(existingNames)
-    .intersection(releaseNames)
-    .forEach((name) => {
-      const functionInfo = _.find(functionsInfo, { name: name })!;
-      const functionTrigger = helper.getFunctionTrigger(functionInfo);
-      const functionName = helper.getFunctionName(name);
-      const region = helper.getRegion(name);
-      const existingFunction = _.find(existingFunctions, {
-        name: name,
-      });
-
-      utils.logBullet(
-        clc.bold.cyan("functions: ") +
-          "updating " +
-          getHumanFriendlyRuntimeName(runtime) +
-          " function " +
-          clc.bold(helper.getFunctionLabel(name)) +
-          "..."
-      );
-      logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
-      startTimer(name, "update");
-      const options = {
-        projectId: projectId,
-        region: region,
-        functionName: functionName,
-        trigger: functionTrigger,
-        sourceUploadUrl: sourceUrl,
-        labels: _.assign({}, deploymentTool.labels(), functionInfo.labels),
-        availableMemoryMb: functionInfo.availableMemoryMb,
-        timeout: functionInfo.timeout,
-        runtime: runtime,
-        maxInstances: functionInfo.maxInstances,
-        vpcConnector: functionInfo.vpcConnector,
-        vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
-        serviceAccountEmail: functionInfo.serviceAccountEmail,
-        environmentVariables: _.assign(
-          {},
-          existingFunction.environmentVariables,
-          defaultEnvVariables
-        ),
-      };
-      deployments.push({
-        name: name,
-        retryFunction: async function () {
-          return cloudfunctions.updateFunction(options);
-        },
-        trigger: functionTrigger,
-      });
-    })
-    .value();
-
-  // Delete functions
-  const functionsToDelete = _.chain(existingFunctions)
-    .filter((functionInfo) => {
-      return deploymentTool.check(functionInfo.labels);
-    }) // only delete functions uploaded via firebase-tools
-    .map((fn) => {
-      return _.get(fn, "name");
-    })
-    .difference(uploadedNames)
-    .intersection(deleteReleaseNames)
-    .value();
-
-  if (functionsToDelete.length) {
-    const deleteList = _.map(functionsToDelete, (func) => {
-      return "\t" + helper.getFunctionLabel(func);
-    }).join("\n");
-
-    if (options.nonInteractive && !options.force) {
-      const deleteCommands = _.map(functionsToDelete, (func) => {
-        return (
-          "\tfirebase functions:delete " +
-          helper.getFunctionName(func) +
-          " --region " +
-          helper.getRegion(func)
-        );
-      }).join("\n");
-
-      throw new FirebaseError(
-        "The following functions are found in your project but do not exist in your local source code:\n" +
-          deleteList +
-          "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
-          clc.bold(deleteCommands)
-      );
-    } else if (!options.force) {
-      logger.info(
-        "\nThe following functions are found in your project but do not exist in your local source code:\n" +
-          deleteList +
-          "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
-          "function first before deleting the old one to prevent event loss. For more info, visit " +
-          clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n")
-      );
-    }
-
-    let proceed = true;
-    if (!options.force) {
-      proceed = await promptOnce({
-        type: "confirm",
-        name: "confirm",
-        default: false,
-        message:
-          "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
-      });
-    }
-    if (proceed) {
-      functionsToDelete.forEach((name) => {
-        const functionName = helper.getFunctionName(name);
-        const scheduleName = helper.getScheduleName(name, appEngineLocation);
-        const topicName = helper.getTopicName(name);
-        const region = helper.getRegion(name);
-
-        utils.logBullet(
-          clc.bold.cyan("functions: ") +
-            "deleting function " +
-            clc.bold(helper.getFunctionLabel(name)) +
-            "..."
-        );
-        startTimer(name, "delete");
-        let retryFunction;
-        const isScheduledFunction = _.includes(existingScheduledFunctions, name);
-        if (isScheduledFunction) {
-          retryFunction = async function () {
-            try {
-              await cloudscheduler.deleteJob(scheduleName);
-            } catch (err) {
-              // if err.status is 404, the schedule doesnt exist, so catch the error
-              // if err.status is 403, the project doesnt have the api enabled and there are no schedules to delete, so catch the error
-              logger.debug(err);
-              if (
-                err.context.response.statusCode != 404 &&
-                err.context.response.statusCode != 403
-              ) {
-                throw new FirebaseError(
-                  `Failed to delete schedule for ${functionName} with status ${err.status}`,
-                  err
-                );
-              }
-            }
-            try {
-              await pubsub.deleteTopic(topicName);
-            } catch (err) {
-              // if err.status is 404, the topic doesnt exist, so catch the error
-              // if err.status is 403, the project doesnt have the api enabled and there are no topics to delete, so catch the error
-              if (
-                err.context.response.statusCode != 404 &&
-                err.context.response.statusCode != 403
-              ) {
-                throw new FirebaseError(
-                  `Failed to delete topic for ${functionName} with status ${err.status}`,
-                  err
-                );
-              }
-            }
-            return cloudfunctions.deleteFunction({
-              projectId: projectId,
-              region: region,
-              functionName: functionName,
-            });
-          };
-        } else {
-          retryFunction = async function () {
-            return cloudfunctions.deleteFunction({
-              projectId: projectId,
-              region: region,
-              functionName: functionName,
-            });
-          };
-        }
-        deployments.push({
-          name: name,
-          retryFunction: retryFunction,
-        });
-      });
-    } else {
-      if (deployments.length !== 0) {
-        utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
+    // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
+    const onPollFn = (op: any) => {
+      // We should run the rest of the regional deployment if we either:
+      // - Have a sourceToken to use.
+      // - Never got a sourceToken back from the operation. In this case, finish the deployment without using sourceToken.
+      const shouldFinishDeployment = (op.metadata?.sourceToken && !regionalDeployment.sourceToken) || (!op.metadata?.sourceToken && op.done);
+      if (shouldFinishDeployment) {
+        regionalDeployment.sourceToken = op.metadata.sourceToken;
+        retryFunctions.runRegionalDeployment(retryFuncParams, regionalDeployment, cloudFunctionsQueue)
       }
+    }; 
+
+    // Choose a first function to deploy.
+    if (regionalDeployment.functionsToCreate.length) {
+      const firstFn = regionalDeployment.functionsToCreate.shift();
+      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForCreate(retryFuncParams, firstFn!, onPollFn);
+    } else if (regionalDeployment.functionsToUpdate.length) {
+      const firstFn = regionalDeployment.functionsToUpdate.shift();
+      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForUpdate(retryFuncParams, firstFn!, onPollFn);
+    } 
+  
+    if (regionalDeployment.firstFunctionDeployment) {
+      // Kick off the first deployment, and keep track of when it finishes.
+      regionPromises.push(cloudFunctionsQueue.run(regionalDeployment.firstFunctionDeployment));
+    }
+
+    // Add scheduler creates and updates to their queue.
+    for (const fn of regionalDeployment.schedulesToCreateOrUpdate) {
+      const retryFunction = retryFunctions.retryFunctionForScheduleCreateOrUpdate(retryFuncParams, fn, appEngineLocation);
+      schedulerQueue.run(retryFunction)
+      .then(() => {
+        console.log(`Successfully crupdated schedule for ${fn.name}`);
+      }).catch((err) => {
+        console.log(`Error while crupdating schedule for ${fn.name}: ${err}`);
+      });;
     }
   }
-  // filter out functions that are excluded via --only and --except flags
-  const functionsInDeploy = functionsInfo.filter((trigger: CloudFunctionTrigger) => {
-    return functionFilterGroups.length > 0 ? _.includes(deleteReleaseNames, trigger.name) : true;
-  });
-  await createOrUpdateSchedulesAndTopics(
-    context.projectId,
-    functionsInDeploy,
-    existingScheduledFunctions,
-    appEngineLocation
-  );
-  const allOps = await utils.promiseAllSettled(
-    _.map(deployments, async (op) => {
-      const res = await op.retryFunction();
-      return _.merge(op, res);
-    })
-  );
-  const failedCalls = _.chain(allOps).filter({ state: "rejected" }).map("reason").value();
-  const successfulCalls = _.chain(allOps).filter({ state: "fulfilled" }).map("value").value();
-  failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
-
-  await fetchTriggerUrls(projectId, successfulCalls, sourceUrl);
-
-  await helper.pollDeploys(successfulCalls, printSuccess, printFail, printTooManyOps, projectId);
-  if (deployments.length > 0) {
-    track("Functions Deploy (Result)", "failure", failedDeployments.length);
-    track("Functions Deploy (Result)", "success", deployments.length - failedDeployments.length);
+  for (const fnName of fullDeployment.functionsToDelete) {
+    cloudFunctionsQueue.run(retryFunctions.retryFunctionForDelete(fnName)).then(() => {
+      console.log(`Successfully deleted ${fnName}`);
+    }).catch((err) => {
+      console.log(`Error while deleting ${fnName}: ${err}`);
+    });;;
   }
+  cloudFunctionsQueue.process();
 
-  if (failedDeployments.length > 0) {
-    logger.info("\n\nFunctions deploy had errors with the following functions:");
-    const sortedFailedDeployments = failedDeployments.sort();
-    for (const failedDep of sortedFailedDeployments) {
-      logger.info(`\t${failedDep}`);
-    }
-    logger.info("\n\nTo try redeploying those functions, run:");
-    logger.info(
-      "    " +
-        clc.bold("firebase deploy --only ") +
-        clc.bold('"') +
-        clc.bold(
-          sortedFailedDeployments.map((name) => `functions:${name.replace(/-/g, ".")}`).join(",")
-        ) +
-        clc.bold('"')
-    );
-    logger.info("\n\nTo continue deploying other features (such as database), run:");
-    logger.info("    " + clc.bold("firebase deploy --except functions"));
-    throw new FirebaseError("Functions did not deploy properly.");
+  for (const fnName of fullDeployment.schedulesToDelete) {
+    schedulerQueue.run(retryFunctions.retryFunctionForScheduleDelete(fnName, appEngineLocation))
+    .then(() => {
+      console.log(`Successfully deleted schedule for ${fnName}`);
+    }).catch((err) => {
+      console.log(`Error while delete schedule for ${fnName}: ${err}`);
+    });;;
   }
+  schedulerQueue.close();
+  schedulerQueue.process();
+
+  // Wait for the first function in each region to be deployed, then close the queue.
+  await Promise.all(regionPromises);
+  cloudFunctionsQueue.close();
+
+  // Wait for all of the deployments to complete.
+  await cloudFunctionsQueue.wait();
+  await schedulerQueue.wait();
+  console.log("hey we dunzo");
+  // delete payload.functions;
+
+  // // Create functions
+  // _.chain(uploadedNames)
+  //   .difference(existingNames)
+  //   .intersection(releaseNames)
+  //   .forEach((name) => {
+  //     const functionInfo = _.find(functionsInfo, { name: name })!;
+  //     const functionTrigger = helper.getFunctionTrigger(functionInfo);
+  //     const functionName = helper.getFunctionName(name);
+  //     const region = helper.getRegion(name);
+  //     utils.logBullet(
+  //       clc.bold.cyan("functions: ") +
+  //         "creating " +
+  //         getHumanFriendlyRuntimeName(runtime) +
+  //         " function " +
+  //         clc.bold(helper.getFunctionLabel(name)) +
+  //         "..."
+  //     );
+  //     logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
+  //     const eventType = functionTrigger.eventTrigger
+  //       ? functionTrigger.eventTrigger.eventType
+  //       : "https";
+  //     startTimer(name, "create");
+  //     const retryFunction = async () => {
+  //       const createRes = await cloudfunctions.createFunction({
+  //         projectId: projectId,
+  //         region: region,
+  //         eventType: eventType,
+  //         functionName: functionName,
+  //         entryPoint: functionInfo.entryPoint,
+  //         trigger: functionTrigger,
+  //         labels: _.assign({}, deploymentTool.labels(), functionInfo.labels),
+  //         sourceUploadUrl: sourceUrl,
+  //         runtime: runtime,
+  //         availableMemoryMb: functionInfo.availableMemoryMb,
+  //         timeout: functionInfo.timeout,
+  //         maxInstances: functionInfo.maxInstances,
+  //         environmentVariables: defaultEnvVariables,
+  //         vpcConnector: functionInfo.vpcConnector,
+  //         vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+  //         serviceAccountEmail: functionInfo.serviceAccountEmail,
+  //       });
+  //       if (_.has(functionTrigger, "httpsTrigger")) {
+  //         logger.debug(`Setting public policy for function ${functionName}`);
+  //         await cloudfunctions.setIamPolicy({
+  //           functionName,
+  //           projectId,
+  //           region,
+  //           policy: DEFAULT_PUBLIC_POLICY,
+  //         });
+  //       }
+  //       return createRes;
+  //     };
+
+  //     deployments.push({
+  //       name,
+  //       retryFunction,
+  //       trigger: functionTrigger,
+  //     });
+  //   })
+  //   .value();
+
+  // // Update functions
+  // _.chain(uploadedNames)
+  //   .intersection(existingNames)
+  //   .intersection(releaseNames)
+  //   .forEach((name) => {
+  //     const functionInfo = _.find(functionsInfo, { name: name })!;
+  //     const functionTrigger = helper.getFunctionTrigger(functionInfo);
+  //     const functionName = helper.getFunctionName(name);
+  //     const region = helper.getRegion(name);
+  //     const existingFunction = _.find(existingFunctions, {
+  //       name: name,
+  //     });
+
+  //     utils.logBullet(
+  //       clc.bold.cyan("functions: ") +
+  //         "updating " +
+  //         getHumanFriendlyRuntimeName(runtime) +
+  //         " function " +
+  //         clc.bold(helper.getFunctionLabel(name)) +
+  //         "..."
+  //     );
+  //     logger.debug("Trigger is: ", JSON.stringify(functionTrigger));
+  //     startTimer(name, "update");
+  //     const options = {
+  //       projectId: projectId,
+  //       region: region,
+  //       functionName: functionName,
+  //       trigger: functionTrigger,
+  //       sourceUploadUrl: sourceUrl,
+  //       labels: _.assign({}, deploymentTool.labels(), functionInfo.labels),
+  //       availableMemoryMb: functionInfo.availableMemoryMb,
+  //       timeout: functionInfo.timeout,
+  //       runtime: runtime,
+  //       maxInstances: functionInfo.maxInstances,
+  //       vpcConnector: functionInfo.vpcConnector,
+  //       vpcConnectorEgressSettings: functionInfo.vpcConnectorEgressSettings,
+  //       serviceAccountEmail: functionInfo.serviceAccountEmail,
+  //       environmentVariables: _.assign(
+  //         {},
+  //         existingFunction.environmentVariables,
+  //         defaultEnvVariables
+  //       ),
+  //     };
+  //     deployments.push({
+  //       name: name,
+  //       retryFunction: async function () {
+  //         return cloudfunctions.updateFunction(options);
+  //       },
+  //       trigger: functionTrigger,
+  //     });
+  //   })
+  //   .value();
+
+  // // Delete functions
+  // const functionsToDelete = _.chain(existingFunctions)
+  //   .filter((functionInfo) => {
+  //     return deploymentTool.check(functionInfo.labels);
+  //   }) // only delete functions uploaded via firebase-tools
+  //   .map((fn) => {
+  //     return _.get(fn, "name");
+  //   })
+  //   .difference(uploadedNames)
+  //   .intersection(deleteReleaseNames)
+  //   .value();
+
+  // if (functionsToDelete.length) {
+  //   const deleteList = _.map(functionsToDelete, (func) => {
+  //     return "\t" + helper.getFunctionLabel(func);
+  //   }).join("\n");
+
+  //   if (options.nonInteractive && !options.force) {
+  //     const deleteCommands = _.map(functionsToDelete, (func) => {
+  //       return (
+  //         "\tfirebase functions:delete " +
+  //         helper.getFunctionName(func) +
+  //         " --region " +
+  //         helper.getRegion(func)
+  //       );
+  //     }).join("\n");
+
+  //     throw new FirebaseError(
+  //       "The following functions are found in your project but do not exist in your local source code:\n" +
+  //         deleteList +
+  //         "\n\nAborting because deletion cannot proceed in non-interactive mode. To fix, manually delete the functions by running:\n" +
+  //         clc.bold(deleteCommands)
+  //     );
+  //   } else if (!options.force) {
+  //     logger.info(
+  //       "\nThe following functions are found in your project but do not exist in your local source code:\n" +
+  //         deleteList +
+  //         "\n\nIf you are renaming a function or changing its region, it is recommended that you create the new " +
+  //         "function first before deleting the old one to prevent event loss. For more info, visit " +
+  //         clc.underline("https://firebase.google.com/docs/functions/manage-functions#modify" + "\n")
+  //     );
+  //   }
+
+  //   let proceed = true;
+  //   if (!options.force) {
+  //     proceed = await promptOnce({
+  //       type: "confirm",
+  //       name: "confirm",
+  //       default: false,
+  //       message:
+  //         "Would you like to proceed with deletion? Selecting no will continue the rest of the deployments.",
+  //     });
+  //   }
+  //   if (proceed) {
+  //     functionsToDelete.forEach((name) => {
+  //       const functionName = helper.getFunctionName(name);
+  //       const scheduleName = helper.getScheduleName(name, appEngineLocation);
+  //       const topicName = helper.getTopicName(name);
+  //       const region = helper.getRegion(name);
+
+  //       utils.logBullet(
+  //         clc.bold.cyan("functions: ") +
+  //           "deleting function " +
+  //           clc.bold(helper.getFunctionLabel(name)) +
+  //           "..."
+  //       );
+  //       startTimer(name, "delete");
+  //       let retryFunction;
+  //       const isScheduledFunction = _.includes(existingScheduledFunctions, name);
+  //       if (isScheduledFunction) {
+  //         retryFunction = async function () {
+  //           try {
+  //             await cloudscheduler.deleteJob(scheduleName);
+  //           } catch (err) {
+  //             // if err.status is 404, the schedule doesnt exist, so catch the error
+  //             // if err.status is 403, the project doesnt have the api enabled and there are no schedules to delete, so catch the error
+  //             logger.debug(err);
+  //             if (
+  //               err.context.response.statusCode != 404 &&
+  //               err.context.response.statusCode != 403
+  //             ) {
+  //               throw new FirebaseError(
+  //                 `Failed to delete schedule for ${functionName} with status ${err.status}`,
+  //                 err
+  //               );
+  //             }
+  //           }
+  //           try {
+  //             await pubsub.deleteTopic(topicName);
+  //           } catch (err) {
+  //             // if err.status is 404, the topic doesnt exist, so catch the error
+  //             // if err.status is 403, the project doesnt have the api enabled and there are no topics to delete, so catch the error
+  //             if (
+  //               err.context.response.statusCode != 404 &&
+  //               err.context.response.statusCode != 403
+  //             ) {
+  //               throw new FirebaseError(
+  //                 `Failed to delete topic for ${functionName} with status ${err.status}`,
+  //                 err
+  //               );
+  //             }
+  //           }
+  //           return cloudfunctions.deleteFunction({
+  //             projectId: projectId,
+  //             region: region,
+  //             functionName: functionName,
+  //           });
+  //         };
+  //       } else {
+  //         retryFunction = async function () {
+  //           return cloudfunctions.deleteFunction({
+  //             projectId: projectId,
+  //             region: region,
+  //             functionName: functionName,
+  //           });
+  //         };
+  //       }
+  //       deployments.push({
+  //         name: name,
+  //         retryFunction: retryFunction,
+  //       });
+  //     });
+  //   } else {
+  //     if (deployments.length !== 0) {
+  //       utils.logBullet(clc.bold.cyan("functions: ") + "continuing with other deployments.");
+  //     }
+  //   }
+  // }
+  // // filter out functions that are excluded via --only and --except flags
+  // const functionsInDeploy = functionsInfo.filter((trigger: helper.CloudFunctionTrigger) => {
+  //   return functionFilterGroups.length > 0 ? _.includes(deleteReleaseNames, trigger.name) : true;
+  // });
+  // await createOrUpdateSchedulesAndTopics(
+  //   context.projectId,
+  //   functionsInDeploy,
+  //   existingScheduledFunctions,
+  //   appEngineLocation
+  // );
+  // const allOps = await utils.promiseAllSettled(
+  //   _.map(deployments, async (op) => {
+  //     const res = await op.retryFunction();
+  //     return _.merge(op, res);
+  //   })
+  // );
+  // const failedCalls = _.chain(allOps).filter({ state: "rejected" }).map("reason").value();
+  // const successfulCalls = _.chain(allOps).filter({ state: "fulfilled" }).map("value").value();
+  // failedDeployments = failedCalls.map((error) => _.get(error, "context.function", ""));
+
+  // await fetchTriggerUrls(projectId, successfulCalls, sourceUrl);
+
+  // await helper.pollDeploys(successfulCalls, printSuccess, printFail, printTooManyOps, projectId);
+  // if (deployments.length > 0) {
+  //   track("Functions Deploy (Result)", "failure", failedDeployments.length);
+  //   track("Functions Deploy (Result)", "success", deployments.length - failedDeployments.length);
+  // }
+
+  // if (failedDeployments.length > 0) {
+  //   logger.info("\n\nFunctions deploy had errors with the following functions:");
+  //   const sortedFailedDeployments = failedDeployments.sort();
+  //   for (const failedDep of sortedFailedDeployments) {
+  //     logger.info(`\t${failedDep}`);
+  //   }
+  //   logger.info("\n\nTo try redeploying those functions, run:");
+  //   logger.info(
+  //     "    " +
+  //       clc.bold("firebase deploy --only ") +
+  //       clc.bold('"') +
+  //       clc.bold(
+  //         sortedFailedDeployments.map((name) => `functions:${name.replace(/-/g, ".")}`).join(",")
+  //       ) +
+  //       clc.bold('"')
+  //   );
+  //   logger.info("\n\nTo continue deploying other features (such as database), run:");
+  //   logger.info("    " + clc.bold("firebase deploy --except functions"));
+  //   throw new FirebaseError("Functions did not deploy properly.");
+  // }
 }
