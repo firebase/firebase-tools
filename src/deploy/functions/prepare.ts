@@ -12,8 +12,8 @@ import {
   flattenRegionMap,
   functionMatchesAnyGroup,
   getFilterGroups,
-  promptForFailurePolicies,
 } from "../../functionsDeployHelper";
+import { promptForFailurePolicies } from "./prompts";
 import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
