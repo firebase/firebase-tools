@@ -64,6 +64,20 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
       });
   });
 
+  it("should deduplicate users", async () => {
+    const { localId } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId, localId] /* two with the same id */ })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
   it("should return providerUserInfo for phone auth users", async () => {
     const { localId } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
 

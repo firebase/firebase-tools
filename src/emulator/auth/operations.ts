@@ -193,34 +193,33 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
+  function tryAddUser(maybeUser: UserInfo | undefined): void {
+    if (maybeUser && !seenLocalIds.has(maybeUser.localId)) {
+      users.push(maybeUser);
+      seenLocalIds.add(maybeUser.localId);
+    }
+  }
+
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
-    if (reqBody.localId) {
-      for (const localId of reqBody.localId) {
-        const maybeUser = state.getUserByLocalId(localId);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const localId of reqBody.localId ?? []) {
+      tryAddUser(state.getUserByLocalId(localId));
     }
-    if (reqBody.email) {
-      for (const email of reqBody.email) {
-        const maybeUser = state.getUserByEmail(email);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const email of reqBody.email ?? []) {
+      tryAddUser(state.getUserByEmail(email));
     }
-    if (reqBody.phoneNumber) {
-      for (const phoneNumber of reqBody.phoneNumber) {
-        const maybeUser = state.getUserByPhoneNumber(phoneNumber);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
+    for (const phoneNumber of reqBody.phoneNumber ?? []) {
+      tryAddUser(state.getUserByPhoneNumber(phoneNumber));
+    }
+    for (const { providerId, rawId } of reqBody.federatedUserId ?? []) {
+      if (!providerId || !rawId) {
+        continue;
       }
+      tryAddUser(state.getUserByProviderRawId(providerId, rawId));
     }
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
@@ -1455,6 +1454,8 @@ function issueTokens(
   signInProvider: string,
   extraClaims: Record<string, unknown> = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
+  state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
   const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
