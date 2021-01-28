@@ -1,1 +1,2 @@
 - Adds support for uploading Android App Bundles (AABs) to App Distribution.
+- Adds support for batchDelete in Auth Emulator (#3091).
