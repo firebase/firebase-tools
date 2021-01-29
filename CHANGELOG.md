@@ -1,1 +1,2 @@
 - Adds support for uploading Android App Bundles (AABs) to App Distribution.
+- Fixes support for using the CLI as a library against locally running emulators. (#3084)

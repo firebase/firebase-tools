@@ -1,6 +1,6 @@
 import { AbortSignal } from "abort-controller";
 import { Readable } from "stream";
-import { URLSearchParams } from "url";
+import { parse, URLSearchParams } from "url";
 import * as ProxyAgent from "proxy-agent";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
@@ -188,6 +188,7 @@ export class Client {
    * // typeof res.body === ResourceType
    *
    * @param reqOptions request options.
+   * @return the response.
    */
   async request<ReqT, ResT>(reqOptions: ClientRequestOptions<ReqT>): Promise<ClientResponse<ResT>> {
     // All requests default to JSON content types.
@@ -246,9 +247,21 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    const token = await this.getAccessToken();
+    let token: string;
+    if (this.isLocalInsecureRequest()) {
+      token = "owner";
+    } else {
+      token = await this.getAccessToken();
+    }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
+  }
+
+  private isLocalInsecureRequest(): boolean {
+    const u = parse(this.opts.urlPrefix);
+    const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    const isInsecure = u.protocol === "http:";
+    return isInsecure && isLocal;
   }
 
   private async getAccessToken(): Promise<string> {
