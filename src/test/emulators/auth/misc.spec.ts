@@ -1,6 +1,7 @@
 import { expect } from "chai";
+import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { UserInfo } from "../../../emulator/auth/state";
-import { PROJECT_ID } from "./helpers";
+import { PROJECT_ID, signInWithPhoneNumber, TEST_PHONE_NUMBER } from "./helpers";
 import { describeAuthEmulator } from "./setup";
 import {
   expectStatusCode,
@@ -9,6 +10,11 @@ import {
   updateAccountByLocalId,
   expectUserNotExistsForIdToken,
 } from "./helpers";
+import {
+  FirebaseJwtPayload,
+  SESSION_COOKIE_MAX_VALID_DURATION,
+} from "../../../emulator/auth/operations";
+import { toUnixTimestamp } from "../../../emulator/auth/utils";
 
 describeAuthEmulator("token refresh", ({ authApi }) => {
   it("should exchange refresh token for new tokens", async () => {
@@ -49,6 +55,109 @@ describeAuthEmulator("token refresh", ({ authApi }) => {
   });
 });
 
+describeAuthEmulator("createSessionCookie", ({ authApi }) => {
+  it("should return a valid sessionCookie", async () => {
+    const { idToken } = await registerAnonUser(authApi());
+    const validDuration = 7777; /* seconds */
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ idToken, validDuration: validDuration.toString() })
+      .then((res) => {
+        expectStatusCode(200, res);
+        const sessionCookie = res.body.sessionCookie;
+        expect(sessionCookie).to.be.a("string");
+
+        const decoded = decodeJwt(sessionCookie, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "session cookie is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload.iat).to.equal(toUnixTimestamp(new Date()));
+        expect(decoded!.payload.exp).to.equal(toUnixTimestamp(new Date()) + validDuration);
+        expect(decoded!.payload.iss).to.equal(`https://session.firebase.google.com/${PROJECT_ID}`);
+
+        const idTokenProps = decodeJwt(idToken) as Partial<FirebaseJwtPayload>;
+        delete idTokenProps.iss;
+        delete idTokenProps.iat;
+        delete idTokenProps.exp;
+        expect(decoded!.payload).to.deep.contain(idTokenProps);
+      });
+  });
+
+  it("should throw if idToken is missing", async () => {
+    const validDuration = 7777; /* seconds */
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ validDuration: validDuration.toString() /* no idToken */ })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("MISSING_ID_TOKEN");
+      });
+  });
+
+  it("should throw if idToken is invalid", async () => {
+    const validDuration = 7777; /* seconds */
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ idToken: "invalid", validDuration: validDuration.toString() })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("INVALID_ID_TOKEN");
+      });
+  });
+
+  it("should use default session cookie validDuration if not specified", async () => {
+    const { idToken } = await registerAnonUser(authApi());
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ idToken })
+      .then((res) => {
+        expectStatusCode(200, res);
+        const sessionCookie = res.body.sessionCookie;
+        expect(sessionCookie).to.be.a("string");
+
+        const decoded = decodeJwt(sessionCookie, { complete: true }) as {
+          header: JwtHeader;
+          payload: FirebaseJwtPayload;
+        } | null;
+        expect(decoded, "session cookie is invalid").not.to.be.null;
+        expect(decoded!.header.alg).to.eql("none");
+        expect(decoded!.payload.exp).to.equal(
+          toUnixTimestamp(new Date()) + SESSION_COOKIE_MAX_VALID_DURATION
+        );
+      });
+  });
+
+  it("should throw if validDuration is too short or too long", async () => {
+    const { idToken } = await registerAnonUser(authApi());
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ idToken, validDuration: "1" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("INVALID_DURATION");
+      });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}:createSessionCookie`)
+      .set("Authorization", "Bearer owner")
+      .send({ idToken, validDuration: "999999999999" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("INVALID_DURATION");
+      });
+  });
+});
+
 describeAuthEmulator("accounts:lookup", ({ authApi }) => {
   it("should return user by localId when privileged", async () => {
     const { localId } = await registerAnonUser(authApi());
@@ -61,6 +170,40 @@ describeAuthEmulator("accounts:lookup", ({ authApi }) => {
         expectStatusCode(200, res);
         expect(res.body.users).to.have.length(1);
         expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
+  it("should deduplicate users", async () => {
+    const { localId } = await registerAnonUser(authApi());
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId, localId] /* two with the same id */ })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].localId).to.equal(localId);
+      });
+  });
+
+  it("should return providerUserInfo for phone auth users", async () => {
+    const { localId } = await signInWithPhoneNumber(authApi(), TEST_PHONE_NUMBER);
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ localId: [localId] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].providerUserInfo).to.eql([
+          {
+            phoneNumber: TEST_PHONE_NUMBER,
+            rawId: TEST_PHONE_NUMBER,
+            providerId: "phone",
+          },
+        ]);
       });
   });
 

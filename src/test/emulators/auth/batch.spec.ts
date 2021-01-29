@@ -14,6 +14,7 @@ import {
   signInWithPassword,
   signInWithPhoneNumber,
   TEST_PHONE_NUMBER,
+  updateAccountByLocalId,
 } from "./helpers";
 import { UserInfo } from "../../../emulator/auth/state";
 
@@ -500,5 +501,130 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
       sub: rawId,
     });
     expect(user1SignIn.localId).to.equal(user1.localId);
+  });
+});
+
+describeAuthEmulator("accounts:batchDelete", ({ authApi }) => {
+  it("should delete specified disabled accounts", async () => {
+    const user1 = await registerAnonUser(authApi());
+    const user2 = await registerUser(authApi(), {
+      email: "foobar@example.com",
+      password: "barbaz",
+    });
+    await updateAccountByLocalId(authApi(), user1.localId, { disableUser: true });
+    await updateAccountByLocalId(authApi(), user2.localId, { disableUser: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: [user1.localId, user2.localId] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.errors ?? []).to.be.empty;
+      });
+  });
+
+  it("should error for accounts not disabled", async () => {
+    const user1 = await registerAnonUser(authApi());
+    const user2 = await registerUser(authApi(), {
+      email: "foobar@example.com",
+      password: "barbaz",
+    });
+    // User 1 not disabled.
+    await updateAccountByLocalId(authApi(), user2.localId, { disableUser: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: [user1.localId, user2.localId] })
+      .then((res) => {
+        expectStatusCode(200, res);
+
+        expect(res.body.errors).to.eql([
+          {
+            index: 0,
+            localId: user1.localId,
+            message: "NOT_DISABLED : Disable the account before batch deletion.",
+          },
+        ]);
+      });
+  });
+
+  it("should delete disabled and not disabled accounts with force: true", async () => {
+    const user1 = await registerAnonUser(authApi());
+    const user2 = await registerUser(authApi(), {
+      email: "foobar@example.com",
+      password: "barbaz",
+    });
+    // User 1 not disabled.
+    await updateAccountByLocalId(authApi(), user2.localId, { disableUser: true });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: [user1.localId, user2.localId], force: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.errors ?? []).to.be.empty;
+      });
+  });
+
+  it("should not report errors for nonexistent localIds", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: ["nosuch", "nosuch2"] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.errors ?? []).to.be.empty;
+      });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: ["nosuch", "nosuch2"], force: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.errors ?? []).to.be.empty;
+      });
+  });
+
+  it("should error if localIds array is empty", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds: [], force: true })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("LOCAL_ID_LIST_EXCEEDS_LIMIT");
+      });
+  });
+
+  it("should error if localId count is more than limit", async () => {
+    const localIds = [];
+    for (let i = 0; i < 1000; i++) {
+      localIds.push(`localId-${i}`);
+    }
+
+    // Right at limit (no error).
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds, force: true })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.errors ?? []).to.be.empty;
+      });
+
+    // One above limit (error).
+    localIds.push("extraOne");
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchDelete`)
+      .set("Authorization", "Bearer owner")
+      .send({ localIds, force: true })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("LOCAL_ID_LIST_EXCEEDS_LIMIT");
+      });
   });
 });

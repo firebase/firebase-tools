@@ -504,44 +504,44 @@ function validateAndFixRestMappingRequestBody(
 ): ReturnType<ValidatorFunction> {
   body = convertKeysToCamelCase(body);
 
-  // Protobuf JSON parser accepts enum values as either string or integer, but
+  // Protobuf JSON parser accepts enum values as either string or int index, but
   // the JSON schema only accepts strings, causing validation errors. We catch
   // these errors and fix the paths. This is needed for e.g. Android SDK.
+  // Similarly, convert numbers to strings for e.g. Node Admin SDK.
   let result: ReturnType<ValidatorFunction>;
-  let fixedErrors = false;
+  let keepFixing = false; // Keep fixing issues as long as we can.
   const fixedPaths = new Set<string>();
   do {
     result = validate(body);
     if (!result.errors) return result;
-    fixedErrors = false;
+    keepFixing = false;
     for (const error of result.errors) {
       const path = error.location?.path;
-      if (path && !fixedPaths.has(path) && error.ajvError?.message === "should be string") {
-        let schema = api.requestBodyMediaTypeObject.schema;
-        if (schema.$ref) {
-          schema = _.get(api.openApiDoc, jsonPointerToPath(schema.$ref));
+      const ajvError = error.ajvError;
+      if (!path || fixedPaths.has(path) || !ajvError) {
+        continue;
+      }
+      const dataPath = jsonPointerToPath(path);
+      const value = _.get(body, dataPath);
+      if (ajvError.keyword === "type" && (ajvError.params as { type: string }).type === "string") {
+        if (typeof value === "number") {
+          // Coerce numbers to strings.
+          // Ideally, we should handle enums differently right now, but we don't
+          // know if it is an enum yet (ajvError.schema is somehow undefined).
+          // So we'll just leave it to the next iteration and handle it below.
+          _.set(body, dataPath, value.toString());
+          keepFixing = true;
         }
-        const schemaPath = jsonPointerToPath(error.ajvError.schemaPath);
-        if (
-          schemaPath[0] === "properties" &&
-          schemaPath[1] === "value" &&
-          schemaPath[schemaPath.length - 1] === "type"
-        ) {
-          const enumValues = _.get(schema, schemaPath.slice(2, schemaPath.length - 1))?.enum;
-          if (Array.isArray(enumValues)) {
-            const dataPath = jsonPointerToPath(path);
-            const value = _.get(body, dataPath);
-            const normalizedValue = enumValues[value];
-            if (normalizedValue) {
-              _.set(body, dataPath, normalizedValue);
-              fixedPaths.add(path);
-              fixedErrors = true;
-            }
-          }
+      } else if (ajvError.keyword === "enum") {
+        const params = ajvError.params as { allowedValues: string[] };
+        const enumValue = params.allowedValues[value];
+        if (enumValue) {
+          _.set(body, dataPath, enumValue);
+          keepFixing = true;
         }
       }
     }
-  } while (fixedErrors);
+  } while (keepFixing);
   return result;
 }
 

@@ -1,2 +1,4 @@
 - Adds support for uploading Android App Bundles (AABs) to App Distribution.
-- Fixes support for using the CLI as a library against locally running emulators. (#3084)
+- Adds support for batchDelete in Auth Emulator (#3091).
+- Adds support for createSessionCookie in Auth Emulator (#3094).
+- Fixes support for using the CLI as a library against locally running emulators (#3084).
