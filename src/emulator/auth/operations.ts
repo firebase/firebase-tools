@@ -534,15 +534,15 @@ function createSessionCookie(
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
   assert(reqBody.idToken, "MISSING_ID_TOKEN");
-  const validSince = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
+  const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
   assert(
-    validSince >= SESSION_COOKIE_MIN_VALID_DURATION &&
-      validSince <= SESSION_COOKIE_MAX_VALID_DURATION,
+    validDuration >= SESSION_COOKIE_MIN_VALID_DURATION &&
+      validDuration <= SESSION_COOKIE_MAX_VALID_DURATION,
     "INVALID_DURATION"
   );
   const { payload } = parseIdToken(state, reqBody.idToken);
   const issuedAt = toUnixTimestamp(new Date());
-  const expiresAt = issuedAt + validSince;
+  const expiresAt = issuedAt + validDuration;
   const sessionCookie = signJwt(
     {
       ...payload,
