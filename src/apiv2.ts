@@ -248,20 +248,13 @@ export class Client {
       reqOptions.headers = new Headers();
     }
     let token: string;
-    if (this.isLocalInsecureRequest()) {
+    if (isLocalInsecureRequest(this.opts.urlPrefix)) {
       token = "owner";
     } else {
       token = await this.getAccessToken();
     }
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
-  }
-
-  private isLocalInsecureRequest(): boolean {
-    const u = parse(this.opts.urlPrefix);
-    const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
-    const isInsecure = u.protocol === "http:";
-    return isInsecure && isLocal;
   }
 
   private async getAccessToken(): Promise<string> {
@@ -419,6 +412,13 @@ export class Client {
     }
     logger.debug(`<<< [apiv2][body] ${options.method} ${logURL} ${logBody}`);
   }
+}
+
+function isLocalInsecureRequest(urlPrefix: string): boolean {
+  const u = parse(urlPrefix);
+  const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  const isInsecure = u.protocol === "http:";
+  return isInsecure && isLocal;
 }
 
 function bodyToString(body: unknown): string {
