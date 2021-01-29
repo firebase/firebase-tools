@@ -789,7 +789,11 @@ function setAccountInfo(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
-  return setAccountInfoImpl(state, reqBody, { privileged: !!ctx.security?.Oauth2 });
+  const url = authEmulatorUrl(ctx.req as express.Request);
+  return setAccountInfoImpl(state, reqBody, {
+    privileged: !!ctx.security?.Oauth2,
+    emulatorUrl: url,
+  });
 }
 
 /**
@@ -798,12 +802,13 @@ function setAccountInfo(
  * @param state the current project state
  * @param reqBody request with fields to update
  * @param privileged whether request is OAuth2 authenticated. Affects validation
+ * @param emulatorUrl url to the auth emulator instance. Needed for sending OOB link for email reset
  * @return the HTTP response body
  */
 export function setAccountInfoImpl(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoRequest"],
-  { privileged = false }: { privileged?: boolean } = {}
+  { privileged = false, emulatorUrl = undefined }: { privileged?: boolean; emulatorUrl?: URL } = {}
 ): Schemas["GoogleCloudIdentitytoolkitV1SetAccountInfoResponse"] {
   // TODO: Implement these.
   const unimplementedFields: (keyof typeof reqBody)[] = [
@@ -847,18 +852,35 @@ export function setAccountInfoImpl(
   if (reqBody.oobCode) {
     const oob = state.validateOobCode(reqBody.oobCode);
     assert(oob, "INVALID_OOB_CODE");
-    if (oob.requestType !== "VERIFY_EMAIL") {
-      throw new NotImplementedError(oob.requestType);
-    }
-    state.deleteOobCode(reqBody.oobCode);
-
-    signInProvider = PROVIDER_PASSWORD;
-    const maybeUser = state.getUserByEmail(oob.email);
-    assert(maybeUser, "INVALID_OOB_CODE");
-    user = maybeUser;
-    updates.emailVerified = true;
-    if (oob.email !== user.email) {
-      updates.email = oob.email;
+    switch (oob.requestType) {
+      case "VERIFY_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        signInProvider = PROVIDER_PASSWORD;
+        const maybeUser = state.getUserByEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        user = maybeUser;
+        updates.emailVerified = true;
+        if (oob.email !== user.email) {
+          updates.email = oob.email;
+        }
+        break;
+      }
+      case "RECOVER_EMAIL": {
+        state.deleteOobCode(reqBody.oobCode);
+        // TODO: Ask if this is needed for RECOVER_EMAIL.
+        // signInProvider = PROVIDER_PASSWORD;
+        const maybeUser = state.getUserByEmail(oob.email);
+        assert(maybeUser, "INVALID_OOB_CODE");
+        user = maybeUser;
+        assert(reqBody.email, "INVALID_EMAIL");
+        assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
+        if (reqBody.email !== user.email) {
+          updates.email = reqBody.email;
+        }
+        break;
+      }
+      default:
+        throw new NotImplementedError(oob.requestType);
     }
   } else {
     if (reqBody.idToken) {
@@ -873,12 +895,20 @@ export function setAccountInfoImpl(
 
     if (reqBody.email) {
       assert(isValidEmailAddress(reqBody.email), "INVALID_EMAIL");
+      if (!emulatorUrl) {
+        throw new Error("Internal assertion error: Emulator URL invalid");
+      }
+
       const newEmail = canonicalizeEmailAddress(reqBody.email);
       if (newEmail !== user.email) {
         assert(!state.getUserByEmail(newEmail), "EMAIL_EXISTS");
         updates.email = newEmail;
         // TODO: Set verified if email is verified by IDP linked to account.
         updates.emailVerified = false;
+        if (user.email) {
+          // If user email is present, then send a reset OOB.
+          sendOobForEmailReset(state, user.email, newEmail, emulatorUrl);
+        }
       }
     }
     if (reqBody.password) {
@@ -974,6 +1004,31 @@ export function setAccountInfoImpl(
 
     ...(updates.validSince && signInProvider ? issueTokens(state, user, signInProvider) : {}),
   });
+}
+
+function sendOobForEmailReset(state: ProjectState, oldEmail: string, newEmail: string, url: URL) {
+  const mode: string = "recoverEmail";
+
+  // Encode the new email with the OOB code. The old email is received as a URL parameter.
+  const { oobCode, oobLink } = state.createOob(newEmail, "RECOVER_EMAIL", (oobCode) => {
+    // TODO: Support custom handler links.
+    url.pathname = "/emulator/action";
+    url.searchParams.set("mode", mode);
+    url.searchParams.set("lang", "en");
+    url.searchParams.set("oobCode", oobCode);
+    url.searchParams.set("oldEmail", oldEmail);
+
+    // This doesn't matter for now, since any API key works for defaultProject.
+    // TODO: What if reqBody.targetProjectId is set?
+    url.searchParams.set("apiKey", "fake-api-key");
+    // No continue URL for reset email.
+    return url.toString();
+  });
+
+  // Print out a developer-friendly log containing the link, in lieu of
+  // sending a real email out to the email address.
+  const message = `To reset your email address to ${oldEmail}, follow this link: ${oobLink}`;
+  EmulatorLogger.forEmulator(Emulators.AUTH).log("BULLET", message);
 }
 
 function signInWithCustomToken(

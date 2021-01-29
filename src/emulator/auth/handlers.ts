@@ -36,6 +36,49 @@ export function registerHandlers(
     const state = getProjectStateByApiKey(apiKey);
 
     switch (mode) {
+      case "recoverEmail": {
+        const EXPIRED_LINK_ERROR = {
+          error: `Your request to revert your email has expired or the link has already been used.`,
+          instructions:
+            "Try reverting using this link again. If you're still unsuccessful. You can edit the email in the Emulator UI.",
+        };
+        const oob = state.validateOobCode(oobCode);
+        if (oob?.requestType !== "RECOVER_EMAIL") {
+          return res.status(400).json({
+            authEmulator: EXPIRED_LINK_ERROR,
+          });
+        }
+        if (!req.query.oldEmail) {
+          return res.status(400).json({
+            authEmulator: {
+              error: "missing oldEmail query parameter",
+              instructions: `To reset the email for ${oob.email}, you must provide the original email to reset the user information.`,
+              instructions2:
+                "Please modify the URL to specify the email to reset to, such as ...&oldEmail=YOUR_OLD_EMAIL",
+            },
+          });
+        }
+        try {
+          const { email } = setAccountInfoImpl(state, {
+            email: req.query.oldEmail as string,
+            oobCode,
+          });
+          return res.status(200).json({
+            authEmulator: { success: `The email has been successfully reset.`, email },
+          });
+        } catch (e) {
+          if (
+            e instanceof NotImplementedError ||
+            (e instanceof BadRequestError && e.message === "INVALID_OOB_CODE")
+          ) {
+            return res.status(400).json({
+              authEmulator: EXPIRED_LINK_ERROR,
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
       case "resetPassword": {
         const oob = state.validateOobCode(oobCode);
         if (oob?.requestType !== "PASSWORD_RESET") {
