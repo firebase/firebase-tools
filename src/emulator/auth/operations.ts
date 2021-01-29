@@ -56,6 +56,7 @@ export const authOperations: AuthOps = {
       update: setAccountInfo,
     },
     projects: {
+      createSessionCookie,
       queryAccounts,
       accounts: {
         _: signUp,
@@ -522,6 +523,42 @@ function createAuthUri(
     sessionId,
     signinMethods,
   };
+}
+
+const SESSION_COOKIE_MIN_VALID_DURATION = 5 * 60; /* 5 minutes in seconds */
+export const SESSION_COOKIE_MAX_VALID_DURATION = 14 * 24 * 60 * 60; /* 14 days in seconds */
+
+function createSessionCookie(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  const validSince = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
+  assert(
+    validSince >= SESSION_COOKIE_MIN_VALID_DURATION &&
+      validSince <= SESSION_COOKIE_MAX_VALID_DURATION,
+    "INVALID_DURATION"
+  );
+  const { payload } = parseIdToken(state, reqBody.idToken);
+  const issuedAt = toUnixTimestamp(new Date());
+  const expiresAt = issuedAt + validSince;
+  const sessionCookie = signJwt(
+    {
+      ...payload,
+      iat: issuedAt,
+      exp: expiresAt,
+      iss: `https://session.firebase.google.com/${payload.aud}`,
+    },
+    "",
+    {
+      // Generate a unsigned (insecure) JWT. Admin SDKs should treat this like
+      // a real token (if in emulator mode). This won't work in production.
+      algorithm: "none",
+    }
+  );
+
+  return { sessionCookie };
 }
 
 function deleteAccount(
@@ -1501,6 +1538,7 @@ function parseIdToken(
   idToken: string
 ): {
   user: UserInfo;
+  payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
   const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -1526,7 +1564,7 @@ function parseIdToken(
   assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
-  return { user, signInProvider };
+  return { user, signInProvider, payload: decoded.payload };
 }
 
 function generateJwt(
@@ -1919,7 +1957,10 @@ function handleIdpSignUp(
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
-  iat: number;
+  iat: number; // issuedAt (in seconds since epoch)
+  exp: number; // expiresAt (in seconds since epoch)
+  iss: string; // issuer
+  aud: string; // audience (=projectId)
   // ...and other fields that we don't care for now.
 
   // Firebase-specific fields:
