@@ -218,6 +218,21 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
       });
   });
 
+  it("should update phoneNumber if specified", async () => {
+    const phoneNumber = TEST_PHONE_NUMBER;
+    const { localId, idToken } = await signInWithPhoneNumber(authApi(), phoneNumber);
+
+    const newPhoneNumber = "+15555550123";
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .set("Authorization", "Bearer owner")
+      .send({ localId, phoneNumber: newPhoneNumber })
+      .then((res) => expectStatusCode(200, res));
+
+    const info = await getAccountInfoByIdToken(authApi(), idToken);
+    expect(info.phoneNumber).to.equal(newPhoneNumber);
+  });
+
   it("should noop when setting phoneNumber to the same as before", async () => {
     const phoneNumber = TEST_PHONE_NUMBER;
     const { localId, idToken } = await signInWithPhoneNumber(authApi(), phoneNumber);
