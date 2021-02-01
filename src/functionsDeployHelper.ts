@@ -7,7 +7,7 @@ import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
 import * as pollOperations from "./pollOperations";
-import { promptOnce } from "./prompt";
+import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 
 // TODO: Get rid of this when switching to use operation-poller.
 export interface Operation {
@@ -25,26 +25,16 @@ export interface Operation {
   error?: { code: number; message: string };
 }
 
-export interface CloudFunctionTrigger {
-  name: string;
-  sourceUploadUrl?: string;
-  labels: { [key: string]: string };
-  environmentVariables: { [key: string]: string };
-  entryPoint: string;
-  runtime?: string;
-  vpcConnector?: string;
-  vpcConnectorEgressSettings?: string;
-  ingressSettings?: string;
-  availableMemoryMb?: number;
-  timeout?: number;
-  maxInstances?: number;
-  serviceAccountEmail?: string;
-  httpsTrigger?: any;
-  eventTrigger?: any;
-  failurePolicy?: {};
-  schedule?: object;
-  timeZone?: string;
-  regions?: string[];
+export function functionMatchesAnyGroup(fnName: string, filterGroups: string[][]) {
+  if (!filterGroups.length) {
+    return true;
+  }
+  for (const groupChunks of filterGroups) {
+    if (functionMatchesGroup(fnName, groupChunks)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function functionMatchesGroup(functionName: string, groupChunks: string[]): boolean {
@@ -138,33 +128,6 @@ export function logFilters(
         unmatchedFilters.join(", ")
     );
   }
-}
-
-export function getFunctionsInfo(parsedTriggers: CloudFunctionTrigger[], projectId: string) {
-  const functionsInfo: CloudFunctionTrigger[] = [];
-  _.forEach(parsedTriggers, (trigger) => {
-    if (!trigger.regions) {
-      trigger.regions = ["us-central1"];
-    }
-    // SDK exports list of regions for each function to be deployed to, need to add a new entry
-    // to functionsInfo for each region.
-    _.forEach(trigger.regions, (region) => {
-      const triggerDeepCopy = JSON.parse(JSON.stringify(trigger));
-      if (triggerDeepCopy.regions) {
-        delete triggerDeepCopy.regions;
-      }
-      triggerDeepCopy.name = [
-        "projects",
-        projectId,
-        "locations",
-        region,
-        "functions",
-        trigger.name,
-      ].join("/");
-      functionsInfo.push(triggerDeepCopy);
-    });
-  });
-  return functionsInfo;
 }
 
 export function getFunctionTrigger(functionInfo: CloudFunctionTrigger) {
@@ -271,51 +234,5 @@ export function pollDeploys(
       "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
     );
     throw new FirebaseError("Failed to get status of functions deployments.");
-  }
-}
-
-/**
- * Checks if a deployment will create any functions with a failure policy.
- * If there are any, prompts the user to acknowledge the retry behavior.
- * @param options
- * @param functions A list of all functions in the deployment
- */
-export async function promptForFailurePolicies(
-  options: any,
-  functions: CloudFunctionTrigger[]
-): Promise<void> {
-  // Collect all the functions that have a retry policy
-  const failurePolicyFunctions = functions.filter((fn: CloudFunctionTrigger) => {
-    return !!fn.failurePolicy;
-  });
-
-  if (failurePolicyFunctions.length) {
-    const failurePolicyFunctionLabels = failurePolicyFunctions.map((fn: CloudFunctionTrigger) => {
-      return getFunctionLabel(_.get(fn, "name"));
-    });
-    const retryMessage =
-      "The following functions will be retried in case of failure: " +
-      clc.bold(failurePolicyFunctionLabels.join(", ")) +
-      ". " +
-      "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
-      "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
-
-    utils.logLabeledWarning("functions", retryMessage);
-
-    if (options.nonInteractive && !options.force) {
-      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
-        exit: 1,
-      });
-    } else if (!options.nonInteractive) {
-      const proceed = await promptOnce({
-        type: "confirm",
-        name: "confirm",
-        default: false,
-        message: "Would you like to proceed with deployment?",
-      });
-      if (!proceed) {
-        throw new FirebaseError("Deployment canceled.", { exit: 1 });
-      }
-    }
   }
 }

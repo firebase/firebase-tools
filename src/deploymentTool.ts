@@ -14,6 +14,6 @@ export function labels() {
   };
 }
 
-export function check(labels: { [key: string]: any }) {
+export function isFirebaseManaged(labels: { [key: string]: any }) {
   return labels?.["deployment-tool"]?.startsWith(BASE);
 }

@@ -6,8 +6,11 @@ import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
-import { getFunctionsInfo, promptForFailurePolicies } from "../../functionsDeployHelper";
+import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
+import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
+import { promptForFailurePolicies } from "./prompts";
 import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 
@@ -49,10 +52,13 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Get a list of CloudFunctionTriggers, with duplicates for each region.
   payload.functions = {};
-  payload.functions.triggers = getFunctionsInfo(
-    options.config.get("functions.triggers"),
-    projectId
+  // TODO: Make byRegion an implementation detail of deploymentPlanner
+  // and only store a flat array of Functions in payload.
+  payload.functions.byRegion = functionsByRegion(
+    projectId,
+    options.config.get("functions.triggers")
   );
+  payload.functions.triggers = allFunctions(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
@@ -60,6 +66,12 @@ export async function prepare(context: any, options: any, payload: any): Promise
   // TODO: This doesn't do anything meaningful right now because payload.functions is not defined
   validate.packageJsonIsValid(sourceDirName, sourceDir, projectDir, !!runtimeFromConfig);
 
-  // Display a warning and prompt if any functions have failurePolicies.
-  await promptForFailurePolicies(options, payload.functions.triggers);
+  // Check what --only filters have been passed in.
+  context.filters = getFilterGroups(options);
+
+  // Display a warning and prompt if any functions in the release have failurePolicies.
+  const localFnsInRelease = payload.functions.triggers.filter((fn: CloudFunctionTrigger) => {
+    return functionMatchesAnyGroup(fn.name, context.filters);
+  });
+  await promptForFailurePolicies(options, localFnsInRelease);
 }

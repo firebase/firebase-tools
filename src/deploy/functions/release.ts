@@ -10,6 +10,7 @@ import * as deploymentTool from "../../deploymentTool";
 import * as track from "../../track";
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
+import { CloudFunctionTrigger } from "./deploymentPlanner";
 import { FirebaseError } from "../../error";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { getAppEngineLocation } from "../../functionsConfig";
@@ -145,7 +146,7 @@ export async function release(context: any, options: any, payload: any): Promise
 
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
   let functionsInfo = payload.functions.triggers;
-  functionsInfo = functionsInfo.map((fn: helper.CloudFunctionTrigger) => {
+  functionsInfo = functionsInfo.map((fn: CloudFunctionTrigger) => {
     if (
       fn.eventTrigger &&
       fn.schedule &&
@@ -301,7 +302,7 @@ export async function release(context: any, options: any, payload: any): Promise
   // Delete functions
   const functionsToDelete = _.chain(existingFunctions)
     .filter((functionInfo) => {
-      return deploymentTool.check(functionInfo.labels);
+      return deploymentTool.isFirebaseManaged(functionInfo.labels);
     }) // only delete functions uploaded via firebase-tools
     .map((fn) => {
       return _.get(fn, "name");
@@ -427,7 +428,7 @@ export async function release(context: any, options: any, payload: any): Promise
     }
   }
   // filter out functions that are excluded via --only and --except flags
-  const functionsInDeploy = functionsInfo.filter((trigger: helper.CloudFunctionTrigger) => {
+  const functionsInDeploy = functionsInfo.filter((trigger: CloudFunctionTrigger) => {
     return functionFilterGroups.length > 0 ? _.includes(deleteReleaseNames, trigger.name) : true;
   });
   await createOrUpdateSchedulesAndTopics(
