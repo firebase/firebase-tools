@@ -7,7 +7,7 @@ import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import { getFunctionsInfo, promptForFailurePolicies } from "../../functionsDeployHelper";
-import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
+import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 
