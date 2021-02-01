@@ -416,9 +416,7 @@ export class Client {
 
 function isLocalInsecureRequest(urlPrefix: string): boolean {
   const u = parse(urlPrefix);
-  const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
-  const isInsecure = u.protocol === "http:";
-  return isInsecure && isLocal;
+  return u.protocol === "http:";
 }
 
 function bodyToString(body: unknown): string {
