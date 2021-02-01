@@ -34,20 +34,21 @@ export async function promptForFailurePolicies(
 
     utils.logLabeledWarning("functions", retryMessage);
 
-    if (options.nonInteractive && !options.force) {
+    if (options.force) {
+      return;
+    } else if (options.nonInteractive) {
       throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
         exit: 1,
       });
-    } else if (!options.nonInteractive) {
-      const proceed = await promptOnce({
-        type: "confirm",
-        name: "confirm",
-        default: false,
-        message: "Would you like to proceed with deployment?",
-      });
-      if (!proceed) {
-        throw new FirebaseError("Deployment canceled.", { exit: 1 });
-      }
+    }
+    const proceed = await promptOnce({
+      type: "confirm",
+      name: "confirm",
+      default: false,
+      message: "Would you like to proceed with deployment?",
+    });
+    if (!proceed) {
+      throw new FirebaseError("Deployment canceled.", { exit: 1 });
     }
   }
 }

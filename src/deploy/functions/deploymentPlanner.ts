@@ -4,6 +4,7 @@ import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelp
 export interface CloudFunctionTrigger {
   name: string;
   sourceUploadUrl?: string;
+  sourceToken?: string;
   labels: { [key: string]: string };
   environmentVariables: { [key: string]: string };
   entryPoint: string;
@@ -30,7 +31,7 @@ export interface RegionMap {
 export interface RegionalDeployment {
   region: string;
   sourceToken?: string;
-  firstFunctionDeployment?: CloudFunctionTrigger;
+  firstFunctionDeployment?: () => any;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
   schedulesToCreateOrUpdate: CloudFunctionTrigger[];
@@ -100,53 +101,53 @@ export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
  * @param filters The filters, passed in by the user via  `--only functions:`
  */
 export function createDeploymentPlan(
-  functionsInSourceByRegion: RegionMap,
+  localFunctionsByRegion: RegionMap,
   existingFunctions: CloudFunctionTrigger[],
   filters: string[][]
 ): DeploymentPlan {
+  let existingFnsCopy: CloudFunctionTrigger[] = [...existingFunctions];
   const deployment: DeploymentPlan = {
     regionalDeployments: [],
     functionsToDelete: [],
     schedulesToDelete: [],
   };
   // eslint-disable-next-line guard-for-in
-  for (const region in functionsInSourceByRegion) {
+  for (const region in localFunctionsByRegion) {
     const regionalDeployment: RegionalDeployment = {
       region,
       functionsToCreate: [],
       functionsToUpdate: [],
       schedulesToCreateOrUpdate: [],
     };
-    const localFunctionsInRegion = functionsInSourceByRegion[region];
+    const localFunctionsInRegion = localFunctionsByRegion[region];
     for (const fn of localFunctionsInRegion) {
       // Check if this function matches the --only filters
-      if (functionMatchesAnyGroup(fn.name, filters)) {
-        // Check if this local function has the same name as an exisiting one.
-        const matchingExistingFunction = existingFunctions.find((exFn) => {
-          return exFn.name === fn.name;
-        });
-        // Check if the matching exisitng function is scheduled
-        const isMatchingExisitingFnScheduled =
-          matchingExistingFunction?.labels?.["deployment-scheduled"] === "true";
-        // Check if the local function is a scheduled function
-        if (fn.schedule) {
-          // If the local function is scheduled, set its trigger to the correct pubsub topic
-          fn.eventTrigger.resource = getTopicName(fn.name);
-          // and create or update a schedule.
-          regionalDeployment.schedulesToCreateOrUpdate.push(fn);
-        } else if (isMatchingExisitingFnScheduled) {
-          // If the local function isn't scheduled but the existing one is, delete the schedule.
-          deployment.schedulesToDelete.push(matchingExistingFunction!.name);
-        }
+      if (!functionMatchesAnyGroup(fn.name, filters)) {
+        continue;
+      }
+      // Check if this local function has the same name as an exisiting one.
+      const matchingExistingFunction = existingFnsCopy.find((exFn) => exFn.name === fn.name);
+      // Check if the matching exisitng function is scheduled
+      const isMatchingExisitingFnScheduled =
+        matchingExistingFunction?.labels?.["deployment-scheduled"] === "true";
+      // Check if the local function is a scheduled function
+      if (fn.schedule) {
+        // If the local function is scheduled, set its trigger to the correct pubsub topic
+        fn.eventTrigger.resource = getTopicName(fn.name);
+        // and create or update a schedule.
+        regionalDeployment.schedulesToCreateOrUpdate.push(fn);
+      } else if (isMatchingExisitingFnScheduled) {
+        // If the local function isn't scheduled but the existing one is, delete the schedule.
+        deployment.schedulesToDelete.push(matchingExistingFunction!.name);
+      }
 
-        if (!matchingExistingFunction) {
-          regionalDeployment.functionsToCreate.push(fn);
-        } else {
-          regionalDeployment.functionsToUpdate.push(fn);
-          existingFunctions = existingFunctions.filter((exFn: CloudFunctionTrigger) => {
-            return exFn.name !== fn.name;
-          });
-        }
+      if (matchingExistingFunction) {
+        regionalDeployment.functionsToUpdate.push(fn);
+        existingFnsCopy = existingFnsCopy.filter((exFn: CloudFunctionTrigger) => {
+          return exFn.name !== fn.name;
+        });
+      } else {
+        regionalDeployment.functionsToCreate.push(fn);
       }
     }
     deployment.regionalDeployments.push(regionalDeployment);
@@ -155,12 +156,12 @@ export function createDeploymentPlan(
   // Delete any remaining existing functions that:
   // 1 - Have the deployment-tool: 'firebase-cli' label and
   // 2 - Match the --only filters, if any are provided.
-  const functionsToDelete = existingFunctions
+  const functionsToDelete = existingFnsCopy
     .filter((fn) => {
-      return deploymentTool.check(fn.labels);
+      return deploymentTool.isFirebaseManaged(fn.labels);
     })
     .filter((fn) => {
-      return filters.length ? functionMatchesAnyGroup(fn.name, filters) : true;
+      return functionMatchesAnyGroup(fn.name, filters);
     });
   deployment.functionsToDelete = functionsToDelete.map((fn) => {
     return fn.name;
