@@ -13,7 +13,9 @@ import { functionsOrigin } from "../../api";
 import Queue from "../../throttler/queue";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
+import { DeploymentTimer } from "./deploymentTimer";
 
+// TODO: Tune this for better performance.
 const defaultPollerOptions = {
   apiOrigin: functionsOrigin,
   apiVersion: cloudfunctions.API_VERSION,
@@ -22,31 +24,31 @@ const defaultPollerOptions = {
 
 export interface RetryFunctionParams {
   projectId: string;
-  region: string;
   runtime: string;
   sourceUrl: string;
   sourceToken?: string;
+  timer: DeploymentTimer;
 }
 
-// TODO: add timers back to this.
 export function retryFunctionForCreate(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
 ) {
   return async () => {
-    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
     utils.logBullet(
       clc.bold.cyan("functions: ") +
-      "creating " +
-      getHumanFriendlyRuntimeName(params.runtime) +
-      " function " +
-      clc.bold(helper.getFunctionLabel(fn.name)) +
-      "..."
+        "creating " +
+        getHumanFriendlyRuntimeName(params.runtime) +
+        " function " +
+        clc.bold(helper.getFunctionLabel(fn.name)) +
+        "..."
     );
+    params.timer.startTimer(fn.name, "create");
+    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
     const createRes = await cloudfunctions.createFunction({
       projectId: params.projectId,
-      region: params.region,
+      region: helper.getRegion(fn.name),
       eventType: eventType,
       functionName: helper.getFunctionName(fn.name),
       entryPoint: fn.entryPoint,
@@ -77,17 +79,18 @@ export function retryFunctionForCreate(
         await cloudfunctions.setIamPolicy({
           functionName: fn.name,
           projectId: params.projectId,
-          region: params.region,
+          region: helper.getRegion(fn.name),
           policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
         });
       } catch (err) {
         logger.debug(err);
-        // TODO: Better warning language when we can't set IAM policy.
+        // TODO: Better warning language when we can't set IAM policy to make functions public?
         utils.logWarning(
           `Unable to set publicly accessible IAM policy for HTTPS function "${fn.name}". Unauthorized users will not be able to call this function. `
         );
       }
     }
+    params.timer.endTimer(fn.name);
     return operationResult;
   };
 }
@@ -98,19 +101,19 @@ export function retryFunctionForUpdate(
   onPoll?: (op: any) => any
 ) {
   return async () => {
-    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
-
     utils.logBullet(
       clc.bold.cyan("functions: ") +
-      "updating " +
-      getHumanFriendlyRuntimeName(params.runtime) +
-      " function " +
-      clc.bold(helper.getFunctionLabel(fn.name)) +
-      "..."
+        "updating " +
+        getHumanFriendlyRuntimeName(params.runtime) +
+        " function " +
+        clc.bold(helper.getFunctionLabel(fn.name)) +
+        "..."
     );
+    params.timer.startTimer(fn.name, "update");
+    const eventType = fn.eventTrigger ? fn.eventTrigger.eventType : "https";
     const updateRes = await cloudfunctions.updateFunction({
       projectId: params.projectId,
-      region: params.region,
+      region: helper.getRegion(fn.name),
       eventType: eventType,
       functionName: helper.getFunctionName(fn.name),
       entryPoint: fn.entryPoint,
@@ -135,15 +138,32 @@ export function retryFunctionForUpdate(
       },
       defaultPollerOptions
     );
-    return pollOperation(pollerOptions);
+    const pollRes = await pollOperation(pollerOptions);
+    params.timer.endTimer(fn.name);
   };
 }
 
-export function retryFunctionForDelete(fnName: string) {
+export function retryFunctionForDelete(params: RetryFunctionParams, fnName: string) {
   return async () => {
-    return cloudfunctions.deleteFunction({
+    utils.logBullet(
+      clc.bold.cyan("functions: ") +
+        "deleting function " +
+        clc.bold(helper.getFunctionLabel(fnName)) +
+        "..."
+    );
+    params.timer.startTimer(fnName, "delete");
+    const deleteRes = await cloudfunctions.deleteFunction({
       functionName: fnName,
     });
+    const pollerOptions: OperationPollerOptions = _.assign(
+      {
+        pollerName: `delete-${fnName}`,
+        operationResourceName: deleteRes.name,
+      },
+      defaultPollerOptions
+    );
+    const pollRes = await pollOperation(pollerOptions);
+    params.timer.endTimer(fnName);
   };
 }
 
@@ -173,14 +193,10 @@ export function runRegionalDeployment(
   queue: Queue<any, any>
 ) {
   for (const fn of regionalDeployment.functionsToCreate) {
-    queue
-      .run(retryFunctionForCreate(params, fn))
-      .then(() => {
-        console.log(`Successfully created ${fn.name}`);
-      })
-      .catch((err) => {
-        console.log(`Error while creating ${fn.name}: ${err}`);
-      });
+    queue.run(retryFunctionForCreate(params, fn)).catch((err) => {
+      logger.debug();
+      console.log(`Error while creating ${fn.name}: ${err}`);
+    });
   }
   for (const fn of regionalDeployment.functionsToUpdate) {
     queue

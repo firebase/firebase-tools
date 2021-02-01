@@ -60,14 +60,11 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const functions = options.config.get("functions.triggers");
   _.forEach(functions, (fn: CloudFunctionTrigger) => {
     fn.environmentVariables = defaultEnvVariables;
-  })
+  });
 
   // Build a regionMap, and duplicate functions for each region they are being deployed to.
   payload.functions = {};
-  payload.functions.byRegion = createFunctionsByRegionMap(
-    projectId,
-    functions,
-  );
+  payload.functions.byRegion = createFunctionsByRegionMap(projectId, functions);
   payload.functions.triggers = flattenRegionMap(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.

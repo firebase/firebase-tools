@@ -16,53 +16,10 @@ import { FirebaseError } from "../../error";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptOnce } from "../../prompt";
+import { promptForFunctionDeletion } from "./prompts";
 import { createOrUpdateSchedulesAndTopics } from "./createOrUpdateSchedulesAndTopics";
 import Queue from "../../throttler/queue";
-import { region } from "firebase-functions";
-
-interface Timing {
-  type?: string;
-  t0?: [number, number]; // [seconds, nanos]
-}
-
-interface Deployment {
-  name: string;
-  retryFunction: () => any;
-  trigger?: any; // TODO: type this
-}
-
-let timings: { [name: string]: Timing } = {};
-let deployments: Deployment[] = [];
-let failedDeployments: string[] = [];
-
-const DEFAULT_PUBLIC_POLICY = {
-  version: 3,
-  bindings: [
-    {
-      role: "roles/cloudfunctions.invoker",
-      members: ["allUsers"],
-    },
-  ],
-};
-
-function startTimer(name: string, type: string) {
-  timings[name] = { type: type, t0: process.hrtime() };
-}
-
-function endTimer(name: string) {
-  if (!timings[name]) {
-    logger.debug("[functions] no timer initialized for", name);
-    return;
-  }
-
-  // hrtime returns a duration as an array of [seconds, nanos]
-  const duration = process.hrtime(timings[name].t0);
-  track(
-    "Functions Deploy (Duration)",
-    timings[name].type,
-    duration[0] * 1000 + Math.round(duration[1] * 1e-6)
-  );
-}
+import { DeploymentTimer } from "./deploymentTimer";
 
 async function fetchTriggerUrls(projectId: string, ops: helper.Operation[], sourceUrl: string) {
   if (!_.find(ops, ["trigger.httpsTrigger", {}])) {
@@ -84,55 +41,54 @@ async function fetchTriggerUrls(projectId: string, ops: helper.Operation[], sour
   return;
 }
 
-function printSuccess(op: helper.Operation) {
-  endTimer(op.funcName);
+function printSuccess(funcName: string, type: string) {
   utils.logSuccess(
-    clc.bold.green("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
+    clc.bold.green("functions[" + helper.getFunctionLabel(funcName) + "]: ") +
       "Successful " +
-      op.type +
+      type +
       " operation. "
   );
-  if (op.triggerUrl && op.type !== "delete") {
-    logger.info(
-      clc.bold("Function URL"),
-      "(" + helper.getFunctionName(op.funcName) + "):",
-      op.triggerUrl
-    );
-  }
+  // if (op.triggerUrl && op.type !== "delete") {
+  //   logger.info(
+  //     clc.bold("Function URL"),
+  //     "(" + helper.getFunctionName(op.funcName) + "):",
+  //     op.triggerUrl
+  //   );
+  // }
 }
 
-function printFail(op: helper.Operation) {
-  endTimer(op.funcName);
-  failedDeployments.push(helper.getFunctionName(op.funcName));
-  utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
-      "Deployment error."
-  );
-  if (op.error?.code === 8) {
-    logger.debug(op.error.message);
-    logger.info(
-      "You have exceeded your deployment quota, please deploy your functions in batches by using the --only flag, " +
-        "and wait a few minutes before deploying again. Go to " +
-        clc.underline("https://firebase.google.com/docs/cli/#deploy_specific_functions") +
-        " to learn more."
-    );
-  } else {
-    logger.info(op.error?.message);
-  }
-}
+// function printFail(op: helper.Operation) {
+//   endTimer(op.funcName);
+//   failedDeployments.push(helper.getFunctionName(op.funcName));
+//   utils.logWarning(
+//     clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
+//       "Deployment error."
+//   );
+//   if (op.error?.code === 8) {
+//     logger.debug(op.error.message);
+//     logger.info(
+//       "You have exceeded your deployment quota, please deploy your functions in batches by using the --only flag, " +
+//         "and wait a few minutes before deploying again. Go to " +
+//         clc.underline("https://firebase.google.com/docs/cli/#deploy_specific_functions") +
+//         " to learn more."
+//     );
+//   } else {
+//     logger.info(op.error?.message);
+//   }
+// }
 
-function printTooManyOps(projectId: string) {
-  utils.logWarning(
-    clc.bold.yellow("functions:") + " too many functions are being deployed, cannot poll status."
-  );
-  logger.info(
-    "In a few minutes, you can check status at " + utils.consoleUrl(projectId, "/functions/logs")
-  );
-  logger.info(
-    "You can use the --only flag to deploy only a portion of your functions in the future."
-  );
-  deployments = []; // prevents analytics tracking of deployments
-}
+// function printTooManyOps(projectId: string) {
+//   utils.logWarning(
+//     clc.bold.yellow("functions:") + " too many functions are being deployed, cannot poll status."
+//   );
+//   logger.info(
+//     "In a few minutes, you can check status at " + utils.consoleUrl(projectId, "/functions/logs")
+//   );
+//   logger.info(
+//     "You can use the --only flag to deploy only a portion of your functions in the future."
+//   );
+//   deployments = []; // prevents analytics tracking of deployments
+// }
 
 export async function release(context: any, options: any, payload: any) {
   if (!options.config.has("functions")) {
@@ -143,48 +99,90 @@ export async function release(context: any, options: any, payload: any) {
   const sourceUrl = context.uploadUrl;
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
 
-  // Reset module-level variables to prevent duplicate deploys when using firebase-tools as an import.
-  timings = {};
-  deployments = [];
-  failedDeployments = [];
+  const timer = new DeploymentTimer();
+
+  const deployments: string[] = [];
+  const failedDeployments: string[] = [];
 
   const fullDeployment = createDeploymentPlan(
-    payload.functions.regionMap,
+    payload.functions.byRegion,
     context.existingFunctions,
     context.filters
   );
-  const cloudFunctionsQueue = new Queue<() => any, any>({})
-  const schedulerQueue = new Queue<() => any, any>({})
-  const regionPromises = []
+  const cloudFunctionsQueue = new Queue<() => any, any>({});
+  const schedulerQueue = new Queue<() => any, any>({});
+  const regionPromises = [];
+
+  const retryFuncParams: retryFunctions.RetryFunctionParams = {
+    projectId,
+    sourceUrl,
+    runtime: context.runtimeChoice,
+    timer,
+  };
+
+  const shouldDeleteFunctions = await promptForFunctionDeletion(
+    fullDeployment.functionsToDelete,
+    options.force,
+    options.nonInteractive
+  );
+  if (shouldDeleteFunctions) {
+    for (const fnName of fullDeployment.functionsToDelete) {
+      cloudFunctionsQueue
+        .run(retryFunctions.retryFunctionForDelete(retryFuncParams, fnName))
+        .then(() => {
+          deployments.push(fnName);
+        })
+        .catch((err) => {
+          console.log(`Error while deleting ${fnName}: ${err}`);
+        });
+    }
+  } else {
+    // If we shouldn't delete functions, don't clean up their schedules either
+    fullDeployment.schedulesToDelete = fullDeployment.schedulesToDelete.filter((fnName) => {
+      // Only delete the schedules for functions that are no longer scheduled.
+      return !fullDeployment.functionsToDelete.includes(fnName);
+    });
+  }
 
   for (const regionalDeployment of fullDeployment.regionalDeployments) {
-    const retryFuncParams: retryFunctions.RetryFunctionParams = {
-      projectId,
-      sourceUrl,
-      region: regionalDeployment.region,
-      runtime: context.runtimeChoice,
-    }
     // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
     const onPollFn = (op: any) => {
       // We should run the rest of the regional deployment if we either:
       // - Have a sourceToken to use.
       // - Never got a sourceToken back from the operation. In this case, finish the deployment without using sourceToken.
-      const shouldFinishDeployment = (op.metadata?.sourceToken && !regionalDeployment.sourceToken) || (!op.metadata?.sourceToken && op.done);
+      const shouldFinishDeployment =
+        (op.metadata?.sourceToken && !regionalDeployment.sourceToken) ||
+        (!op.metadata?.sourceToken && op.done);
       if (shouldFinishDeployment) {
+        logger.debug(
+          `Got sourceToken ${op.metadata.sourceToken} for region ${regionalDeployment.region}`
+        );
         regionalDeployment.sourceToken = op.metadata.sourceToken;
-        retryFunctions.runRegionalDeployment(retryFuncParams, regionalDeployment, cloudFunctionsQueue)
+        retryFunctions.runRegionalDeployment(
+          retryFuncParams,
+          regionalDeployment,
+          cloudFunctionsQueue
+        );
       }
-    }; 
+    };
 
     // Choose a first function to deploy.
     if (regionalDeployment.functionsToCreate.length) {
       const firstFn = regionalDeployment.functionsToCreate.shift();
-      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForCreate(retryFuncParams, firstFn!, onPollFn);
+      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForCreate(
+        retryFuncParams,
+        firstFn!,
+        onPollFn
+      );
     } else if (regionalDeployment.functionsToUpdate.length) {
       const firstFn = regionalDeployment.functionsToUpdate.shift();
-      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForUpdate(retryFuncParams, firstFn!, onPollFn);
-    } 
-  
+      regionalDeployment.firstFunctionDeployment = retryFunctions.retryFunctionForUpdate(
+        retryFuncParams,
+        firstFn!,
+        onPollFn
+      );
+    }
+
     if (regionalDeployment.firstFunctionDeployment) {
       // Kick off the first deployment, and keep track of when it finishes.
       regionPromises.push(cloudFunctionsQueue.run(regionalDeployment.firstFunctionDeployment));
@@ -192,31 +190,33 @@ export async function release(context: any, options: any, payload: any) {
 
     // Add scheduler creates and updates to their queue.
     for (const fn of regionalDeployment.schedulesToCreateOrUpdate) {
-      const retryFunction = retryFunctions.retryFunctionForScheduleCreateOrUpdate(retryFuncParams, fn, appEngineLocation);
-      schedulerQueue.run(retryFunction)
-      .then(() => {
-        console.log(`Successfully crupdated schedule for ${fn.name}`);
-      }).catch((err) => {
-        console.log(`Error while crupdating schedule for ${fn.name}: ${err}`);
-      });;
+      const retryFunction = retryFunctions.retryFunctionForScheduleCreateOrUpdate(
+        retryFuncParams,
+        fn,
+        appEngineLocation
+      );
+      schedulerQueue
+        .run(retryFunction)
+        .then(() => {
+          console.log(`Successfully crupdated schedule for ${fn.name}`);
+        })
+        .catch((err) => {
+          console.log(`Error while crupdating schedule for ${fn.name}: ${err}`);
+        });
     }
   }
-  for (const fnName of fullDeployment.functionsToDelete) {
-    cloudFunctionsQueue.run(retryFunctions.retryFunctionForDelete(fnName)).then(() => {
-      console.log(`Successfully deleted ${fnName}`);
-    }).catch((err) => {
-      console.log(`Error while deleting ${fnName}: ${err}`);
-    });;;
-  }
+
   cloudFunctionsQueue.process();
 
   for (const fnName of fullDeployment.schedulesToDelete) {
-    schedulerQueue.run(retryFunctions.retryFunctionForScheduleDelete(fnName, appEngineLocation))
-    .then(() => {
-      console.log(`Successfully deleted schedule for ${fnName}`);
-    }).catch((err) => {
-      console.log(`Error while delete schedule for ${fnName}: ${err}`);
-    });;;
+    schedulerQueue
+      .run(retryFunctions.retryFunctionForScheduleDelete(fnName, appEngineLocation))
+      .then(() => {
+        console.log(`Successfully deleted schedule for ${fnName}`);
+      })
+      .catch((err) => {
+        console.log(`Error while delete schedule for ${fnName}: ${err}`);
+      });
   }
   schedulerQueue.close();
   schedulerQueue.process();
@@ -227,8 +227,10 @@ export async function release(context: any, options: any, payload: any) {
 
   // Wait for all of the deployments to complete.
   await cloudFunctionsQueue.wait();
+  ("Functions Queue Stats:");
+  helper.logAndTrackDeployStats(cloudFunctionsQueue);
   await schedulerQueue.wait();
-  console.log("hey we dunzo");
+
   // delete payload.functions;
 
   // // Create functions

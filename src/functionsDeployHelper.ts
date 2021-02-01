@@ -9,6 +9,7 @@ import * as cloudfunctions from "./gcp/cloudfunctions";
 import { Job } from "./gcp/cloudscheduler";
 import * as pollOperations from "./pollOperations";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
+import Queue from "./throttler/queue";
 
 // TODO: Get rid of this when switching to use operation-poller.
 export interface Operation {
@@ -189,9 +190,8 @@ export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, proje
         scheduled: "true",
       },
     },
-  })
+  });
 }
-
 
 export function pollDeploys(
   operations: Operation[],
@@ -248,5 +248,17 @@ export function pollDeploys(
       "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
     );
     throw new FirebaseError("Failed to get status of functions deployments.");
+  }
+}
+
+export function logAndTrackDeployStats(queue: Queue<any, any>){
+  const stats = queue.stats();
+  logger.debug(`Total Function Deployment time: ${stats.elapsed}`);
+  logger.debug(`${stats.total} Functions Deployed`);
+  logger.debug(`${stats.errored} Functions Errored`);
+  logger.debug(`Average Function Deployment time: ${stats.avg}`);
+  if (stats.total > 0) {
+    track("Functions Deploy (Result)", "failure", stats.errored);
+    track("Functions Deploy (Result)", "success", stats.success);
   }
 }
