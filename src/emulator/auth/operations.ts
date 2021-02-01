@@ -56,6 +56,7 @@ export const authOperations: AuthOps = {
       update: setAccountInfo,
     },
     projects: {
+      createSessionCookie,
       queryAccounts,
       accounts: {
         _: signUp,
@@ -65,6 +66,7 @@ export const authOperations: AuthOps = {
         sendOobCode,
         update: setAccountInfo,
         batchCreate,
+        batchDelete,
         batchGet,
       },
     },
@@ -114,6 +116,11 @@ function signUp(
     if (reqBody.idToken) {
       assert(!reqBody.localId, "UNEXPECTED_PARAMETER : User ID");
     }
+    if (reqBody.localId) {
+      // Fail fast if localId is taken (matching production behavior).
+      assert(!state.getUserByLocalId(reqBody.localId), "DUPLICATE_LOCAL_ID");
+    }
+
     updates.displayName = reqBody.displayName;
     updates.photoUrl = reqBody.photoUrl;
     updates.emailVerified = reqBody.emailVerified || false;
@@ -188,34 +195,33 @@ function lookup(
   reqBody: Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoRequest"],
   ctx: ExegesisContext
 ): Schemas["GoogleCloudIdentitytoolkitV1GetAccountInfoResponse"] {
+  const seenLocalIds = new Set<string>();
   const users: UserInfo[] = [];
+  function tryAddUser(maybeUser: UserInfo | undefined): void {
+    if (maybeUser && !seenLocalIds.has(maybeUser.localId)) {
+      users.push(maybeUser);
+      seenLocalIds.add(maybeUser.localId);
+    }
+  }
+
   if (ctx.security?.Oauth2) {
     if (reqBody.initialEmail) {
       throw new NotImplementedError("Lookup by initialEmail is not implemented.");
     }
-    if (reqBody.localId) {
-      for (const localId of reqBody.localId) {
-        const maybeUser = state.getUserByLocalId(localId);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const localId of reqBody.localId ?? []) {
+      tryAddUser(state.getUserByLocalId(localId));
     }
-    if (reqBody.email) {
-      for (const email of reqBody.email) {
-        const maybeUser = state.getUserByEmail(email);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
-      }
+    for (const email of reqBody.email ?? []) {
+      tryAddUser(state.getUserByEmail(email));
     }
-    if (reqBody.phoneNumber) {
-      for (const phoneNumber of reqBody.phoneNumber) {
-        const maybeUser = state.getUserByPhoneNumber(phoneNumber);
-        if (maybeUser) {
-          users.push(maybeUser);
-        }
+    for (const phoneNumber of reqBody.phoneNumber ?? []) {
+      tryAddUser(state.getUserByPhoneNumber(phoneNumber));
+    }
+    for (const { providerId, rawId } of reqBody.federatedUserId ?? []) {
+      if (!providerId || !rawId) {
+        continue;
       }
+      tryAddUser(state.getUserByProviderRawId(providerId, rawId));
     }
   } else {
     assert(reqBody.idToken, "MISSING_ID_TOKEN");
@@ -339,7 +345,7 @@ function batchCreate(
       // TODO: Support MFA.
 
       fields.validSince = toUnixTimestamp(uploadTime).toString();
-      fields.createdAt = uploadTime.toString();
+      fields.createdAt = uploadTime.getTime().toString();
       if (fields.createdAt && !isNaN(Number(userInfo.createdAt))) {
         fields.createdAt = userInfo.createdAt;
       }
@@ -393,6 +399,35 @@ function batchCreate(
     kind: "identitytoolkit#UploadAccountResponse",
     error: errors,
   };
+}
+
+function batchDelete(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsRequest"]
+): Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"] {
+  const errors: Required<
+    Schemas["GoogleCloudIdentitytoolkitV1BatchDeleteAccountsResponse"]["errors"]
+  > = [];
+  const localIds = reqBody.localIds ?? [];
+  assert(localIds.length > 0 && localIds.length <= 1000, "LOCAL_ID_LIST_EXCEEDS_LIMIT");
+
+  for (let index = 0; index < localIds.length; index++) {
+    const localId = localIds[index];
+    const user = state.getUserByLocalId(localId);
+    if (!user) {
+      continue;
+    } else if (!user.disabled && !reqBody.force) {
+      errors.push({
+        index,
+        localId,
+        message: "NOT_DISABLED : Disable the account before batch deletion.",
+      });
+    } else {
+      state.deleteUser(user);
+    }
+  }
+
+  return { errors: errors.length ? errors : undefined };
 }
 
 function batchGet(
@@ -488,6 +523,42 @@ function createAuthUri(
     sessionId,
     signinMethods,
   };
+}
+
+const SESSION_COOKIE_MIN_VALID_DURATION = 5 * 60; /* 5 minutes in seconds */
+export const SESSION_COOKIE_MAX_VALID_DURATION = 14 * 24 * 60 * 60; /* 14 days in seconds */
+
+function createSessionCookie(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieRequest"],
+  ctx: ExegesisContext
+): Schemas["GoogleCloudIdentitytoolkitV1CreateSessionCookieResponse"] {
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  const validDuration = Number(reqBody.validDuration) || SESSION_COOKIE_MAX_VALID_DURATION;
+  assert(
+    validDuration >= SESSION_COOKIE_MIN_VALID_DURATION &&
+      validDuration <= SESSION_COOKIE_MAX_VALID_DURATION,
+    "INVALID_DURATION"
+  );
+  const { payload } = parseIdToken(state, reqBody.idToken);
+  const issuedAt = toUnixTimestamp(new Date());
+  const expiresAt = issuedAt + validDuration;
+  const sessionCookie = signJwt(
+    {
+      ...payload,
+      iat: issuedAt,
+      exp: expiresAt,
+      iss: `https://session.firebase.google.com/${payload.aud}`,
+    },
+    "",
+    {
+      // Generate a unsigned (insecure) JWT. Admin SDKs should treat this like
+      // a real token (if in emulator mode). This won't work in production.
+      algorithm: "none",
+    }
+  );
+
+  return { sessionCookie };
 }
 
 function deleteAccount(
@@ -908,6 +979,7 @@ export function setAccountInfoImpl(
       if (reqBody.phoneNumber && reqBody.phoneNumber !== user.phoneNumber) {
         assert(isValidPhoneNumber(reqBody.phoneNumber), "INVALID_PHONE_NUMBER : Invalid format.");
         assert(!state.getUserByPhoneNumber(reqBody.phoneNumber), "PHONE_NUMBER_EXISTS");
+        updates.phoneNumber = reqBody.phoneNumber;
       }
       fieldsToCopy.push(
         "emailVerified",
@@ -1449,6 +1521,8 @@ function issueTokens(
   signInProvider: string,
   extraClaims: Record<string, unknown> = {}
 ): { idToken: string; refreshToken: string; expiresIn: string } {
+  state.updateUserByLocalId(user.localId, { lastRefreshAt: new Date().toISOString() });
+
   const expiresInSeconds = 60 * 60;
   const idToken = generateJwt(state.projectId, user, signInProvider, expiresInSeconds, extraClaims);
   const refreshToken = state.createRefreshTokenFor(user, signInProvider, extraClaims);
@@ -1464,6 +1538,7 @@ function parseIdToken(
   idToken: string
 ): {
   user: UserInfo;
+  payload: FirebaseJwtPayload;
   signInProvider: string;
 } {
   const decoded = decodeJwt(idToken, { complete: true }) as {
@@ -1489,7 +1564,7 @@ function parseIdToken(
   assert(!user.disabled, "USER_DISABLED");
 
   const signInProvider = decoded.payload.firebase.sign_in_provider;
-  return { user, signInProvider };
+  return { user, signInProvider, payload: decoded.payload };
 }
 
 function generateJwt(
@@ -1882,7 +1957,10 @@ function handleIdpSignUp(
 /* eslint-disable camelcase */
 export interface FirebaseJwtPayload {
   // Standard fields:
-  iat: number;
+  iat: number; // issuedAt (in seconds since epoch)
+  exp: number; // expiresAt (in seconds since epoch)
+  iss: string; // issuer
+  aud: string; // audience (=projectId)
   // ...and other fields that we don't care for now.
 
   // Firebase-specific fields:
