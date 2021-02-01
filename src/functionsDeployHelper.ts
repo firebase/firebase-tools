@@ -7,14 +7,20 @@ import * as track from "./track";
 import * as utils from "./utils";
 import * as cloudfunctions from "./gcp/cloudfunctions";
 import * as pollOperations from "./pollOperations";
+import { promptOnce } from "./prompt";
 
 // TODO: Get rid of this when switching to use operation-poller.
 export interface Operation {
   name: string;
   type: string;
   funcName: string;
-  eventType: string;
   done: boolean;
+  eventType?: string;
+  trigger?: {
+    eventTrigger?: any;
+    httpsTrigger?: any;
+  };
+  retryFunction?: () => Promise<any>;
   triggerUrl?: string;
   error?: { code: number; message: string };
 }
@@ -265,5 +271,51 @@ export function pollDeploys(
       "You can check on their status at " + utils.consoleUrl(projectId, "/functions/logs")
     );
     throw new FirebaseError("Failed to get status of functions deployments.");
+  }
+}
+
+/**
+ * Checks if a deployment will create any functions with a failure policy.
+ * If there are any, prompts the user to acknowledge the retry behavior.
+ * @param options
+ * @param functions A list of all functions in the deployment
+ */
+export async function promptForFailurePolicies(
+  options: any,
+  functions: CloudFunctionTrigger[]
+): Promise<void> {
+  // Collect all the functions that have a retry policy
+  const failurePolicyFunctions = functions.filter((fn: CloudFunctionTrigger) => {
+    return !!fn.failurePolicy;
+  });
+
+  if (failurePolicyFunctions.length) {
+    const failurePolicyFunctionLabels = failurePolicyFunctions.map((fn: CloudFunctionTrigger) => {
+      return getFunctionLabel(_.get(fn, "name"));
+    });
+    const retryMessage =
+      "The following functions will be retried in case of failure: " +
+      clc.bold(failurePolicyFunctionLabels.join(", ")) +
+      ". " +
+      "Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. " +
+      "For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.";
+
+    utils.logLabeledWarning("functions", retryMessage);
+
+    if (options.nonInteractive && !options.force) {
+      throw new FirebaseError("Pass the --force option to deploy functions with a failure policy", {
+        exit: 1,
+      });
+    } else if (!options.nonInteractive) {
+      const proceed = await promptOnce({
+        type: "confirm",
+        name: "confirm",
+        default: false,
+        message: "Would you like to proceed with deployment?",
+      });
+      if (!proceed) {
+        throw new FirebaseError("Deployment canceled.", { exit: 1 });
+      }
+    }
   }
 }
