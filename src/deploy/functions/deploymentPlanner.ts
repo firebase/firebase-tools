@@ -1,6 +1,9 @@
 import * as deploymentTool from "../../deploymentTool";
 import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelper";
 
+// TODO: Better name for this?
+// It's really a CloudFuntion, not just a trigger,
+// but CloudFunction is a different exported type from firebase-functions
 export interface CloudFunctionTrigger {
   name: string;
   sourceUploadUrl?: string;
@@ -34,7 +37,7 @@ export interface RegionalDeployment {
   firstFunctionDeployment?: () => any;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
-  schedulesToCreateOrUpdate: CloudFunctionTrigger[];
+  schedulesToUpsert: CloudFunctionTrigger[];
 }
 
 export interface DeploymentPlan {
@@ -47,14 +50,14 @@ export interface DeploymentPlan {
  * Creates a map of regions to all the CloudFunctions being deployed
  * to that region.
  * @param projectId The project in use.
- * @param parsedTriggers A list of all CloudFunctions in the deployment.
+ * @param localFunctions A list of all CloudFunctions in the deployment.
  */
-export function createFunctionsByRegionMap(
+export function functionsByRegion(
   projectId: string,
-  parsedTriggers: CloudFunctionTrigger[]
+  localFunctions: CloudFunctionTrigger[]
 ): RegionMap {
   const regionMap: RegionMap = {};
-  for (const trigger of parsedTriggers) {
+  for (const trigger of localFunctions) {
     if (!trigger.regions) {
       trigger.regions = ["us-central1"];
     }
@@ -84,7 +87,7 @@ export function createFunctionsByRegionMap(
  * Helper method to turn a RegionMap into a flat list of all functions in a deployment.
  * @param regionMap A RegionMap for the deployment.
  */
-export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
+export function allFunctions(regionMap: RegionMap): CloudFunctionTrigger[] {
   const triggers: CloudFunctionTrigger[] = [];
   for (const [k, v] of Object.entries(regionMap)) {
     triggers.push(...v);
@@ -95,7 +98,7 @@ export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
 /**
  * Create a plan for deploying all functions in one region.
  * @param region The region of this deployment
- * @param functionsInSourceByRegion The functions present in the code currently being deployed.
+ * @param loclFunctionsByRegion The functions present in the code currently being deployed.
  * @param existingFunctionNames The names of all functions that already exist.
  * @param existingScheduledFunctionNames The names of all schedules functions that already exist.
  * @param filters The filters, passed in by the user via  `--only functions:`
@@ -117,7 +120,7 @@ export function createDeploymentPlan(
       region,
       functionsToCreate: [],
       functionsToUpdate: [],
-      schedulesToCreateOrUpdate: [],
+      schedulesToUpsert: [],
     };
     const localFunctionsInRegion = localFunctionsByRegion[region];
     for (const fn of localFunctionsInRegion) {
@@ -135,7 +138,7 @@ export function createDeploymentPlan(
         // If the local function is scheduled, set its trigger to the correct pubsub topic
         fn.eventTrigger.resource = getTopicName(fn.name);
         // and create or update a schedule.
-        regionalDeployment.schedulesToCreateOrUpdate.push(fn);
+        regionalDeployment.schedulesToUpsert.push(fn);
       } else if (isMatchingExisitingFnScheduled) {
         // If the local function isn't scheduled but the existing one is, delete the schedule.
         deployment.schedulesToDelete.push(matchingExistingFunction!.name);

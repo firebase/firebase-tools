@@ -7,11 +7,7 @@ import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
-import {
-  CloudFunctionTrigger,
-  createFunctionsByRegionMap,
-  flattenRegionMap,
-} from "./deploymentPlanner";
+import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
 import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
 
@@ -56,11 +52,13 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Get a list of CloudFunctionTriggers, with duplicates for each region.
   payload.functions = {};
-  payload.functions.byRegion = createFunctionsByRegionMap(
+  // TODO: Make byRegion an implementation detail of deploymentPlanner
+  // and only store a flat array of Functions in payload.
+  payload.functions.byRegion = functionsByRegion(
     projectId,
     options.config.get("functions.triggers")
   );
-  payload.functions.triggers = flattenRegionMap(payload.functions.byRegion);
+  payload.functions.triggers = allFunctions(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);
