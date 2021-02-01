@@ -13,7 +13,8 @@ import {
   flattenRegionMap,
 } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
-import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
+import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 

@@ -10,7 +10,10 @@ import * as deploymentTool from "../../deploymentTool";
 import * as track from "../../track";
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
+<<<<<<< HEAD
 import { CloudFunctionTrigger } from "./deploymentPlanner";
+=======
+>>>>>>> jh-functions-refactor
 import { FirebaseError } from "../../error";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { getAppEngineLocation } from "../../functionsConfig";
@@ -146,7 +149,11 @@ export async function release(context: any, options: any, payload: any): Promise
 
   const appEngineLocation = getAppEngineLocation(context.firebaseConfig);
   let functionsInfo = payload.functions.triggers;
+<<<<<<< HEAD
   functionsInfo = functionsInfo.map((fn: CloudFunctionTrigger) => {
+=======
+  functionsInfo = functionsInfo.map((fn: helper.CloudFunctionTrigger) => {
+>>>>>>> jh-functions-refactor
     if (
       fn.eventTrigger &&
       fn.schedule &&
@@ -428,7 +435,11 @@ export async function release(context: any, options: any, payload: any): Promise
     }
   }
   // filter out functions that are excluded via --only and --except flags
+<<<<<<< HEAD
   const functionsInDeploy = functionsInfo.filter((trigger: CloudFunctionTrigger) => {
+=======
+  const functionsInDeploy = functionsInfo.filter((trigger: helper.CloudFunctionTrigger) => {
+>>>>>>> jh-functions-refactor
     return functionFilterGroups.length > 0 ? _.includes(deleteReleaseNames, trigger.name) : true;
   });
   await createOrUpdateSchedulesAndTopics(
