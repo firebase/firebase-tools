@@ -6,6 +6,7 @@ import { FirebaseError } from "../../error";
 import { promptOnce } from "../../prompt";
 import * as utils from "../../utils";
 import * as logger from "../../logger";
+
 /**
  * Checks if a deployment will create any functions with a failure policy.
  * If there are any, prompts the user to acknowledge the retry behavior.
@@ -53,7 +54,12 @@ export async function promptForFailurePolicies(
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
 }
-
+/**
+ * Checks if a deployment will delete any functions.
+ * If there are any, prompts the user if they should be deleted or not.
+ * @param options
+ * @param functions A list of functions to be deleted.
+ */
 export async function promptForFunctionDeletion(
   functionsToDelete: string[],
   force: boolean,

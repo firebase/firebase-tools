@@ -33,11 +33,11 @@ export async function prepare(context: any, options: any, payload: any): Promise
     check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ]);
-  context["runtimeConfigEnabled"] = checkAPIsEnabled[1];
+  context.runtimeConfigEnabled = checkAPIsEnabled[1];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
-  context["firebaseConfig"] = firebaseConfig;
+  context.firebaseConfig = firebaseConfig;
 
   // Prepare the functions directory for upload, and set context.triggers.
   logBullet(
@@ -47,7 +47,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
       " directory for uploading..."
   );
   const source = await prepareFunctionsUpload(context, options);
-  context["functionsSource"] = source;
+  context.functionsSource = source;
 
   // Get a list of CloudFunctionTriggers, and set default environemnt variables on each.
   const defaultEnvVariables = {
@@ -69,6 +69,8 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Build a regionMap, and duplicate functions for each region they are being deployed to.
   payload.functions = {};
+  // TODO: Make byRegion an implementation detail of deploymentPlanner
+  // and only store a flat array of Functions in payload.
   payload.functions.byRegion = functionsByRegion(projectId, functions);
   payload.functions.triggers = allFunctions(payload.functions.byRegion);
 

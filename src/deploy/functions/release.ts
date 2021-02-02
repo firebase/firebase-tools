@@ -5,7 +5,7 @@ import * as clc from "cli-color";
 
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
-import {  createDeploymentPlan } from "./deploymentPlanner";
+import { createDeploymentPlan } from "./deploymentPlanner";
 import * as tasks from "./tasks";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptForFunctionDeletion } from "./prompts";
@@ -52,7 +52,7 @@ export async function release(context: any, options: any, payload: any) {
       cloudFunctionsQueue
         .run(tasks.deleteFunctionTask(retryFuncParams, fnName))
         .then(() => {
-          helper.printSuccess(fnName, 'delete');
+          helper.printSuccess(fnName, "delete");
         })
         .catch((err) => {
           errorHandler.record("error", fnName, "delete", err.message || "");
@@ -71,19 +71,17 @@ export async function release(context: any, options: any, payload: any) {
 
   for (const regionalDeployment of fullDeployment.regionalDeployments) {
     // Run the create and update function calls for the region.
-    regionPromises.push(tasks.runRegionalDeployment(retryFuncParams, regionalDeployment, cloudFunctionsQueue));
+    regionPromises.push(
+      tasks.runRegionalFunctionDeployment(retryFuncParams, regionalDeployment, cloudFunctionsQueue)
+    );
 
     // Add scheduler creates and updates to their queue.
     for (const fn of regionalDeployment.schedulesToUpsert) {
-      const task = tasks.upsertScheduleTask(
-        retryFuncParams,
-        fn,
-        appEngineLocation
-      );
+      const task = tasks.upsertScheduleTask(retryFuncParams, fn, appEngineLocation);
       schedulerQueue
         .run(task)
         .then(() => {
-          helper.printSuccess(fn.name, 'upsert schedule');
+          helper.printSuccess(fn.name, "upsert schedule");
         })
         .catch((err) => {
           errorHandler.record("error", fn.name, "upsert schedule", err.message || "");
@@ -97,7 +95,7 @@ export async function release(context: any, options: any, payload: any) {
     schedulerQueue
       .run(tasks.deleteScheduleTask(fnName, appEngineLocation))
       .then(() => {
-        helper.printSuccess(fnName, 'delete schedule');
+        helper.printSuccess(fnName, "delete schedule");
       })
       .catch((err) => {
         errorHandler.record("error", fnName, "delete schedule", err.message || "");

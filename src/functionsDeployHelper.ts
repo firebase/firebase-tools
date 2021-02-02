@@ -11,7 +11,7 @@ import * as pollOperations from "./pollOperations";
 import { CloudFunctionTrigger } from "./deploy/functions/deploymentPlanner";
 import Queue from "./throttler/queue";
 
-// TODO: Get rid of this when switching to use operation-poller.
+// TODO(joehan): Get rid of this once we refactor functions-delete.js
 export interface Operation {
   name: string;
   type: string;
@@ -193,6 +193,7 @@ export function toJob(fn: CloudFunctionTrigger, appEngineLocation: string, proje
   });
 }
 
+// TODO(joehan): Get rid of this once we refactor functions-delete.js
 export function pollDeploys(
   operations: Operation[],
   printSuccess: (op: Operation) => void,
@@ -267,9 +268,9 @@ export function logAndTrackDeployStats(queue: Queue<any, any>) {
 export function printSuccess(funcName: string, type: string) {
   utils.logSuccess(
     clc.bold.green("functions[" + getFunctionLabel(funcName) + "]: ") +
-    "Successful " +
-    type +
-    " operation. "
+      "Successful " +
+      type +
+      " operation. "
   );
 }
 
@@ -277,7 +278,7 @@ export async function printTriggerUrls(projectId: string, sourceUrl: string) {
   const functions = await cloudfunctions.listAllFunctions(projectId);
   const httpsFunctions = functions.filter((fn) => {
     return fn.sourceUploadUrl === sourceUrl && fn.httpsTrigger;
-  })
+  });
   if (httpsFunctions.length === 0) {
     return;
   }

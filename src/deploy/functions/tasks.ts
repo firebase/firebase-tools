@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
 import * as logger from "../../logger";
@@ -55,7 +54,7 @@ export function createFunctionTask(
       functionName: helper.getFunctionName(fn.name),
       entryPoint: fn.entryPoint,
       trigger: helper.getFunctionTrigger(fn),
-      labels: _.assign({}, deploymentTool.labels(), fn.labels),
+      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
       sourceUploadUrl: params.sourceUrl,
       sourceToken: params.sourceToken,
       runtime: params.runtime,
@@ -67,7 +66,7 @@ export function createFunctionTask(
       vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
       serviceAccountEmail: fn.serviceAccountEmail,
     });
-    const pollerOptions: OperationPollerOptions = _.assign(
+    const pollerOptions: OperationPollerOptions = Object.assign(
       {
         pollerName: `create-${fn.name}`,
         operationResourceName: createRes.name,
@@ -85,8 +84,6 @@ export function createFunctionTask(
           policy: cloudfunctions.DEFAULT_PUBLIC_POLICY,
         });
       } catch (err) {
-        logger.debug(err);
-        // TODO: Better warning language when we can't set IAM policy to make functions public?
         params.errorHandler.record("warning", fn.name, "make public", err.message);
       }
     }
@@ -118,7 +115,7 @@ export function updateFunctionTask(
       functionName: helper.getFunctionName(fn.name),
       entryPoint: fn.entryPoint,
       trigger: helper.getFunctionTrigger(fn),
-      labels: _.assign({}, deploymentTool.labels(), fn.labels),
+      labels: Object.assign({}, deploymentTool.labels(), fn.labels),
       sourceUploadUrl: params.sourceUrl,
       sourceToken: params.sourceToken,
       runtime: params.runtime,
@@ -130,7 +127,7 @@ export function updateFunctionTask(
       vpcConnectorEgressSettings: fn.vpcConnectorEgressSettings,
       serviceAccountEmail: fn.serviceAccountEmail,
     });
-    const pollerOptions: OperationPollerOptions = _.assign(
+    const pollerOptions: OperationPollerOptions = Object.assign(
       {
         pollerName: `update-${fn.name}`,
         operationResourceName: updateRes.name,
@@ -156,7 +153,7 @@ export function deleteFunctionTask(params: RetryFunctionParams, fnName: string) 
     const deleteRes = await cloudfunctions.deleteFunction({
       functionName: fnName,
     });
-    const pollerOptions: OperationPollerOptions = _.assign(
+    const pollerOptions: OperationPollerOptions = Object.assign(
       {
         pollerName: `delete-${fnName}`,
         operationResourceName: deleteRes.name,
@@ -189,14 +186,18 @@ export function deleteScheduleTask(fnName: string, appEngineLocation: string) {
   };
 }
 
-
-export function runRegionalDeployment(
+/**
+ *
+ * @param params
+ * @param regionalDeployment
+ * @param queue
+ */
+export function runRegionalFunctionDeployment(
   params: RetryFunctionParams,
   regionalDeployment: RegionalDeployment,
   queue: Queue<any, any>
 ): Promise<any> {
-
-    // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
+  // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
   const onPollFn = (op: any) => {
     // We should run the rest of the regional deployment if we either:
     // - Have a sourceToken to use.
@@ -209,69 +210,60 @@ export function runRegionalDeployment(
         `Got sourceToken ${op.metadata.sourceToken} for region ${regionalDeployment.region}`
       );
       regionalDeployment.sourceToken = op.metadata.sourceToken;
-      finishRegionalDeployment(
-        params,
-        regionalDeployment,
-        queue,
-      );
+      finishRegionalFunctionDeployment(params, regionalDeployment, queue);
     }
-  }
+  };
   // Choose a first function to deploy.
   if (regionalDeployment.functionsToCreate.length) {
     const firstFn = regionalDeployment.functionsToCreate.shift()!;
-    const task = createFunctionTask(
-      params,
-      firstFn!,
-      onPollFn
-    );
-    return queue.run(task)
+    const task = createFunctionTask(params, firstFn!, onPollFn);
+    return queue
+      .run(task)
       .then(() => {
-        helper.printSuccess(firstFn.name, 'create');
+        helper.printSuccess(firstFn.name, "create");
       })
       .catch((err) => {
-        params.errorHandler.record("error", firstFn.name, "create", err.message || "")
+        params.errorHandler.record("error", firstFn.name, "create", err.message || "");
       });
   } else if (regionalDeployment.functionsToUpdate.length) {
     const firstFn = regionalDeployment.functionsToUpdate.shift()!;
-    const task = updateFunctionTask(
-      params,
-      firstFn!,
-      onPollFn
-    );
-    return queue.run(task)
+    const task = updateFunctionTask(params, firstFn!, onPollFn);
+    return queue
+      .run(task)
       .then(() => {
-        helper.printSuccess(firstFn.name, 'update');
+        helper.printSuccess(firstFn.name, "update");
       })
       .catch((err) => {
-        params.errorHandler.record("error", firstFn.name, "update", err.message || "")
+        params.errorHandler.record("error", firstFn.name, "update", err.message || "");
       });
   }
   // If there are no functions to create or update in this region, no need to do anything.
   return Promise.resolve();
 }
 
-export function finishRegionalDeployment(
+function finishRegionalFunctionDeployment(
   params: RetryFunctionParams,
   regionalDeployment: RegionalDeployment,
   queue: Queue<any, any>
 ) {
   for (const fn of regionalDeployment.functionsToCreate) {
-    queue.run(createFunctionTask(params, fn))
-    .then(() => { 
-      helper.printSuccess(fn.name, 'create');
-    })
-    .catch((err) => {
-      params.errorHandler.record("error", fn.name, "create", err.message || "")
-    });
+    queue
+      .run(createFunctionTask(params, fn))
+      .then(() => {
+        helper.printSuccess(fn.name, "create");
+      })
+      .catch((err) => {
+        params.errorHandler.record("error", fn.name, "create", err.message || "");
+      });
   }
   for (const fn of regionalDeployment.functionsToUpdate) {
     queue
       .run(updateFunctionTask(params, fn))
       .then(() => {
-        helper.printSuccess(fn.name, 'update');
+        helper.printSuccess(fn.name, "update");
       })
       .catch((err) => {
-        params.errorHandler.record("error", fn.name, "update", err.message || "")
+        params.errorHandler.record("error", fn.name, "update", err.message || "");
       });
   }
 }
