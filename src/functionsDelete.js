@@ -17,7 +17,7 @@ var failedDeployments = 0;
 
 var printSuccess = function (op) {
   utils.logSuccess(
-    clc.bold.green("functions[" + helper.getFunctionLabel(op.func) + "]: ") +
+    clc.bold.green("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") +
       "Successful deletion. "
   );
 };
@@ -25,7 +25,7 @@ var printSuccess = function (op) {
 var printFail = function (op) {
   failedDeployments += 1;
   utils.logWarning(
-    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.func) + "]: ") + "Deployment error."
+    clc.bold.yellow("functions[" + helper.getFunctionLabel(op.funcName) + "]: ") + "Deployment error."
   );
   if (op.error.code === 8) {
     logger.debug(op.error.message);

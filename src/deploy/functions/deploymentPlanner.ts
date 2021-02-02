@@ -1,6 +1,9 @@
 import * as deploymentTool from "../../deploymentTool";
 import { functionMatchesAnyGroup, getTopicName } from "../../functionsDeployHelper";
 
+// TODO: Better name for this?
+// It's really a CloudFuntion, not just a trigger,
+// but CloudFunction is a different exported type from firebase-functions
 export interface CloudFunctionTrigger {
   name: string;
   sourceUploadUrl?: string;
@@ -31,10 +34,9 @@ export interface RegionMap {
 export interface RegionalDeployment {
   region: string;
   sourceToken?: string;
-  firstFunctionDeployment?: () => any;
   functionsToCreate: CloudFunctionTrigger[];
   functionsToUpdate: CloudFunctionTrigger[];
-  schedulesToCreateOrUpdate: CloudFunctionTrigger[];
+  schedulesToUpsert: CloudFunctionTrigger[];
 }
 
 export interface DeploymentPlan {
@@ -47,14 +49,14 @@ export interface DeploymentPlan {
  * Creates a map of regions to all the CloudFunctions being deployed
  * to that region.
  * @param projectId The project in use.
- * @param parsedTriggers A list of all CloudFunctions in the deployment.
+ * @param localFunctions A list of all CloudFunctions in the deployment.
  */
-export function createFunctionsByRegionMap(
+export function functionsByRegion(
   projectId: string,
-  parsedTriggers: CloudFunctionTrigger[]
+  localFunctions: CloudFunctionTrigger[]
 ): RegionMap {
   const regionMap: RegionMap = {};
-  for (const trigger of parsedTriggers) {
+  for (const trigger of localFunctions) {
     if (!trigger.regions) {
       trigger.regions = ["us-central1"];
     }
@@ -84,7 +86,7 @@ export function createFunctionsByRegionMap(
  * Helper method to turn a RegionMap into a flat list of all functions in a deployment.
  * @param regionMap A RegionMap for the deployment.
  */
-export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
+export function allFunctions(regionMap: RegionMap): CloudFunctionTrigger[] {
   const triggers: CloudFunctionTrigger[] = [];
   for (const [k, v] of Object.entries(regionMap)) {
     triggers.push(...v);
@@ -95,59 +97,59 @@ export function flattenRegionMap(regionMap: RegionMap): CloudFunctionTrigger[] {
 /**
  * Create a plan for deploying all functions in one region.
  * @param region The region of this deployment
- * @param functionsInSourceByRegion The functions present in the code currently being deployed.
+ * @param loclFunctionsByRegion The functions present in the code currently being deployed.
  * @param existingFunctionNames The names of all functions that already exist.
  * @param existingScheduledFunctionNames The names of all schedules functions that already exist.
  * @param filters The filters, passed in by the user via  `--only functions:`
  */
 export function createDeploymentPlan(
-  functionsInSourceByRegion: RegionMap,
+  localFunctionsByRegion: RegionMap,
   existingFunctions: CloudFunctionTrigger[],
   filters: string[][]
 ): DeploymentPlan {
+  let existingFnsCopy: CloudFunctionTrigger[] = [...existingFunctions];
   const deployment: DeploymentPlan = {
     regionalDeployments: [],
     functionsToDelete: [],
     schedulesToDelete: [],
   };
   // eslint-disable-next-line guard-for-in
-  for (const region in functionsInSourceByRegion) {
+  for (const region in localFunctionsByRegion) {
     const regionalDeployment: RegionalDeployment = {
       region,
       functionsToCreate: [],
       functionsToUpdate: [],
-      schedulesToCreateOrUpdate: [],
+      schedulesToUpsert: [],
     };
-    const localFunctionsInRegion = functionsInSourceByRegion[region];
+    const localFunctionsInRegion = localFunctionsByRegion[region];
     for (const fn of localFunctionsInRegion) {
       // Check if this function matches the --only filters
-      if (functionMatchesAnyGroup(fn.name, filters)) {
-        // Check if this local function has the same name as an exisiting one.
-        const matchingExistingFunction = existingFunctions.find((exFn) => {
-          return exFn.name === fn.name;
-        });
-        // Check if the matching exisitng function is scheduled
-        const isMatchingExisitingFnScheduled =
-          matchingExistingFunction?.labels?.["deployment-scheduled"] === "true";
-        // Check if the local function is a scheduled function
-        if (fn.schedule) {
-          // If the local function is scheduled, set its trigger to the correct pubsub topic
-          fn.eventTrigger.resource = getTopicName(fn.name);
-          // and create or update a schedule.
-          regionalDeployment.schedulesToCreateOrUpdate.push(fn);
-        } else if (isMatchingExisitingFnScheduled) {
-          // If the local function isn't scheduled but the existing one is, delete the schedule.
-          deployment.schedulesToDelete.push(matchingExistingFunction!.name);
-        }
+      if (!functionMatchesAnyGroup(fn.name, filters)) {
+        continue;
+      }
+      // Check if this local function has the same name as an exisiting one.
+      const matchingExistingFunction = existingFnsCopy.find((exFn) => exFn.name === fn.name);
+      // Check if the matching exisitng function is scheduled
+      const isMatchingExisitingFnScheduled =
+        matchingExistingFunction?.labels?.["deployment-scheduled"] === "true";
+      // Check if the local function is a scheduled function
+      if (fn.schedule) {
+        // If the local function is scheduled, set its trigger to the correct pubsub topic
+        fn.eventTrigger.resource = getTopicName(fn.name);
+        // and create or update a schedule.
+        regionalDeployment.schedulesToUpsert.push(fn);
+      } else if (isMatchingExisitingFnScheduled) {
+        // If the local function isn't scheduled but the existing one is, delete the schedule.
+        deployment.schedulesToDelete.push(matchingExistingFunction!.name);
+      }
 
-        if (!matchingExistingFunction) {
-          regionalDeployment.functionsToCreate.push(fn);
-        } else {
-          regionalDeployment.functionsToUpdate.push(fn);
-          existingFunctions = existingFunctions.filter((exFn: CloudFunctionTrigger) => {
-            return exFn.name !== fn.name;
-          });
-        }
+      if (matchingExistingFunction) {
+        regionalDeployment.functionsToUpdate.push(fn);
+        existingFnsCopy = existingFnsCopy.filter((exFn: CloudFunctionTrigger) => {
+          return exFn.name !== fn.name;
+        });
+      } else {
+        regionalDeployment.functionsToCreate.push(fn);
       }
     }
     deployment.regionalDeployments.push(regionalDeployment);
@@ -156,12 +158,12 @@ export function createDeploymentPlan(
   // Delete any remaining existing functions that:
   // 1 - Have the deployment-tool: 'firebase-cli' label and
   // 2 - Match the --only filters, if any are provided.
-  const functionsToDelete = existingFunctions
+  const functionsToDelete = existingFnsCopy
     .filter((fn) => {
-      return deploymentTool.check(fn.labels);
+      return deploymentTool.isFirebaseManaged(fn.labels);
     })
     .filter((fn) => {
-      return filters.length ? functionMatchesAnyGroup(fn.name, filters) : true;
+      return functionMatchesAnyGroup(fn.name, filters);
     });
   deployment.functionsToDelete = functionsToDelete.map((fn) => {
     return fn.name;

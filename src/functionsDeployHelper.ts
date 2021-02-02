@@ -251,7 +251,7 @@ export function pollDeploys(
   }
 }
 
-export function logAndTrackDeployStats(queue: Queue<any, any>){
+export function logAndTrackDeployStats(queue: Queue<any, any>) {
   const stats = queue.stats();
   logger.debug(`Total Function Deployment time: ${stats.elapsed}`);
   logger.debug(`${stats.total} Functions Deployed`);
@@ -261,4 +261,33 @@ export function logAndTrackDeployStats(queue: Queue<any, any>){
     track("Functions Deploy (Result)", "failure", stats.errored);
     track("Functions Deploy (Result)", "success", stats.success);
   }
+  // TODO: Track other stats here - maybe time of full deployment?
+}
+
+export function printSuccess(funcName: string, type: string) {
+  utils.logSuccess(
+    clc.bold.green("functions[" + getFunctionLabel(funcName) + "]: ") +
+    "Successful " +
+    type +
+    " operation. "
+  );
+}
+
+export async function printTriggerUrls(projectId: string, sourceUrl: string) {
+  const functions = await cloudfunctions.listAllFunctions(projectId);
+  const httpsFunctions = functions.filter((fn) => {
+    return fn.sourceUploadUrl === sourceUrl && fn.httpsTrigger;
+  })
+  if (httpsFunctions.length === 0) {
+    return;
+  }
+
+  httpsFunctions.forEach((httpsFunc) => {
+    logger.info(
+      clc.bold("Function URL"),
+      `(${getFunctionName(httpsFunc.name)}):`,
+      httpsFunc.httpsTrigger?.url
+    );
+  });
+  return;
 }

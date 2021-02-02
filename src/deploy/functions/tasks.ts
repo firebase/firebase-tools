@@ -14,6 +14,7 @@ import Queue from "../../throttler/queue";
 import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
+import { ErrorHandler } from "./errorHandler";
 
 // TODO: Tune this for better performance.
 const defaultPollerOptions = {
@@ -28,9 +29,10 @@ export interface RetryFunctionParams {
   sourceUrl: string;
   sourceToken?: string;
   timer: DeploymentTimer;
+  errorHandler: ErrorHandler;
 }
 
-export function retryFunctionForCreate(
+export function createFunctionTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
@@ -85,9 +87,7 @@ export function retryFunctionForCreate(
       } catch (err) {
         logger.debug(err);
         // TODO: Better warning language when we can't set IAM policy to make functions public?
-        utils.logWarning(
-          `Unable to set publicly accessible IAM policy for HTTPS function "${fn.name}". Unauthorized users will not be able to call this function. `
-        );
+        params.errorHandler.record("warning", fn.name, "make public", err.message);
       }
     }
     params.timer.endTimer(fn.name);
@@ -95,7 +95,7 @@ export function retryFunctionForCreate(
   };
 }
 
-export function retryFunctionForUpdate(
+export function updateFunctionTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
@@ -138,12 +138,13 @@ export function retryFunctionForUpdate(
       },
       defaultPollerOptions
     );
-    const pollRes = await pollOperation(pollerOptions);
+    const operationResult = await pollOperation(pollerOptions);
     params.timer.endTimer(fn.name);
+    return operationResult;
   };
 }
 
-export function retryFunctionForDelete(params: RetryFunctionParams, fnName: string) {
+export function deleteFunctionTask(params: RetryFunctionParams, fnName: string) {
   return async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
@@ -162,12 +163,13 @@ export function retryFunctionForDelete(params: RetryFunctionParams, fnName: stri
       },
       defaultPollerOptions
     );
-    const pollRes = await pollOperation(pollerOptions);
+    const operationResult = await pollOperation(pollerOptions);
     params.timer.endTimer(fnName);
+    return operationResult;
   };
 }
 
-export function retryFunctionForScheduleCreateOrUpdate(
+export function upsertScheduleTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   appEngineLocation: string
@@ -178,7 +180,7 @@ export function retryFunctionForScheduleCreateOrUpdate(
   };
 }
 
-export function retryFunctionForScheduleDelete(fnName: string, appEngineLocation: string) {
+export function deleteScheduleTask(fnName: string, appEngineLocation: string) {
   return async () => {
     const jobName = helper.getScheduleName(fnName, appEngineLocation);
     const topicName = helper.getTopicName(fnName);
@@ -187,25 +189,89 @@ export function retryFunctionForScheduleDelete(fnName: string, appEngineLocation
   };
 }
 
+
 export function runRegionalDeployment(
+  params: RetryFunctionParams,
+  regionalDeployment: RegionalDeployment,
+  queue: Queue<any, any>
+): Promise<any> {
+
+    // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
+  const onPollFn = (op: any) => {
+    // We should run the rest of the regional deployment if we either:
+    // - Have a sourceToken to use.
+    // - Never got a sourceToken back from the operation. In this case, finish the deployment without using sourceToken.
+    const shouldFinishDeployment =
+      (op.metadata?.sourceToken && !regionalDeployment.sourceToken) ||
+      (!op.metadata?.sourceToken && op.done);
+    if (shouldFinishDeployment) {
+      logger.debug(
+        `Got sourceToken ${op.metadata.sourceToken} for region ${regionalDeployment.region}`
+      );
+      regionalDeployment.sourceToken = op.metadata.sourceToken;
+      finishRegionalDeployment(
+        params,
+        regionalDeployment,
+        queue,
+      );
+    }
+  }
+  // Choose a first function to deploy.
+  if (regionalDeployment.functionsToCreate.length) {
+    const firstFn = regionalDeployment.functionsToCreate.shift()!;
+    const task = createFunctionTask(
+      params,
+      firstFn!,
+      onPollFn
+    );
+    return queue.run(task)
+      .then(() => {
+        helper.printSuccess(firstFn.name, 'create');
+      })
+      .catch((err) => {
+        params.errorHandler.record("error", firstFn.name, "create", err.message || "")
+      });
+  } else if (regionalDeployment.functionsToUpdate.length) {
+    const firstFn = regionalDeployment.functionsToUpdate.shift()!;
+    const task = updateFunctionTask(
+      params,
+      firstFn!,
+      onPollFn
+    );
+    return queue.run(task)
+      .then(() => {
+        helper.printSuccess(firstFn.name, 'update');
+      })
+      .catch((err) => {
+        params.errorHandler.record("error", firstFn.name, "update", err.message || "")
+      });
+  }
+  // If there are no functions to create or update in this region, no need to do anything.
+  return Promise.resolve();
+}
+
+export function finishRegionalDeployment(
   params: RetryFunctionParams,
   regionalDeployment: RegionalDeployment,
   queue: Queue<any, any>
 ) {
   for (const fn of regionalDeployment.functionsToCreate) {
-    queue.run(retryFunctionForCreate(params, fn)).catch((err) => {
-      logger.debug();
-      console.log(`Error while creating ${fn.name}: ${err}`);
+    queue.run(createFunctionTask(params, fn))
+    .then(() => { 
+      helper.printSuccess(fn.name, 'create');
+    })
+    .catch((err) => {
+      params.errorHandler.record("error", fn.name, "create", err.message || "")
     });
   }
   for (const fn of regionalDeployment.functionsToUpdate) {
     queue
-      .run(retryFunctionForUpdate(params, fn))
+      .run(updateFunctionTask(params, fn))
       .then(() => {
-        console.log(`Successfully updated ${fn.name}`);
+        helper.printSuccess(fn.name, 'update');
       })
       .catch((err) => {
-        console.log(`Error while updating ${fn.name}: ${err}`);
+        params.errorHandler.record("error", fn.name, "update", err.message || "")
       });
   }
 }

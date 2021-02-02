@@ -1,19 +1,15 @@
-import * as _ from "lodash";
 import * as clc from "cli-color";
 
-import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { ensure, check } from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as getProjectId from "../../getProjectId";
 import { logBullet } from "../../utils";
 import { getRuntimeChoice } from "../../parseRuntimeAndValidateSDK";
 import { functionMatchesAnyGroup, getFilterGroups } from "../../functionsDeployHelper";
-import {
-  CloudFunctionTrigger,
-  createFunctionsByRegionMap,
-  flattenRegionMap,
-} from "./deploymentPlanner";
+import { CloudFunctionTrigger, functionsByRegion, allFunctions } from "./deploymentPlanner";
 import { promptForFailurePolicies } from "./prompts";
-import * as prepareFunctionsUpload from "../../prepareFunctionsUpload";
+import { prepareFunctionsUpload } from "../../prepareFunctionsUpload";
+
 import * as validate from "./validate";
 import { checkRuntimeDependencies } from "./checkRuntimeDependencies";
 
@@ -33,15 +29,15 @@ export async function prepare(context: any, options: any, payload: any): Promise
 
   // Check that all necessary APIs are enabled.
   const checkAPIsEnabled = await Promise.all([
-    ensureApiEnabled.ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
-    ensureApiEnabled.check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
+    ensure(options.project, "cloudfunctions.googleapis.com", "functions"),
+    check(projectId, "runtimeconfig.googleapis.com", "runtimeconfig", true),
     checkRuntimeDependencies(projectId, context.runtimeChoice),
   ]);
-  _.set(context, "runtimeConfigEnabled", checkAPIsEnabled[1]);
+  context["runtimeConfigEnabled"] = checkAPIsEnabled[1];
 
   // Get the Firebase Config, and set it on each function in the deployment.
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
-  _.set(context, "firebaseConfig", firebaseConfig);
+  context["firebaseConfig"] = firebaseConfig;
 
   // Prepare the functions directory for upload, and set context.triggers.
   logBullet(
@@ -51,21 +47,30 @@ export async function prepare(context: any, options: any, payload: any): Promise
       " directory for uploading..."
   );
   const source = await prepareFunctionsUpload(context, options);
-  _.set(context, "functionsSource", source);
+  context["functionsSource"] = source;
 
   // Get a list of CloudFunctionTriggers, and set default environemnt variables on each.
   const defaultEnvVariables = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
   const functions = options.config.get("functions.triggers");
-  _.forEach(functions, (fn: CloudFunctionTrigger) => {
+  functions.forEach((fn: CloudFunctionTrigger) => {
     fn.environmentVariables = defaultEnvVariables;
   });
 
+  // Check if we are deploying any scheduled functions - if so, check the necessary APIs.
+  const includesScheduledFunctions = functions.some((fn: CloudFunctionTrigger) => fn.schedule);
+  if (includesScheduledFunctions) {
+    await Promise.all([
+      ensure(projectId, "cloudscheduler.googleapis.com", "scheduler", false),
+      ensure(projectId, "pubsub.googleapis.com", "pubsub", false),
+    ]);
+  }
+
   // Build a regionMap, and duplicate functions for each region they are being deployed to.
   payload.functions = {};
-  payload.functions.byRegion = createFunctionsByRegionMap(projectId, functions);
-  payload.functions.triggers = flattenRegionMap(payload.functions.byRegion);
+  payload.functions.byRegion = functionsByRegion(projectId, functions);
+  payload.functions.triggers = allFunctions(payload.functions.byRegion);
 
   // Validate the function code that is being deployed.
   validate.functionsDirectoryExists(options, sourceDirName);

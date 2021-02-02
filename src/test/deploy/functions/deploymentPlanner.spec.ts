@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as deploymentPlanner from "../../../deploy/functions/deploymentPlanner";
 
 describe("deploymentPlanner", () => {
-  describe("createFunctionsByRegionMap", () => {
+  describe("functionsByRegion", () => {
     it("should handle default region", () => {
       const triggers = [
         {
@@ -19,7 +19,7 @@ describe("deploymentPlanner", () => {
         },
       ];
 
-      expect(deploymentPlanner.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
+      expect(deploymentPlanner.functionsByRegion("myProject", triggers)).to.deep.equal({
         "us-central1": [
           {
             name: "projects/myProject/locations/us-central1/functions/myFunc",
@@ -54,7 +54,7 @@ describe("deploymentPlanner", () => {
         },
       ];
 
-      expect(deploymentPlanner.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
+      expect(deploymentPlanner.functionsByRegion("myProject", triggers)).to.deep.equal({
         "us-east1": [
           {
             name: "projects/myProject/locations/us-east1/functions/myFunc",
@@ -85,7 +85,7 @@ describe("deploymentPlanner", () => {
         },
       ];
 
-      expect(deploymentPlanner.createFunctionsByRegionMap("myProject", triggers)).to.deep.equal({
+      expect(deploymentPlanner.functionsByRegion("myProject", triggers)).to.deep.equal({
         "eu-west1": [
           {
             name: "projects/myProject/locations/eu-west1/functions/myFunc",
@@ -160,7 +160,7 @@ describe("deploymentPlanner", () => {
               },
             ],
             functionsToUpdate: [],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
           {
             region: "us-west1",
@@ -173,7 +173,7 @@ describe("deploymentPlanner", () => {
               },
             ],
             functionsToUpdate: [],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
         ],
         functionsToDelete: [],
@@ -254,7 +254,7 @@ describe("deploymentPlanner", () => {
                 entryPoint: "",
               },
             ],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
           {
             region: "us-west1",
@@ -267,7 +267,7 @@ describe("deploymentPlanner", () => {
                 entryPoint: "",
               },
             ],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
         ],
         functionsToDelete: [],
@@ -392,7 +392,7 @@ describe("deploymentPlanner", () => {
                 eventTrigger: { resource: "projects/a/topics/firebase-schedule-c-us-east1" },
               },
             ],
-            schedulesToCreateOrUpdate: [
+            schedulesToUpsert: [
               {
                 name: "projects/a/locations/us-east1/functions/c",
                 labels: {},
@@ -424,7 +424,7 @@ describe("deploymentPlanner", () => {
               },
             ],
             functionsToUpdate: [],
-            schedulesToCreateOrUpdate: [
+            schedulesToUpsert: [
               {
                 name: "projects/a/locations/us-west1/functions/d",
                 labels: {},
@@ -494,7 +494,7 @@ describe("deploymentPlanner", () => {
                 entryPoint: "",
               },
             ],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
         ],
         functionsToDelete: ["projects/a/locations/us-east1/functions/c"],
@@ -578,7 +578,7 @@ describe("deploymentPlanner", () => {
                 entryPoint: "",
               },
             ],
-            schedulesToCreateOrUpdate: [],
+            schedulesToUpsert: [],
           },
         ],
         functionsToDelete: ["projects/a/locations/us-east1/functions/group-c"],
