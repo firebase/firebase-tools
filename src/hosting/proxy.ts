@@ -38,6 +38,8 @@ function makeVary(vary: string | null = ""): string {
  * when writing out logs or errors.  This makes some minor changes to headers,
  * cookies, and caching similar to the behavior of the production version of
  * the Firebase Hosting origin.
+ * @param url
+ * @param rewriteIdentifier
  */
 export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
@@ -145,13 +147,23 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
     const location = proxyRes.response.headers.get("location");
     if (location) {
-      const locationURL = new URL(location);
-      const unborkedLocation = location.replace(locationURL.origin, "");
-      proxyRes.response.headers.set("location", unborkedLocation);
+      // If parsing the URL fails, it may be because the location header
+      // isn't a helpeful resolved URL (if node-fetch changes behavior). This
+      // try is a preventative measure to ensure such a change shouldn't break
+      // our emulator.
+      try {
+        const locationURL = new URL(location);
+        const unborkedLocation = location.replace(locationURL.origin, "");
+        proxyRes.response.headers.set("location", unborkedLocation);
+      } catch (e) {
+        logger.debug(
+          `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
+        );
+      }
     }
 
     for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
-      res.setHeader(key, value as string[]);
+      res.setHeader(key, value);
     }
     res.statusCode = proxyRes.status;
     proxyRes.response.body.pipe(res);
@@ -161,6 +173,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 /**
  * Returns an Express RequestHandler that will both log out the error and
  * return an internal HTTP error response.
+ * @param error
  */
 export function errorRequestHandler(error: string): RequestHandler {
   return (req: Request, res: Response, next: () => void): any => {
