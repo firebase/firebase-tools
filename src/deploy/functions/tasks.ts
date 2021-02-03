@@ -14,6 +14,7 @@ import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
+import { FirebaseError } from "../../error";
 
 // TODO: Tune this for better performance.
 const defaultPollerOptions = {
@@ -181,8 +182,24 @@ export function deleteScheduleTask(fnName: string, appEngineLocation: string) {
   return async () => {
     const jobName = helper.getScheduleName(fnName, appEngineLocation);
     const topicName = helper.getTopicName(fnName);
-    await cloudscheduler.deleteJob(jobName);
-    return deleteTopic(topicName);
+    try {
+      await cloudscheduler.deleteJob(jobName);
+    } catch (err) {
+      // If the job has already been deleted, don't throw an error.
+      if (err.context?.response?.statusCode !== 404) {
+        throw err;
+      }
+      logger.debug(`Scheduler job ${jobName} not found, continuing deployment.`);
+    }
+    try {
+      return deleteTopic(topicName);
+    } catch (err) {
+      // If the topic has already been deleted, don't throw an error.
+      if (err.context?.response?.statusCode !== 404) {
+        throw err;
+      }
+      logger.debug(`Scheduler topic ${topicName} not found, continuing deployment.`);
+    }
   };
 }
 

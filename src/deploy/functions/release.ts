@@ -116,5 +116,6 @@ export async function release(context: any, options: any, payload: any) {
   await helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();
   errorHandler.printErrors();
+  console.log("Deployment Complete!");
   return;
 }

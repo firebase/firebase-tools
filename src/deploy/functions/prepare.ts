@@ -49,7 +49,7 @@ export async function prepare(context: any, options: any, payload: any): Promise
   const source = await prepareFunctionsUpload(context, options);
   context.functionsSource = source;
 
-  // Get a list of CloudFunctionTriggers, and set default environemnt variables on each.
+  // Get a list of CloudFunctionTriggers, and set default environment variables on each.
   const defaultEnvVariables = {
     FIREBASE_CONFIG: JSON.stringify(context.firebaseConfig),
   };
