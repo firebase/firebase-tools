@@ -88,7 +88,7 @@ describe("functionsProxy", () => {
       });
   });
 
-  it("should allow location headers that don't redirect to itself", async () => {
+  it("should allow location headers that wouldn't redirect to itself", async () => {
     nock("http://localhost:7778")
       .get("/project-foo/us-central1/bar/")
       .reply(301, "", { location: "https://example.com/foo" });
