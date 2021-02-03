@@ -38,8 +38,6 @@ function makeVary(vary: string | null = ""): string {
  * when writing out logs or errors.  This makes some minor changes to headers,
  * cookies, and caching similar to the behavior of the production version of
  * the Firebase Hosting origin.
- * @param url
- * @param rewriteIdentifier
  */
 export function proxyRequestHandler(url: string, rewriteIdentifier: string): RequestHandler {
   return async (req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> => {
@@ -167,7 +165,7 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
     }
 
     for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
-      res.setHeader(key, value);
+      res.setHeader(key, value as string[]);
     }
     res.statusCode = proxyRes.status;
     proxyRes.response.body.pipe(res);
