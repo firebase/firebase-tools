@@ -153,8 +153,12 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
       // our emulator.
       try {
         const locationURL = new URL(location);
-        const unborkedLocation = location.replace(locationURL.origin, "");
-        proxyRes.response.headers.set("location", unborkedLocation);
+        // Only assume we can fix the location header if the origin of the
+        // "fixed" header is the same as the origin of the outbound request.
+        if (locationURL.origin == u.origin) {
+          const unborkedLocation = location.replace(locationURL.origin, "");
+          proxyRes.response.headers.set("location", unborkedLocation);
+        }
       } catch (e) {
         logger.debug(
           `[hosting] had trouble parsing location header, but this may be okay: "${location}"`
