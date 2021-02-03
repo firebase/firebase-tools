@@ -141,6 +141,8 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 
     proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
 
+    // Fix the location header that `node-fetch` attempts to helpfully fix:
+    // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
     const location = proxyRes.response.headers.get("location");
     if (location) {
       const locationURL = new URL(location);
