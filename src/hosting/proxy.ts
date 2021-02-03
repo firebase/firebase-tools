@@ -141,6 +141,13 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 
     proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
 
+    const location = proxyRes.response.headers.get("location");
+    if (location) {
+      const locationURL = new URL(location);
+      const unborkedLocation = location.replace(locationURL.origin, "");
+      proxyRes.response.headers.set("location", unborkedLocation);
+    }
+
     for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
       res.setHeader(key, value as string[]);
     }
