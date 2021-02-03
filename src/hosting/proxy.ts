@@ -175,7 +175,6 @@ export function proxyRequestHandler(url: string, rewriteIdentifier: string): Req
 /**
  * Returns an Express RequestHandler that will both log out the error and
  * return an internal HTTP error response.
- * @param error
  */
 export function errorRequestHandler(error: string): RequestHandler {
   return (req: Request, res: Response, next: () => void): any => {
