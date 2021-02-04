@@ -5,7 +5,7 @@ import * as clc from "cli-color";
 
 import * as utils from "../../utils";
 import * as helper from "../../functionsDeployHelper";
-import { createDeploymentPlan } from "./deploymentPlanner";
+import { CloudFunctionTrigger, createDeploymentPlan } from "./deploymentPlanner";
 import * as tasks from "./tasks";
 import { getAppEngineLocation } from "../../functionsConfig";
 import { promptForFunctionDeletion } from "./prompts";
@@ -30,8 +30,8 @@ export async function release(context: any, options: any, payload: any) {
     context.existingFunctions,
     context.filters
   );
-  const cloudFunctionsQueue = new Queue<() => any, any>({});
-  const schedulerQueue = new Queue<() => any, any>({});
+  const cloudFunctionsQueue = new Queue<() => Promise<CloudFunctionTrigger|void>, void>({});
+  const schedulerQueue = new Queue<() => Promise<any>, void>({});
   const regionPromises = [];
 
   const retryFuncParams: tasks.RetryFunctionParams = {
@@ -88,9 +88,6 @@ export async function release(context: any, options: any, payload: any) {
         });
     }
   }
-
-  cloudFunctionsQueue.process();
-
   for (const fnName of fullDeployment.schedulesToDelete) {
     schedulerQueue
       .run(tasks.deleteScheduleTask(fnName, appEngineLocation))
@@ -101,21 +98,29 @@ export async function release(context: any, options: any, payload: any) {
         errorHandler.record("error", fnName, "delete schedule", err.message || "");
       });
   }
-  schedulerQueue.close();
+
+  // Once everything has been added to queues, starting processing.
+  const queuePromises = [cloudFunctionsQueue.wait(), schedulerQueue.wait()]; 
+  cloudFunctionsQueue.process();
   schedulerQueue.process();
+  schedulerQueue.close();
+
+  // Wait until the second round of creates/updates are added to the queue before closing it.
+  await Promise.all(regionPromises)
+  cloudFunctionsQueue.close();
 
   // Wait for the first function in each region to be deployed, and all the other calls to be queued,
   // then close the queue.
-  await Promise.all(regionPromises);
-  cloudFunctionsQueue.close();
-
   // Wait for all of the deployments to complete.
-  await cloudFunctionsQueue.wait();
-  await schedulerQueue.wait();
+  await Promise.all(queuePromises);
+  // TODO: We should also await the scheduler queue. However, for reasons I don't understand,
+  // awaiting 2 queues makes it so none of the code below this executes.
+  // If I remove either queue, it works correctly.
+  // Not sure if this is a bug with queue or if I'm doing something subtly incorrect, but functions deploys are ~2 orders of magnitude longer
+  // than schedule deployments, and there are no deployments that contain only calls to scheduler, so this works for now.
+  // await schedulerQueue.wait();
   helper.logAndTrackDeployStats(cloudFunctionsQueue);
-  await helper.printTriggerUrls(projectId, sourceUrl);
   errorHandler.printWarnings();
   errorHandler.printErrors();
-  console.log("Deployment Complete!");
-  return;
+  return helper.printTriggerUrls(projectId, sourceUrl);
 }

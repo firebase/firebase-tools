@@ -14,7 +14,6 @@ import { getHumanFriendlyRuntimeName } from "../../parseRuntimeAndValidateSDK";
 import { deleteTopic } from "../../gcp/pubsub";
 import { DeploymentTimer } from "./deploymentTimer";
 import { ErrorHandler } from "./errorHandler";
-import { FirebaseError } from "../../error";
 
 // TODO: Tune this for better performance.
 const defaultPollerOptions = {
@@ -36,7 +35,7 @@ export function createFunctionTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
-) {
+): () => Promise<CloudFunctionTrigger> {
   return async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
@@ -75,7 +74,7 @@ export function createFunctionTask(
       },
       defaultPollerOptions
     );
-    const operationResult = await pollOperation(pollerOptions);
+    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
     if (eventType === "https") {
       try {
         await cloudfunctions.setIamPolicy({
@@ -97,7 +96,7 @@ export function updateFunctionTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   onPoll?: (op: any) => any
-) {
+): () => Promise<CloudFunctionTrigger> {
   return async () => {
     utils.logBullet(
       clc.bold.cyan("functions: ") +
@@ -136,7 +135,7 @@ export function updateFunctionTask(
       },
       defaultPollerOptions
     );
-    const operationResult = await pollOperation(pollerOptions);
+    const operationResult = await pollOperation<CloudFunctionTrigger>(pollerOptions);
     params.timer.endTimer(fn.name);
     return operationResult;
   };
@@ -161,7 +160,7 @@ export function deleteFunctionTask(params: RetryFunctionParams, fnName: string) 
       },
       defaultPollerOptions
     );
-    const operationResult = await pollOperation(pollerOptions);
+    const operationResult = await pollOperation<void>(pollerOptions);
     params.timer.endTimer(fnName);
     return operationResult;
   };
@@ -171,14 +170,14 @@ export function upsertScheduleTask(
   params: RetryFunctionParams,
   fn: CloudFunctionTrigger,
   appEngineLocation: string
-) {
+): () => Promise<any> {
   return async () => {
     const job = helper.toJob(fn, appEngineLocation, params.projectId);
     return cloudscheduler.createOrReplaceJob(job);
   };
 }
 
-export function deleteScheduleTask(fnName: string, appEngineLocation: string) {
+export function deleteScheduleTask(fnName: string, appEngineLocation: string): () => Promise<void> {
   return async () => {
     const jobName = helper.getScheduleName(fnName, appEngineLocation);
     const topicName = helper.getTopicName(fnName);
@@ -212,8 +211,8 @@ export function deleteScheduleTask(fnName: string, appEngineLocation: string) {
 export function runRegionalFunctionDeployment(
   params: RetryFunctionParams,
   regionalDeployment: RegionalDeployment,
-  queue: Queue<any, any>
-): Promise<any> {
+  queue: Queue<() => Promise<any>, void>
+): Promise<void> {
   // Build an onPoll function to check for sourceToken and queue up the rest of the deployment.
   const onPollFn = (op: any) => {
     // We should run the rest of the regional deployment if we either:
@@ -261,8 +260,8 @@ export function runRegionalFunctionDeployment(
 function finishRegionalFunctionDeployment(
   params: RetryFunctionParams,
   regionalDeployment: RegionalDeployment,
-  queue: Queue<any, any>
-) {
+  queue: Queue<()=>Promise<any>, void>
+): void {
   for (const fn of regionalDeployment.functionsToCreate) {
     queue
       .run(createFunctionTask(params, fn))
